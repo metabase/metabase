@@ -35,8 +35,8 @@ describe("scenarios > visualizations > combo", () => {
         "graph.show_values": true,
       },
     });
-    // First value label on the chart
-    cy.findAllByText("390.99");
+
+    H.echartsContainer().findByText("408.66");
   });
 
   it("should support stacking", () => {

@@ -87,15 +87,19 @@ describe("scenarios > models list view", () => {
       cy.get("@listPreview").should("be.visible");
       cy.get("@listPreview").within(() => {
         // Verify preview shows sample data values
-        cy.findByRole("img").should("have.attr", "aria-label", "document icon");
+        cy.findAllByRole("img").should(
+          "have.attr",
+          "aria-label",
+          "document icon",
+        );
         cy.findAllByText("1").should("have.length", 2);
         cy.findByText("14").should("be.visible");
         cy.findByText("37.65").should("be.visible");
         cy.findByText("2.07").should("be.visible");
       });
 
-      cy.log("Add CREATED_AT column to left columns");
-      cy.get("@leftColumns").within(() => {
+      cy.log("Add CREATED_AT column to right columns");
+      cy.get("@rightColumns").within(() => {
         cy.get("input").type("CR");
       });
 
@@ -123,17 +127,44 @@ describe("scenarios > models list view", () => {
         cy.findByText("2.07").should("not.exist");
       });
 
+      cy.log("Verify that empty column preview displays placeholder value");
+      cy.get("@rightColumns").within(() => {
+        cy.get("input").type("DISC");
+      });
+      H.popover().within(() => {
+        cy.findByText("DISCOUNT").click();
+      });
+      cy.get("@listPreview").within(() => {
+        cy.findByText("123.46").should("be.visible");
+      });
+
       cy.log("Update list item icon");
       cy.get("@listPreview").within(() => {
-        cy.findByRole("img").should("have.attr", "aria-label", "document icon");
+        cy.findAllByRole("img").should(
+          "have.attr",
+          "aria-label",
+          "document icon",
+        );
       });
 
       cy.findByTestId("list-view-icon").click();
       H.popover().within(() => {
-        cy.findByText("Company").should("be.visible").click();
+        cy.findByRole("img", { name: "factory icon" })
+          .should("have.attr", "aria-label", "factory icon")
+          .click();
+        cy.findByTestId("list-view-icon-colors").then(($list) => {
+          const $button = Cypress.$($list).find("button").eq(2);
+          expect($button.attr("style")).to.include(
+            "background: var(--mb-color-accent1)",
+          );
+          $button.click();
+        });
       });
       cy.get("@listPreview").within(() => {
-        cy.findByRole("img").should("have.attr", "aria-label", "company icon");
+        cy.findAllByRole("img")
+          .first()
+          .should("have.attr", "style", "color: var(--mb-color-accent1);")
+          .and("have.attr", "aria-label", "factory icon");
       });
 
       cy.findByTestId("dataset-edit-bar").button("Save changes").click();
@@ -141,7 +172,7 @@ describe("scenarios > models list view", () => {
 
       cy.log("Verify that custom column set is correct");
       cy.findByTestId("visualization-root").within(() => {
-        cy.findByText("ID and CREATED_AT").should("be.visible");
+        cy.findByText("ID").should("be.visible");
         cy.findByText("USER_ID").should("be.visible");
         cy.findByText("PRODUCT_ID").should("be.visible");
         cy.findByText("SUBTOTAL").should("be.visible");
@@ -149,7 +180,7 @@ describe("scenarios > models list view", () => {
 
         cy.findAllByRole("img")
           .first()
-          .should("have.attr", "aria-label", "company icon");
+          .should("have.attr", "aria-label", "factory icon");
         cy.findByText("February 11, 2025, 9:40 PM").should("be.visible");
         cy.findByText("14").should("be.visible");
         cy.findByText("37.65").should("be.visible");

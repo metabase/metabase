@@ -8,6 +8,7 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.actions.models :as action]
+   [metabase.lib.core :as lib]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.test :as mt]
@@ -42,9 +43,7 @@
       (ingest-list [_]
         (keys mapped))
       (ingest-one [_ path]
-        (or (get mapped (no-labels path))
-            (throw (ex-info (format "Unknown ingestion target: %s" path)
-                            {:path path :world mapped})))))))
+        (get mapped (no-labels path))))))
 
 ;;; WARNING for test authors: [[extract/extract]] returns a lazy reducible value. To make sure you don't
 ;;; confound your tests with data from your dev appdb, remember to eagerly
@@ -233,10 +232,10 @@
 
         (testing "the serialized form is as desired"
           (let [card (first (by-model @serialized "Card"))]
-            (is (=? {:type  :query
-                     :query {:source-table ["my-db" nil "customers"]
-                             :filter       [:>= [:field ["my-db" nil "customers" "age"] nil] 18]
-                             :aggregation  [[:count]]}
+            (is (=? {:type     :query
+                     :query    {:source-table ["my-db" nil "customers"]
+                                :filter       [:>= [:field ["my-db" nil "customers" "age"] {}] 18]
+                                :aggregation  [[:count]]}
                      :database "my-db"}
                     (:dataset_query card)))))
 
@@ -265,10 +264,12 @@
             (is (not= (:dataset_query @card1s)
                       (:dataset_query @card1d)))
             (testing "the Card's query is based on the new Database, Table, and Field IDs"
-              (is (=? {:type     :query
-                       :query    {:source-table (:id @table1d)
-                                  :filter       [:>= [:field (:id @field1d) nil] 18]
-                                  :aggregation  [[:count]]}
+              (is (=? {:lib/type :mbql/query
+                       :stages   [{:source-table (:id @table1d)
+                                   :filters      [[:>= {}
+                                                   [:field {} (:id @field1d)]
+                                                   18]]
+                                   :aggregation  [[:count {}]]}]
                        :database (:id @db1d)}
                       (:dataset_query @card1d))))))))))
 
@@ -903,13 +904,15 @@
         (reset! card1s    (ts/create! :model/Card
                                       :name "the query"
                                       :dataset_query {:database (:id @db1s)
+                                                      :type :native
                                                       :native {:template-tags {"snippet: things"
-                                                                               {:id "e2d15f07-37b3-01fc-3944-2ff860a5eb46",
-                                                                                :name "snippet: filtered data",
-                                                                                :display-name "Snippet: Filtered Data",
-                                                                                :type :snippet,
-                                                                                :snippet-name "filtered data",
-                                                                                :snippet-id (:id @snippet1s)}}}}))
+                                                                               {:id           "e2d15f07-37b3-01fc-3944-2ff860a5eb46"
+                                                                                :name         "snippet: filtered data"
+                                                                                :display-name "Snippet: Filtered Data"
+                                                                                :type         :snippet
+                                                                                :snippet-name "filtered data"
+                                                                                :snippet-id   (:id @snippet1s)}}
+                                                               :query "SELECT 1;"}}))
         (ts/create! :model/User :first_name "Geddy" :last_name "Lee" :email "glee@rush.yyz")
 
         (testing "on extraction"
@@ -924,8 +927,7 @@
             (is (= (:id @snippet1s)
                    (-> (t2/select-one :model/Card :entity_id new-eid)
                        :dataset_query
-                       :native
-                       :template-tags
+                       lib/all-template-tags-map
                        (get "snippet: things")
                        :snippet-id)))))))))
 
@@ -1186,8 +1188,8 @@
                                        :type :model
                                        :database_id (:id db)
                                        :dataset_query {:database (:id db)
-                                                       :native   {:type   :native
-                                                                  :native {:query "wow"}}})
+                                                       :type     :native
+                                                       :native   {:query "wow"}})
                 parent     (ts/create! :model/Collection :name "Parent Collection" :location "/")
                 _child     (ts/create! :model/Collection
                                        :name "Child Collection"
@@ -1196,7 +1198,7 @@
                                             :name          "the action"
                                             :model_id      (:id card)
                                             :type          :query
-                                            :dataset_query "wow"
+                                            :dataset_query {}
                                             :database_id   (:id db)})]
             (reset! serialized
                     (->> (serdes.extract/extract {})
@@ -1304,6 +1306,7 @@
               (mt/with-log-messages-for-level [messages [metabase.models.serialization :warn]]
                 (let [ser            (vec (serdes.extract/extract {:no-settings       true
                                                                    :no-data-model     true
+                                                                   :no-transforms     true
                                                                    :continue-on-error true}))
                       {errors true
                        others false} (group-by #(instance? Exception %) ser)]
@@ -1314,14 +1317,15 @@
                                      (messages))))))))
         (testing "It's possible to skip a few errors during load"
           (let [ser     (vec (serdes.extract/extract {:no-settings   true
-                                                      :no-data-model true}))
+                                                      :no-data-model true
+                                                      :no-transforms true}))
                 changed (change-ser ser {(:entity_id c2) {:collection_id "does-not-exist"}})]
             (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
               (let [report (serdes.load/load-metabase! (ingestion-in-memory changed) {:continue-on-error true})]
                 (is (= 1 (count (:errors report))))
                 (is (= 3 (count (:seen report)))))
-              (is (= [["Failed to read file for Collection does-not-exist"]]
-                     (logs-extract #"Skipping deserialization error: (.*) \{.*\}\n"
+              (is (= [["Failed to read file {:path \"Collection does-not-exist\"}"]]
+                     (logs-extract #"Skipping deserialization error: (.*)"
                                    (messages)))))))))))
 
 (deftest with-dbs-works-as-expected-test
@@ -1414,7 +1418,7 @@
                                             (t2/select-one [:model/Card :entity_id] :id (:id c1))))))
 
           (testing "Identity hashes end up in target db in place of entity ids"
-            (let [ser2 (vec (serdes.extract/extract {:no-settings true :no-data-model true}))]
+            (let [ser2 (vec (serdes.extract/extract {:no-settings true :no-data-model true :no-transforms true}))]
               (testing "\nWe exported identity hashes"
                 (doseq [e ser2
                         :when (:entity_id e)]
@@ -1447,7 +1451,7 @@
                              {:model "Field" :id "field"}]}
               (ts/extract-one "Field" (:id f2))))
 
-      (is (=? {:parent_id   ["mydb" nil "table" "field" "field"],
+      (is (=? {:parent_id   ["mydb" nil "table" "field" "field"]
                :serdes/meta [{:model "Database" :id "mydb"}
                              {:model "Table" :id "table"}
                              {:model "Field" :id "field"}

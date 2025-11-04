@@ -1,0 +1,5 @@
+.runStatusInfo {
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}

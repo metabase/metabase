@@ -51,6 +51,7 @@ Metabase's reference documentation.
 - [Monitoring your Metabase](./installation-and-operation/monitoring-metabase.md)
 - [Development instances](./installation-and-operation/development-instance.md)
 - [Serialization](./installation-and-operation/serialization.md)
+- [Remote sync](./installation-and-operation/remote-sync.md)
 - [Commands](./installation-and-operation/commands.md)
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
 - [Privacy](./installation-and-operation/privacy.md)
@@ -119,6 +120,10 @@ Metabase's reference documentation.
 - [Charts with multiple series](./dashboards/multiple-series.md)
 - [Dashboard subscriptions](./dashboards/subscriptions.md)
 - [Actions on dashboards](./dashboards/actions.md)
+
+### Documents
+
+- [Introduction to documents](./documents/introduction.md)
 
 ### Data modeling
 

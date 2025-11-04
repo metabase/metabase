@@ -20,7 +20,7 @@ function SavedQuestionHeaderButton({
   return (
     <Flex
       align="center"
-      gap="0.25rem"
+      gap={2}
       className={SavedQuestionHeaderButtonS.HeaderTitleContainer}
     >
       <EditableText
@@ -33,7 +33,17 @@ function SavedQuestionHeaderButton({
         data-testid="saved-question-header-title"
       />
 
-      <CollectionIcon collection={question.collection()} question={question} />
+      <Flex
+        flex="0 0 auto"
+        pos="relative"
+        // intentionally misaligned: https://github.com/metabase/metabase/pull/63871#pullrequestreview-3259596723
+        top={2}
+      >
+        <CollectionIcon
+          collection={question.collection()}
+          question={question}
+        />
+      </Flex>
     </Flex>
   );
 }

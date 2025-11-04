@@ -14,7 +14,7 @@ This page covers how to upgrade to a new Metabase release.
 
 ## Upgrading Metabase Cloud
 
-If you're on a [Metabase Cloud](https://www.metabase.com/pricing/) plan, we'll upgrade your Metabase automatically with each new release; no action needed on your end ([unless you're using the Embedded analytics SDK](#instances-using-the-embedded-analtyics-sdk-on-metabase-cloud-must-request-an-upgrade)).
+If you're on a [Metabase Cloud](https://www.metabase.com/pricing/) plan, we'll upgrade your Metabase automatically with each new release; no action needed on your end ([unless you're using the Embedded analytics SDK](#instances-using-the-embedded-analytics-sdk-on-metabase-cloud-must-request-an-upgrade)).
 
 How soon we upgrade you depends on the type of release:
 
@@ -23,7 +23,7 @@ How soon we upgrade you depends on the type of release:
 
 Cloud customers can request an early upgrade by emailing support at help@metabase.com. Include the URL of the Metabase you want us to upgrade.
 
-### Instances using the Embedded analtyics SDK on Metabase Cloud must request an upgrade
+### Instances using the Embedded analytics SDK on Metabase Cloud must request an upgrade
 
 If you're using the [Embedded analytics SDK](../embedding/sdk/introduction.md) on Metabase Cloud, we pin your version so that it doesn't upgrade automatically, as you should test the changes before upgrading.
 
@@ -144,7 +144,7 @@ Durning a **minor version upgrade** (e.g., 54.1 to 54.2), the new Metabase conta
 
 In general, regular backups (especially backups before upgrading), are the best policy, so we recommend reverting to a backup of your application database to roll back an upgrade.
 
-But if you've made any change (adding new questions/dashboards, etc) since upgrading that you want to keep, you may be able to use the `migrate down` command to roll back your Metabase application database to support the previous Metabase version you were running. When Metabase upgrades to a new version, it runs migrations that may change the application database schema. The `migrate down` command undoes those schema changes. In general, we recommend restoring from a backup (the backup that you definitely remembered to generate before upgrading), and only using the `migrate down` command if you really need to keep changes made after your upgrade.
+But if you've made any change (adding new questions/dashboards, etc) since upgrading that you want to keep, you may be able to use the `migrate down` command to roll back your Metabase application database to support the previous Metabase version you were running. When Metabase upgrades to a new version, it runs migrations that may change the application database schema. The `migrate down` command undoes those schema changes. In general, we recommend restoring from a backup (the backup that you remembered to generate before upgrading), and only using the `migrate down` command if you need to keep changes made after your upgrade.
 
 ### Using the migrate down command
 

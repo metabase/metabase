@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -9,9 +10,13 @@ import {
   getIsListViewConfigurationShown,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import { Box } from "metabase/ui";
+import { Box, type IconName } from "metabase/ui";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import type {
   ColumnSettingDefinition,
   VisualizationProps,
@@ -31,12 +36,16 @@ import type { DatasetColumn, Series } from "metabase-types/api";
 import { ListView } from "../ListView/ListView";
 import { ListViewConfiguration } from "../ListView/ListViewConfiguration";
 
+import S from "./ListViz.module.css";
+
 const vizDefinition = {
   identifier: "list",
   iconName: "list",
   getUiName: () => t`List`,
   hidden: true,
 
+  minSize: getMinSize("list"),
+  defaultSize: getDefaultSize("list"),
   checkRenderable: () => {},
   isSensible: () => true,
 
@@ -44,6 +53,15 @@ const vizDefinition = {
     ...columnSettings({ hidden: true }),
     "list.entity_icon": {
       default: null,
+    },
+    "list.entity_icon_color": {
+      default: "text-primary",
+    },
+    "list.entity_icon_enabled": {
+      default: true,
+    },
+    "list.use_image_column": {
+      default: false,
     },
     "list.columns": {
       getDefault: ([
@@ -242,6 +260,7 @@ export const ListViz = ({
   settings,
   onVisualizationClick,
   queryBuilderMode,
+  isDashboard,
 }: VisualizationProps) => {
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
@@ -263,6 +282,14 @@ export const ListViz = ({
     }
     return {};
   }, [question]);
+
+  const columnsMetadata = useMemo(() => {
+    if (!question) {
+      return [];
+    }
+    const query = question.query();
+    return data.cols.map((col) => Lib.fromLegacyColumn(query, -1, col));
+  }, [data, question]);
 
   // Get the entity type from the question's source table
   const entityType = useMemo(() => {
@@ -293,35 +320,62 @@ export const ListViz = ({
     left,
     right,
     entityIcon,
+    entityIconColor,
+    entityIconEnabled,
+    useImageColumn,
   }: {
-    left: string[];
-    right: string[];
-    entityIcon?: string;
+    left?: string[];
+    right?: string[];
+    entityIcon?: IconName | null;
+    entityIconColor?: string;
+    entityIconEnabled?: boolean;
+    useImageColumn?: boolean;
   }) => {
-    const newSettings = {
-      "list.columns": {
+    const settings = { ...(question?.settings() || {}) };
+    if (left && right) {
+      settings["list.columns"] = {
         left,
         right,
-      },
-      "list.entity_icon": entityIcon,
-    };
-    const nextQuestion = question?.updateSettings(newSettings);
+      };
+    }
+    if (entityIcon !== undefined) {
+      settings["list.entity_icon"] = entityIcon;
+    }
+    if (entityIconColor !== undefined) {
+      settings["list.entity_icon_color"] = entityIconColor;
+    }
+    if (entityIconEnabled !== undefined) {
+      settings["list.entity_icon_enabled"] = entityIconEnabled;
+    }
+    if (useImageColumn !== undefined) {
+      settings["list.use_image_column"] = useImageColumn;
+    }
+
+    const nextQuestion = question?.updateSettings(settings);
     if (nextQuestion) {
       dispatch(updateQuestion(nextQuestion));
     }
   };
 
   return (
-    <Box w="100%" h="100%" pos="absolute">
+    <Box
+      w="100%"
+      pos="absolute"
+      className={cx(S.ListViz, {
+        [S.listViewDashcard]: isDashboard,
+      })}
+    >
       {isShowingListViewConfiguration ? (
         <ListViewConfiguration
           data={data}
           settings={settings}
-          entityType={entityType}
           onChange={updateListSettings}
+          entityType={entityType}
+          columnsMetadata={columnsMetadata}
         />
       ) : (
         <ListView
+          className={isDashboard ? S.dashboardListView : undefined}
           data={data}
           settings={settings}
           sortedColumnName={sortedColumnName}

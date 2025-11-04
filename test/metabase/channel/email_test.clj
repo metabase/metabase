@@ -9,6 +9,7 @@
    [metabase.channel.email :as email]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
+   [metabase.notification.send :as notification.send]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.test.data.users :as test.users]
@@ -75,7 +76,9 @@
     (reset-inbox!)
     (tu/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                        email-smtp-port 587]
-      (f))))
+      (binding [notification.send/*default-options* (assoc notification.send/*default-options*
+                                                           :notification/sync? true)]
+        (f)))))
 
 ;;; TODO -- rename to `with-fake-inbox!` since it's not thread-safe and remove the Kondo ignore below.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}

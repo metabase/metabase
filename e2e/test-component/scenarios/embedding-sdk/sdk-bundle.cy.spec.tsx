@@ -15,8 +15,6 @@ import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embeddin
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete-conflicting-cljs-globals";
 
-const { H } = cy;
-
 const sdkBundleCleanup = () => {
   getSdkBundleScriptElement()?.remove();
   delete window.METABASE_EMBEDDING_SDK_BUNDLE;
@@ -26,14 +24,13 @@ const sdkBundleCleanup = () => {
 
 describe(
   "scenarios > embedding-sdk > sdk-bundle",
-  // These test in some cases load a new SDK Bundle that in combination with the Component Testing is memory-consuming
-  { numTestsKeptInMemory: 1 },
+  {
+    tags: ["@skip-backward-compatibility"],
+    // These test in some cases load a new SDK Bundle that in combination with the Component Testing is memory-consuming
+    numTestsKeptInMemory: 1,
+  },
   () => {
     beforeEach(() => {
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "dashcardQuery",
-      );
-
       signInAsAdminAndEnableEmbeddingSdk();
 
       cy.signOut();
@@ -44,10 +41,6 @@ describe(
     [{ strictMode: false }, { strictMode: true }].forEach(({ strictMode }) => {
       describe(`Common cases ${strictMode ? "with" : "without"} strict mode`, () => {
         it("should display an SDK question", () => {
-          cy.window().then((win) => {
-            cy.spy(win.console, "warn").as("consoleWarn");
-          });
-
           mountSdkContent(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
             { strictMode },
@@ -199,6 +192,18 @@ describe(
         it("should show a custom loader when the SDK bundle is loading", () => {
           sdkBundleCleanup();
 
+          const MINUTE = 60 * 1000;
+          cy.intercept("GET", "/api/card/*", (request) => {
+            /**
+             * Delay request for 10 min to avoid flakiness. We don't need the request to return, since we're testing the loading state.
+             * From observing the failed test log, it failed at 10.9s, and the timeout for finding the loading indicator was set to 10s.
+             * That means, Cypress started looking for the loading indicator after ~0.9s of the request being delayed.
+             */
+            request.continue(
+              () => new Promise((resolve) => setTimeout(resolve, 10 * MINUTE)),
+            );
+          });
+
           mountSdkContent(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
             {
@@ -285,7 +290,7 @@ describe(
     describe("Components", () => {
       it("should display an SDK question with custom layout components", () => {
         cy.window().then((win) => {
-          cy.spy(win.console, "warn").as("consoleWarn");
+          cy.spy(win.console, "error").as("consoleError");
         });
 
         mountSdkContent(
@@ -303,14 +308,12 @@ describe(
 
           cy.findByTestId("visualization-root").should("be.visible");
         });
+
+        cy.get("@consoleError").should("not.be.called");
       });
 
       it("should show an error on a component level if SDK components are not wrapped within the MetabaseProvider", () => {
         sdkBundleCleanup();
-
-        cy.window().then((win) => {
-          cy.spy(win.console, "warn").as("consoleWarn");
-        });
 
         cy.mount(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />);
 
@@ -320,52 +323,40 @@ describe(
           ).should("exist");
         });
       });
-    });
 
-    describe("Error handling", { retries: 3 }, () => {
-      beforeEach(() => {
-        H.clearBrowserCache();
-
+      it("should show a console error if SDK Package component uses a prop that is not yet available in SDK bundle", () => {
         sdkBundleCleanup();
 
-        cy.intercept("GET", "**/app/embedding-sdk.js", {
-          statusCode: 404,
+        cy.window().then((win) => {
+          cy.spy(win.console, "error").as("consoleError");
         });
+
+        mountSdkContent(
+          <InteractiveQuestion
+            questionId={ORDERS_QUESTION_ID}
+            {...{ foo: "bar" }}
+          />,
+        );
+
+        cy.get("@consoleError").should(
+          "be.calledWithMatch",
+          "this property is not recognized by the component",
+        );
       });
 
-      describe("when the SDK bundle can't be loaded", () => {
-        it("should show an error", () => {
-          mountSdkContent(
-            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
-            {
-              waitForUser: false,
-            },
-          );
+      it("should show a console error if SDK Package component does not use a prop that is still expected by SDK bundle", () => {
+        sdkBundleCleanup();
 
-          cy.findByTestId("sdk-error-container").should(
-            "contain.text",
-            "Error loading the Embedding Analytics SDK",
-          );
+        cy.window().then((win) => {
+          cy.spy(win.console, "error").as("consoleError");
         });
 
-        it("should show a custom error", () => {
-          mountSdkContent(
-            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
-            {
-              sdkProviderProps: {
-                errorComponent: ({ message }: { message: string }) => (
-                  <div>Custom error: {message}</div>
-                ),
-              },
-              waitForUser: false,
-            },
-          );
+        mountSdkContent(<InteractiveQuestion />);
 
-          cy.findByTestId("sdk-error-container").should(
-            "contain.text",
-            "Custom error: Error loading the Embedding Analytics SDK",
-          );
-        });
+        cy.get("@consoleError").should(
+          "be.calledWithMatch",
+          "this property is required by the component",
+        );
       });
     });
   },

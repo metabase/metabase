@@ -18,7 +18,7 @@ import {
 // will be rendered without the second tick. However, for ["2022-01-02", "2022-01-03"] ECharts would corectly render two ticks as needed.
 // The workaround is to add more padding on sides for this corner case.
 const getPadding = (intervalsCount: number) => {
-  if (intervalsCount === 1) {
+  if (intervalsCount <= 1) {
     return 5 / 6;
   }
 

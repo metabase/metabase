@@ -1,12 +1,14 @@
 import type { Middleware } from "@reduxjs/toolkit";
+import type { TagDescription } from "@reduxjs/toolkit/query";
 import React, {
   type ComponentType,
+  type Context,
   type Dispatch,
   type HTMLAttributes,
   type ReactNode,
   type SetStateAction,
+  createContext,
   useCallback,
-  useMemo,
 } from "react";
 import { t } from "ttag";
 
@@ -36,10 +38,9 @@ import type { LinkProps } from "metabase/common/components/Link";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
+import type { ColorName } from "metabase/lib/colors/types";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
-import { SearchButton } from "metabase/nav/components/search/SearchButton";
-import type { PaletteAction } from "metabase/palette/types";
 import {
   NotFoundPlaceholder,
   PluginPlaceholder,
@@ -49,7 +50,6 @@ import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type { HoveredObject } from "metabase/visualizations/types";
-import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -59,6 +59,7 @@ import type {
   Bookmark,
   CacheableDashboard,
   CacheableModel,
+  CheckDependenciesResponse,
   Collection,
   CollectionAuthorityLevelConfig,
   CollectionEssentials,
@@ -72,6 +73,7 @@ import type {
   DatabaseLocalSettingAvailability,
   Database as DatabaseType,
   Dataset,
+  DependencyEntry,
   Document,
   Group,
   GroupPermissions,
@@ -79,11 +81,17 @@ import type {
   ModelCacheRefreshStatus,
   ParameterId,
   Pulse,
+  PythonTransformSourceDraft,
   Revision,
+  SearchModel,
   Series,
   TableId,
   Timeline,
   TimelineEvent,
+  Transform,
+  TransformId,
+  UpdateSnippetRequest,
+  UpdateTransformRequest,
   User,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -129,8 +137,14 @@ export const PLUGIN_WHITELABEL = {
   WhiteLabelConcealSettingsPage: PluginPlaceholder,
 };
 
-export const PLUGIN_ADMIN_SETTINGS = {
-  InteractiveEmbeddingSettings: NotFoundPlaceholder,
+export const PLUGIN_ADMIN_SETTINGS: {
+  InteractiveEmbeddingSettings: ComponentType | null;
+  LicenseAndBillingSettings: ComponentType;
+  useUpsellFlow: (props: { campaign: string; location: string }) => {
+    triggerUpsellFlow: (() => void) | undefined;
+  };
+} = {
+  InteractiveEmbeddingSettings: null,
   LicenseAndBillingSettings: PluginPlaceholder,
   useUpsellFlow: (_props: {
     campaign: string;
@@ -324,6 +338,7 @@ export const PLUGIN_COLLECTIONS = {
   },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
   isRegularCollection: (_data: Partial<Collection> | Bookmark) => true,
+  isSyncedCollection: (_data: Partial<Collection>) => false,
   getCollectionType: (
     _collection: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
@@ -384,7 +399,7 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
 export type RevisionOrModerationEvent = {
   title: string;
   timestamp: string;
-  icon: IconName | { name: IconName; color: string } | Record<string, never>;
+  icon: IconName | { name: IconName; color: ColorName } | Record<string, never>;
   description?: string;
   revision?: Revision;
 };
@@ -457,12 +472,14 @@ export const PLUGIN_REDUCERS: {
   shared: any;
   metabotPlugin: any;
   documents: any;
+  remoteSyncPlugin: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
   metabotPlugin: () => null,
   documents: () => null,
+  remoteSyncPlugin: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -567,10 +584,24 @@ export const PLUGIN_EMBEDDING_IFRAME_SDK = {
   SdkIframeEmbedRoute: (): ReactNode => null,
 };
 
+export type SdkIframeEmbedSetupModalProps = {
+  opened: boolean;
+  onClose: () => void;
+  initialState?: SdkIframeEmbedSetupModalInitialState;
+};
+
+export type SdkIframeEmbedSetupModalInitialState = {
+  resourceType?: string | null;
+  resourceId?: string | number | null;
+  useExistingUserSession?: boolean;
+};
+
 export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
   isFeatureEnabled: () => false,
   shouldShowEmbedInNewItemMenu: () => false,
-  SdkIframeEmbedSetup: (): ReactNode => null,
+  SdkIframeEmbedSetupModal: (
+    _props: SdkIframeEmbedSetupModalProps,
+  ): ReactNode => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
@@ -662,25 +693,6 @@ export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
   FixSqlQueryButton: PluginPlaceholder,
 };
 
-export type GenerateSqlQueryButtonProps = {
-  className?: string;
-  query: Lib.Query;
-  selectedQueryText?: string;
-  onGenerateQuery: (queryText: string) => void;
-};
-
-export type PluginAiSqlGeneration = {
-  GenerateSqlQueryButton: ComponentType<GenerateSqlQueryButtonProps>;
-  isEnabled: () => boolean;
-  getPlaceholderText: () => string;
-};
-
-export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
-  GenerateSqlQueryButton: PluginPlaceholder,
-  isEnabled: () => false,
-  getPlaceholderText: () => "",
-};
-
 export interface AIDashboardAnalysisSidebarProps {
   onClose?: () => void;
   dashcardId?: DashCardId;
@@ -712,27 +724,55 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
   chartAnalysisRenderFormats: {},
 };
 
-export const PLUGIN_METABOT = {
+type PluginMetabotConfig = {
+  emptyText?: string;
+  hideSuggestedPrompts?: boolean;
+  preventClose?: boolean;
+  preventRetryMessage?: boolean;
+  suggestionModels: (SearchModel | "transform" | "user")[];
+};
+
+type PluginMetabotType = {
+  isEnabled: () => boolean;
+  Metabot: (props: {
+    hide?: boolean;
+    config?: PluginMetabotConfig;
+  }) => React.ReactElement | null;
+  defaultMetabotContextValue: MetabotContext;
+  MetabotContext: React.Context<MetabotContext>;
+  getMetabotProvider: () => ComponentType<{ children: React.ReactNode }>;
+  getAdminPaths: () => AdminPath[];
+  getAdminRoutes: () => React.ReactElement;
+  getMetabotRoutes: () => React.ReactElement | null;
+  MetabotAdminPage: ComponentType;
+  getMetabotVisible: (state: State) => boolean;
+  MetabotToggleButton: ComponentType<{ className?: string }>;
+  MetabotAppBarButton: ComponentType;
+  MetabotAdminAppBarButton: ComponentType;
+};
+
+export const PLUGIN_METABOT: PluginMetabotType = {
   isEnabled: () => false,
-  Metabot: (_props: { hide?: boolean }) => null as React.ReactElement | null,
+  Metabot: (_props: { hide?: boolean; config?: PluginMetabotConfig }) =>
+    null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),
   getMetabotProvider: () => {
-    return ({ children }: { children: React.ReactNode }) =>
+    return ({ children }) =>
       React.createElement(
         PLUGIN_METABOT.MetabotContext.Provider,
         { value: PLUGIN_METABOT.defaultMetabotContextValue },
         children,
       );
   },
-  useMetabotPalletteActions: (_searchText: string) =>
-    useMemo(() => [] as PaletteAction[], []),
-  getAdminPaths: () => [] as AdminPath[],
+  getAdminPaths: () => [],
   getAdminRoutes: () => PluginPlaceholder as unknown as React.ReactElement,
-  getMetabotRoutes: () => null as React.ReactElement | null,
+  getMetabotRoutes: () => null,
   MetabotAdminPage: () => `placeholder`,
-  getMetabotVisible: (_state: State) => false,
-  SearchButton: SearchButton,
+  getMetabotVisible: () => false,
+  MetabotToggleButton: PluginPlaceholder,
+  MetabotAppBarButton: PluginPlaceholder,
+  MetabotAdminAppBarButton: PluginPlaceholder,
 };
 
 type DashCardMenuItemGetter = (
@@ -830,6 +870,13 @@ export const PLUGIN_DOCUMENTS = {
   shouldShowDocumentInNewItemMenu: () => false,
   getCurrentDocument: (_state: any) => null as Document | null,
   getSidebarOpen: (_state: any) => false,
+  getCommentSidebarOpen: (_state: any) => false,
+  DocumentCopyForm: (_props: any) => null as React.ReactElement | null,
+};
+
+export const PLUGIN_PUBLIC_SHARING = {
+  PublicDocumentRoute: (_props: any) => null as React.ReactElement | null,
+  PublicLinksDocumentListing: () => null as React.ReactElement | null,
 };
 
 export const PLUGIN_ENTITIES = {
@@ -840,12 +887,164 @@ export const PLUGIN_SEMANTIC_SEARCH = {
   SearchSettingsWidget: PluginPlaceholder,
 };
 
+export type TransformPickerItem = {
+  id: TransformId;
+  name: string;
+  model: "transform";
+};
+
+export type TransformPickerProps = {
+  value: TransformPickerItem | undefined;
+  onItemSelect: (transform: TransformPickerItem) => void;
+};
+
 export type TransformsPlugin = {
+  TransformPicker: ComponentType<TransformPickerProps>;
   getAdminPaths(): AdminPath[];
   getAdminRoutes(): ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  TransformPicker: PluginPlaceholder,
   getAdminPaths: () => [],
   getAdminRoutes: () => null,
+};
+
+export const PLUGIN_REMOTE_SYNC: {
+  LibraryNav: ComponentType;
+  RemoteSyncSettings: ComponentType;
+  SyncedCollectionsSidebarSection: ComponentType<{
+    syncedCollections: any[];
+    collectionItem: any;
+    onItemSelect: () => void;
+  }>;
+  REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
+  useSyncStatus: () => {
+    isIdle: boolean;
+    taskType: any;
+    progress: number;
+    message: string;
+    progressModal: ReactNode;
+  };
+} = {
+  LibraryNav: PluginPlaceholder,
+  RemoteSyncSettings: NotFoundPlaceholder,
+  SyncedCollectionsSidebarSection: PluginPlaceholder,
+  REMOTE_SYNC_INVALIDATION_TAGS: null,
+  useSyncStatus: () => ({
+    isIdle: true,
+    taskType: null,
+    progress: 0,
+    message: "",
+    progressModal: null,
+  }),
+};
+
+export type PythonTransformEditorProps = {
+  name?: string;
+  source: PythonTransformSourceDraft;
+  proposedSource?: PythonTransformSourceDraft;
+  isNew: boolean;
+  isDirty: boolean;
+  isSaving: boolean;
+  onChangeSource: (source: PythonTransformSourceDraft) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onAcceptProposed: () => void;
+  onRejectProposed: () => void;
+};
+
+export type PythonTransformSourceSectionProps = {
+  transform: Transform;
+};
+
+export type PythonTransformsPlugin = {
+  isEnabled: boolean;
+  TransformEditor: ComponentType<PythonTransformEditorProps>;
+  SourceSection: ComponentType<PythonTransformSourceSectionProps>;
+  PythonRunnerSettingsPage: ComponentType;
+  getAdminRoutes: () => ReactNode;
+  getTransformsNavLinks: () => ReactNode;
+};
+
+export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
+  isEnabled: false,
+  TransformEditor: PluginPlaceholder,
+  SourceSection: PluginPlaceholder,
+  PythonRunnerSettingsPage: NotFoundPlaceholder,
+  getAdminRoutes: () => null,
+  getTransformsNavLinks: () => null,
+};
+
+type DependenciesPlugin = {
+  isEnabled: boolean;
+  DependencyGraphPage: ComponentType;
+  DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
+  CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
+  CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
+  CheckDependenciesTitle: ComponentType;
+  useCheckCardDependencies: (
+    props: UseCheckDependenciesProps<Question>,
+  ) => UseCheckDependenciesResult<Question>;
+  useCheckSnippetDependencies: (
+    props: UseCheckDependenciesProps<UpdateSnippetRequest>,
+  ) => UseCheckDependenciesResult<UpdateSnippetRequest>;
+  useCheckTransformDependencies: (
+    props: UseCheckDependenciesProps<UpdateTransformRequest>,
+  ) => UseCheckDependenciesResult<UpdateTransformRequest>;
+};
+
+export type DependencyGraphPageContextType = {
+  baseUrl?: string;
+  defaultEntry?: DependencyEntry;
+};
+
+export type CheckDependenciesFormProps = {
+  checkData: CheckDependenciesResponse;
+  onSave: () => void | Promise<void>;
+  onCancel: () => void;
+};
+
+export type CheckDependenciesModalProps = {
+  checkData: CheckDependenciesResponse;
+  opened: boolean;
+  onSave: () => void | Promise<void>;
+  onClose: () => void;
+};
+
+export type UseCheckDependenciesProps<TChange> = {
+  onSave: (change: TChange) => Promise<void>;
+};
+
+export type UseCheckDependenciesResult<TChange> = {
+  checkData?: CheckDependenciesResponse;
+  isCheckingDependencies: boolean;
+  isConfirmationShown: boolean;
+  handleInitialSave: (change: TChange) => Promise<void>;
+  handleSaveAfterConfirmation: () => Promise<void>;
+  handleCloseConfirmation: () => void;
+};
+
+function useCheckDependencies<TChange>({
+  onSave,
+}: UseCheckDependenciesProps<TChange>): UseCheckDependenciesResult<TChange> {
+  return {
+    isConfirmationShown: false,
+    isCheckingDependencies: false,
+    handleInitialSave: onSave,
+    handleSaveAfterConfirmation: () => Promise.resolve(),
+    handleCloseConfirmation: () => undefined,
+  };
+}
+
+export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
+  isEnabled: false,
+  DependencyGraphPage: PluginPlaceholder,
+  DependencyGraphPageContext: createContext({}),
+  CheckDependenciesForm: PluginPlaceholder,
+  CheckDependenciesModal: PluginPlaceholder,
+  CheckDependenciesTitle: PluginPlaceholder,
+  useCheckCardDependencies: useCheckDependencies,
+  useCheckSnippetDependencies: useCheckDependencies,
+  useCheckTransformDependencies: useCheckDependencies,
 };

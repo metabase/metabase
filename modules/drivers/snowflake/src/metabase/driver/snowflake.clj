@@ -1,10 +1,12 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
+  (:refer-clojure :exclude [select-keys not-empty])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -21,6 +23,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.util :as u]
@@ -29,6 +32,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.performance :refer [select-keys not-empty]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -53,9 +57,14 @@
 
 (doseq [[feature supported?] {:connection-impersonation               true
                               :connection-impersonation-requires-role true
+                              :rename                                 true
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :describe-fields                        false
+                              :describe-default-expr                  true
+                              ;; JDBC driver always provides "NO" for the IS_GENERATEDCOLUMN JDBC metadata
+                              :describe-is-generated                  false
+                              :describe-is-nullable                   true
                               :expression-literals                    true
                               :expressions/integer                    true
                               :expressions/text                       true
@@ -66,6 +75,7 @@
                               :now                                    true
                               :database-routing                       true
                               :metadata/table-existence-check         true
+                              :transforms/python                      true
                               :transforms/table                       true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
@@ -262,7 +272,7 @@
     :FLOAT4                     :type/Float
     :FLOAT8                     :type/Float
     :DOUBLE                     :type/Float
-    (keyword "DOUBLE PRECISON") :type/Float
+    (keyword "DOUBLE PRECISION") :type/Float
     :REAL                       :type/Float
     :VARCHAR                    :type/Text
     :CHAR                       :type/Text
@@ -289,6 +299,29 @@
     ;; Maybe also type *
     :OBJECT                     :type/Dictionary
     :ARRAY                      :type/*} base-type))
+
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for Snowflake that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/Array [_] [:ARRAY])
+(defmethod type->database-type :type/Boolean [_] [:BOOLEAN])
+(defmethod type->database-type :type/Date [_] [:DATE])
+(defmethod type->database-type :type/DateTime [_] [:DATETIME])
+(defmethod type->database-type :type/DateTimeWithLocalTZ [_] [:TIMESTAMPTZ])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:TIMESTAMPLTZ])
+(defmethod type->database-type :type/Decimal [_] [:DECIMAL])
+(defmethod type->database-type :type/Float [_] [:DOUBLE])
+(defmethod type->database-type :type/Number [_] [:BIGINT])
+(defmethod type->database-type :type/BigInteger [_] [:BIGINT])
+(defmethod type->database-type :type/Integer [_] [:INTEGER])
+(defmethod type->database-type :type/Text [_] [:TEXT])
+(defmethod type->database-type :type/Time [_] [:TIME])
+
+(defmethod driver/type->database-type :snowflake
+  [_driver base-type]
+  (type->database-type base-type))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp_tz expr])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])
@@ -543,7 +576,8 @@
 (defmethod sql.qp/->honeysql [:snowflake :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [hsql-form    (sql.qp/->honeysql driver arg)
-        timestamptz? (h2x/is-of-type? hsql-form "timestamptz")]
+        timestamptz? (or (sql.qp.u/field-with-tz? arg)
+                         (h2x/is-of-type? hsql-form "timestamptz"))]
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           [:convert_timezone target-timezone hsql-form]
@@ -867,27 +901,21 @@
          (with-open [rs (.getTables metadata db-name schema-name table-name nil)]
            (.next rs)))))))
 
-(defmethod driver/run-transform! [:snowflake :table]
-  [driver {:keys [conn-spec query output-table]} opts]
-  (let [driver (keyword driver)
-        queries (cond->> [(driver/compile-transform driver
-                                                    {:query query
-                                                     :output-table output-table})]
-                  (:overwrite? opts) (cons (driver/compile-drop-table driver output-table)))
-        db-name-val (some conn-spec [:db :dbname])
-        quoted-db (if (and (= (first db-name-val) \")
-                           (= (last db-name-val) \"))
-                    db-name-val
-                    (quote-name db-name-val))
-        all-queries (if db-name-val
-                      (cons [(str "USE DATABASE " quoted-db)] queries)
-                      queries)]
-    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec all-queries))}))
-
 (defmethod driver/create-schema-if-needed! :snowflake
   [driver conn-spec schema]
-  (let [queries [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]
-        db-name-val (or (:db conn-spec) (:dbname conn-spec))
-        all-queries (cond->> queries
-                      db-name-val (cons [(format "USE DATABASE \"%s\"" db-name-val)]))]
-    (driver/execute-raw-queries! driver conn-spec all-queries)))
+  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
+    (driver/execute-raw-queries! driver conn-spec sql)))
+
+(defmethod driver/rename-table! :snowflake
+  [driver db-id from-table to-table]
+  (let [sql (first (sql/format {:alter-table (keyword from-table)
+                                :rename-table (keyword to-table)}
+                               :quoted true
+                               :dialect (sql.qp/quote-style driver)))]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (jdbc/execute! conn sql))))
+
+(defmethod driver/table-name-length-limit :snowflake
+  [_driver]
+  ;; https://docs.snowflake.com/en/sql-reference/identifiers
+  255)

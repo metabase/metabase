@@ -5,6 +5,7 @@ import {
   useUpdateDashboardEnableEmbeddingMutation,
 } from "metabase/api";
 import { getParameters } from "metabase/dashboard/selectors";
+import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -57,15 +58,20 @@ export const DashboardSharingEmbeddingModal = ({
             updateDashboardEnableEmbedding({
               id: dashboard.id,
               enable_embedding,
+              embedding_type: enable_embedding
+                ? STATIC_LEGACY_EMBEDDING_TYPE
+                : null,
             })
           }
           onUpdateEmbeddingParams={(embedding_params) =>
             updateDashboardEmbeddingParams({
               id: dashboard.id,
               embedding_params,
+              embedding_type: STATIC_LEGACY_EMBEDDING_TYPE,
             })
           }
           getPublicUrl={getPublicUrl}
+          onClose={onClose}
         />
       )}
     </EmbedModal>
