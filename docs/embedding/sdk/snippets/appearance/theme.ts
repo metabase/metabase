@@ -37,6 +37,10 @@ const theme = defineMetabaseTheme({
     // Default background color
     background: "#FFFFFF",
 
+    // Light background color for some control backgrounds.
+    // Defaults are derived from `background` (slightly darker in light mode, much lighter in dark mode).
+    "background-light": "#F0F2F5",
+
     // Slightly muted background color.
     "background-secondary": "#EDF2F5",
 
@@ -60,6 +64,9 @@ const theme = defineMetabaseTheme({
 
     // Color used to indicate dangerous actions and negative values/trends
     negative: "#FF7979",
+
+    /** Color used to outline elements in focus */
+    focus: "#CAE1F7",
 
     /** Color used for popover shadows */
     shadow: "rgba(0,0,0,0.08)",

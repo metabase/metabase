@@ -16,19 +16,23 @@ import {
   extractReferencedColumns,
   isDraggedColumnItem,
   shouldSplitVisualizerSeries,
+  updateVizSettingsWithRefs,
 } from "metabase/visualizer/utils";
 import {
   isDate,
   isDimension,
   isMetric,
+  isNumeric,
   isString,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
   Dataset,
   DatasetColumn,
+  VisualizationSettings,
   VisualizerColumnReference,
   VisualizerDataSource,
   VisualizerDataSourceId,
+  XAxisScale,
 } from "metabase-types/api";
 import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
@@ -452,12 +456,50 @@ export function maybeImportDimensionsFromOtherDataSources(
   });
 }
 
+function sortDimensionsByXAxisScale(
+  dimensions: DatasetColumn[],
+  xAxisScale: XAxisScale | undefined,
+): DatasetColumn[] {
+  if (!xAxisScale) {
+    return dimensions;
+  }
+
+  const priorityPredicates: Record<
+    XAxisScale,
+    (col: DatasetColumn) => boolean
+  > = {
+    timeseries: (col) => isDate(col),
+    linear: (col) => isNumeric(col),
+    pow: (col) => isNumeric(col),
+    log: (col) => isNumeric(col),
+    histogram: (col) => isNumeric(col),
+    ordinal: (col) => isString(col),
+  };
+
+  const priorityPredicate = priorityPredicates[xAxisScale];
+  if (!priorityPredicate) {
+    return dimensions;
+  }
+
+  return [...dimensions].sort((a, b) => {
+    const aPriority = priorityPredicate(a);
+    const bPriority = priorityPredicate(b);
+    if (aPriority && !bPriority) {
+      return -1;
+    }
+    if (!aPriority && bPriority) {
+      return 1;
+    }
+    return 0;
+  });
+}
+
 export function combineWithCartesianChart(
   state: VisualizerVizDefinitionWithColumns,
   settings: ComputedVisualizationSettings,
-  datasets: Record<string, Dataset>,
   dataset: Dataset,
   dataSource: VisualizerDataSource,
+  vizSettings: VisualizationSettings | null = null,
 ) {
   const { data } = dataset;
 
@@ -465,6 +507,8 @@ export function combineWithCartesianChart(
   const dimensions = data.cols.filter(
     (col) => isDimension(col) && !isMetric(col),
   );
+
+  const columnsToRefs: Record<string, string> = {};
 
   metrics.forEach((column) => {
     const isCompatible = !!findColumnSlotForCartesianChart({
@@ -485,10 +529,16 @@ export function combineWithCartesianChart(
         columnRef,
         dataSource,
       );
+      columnsToRefs[column.name] = columnRef.name;
     }
   });
 
-  dimensions.forEach((column) => {
+  const sortedDimensions = sortDimensionsByXAxisScale(
+    dimensions,
+    settings["graph.x_axis.scale"],
+  );
+
+  sortedDimensions.forEach((column) => {
     const isCompatible = !!findColumnSlotForCartesianChart({
       state,
       settings,
@@ -507,6 +557,19 @@ export function combineWithCartesianChart(
         columnRef,
         dataSource,
       );
+      columnsToRefs[column.name] = columnRef.name;
     }
   });
+
+  if (vizSettings && vizSettings.column_settings) {
+    const remappedSettings = updateVizSettingsWithRefs(
+      vizSettings,
+      columnsToRefs,
+    );
+
+    state.settings.column_settings = {
+      ...state.settings.column_settings,
+      ...remappedSettings.column_settings,
+    };
+  }
 }

@@ -7,11 +7,14 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.query-processor.store :as qp.store]
+   [metabase.driver.test-util :as driver.tu]
+   [metabase.query-processor :as qp]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync.core]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]
    [metabase.util :as u]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import [java.sql SQLException]))
 
@@ -95,7 +98,12 @@
       (testing "on-premise cluster"
         (testing "should support the impersonation feature"
           (t2.with-temp/with-temp
-            [:model/Database db {:engine :clickhouse :details {:user "default" :port (mt/db-test-env-var :clickhouse :nginx-port)}}]
+            [:model/Database db {:engine :clickhouse
+                                 :details {:user "default" :port (mt/db-test-env-var :clickhouse :nginx-port)}
+                                 :dbms_version {:version "25.1.3.23"
+                                                :semantic-version {:major 25
+                                                                   :minor 1}
+                                                :cloud false}}]
             (is (true? (driver/database-supports? :clickhouse :connection-impersonation db)))))
         (let [statements ["CREATE DATABASE IF NOT EXISTS `metabase_test_role_db` ON CLUSTER '{cluster}';"
                           "CREATE OR REPLACE TABLE `metabase_test_role_db`.`some_table` ON CLUSTER '{cluster}' (i Int32)
@@ -116,7 +124,13 @@
       (testing "older ClickHouse version" ;; 23.3
         (testing "should NOT support the impersonation feature"
           (t2.with-temp/with-temp
-            [:model/Database db {:engine :clickhouse :details {:user "default" :port (mt/db-test-env-var :clickhouse :old-port)}}]
+            [:model/Database db {:engine :clickhouse
+                                 :details {:user "default" :port (mt/db-test-env-var :clickhouse :old-port)}
+                                 ;; deliberately an older version here
+                                 :dbms_version {:version "23.3"
+                                                :semantic-version {:major 23
+                                                                   :minor 3}
+                                                :cloud false}}]
             (is (false? (driver/database-supports? :clickhouse :connection-impersonation db)))))))))
 
 (deftest conn-impersonation-test-clickhouse
@@ -175,3 +189,39 @@
               (check-impersonation! "row_a,row_c" [["a"] ["c"]])
               (check-impersonation! "row_b,row_c" [["b"] ["c"]])
               (check-impersonation! "row_a,row_b,row_c" [["a"] ["b"] ["c"]]))))))))
+
+(defn- with-ssh-tunnel*! [tunnel-details f]
+  (let [base-details (t2/select-one-fn :details 'Database :id (mt/id))]
+    ;; Set up SSH tunnel
+    (t2/update! 'Database (mt/id) {:details (merge base-details tunnel-details)})
+    ;; Discard any existing connection pool to make sure the new one uses it.
+    (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
+    ;; Run the test body
+    (f)
+    ;; Clean up
+    (t2/update! 'Database (mt/id) {:details base-details})
+    (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))))
+
+(defmacro ^:private with-ssh-tunnel! [tunnel-details & body]
+  `(with-ssh-tunnel*! ~tunnel-details (^:once fn* [] ~@body)))
+
+(deftest clickhouse-ssh-tunnel-test
+  (mt/test-driver :clickhouse
+    (let [username "username"
+          password "password"]
+      (with-open [ssh-server (driver.tu/basic-auth-ssh-server username password)]
+        (let [tunnel-details {:tunnel-enabled true
+                              :tunnel-host "localhost"
+                              :tunnel-auth-option "password"
+                              :tunnel-port (.getPort ssh-server)
+                              :tunnel-user username
+                              :tunnel-pass password}]
+          (testing "can connect and query through ssh tunnel"
+            (with-ssh-tunnel! tunnel-details
+              (is (= 100
+                     (count (mt/rows (qp/process-query (mt/mbql-query venues))))))))
+          (testing "connection fails with wrong ssh credentials"
+            (with-ssh-tunnel! (assoc tunnel-details :tunnel-pass "wrong-password")
+              (is (thrown-with-msg?
+                   org.apache.sshd.common.SshException #"No more authentication methods available"
+                   (count (mt/rows (qp/process-query (mt/mbql-query venues)))))))))))))

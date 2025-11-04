@@ -172,7 +172,7 @@ function ModernDataPicker({
     <>
       <Tooltip
         label={t`${METAKEY}+click to open in new tab`}
-        hidden={!table}
+        hidden={!table || isDisabled}
         events={{ hover: true, focus: false, touch: false }}
       >
         <DataPickerTarget

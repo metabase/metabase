@@ -24,7 +24,11 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
+import {
+  createMockDashboardState,
+  createMockState,
+  createMockStoreDashboard,
+} from "metabase-types/store/mocks";
 
 import { DashCardMenu } from "./DashCardMenu";
 
@@ -118,6 +122,15 @@ const setup = ({
       databases: [createSampleDatabase()],
       questions: [card],
       dashboards: [mockDashboard],
+    }),
+    dashboard: createMockDashboardState({
+      dashboardId: mockDashboard.id,
+      dashboards: {
+        [mockDashboard.id]: createMockStoreDashboard({
+          id: mockDashboard.id,
+          name: mockDashboard.name,
+        }),
+      },
     }),
   });
 

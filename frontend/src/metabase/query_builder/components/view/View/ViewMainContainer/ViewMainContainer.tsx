@@ -129,6 +129,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
         <SyncedParametersList
           className={ViewMainContainerS.StyledSyncedParametersList}
           parameters={parameters}
+          dashboardId={question.getDashboardProps().dashboardId}
           setParameterValue={setParameterValue}
           commitImmediately
         />

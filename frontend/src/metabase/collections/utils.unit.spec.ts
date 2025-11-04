@@ -129,9 +129,7 @@ describe("Collections > utils", () => {
 
     it("returns false if the collection is not the root collection", () => {
       expect(isRootCollection(createMockCollection({ id: 1 }))).toBe(false);
-      /* @ts-expect-error unclear why ids are sometimes strings, but they are */
       expect(isRootCollection(createMockCollection({ id: "1" }))).toBe(false);
-      /* @ts-expect-error unclear why ids are sometimes strings, but they are */
       expect(isRootCollection(createMockCollection({ id: "foobar" }))).toBe(
         false,
       );

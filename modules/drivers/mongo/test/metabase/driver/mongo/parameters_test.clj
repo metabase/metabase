@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.driver.mongo.parameters :as mongo.params]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]

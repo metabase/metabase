@@ -10,15 +10,12 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
-   [metabase.lib.util :as lib.util]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -358,17 +355,17 @@
     (fn [base suffix]
       (as-> (str base separator suffix) %
         (driver/escape-alias driver %)
-        (lib.util/truncate-alias % max-length)))))
+        (lib/truncate-alias % max-length)))))
 
 (defn- derive-display-names [driver header]
-  (let [generator-fn (mbql.u/unique-name-generator :unique-alias-fn (unique-alias-fn driver " "))]
+  (let [generator-fn (lib/unique-name-generator-with-options {:unique-alias-fn (unique-alias-fn driver " ")})]
     (mapv generator-fn
           (for [h header]
             (humanization/name->human-readable-name
              (normalize-display-name h))))))
 
 (defn- derive-column-names [driver header]
-  (let [generator-fn (mbql.u/unique-name-generator :unique-alias-fn (unique-alias-fn driver "_"))]
+  (let [generator-fn (lib/unique-name-generator-with-options {:unique-alias-fn (unique-alias-fn driver "_")})]
     (mapv (comp keyword generator-fn)
           (for [h header] (normalize-column-name driver h)))))
 
@@ -539,7 +536,7 @@
         table             (sync/create-table! db {:name         table-name
                                                   :schema       (not-empty schema)
                                                   :display_name display-name})
-        _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true, :data_authority :authoritative})
+        _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true, :data_authority :authoritative, :is_writable true})
         _sync             (scan-and-sync-table! db table)
         _set_names        (set-display-names! (:id table) columns)
         ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
@@ -599,7 +596,7 @@
                                      {:status-code 422})))]
     (check-can-create-upload database schema-name)
     (check-filetype filename file)
-    (collection/check-write-perms-for-collection collection-id)
+    (api/create-check :model/Card {:collection_id collection-id})
     (try
       (let [timer             (u/start-timer)
             filename-prefix   (or (second (re-matches #"(.*)\.(csv|tsv)$" filename))
@@ -744,9 +741,9 @@
 
 (defn- only-table-id
   "For models that depend on only one table, return its id, otherwise return nil. Doesn't support native queries."
-  [model]
+  [{query :dataset_query, :as model}]
   ; dataset_query can be empty in tests
-  (when-let [query (queries/card->lib-query model)]
+  (when-let [query (not-empty query)]
     (when (and (mbql? model) (no-joins? query))
       (lib/source-table-id query))))
 

@@ -12,11 +12,28 @@
         ]
       },
       {
-        "type": "cardEmbed",
-        "attrs": {
-          "id": 114,
-          "name": null
-        }
+        "type": "resizeNode",
+        "content": [
+          {
+            "type": "cardEmbed",
+            "attrs": {
+              "id": 114,
+              "name": null
+            }
+          }
+        ]
+      },
+      {
+        "type": "resizeNode",
+        "content": [
+          {
+            "type": "cardEmbed",
+            "attrs": {
+              "id": 115,
+              "name": null
+            }
+          }
+        ]
       }
     ]
   },

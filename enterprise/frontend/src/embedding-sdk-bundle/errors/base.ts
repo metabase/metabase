@@ -1,4 +1,6 @@
-export class MetabaseError<C extends string, P> extends Error {
+import type { MetabaseErrorCode } from "./error-code";
+
+export class MetabaseError<C extends MetabaseErrorCode, P> extends Error {
   public readonly code: C;
   public readonly params?: P;
 

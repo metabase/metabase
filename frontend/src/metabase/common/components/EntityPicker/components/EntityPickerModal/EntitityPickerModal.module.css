@@ -20,3 +20,7 @@
   flex-grow: 1;
   height: 0;
 }
+
+.loadingSkeleton {
+  flex-grow: 1;
+}

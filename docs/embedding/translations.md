@@ -5,9 +5,9 @@ summary: Upload a translation dictionary to translate questions and dashboards i
 
 # Translate embedded dashboards and questions
 
-{% include plans-blockquote.html feature="Content translation for static embeds" convert_pro_link_to_embbedding=true %}
+{% include plans-blockquote.html feature="Translation of embedded content" convert_pro_link_to_embbedding=true %}
 
-For now, translations are only available for [static embeds](./static-embedding.md), not Interactive embedding or the Embedded analytics SDK.
+For now, translations are only available for [static embeds](./static-embedding.md), not Interactive embedding or the Embedded analytics JS/SDK.
 
 You can upload a translation dictionary to translate strings both in Metabase content (like dashboard titles) and in the data itself (like column names and values).
 
@@ -20,6 +20,11 @@ The dictionary must be a CSV with these columns:
 - **Translation**
 
 > Don't put any sensitive data in the dictionary, since anyone can see the dictionary—including viewers of public links.
+
+To add a translation dictionary:
+
+1. Go to **Admin > Embedding > Static**.
+2. Under **Translate embedded dashboards and question**, click **Upload translation dictionary**.
 
 Uploading a new dictionary will replace the existing dictionary.
 
@@ -59,6 +64,16 @@ Currently, Metabase doesn't tokenize strings for translations, so you should inc
 For example, if you have a dashboard called "Monthly Sales", it's not sufficient to have translations of "Monthly" and "Sales" - you also need to include "Monthly Sales" as a full string.
 
 Exact translations also apply to strings that use punctuation and special characters. For example, if you have a question title "How many Widgets did we sell this week?", you must include that exact string (with "?") into the translation dictionary. Metabase would treat "How many Widgets did we sell this week" as a different string. Essentially, the strings are keys in a table Metabase looks up, so they must match exactly.
+
+## Translations are case-insensitive
+
+Translations are case-insensitive. For example, if your translation dictionary has a translation:
+
+| Language | String   | Translation |
+| -------- | -------- | ----------- |
+| pt-BR    | Examples | Exemplos    |
+
+`Examples`, `examples`, `EXAMPLES` would all be translated as `Exemplos`. That is, Metabase won't preserve the original case; it will output the exact translation string in the dictionary.
 
 ## Include markdown formatting in translation dictionaries
 

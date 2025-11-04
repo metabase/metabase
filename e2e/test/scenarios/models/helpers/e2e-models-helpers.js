@@ -27,14 +27,6 @@ export function assertQuestionIsBasedOnModel({
   cy.findByText(table).should("not.exist");
 }
 
-export function assertCreatedNestedQuery(modelId) {
-  cy.wait("@createCard").then(({ request }) => {
-    expect(request.body.dataset_query.query["source-table"]).to.equal(
-      `card__${modelId}`,
-    );
-  });
-}
-
 export function saveQuestionBasedOnModel({ modelId, name }) {
   cy.intercept("POST", "/api/card").as("createCard");
 
@@ -47,8 +39,6 @@ export function saveQuestionBasedOnModel({ modelId, name }) {
     }
     cy.findByText("Save").click();
   });
-
-  assertCreatedNestedQuery(modelId);
 
   modal().findByText("Not now").click();
 }

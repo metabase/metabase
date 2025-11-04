@@ -12,7 +12,11 @@ import type {
 /** The maximum number of recent items to show in the resource selection step. */
 export const EMBED_RESOURCE_LIST_MAX_RECENTS = 6;
 
-export const getEmbedExperiences = () =>
+export const getEmbedExperiences = ({
+  isMetabotAvailable,
+}: {
+  isMetabotAvailable: boolean;
+}) =>
   [
     {
       value: "dashboard",
@@ -22,7 +26,7 @@ export const getEmbedExperiences = () =>
     {
       value: "chart",
       title: t`Chart`,
-      description: t`Embed a single chart or visualization`,
+      description: t`Embed a single chart`,
     },
     {
       value: "exploration",
@@ -32,8 +36,17 @@ export const getEmbedExperiences = () =>
     {
       value: "browser",
       title: t`Browser`,
-      description: t`Embed a browser to manage dashboards and questions`,
+      description: t`Embed a browser to manage dashboards and charts`,
     },
+    ...(isMetabotAvailable
+      ? [
+          {
+            value: "metabot" as const,
+            title: t`Metabot`,
+            description: t`Embed a Metabot chat interface`,
+          },
+        ]
+      : []),
   ] satisfies {
     title: string;
     description: string;
@@ -46,6 +59,11 @@ type EmbedStepConfig = {
   skipFor?: SdkIframeEmbedSetupExperience[];
 };
 
+export const STEPS_WITHOUT_RESOURCE_SELECTION = [
+  "exploration",
+  "metabot",
+] as const satisfies SdkIframeEmbedSetupExperience[];
+
 export const EMBED_STEPS: EmbedStepConfig[] = [
   {
     id: "select-embed-experience",
@@ -54,7 +72,7 @@ export const EMBED_STEPS: EmbedStepConfig[] = [
   {
     id: "select-embed-resource",
     component: SelectEmbedResourceStep,
-    skipFor: ["exploration"],
+    skipFor: STEPS_WITHOUT_RESOURCE_SELECTION,
   },
   {
     id: "select-embed-options",

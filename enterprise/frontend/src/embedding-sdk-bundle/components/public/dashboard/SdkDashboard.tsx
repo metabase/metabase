@@ -18,6 +18,7 @@ import {
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
+import { useDashboardLoadHandlers } from "embedding-sdk-bundle/hooks/private/use-dashboard-load-handlers";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import {
   type SdkDashboardDisplayProps,
@@ -45,10 +46,10 @@ import {
 import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getErrorPage } from "metabase/selectors/app";
+import type { CardDisplayType } from "metabase-types/api";
 
 import type {
   DrillThroughQuestionProps,
@@ -141,11 +142,12 @@ const SdkDashboardInner = ({
   dashboardActions,
   dashcardMenu,
   getClickActionMode,
-  navigateToNewCardFromDashboard = undefined,
+  navigateToNewCardFromDashboard,
   className,
   style,
   children,
   dataPickerProps,
+  onVisualizationChange,
 }: SdkDashboardInnerProps) => {
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
@@ -319,6 +321,7 @@ const SdkDashboardInner = ({
               questionPath={adhocQuestionUrl!}
               onNavigateBack={onNavigateBackToDashboard}
               {...drillThroughQuestionProps}
+              onVisualizationChange={onVisualizationChange}
             >
               {AdHocQuestionView && <AdHocQuestionView />}
             </SdkAdHocQuestion>
@@ -350,6 +353,7 @@ const SdkDashboardInner = ({
               setRenderMode("dashboard");
             }}
             dataPickerProps={dataPickerProps}
+            onVisualizationChange={onVisualizationChange}
           />
         ))
         .exhaustive()}
@@ -371,7 +375,6 @@ export const SdkDashboard = withPublicComponentWrapper(
     | "FullscreenButton"
     | "ExportAsPdfButton"
     | "InfoButton"
-    | "NightModeButton"
     | "RefreshPeriod"
   >;
 
@@ -383,13 +386,13 @@ SdkDashboard.ParametersList = Dashboard.ParametersList;
 SdkDashboard.FullscreenButton = Dashboard.FullscreenButton;
 SdkDashboard.ExportAsPdfButton = Dashboard.ExportAsPdfButton;
 SdkDashboard.InfoButton = Dashboard.InfoButton;
-SdkDashboard.NightModeButton = Dashboard.NightModeButton;
 SdkDashboard.RefreshPeriod = Dashboard.RefreshPeriod;
 
 type DashboardQueryBuilderProps = {
   onCreate: (question: MetabaseQuestion) => void;
   onNavigateBack: () => void;
   dataPickerProps: EditableDashboardOwnProps["dataPickerProps"];
+  onVisualizationChange?: (display: CardDisplayType) => void;
 };
 
 /**
@@ -399,6 +402,7 @@ function DashboardQueryBuilder({
   onCreate,
   onNavigateBack,
   dataPickerProps,
+  onVisualizationChange,
 }: DashboardQueryBuilderProps) {
   const { dashboard, selectTab, setEditingDashboard } = useDashboardContext();
 
@@ -426,12 +430,17 @@ function DashboardQueryBuilder({
         }
       }}
       onNavigateBack={onNavigateBack}
-      backToDashboard={dashboard}
+      backToDashboard={{
+        model: "dashboard",
+        id: dashboard.id,
+        name: dashboard.name,
+      }}
       entityTypes={dataPickerProps?.entityTypes}
       withResetButton
       withChartTypeSelector
       // The default value is 600px and it cuts off the "Visualize" button.
       height="700px"
+      onVisualizationChange={onVisualizationChange}
     />
   );
 }

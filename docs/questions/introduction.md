@@ -15,6 +15,8 @@ Questions in Metabase are queries, their results, and their visualization. Quest
 
 You can create a new question from scratch, or build off of an existing question. To create a question from scratch, you can click on **+ New** and select how you want to query your data: either with the graphical query builder, or the SQL/native editor:
 
+You can also use [Metabot](../ai/metabot.md) to create questions using natural language. Just ask Metabot what you want to know about your data, and it can generate charts and queries for you.
+
 ### Query builder
 
 ![Query builder editor](./images/editor.png)
@@ -50,7 +52,7 @@ Questions that live in a dashboard are only visible in that dashboard. These que
 
 ### Saving questions to collections
 
-Questions saved to a collection can be added to multiple dashboards. Moving a question from one collection to another collection won't have any effect on the dashboards the question has been added to. In order to save a question to a collection, you'll need to be in a group with [curate access](../permissions/collections.md#curate-access) to that collection.
+Questions saved to a collection can be added to multiple dashboards. Moving a question from one collection to another collection won't have any effect on the dashboards the question has been added to. To save a question to a collection, you'll need to be in a group with [curate access](../permissions/collections.md#curate-access) to that collection.
 
 ## Moving questions from collections to dashboards (and vice versa)
 

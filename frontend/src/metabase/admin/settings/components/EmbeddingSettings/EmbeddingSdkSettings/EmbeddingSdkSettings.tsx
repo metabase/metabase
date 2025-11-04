@@ -2,6 +2,10 @@ import cx from "classnames";
 import { match } from "ts-pattern";
 import { c, jt, t } from "ttag";
 
+import {
+  RelatedSettingsSection,
+  getModularEmbeddingRelatedSettingItems,
+} from "metabase/admin/components/RelatedSettingsSection";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { UpsellEmbeddingButton } from "metabase/admin/upsells/UpsellEmbeddingButton";
@@ -9,28 +13,18 @@ import { UpsellSdkLink } from "metabase/admin/upsells/UpsellSdkLink";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { useDispatch } from "metabase/lib/redux";
 import { isEEBuild } from "metabase/lib/utils";
 import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
-import {
-  Alert,
-  Box,
-  Button,
-  Flex,
-  Group,
-  HoverCard,
-  Icon,
-  Text,
-} from "metabase/ui";
+import { setOpenModalWithProps } from "metabase/redux/ui";
+import { Box, Button, Group, HoverCard, Icon, Stack, Text } from "metabase/ui";
 
-import { SettingHeader } from "../../SettingHeader";
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
-import { LinkButton } from "../EmbeddingOption/LinkButton";
-import { EmbeddingToggle } from "../EmbeddingToggle";
-
-import S from "./EmbeddingSdkSettings.module.css";
+import S from "../EmbeddingSettings.module.css";
+import { EmbeddingSettingsCard } from "../EmbeddingSettingsCard";
 
 const utmTags = {
   utm_source: "product",
@@ -40,21 +34,23 @@ const utmTags = {
 };
 
 export function EmbeddingSdkSettings() {
+  const dispatch = useDispatch();
   const isEE = isEEBuild();
 
   const isReactSdkEnabled = useSetting("enable-embedding-sdk");
-  const isReactSdkFeatureEnabled = PLUGIN_EMBEDDING_SDK.isEnabled();
+  const isReactSdkFeatureAvailable = PLUGIN_EMBEDDING_SDK.isEnabled();
+  const isLocalhostCorsDisabled = useSetting("disable-cors-on-localhost");
 
   const isSimpleEmbedEnabled = useSetting("enable-embedding-simple");
-  const isSimpleEmbedFeatureEnabled =
+  const isSimpleEmbedFeatureAvailable =
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled();
 
   const isEmbeddingAvailable =
-    isReactSdkFeatureEnabled || isSimpleEmbedFeatureEnabled;
+    isReactSdkFeatureAvailable || isSimpleEmbedFeatureAvailable;
 
   const canEditSdkOrigins =
-    (isReactSdkFeatureEnabled && isReactSdkEnabled) ||
-    (isSimpleEmbedFeatureEnabled && isSimpleEmbedEnabled);
+    (isReactSdkFeatureAvailable && isReactSdkEnabled) ||
+    (isSimpleEmbedFeatureAvailable && isSimpleEmbedEnabled);
 
   const isHosted = useSetting("is-hosted?");
 
@@ -129,100 +125,69 @@ export function EmbeddingSdkSettings() {
     )
     .otherwise(() => null);
 
+  const corsHintText = isLocalhostCorsDisabled
+    ? t`Separate values with a space. Localhost is not allowed. Changes will take effect within one minute.`
+    : t`Separate values with a space. Localhost is automatically included. Changes will take effect within one minute.`;
+
   return (
     <SettingsPageWrapper title={t`Modular embedding`}>
-      <UpsellDevInstances location="embedding-page" />
-
-      <Flex direction="column" p="xl" className={S.SectionCard} gap="md">
-        <Group>
-          <Text fz="h3" fw={600} c="text-dark">
-            {t`SDK for React`}
-          </Text>
-        </Group>
-
-        <Group gap="sm" align="center" justify="space-between" w="100%">
-          <EmbeddingToggle
-            label={t`Enabled`}
-            settingKey="enable-embedding-sdk"
-            labelPosition="right"
-            aria-label={t`SDK for React toggle`}
-          />
-
-          <Group gap="md">
-            <Button
-              size="compact-xs"
-              variant="outline"
-              component={ExternalLink}
-              href={sdkQuickStartUrl}
-              rightSection={<Icon size={12} name="external" />}
-              fz="sm"
-            >
-              {t`Quick start`}
-            </Button>
-
-            <Button
-              size="compact-xs"
-              variant="outline"
-              component={ExternalLink}
-              href={sdkDocumentationUrl}
-              rightSection={<Icon size={12} name="external" />}
-              fz="sm"
-            >
-              {t`Documentation`}
-            </Button>
-          </Group>
-        </Group>
-      </Flex>
-
-      <Box p="xl" className={S.SectionCard}>
-        <Flex direction="column" gap="md">
-          <Group gap="sm">
-            <Text fz="h3" fw={600} c="text-dark">
-              {t`Embedded Analytics JS`}
-            </Text>
-          </Group>
-
-          <Group gap="sm" align="center" justify="space-between" w="100%">
-            <EmbeddingToggle
-              label={t`Enabled`}
-              labelPosition="right"
-              settingKey="enable-embedding-simple"
-              disabled={!isSimpleEmbedFeatureEnabled}
-              aria-label={t`Embedded Analytics JS toggle`}
+      <EmbeddingSettingsCard
+        title={t`Embedded Analytics JS`}
+        description={t`An easy-to-use library that lets you embed Metabase entities like charts, dashboards, or even the query builder into your own application using customizable components.`}
+        settingKey="enable-embedding-simple"
+        isFeatureEnabled={isSimpleEmbedFeatureAvailable}
+        links={[
+          {
+            icon: "reference",
+            title: t`Documentation`,
+            href: embedJsDocumentationUrl?.url,
+          },
+        ]}
+        rightSideContent={
+          !isSimpleEmbedFeatureAvailable ? (
+            <UpsellEmbeddingButton
+              url="https://www.metabase.com/product/embedded-analytics"
+              campaign="embedded-analytics-js"
+              location="embedding-page"
+              size="default"
             />
+          ) : undefined
+        }
+        actionButton={
+          isSimpleEmbedFeatureAvailable && (
+            <Button
+              variant="brand"
+              size="sm"
+              onClick={() => {
+                dispatch(setOpenModalWithProps({ id: "embed" }));
+              }}
+            >
+              {t`New embed`}
+            </Button>
+          )
+        }
+        testId="sdk-setting-card"
+      />
 
-            {isSimpleEmbedFeatureEnabled ? (
-              <Group gap="md">
-                <Button
-                  size="compact-xs"
-                  variant="outline"
-                  component={ExternalLink}
-                  href={embedJsDocumentationUrl?.url}
-                  rightSection={<Icon size={12} name="external" />}
-                  fz="sm"
-                >
-                  {t`Documentation`}
-                </Button>
-
-                <LinkButton
-                  size="compact-xs"
-                  variant="outline"
-                  to="/embed-js"
-                  fz="sm"
-                >
-                  {t`Try it out`}
-                </LinkButton>
-              </Group>
-            ) : (
-              <UpsellEmbeddingButton
-                url="https://www.metabase.com/product/embedded-analytics"
-                campaign="embedded-analytics-js"
-                location="embedding-page"
-              />
-            )}
-          </Group>
-        </Flex>
-      </Box>
+      <EmbeddingSettingsCard
+        title={t`SDK for React`}
+        description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
+        settingKey="enable-embedding-sdk"
+        links={[
+          {
+            icon: "bolt",
+            title: t`Quick start`,
+            href: sdkQuickStartUrl,
+          },
+          {
+            icon: "reference",
+            title: t`Documentation`,
+            href: sdkDocumentationUrl,
+          },
+        ]}
+        alertInfoText={apiKeyBannerText}
+        testId="sdk-setting-card"
+      />
 
       <Box py="lg" px="xl" className={S.SectionCard}>
         <AdminSettingInput
@@ -238,13 +203,13 @@ export function EmbeddingSdkSettings() {
               {isEmbeddingAvailable && (
                 <HoverCard position="bottom">
                   <HoverCard.Target>
-                    <Icon name="info_filled" c="text-medium" cursor="pointer" />
+                    <Icon name="info" c="text-medium" cursor="pointer" />
                   </HoverCard.Target>
 
                   <HoverCard.Dropdown>
-                    <Box p="md" w={270}>
+                    <Box p="md" w={270} bg="white">
                       <Text lh="lg" c="text-medium">
-                        {t`Separate values with a space. Localhost is automatically included. Changes will take effect within one minute.`}
+                        {corsHintText}
                       </Text>
                     </Box>
                   </HoverCard.Dropdown>
@@ -260,43 +225,37 @@ export function EmbeddingSdkSettings() {
       </Box>
 
       {isEmbeddingAvailable && isHosted && (
-        <Box>
-          <SettingHeader
-            id="version-pinning"
-            title={t`Version pinning`}
-            description={t`Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion.`}
-          />
-          <Button
-            size="compact-md"
-            variant="outline"
-            leftSection={<Icon size={12} name="mail" aria-hidden />}
-            component={ExternalLink}
-            fz="0.75rem"
-            href="mailto:help@metabase.com"
-          >{t`Request version pinning`}</Button>
+        <Box py="lg" px="xl" className={S.SectionCard}>
+          <Stack gap="xs">
+            <Text
+              htmlFor="version-pinning"
+              component="label"
+              c="text-primary"
+              fw="bold"
+              fz="lg"
+            >
+              {t`Version pinning`}
+            </Text>
+
+            <Text c="text-secondary" lh="lg" mb="sm">
+              {t`Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion.`}
+            </Text>
+
+            <ExternalLink href="mailto:help@metabase.com">
+              <Group gap="sm" fw="bold" w="fit-content">
+                <Icon name="mail" size={14} aria-hidden />
+                <span>{t`Request version pinning`}</span>
+              </Group>
+            </ExternalLink>
+          </Stack>
         </Box>
       )}
 
-      <Alert
-        data-testid="sdk-settings-alert-info"
-        px="xl"
-        bg="none"
-        bd="1px solid var(--mb-color-border)"
-      >
-        <Flex gap="sm">
-          <Box>
-            <Icon
-              color="var(--mb-color-text-secondary)"
-              name="info_filled"
-              mt="2px"
-            />
-          </Box>
+      <RelatedSettingsSection
+        items={getModularEmbeddingRelatedSettingItems()}
+      />
 
-          <Text c="text-medium" lh="lg">
-            {apiKeyBannerText}
-          </Text>
-        </Flex>
-      </Alert>
+      <UpsellDevInstances location="embedding-page" />
     </SettingsPageWrapper>
   );
 }

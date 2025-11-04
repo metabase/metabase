@@ -50,7 +50,7 @@ Current customers can add storage through the Metabase Store:
 
 ## Metabase Cloud Storage pricing
 
-Pricing depends on how much data you need to store. See the Storage section on our [pricing page](/pricing/).
+Pricing depends on how much data you need to store. See the Storage section on our [pricing page](https://www.metabase.com/pricing/).
 
 ## Increasing Metabase Cloud Storage
 
@@ -79,7 +79,7 @@ To remove Metabase Cloud Storage (which will _permanently_ erase all its data):
 3. Click **Manage storage**.
 4. Click **Edit**.
 5. Click **Disable storage**.
-6. Click **Erase all data**, which---**WARNING**--will erase _all of its data_. We won't be able to recover the data, so only do this if you're absolutely sure you no need the storage and its data.
+6. Click **Erase all data**, which---**WARNING**--will erase _all of its data_. We won't be able to recover the data, so only do this if you're certain you no longer need the storage and its data.
 
 ## Syncing Google Sheets with Metabase
 

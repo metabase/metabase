@@ -39,4 +39,5 @@ export interface OptionsType extends TimeOnlyOptions {
   type?: string;
   view_as?: string | null;
   weekday_enabled?: boolean;
+  collapseNewlines?: boolean;
 }

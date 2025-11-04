@@ -235,7 +235,7 @@ export const EmbedFrame = ({
               </TitleAndDescriptionContainer>
             )}
             {dashboardTabs && (
-              <DashboardTabsContainer>
+              <DashboardTabsContainer narrow={!titled && pdfDownloadsEnabled}>
                 <FixedWidthContainer
                   data-testid="fixed-width-dashboard-tabs"
                   isFixedWidth={dashboard?.width === "fixed"}
@@ -272,8 +272,8 @@ export const EmbedFrame = ({
               isFixedWidth={dashboard?.width === "fixed"}
             >
               <ParametersListComponent
-                question={question}
-                dashboard={dashboard}
+                cardId={question?.id()}
+                dashboardId={dashboard?.id}
                 parameters={valuePopulatedParameters}
                 setParameterValue={setParameterValue}
                 hideParameters={hideParameters}

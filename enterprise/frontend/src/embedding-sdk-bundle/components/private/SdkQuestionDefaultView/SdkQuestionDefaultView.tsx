@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactElement } from "react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -11,7 +11,6 @@ import {
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { QuestionVisualization } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Visualization";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
-import { useTranslatedCollectionId } from "embedding-sdk-bundle/hooks/private/use-translated-collection-id";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk-bundle/types/question";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
@@ -24,6 +23,7 @@ import {
   PopoverBackButton,
   Stack,
 } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
 import {
   FlexibleSizeComponent,
@@ -37,6 +37,7 @@ import { Editor } from "../SdkQuestion/components/Editor";
 import { EditorButton } from "../SdkQuestion/components/EditorButton/EditorButton";
 import { FilterDropdown } from "../SdkQuestion/components/Filter/FilterDropdown";
 import { QuestionSettingsDropdown } from "../SdkQuestion/components/QuestionSettings";
+import { ResultToolbar } from "../SdkQuestion/components/ResultToolbar/ResultToolbar";
 import {
   SaveButton,
   shouldShowSaveButton,
@@ -98,6 +99,16 @@ export const SdkQuestionDefaultView = ({
 
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
+
+  const isNativeQuestion = useMemo(() => {
+    if (!question) {
+      return false;
+    }
+
+    const { isNative } = Lib.queryDisplayInfo(question.query());
+
+    return isNative;
+  }, [question]);
 
   useEffect(() => {
     if (isNewQuestion && !isQuestionSaved) {
@@ -164,7 +175,11 @@ export const SdkQuestionDefaultView = ({
       style={style}
     >
       <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
-        <Group justify="space-between" align="flex-end">
+        <Group
+          justify="space-between"
+          align="flex-end"
+          data-testid="interactive-question-top-toolbar"
+        >
           <Group gap="xs">
             <Box mr="sm">
               <BackButton />
@@ -177,13 +192,7 @@ export const SdkQuestionDefaultView = ({
           {showSaveButton && <SaveButton onClick={openSaveModal} />}
         </Group>
         {queryResults && (
-          <Group
-            justify="space-between"
-            p="sm"
-            bg="var(--mb-color-bg-sdk-question-toolbar)"
-            style={{ borderRadius: "0.5rem" }}
-            data-testid="interactive-question-result-toolbar"
-          >
+          <ResultToolbar data-testid="interactive-question-result-toolbar">
             <Group gap="xs">
               {isEditorOpen ? (
                 <PopoverBackButton
@@ -202,17 +211,25 @@ export const SdkQuestionDefaultView = ({
                         <ChartTypeDropdown />
                         <QuestionSettingsDropdown />
                       </Button.Group>
-                      <Divider
-                        mx="xs"
-                        orientation="vertical"
-                        // we have to do this for now because Mantine's divider overrides this color no matter what
-                        color="var(--mb-color-border) !important"
-                      />
+
+                      {!isNativeQuestion && (
+                        <Divider
+                          mx="xs"
+                          orientation="vertical"
+                          // we have to do this for now because Mantine's divider overrides this color no matter what
+                          color="var(--mb-color-border) !important"
+                        />
+                      )}
                     </>
                   )}
-                  <FilterDropdown />
-                  <SummarizeDropdown />
-                  <BreakoutDropdown />
+
+                  {!isNativeQuestion && (
+                    <>
+                      <FilterDropdown />
+                      <SummarizeDropdown />
+                      <BreakoutDropdown />
+                    </>
+                  )}
                 </>
               )}
             </Group>
@@ -220,11 +237,16 @@ export const SdkQuestionDefaultView = ({
               {withDownloads && <DownloadWidgetDropdown />}
               <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
             </Group>
-          </Group>
+          </ResultToolbar>
         )}
       </Stack>
 
-      <Box className={InteractiveQuestionS.Main} p="sm" w="100%" h="100%">
+      <Box
+        className={cx(InteractiveQuestionS.Main, "sdk-question-main")}
+        p="sm"
+        w="100%"
+        h="100%"
+      >
         <Box className={InteractiveQuestionS.Content}>
           {isEditorOpen ? (
             <Editor onApply={closeEditor} />
@@ -255,11 +277,7 @@ const DefaultViewSaveModal = ({
     targetCollection,
   } = useSdkQuestionContext();
 
-  const { id, isLoading } = useTranslatedCollectionId({
-    id: targetCollection,
-  });
-
-  if (!isSaveEnabled || !isOpen || !question || isLoading) {
+  if (!isSaveEnabled || !isOpen || !question) {
     return null;
   }
 
@@ -275,7 +293,7 @@ const DefaultViewSaveModal = ({
         await onSave(question);
         close();
       }}
-      targetCollection={id}
+      targetCollection={targetCollection}
     />
   );
 };

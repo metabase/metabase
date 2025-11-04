@@ -1,11 +1,14 @@
 (ns metabase.util.malli.registry
   (:refer-clojure :exclude [declare def])
   (:require
+   #?(:clj [metabase.config.core :as config])
    #?@(:clj ([malli.experimental.time :as malli.time]
+             [metabase.util.malli.registry.validator-cache :as mr.validator-cache]
              [net.cgrand.macrovich :as macros]))
    [malli.core :as mc]
    [malli.registry]
-   [malli.util :as mut])
+   [malli.util :as mut]
+   [metabase.util.performance :refer [postwalk]])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private cache (atom {}))
@@ -14,17 +17,22 @@
   "Make schemas that aren't `=` to identical ones e.g.
 
     [:re #\"\\d{4}\"]
+    [:or :int [:re #\"\\d{4}\"]]
 
   work correctly as cache keys instead of creating new entries every time the code is evaluated."
   [x]
-  (if (and (vector? x)
-           (= (first x) :re))
-    (into (empty x)
-          (map (fn [child]
-                 (cond-> child
-                   (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) child) str)))
-          x)
-    x))
+  (postwalk
+   (fn [form]
+     (cond-> form
+       (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) form)
+       str))
+   x))
+
+(def ^:dynamic *cache-miss-hook*
+  "A hook that is called whenever there is a cache miss, for side effects.
+  This is used in tests or to monitor cache misses."
+  ;; (fn [_k _schema _value] nil)
+  nil)
 
 (defn cached
   "Get a cached value for `k` + `schema`. Cache is cleared whenever a schema is (re)defined
@@ -37,6 +45,8 @@
   (let [schema-key (schema-cache-key schema)]
     (or (get (get @cache k) schema-key)     ; get-in is terribly inefficient
         (let [v (value-thunk)]
+          (when *cache-miss-hook*
+            (*cache-miss-hook* k schema v))
           (swap! cache assoc-in [k schema-key] v)
           v))))
 
@@ -44,14 +54,23 @@
   "Fetch a cached [[mc/validator]] for `schema`, creating one if needed. The cache is flushed whenever the registry
   changes."
   [schema]
-  (letfn [(make-validator []
+  (letfn [(make-validator* []
             (try
               #_{:clj-kondo/ignore [:discouraged-var]}
               (mc/validator schema)
               (catch #?(:clj Throwable :cljs :default) e
                 (throw (ex-info (str "Error making validator for " (pr-str schema) ":" (ex-message e))
                                 {:schema schema}
-                                e)))))]
+                                e)))))
+          (make-validator []
+            (let [validator (make-validator*)]
+              ;; Only memoize in tests/dev for now, in prod validation is mostly disabled and this stuff is fairly
+              ;; experimental, and we don't want to blow up instances because of the increased memory usage. Once it
+              ;; bakes a bit we can see whether it's useful to enable it in prod
+              #?(:clj  (if config/is-prod?
+                         validator
+                         (mr.validator-cache/memoized-validator validator))
+                 :cljs validator)))]
     (cached :validator schema make-validator)))
 
 (defn validate
@@ -66,7 +85,7 @@
   (letfn [(make-explainer []
             (try
               #_{:clj-kondo/ignore [:discouraged-var]}
-              (let [validator* (mc/validator schema)
+              (let [validator* (validator schema)
                     explainer* (mc/explainer schema)]
                 ;; for valid values, it's significantly faster to just call the validator. Let's optimize for the 99.9%
                 ;; of calls whose values are valid.
@@ -135,7 +154,6 @@
      ([type schema]
       `(register! ~type ~schema))
      ([type docstring schema]
-      (assert (string? docstring))
       `(metabase.util.malli.registry/def ~type
          ~(macros/case
            :clj `(-with-doc ~schema ~docstring)

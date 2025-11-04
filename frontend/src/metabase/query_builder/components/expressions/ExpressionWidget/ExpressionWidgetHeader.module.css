@@ -9,8 +9,13 @@
   .HeaderButton {
     color: var(--mb-color-text-light);
 
-    &:hover {
+    &:not(:disabled):hover {
       color: var(--mb-color-brand);
+    }
+
+    &:disabled {
+      opacity: 1;
+      cursor: default;
     }
   }
 }

@@ -14,7 +14,7 @@ Verify that the application you created in your IdP supports SAML. Sometimes oth
 
 ## Is the issuer or Entity ID correct?
 
-After filling out the authentication form with your identity provider, you're taken back to Metabase but it throws an error. To see the error, go to **Admin settings** > **Troubleshooting** > **Logs**. You'll see an error that says something like **Incorrect response <issuer\>**.
+After filling out the authentication form with your identity provider, you're taken back to Metabase but it throws an error. To see the error, go to **Admin settings** > **Tools** > **Logs**. You'll see an error that says something like **Incorrect response <issuer\>**.
 
 **Root cause**: Your issuer or Entity ID is incorrect.
 
@@ -29,7 +29,7 @@ After filling out the authentication form with your identity provider, you're ta
 
 ## Is the SAML identity provider certificate value correct?
 
-After filling out the authentication form with your identity provider, you go back to Metabase but it throws an error. Go to **Admin settings** > **Troubleshooting** > **Logs**. You'll see an error that says something like **Invalid assertion error <issuer\>**.
+After filling out the authentication form with your identity provider, you go back to Metabase but it throws an error. Go to **Admin settings** > **Tools** > **Logs**. You'll see an error that says something like **Invalid assertion error <issuer\>**.
 
 **Root cause**: The certificate value you entered is incorrect.
 

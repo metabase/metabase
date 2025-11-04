@@ -3,6 +3,7 @@
   (:require
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -51,7 +52,12 @@
 (defn- format-row
   "Formats a row to be inserted into the content translation table. Locales are standardized, and all fields are trimmed. Extra fields are included as well."
   [headers row]
-  (let [{locale :language msgid :string msgstr :translation} (zipmap headers row)
+  (let [row-with-headers (zipmap headers row)
+        locale (or (get row-with-headers "language")
+                   (get row-with-headers "locale")
+                   (get row-with-headers "locale code"))
+        msgid (get row-with-headers "string")
+        msgstr (get row-with-headers "translation")
         normalized-locale (i18n/normalized-locale-string (str/trim locale))
         formatted-locale (if (nil? normalized-locale)
                            (str/trim locale)
@@ -72,20 +78,33 @@
        (adjust-index index)))
 
 (defn- header?
-  "Checks if a row is likely a header by seeing if it has the set of values we expect in the header"
-  [row]
-  (and (vector? row)
-       (= #{"language" "string" "translation"} (->> row
-                                                    (map u/lower-case-en)
-                                                    set))))
+  "Checks if a row is likely a header by seeing if has a subset of the values we expect the header
+  to have.
 
-(def ^:private default-headers [:language :string :translation])
+  We can only ~kinda~ guess when a row is header, but since it unlikely for two or more of these
+  values to ever appear in a translation row we can say this is a header. "
+  [row]
+  (let [normalized-values (->> row
+                               (map u/lower-case-en)
+                               set)]
+    (>= (count (set/intersection #{"language" "locale code" "locale" "string" "translation"} normalized-values))
+        2)))
+
+(def ^:private default-headers ["language" "string" "translation"])
 
 (defn- parse-header
   [header-row]
-  (->> (map u/lower-case-en header-row)
-       (map keyword)
-       vec))
+  (let [parsed (mapv u/lower-case-en header-row)
+        errors (cond-> []
+                 (not= 3 (count parsed)) (conj "Header must have only three columns")
+                 (empty? (filter #(contains? #{"language" "locale" "locale code"} %) parsed)) (conj "Header must have one of: Language, Locale, or Locale Code")
+                 (nil? (some #{"string"} parsed)) (conj "Header must have String")
+                 (nil? (some #{"translation"} parsed)) (conj "Header must have translation"))]
+    (when (seq errors)
+      (throw (ex-info "This file could not be uploaded due to the following error(s):"
+                      {:status-code http-status-unprocessable
+                       :errors errors})))
+    parsed))
 
 (defn- process-rows
   "Format, validate, and process rows from a CSV. Takes a collection of vectors and returns a map with the shape

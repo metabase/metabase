@@ -1,6 +1,6 @@
 (ns hooks.metabase.test.util
-  (:require [clj-kondo.hooks-api :as hooks]
-            [hooks.common :as common]))
+  (:require
+   [clj-kondo.hooks-api :as hooks]))
 
 (defn- namespaced-symbol-node? [node]
   (when (hooks/token-node? node)

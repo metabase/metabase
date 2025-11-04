@@ -1,4 +1,5 @@
 (ns metabase.driver.mysql.ddl
+  (:refer-clojure :exclude [some])
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -10,7 +11,8 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.ddl :as sql.ddl]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [some]])
   (:import
    (java.sql SQLNonTransientConnectionException)))
 

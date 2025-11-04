@@ -69,7 +69,6 @@ config:
   settings:
     admin-email: null
     aggregated-query-row-limit: null
-    ai-service-base-url: http://localhost:8000
     allowed-iframe-hosts: |-
       youtube.com,
       youtu.be,
@@ -118,20 +117,8 @@ config:
     db-connection-timeout-ms: 10000
     db-query-timeout-minutes: 20
     default-maps-enabled: true
+    disable-cors-on-localhost: false
     download-row-limit: null
-    ee-ai-features-enabled: false
-    ee-embedding-model: Snowflake/snowflake-arctic-embed-l-v2.0
-    ee-embedding-model-dimensions: 1024
-    ee-embedding-provider: ai-service
-    ee-openai-api-base-url: https://api.openai.com
-    ee-openai-api-key: null
-    ee-openai-model: gpt-4-turbo-preview
-    ee-search-gate-max-batch-size: 512
-    ee-search-gate-write-timeout: 5
-    ee-search-indexer-exit-early-cold-duration: 30
-    ee-search-indexer-lag-tolerance-multiplier: 2
-    ee-search-indexer-max-run-duration: 60
-    ee-search-indexer-poll-limit: 1000
     email-from-address: notifications@metabase.com
     email-from-address-override: notifications@metabase.com
     email-from-name: null
@@ -148,7 +135,7 @@ config:
     email-smtp-username: null
     email-smtp-username-override: null
     embedding-app-origins-interactive: null
-    embedding-app-origins-sdk: localhost:*
+    embedding-app-origins-sdk: ''
     embedding-homepage: hidden
     embedding-secret-key: null
     enable-embedding-interactive: false
@@ -201,6 +188,7 @@ config:
     ldap-security: none
     ldap-sync-user-attributes: true
     ldap-sync-user-attributes-blacklist: userPassword,dn,distinguishedName
+    ldap-timeout-seconds: 15.0
     ldap-user-base: null
     ldap-user-filter: (&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
     ldap-user-provisioning-enabled: true
@@ -221,7 +209,6 @@ config:
     notification-link-base-url: null
     notification-system-event-thread-pool-size: 5
     notification-thread-pool-size: 3
-    openai-max-tokens-per-batch: 4000
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
     premium-embedding-token: null
@@ -256,9 +243,6 @@ config:
     sdk-encryption-validation-key: null
     search-language: null
     search-typeahead-enabled: true
-    semantic-search-enabled: true
-    semantic-search-min-results-threshold: 100
-    semantic-search-results-limit: 1000
     send-email-on-first-login-from-new-device: true
     send-new-sso-user-admin-email: null
     session-cookie-samesite: lax
@@ -271,7 +255,6 @@ config:
     show-homepage-data: true
     show-homepage-xrays: true
     show-metabase-links: true
-    show-metabot: true
     show-static-embed-terms: true
     site-locale: en
     site-name: Metabase
@@ -282,7 +265,6 @@ config:
     source-address-header: X-Forwarded-For
     sql-jdbc-fetch-size: 500
     ssh-heartbeat-interval-sec: 180
-    stale-index-retention-hours: 24
     start-of-week: sunday
     subscription-allowed-domains: null
     surveys-enabled: true

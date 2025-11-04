@@ -11,6 +11,7 @@ import {
   useUpdateFieldValuesMutation,
 } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { trackMetadataChange } from "metabase/metadata/pages/DataModel/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
@@ -62,11 +63,10 @@ export const RemappingPicker = ({
   const [hasChanged, setHasChanged] = useState(false);
   const [isCustomMappingOpen, setIsCustomMappingOpen] = useState(false);
   const [isFkTargetTouched, setIsFkTargetTouched] = useState(false);
+  const [isChoosingDisplayValue, setIsChoosingDisplayValue] = useState(false);
   const [isChoosingInitialFkTarget, setIsChoosingInitialFkTarget] =
     useState(false);
   const id = getRawTableFieldId(field);
-  const { data: fieldValues, error: fieldValuesError } =
-    useGetFieldValuesQuery(id);
   const { data: fkTargetField } = useGetFieldQuery(
     field.fk_target_field_id == null
       ? skipToken
@@ -91,6 +91,13 @@ export const RemappingPicker = ({
   const tables = useMemo(() => [fkTargetTable], [fkTargetTable]);
 
   const value = useMemo(() => getValue(field), [field]);
+  const {
+    data: fieldValues,
+    error: fieldValuesError,
+    isLoading: isLoadingFieldValues,
+  } = useGetFieldValuesQuery(id, {
+    skip: value !== "custom" && !isChoosingDisplayValue,
+  });
   const options = useMemo(() => {
     return getOptions(field, fieldValues?.values, fkTargetTable);
   }, [field, fieldValues, fkTargetTable]);
@@ -123,6 +130,7 @@ export const RemappingPicker = ({
         t`Failed to update display values of ${field.display_name}`,
       );
     } else {
+      trackMetadataChange("display_values");
       sendSuccessToast(
         t`Display values of ${field.display_name} updated`,
         async () => {
@@ -241,8 +249,12 @@ export const RemappingPicker = ({
   return (
     <Stack gap={0}>
       <DisplayValuesPicker
-        options={options}
         value={isFkMapping ? "foreign" : value}
+        options={options}
+        isLoadingFieldValues={isLoadingFieldValues}
+        dropdownOpened={isChoosingDisplayValue}
+        onDropdownOpen={() => setIsChoosingDisplayValue(true)}
+        onDropdownClose={() => setIsChoosingDisplayValue(false)}
         onChange={handleDisplayValueChange}
         {...props}
       />
@@ -319,6 +331,7 @@ export const RemappingPicker = ({
                   p={0}
                   size="compact-xs"
                   variant="subtle"
+                  disabled={isLoadingFieldValues}
                   onClick={() => setIsCustomMappingOpen(true)}
                 >
                   {t`Edit mapping`}

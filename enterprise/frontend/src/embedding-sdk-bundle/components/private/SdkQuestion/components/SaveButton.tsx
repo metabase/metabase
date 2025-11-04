@@ -2,6 +2,7 @@ import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
 import type { ButtonProps } from "embedding-sdk-bundle/types/ui";
+import { isQuestionDirty } from "metabase/query_builder/utils/question";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -29,7 +30,7 @@ export const shouldShowSaveButton = ({
 }) => {
   const canSave = question && Lib.canSave(question.query(), question.type());
   const isQuestionChanged = originalQuestion
-    ? question && question.isQueryDirtyComparedTo(originalQuestion)
+    ? isQuestionDirty(question, originalQuestion)
     : true;
 
   return Boolean(isQuestionChanged && canSave);

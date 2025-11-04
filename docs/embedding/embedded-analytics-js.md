@@ -9,6 +9,8 @@ summary: Getting started with Embedded Analytics JS for embedding Metabase entit
 
 Embedded analytics JS lets you embed Metabase entities like questions, dashboards, or even the query builder into your own application using customizable components.
 
+{% include shared/in-page-promo-embedding-workshop.html %}
+
 Embedded Analytics JS is a JavaScript library built on top of Metabase's [Embedded Analytics React SDK](./sdk/introduction.md). But it does not require using React or setting up full SDK embedding.
 Unlike with [interactive embedding](./interactive-embedding.md), where you embed the entire Metabase app in an iframe, Embedded Analytics JS lets you choose from a set of predefined components like a single chart, a dashboard with optional drill-through, or query builder, and customize those components.
 
@@ -19,20 +21,35 @@ Currently you can choose to embed:
 - A dashboard
 - A question (chart). You can embed both questions built with the query builder and questions built with SQL.
 - Full graphical [query builder](../questions/query-builder/editor.md) to enable people to build their own charts and explorations.
+- A browser to navigate collections and open dashboards or questions.
+- [AI chat interface](./sdk/ai-chat.md).
 
 ## Quickstart
 
+You can also follow the setup guide directly in Metabase in **Admin settings > Embedding > Setup guide**. We're recording the steps here for convenience.
+
 ### 1. Enable Embedded Analytics JS
 
-1. In Metabase, go to **Admin Settings > Embedding > Modular embedding**.
+1. In Metabase, go to **Admin settings > Embedding > Modular embedding**.
 2. Toggle on **Embedded Analytics JS**.
 3. Under **Cross-Origin Resource Sharing (CORS)**, add the URLs of the websites where you want to embed Metabase (such as `https://*.example.com`). For testing embeds, you can use `localhost` which is always included in CORS policy.
+4. If you are embedding Metabase components in a domain that's different from your Metabase's domain (including when you're testing the app locally but use Metabase Cloud), go to **Admin settings > Embedding > Security** and set **SameSite cookie** to **None**.
 
 ### 2. Create a new embed
 
-1. In Metabase, click on **+ New** button in top right corner and select **Embed**. Note that this will only be visible to admins.
-2. Choose the type of entity to embed. Currently the available types are dashboard, question, and exploration (which will embed the Metabase query builder).
-3. Next, select the entity you want to embed.
+1. In Metabase, go to **Admin > Embedding > Modular embedding**, and select **New embed** next to **Embedded analytics JS**.
+
+   If you're planning to embed an existing question or dashboard, you can instead go straight to that question or dashboard, click on the **Share** button, and choose **Embedded Analytics JS**.
+
+2. Choose the _type_ of entity to embed:
+
+   - Dashboard
+   - Chart
+   - Exploration (which will embed the Metabase query builder)
+   - Browser
+   - Metabot question (which will embed AI chat)
+
+3. Next, select the entity you want to embed. For browser, pick the collection you want people to start from.
 
 Once you've selected what you want to embed, click Next to customize your embed.
 
@@ -42,7 +59,7 @@ The exact customization options you see will depend on what type of entity you'r
 
 ![Customizing embeds](./images/embed-flow-options.png)
 
-You'll also be be able to pick brand, text, and background color used for all your embeds. To configure other colors (e.g. secondary colors, query builder colors etc), as well as font, you' can specify a [theme](#theming) in your embed code snippet.
+You'll also be able to pick brand, text, and background color used for all your embeds. To configure other colors (e.g. secondary colors, query builder colors etc), as well as font, you can specify a [theme](#theming) in your embed code snippet.
 
 All the customization options you select in this interactive flow will be reflected in the parameter values in the embed code, so you'll be able to adjust them later by editing the embed snippet.
 
@@ -61,6 +78,16 @@ You'll get a choice between "Existing Metabase session" and "Single sign-on (SSO
 Metabase will generate a code snippet that you can copy and paste into your app, see [Embed code snippets](#embed-code-snippets) for an example. You can later modify this code snippet to specify additional appearance options or change the behavior of some components.
 
 Add the code snippet into your app, and refresh the page.
+
+## Each end user should have their own Metabase account
+
+Each end-user must have their own Metabase account.
+
+The problem with having end-users share a Metabase account is that, even if you filter data on the client side via the Embedded analytics JS, all end-users will still have access to the session token, which they could use to access Metabase directly via the API to get data they’re not supposed to see.
+
+If each end-user has their own Metabase account, however, you can configure permissions in Metabase and everyone will only have access to the data they should.
+
+In addition to this, we consider shared accounts to be unfair usage. Fair usage of Embedded Analytics JS involves giving each end-user of the embedded analytics their own Metabase account.
 
 ## Embed code snippets
 
@@ -102,15 +129,15 @@ Here's an example of a script:
 
 Note the `defer` attribute and the reference to your Metabase URL in the script that loads `embed.js` library.
 
-If you're embedding multiple entities on the same page, you only need to include the `<script>` tags once globally.
+If you're embedding multiple entities in a single page, you only need to include the `<script>` tags once globally.
 
-You can also generate the code snippet for Embedded Analytics JS interactively in Metabase through **+ New > Embed**. Check out the [Quickstart](#quickstart).
+You can also generate the code snippet for Embedded Analytics JS interactively in Metabase through **Admin > Embedding > Setup guide > Embed in your code**. Check out the [quickstart](#quickstart).
 
 ## Customizing embeds
 
 The exact customization options you see will depend on what type of entity you're embedding.
 
-When you're creating a new embed using **+ New > Embed**, you'll see the following customization options in the interactive creation flow. These options correspond to parameters in [components](#components).
+When you're creating a new embed using **Admin > Embedding > Setup guide > Embed in your code**, you'll see the following customization options in the interactive creation flow. These options correspond to parameters in [components](#components).
 
 - **Allow people to drill through on data points**: determines whether people can interact with the chart (or charts on a dashboard). Interactivity includes [drilling down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) to individual records from aggregated questions, filtering on click, zooming in, etc. Disabling drill-through for an embedded _question_ also disables people's ability to add filters and summaries.
 
@@ -122,17 +149,21 @@ When you're creating a new embed using **+ New > Embed**, you'll see the followi
 
 - **Show title**: what it says on the tin.
 
+- **Allow editing dashboards and questions**: lets people create and edit dashboards or questions in the current collection. When disabled, they can still perform actions like filter, summarize, and drill-through, but won’t be able to save results.
+
 ## Configuring embeds
 
 To define the configuration that applies to every embed on the page, use the `defineMetabaseConfig()` function. Its parameters include:
 
-- `instanceUrl: "https://your-metabase-url"` (required): the URL of your Metabase instance, like https://youlooknicetoday.metabaseapp.com
+- `instanceUrl: "https://your-metabase-url"` (required): the URL of your Metabase instance, like `https://youlooknicetoday.metabaseapp.com`
 
 - `theme: {...}` (optional): [appearance options for the embeds](#theming).
 
 - `useExistingUserSession: true|false` (optional, for development only) - lets you preview the embed locally using your Metabase admin account session. Only supported in Google Chrome.
 
 - `apiKey: mb_YourAPIKey` (optional, for development only) - another way to preview embeds locally using an API key.
+
+- `fetchRequestToken: () => Promise<{ jwt: string }>` (optional) - you can customize how the SDK fetches the refresh token for JWT authentication by specifying the `fetchRequestToken` function. See [customizing JWT authentication](./sdk/authentication.md#customizing-jwt-authentication).
 
 ### Theming
 
@@ -328,7 +359,7 @@ To render a dashboard:
 
 ### Question
 
-To render a question (chart).
+To render a question (chart):
 
 ```html
 <metabase-question question-id="1"></metabase-question>
@@ -348,3 +379,56 @@ To render a question (chart).
 - `initial-sql-parameters` - default value for SQL parameters, only applicable to native SQL questions, like `{ "productId": "42" }`
 - `is-save-enabled` (default is false)
 - `target-collection` - this is to enforce saving into a particular collection. Values: regular ID, entity ID, `"personal”`, `"root”`
+
+### Browser
+
+To render a collection browser so people can navigate a collection and open dashboards or questions:
+
+```html
+<metabase-browser initial-collection="14" read-only="false"></metabase-browser>
+```
+
+**Required parameters:**
+
+- `initial-collection` - This can be a collection ID or `root`. Use a collection ID (e.g., `14`) to start in a specific collection. Use `root` to start at the top-level, "Our Analytics" collection.
+
+**Optional parameters:**
+
+- `read-only` (default is true) – if true, people can interact with items (filter, summarize, drill-through) but cannot save. If false, they can create and edit items in the collection.
+
+### Metabot
+
+To render the AI chat interface:
+
+```html
+<metabase-metabot></metabase-metabot>
+```
+
+**Required parameters:**
+
+None.
+
+**Optional parameters:**
+
+- `layout` (default is `auto`) – how should the browser position the visualization with respect to the chat interface. Possible values are:
+  - `auto` (default): Metabot uses the `stacked` layout on mobile screens, and a `sidebar` layout on larger screens.
+  - `stacked`: the question visualization stacks on top of the chat interface.
+  - `sidebar`: the question visualization appears to the left of the chat interface, which is in the right sidebar.
+
+## Embedding Metabase in a different domain
+
+If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can tell Metabase to set the session cookie's SameSite value to "none".
+
+You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Security** > **SameSite cookie setting**.
+
+SameSite values include:
+
+- **Lax** (default): Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain.
+- **None (requires HTTPS)**: Use "None" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers.
+- **Strict** (not recommended): Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding.
+
+You can also set the [`MB_SESSION_COOKIE_SAMESITE` environment variable](../configuring-metabase/environment-variables.md#mb_session_cookie_samesite).
+
+If you're using Safari, you'll need to [allow cross-site tracking](https://support.apple.com/en-tj/guide/safari/sfri40732/mac). Depending on the browser, you may also run into issues when viewing emdedded items in private/incognito tabs.
+
+Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).

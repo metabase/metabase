@@ -4,7 +4,6 @@ import { type JSX, memo, useEffect, useId, useRef } from "react";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk-bundle/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
-import { EnsureSingleInstance } from "embedding-sdk-bundle/sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
@@ -14,6 +13,7 @@ import {
 } from "embedding-sdk-bundle/store/reducer";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
+import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
@@ -28,6 +28,7 @@ import { SdkUsageProblemDisplay } from "../../private/SdkUsageProblem";
 
 type ComponentProviderInternalProps = ComponentProviderProps & {
   reduxStore: SdkStore;
+  isLocalHost?: boolean;
 };
 
 export const ComponentProviderInternal = ({
@@ -41,6 +42,7 @@ export const ComponentProviderInternal = ({
   errorComponent,
   loaderComponent,
   allowConsoleLog,
+  isLocalHost,
 }: ComponentProviderInternalProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
 
@@ -48,7 +50,7 @@ export const ComponentProviderInternal = ({
   // This call in the ComponentProvider is still needed for:
   // - Storybook stories, where we don't have the MetabaseProvider
   // - Unit tests
-  useInitDataInternal({ reduxStore, authConfig });
+  useInitDataInternal({ reduxStore, authConfig, isLocalHost });
 
   useEffect(() => {
     if (fontFamily) {
@@ -102,6 +104,7 @@ export const ComponentProviderInternal = ({
                   <SdkUsageProblemDisplay
                     authConfig={authConfig}
                     allowConsoleLog={allowConsoleLog}
+                    isLocalHost={isLocalHost}
                   />
 
                   <PortalContainer />
@@ -117,6 +120,7 @@ export const ComponentProviderInternal = ({
 
 export type ComponentProviderProps = MetabaseProviderProps & {
   reduxStore?: SdkStore;
+  isLocalHost?: boolean;
 };
 
 export const ComponentProvider = memo(function ComponentProvider({

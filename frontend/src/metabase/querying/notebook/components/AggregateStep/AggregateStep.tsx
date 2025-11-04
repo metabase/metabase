@@ -64,6 +64,7 @@ export function AggregateStep({
           clauseIndex={index}
           onQueryChange={updateQuery}
           onClose={onClose}
+          readOnly={readOnly}
         />
       )}
       onReorder={handleReorderAggregation}
@@ -80,6 +81,7 @@ interface AggregationPopoverProps {
   clauseIndex?: number;
   onQueryChange: (query: Lib.Query) => void;
   onClose: () => void;
+  readOnly?: boolean;
 }
 
 function AggregationPopover({
@@ -89,6 +91,7 @@ function AggregationPopover({
   clauseIndex,
   onQueryChange,
   onClose,
+  readOnly,
 }: AggregationPopoverProps) {
   const isUpdate = clause != null && clauseIndex != null;
 
@@ -109,6 +112,7 @@ function AggregationPopover({
       allowCustomExpressions
       onQueryChange={onQueryChange}
       onClose={onClose}
+      readOnly={readOnly}
     />
   );
 }

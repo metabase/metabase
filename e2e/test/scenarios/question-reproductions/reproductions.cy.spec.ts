@@ -8,6 +8,7 @@ import type {
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import type { Filter, LocalFieldReference } from "metabase-types/api";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;
@@ -118,11 +119,9 @@ describe("issue 39487", () => {
     },
   );
 
-  // broken after migration away from filter modal
-  // see https://github.com/metabase/metabase/issues/55688
   it(
-    "calendar has constant size when using date range picker filter (metabase#39487)",
-    { viewportHeight: 1000, tags: "@skip" },
+    "calendar has constant size when using date range picker filter, and text inputs are in sync with the calendar inputs (metabase#39487, metabase#64602)",
+    { viewportHeight: 1000 },
     () => {
       createTimeSeriesQuestionWithFilter([
         "between",
@@ -140,11 +139,35 @@ describe("issue 39487", () => {
       cy.findByTestId("filter-pill").click();
       checkDateRangeFilter();
 
-      cy.log("filter modal");
+      cy.log("filter dropdown");
       cy.button(/Filter/).click();
-      H.modal().findByText("May 1 – Jun 1, 2024").click();
+      H.popover().findByText("Created At").click();
+      H.popover().findByText("Fixed date range…").click();
+      H.popover().within(() => {
+        cy.log(
+          "changing text input values should navigate the calendars (metabase#64602)",
+        );
+        cy.findAllByRole("textbox").first().clear().type("2024/05/01");
+        cy.findByText("May 2024").should("be.visible");
+        cy.findByLabelText("1 May 2024").should(
+          "have.attr",
+          "data-first-in-range",
+          "true",
+        );
+
+        cy.findAllByRole("textbox")
+          .should("have.length", 2)
+          .last()
+          .clear()
+          .type("2024/06/01");
+        cy.findAllByLabelText("1 June 2024")
+          .filter(":visible")
+          .should("have.length", 1)
+          .and("have.attr", "data-last-in-range", "true");
+      });
+      previousButton().click();
       checkDateRangeFilter();
-      H.modal().button("Close").click();
+      cy.realPress("Escape");
 
       cy.log("filter drill");
       cy.findByLabelText("Switch to data").click();
@@ -152,8 +175,12 @@ describe("issue 39487", () => {
       H.popover().findByText("Filter by this column").click();
       H.popover().findByText("Fixed date range…").click();
       H.popover().findAllByRole("textbox").first().clear().type("2024/05/01");
-      // eslint-disable-next-line no-unsafe-element-filtering
-      H.popover().findAllByRole("textbox").last().clear().type("2024/06/01");
+      H.popover()
+        .findAllByRole("textbox")
+        .should("have.length", 2)
+        .last()
+        .clear()
+        .type("2024/06/01");
       previousButton().click();
       checkDateRangeFilter();
 
@@ -1125,6 +1152,36 @@ describe("issue 55487", () => {
   });
 });
 
+describe("issue 42723", () => {
+  const questionDetails: StructuredQuestionDetails = {
+    display: "line",
+    query: {
+      "source-table": PRODUCTS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
+        ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to change the query without loosing the viz type (metabase#42723)", () => {
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.queryBuilderFooter().findByLabelText("Switch to data").click();
+    H.tableHeaderClick("Count");
+    H.popover().icon("arrow_up").click();
+    H.tableInteractiveHeader().icon("chevronup").should("be.visible");
+
+    H.queryBuilderFooter().findByLabelText("Switch to visualization").click();
+    H.ensureChartIsActive();
+  });
+});
+
 describe("issue 58628", () => {
   beforeEach(() => {
     H.restore();
@@ -1142,5 +1199,166 @@ describe("issue 58628", () => {
     cy.log("should be able to access the query builder in view mode");
     H.visitQuestion(ORDERS_QUESTION_ID);
     H.queryBuilderHeader().should("be.visible");
+  });
+});
+
+describe("issue 52872", () => {
+  const LONG_NAME = "a".repeat(254);
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        name: LONG_NAME,
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("Saved questions with a very long title should wrap (metabse#52872)", () => {
+    cy.findByDisplayValue(LONG_NAME)
+      .should("be.visible")
+      .then(($el) => {
+        cy.window().then((window) => {
+          cy.wrap($el[0].offsetWidth).should("be.lt", window.innerWidth);
+        });
+      });
+  });
+});
+
+describe("issue 35561", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should display a functional fk drill for both null and non-null values", () => {
+    H.createNativeQuestion(
+      {
+        name: "Model",
+        native: {
+          query: `SELECT 1 AS ID, CAST(NULL AS INT) AS USER_ID
+UNION ALL
+SELECT 2 AS ID, 3 AS USER_ID
+`,
+        },
+        type: "model",
+      },
+      {},
+    ).then(async ({ body: model }) => {
+      await cy.request("POST", `/api/card/${model.id}/query`);
+      await H.setModelMetadata(model.id, (field) => {
+        if (field.name === "USER_ID") {
+          return {
+            ...field,
+            display_name: "User ID",
+            semantic_type: "type/FK",
+            fk_target_field_id: ORDERS.ID,
+          };
+        }
+        return field;
+      });
+      H.createQuestion(
+        {
+          name: "Question",
+          query: {
+            "source-table": `card__${model.id}`,
+          },
+          display: "table",
+        },
+        { wrapId: true, visitQuestion: true },
+      );
+    });
+
+    cy.findByTestId("table-root")
+      .findAllByRole("row")
+      .first()
+      .within(() => {
+        cy.get("[data-column-id='USER_ID']").click();
+      });
+    H.popover().within(() => {
+      cy.findByText("View Models with no User").should("be.visible").click();
+    });
+    cy.findByTestId("table-body").within(() => {
+      cy.findAllByRole("row").should("have.length", 1);
+      cy.findAllByRole("row")
+        .first()
+        .within(() => {
+          cy.get("[data-column-id='USER_ID']").within(() => {
+            cy.get("[data-testid=cell-data]").should("not.exist");
+          });
+        });
+    });
+
+    H.visitQuestion("@questionId");
+
+    cy.findByTestId("table-root")
+      .findAllByRole("row")
+      .eq(1)
+      .within(() => {
+        cy.get("[data-column-id='USER_ID']").click();
+      });
+    H.popover().within(() => {
+      cy.findByText("View this User's Models").should("be.visible").click();
+    });
+    cy.findByTestId("table-body").within(() => {
+      cy.findAllByRole("row").should("have.length", 1);
+      cy.findAllByRole("row")
+        .first()
+        .within(() => {
+          cy.get("[data-column-id='USER_ID']").within(() => {
+            cy.get("[data-testid=cell-data]").should("have.text", "3");
+          });
+        });
+    });
+  });
+});
+
+describe("issue 64293", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be possible to run a query for a empty required parameter without a default value (metabase#64293)", () => {
+    const questionDetails: NativeQuestionDetails = {
+      name: "Question 1",
+      native: {
+        query: "SELECT * FROM PEOPLE WHERE state = {{State}}",
+        "template-tags": {
+          State: {
+            type: "text",
+            name: "State",
+            id: "1",
+            "display-name": "State",
+          },
+        },
+      },
+      parameters: [
+        createMockParameter({
+          id: "1",
+          slug: "State",
+          required: true,
+          name: "State",
+        }),
+      ],
+    };
+
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+
+    cy.findByPlaceholderText("State").should("exist");
+    cy.findByPlaceholderText("State").type("NY{enter}");
+
+    H.runButtonOverlay().should("exist");
+    H.runButtonOverlay().click();
+
+    H.ensureParameterColumnValue({
+      columnName: "STATE",
+      columnValue: "NY",
+    });
   });
 });

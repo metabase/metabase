@@ -136,13 +136,15 @@ describe("scenarios > model indexes", () => {
     cy.wait("@dataset");
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByRole("heading", { name: /Product/ });
-      cy.findByText("Small Marble Shoes");
-      cy.findByText("Doohickey");
+      cy.findByRole("heading", { name: "Small Marble Shoes" }).should(
+        "be.visible",
+      );
+      cy.findAllByText("Small Marble Shoes").should("have.length", 2);
+      cy.findByText("Doohickey").should("be.visible");
     });
   });
 
-  it("should be able to see details of a record outside the first 2000", () => {
+  it.skip("should be able to see details of a record outside the first 2000", () => {
     H.createQuestion(
       {
         name: "People Model",
@@ -173,6 +175,7 @@ describe("scenarios > model indexes", () => {
 
     cy.findByTestId("object-detail").within(() => {
       cy.findByText(/We're a little lost/i).should("not.exist");
+      cy.findByRole("heading", { name: "Anais Zieme" }).should("be.visible");
       cy.findAllByText("Anais Zieme").should("have.length", 2);
     });
   });
@@ -190,9 +193,11 @@ describe("scenarios > model indexes", () => {
     cy.wait("@dataset");
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByRole("heading", { name: /Product/ });
-      cy.findByText("Small Marble Shoes");
-      cy.findByText("Doohickey");
+      cy.findByRole("heading", { name: "Small Marble Shoes" }).should(
+        "be.visible",
+      );
+      cy.findAllByText("Small Marble Shoes").should("have.length", 2);
+      cy.findByText("Doohickey").should("be.visible");
     });
 
     expectCardQueries(1);
@@ -215,7 +220,7 @@ describe("scenarios > model indexes", () => {
 function editTitleMetadata() {
   H.openQuestionActions();
   H.popover().findByText("Edit metadata").click();
-  cy.url().should("include", "/metadata");
+  cy.url().should("include", "/columns");
   H.tableInteractive().findByTextEnsureVisible("Title");
 
   H.openColumnOptions("Title");

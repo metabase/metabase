@@ -71,7 +71,7 @@ export const LicenseTokenForm = ({
                       <UnstyledButton
                         component={Icon}
                         size="1rem"
-                        name="info_filled"
+                        name="info"
                         aria-label={t`Token details information`}
                         c="brand"
                       />

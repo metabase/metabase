@@ -1,9 +1,14 @@
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
-import { useTranslatedCollectionId } from "embedding-sdk-bundle/hooks/private/use-translated-collection-id";
-import type { SdkCollectionId } from "embedding-sdk-bundle/types/collection";
-import type { MetabaseDashboard } from "embedding-sdk-bundle/types/dashboard";
+import {
+  getCollectionIdSlugFromReference,
+  getCollectionIdValueFromReference,
+} from "embedding-sdk-bundle/store/collections";
+import type { MetabaseDashboard, SdkCollectionId } from "embedding-sdk-package";
 import { useCollectionQuery, useLocale } from "metabase/common/hooks";
 import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
+import { useSelector } from "metabase/lib/redux";
+
+import { createDashboardModalSchema } from "./CreateDashboardModal.schema";
 
 /**
  * @expand
@@ -38,31 +43,34 @@ const CreateDashboardModalInner = ({
   onClose,
 }: CreateDashboardModalProps) => {
   const { isLocaleLoading } = useLocale();
-  const { id, isLoading: isTranslateCollectionLoading } =
-    useTranslatedCollectionId({
-      id: initialCollectionId,
-    });
+
+  const collectionId = useSelector((state) =>
+    getCollectionIdValueFromReference(state, initialCollectionId),
+  );
+
+  const collectionIdSlug = useSelector((state) =>
+    getCollectionIdSlugFromReference(state, initialCollectionId),
+  );
 
   const { isLoading: isCollectionQueryLoading } = useCollectionQuery({
-    id,
+    id: collectionIdSlug,
   });
 
-  const isLoading = isTranslateCollectionLoading && isCollectionQueryLoading;
-
-  if (isLocaleLoading || isLoading) {
+  if (isLocaleLoading || isCollectionQueryLoading) {
     return null;
   }
 
   return (
     <CreateDashboardModalCore
-      opened={!isLoading && isOpen}
+      opened={!isCollectionQueryLoading && isOpen}
       onCreate={onCreate}
       onClose={() => onClose?.()}
-      collectionId={id}
+      collectionId={collectionId}
     />
   );
 };
 
-export const CreateDashboardModal = withPublicComponentWrapper(
-  CreateDashboardModalInner,
+export const CreateDashboardModal = Object.assign(
+  withPublicComponentWrapper(CreateDashboardModalInner),
+  { schema: createDashboardModalSchema },
 );

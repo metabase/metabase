@@ -10,6 +10,7 @@ import {
   alertOverrides,
   anchorOverrides,
   autocompleteOverrides,
+  avatarOverrides,
   badgeOverrides,
   buttonOverrides,
   calendarOverrides,
@@ -20,6 +21,7 @@ import {
   comboboxOverrides,
   dateInputOverrides,
   datePickerOverrides,
+  dateTimePickerOverrides,
   dividerOverrides,
   fileInputOverrides,
   hoverCardOverrides,
@@ -50,6 +52,7 @@ import {
   textOverrides,
   textareaOverrides,
   timeInputOverrides,
+  timelineOverrides,
   titleOverrides,
   tooltipOverrides,
 } from "./components";
@@ -64,12 +67,19 @@ export const breakpoints = {
 };
 export type BreakpointName = keyof typeof breakpoints;
 
-export const getThemeOverrides = (): MantineThemeOverride => ({
+export const getThemeOverrides = (
+  colorScheme: "light" | "dark" = "light",
+): MantineThemeOverride => ({
   focusClassName: Styles.focus,
   breakpoints,
-  colors: getThemeColors(),
+  colors: getThemeColors(colorScheme),
   primaryColor: "brand",
   primaryShade: 0,
+  // Store colorScheme in other property for access later
+  other: {
+    ...DEFAULT_METABASE_COMPONENT_THEME,
+    colorScheme,
+  },
   shadows: {
     // eslint-disable-next-line no-color-literals
     sm: "0px 1px 4px 2px rgba(0, 0, 0, 0.08)",
@@ -139,6 +149,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...alertOverrides,
     ...anchorOverrides,
     ...autocompleteOverrides,
+    ...avatarOverrides,
     ...badgeOverrides,
     ...buttonOverrides,
     ...calendarOverrides,
@@ -149,6 +160,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...codeOverrides,
     ...dateInputOverrides,
     ...datePickerOverrides,
+    ...dateTimePickerOverrides,
     ...dividerOverrides,
     ...fileInputOverrides,
     ...inputOverrides,
@@ -177,10 +189,10 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...textInputOverrides,
     ...textOverrides,
     ...timeInputOverrides,
+    ...timelineOverrides,
     ...titleOverrides,
     ...tooltipOverrides,
     ...hoverCardOverrides,
     ...listOverrides,
   },
-  other: DEFAULT_METABASE_COMPONENT_THEME,
 });

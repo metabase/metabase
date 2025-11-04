@@ -8,6 +8,7 @@ import type { DatabaseEvent } from "./database";
 import type { DownloadsEvent } from "./downloads";
 import type { EmbedFlowEvent } from "./embed-flow";
 import type { EmbedShareEvent } from "./embed-share";
+import type { EmbeddedAnalyticsJsEvent } from "./embedded-analytics-js";
 import type { EmbeddingHomepageEvent } from "./embedding-homepage";
 import type { SimpleEvent } from "./event";
 import type { InviteEvent } from "./invite";
@@ -31,6 +32,7 @@ export type SchemaEventMap = {
   downloads: DownloadsEvent;
   embed_flow: EmbedFlowEvent;
   embed_share: EmbedShareEvent;
+  embedded_analytics_js: EmbeddedAnalyticsJsEvent;
   embedding_homepage: EmbeddingHomepageEvent;
   simple_event: SimpleEvent;
   invite: InviteEvent;

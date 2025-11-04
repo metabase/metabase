@@ -241,7 +241,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .parent()
         .parent()
         .should("have.attr", "aria-selected", "true")
-        .should("have.css", "background-color", "rgb(80, 158, 227)");
+        .should("have.css", "background-color", "rgb(80, 158, 226)");
 
       addDashboardDestination();
       cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
@@ -2191,12 +2191,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           ],
           expressions: ["Net"],
           filters: [
-            "Product → Title is Doohickey",
             "Reviews - Product → Reviewer is Doohickey",
-            "ID is 7021",
-            "Net is equal to -80",
             "Product → Vendor is Doohickey",
             "User → Longitude is equal to -80",
+            "ID is 7021",
+            "Net is equal to -80",
+            "Product → Title is Doohickey",
           ],
           aggregations: ["Count", "Sum of Total"],
           breakouts: [

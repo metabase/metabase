@@ -2,7 +2,7 @@
  ["src" "resources"]
 
  :deps
- {net.snowflake/snowflake-jdbc-thin {:mvn/version "3.26.0"
+ {net.snowflake/snowflake-jdbc-thin {:mvn/version "3.26.1"
                                      :exclusions  [com.nimbusds/nimbus-jose-jwt
                                                    org.apache.commons/commons-lang3
                                                    org.bouncycastle/bcpkix-jdk18on

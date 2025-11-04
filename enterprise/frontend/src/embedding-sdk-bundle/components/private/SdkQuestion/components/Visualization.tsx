@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import type { FlexibleSizeProps } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
@@ -13,6 +14,7 @@ import { useLocale } from "metabase/common/hooks/use-locale";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import type Question from "metabase-lib/v1/Question";
+import type { CardDisplayType } from "metabase-types/api";
 
 import { useSdkQuestionContext } from "../context";
 
@@ -47,7 +49,16 @@ export const QuestionVisualization = ({
     onNavigateBack,
     updateQuestion,
     originalId,
+    onVisualizationChange,
   } = useSdkQuestionContext();
+
+  const display = useMemo(() => question?.display(), [question]);
+
+  useEffect(() => {
+    if (display && onVisualizationChange) {
+      onVisualizationChange(display as CardDisplayType);
+    }
+  }, [display, onVisualizationChange]);
 
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =
