@@ -223,7 +223,18 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
 
     H.getDashboardCard(3).within(() => {
       cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-      applyBrush(200, 300);
+      /**
+       * On master, dragging from 200 to 290 failed with 8 bars showing on the drilled question.
+       * On 56 and 55, dragging from 200 to 300 failed with 10 bars showing on the drilled question.
+       *
+       * I don't know what's the exact dimension Cypress on CI as I measure the distance between bars locally
+       * to be around 10.5px, that means the middle of the 9th bar should be around 290px (200 + 8.5 * 10.5).
+       *
+       * Maybe we didn't start exactly on the start of the first bar, so given this 2 failed cases, let's
+       * settle on the middle to avoid flakiness.
+       */
+      const APPROX_DISTANCE_TO_MID_9TH_BAR = 95;
+      applyBrush(200, 200 + APPROX_DISTANCE_TO_MID_9TH_BAR);
       cy.wait("@dataset");
     });
 
