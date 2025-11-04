@@ -70,13 +70,13 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       });
 
       cy.log("run the transform and make sure its table can be queried");
-      H.DataStudio.Transforms.runPageLink().click();
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
 
-      H.DataStudio.Transforms.targetPageLink().click();
+      H.DataStudio.Transforms.targetTab().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
       H.assertQueryBuilderRowCount(3);
@@ -109,13 +109,13 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       });
 
       cy.log("run the transform and make sure its table can be queried");
-      H.DataStudio.Transforms.runPageLink().click();
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
 
-      H.DataStudio.Transforms.targetPageLink().click();
+      H.DataStudio.Transforms.targetTab().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(3);
@@ -285,14 +285,14 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         });
 
         cy.log("run the transform and make sure its table can be queried");
-        H.DataStudio.Transforms.runPageLink().click();
+        H.DataStudio.Transforms.runTab().click();
         runTransformAndWaitForSuccess();
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
         });
         getRunSection().should("contain", "Executing Python transform");
 
-        H.DataStudio.Transforms.targetPageLink().click();
+        H.DataStudio.Transforms.targetTab().click();
         getTableLink().click();
         H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
         H.assertQueryBuilderRowCount(1);
@@ -348,13 +348,13 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         });
 
         cy.log("run the transform and make sure its table can be queried");
-        H.DataStudio.Transforms.runPageLink().click();
+        H.DataStudio.Transforms.runTab().click();
         runTransformAndWaitForSuccess();
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
         });
 
-        H.DataStudio.Transforms.targetPageLink().click();
+        H.DataStudio.Transforms.targetTab().click();
         getTableLink().click();
         H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
         H.assertQueryBuilderRowCount(3);
@@ -386,13 +386,13 @@ LIMIT
       getTransformsContent().should("be.visible");
 
       cy.log("run the transform and make sure its table can be queried");
-      H.DataStudio.Transforms.runPageLink().click();
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
 
-      H.DataStudio.Transforms.targetPageLink().click();
+      H.DataStudio.Transforms.targetTab().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(3);
@@ -442,7 +442,7 @@ LIMIT
         cy.wait("@createTransform");
       });
 
-      H.DataStudio.Transforms.targetPageLink().click();
+      H.DataStudio.Transforms.targetTab().click();
       getSchemaLink()
         .should("have.text", CUSTOM_SCHEMA)
         .should("have.attr", "aria-disabled", "true")
@@ -458,10 +458,10 @@ LIMIT
         .should("have.attr", "aria-disabled", "true");
 
       cy.log("run the transform and verify the table");
-      H.DataStudio.Transforms.runPageLink().click();
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
 
-      H.DataStudio.Transforms.targetPageLink().click();
+      H.DataStudio.Transforms.targetTab().click();
       getSchemaLink()
         .should("have.text", CUSTOM_SCHEMA)
         .should("have.attr", "aria-disabled", "false")
@@ -487,7 +487,7 @@ LIMIT
         cy.wait("@createTransform");
       });
 
-      H.DataStudio.Transforms.targetPageLink().click();
+      H.DataStudio.Transforms.targetTab().click();
       getSchemaLink()
         .should("have.text", TARGET_SCHEMA)
         .should("have.attr", "aria-disabled", "false");
@@ -496,10 +496,10 @@ LIMIT
         .should("have.attr", "aria-disabled", "true");
 
       cy.log("run the transform and verify the table");
-      H.DataStudio.Transforms.runPageLink().click();
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
 
-      H.DataStudio.Transforms.targetPageLink().click();
+      H.DataStudio.Transforms.targetTab().click();
       getSchemaLink().should("have.attr", "aria-disabled", "false");
       getTableLink().should("have.attr", "aria-disabled", "false").click();
       H.assertQueryBuilderRowCount(3);
@@ -625,10 +625,9 @@ LIMIT
     });
   });
 
-  describe("name and description", () => {
-    it("should be able to edit the name and description after creation", () => {
+  describe("name", () => {
+    it("should be able to edit the name after creation", () => {
       createMbqlTransform({ visitTransform: true });
-
       getTransformsContent()
         .findByPlaceholderText("Name")
         .clear()
@@ -638,26 +637,13 @@ LIMIT
       getTransformsContent()
         .findByPlaceholderText("Name")
         .should("have.value", "New name");
-
-      getTransformsContent()
-        .findByPlaceholderText("No description yet")
-        .clear()
-        .type("New description")
-        .blur();
-      H.undoToastList()
-        .should("have.length", 2)
-        .last()
-        .findByText("Transform description updated")
-        .should("be.visible");
-      getTransformsContent()
-        .findByPlaceholderText("No description yet")
-        .should("have.value", "New description");
     });
   });
 
   describe("tags", () => {
     it("should be able to add and remove tags", () => {
       createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.runTab().click();
       getTagsInput().click();
 
       H.popover().findByText("hourly").click();
@@ -677,6 +663,7 @@ LIMIT
 
     it("should be able to create tags inline", () => {
       createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.runTab().click();
       getTagsInput().type("New tag");
       H.popover().findByText("New tag").click();
       cy.wait("@createTag");
@@ -685,7 +672,7 @@ LIMIT
 
     it("should be able to update tags inline", () => {
       createMbqlTransform({ visitTransform: true });
-
+      H.DataStudio.Transforms.runTab().click();
       getTagsInput().click();
       H.popover()
         .findByText("hourly")
@@ -704,7 +691,7 @@ LIMIT
 
     it("should be able to delete tags inline", () => {
       createMbqlTransform({ visitTransform: true });
-
+      H.DataStudio.Transforms.runTab().click();
       getTagsInput().click();
       H.popover()
         .findByText("hourly")
@@ -732,15 +719,16 @@ LIMIT
       });
 
       cy.log("Add new tag to transform A");
+      H.DataStudio.Transforms.runTab().click();
       getTagsInput().type("New tag");
       H.popover().findByText("New tag").click();
       cy.wait("@createTag");
 
       cy.log("Navigate to transform B");
-      getNavSidebar().findByText("Transforms").click();
       getTransformsSidebar().findByText("Transform B").click();
 
       cy.log("Remove the new tag from transform B");
+      H.DataStudio.Transforms.runTab().click();
       getTagsInput().click();
       H.popover()
         .findByText("New tag")
@@ -753,10 +741,10 @@ LIMIT
       });
 
       cy.log("Navigate to transform A");
-      cy.findByTestId("admin-layout-sidebar").findByText("Transforms").click();
       getTransformsSidebar().findByText("Transform A").click();
 
       cy.log("The tag should be gone");
+      H.DataStudio.Transforms.runTab().click();
       getTagsInput()
         .parent()
         // Select the tag pill
