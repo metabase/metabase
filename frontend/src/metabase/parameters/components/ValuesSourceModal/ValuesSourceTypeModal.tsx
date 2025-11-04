@@ -542,9 +542,10 @@ const useParameterValues = ({
     [initialParameter, sourceType, sourceConfig],
   );
 
-  const [, handleFetchValues] = useAsyncFn(async () => {
-    return onFetchParameterValues({ parameter });
-  }, [onFetchParameterValues, parameter]);
+  const [, handleFetchValues] = useAsyncFn(
+    () => onFetchParameterValues({ parameter }),
+    [onFetchParameterValues, parameter],
+  );
 
   useLayoutEffect(() => {
     if (isValidSource) {

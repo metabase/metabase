@@ -31,9 +31,10 @@ const mapDispatchToProps = {
 function PublicActionLoader({ params, setErrorPage }: Props) {
   const [action, setAction] = useState<WritebackAction | null>(null);
 
-  const [, fetchAction] = useAsyncFn(async () => {
-    return PublicApi.action({ uuid: params.uuid });
-  }, [params.uuid]);
+  const [, fetchAction] = useAsyncFn(
+    () => PublicApi.action({ uuid: params.uuid }),
+    [params.uuid],
+  );
 
   useMount(() => {
     async function loadAction() {
