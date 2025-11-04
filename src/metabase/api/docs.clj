@@ -30,7 +30,7 @@
       ;; Create parent directory if it doesn't exist
       (when-let [parent-dir (.getParentFile file)]
         (.mkdirs parent-dir))
-      (json/encode-to spec (io/writer file) nil)
+      (json/encode-to spec (io/writer file) {:pretty true})
       (log/info "OpenAPI specification written to" openapi-file-path))
     (catch Throwable e
       (log/error e "Failed to write OpenAPI specification to file"))))
