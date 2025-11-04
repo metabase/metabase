@@ -22,6 +22,8 @@ import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs
 import { Stack } from "metabase/ui";
 import type { CollectionId, CollectionItemModel } from "metabase-types/api";
 
+import { collectionBrowserPropsSchema } from "./CollectionBrowser.schema";
+
 const USER_FACING_ENTITY_NAMES = [
   "collection",
   "dashboard",
@@ -35,13 +37,15 @@ export type CollectionBrowserListColumns =
   | "type"
   | "name"
   | "lastEditedBy"
-  | "lastEditedAt";
+  | "lastEditedAt"
+  | "archive";
 
 const COLLECTION_BROWSER_LIST_COLUMNS: CollectionBrowserListColumns[] = [
   "type",
   "name",
   "lastEditedBy",
   "lastEditedAt",
+  "archive",
 ];
 
 const ENTITY_NAME_MAP: Partial<
@@ -200,6 +204,7 @@ const CollectionBrowserWrapper = ({
   return <CollectionBrowserInner collectionId={collectionId} {...restProps} />;
 };
 
-export const CollectionBrowser = withPublicComponentWrapper(
-  CollectionBrowserWrapper,
+export const CollectionBrowser = Object.assign(
+  withPublicComponentWrapper(CollectionBrowserWrapper),
+  { schema: collectionBrowserPropsSchema },
 );

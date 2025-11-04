@@ -20,12 +20,14 @@ import {
 import { FilterFieldSet } from "../FilterFieldSet";
 
 type TagFilterWidgetProps = {
+  label: string;
   tagIds: TransformTagId[];
   tags: TransformTag[];
   onChange: (tagIds: TransformTagId[]) => void;
 };
 
 export function TagFilterWidget({
+  label,
   tagIds,
   tags,
   onChange,
@@ -45,7 +47,7 @@ export function TagFilterWidget({
     <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
       <Popover.Target>
         <FilterFieldSet
-          label={t`Tags`}
+          label={label}
           icon="label"
           displayValue={getDisplayValue(tagIds, tags)}
           onClick={toggle}

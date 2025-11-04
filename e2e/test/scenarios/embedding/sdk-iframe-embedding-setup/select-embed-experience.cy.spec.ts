@@ -1,4 +1,7 @@
-import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 import {
   assertDashboard,
@@ -39,7 +42,17 @@ H.describeWithSnowplow(suiteTitle, () => {
       visitNewEmbedPage();
       assertRecentItemName("dashboard", dashboardName);
 
+      H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
       H.waitForSimpleEmbedIframesToLoad();
+
+      getEmbedSidebar().within(() => {
+        cy.findByText("Next").click();
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_experience_completed",
+        event_detail: "default",
+      });
 
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("dashboard title is visible");
@@ -59,12 +72,16 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       visitNewEmbedPage();
       assertRecentItemName("card", questionName);
+      H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
 
-      getEmbedSidebar().findByText("Chart").click();
+      getEmbedSidebar().within(() => {
+        cy.findByText("Chart").click();
+        cy.findByText("Next").click();
+      });
 
       H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_experience_selected",
-        event_detail: "chart",
+        event: "embed_wizard_experience_completed",
+        event_detail: "custom=chart",
       });
 
       cy.wait("@cardQuery");
@@ -77,11 +94,15 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     it("shows exploration template when selected", { tags: "@skip" }, () => {
       visitNewEmbedPage();
-      getEmbedSidebar().findByText("Exploration").click();
+
+      getEmbedSidebar().within(() => {
+        cy.findByText("Exploration").click();
+        cy.findByText("Next").click();
+      });
 
       H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_experience_selected",
-        event_detail: "exploration",
+        event: "embed_wizard_experience_completed",
+        event_detail: "custom=exploration",
       });
 
       H.waitForSimpleEmbedIframesToLoad();
@@ -94,11 +115,15 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     it("shows browser template when selected", () => {
       visitNewEmbedPage();
-      getEmbedSidebar().findByText("Browser").click();
+
+      getEmbedSidebar().within(() => {
+        cy.findByText("Browser").click();
+        cy.findByText("Next").click();
+      });
 
       H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_experience_selected",
-        event_detail: "browser",
+        event: "embed_wizard_experience_completed",
+        event_detail: "custom=browser",
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
@@ -144,11 +169,14 @@ H.describeWithSnowplow(suiteTitle, () => {
         visitNewEmbedPage();
         cy.wait("@emptyRecentItems");
 
-        getEmbedSidebar().findByText("Chart").click();
+        getEmbedSidebar().within(() => {
+          cy.findByText("Chart").click();
+          cy.findByText("Next").click();
+        });
 
         H.expectUnstructuredSnowplowEvent({
-          event: "embed_wizard_experience_selected",
-          event_detail: "chart",
+          event: "embed_wizard_experience_completed",
+          event_detail: "custom=chart",
         });
 
         H.waitForSimpleEmbedIframesToLoad();
@@ -161,27 +189,10 @@ H.describeWithSnowplow(suiteTitle, () => {
     );
   });
 
-  // TODO: fix this flaky test
-  it(
-    "localizes the iframe preview when ?locale is passed",
-    { tags: "@skip" },
-    () => {
-      visitNewEmbedPage({ locale: "fr" });
-
-      // TODO: update this test once "Exploration" is localized in french.
-      getEmbedSidebar().findByText("Exploration").click();
-
-      H.waitForSimpleEmbedIframesToLoad();
-
-      H.getSimpleEmbedIframeContent().within(() => {
-        cy.log("data picker is localized");
-        cy.findByText("Choisissez vos données de départ").should("be.visible");
-      });
-    },
-  );
-
   it("should show a fake loading indicator in embed preview", () => {
-    cy.visit("/embed-js");
+    cy.visit(`/question/${ORDERS_QUESTION_ID}`);
+
+    H.openEmbedJsModal();
 
     cy.get("#iframe-embed-container")
       .findByTestId("preview-loading-indicator", { timeout: 20_000 })
@@ -193,5 +204,23 @@ H.describeWithSnowplow(suiteTitle, () => {
     );
 
     cy.findByTestId("preview-loading-indicator").should("not.exist");
+  });
+
+  it("shows Metabot experience when selected", () => {
+    visitNewEmbedPage();
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Metabot").click();
+      cy.findByText("Next").click();
+    });
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_experience_completed",
+      event_detail: "custom=metabot",
+    });
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Ask questions to AI.").should("be.visible");
+    });
   });
 });

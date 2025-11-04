@@ -14,6 +14,33 @@ const removeDirectory = (path) => {
   return null;
 };
 
+const copyDirectory = ({ source, destination }) => {
+  console.log({ source, destination });
+  try {
+    if (fs.existsSync(source)) {
+      fs.cpSync(source, destination, { recursive: true });
+    } else {
+      console.log("Source directory does not exist", source);
+    }
+  } catch (error) {
+    console.log("Error while copying directory", source, destination, error);
+  }
+  return null;
+};
+
+const readDirectory = (path) => {
+  try {
+    if (fs.existsSync(path)) {
+      return fs.readdirSync(path, { maxRetries: 10, recursive: true });
+    } else {
+      console.log("Directory does not exist in `removeDirectory`:", path);
+    }
+  } catch (error) {
+    console.log("Error while removing directory", path, error);
+  }
+  return null;
+};
+
 const deleteDownloadsFolder = () =>
   cy.task("removeDirectory", Cypress.config("downloadsFolder"));
 
@@ -114,6 +141,8 @@ const verifyDownloadTasks = {
 };
 
 export {
+  readDirectory,
+  copyDirectory,
   removeDirectory,
   deleteDownloadsFolder,
   addCustomCommands,

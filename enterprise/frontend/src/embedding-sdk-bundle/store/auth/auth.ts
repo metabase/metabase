@@ -4,10 +4,10 @@ import {
   jwtDefaultRefreshTokenFunction,
   openSamlLoginPopup,
   samlTokenStorage,
-  validateSessionToken,
+  validateSession,
 } from "embedding/auth-common";
 import * as MetabaseError from "embedding-sdk-bundle/errors";
-import { getIsLocalhost } from "embedding-sdk-bundle/lib/is-localhost";
+import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
@@ -25,7 +25,12 @@ import { getFetchRefreshTokenFn } from "../selectors";
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
   async (
-    { metabaseInstanceUrl, preferredAuthMethod, apiKey }: MetabaseAuthConfig,
+    {
+      metabaseInstanceUrl,
+      preferredAuthMethod,
+      apiKey,
+      isLocalHost,
+    }: MetabaseAuthConfig & { isLocalHost?: boolean },
     { dispatch },
   ) => {
     // remove any stale tokens that might be there from a previous session=
@@ -34,7 +39,7 @@ export const initAuth = createAsyncThunk(
     // Setup JWT or API key
     const isValidInstanceUrl =
       metabaseInstanceUrl && metabaseInstanceUrl?.length > 0;
-    const isValidApiKeyConfig = apiKey && getIsLocalhost();
+    const isValidApiKeyConfig = apiKey && (isLocalHost || getIsLocalhost());
 
     if (isValidApiKeyConfig) {
       // API key setup
@@ -80,6 +85,10 @@ export const initAuth = createAsyncThunk(
     ]);
 
     if (!user.payload) {
+      if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession) {
+        throw MetabaseError.EXISTING_USER_SESSION_FAILED();
+      }
+
       throw MetabaseError.USER_FETCH_FAILED();
     }
     if (!siteSettings.payload) {
@@ -110,7 +119,7 @@ export const refreshTokenAsync = createAsyncThunk(
       preferredAuthMethod,
       fetchRequestToken: customGetRefreshToken,
     });
-    validateSessionToken(session);
+    validateSession(session);
 
     return session;
   },

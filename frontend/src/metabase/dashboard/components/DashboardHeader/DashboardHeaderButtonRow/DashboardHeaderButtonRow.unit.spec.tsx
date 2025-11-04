@@ -75,10 +75,6 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     icon: "clock",
     tooltip: "Auto-refresh",
   },
-  [DASHBOARD_ACTION.NIGHT_MODE_TOGGLE]: {
-    icon: "sun",
-    tooltip: "Daytime mode",
-  },
   [DASHBOARD_ACTION.FULLSCREEN_TOGGLE]: {
     icon: "expand",
     tooltip: "Enter fullscreen",
@@ -112,8 +108,6 @@ const setup = ({
   isFullscreen = false,
   isPublic,
   isAnalyticsDashboard,
-  hasNightModeToggle = true,
-  isNightMode = false,
   isAdmin = false,
 }: Partial<{
   isEditing: boolean;
@@ -121,8 +115,6 @@ const setup = ({
   isFullscreen: boolean;
   isPublic: boolean;
   isAnalyticsDashboard: boolean;
-  hasNightModeToggle: boolean;
-  isNightMode: boolean;
   isAdmin: boolean;
 }>) => {
   setupBookmarksEndpoints([]);
@@ -165,9 +157,6 @@ const setup = ({
           setRefreshElapsedHook={jest.fn()}
           isFullscreen={isFullscreen}
           onFullscreenChange={jest.fn()}
-          hasNightModeToggle={hasNightModeToggle}
-          onNightModeChange={jest.fn()}
-          isNightMode={isNightMode}
           downloadsEnabled={{ pdf: false }}
           dashboardActions={DASHBOARD_APP_ACTIONS}
         >
@@ -303,9 +292,7 @@ describe("DashboardHeaderButtonRow", () => {
     it("should show view-related buttons", async () => {
       setup({
         isEditing: false,
-        isNightMode: false,
         isAnalyticsDashboard: false,
-        hasNightModeToggle: true,
         isAdmin: true,
       });
       await expectButtonsToStrictMatchHeader({
@@ -345,19 +332,6 @@ describe("DashboardHeaderButtonRow", () => {
       setup({ isEditing: false, isPublic: true });
       await expectButtonsToExistInHeader({
         expectedButtons: [DASHBOARD_ACTION.FULLSCREEN_TOGGLE],
-      });
-    });
-
-    it("should show night mode toggle when in fullscreen", async () => {
-      setup({
-        isEditing: false,
-        isFullscreen: true,
-        hasNightModeToggle: true,
-        isNightMode: true,
-      });
-
-      await expectButtonsToExistInHeader({
-        expectedButtons: [DASHBOARD_ACTION.NIGHT_MODE_TOGGLE],
       });
     });
   });

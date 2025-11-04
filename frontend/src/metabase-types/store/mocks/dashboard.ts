@@ -33,7 +33,6 @@ export const createMockDashboardState = (
     toastDashboardId: null,
   },
   tabDeletions: {},
-  theme: "light",
   ...opts,
 });
 

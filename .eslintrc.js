@@ -136,7 +136,7 @@ module.exports = {
   },
   env: {
     browser: true,
-    es6: true,
+    es2020: true,
     commonjs: true,
     jest: true,
     "jest/globals": true,
@@ -203,6 +203,7 @@ module.exports = {
         "frontend/src/metabase/admin/**/*",
         "frontend/src/metabase/setup/**/*",
         "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
+        "enterprise/frontend/src/metabase-enterprise/embedding/**/*",
         "frontend/lint/**/*",
         "*.stories.*",
         "**/.storybook/*",

@@ -132,7 +132,6 @@ export interface VisualizationProps {
   isVisualizerViz: boolean;
   isEditing: boolean;
   isMobile: boolean;
-  isNightMode: boolean;
   isSettings: boolean;
   showAllLegendItems?: boolean;
   isRawTable?: boolean;
@@ -217,7 +216,6 @@ export type VisualizationPassThroughProps = {
   isEditing?: boolean;
   isEditingParameter?: boolean;
   isFullscreen?: boolean;
-  isNightMode?: boolean;
   isPreviewing?: boolean;
   totalNumGridCols?: number;
   onTogglePreviewing?: () => void;
@@ -243,6 +241,14 @@ export type VisualizationPassThroughProps = {
    * Extra buttons to be shown in the table footer (if the visualization is a table)
    */
   tableFooterExtraButtons?: React.ReactNode;
+
+  /**
+   * Props used for Audit Table visualization
+   */
+  isSelectable?: boolean;
+  rowChecked?: [];
+  onAllSelectClick?: () => void;
+  onRowSelectClick?: () => void;
 };
 
 export type ColumnSettingDefinition<TValue, TProps = unknown> = {

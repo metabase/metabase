@@ -101,6 +101,7 @@ export const createMockTokenFeatures = (
   advanced_permissions: false,
   audit_app: false,
   cache_granular_controls: false,
+  dependencies: false,
   disable_password_login: false,
   cloud_custom_smtp: false,
   content_translation: false,
@@ -139,6 +140,8 @@ export const createMockTokenFeatures = (
   documents: false,
   semantic_search: false,
   transforms: false,
+  remote_sync: false,
+  "transforms-python": false,
   ...opts,
 });
 
@@ -381,6 +384,8 @@ export const createMockSettings = (
   "last-used-native-database-id": 1,
   "embedding-homepage": "hidden",
   "setup-license-active-at-setup": false,
+  "embedding-hub-test-embed-snippet-created": false,
+  "embedding-hub-production-embed-snippet-created": false,
   "notebook-native-preview-shown": false,
   "notebook-native-preview-sidebar-width": null,
   "query-analysis-enabled": false,

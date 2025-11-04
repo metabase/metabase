@@ -61,7 +61,7 @@ describe("browse > models", () => {
     cy.get("@open").should("have.been.calledOnce");
     cy.get("@open").should(
       "have.been.calledOnceWithExactly",
-      `/question/${ORDERS_MODEL_ID}-orders-model`,
+      `/model/${ORDERS_MODEL_ID}-orders-model`,
       "_blank",
     );
   });
@@ -99,6 +99,25 @@ H.describeWithSnowplow("scenarios > browse", () => {
     H.expectUnstructuredSnowplowEvent({
       event: "browse_data_table_clicked",
       table_id: PRODUCTS_ID,
+    });
+  });
+
+  it("can generate x-ray dashboard from a browse page", () => {
+    cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
+
+    cy.findByTestId("browse-schemas").within(() => {
+      cy.findAllByRole("link")
+        .filter(":contains(People)")
+        .should("be.visible")
+        .realHover();
+      cy.findAllByLabelText("X-ray this table").filter(":visible").click();
+    });
+
+    H.expectNoBadSnowplowEvents();
+    H.expectUnstructuredSnowplowEvent({
+      event: "x-ray_clicked",
+      event_detail: "table",
+      triggered_from: "browse_database",
     });
   });
 
@@ -152,6 +171,10 @@ H.describeWithSnowplow("scenarios > browse", () => {
     H.browseDatabases().click();
     cy.findByRole("link", { name: /Learn about our data/ }).click();
     cy.location("pathname").should("eq", "/reference/databases");
+    H.expectNoBadSnowplowEvents();
+    H.expectUnstructuredSnowplowEvent({
+      event: "learn_about_our_data_clicked",
+    });
     cy.go("back");
     cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("heading", { name: "Products" }).click();
@@ -302,6 +325,9 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
 
     cy.log("Visit Model 1");
     cy.findByRole("heading", { name: "Model 1" }).click();
+
+    cy.log("make sure data is loaded");
+    H.tableInteractive().findByText("Rustic Paper Wallet").should("be.visible");
 
     browseModels();
 

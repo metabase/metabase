@@ -15,21 +15,28 @@
                      #_{:clj-kondo/ignore [:missing-protocol-method]}
                      (reify
                        lib.metadata.protocols/MetadataProvider
-                       (metadatas [_this metadata-type ids]
+                       (metadatas [_this {metadata-type :lib/type, ids :id, :as _metadata-spec}]
                          (case metadata-type
                            :metadata/table
-                           (->> (for [id ids]
-                                  (do
-                                    (swap! fetch-count inc)
-                                    (when (not= id missing-id)
-                                      (assoc (meta/table-metadata :venues) :id id))))
-                                (filter some?))))))]
+                           (do
+                             (swap! fetch-count + (count ids))
+                             (for [id    ids
+                                   :when (not= id missing-id)]
+                               (assoc (meta/table-metadata :venues) :id id)))))))
+        cached-ids (fn []
+                     (into #{}
+                           (map :id)
+                           (lib.metadata.protocols/cached-metadatas provider :metadata/table #{1 2 missing-id})))]
     (testing "Initial fetch"
+      (is (= #{}
+             (cached-ids)))
       (is (=? {:id 1}
               (lib.metadata.protocols/table provider 1)))
       (is (= 1
              @fetch-count)))
     (testing "Second fetch"
+      (is (= #{1}
+             (cached-ids)))
       (is (=? {:id 1}
               (lib.metadata.protocols/table provider 1)))
       (is (= 1
@@ -41,29 +48,35 @@
              @fetch-count)))
     (testing "Bulk fetch"
       (is (=? [{:id 1}]
-              (lib.metadata.protocols/metadatas provider :metadata/table #{1})))
+              (lib.metadata.protocols/metadatas provider {:lib/type :metadata/table, :id #{1}})))
       (is (= 1
              @fetch-count))
       (testing "Fetch a new Table, 1 Table already fetched"
         (is (=? [{:id 1}
                  {:id 2}]
-                (lib.metadata.protocols/metadatas provider :metadata/table #{1 2})))
+                (lib.metadata.protocols/metadatas provider {:lib/type :metadata/table, :id #{1 2}})))
         (is (= 2
                @fetch-count)))
       (testing "Bulk fetch again, should use cached results"
+        (is (= #{1 2}
+               (cached-ids)))
         (is (=? [{:id 1}
                  {:id 2}]
-                (lib.metadata.protocols/metadatas provider :metadata/table #{1 2})))
+                (lib.metadata.protocols/metadatas provider {:lib/type :metadata/table, :id #{1 2}})))
         (is (= 2
                @fetch-count)))
       (testing "Fetch a missing id, first fetch should inc fetch count"
-        (let [results (lib.metadata.protocols/metadatas provider :metadata/table #{1 missing-id})]
+        (let [results (lib.metadata.protocols/metadatas provider {:lib/type :metadata/table, :id #{1 missing-id}})]
           (is (=? [{:id 1}]
                   results)))
         (is (= 3
                @fetch-count)))
       (testing "Fetch a missing id, second fetch should not inc fetch count"
-        (let [results (lib.metadata.protocols/metadatas provider :metadata/table #{1 missing-id})]
+        (is (= #{1 2}
+               (cached-ids))
+            (str "cached-ids should not return the missing ID since we didn't actually fetch anything for it, but we"
+                 " should have a tombstone entry in the cache for it under the hood."))
+        (let [results (lib.metadata.protocols/metadatas provider {:lib/type :metadata/table, :id #{1 missing-id}})]
           (is (=? [{:id 1}]
                   results)))
         (is (= 3

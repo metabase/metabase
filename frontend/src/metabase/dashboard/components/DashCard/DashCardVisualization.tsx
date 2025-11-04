@@ -21,7 +21,6 @@ import { duration } from "metabase/lib/formatting";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
@@ -47,6 +46,7 @@ import {
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
   createDataSource,
   isVisualizerDashboardCard,
@@ -128,16 +128,11 @@ const DashCardLoadingView = ({
           <Box style={styles} className={CS.absolute} left={12} bottom={12}>
             <HoverCard width={288} offset={4} position="bottom-start">
               <HoverCard.Target>
-                <Button
-                  w={24}
-                  h={24}
-                  p={0}
-                  classNames={{ root: S.invertInNightMode, label: cx(CS.flex) }}
-                >
+                <Button w={24} h={24} p={0} classNames={{ label: cx(CS.flex) }}>
                   <Icon name="snail" size={12} d="flex" />
                 </Button>
               </HoverCard.Target>
-              <HoverCard.Dropdown ml={-8} className={EmbedFrameS.dropdown}>
+              <HoverCard.Dropdown ml={-8}>
                 <div className={cx(CS.p2, CS.textCentered)}>
                   <Text fw="bold">{t`Waiting for your data`}</Text>
                   <Text lh="1.5" mt={4}>
@@ -166,6 +161,26 @@ const DashCardLoadingView = ({
   );
 };
 
+/**
+ * This populates the `data` field of each series with an empty
+ * object if it doesn't already have one. This is useful to compute
+ * the visualization settings correctly before data is loaded.
+ *
+ * @param series the series to sanitize
+ */
+function sanitizeSeriesData(series: RawSeries | { card: Card }[]) {
+  return series.map((s) => {
+    if ("data" in s) {
+      // If the series already has data, we're good
+      return s;
+    }
+
+    return {
+      ...s,
+      data: { cols: [], rows: [] },
+    };
+  });
+}
 interface DashCardVisualizationProps {
   dashcard: DashboardCard;
   series: Series;
@@ -209,7 +224,7 @@ interface DashCardVisualizationProps {
 
 export function DashCardVisualization({
   dashcard,
-  series: untranslatedRawSeries,
+  series: rawSeries,
   question,
   metadata,
   getHref,
@@ -238,7 +253,6 @@ export function DashCardVisualization({
     dashcardMenu,
     getClickActionMode,
     isEditing = false,
-    shouldRenderAsNightMode,
     isFullscreen = false,
     isEditingParameter,
     onChangeLocation,
@@ -248,10 +262,6 @@ export function DashCardVisualization({
 
   const inlineParameters = useSelector((state) =>
     getDashCardInlineValuePopulatedParameters(state, dashcard.id),
-  );
-
-  const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
-    untranslatedRawSeries,
   );
 
   const visualizerErrMsg = useMemo(() => {
@@ -274,7 +284,7 @@ export function DashCardVisualization({
     }
   }, [dashcard, rawSeries]);
 
-  const series = useMemo(() => {
+  const untranslatedSeries = useMemo(() => {
     if (
       !dashcard ||
       !rawSeries ||
@@ -317,27 +327,22 @@ export function DashCardVisualization({
     );
     const card = extendCardWithDashcardSettings(
       {
+        // Visualizer click handling code expect visualizer cards not to have card.id
+        name: dashcard.card.name,
+        description: dashcard.card.description,
         display,
-        name: settings["card.title"],
         visualization_settings: settings,
       } as Card,
       _.omit(dashcard.visualization_settings, "visualization"),
     ) as Card;
 
     if (!didEveryDatasetLoad) {
-      return [{ card }];
+      return [{ card }] as RawSeries;
     }
+
     const series: RawSeries = [
       {
-        card: extendCardWithDashcardSettings(
-          {
-            display,
-            name: settings["card.title"],
-            visualization_settings: settings,
-          } as Card,
-          _.omit(dashcard.visualization_settings, "visualization"),
-        ) as Card,
-
+        card,
         data: mergeVisualizerData({
           columns,
           columnValuesMapping,
@@ -350,6 +355,8 @@ export function DashCardVisualization({
         started_at: new Date().toISOString(),
 
         columnValuesMapping,
+
+        json_query: rawSeries[0].json_query,
       },
     ];
 
@@ -370,6 +377,9 @@ export function DashCardVisualization({
 
     return series;
   }, [rawSeries, dashcard, datasets]);
+
+  const series =
+    PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(untranslatedSeries);
 
   const handleOnUpdateVisualizationSettings = useCallback(
     (settings: VisualizationSettings) => {
@@ -478,7 +488,9 @@ export function DashCardVisualization({
   );
 
   const cardTitle = useMemo(() => {
-    const settings = getComputedSettingsForSeries(series);
+    const settings = getComputedSettingsForSeries(
+      sanitizeSeriesData(series),
+    ) as ComputedVisualizationSettings;
     return settings["card.title"] ?? series?.[0].card.name ?? "";
   }, [series]);
 
@@ -573,7 +585,6 @@ export function DashCardVisualization({
     >
       <Visualization
         className={cx(CS.flexFull, {
-          [S.isNightMode]: shouldRenderAsNightMode,
           [CS.overflowAuto]: visualizationOverlay,
           [CS.overflowHidden]: !visualizationOverlay,
         })}
@@ -598,7 +609,6 @@ export function DashCardVisualization({
         isDashboard
         isSlow={isSlow}
         isFullscreen={isFullscreen}
-        isNightMode={shouldRenderAsNightMode}
         isEditing={isEditing}
         isPreviewing={isPreviewing}
         isEditingParameter={isEditingParameter}

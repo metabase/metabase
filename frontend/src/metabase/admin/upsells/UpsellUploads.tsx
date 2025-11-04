@@ -24,6 +24,12 @@ export const UpsellUploads = ({ location }: { location: string }) => {
     return null;
   }
 
+  const upgrade = (
+    <strong key="upgrade">{c(
+      "in the sentence 'Upgrade to Metabase Pro to manage your uploaded files and available storage space.'",
+    ).t`Upgrade to Metabase Pro`}</strong>
+  );
+
   return (
     <UpsellCard
       title={t`Manage your uploads`}
@@ -33,9 +39,8 @@ export const UpsellUploads = ({ location }: { location: string }) => {
       location={location}
       onClick={triggerUpsellFlow}
     >
-      {c("{0} is the string 'Upgrade to Metabase Pro'").jt`${(
-        <strong key="upgrade">{t`Upgrade to Metabase Pro`}</strong>
-      )} to manage your uploaded files and available storage space.`}
+      {c("{0} is the string 'Upgrade to Metabase Pro'").jt`${upgrade}
+       to manage your uploaded files and available storage space.`}
     </UpsellCard>
   );
 };

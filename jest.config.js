@@ -15,7 +15,6 @@ const esmPackages = [
   "jose",
   "property-information",
   "rehype-external-links",
-  "screenfull",
   "space-separated-tokens",
   "stringify-entities",
   "unist-util-visit-parents",
@@ -62,6 +61,7 @@ const baseConfig = {
      * As we use SDK components in new iframe embedding, we need to import them here.
      **/
     "sdk-specific-imports": "<rootDir>/frontend/src/metabase/lib/noop.js",
+    "docs/(.*)$": "<rootDir>/docs/$1",
   },
   transformIgnorePatterns: [
     `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,

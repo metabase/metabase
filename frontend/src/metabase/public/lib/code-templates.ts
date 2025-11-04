@@ -34,7 +34,13 @@ function transformEmbeddingDisplayToHashOptions(
   return { ...displayOptions, downloads };
 }
 
-function getIframeQuerySource(displayOptions: EmbeddingDisplayOptions) {
+function getIframeQuerySource(
+  displayOptions: EmbeddingDisplayOptions | undefined,
+) {
+  if (!displayOptions) {
+    return "";
+  }
+
   return JSON.stringify(getIframeQueryWithoutDefaults(displayOptions));
 }
 
@@ -63,6 +69,7 @@ export const node = {
     resourceId,
     params,
     displayOptions,
+    withIframeSnippet,
   }: CodeSampleParameters) =>
     `// you will need to install via 'npm install jsonwebtoken' or in your package.json
 
@@ -78,8 +85,13 @@ const payload = {
 };
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
 
-const iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token +
-  ${node.getIframeQuerySource(displayOptions)};`,
+${
+  withIframeSnippet
+    ? `const iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token +
+  ${node.getIframeQuerySource(displayOptions)};`
+    : ""
+}
+`.trim(),
 };
 
 export const python = {
@@ -99,6 +111,7 @@ export const python = {
     resourceId,
     params,
     displayOptions,
+    withIframeSnippet,
   }: CodeSampleParameters) =>
     `# You'll need to install PyJWT via pip 'pip install PyJWT' or your project packages file
 
@@ -115,8 +128,8 @@ payload = {
 }
 token = jwt.encode(payload, METABASE_SECRET_KEY, algorithm="HS256")
 
-iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token + ${python.getIframeQuerySource(displayOptions)}
-`,
+${withIframeSnippet ? `iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token + ${python.getIframeQuerySource(displayOptions)}` : ""}
+`.trim(),
 };
 
 export const ruby = {
@@ -141,6 +154,7 @@ export const ruby = {
     resourceId,
     params,
     displayOptions,
+    withIframeSnippet,
   }: CodeSampleParameters) =>
     `# you will need to install 'jwt' gem first via 'gem install jwt' or in your project Gemfile
 
@@ -156,8 +170,13 @@ payload = {
 }
 token = JWT.encode payload, METABASE_SECRET_KEY
 
-iframe_url = METABASE_SITE_URL + "/embed/${resourceType}/" + token +
-  ${ruby.getIframeQuerySource(displayOptions)}`,
+${
+  withIframeSnippet
+    ? `iframe_url = METABASE_SITE_URL + "/embed/${resourceType}/" + token +
+  ${ruby.getIframeQuerySource(displayOptions)}`
+    : ""
+}
+`.trim(),
 };
 
 export const clojure = {
@@ -175,6 +194,7 @@ export const clojure = {
     resourceId,
     params,
     displayOptions,
+    withIframeSnippet,
   }: CodeSampleParameters) =>
     `(require '[buddy.sign.jwt :as jwt])
 
@@ -188,8 +208,13 @@ export const clojure = {
 
 (def token (jwt/sign payload metabase-secret-key))
 
-(def iframe-url (str metabase-site-url "/embed/${resourceType}/" token
-  ${clojure.getIframeQuerySource(displayOptions)}))`,
+${
+  withIframeSnippet
+    ? `(def iframe-url (str metabase-site-url "/embed/${resourceType}/" token
+  ${clojure.getIframeQuerySource(displayOptions)}))`
+    : ""
+}
+`.trim(),
 };
 
 export const getHtmlSource = ({ iframeUrl }: { iframeUrl: string }) =>
@@ -218,3 +243,21 @@ export const getPugSource = ({ iframeUrl }: { iframeUrl: string }) =>
     height="600"
     allowtransparency
 )`;
+
+export const getPublicEmbedHTMLWithResizer = (iframeUrl: string): string => {
+  // Extract the site URL (origin) from the iframe URL
+  // iframeUrl is typically a JSON string like "\"https://metabase.example.com/public/document/uuid\""
+  const urlMatch = iframeUrl.match(/https?:\/\/[^/]+/);
+  const siteUrl = urlMatch ? urlMatch[0] : "";
+
+  return `<iframe
+    src=${iframeUrl}
+    frameborder="0"
+    width="800"
+    allowtransparency
+></iframe>
+<script src="${siteUrl}/app/iframeResizer.js"></script>
+<script>
+  iFrameResize({}, 'iframe');
+</script>`;
+};

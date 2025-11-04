@@ -744,6 +744,20 @@
 (defmacro ^:private with-temp-user-email! [[email-binding] & body]
   `(do-with-temp-user-email! (fn [~email-binding] ~@body)))
 
+(deftest create-user-setup-source-test
+  (testing "POST /api/user"
+    (testing "Inviting a teammate from the setup page should create a user with admin permissions"
+      (mt/with-model-cleanup [:model/User]
+        (mt/with-fake-inbox
+          (let [resp (mt/user-http-request :crowberto :post 200 "user"
+                                           {:first_name (mt/random-name)
+                                            :last_name (mt/random-name)
+                                            :email (mt/random-email)
+                                            :source "setup"})]
+            (is (= [{:id (:id (perms-group/all-users))} {:id (:id (perms-group/admin))}]
+                   (:user_group_memberships resp)))
+            (is (true? (:is_superuser resp)))))))))
+
 (deftest create-user-set-groups-test
   (testing "POST /api/user"
     (mt/with-premium-features #{}
@@ -1080,6 +1094,26 @@
           (is (= "You don't have permissions to do that."
                  (client/client creds :put 403 (format "user/%d" (u/the-id user))
                                 {:email "adifferentemail@metabase.com"}))))))))
+
+(deftest update-permissions-test-2
+  (testing "PUT /api/user/:id"
+    (testing "Google auth users can change their locale"
+      (mt/with-temp [:model/User user {:email "anemail@metabase.com"
+                                       :password "def123"
+                                       :sso_source "google"}]
+        (let [creds {:username "anemail@metabase.com"
+                     :password "def123"}]
+          (client/client creds :put 200 (format "user/%d" (u/the-id user))
+                         {:locale "id"}))))
+
+    (testing "LDAP users can change their locale"
+      (mt/with-temp [:model/User user {:email "anemail@metabase.com"
+                                       :password "def123"
+                                       :sso_source "ldap"}]
+        (let [creds {:username "anemail@metabase.com"
+                     :password "def123"}]
+          (client/client creds :put 200 (format "user/%d" (u/the-id user))
+                         {:locale "id"}))))))
 
 (defn- do-with-preserved-rasta-personal-collection-name! [thunk]
   (let [{collection-name :name, :keys [slug id]} (collection/user->personal-collection (mt/user->id :rasta))]

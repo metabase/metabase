@@ -19,6 +19,7 @@ import {
   QuestionVisualization,
   SaveButton,
   SdkSaveQuestionForm,
+  SqlParametersList,
   Summarize,
   SummarizeDropdown,
   Title,
@@ -75,8 +76,7 @@ export type DrillThroughQuestionProps = Omit<
  * @expand
  * @category InteractiveQuestion
  */
-export type SdkQuestionProps = SdkQuestionProviderProps &
-  SdkQuestionDefaultViewProps &
+export type SdkQuestionProps = SdkQuestionDefaultViewProps &
   Omit<SdkQuestionProviderProps, "componentPlugins"> & {
     plugins?: SdkQuestionProviderProps["componentPlugins"];
   };
@@ -110,6 +110,7 @@ export type SdkQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+  SqlParametersList: typeof SqlParametersList;
 };
 
 export const _SdkQuestion = ({
@@ -126,6 +127,7 @@ export const _SdkQuestion = ({
   entityTypes,
   targetCollection,
   initialSqlParameters,
+  hiddenParameters,
   withDownloads = false,
   targetDashboardId,
   backToDashboard,
@@ -139,6 +141,7 @@ export const _SdkQuestion = ({
   title,
   withResetButton = true,
   withChartTypeSelector = true,
+  onVisualizationChange,
 }: SdkQuestionProps): JSX.Element | null => (
   <SdkQuestionProvider
     questionId={questionId}
@@ -153,11 +156,13 @@ export const _SdkQuestion = ({
     entityTypes={entityTypes}
     targetCollection={targetCollection}
     initialSqlParameters={initialSqlParameters}
+    hiddenParameters={hiddenParameters}
     withDownloads={withDownloads}
     targetDashboardId={targetDashboardId}
     backToDashboard={backToDashboard}
     getClickActionMode={getClickActionMode}
     navigateToNewCard={navigateToNewCard}
+    onVisualizationChange={onVisualizationChange}
   >
     {children ?? (
       <SdkQuestionDefaultView
@@ -197,6 +202,7 @@ const subComponents: SdkQuestionComponents = {
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
   VisualizationButton: VisualizationButton,
+  SqlParametersList: SqlParametersList,
 };
 
 export const SdkQuestion = Object.assign(

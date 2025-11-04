@@ -22,7 +22,7 @@ export const getNewQuestionUrl = ({
         } as const)
       : ({
           mode: "query",
-          type: "native",
+          DEPRECATED_RAW_MBQL_type: "native",
           creationType: "native_question",
         } as const);
 

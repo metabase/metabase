@@ -50,12 +50,9 @@
 (defn- find-and-sync-new-table
   [database table-name schema-name]
   (let [driver (driver.u/database->driver database)
-        {db-tables :tables} (driver/describe-database driver database)]
-    (if-let [table (some (fn [table-in-db]
-                           (when (and (= schema-name (:schema table-in-db))
-                                      (= table-name (:name table-in-db)))
-                             table-in-db))
-                         db-tables)]
+        table  {:name   table-name
+                :schema schema-name}]
+    (if (driver/table-exists? driver database table)
       (let [created (sync-tables/create-or-reactivate-table! database table)]
         (doto created
           sync/sync-table!
@@ -67,6 +64,8 @@
                         :schema_name schema-name
                         :table_name  table-name}))))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/db/attached_datawarehouse"
   "Sync the attached datawarehouse. Can provide in the body:
   - table_name and schema_name: both strings. Will look for an existing table and sync it, otherwise will try to find a
