@@ -29,7 +29,7 @@
   max-users-allowed
   plan-alias
   TokenStatus
-  clear-cache!]
+  clear-cache]
 
  (metabase.premium-features.settings
   active-users-count

@@ -44,7 +44,7 @@
       (let [add-on {:product-type product-type}]
         (events/publish-event! :event/cloud-add-on-purchase {:details {:add-on add-on}, :user-id api/*current-user-id*})
         (hm.client/call :change-add-ons :upsert-add-ons [add-on]))
-      (premium-features/clear-cache!)
+      (premium-features/clear-cache)
       {:status 200 :body {}}
       (catch Exception e
         (log/warnf e "Error adding purchasing add-on '%s'" product-type)

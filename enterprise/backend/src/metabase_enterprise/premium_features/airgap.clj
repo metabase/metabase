@@ -46,3 +46,7 @@
 (defenterprise decode-airgap-token
   "Decodes the airgap token and returns the decoded token."
   :feature :none [token] (decode-token token))
+
+(defenterprise token-valid-now?
+  "Check that the decoded token is still valid and returns the decoded token."
+  :feature :none [token-status] (valid-now? token-status))

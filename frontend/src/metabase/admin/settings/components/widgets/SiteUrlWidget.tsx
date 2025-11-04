@@ -9,10 +9,8 @@ import { Box, Text } from "metabase/ui";
 
 import { SettingHeader } from "../SettingHeader";
 
-import { SetByEnvVarWrapper } from "./AdminSettingInput";
-
 export function SiteUrlWidget() {
-  const { value, updateSetting, description, isLoading, settingDetails } =
+  const { value, updateSetting, description, isLoading } =
     useAdminSetting("site-url");
   const isHosted = useHasTokenFeature("hosting");
   const [errorMessage, setErrorMessage] = useState("");
@@ -48,20 +46,18 @@ export function SiteUrlWidget() {
           </>
         }
       />
-      <SetByEnvVarWrapper settingKey="site-url" settingDetails={settingDetails}>
-        <InputWithSelectPrefix
-          value={value || ""}
-          onChange={(newValue: string) => handleChange(newValue)}
-          prefixes={["https://", "http://"]}
-          defaultPrefix="http://"
-          placeholder={"http://example.com"}
-        />
-        {errorMessage && (
-          <Text size="sm" color="danger" mt="sm">
-            {errorMessage}
-          </Text>
-        )}
-      </SetByEnvVarWrapper>
+      <InputWithSelectPrefix
+        value={value || ""}
+        onChange={(newValue: string) => handleChange(newValue)}
+        prefixes={["https://", "http://"]}
+        defaultPrefix="http://"
+        placeholder={"http://example.com"}
+      />
+      {errorMessage && (
+        <Text size="sm" color="danger" mt="sm">
+          {errorMessage}
+        </Text>
+      )}
     </Box>
   );
 }

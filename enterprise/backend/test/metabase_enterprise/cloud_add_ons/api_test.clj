@@ -58,9 +58,9 @@
                 (with-redefs [hm.client/call               (fn [& args]
                                                              (swap! store-api-calls conj args)
                                                              nil)
-                              premium-features/clear-cache! (fn [& args]
-                                                              (swap! clear-token-cache-calls conj args)
-                                                              nil)]
+                              premium-features/clear-cache (fn [& args]
+                                                             (swap! clear-token-cache-calls conj args)
+                                                             nil)]
                   (is (=? {}
                           (mt/user-http-request user :post 200 "ee/cloud-add-ons/metabase-ai"
                                                 {:terms_of_service true})))

@@ -3,7 +3,7 @@
   The example config includes all configurable settings and their default values."
   (:require
    [clj-yaml.core :as yaml]
-   [metabase.cmd.common :as cmd.common]
+   [clojure.java.io :as io]
    [metabase.cmd.env-var-dox :as dox]))
 
 ;;;; Get settings and their default values
@@ -65,9 +65,9 @@
 (defn- build-markdown-page
   "Take a YAML string and builds a Markdown page for docs on a configuration file."
   [config-yaml]
-  (str (cmd.common/load-resource! markdown-intro)
+  (str (slurp (io/resource markdown-intro))
        config-yaml
-       (cmd.common/load-resource! markdown-outro)))
+       (slurp (io/resource markdown-outro))))
 
 (defn- format-yaml
   "Takes configuration map that includes settings data and preps YAML for embedding in Markdown doc."
@@ -79,7 +79,8 @@
    with settings and their default values."
   [yaml-template]
   (-> yaml-template
-      (cmd.common/load-resource!)
+      (io/resource)
+      (slurp)
       (yaml/parse-string)
       (add-settings)
       (format-yaml)
@@ -97,5 +98,5 @@
   "Generates a configuration file doc with template and saves to docs directory."
   []
   (println "Creating config file doc with template...")
-  (cmd.common/write-doc-file! config-file-path (create-config-doc yaml-template))
+  (spit (io/file config-file-path) (create-config-doc yaml-template))
   (println (str "Config doc file created: `" config-file-path "`.")))

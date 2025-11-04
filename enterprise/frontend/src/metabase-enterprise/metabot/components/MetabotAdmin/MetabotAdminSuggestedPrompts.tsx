@@ -26,15 +26,15 @@ import {
 } from "metabase-enterprise/api";
 import { FIXED_METABOT_IDS } from "metabase-enterprise/metabot/constants";
 import * as Urls from "metabase-enterprise/urls";
-import type { MetabotInfo, SuggestedMetabotPrompt } from "metabase-types/api";
+import type { MetabotId, SuggestedMetabotPrompt } from "metabase-types/api";
 
 export const PAGE_SIZE = 10;
 
 export const MetabotPromptSuggestionPane = ({
-  metabot,
+  metabotId,
   pageSize = PAGE_SIZE,
 }: {
-  metabot: Pick<MetabotInfo, "id" | "collection_id">;
+  metabotId: MetabotId;
   pageSize?: number;
 }) => {
   const [sendToast] = useToast();
@@ -43,7 +43,7 @@ export const MetabotPromptSuggestionPane = ({
   const offset = page * pageSize;
 
   const { data, isLoading, error } = useGetSuggestedMetabotPromptsQuery({
-    metabot_id: metabot.id,
+    metabot_id: metabotId,
     limit: pageSize,
     offset,
   });
@@ -53,7 +53,7 @@ export const MetabotPromptSuggestionPane = ({
 
   const handleDeletePrompt = async (promptId: SuggestedMetabotPrompt["id"]) => {
     const { error } = await deletePrompt({
-      metabot_id: metabot.id,
+      metabot_id: metabotId,
       prompt_id: promptId,
     });
 
@@ -73,7 +73,7 @@ export const MetabotPromptSuggestionPane = ({
   };
 
   const handleRegeneratePrompts = async () => {
-    const { error } = await regeneratePrompts(metabot.id);
+    const { error } = await regeneratePrompts(metabotId);
     if (error) {
       sendToast({
         message: t`Error regenerate prompts`,
@@ -101,11 +101,7 @@ export const MetabotPromptSuggestionPane = ({
       <SettingHeader
         id="prompt-suggestions"
         title={t`Prompt suggestions`}
-        description={
-          metabot.collection_id
-            ? t`When users open a new Metabot chat, we’ll show them a few suggested prompts based on popular models and metrics in the collection you chose.`
-            : t`When users open a new Metabot chat, we’ll show them a few suggested prompts based on popular models and metrics in your instance.`
-        }
+        description={t`When users open a new Metabot chat, we’ll randomly show them a few suggested prompts based on the models and metrics in the collection you chose.`}
       />
       <Flex gap="md" align="center">
         <Button
@@ -144,7 +140,7 @@ export const MetabotPromptSuggestionPane = ({
                 key={row.id}
                 row={row as SuggestedMetabotPrompt}
                 onDelete={() => handleDeletePrompt(row.id)}
-                metabotId={metabot.id}
+                metabotId={metabotId}
               />
             )
           }

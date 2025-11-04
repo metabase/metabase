@@ -3,10 +3,10 @@
   docs by running: `clojure -M:ee:doc environment-variables-documentation`"
   (:require
    [clojure.java.classpath :as classpath]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.reader.edn :as edn]
-   [metabase.cmd.common :as cmd.common]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.settings.core :as setting]
    [metabase.util :as u]))
@@ -114,14 +114,10 @@
     ""))
 
 (defn- format-doc
-  "Includes additional documentation for an environment variable, if it exists.
-
-  Returns the doc string if present, or nil otherwise. Filters out non-string values
-  (like false) which are used as sentinel values to indicate settings should not be documented."
+  "Includes additional documentation for an environment variable, if it exists."
   [env-var]
-  (let [d (:doc env-var)]
-    (when (string? d)
-      d)))
+  (when-let [d (:doc env-var)]
+    d))
 
 (defn- format-config-name
   "Formats the configuration file name for an environment variable."
@@ -130,7 +126,7 @@
     ""
     (str "[Configuration file name](./config-file.md): `" (:munged-name env-var) "`")))
 
-(defn- list-item
+(defn list-item
   "Create a list item for an entry, like `- Default: 100`."
   [entry]
   (if (or (str/blank? entry)
@@ -138,7 +134,7 @@
     ""
     (str "- " entry)))
 
-(defn- format-list
+(defn format-list
   "Used to format metadata as a list."
   [entries]
   (str/join "\n" (remove str/blank? (map list-item entries))))
@@ -163,7 +159,7 @@
 
 (def env-vars-not-to-mess-with
   "Flamber advises that people avoid touching these environment variables."
-  (set (edn/read-string (cmd.common/load-resource! "metabase/cmd/resources/env-vars-to-avoid.edn"))))
+  (set (edn/read-string (slurp (io/resource "metabase/cmd/resources/env-vars-to-avoid.edn")))))
 
 (defn- avoid?
   "Used to filter out environment variables with high foot-gun indices."
@@ -205,12 +201,12 @@
 (defn- format-intro
   "Exists just so we can write the intro in Markdown."
   []
-  (str (cmd.common/load-resource! "metabase/cmd/resources/env-var-intro.md") "\n\n"))
+  (str (slurp "src/metabase/cmd/resources/env-var-intro.md") "\n\n"))
 
 (defn- non-defsetting-env-vars
   "Retrieves environment variables not specified via `defsetting`."
   []
-  (str "\n\n" (cmd.common/load-resource! "metabase/cmd/resources/other-env-vars.md") "\n"))
+  (str "\n\n" (slurp "src/metabase/cmd/resources/other-env-vars.md") "\n"))
 
 (defn prep-dox
   "Preps the environment variable docs for printing."
@@ -223,5 +219,5 @@
   "Prints the generated environment variable docs to a file."
   []
   (println "Generating docs for environment variables...")
-  (cmd.common/write-doc-file! "docs/configuring-metabase/environment-variables.md" (prep-dox))
+  (spit (io/file "docs/configuring-metabase/environment-variables.md") (prep-dox))
   (println "Done."))
