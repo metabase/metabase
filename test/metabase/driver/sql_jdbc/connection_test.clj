@@ -358,6 +358,37 @@
                               ;; we must have created more than one connection
                 (is (> @connection-creations 1))))))))))
 
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest test-aws-iam-auth-provider-connection
+  (mt/with-premium-features #{:database-auth-providers}
+    (testing "AWS IAM authentication for Postgres"
+      (mt/test-driver :postgres
+        (let [db-details (:details (mt/db))
+              iam-db-details (-> db-details
+                                 (dissoc :password)
+                                 (assoc :use-auth-provider true
+                                        :auth-provider :aws-iam
+                                        :ssl true))]
+          (testing "Connection spec is configured with AWS wrapper"
+            (let [spec (sql-jdbc.conn/connection-details->spec :postgres iam-db-details)]
+              (is (= "aws-wrapper:postgresql" (:subprotocol spec)))
+              (is (= "software.amazon.jdbc.ds.AwsWrapperDataSource" (:classname spec)))
+              (is (= "iam" (:wrapperPlugins spec))))))))
+    (testing "AWS IAM authentication for MySQL"
+      (mt/test-driver :mysql
+        (let [db-details (:details (mt/db))
+              iam-db-details (-> db-details
+                                 (dissoc :password)
+                                 (assoc :use-auth-provider true
+                                        :auth-provider :aws-iam
+                                        :ssl true))]
+          (testing "Connection spec is configured with AWS wrapper"
+            (let [spec (sql-jdbc.conn/connection-details->spec :mysql iam-db-details)]
+              (is (= "aws-wrapper:mysql" (:subprotocol spec)))
+              (is (= "software.amazon.jdbc.ds.AwsWrapperDataSource" (:classname spec)))
+              (is (= "iam" (:wrapperPlugins spec)))
+              (is (= "VERIFY_CA" (:sslMode spec))))))))))
+
 (defmacro ^:private with-tunnel-details!
   [& body]
   `(let [original-details# (:details (mt/db))
