@@ -85,80 +85,73 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
       }),
     ];
 
-    const editor = useEditor(
-      {
-        extensions,
-        content: value,
-        autofocus: autoFocus,
-        immediatelyRender: false,
-        onUpdate: ({ editor }) => {
-          const jsonContent = editor.getJSON();
-          serializedRef.current = serializeTiptapToMetabotMessage(jsonContent);
-          onChangeRef.current(serializedRef.current);
-        },
-        editorProps: {
-          handleDOMEvents: {
-            copy: (view: EditorView, e: ClipboardEvent) => {
-              e.preventDefault();
-              const { from, to } = view.state.selection;
-              const slice = view.state.doc.slice(from, to);
-              const doc = view.state.schema.topNodeType.create(
-                null,
-                slice.content,
-              );
-              const serialized = serializeTiptapToMetabotMessage(doc.toJSON());
-              e.clipboardData?.setData("text/plain", serialized);
-              return true;
-            },
-            cut: (view: EditorView, e: ClipboardEvent) => {
-              e.preventDefault();
-              const { from, to } = view.state.selection;
-              const slice = view.state.doc.slice(from, to);
-              const doc = view.state.schema.topNodeType.create(
-                null,
-                slice.content,
-              );
-              const serialized = serializeTiptapToMetabotMessage(doc.toJSON());
-              e.clipboardData?.setData("text/plain", serialized);
-
-              // Delete the selected text for cut operation
-              const tr = view.state.tr.deleteRange(from, to);
-              view.dispatch(tr);
-
-              return true;
-            },
+    const editor = useEditor({
+      extensions,
+      content: parseMetabotMessageToTiptapDoc(value),
+      autofocus: autoFocus,
+      onUpdate: ({ editor }) => {
+        const jsonContent = editor.getJSON();
+        serializedRef.current = serializeTiptapToMetabotMessage(jsonContent);
+        onChangeRef.current(serializedRef.current);
+      },
+      editorProps: {
+        handleDOMEvents: {
+          copy: (view: EditorView, e: ClipboardEvent) => {
+            e.preventDefault();
+            const { from, to } = view.state.selection;
+            const slice = view.state.doc.slice(from, to);
+            const doc = view.state.schema.topNodeType.create(
+              null,
+              slice.content,
+            );
+            const serialized = serializeTiptapToMetabotMessage(doc.toJSON());
+            e.clipboardData?.setData("text/plain", serialized);
+            return true;
           },
-          handleKeyDown: (view, event) => {
-            if (event.key === "Enter") {
-              // Defer enter handling to mention UI if open
-              const mentionState = MetabotMentionPluginKey.getState(view.state);
-              if (mentionState?.active) {
-                return false; // Let the suggestion system handle it
-              }
+          cut: (view: EditorView, e: ClipboardEvent) => {
+            e.preventDefault();
+            const { from, to } = view.state.selection;
+            const slice = view.state.doc.slice(from, to);
+            const doc = view.state.schema.topNodeType.create(
+              null,
+              slice.content,
+            );
+            const serialized = serializeTiptapToMetabotMessage(doc.toJSON());
+            e.clipboardData?.setData("text/plain", serialized);
 
-              // Check for any modifier keys (shift, ctrl, meta, alt)
-              const isModifiedKeyPress =
-                event.shiftKey ||
-                event.ctrlKey ||
-                event.metaKey ||
-                event.altKey;
+            // Delete the selected text for cut operation
+            const tr = view.state.tr.deleteRange(from, to);
+            view.dispatch(tr);
 
-              if (!isModifiedKeyPress) {
-                event.preventDefault();
-                onSubmitRef.current();
-                return true;
-              }
+            return true;
+          },
+        },
+        handleKeyDown: (view, event) => {
+          if (event.key === "Enter") {
+            // Defer enter handling to mention UI if open
+            const mentionState = MetabotMentionPluginKey.getState(view.state);
+            if (mentionState?.active) {
+              return false; // Let the suggestion system handle it
             }
 
-            return false;
-          },
-          clipboardTextSerializer: (content) => {
-            return serializeTiptapToMetabotMessage(content.toJSON());
-          },
+            // Check for any modifier keys (shift, ctrl, meta, alt)
+            const isModifiedKeyPress =
+              event.shiftKey || event.ctrlKey || event.metaKey || event.altKey;
+
+            if (!isModifiedKeyPress) {
+              event.preventDefault();
+              onSubmitRef.current();
+              return true;
+            }
+          }
+
+          return false;
+        },
+        clipboardTextSerializer: (content) => {
+          return serializeTiptapToMetabotMessage(content.toJSON());
         },
       },
-      [],
-    );
+    });
 
     useImperativeHandle(ref, () => {
       if (!editor) {
