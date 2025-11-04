@@ -2,18 +2,19 @@ import { skipToken, useGetCardQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { Center, Flex } from "metabase/ui";
+import type { Card } from "metabase-types/api";
 
 import { ModelHeader } from "../../components/ModelHeader";
 
-type ModelOverviewPageParams = {
+type ModelQueryPageParams = {
   modelId: string;
 };
 
-type ModelOverviewPageProps = {
-  params: ModelOverviewPageParams;
+type ModelQueryPageProps = {
+  params: ModelQueryPageParams;
 };
 
-export function ModelOverviewPage({ params }: ModelOverviewPageProps) {
+export function ModelQueryPage({ params }: ModelQueryPageProps) {
   const modelId = Urls.extractEntityId(params.modelId);
   const {
     data: model,
@@ -29,6 +30,14 @@ export function ModelOverviewPage({ params }: ModelOverviewPageProps) {
     );
   }
 
+  return <ModelQueryPageBody model={model} />;
+}
+
+type ModelQueryPageBodyProps = {
+  model: Card;
+};
+
+function ModelQueryPageBody({ model }: ModelQueryPageBodyProps) {
   return (
     <Flex direction="column" h="100%">
       <ModelHeader id={model.id} name={model.name} />
