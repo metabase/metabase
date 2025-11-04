@@ -290,7 +290,10 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
         });
-        getRunSection().should("contain", "Executing Python transform");
+        H.DataStudio.Transforms.content().should(
+          "contain",
+          "Executing Python transform",
+        );
 
         H.DataStudio.Transforms.targetTab().click();
         getTableLink().click();
@@ -1272,6 +1275,7 @@ LIMIT
 
     it("should be possible to cancel a transform from the transform page", () => {
       createSlowTransform();
+      H.DataStudio.Transforms.runTab().click();
       getRunButton().click();
       getRunButton().should("have.text", "Running now…");
       getRunStatus().should("have.text", "Run in progress…");
@@ -1290,11 +1294,12 @@ LIMIT
 
     it("should be possible to cancel a transform from the runs page", () => {
       createSlowTransform();
+      H.DataStudio.Transforms.runTab().click();
       getRunButton().click();
       getRunButton().should("have.text", "Running now…");
       getRunStatus().should("have.text", "Run in progress…");
 
-      getNavSidebar().findByText("Runs").click();
+      H.DataStudio.Transforms.sidebar().findByText("Runs").click();
       getContentTable().within(() => {
         cy.findByText("In progress").should("be.visible");
         cy.findByLabelText("Cancel run").click();
@@ -1310,6 +1315,7 @@ LIMIT
 
     it("should show a message when the run finished before it cancels", () => {
       createSlowTransform(1);
+      H.DataStudio.Transforms.runTab().click();
       getRunButton().click();
       getRunButton().should("have.text", "Running now…");
       getRunStatus().should("have.text", "Run in progress…");
@@ -1327,7 +1333,7 @@ LIMIT
         "contain",
         "Last ran a few seconds ago successfully.",
       );
-      getRunSection().should(
+      H.DataStudio.Transforms.content().should(
         "contain",
         "This run succeeded before it had a chance to cancel.",
       );
@@ -1335,7 +1341,6 @@ LIMIT
 
     it("should be possible to cancel a SQL transform from the preview (metabase#64474)", () => {
       createSlowTransform(500);
-      getTransformsContent().findByText("Edit query").click();
 
       getQueryEditor().within(() => {
         cy.findAllByTestId("run-button").eq(0).click();
@@ -1348,19 +1353,25 @@ LIMIT
   });
 
   describe("dependencies", () => {
-    it("should render a table of dependencies", () => {
+    it("should render the dependency graph", () => {
       createMbqlTransform({
         name: "Transform A",
         targetTable: "table_a",
         visitTransform: true,
-      }).then(runTransformAndWaitForSuccess);
+      }).then(() => {
+        H.DataStudio.Transforms.runTab().click();
+        runTransformAndWaitForSuccess();
+      });
 
       createMbqlTransform({
         name: "Transform B",
         sourceTable: "table_a",
         targetTable: "table_b",
         visitTransform: true,
-      }).then(runTransformAndWaitForSuccess);
+      }).then(() => {
+        H.DataStudio.Transforms.runTab().click();
+        runTransformAndWaitForSuccess();
+      });
 
       createMbqlTransform({
         name: "Transform C",
@@ -1369,19 +1380,16 @@ LIMIT
         visitTransform: true,
       });
 
-      H.main().findByText("Dependencies").scrollIntoView().should("be.visible");
-      getContentTable().within(() => {
-        // 1 transform plus the header row
-        cy.findAllByRole("row").should("have.length", 2);
-
-        // Check the existence and also their order
-        cy.findAllByRole("row").eq(1).should("contain", "Transform B");
-      });
+      H.DataStudio.Transforms.dependenciesTab().click();
+      H.DataStudio.Transforms.content()
+        .should("contain", "Transform B")
+        .and("contain", "Transform A");
     });
 
-    it("should no dependencies table if the transform has no dependencies", () => {
+    it("should show if the transform has no dependencies", () => {
       createMbqlTransform({ name: "Transform A", visitTransform: true });
-      H.main().findByText("Dependencies").should("not.exist");
+      H.DataStudio.Transforms.dependenciesTab().click();
+      H.DataStudio.Transforms.content().should("contain", "Nothing uses this");
     });
   });
 
@@ -1755,7 +1763,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         .findByText("Last ran a few seconds ago successfully.")
         .should("be.visible");
 
-      getNavSidebar().findByText("Runs").click();
+      H.DataStudio.Transforms.sidebar().findByText("Runs").click();
       getContentTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("Success").should("be.visible");
@@ -2381,7 +2389,7 @@ describe("scenarios > admin > transforms > runs", () => {
     }
 
     createInitialData();
-    getNavSidebar().findByText("Runs").click();
+    H.DataStudio.Transforms.sidebar().findByText("Runs").click();
     testTransformFilter();
     testStatusFilter();
     testTagFilter();
@@ -2421,10 +2429,6 @@ function getCancelButton() {
 
 function getRunStatus() {
   return cy.findByTestId("run-status");
-}
-
-function getRunSection() {
-  return cy.findByTestId("run-section");
 }
 
 function getRunListLink() {
@@ -2479,10 +2483,6 @@ function getTagsInputContainer() {
 
 function getContentTable() {
   return cy.findByTestId("admin-content-table");
-}
-
-function getNavSidebar() {
-  return cy.findByTestId("transform-sidebar");
 }
 
 function getTransformFilterWidget() {

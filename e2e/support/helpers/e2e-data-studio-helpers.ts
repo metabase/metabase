@@ -9,6 +9,8 @@ export const DataStudio = {
     queryEditor: () => cy.findByTestId("transform-query-editor"),
     runTab: () => DataStudio.Transforms.header().findByText("Run"),
     targetTab: () => DataStudio.Transforms.header().findByText("Target"),
+    dependenciesTab: () =>
+      DataStudio.Transforms.header().findByText("Dependencies"),
   },
   Jobs: {
     header: () => cy.findByTestId("jobs-header"),
