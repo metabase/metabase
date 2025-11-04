@@ -73,13 +73,13 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       });
 
       cy.log("run the transform and make sure its table can be queried");
-      H.DataStudio.Transforms.header().findByText("Run").click();
+      H.DataStudio.Transforms.runPageLink().click();
       runTransformAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
 
-      H.DataStudio.Transforms.header().findByText("Target").click();
+      H.DataStudio.Transforms.targetPageLink().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
       H.assertQueryBuilderRowCount(3);
@@ -112,13 +112,13 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       });
 
       cy.log("run the transform and make sure its table can be queried");
-      H.DataStudio.Transforms.header().findByText("Run").click();
+      H.DataStudio.Transforms.runPageLink().click();
       runTransformAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
 
-      H.DataStudio.Transforms.header().findByText("Target").click();
+      H.DataStudio.Transforms.targetPageLink().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(3);
@@ -288,14 +288,14 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         });
 
         cy.log("run the transform and make sure its table can be queried");
-        H.DataStudio.Transforms.header().findByText("Run").click();
+        H.DataStudio.Transforms.runPageLink().click();
         runTransformAndWaitForSuccess();
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
         });
         getRunSection().should("contain", "Executing Python transform");
 
-        H.DataStudio.Transforms.header().findByText("Target").click();
+        H.DataStudio.Transforms.targetPageLink().click();
         getTableLink().click();
         H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
         H.assertQueryBuilderRowCount(1);
@@ -351,13 +351,13 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         });
 
         cy.log("run the transform and make sure its table can be queried");
-        H.DataStudio.Transforms.header().findByText("Run").click();
+        H.DataStudio.Transforms.runPageLink().click();
         runTransformAndWaitForSuccess();
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
         });
 
-        H.DataStudio.Transforms.header().findByText("Target").click();
+        H.DataStudio.Transforms.targetPageLink().click();
         getTableLink().click();
         H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
         H.assertQueryBuilderRowCount(3);
@@ -377,9 +377,7 @@ LIMIT
   5`;
 
       createMbqlTransform({ visitTransform: true });
-      getTransformsContent().findByText("Edit query").click();
-
-      getQueryEditor().icon("sql").click();
+      getQueryEditor().findByLabelText("View SQL").click();
       H.sidebar().should("be.visible");
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
 
@@ -387,15 +385,17 @@ LIMIT
       H.sidebar().should("be.visible");
 
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
-      getQueryEditor().button("Save changes").click();
+      getQueryEditor().button("Save").click();
       getTransformsContent().should("be.visible");
 
       cy.log("run the transform and make sure its table can be queried");
+      H.DataStudio.Transforms.runPageLink().click();
       runTransformAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
 
+      H.DataStudio.Transforms.targetPageLink().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(3);

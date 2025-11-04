@@ -7,6 +7,8 @@ export const DataStudio = {
     sidebar: () => cy.findByTestId("transforms-sidebar"),
     saveChangesButton: () => DataStudio.Transforms.queryEditor().button("Save"),
     queryEditor: () => cy.findByTestId("transform-query-editor"),
+    runPageLink: () => DataStudio.Transforms.header().findByText("Run"),
+    targetPageLink: () => DataStudio.Transforms.header().findByText("Target"),
   },
   Jobs: {
     header: () => cy.findByTestId("jobs-header"),
