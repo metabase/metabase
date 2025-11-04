@@ -58,7 +58,6 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "transform_create",
         event_detail: "query",
-        triggered_from: "transform-page-create-menu",
       });
 
       H.entityPickerModal().within(() => {
@@ -77,7 +76,6 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       runTransformAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
-        triggered_from: "transform-page",
       });
 
       getTableLink().click();
@@ -97,7 +95,6 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "transform_create",
         event_detail: "native",
-        triggered_from: "transform-page-create-menu",
       });
 
       H.popover().findByText(DB_NAME).click();
@@ -118,7 +115,6 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       runTransformAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
-        triggered_from: "transform-page",
       });
 
       getTableLink().click();
@@ -202,7 +198,6 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         H.expectUnstructuredSnowplowEvent({
           event: "transform_create",
           event_detail: "python",
-          triggered_from: "transform-page-create-menu",
         });
 
         cy.findByTestId("python-data-picker")
@@ -295,7 +290,6 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         runTransformAndWaitForSuccess();
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
-          triggered_from: "transform-page",
         });
 
         getRunSection().should("contain", "Executing Python transform");
@@ -336,7 +330,6 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         H.expectUnstructuredSnowplowEvent({
           event: "transform_create",
           event_detail: "saved-question",
-          triggered_from: "transform-page-create-menu",
         });
 
         H.entityPickerModal().within(() => {
@@ -359,7 +352,6 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         runTransformAndWaitForSuccess();
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
-          triggered_from: "transform-page",
         });
 
         getTableLink().click();
@@ -398,7 +390,6 @@ LIMIT
       runTransformAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
-        triggered_from: "transform-page",
       });
 
       getTableLink().click();
@@ -2038,7 +2029,6 @@ describe("scenarios > admin > transforms > jobs", () => {
       runJobAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({
         event: "transform_job_trigger_manual_run",
-        triggered_from: "job-page",
       });
 
       getJobPage()
