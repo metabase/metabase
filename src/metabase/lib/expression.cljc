@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.computed :as lib.computed]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -68,10 +69,7 @@
        (when (lib.util/first-stage? query stage-number)
          (when-let [source-card-id (lib.util/source-card-id query)]
            (when-let [source-card (lib.metadata/card query source-card-id)]
-             (u/prog1 (resolve-expression ((#?(:clj requiring-resolve :cljs resolve) 'metabase.lib.query/query)
-                                           (lib.metadata/->metadata-provider query)
-                                           (:dataset-query source-card))
-                                          expression-name)
+             (u/prog1 (resolve-expression (:dataset-query source-card) expression-name)
                (when <>
                  (log/tracef "Found expression %s in source card %d. Next time, use a :field name ref!"
                              (pr-str expression-name) source-card-id))))))
@@ -87,19 +85,22 @@
 
 (mu/defmethod lib.metadata.calculation/metadata-method :expression :- ::lib.metadata.calculation/visible-column
   [query stage-number [_expression opts expression-name, :as expression-ref-clause]]
-  (merge {:lib/type                :metadata/column
-          :lib/source-uuid         (:lib/uuid opts)
-          :name                    expression-name
-          :lib/expression-name     expression-name
-          :lib/source-column-alias expression-name
-          :display-name            (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
-          :base-type               (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
-          :lib/source              :source/expressions}
-         (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-           {:metabase.lib.field/temporal-unit unit})
-         (when lib.metadata.calculation/*propagate-binning-and-bucketing*
-           (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-             {:inherited-temporal-unit unit}))))
+  (lib.computed/with-cache-ephemeral* query [:expression-metadata/by-ref stage-number expression-ref-clause
+                                             (lib.metadata.calculation/cacheable-options {})]
+    (fn []
+      (merge {:lib/type                :metadata/column
+              :lib/source-uuid         (:lib/uuid opts)
+              :name                    expression-name
+              :lib/expression-name     expression-name
+              :lib/source-column-alias expression-name
+              :display-name            (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
+              :base-type               (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
+              :lib/source              :source/expressions}
+             (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
+               {:metabase.lib.field/temporal-unit unit})
+             (when lib.metadata.calculation/*propagate-binning-and-bucketing*
+               (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
+                 {:inherited-temporal-unit unit}))))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :expression
   [query stage-number [_expression opts _expr-name, :as expr-clause]]
@@ -237,8 +238,8 @@
 
 (defmethod lib.metadata.calculation/type-of-method :coalesce
   [query stage-number [_coalesce _opts expr null-expr]]
-  (let [expr-type      (lib.metadata.calculation/type-of-method query stage-number expr)
-        null-expr-type (lib.metadata.calculation/type-of-method query stage-number null-expr)]
+  (let [expr-type      (lib.metadata.calculation/type-of query stage-number expr)
+        null-expr-type (lib.metadata.calculation/type-of query stage-number null-expr)]
     (lib.schema.expression.conditional/case-coalesce-return-type [expr-type null-expr-type])))
 
 ;;; believe it or not, a `:case` clause really has the syntax [:case {} [[pred1 expr1] [pred2 expr2] ...]]
@@ -252,7 +253,7 @@
         exprs      (cond-> case-exprs
                      fallback
                      (clojure.core/concat [fallback]))
-        types      (map #(lib.metadata.calculation/type-of-method query stage-number %)
+        types      (map #(lib.metadata.calculation/type-of query stage-number %)
                         exprs)]
     (lib.schema.expression.conditional/case-coalesce-return-type types)))
 
