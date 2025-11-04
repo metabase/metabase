@@ -986,12 +986,15 @@ LIMIT
     it("should be able to edit table metadata after table creation", () => {
       cy.log("before table creation");
       createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.targetTab().click();
       getTransformsContent()
         .findByText("Edit this table’s metadata")
         .should("not.exist");
 
       cy.log("after table creation");
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
+      H.DataStudio.Transforms.targetTab().click();
       getTransformsContent().findByText("Edit this table’s metadata").click();
       H.DataModel.TableSection.clickField("Name");
       H.DataModel.FieldSection.getNameInput().clear().type("New name").blur();
@@ -1007,6 +1010,7 @@ LIMIT
     it("should be able to see the target schema", () => {
       cy.log("before table creation");
       createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.targetTab().click();
       getSchemaLink().should("have.text", TARGET_SCHEMA);
       getSchemaLink().click();
       H.main().within(() => {
@@ -1016,7 +1020,9 @@ LIMIT
 
       cy.log("after table creation");
       cy.go("back");
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
+      H.DataStudio.Transforms.targetTab().click();
       getSchemaLink().click();
       H.main().within(() => {
         cy.findByText("Animals").should("be.visible");
@@ -1027,6 +1033,7 @@ LIMIT
     it("should be able to see the target database", () => {
       cy.log("before table creation");
       createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.targetTab().click();
       getDatabaseLink().should("have.text", DB_NAME);
       getDatabaseLink().click();
       H.main().within(() => {
@@ -1036,7 +1043,9 @@ LIMIT
 
       cy.log("after table creation");
       cy.go("back");
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
+      H.DataStudio.Transforms.targetTab().click();
       getDatabaseLink().click();
       H.main().within(() => {
         cy.findByText(TARGET_SCHEMA).should("be.visible");
@@ -1046,199 +1055,11 @@ LIMIT
   });
 
   describe("queries", () => {
-    it("should render a readOnly preview of the MBQL query", () => {
-      cy.log("create a new transform that has all the steps");
-      H.getTableId({ name: "Animals" }).then((tableId) => {
-        H.getFieldId({ tableId, name: "score" }).then((ANIMAL_SCORE) => {
-          H.getFieldId({ tableId, name: "name" }).then((ANIMAL_NAME) => {
-            H.createTransform(
-              {
-                name: "MBQL transform",
-                source: {
-                  type: "query",
-                  query: {
-                    database: WRITABLE_DB_ID,
-                    type: "query",
-                    query: {
-                      "source-table": tableId,
-                      filter: [">", ["field", ANIMAL_SCORE, {}], 10],
-                      aggregation: [
-                        ["count"],
-                        [
-                          "aggregation-options",
-                          ["+", ["count"], 1],
-                          { name: "Foobar", "display-name": "Foobar" },
-                        ],
-                      ],
-                      expressions: {
-                        ScorePlusOne: ["+", ["field", ANIMAL_SCORE, {}], 1],
-                      },
-                      breakout: [
-                        [
-                          "field",
-                          ANIMAL_SCORE,
-                          {
-                            binning: { strategy: "num-bins", "num-bins": 10 },
-                          },
-                        ],
-                      ],
-                      joins: [
-                        {
-                          "source-table": tableId,
-                          condition: [
-                            "=",
-                            ["field", ANIMAL_SCORE, {}],
-                            ["field", ANIMAL_SCORE, {}],
-                          ],
-                          alias: "animal_score",
-                        },
-                      ],
-                      limit: 10,
-                      "order-by": [["asc", ["field", ANIMAL_NAME, {}]]],
-                    },
-                  },
-                },
-                target: {
-                  type: "table",
-                  database: WRITABLE_DB_ID,
-                  name: TARGET_TABLE,
-                  schema: TARGET_SCHEMA,
-                },
-                tag_ids: [],
-              },
-              { visitTransform: true },
-            );
-          });
-        });
-      });
-
-      cy.log("Data step should be read-only");
-      H.getNotebookStep("data")
-        .findByRole("button")
-        .should("contain", "Animals")
-        .should("be.disabled");
-
-      cy.log("Join step should be read-only");
-      H.getNotebookStep("join")
-        .findAllByText("Animals")
-        .should("have.length", 4)
-        .eq(1)
-        .should("have.css", "pointer-events", "none");
-
-      cy.findByLabelText("Change join type").should("be.disabled");
-
-      H.getNotebookStep("join")
-        .findAllByText("Score")
-        .should("have.length", 2)
-        .first()
-        .click();
-      assertNoModals();
-
-      H.getNotebookStep("join")
-        .findAllByText("Score")
-        .should("have.length", 2)
-        .eq(1)
-        .click();
-      assertNoModals();
-
-      cy.log("Expression step should be read-only, but render editor");
-      H.getNotebookStep("expression").findByText("ScorePlusOne").click();
-      H.CustomExpressionEditor.value().should("equal", "[Score] + 1");
-      H.CustomExpressionEditor.nameInput()
-        .should("have.value", "ScorePlusOne")
-        .should("have.attr", "readonly");
-      H.popover().button("Done").click();
-
-      cy.log("Expression step should be read-only, but render popover");
-      H.getNotebookStep("filter")
-        .findByText("Score is greater than 10")
-        .click();
-      H.popover().within(() => {
-        cy.findByText("Score").should("be.visible");
-        cy.findByText("Greater than").should("be.visible");
-        cy.findByPlaceholderText("Enter a number")
-          .should("be.visible")
-          .should("have.value", 10);
-      });
-      H.main().click();
-
-      cy.log("Summarize step should be read-only");
-      H.getNotebookStep("summarize").findByText("Count").click();
-      H.CustomExpressionEditor.value().should("equal", "Count()");
-      H.CustomExpressionEditor.nameInput()
-        .should("have.value", "Count")
-        .should("have.attr", "readonly");
-      H.popover().button("Done").click();
-
-      H.getNotebookStep("summarize").findByText("Foobar").click();
-      H.CustomExpressionEditor.value().should("equal", "Count() + 1");
-      H.CustomExpressionEditor.nameInput()
-        .should("have.value", "Foobar")
-        .should("have.attr", "readonly");
-      H.popover().button("Done").click();
-
-      H.getNotebookStep("summarize").findByText("Score: 10 bins").click();
-      assertNoModals();
-
-      cy.log("Sort step should be read-only");
-      H.getNotebookStep("sort").findByText("Name").click();
-      assertNoModals();
-
-      cy.log("Limit step should be read-only");
-      H.getNotebookStep("limit")
-        .findByPlaceholderText("Enter a limit")
-        .should("have.value", 10)
-        .should("have.attr", "readonly");
-
-      function assertNoModals() {
-        H.entityPickerModal().should("not.exist");
-        H.popover({ skipVisibilityCheck: true }).should("not.exist");
-      }
-    });
-
-    it("should hide empty sections in read-only mode", () => {
-      H.getTableId({ name: "Animals" }).then((tableId) => {
-        H.createTransform(
-          {
-            name: "MBQL transform",
-            source: {
-              type: "query",
-              query: {
-                database: WRITABLE_DB_ID,
-                type: "query",
-                query: {
-                  "source-table": tableId,
-                  aggregation: [["count"]],
-                },
-              },
-            },
-            target: {
-              type: "table",
-              database: WRITABLE_DB_ID,
-              name: TARGET_TABLE,
-              schema: TARGET_SCHEMA,
-            },
-            tag_ids: [],
-          },
-          { visitTransform: true },
-        );
-
-        H.getNotebookStep("summarize")
-          .scrollIntoView()
-          .should("be.visible")
-          .within(() => {
-            cy.findByText("by").should("not.exist");
-            cy.findByTestId("breakout-step").should("not.exist");
-          });
-      });
-    });
-
     it("should be able to update a MBQL query", () => {
       cy.log("create a new transform");
       createMbqlTransform({ visitTransform: true });
 
       cy.log("update the query");
-      getTransformsContent().findByRole("link", { name: "Edit query" }).click();
       H.getNotebookStep("data").button("Filter").click();
       H.popover().within(() => {
         cy.findByText("Name").click();
@@ -1246,11 +1067,14 @@ LIMIT
         cy.button("Add filter").click();
       });
 
-      getQueryEditor().button("Save changes").click();
+      getQueryEditor().button("Save").click();
       cy.wait("@updateTransform");
 
       cy.log("run the transform and make sure the query has changed");
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
+
+      H.DataStudio.Transforms.targetTab().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(1);
@@ -1264,13 +1088,14 @@ LIMIT
       });
 
       cy.log("update the query");
-      getTransformsContent().findByRole("link", { name: "Edit query" }).click();
       H.NativeEditor.type(" WHERE name = 'Duck'");
-      getQueryEditor().button("Save changes").click();
+      getQueryEditor().button("Save").click();
       cy.wait("@updateTransform");
 
       cy.log("run the transform and make sure the query has changed");
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
+      H.DataStudio.Transforms.targetTab().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(1);
@@ -1295,16 +1120,14 @@ LIMIT
       );
 
       cy.log("update the query");
-      getTransformsContent()
-        .findByRole("link", { name: "Edit script" })
-        .click();
       H.PythonEditor.type("{backspace}{backspace}{backspace} + 10 }])");
-
-      getQueryEditor().button("Save changes").click();
+      getQueryEditor().button("Save").click();
       cy.wait("@updateTransform");
 
       cy.log("run the transform and make sure the query has changed");
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
+      H.DataStudio.Transforms.targetTab().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(1);
