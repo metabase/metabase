@@ -17,6 +17,12 @@ import S from "./EditorBubbleMenu.module.css";
 import { LinkPopup } from "./LinkPopup";
 import type { FormattingOptions } from "./types";
 
+declare module "@tiptap/core" {
+  interface EditorEvents {
+    openLinkPopup: boolean;
+  }
+}
+
 const DEFAULT_ALLOWED_FORMATTING: FormattingOptions = {
   bold: true,
   italic: true,
@@ -78,17 +84,23 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
   useEffect(() => {
     editor.on("selectionUpdate", forceUpdate);
     editor.on("update", forceUpdate);
+    editor.on("openLinkPopup", setIsLinkPopupOpen);
 
     return () => {
       editor.off("selectionUpdate", forceUpdate);
       editor.off("update", forceUpdate);
+      editor.off("openLinkPopup", setIsLinkPopupOpen);
     };
   }, [editor, forceUpdate]);
+
   return (
     <BubbleMenu
       className={className}
       editor={editor}
-      options={options}
+      options={{
+        onHide: () => setIsLinkPopupOpen(false),
+        ...options,
+      }}
       shouldShow={({
         editor,
         state,

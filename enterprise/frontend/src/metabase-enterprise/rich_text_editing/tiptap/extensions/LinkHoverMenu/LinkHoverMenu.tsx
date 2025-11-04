@@ -75,7 +75,7 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
   }, [clearHoverTimeout, editor, startHoverTimeout]);
 
   const href = hoveredLink?.getAttribute("href");
-  if (!href) {
+  if (!href || !hoveredLink) {
     return null;
   }
 
@@ -101,7 +101,14 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
             <ActionIcon
               ml="sm"
               onClick={() => {
-                // TODO
+                editor.commands.focus();
+                const pos = editor.view.posAtDOM(hoveredLink, 0);
+                editor.commands.setTextSelection({
+                  from: pos,
+                  to: pos + (hoveredLink.textContent?.length || 0),
+                });
+                editor.emit("openLinkPopup", true);
+                setHoveredLink(null);
               }}
             >
               <FixedSizeIcon name="pencil" />
