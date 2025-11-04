@@ -210,6 +210,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
             }
             style={{
               width: 40,
+              backgroundColor: "var(--mb-color-accent-gray-light)",
             }}
           />
           <Button

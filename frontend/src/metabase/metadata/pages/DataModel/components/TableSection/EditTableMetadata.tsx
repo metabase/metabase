@@ -8,7 +8,16 @@ import {
   UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Group, Icon, rem, Stack, Title } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Group,
+  Icon,
+  Stack,
+  Title,
+  Tooltip,
+  rem,
+} from "metabase/ui";
 import type {
   TableDataLayer,
   TableDataSource,
@@ -16,6 +25,7 @@ import type {
 } from "metabase-types/api";
 
 import { useSelection } from "../../contexts/SelectionContext";
+import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 
 import S from "./TableMetadataSection.module.css";
 
@@ -26,6 +36,7 @@ export function EditTableMetadata() {
     selectedDatabases,
     selectedItemsCount,
   } = useSelection();
+  const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [editTables] = useEditTablesMutation();
   const [dataLayer, setDataLayer] = useState<TableDataLayer | null>(null);
@@ -82,86 +93,118 @@ export function EditTableMetadata() {
   };
 
   return (
-    <Stack gap="lg">
-      <Group
-        align="center"
-        c="text-light"
-        gap={10}
-        flex="1"
-        fs="lg"
-        lh="normal"
-        wrap="nowrap"
-        px="xl"
-        mt="lg"
-      >
-        <Title
-          order={4}
-          c="text-dark"
-          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+    <>
+      <Stack gap="lg">
+        <Group
+          align="center"
+          c="text-light"
+          gap={10}
+          flex="1"
+          fs="lg"
+          lh="normal"
+          wrap="nowrap"
+          mt="xl"
+          px="xl"
+          pt="md"
+          justify="space-between"
         >
-          <Icon flex="0 0 auto" name="table2" size={20} />
-          {jt`${selectedItemsCount} item${selectedItemsCount === 1 ? "" : "s"} selected`}
-        </Title>
-      </Group>
+          <Group>
+            <Title
+              order={4}
+              c="text-dark"
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              pl="sm"
+            >
+              <Icon flex="0 0 auto" name="table2" size={20} />
+              {jt`${selectedItemsCount} item${selectedItemsCount === 1 ? "" : "s"} selected`}
+            </Title>
+          </Group>
+          <Group>
+            <Button
+              onClick={() => setIsCreateModelsModalOpen(true)}
+              p="sm"
+              leftSection={
+                <Tooltip
+                  label={t`Create model${selectedItemsCount === 1 ? "" : "s"}`}
+                >
+                  <Icon name="model" />
+                </Tooltip>
+              }
+              style={{
+                width: 40,
+              }}
+            />
+          </Group>
+        </Group>
 
-      <Box className={S.container} px="xl">
-        <LayerInput
-          clearable
-          value={dataLayer}
-          onChange={(newDataLayer) => handleSubmit({ dataLayer: newDataLayer })}
-          className={S.gridLabelInput}
-          styles={{
-            label: {
-              gridColumn: 1,
-              fontWeight: "normal",
-            },
-            input: {
-              gridColumn: 2,
-            },
-          }}
-        />
+        <Box className={S.container} px="xl">
+          <LayerInput
+            clearable
+            value={dataLayer}
+            onChange={(newDataLayer) =>
+              handleSubmit({ dataLayer: newDataLayer })
+            }
+            className={S.gridLabelInput}
+            styles={{
+              label: {
+                gridColumn: 1,
+                fontWeight: "normal",
+              },
+              input: {
+                gridColumn: 2,
+              },
+            }}
+          />
 
-        <UserInput
-          clearable
-          email={email}
-          label={t`Owner`}
-          userId={userId}
-          onEmailChange={(newEmail) => {
-            handleSubmit({ email: newEmail });
-          }}
-          onUserIdChange={(newUserId) => {
-            handleSubmit({ userId: newUserId });
-          }}
-          className={S.gridLabelInput}
-          styles={{
-            label: {
-              gridColumn: 1,
-              fontWeight: "normal",
-            },
-            input: {
-              gridColumn: 2,
-            },
-          }}
-        />
+          <UserInput
+            clearable
+            email={email}
+            label={t`Owner`}
+            userId={userId}
+            onEmailChange={(newEmail) => {
+              handleSubmit({ email: newEmail });
+            }}
+            onUserIdChange={(newUserId) => {
+              handleSubmit({ userId: newUserId });
+            }}
+            className={S.gridLabelInput}
+            styles={{
+              label: {
+                gridColumn: 1,
+                fontWeight: "normal",
+              },
+              input: {
+                gridColumn: 2,
+              },
+            }}
+          />
 
-        <DataSourceInput
-          clearable
-          value={dataSource}
-          onChange={(newDataSource) =>
-            handleSubmit({ dataSource: newDataSource })
-          }
-          className={S.gridLabelInput}
-          styles={{
-            label: {
-              gridColumn: 1,
-              fontWeight: "normal",
-            },
-            input: {
-              gridColumn: 2,
-            },
-          }}
-        />
-      </Box>
-    </Stack>
+          <DataSourceInput
+            clearable
+            value={dataSource}
+            onChange={(newDataSource) =>
+              handleSubmit({ dataSource: newDataSource })
+            }
+            className={S.gridLabelInput}
+            styles={{
+              label: {
+                gridColumn: 1,
+                fontWeight: "normal",
+              },
+              input: {
+                gridColumn: 2,
+              },
+            }}
+          />
+        </Box>
+      </Stack>
+      <PublishModelsModal
+        tables={selectedTables}
+        schemas={selectedSchemas}
+        databases={selectedDatabases}
+        isOpen={isCreateModelsModalOpen}
+        onClose={() => setIsCreateModelsModalOpen(false)}
+      />
+    </>
   );
 }

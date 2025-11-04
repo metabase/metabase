@@ -17,7 +17,7 @@ interface Props {
   schemas?: Set<SchemaId>;
   databases?: Set<DatabaseId>;
   isOpen: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   onSuccess?: () => void;
 }
 
