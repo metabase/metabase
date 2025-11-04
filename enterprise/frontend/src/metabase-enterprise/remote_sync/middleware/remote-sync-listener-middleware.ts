@@ -5,6 +5,7 @@ import { Api } from "metabase/api";
 import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
+import { tag } from "metabase/api/tags";
 import { timelineApi } from "metabase/api/timeline";
 import { timelineEventApi } from "metabase/api/timeline-event";
 import { getCollectionFromCollectionsTree } from "metabase/selectors/collection";
@@ -31,6 +32,97 @@ import {
 } from "../sync-task-slice";
 
 export const remoteSyncListenerMiddleware = createListenerMiddleware<State>();
+
+function invalidateRemoteSyncTags(dispatch: any) {
+  dispatch(Api.util.invalidateTags(REMOTE_SYNC_INVALIDATION_TAGS as any));
+}
+
+function isDeactivatingRemoteSync(action: any): boolean {
+  const settings = action.meta?.arg?.originalArgs;
+  return settings?.["remote-sync-url"] === "";
+}
+
+const ALL_INVALIDATION_TAGS = [
+  tag("action"),
+  tag("alert"),
+  tag("bookmark"),
+  tag("card"),
+  tag("channel"),
+  tag("collection"),
+  tag("collection-tree"),
+  tag("content-translation"),
+  tag("dashboard"),
+  tag("dashboard-question-candidates"),
+  tag("document"),
+  tag("embed-card"),
+  tag("embed-dashboard"),
+  tag("indexed-entity"),
+  tag("notification"),
+  tag("parameter-values"),
+  tag("public-action"),
+  tag("public-card"),
+  tag("public-dashboard"),
+  tag("revision"),
+  tag("segment"),
+  tag("session-properties"),
+  tag("snippet"),
+  tag("subscription"),
+  tag("subscription-channel"),
+  tag("timeline"),
+  tag("timeline-event"),
+];
+
+function shouldInvalidateForEntity(
+  oldEntity: Card | Dashboard | Document | undefined,
+  newEntity: Card | Dashboard | Document,
+): boolean {
+  const oldSynced = oldEntity?.is_remote_synced ?? false;
+  const newSynced = newEntity.is_remote_synced ?? false;
+
+  return oldSynced !== newSynced || newSynced;
+}
+
+function shouldInvalidateForCollection(
+  oldCollection: Collection | undefined,
+  newCollection: Collection | undefined,
+): boolean {
+  if (!newCollection) {
+    return false;
+  }
+
+  const oldType = oldCollection?.type;
+  const newType = newCollection.type;
+
+  return oldType === "remote-synced" || newType === "remote-synced";
+}
+
+function getOriginalDocument(originalState: State, id: number) {
+  return (
+    documentApi.endpoints.getDocument.select({ id })(originalState as any)
+      ?.data || originalState.entities.documents[id]
+  );
+}
+
+function getOriginalDashboard(originalState: State, id: DashboardId) {
+  return (
+    dashboardApi.endpoints.getDashboard.select({ id })(originalState as any)
+      ?.data || originalState.entities.dashboards[id]
+  );
+}
+
+function getOriginalCard(originalState: State, id: CardId) {
+  return (
+    cardApi.endpoints.getCard.select({ id })(originalState as any)?.data ||
+    originalState.entities.questions[id]
+  );
+}
+
+function getOriginalCollection(originalState: State, id: CollectionId) {
+  return (
+    collectionApi.endpoints.getCollection.select({ id })(originalState)?.data ||
+    getCollectionFromCollectionsTree(originalState, id)
+  );
+}
 
 remoteSyncListenerMiddleware.startListening({
   matcher: isAnyOf(
@@ -229,12 +321,18 @@ remoteSyncListenerMiddleware.startListening({
 });
 
 remoteSyncListenerMiddleware.startListening({
-  matcher: isAnyOf(
-    remoteSyncApi.endpoints.importChanges.matchPending,
-    remoteSyncApi.endpoints.updateRemoteSyncSettings.matchPending,
-  ),
+  matcher: remoteSyncApi.endpoints.importChanges.matchPending,
   effect: async (_action, { dispatch }) => {
     dispatch(taskStarted({ taskType: "import" }));
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.updateRemoteSyncSettings.matchPending,
+  effect: async (action, { dispatch }) => {
+    if (!isDeactivatingRemoteSync(action)) {
+      dispatch(taskStarted({ taskType: "import" }));
+    }
   },
 });
 
@@ -275,37 +373,7 @@ remoteSyncListenerMiddleware.startListening({
           }, 500);
 
           if (isImportTask) {
-            dispatch(
-              Api.util.invalidateTags([
-                "action",
-                "alert",
-                "bookmark",
-                "card",
-                "channel",
-                "collection",
-                "collection-tree",
-                "content-translation",
-                "dashboard",
-                "dashboard-question-candidates",
-                "document",
-                "embed-card",
-                "embed-dashboard",
-                "indexed-entity",
-                "notification",
-                "parameter-values",
-                "public-action",
-                "public-card",
-                "public-dashboard",
-                "revision",
-                "segment",
-                "session-properties",
-                "snippet",
-                "subscription",
-                "subscription-channel",
-                "timeline",
-                "timeline-event",
-              ]),
-            );
+            dispatch(Api.util.invalidateTags(ALL_INVALIDATION_TAGS));
           }
         }
 
@@ -314,47 +382,3 @@ remoteSyncListenerMiddleware.startListening({
     }
   },
 });
-
-const invalidateRemoteSyncTags = (dispatch: any) => {
-  dispatch(Api.util.invalidateTags(REMOTE_SYNC_INVALIDATION_TAGS as any));
-};
-
-const shouldInvalidateForEntity = (
-  oldEntity: Card | Dashboard | Document | undefined,
-  newEntity: Card | Dashboard | Document,
-): boolean => {
-  const oldSynced = oldEntity?.is_remote_synced ?? false;
-  const newSynced = newEntity.is_remote_synced ?? false;
-
-  return oldSynced !== newSynced || newSynced;
-};
-
-const shouldInvalidateForCollection = (
-  oldCollection?: Collection,
-  newCollection?: Collection,
-): boolean => {
-  if (!newCollection) {
-    return false;
-  }
-
-  const oldType = oldCollection?.type;
-  const newType = newCollection.type;
-
-  return oldType === "remote-synced" || newType === "remote-synced";
-};
-
-const getOriginalDocument = (originalState: State, id: number) =>
-  documentApi.endpoints.getDocument.select({ id })(originalState as any)
-    ?.data || originalState.entities.documents[id];
-
-const getOriginalDashboard = (originalState: State, id: DashboardId) =>
-  dashboardApi.endpoints.getDashboard.select({ id })(originalState as any)
-    ?.data || originalState.entities.dashboards[id];
-
-const getOriginalCard = (originalState: State, id: CardId) =>
-  cardApi.endpoints.getCard.select({ id })(originalState as any)?.data ||
-  originalState.entities.questions[id];
-
-const getOriginalCollection = (originalState: State, id: CollectionId) =>
-  collectionApi.endpoints.getCollection.select({ id })(originalState)?.data ||
-  getCollectionFromCollectionsTree(originalState, id);
