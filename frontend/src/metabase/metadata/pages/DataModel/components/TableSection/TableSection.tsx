@@ -39,7 +39,6 @@ import { FieldList } from "./FieldList";
 import { TableMetadataSection } from "./TableMetadataSection";
 import S from "./TableSection.module.css";
 import { useResponsiveButtons } from "./hooks";
-import { ThemeIcon } from "@mantine/core";
 
 interface Props {
   params: RouteParams;
@@ -174,19 +173,22 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           nameMaxLength={254}
           namePlaceholder={t`Give this table a name`}
           nameRightSection={
-            <Tooltip label={t`Go to this table`} position="top">
-              <ActionIcon
-                component={Link}
-                to={getQueryBuilderUrl(table)}
-                variant="subtle"
-                color="text-light"
-                size="sm"
-                mr="sm"
-                aria-label={t`Go to this table`}
-              >
-                <Icon name="external" size={16} />
-              </ActionIcon>
-            </Tooltip>
+            <Group>
+              <TransformLink table={table} />
+              <Tooltip label={t`Go to this table`} position="top">
+                <ActionIcon
+                  component={Link}
+                  to={getQueryBuilderUrl(table)}
+                  variant="subtle"
+                  color="text-light"
+                  size="sm"
+                  mr="sm"
+                  aria-label={t`Go to this table`}
+                >
+                  <Icon name="external" size={16} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
           }
           onNameChange={handleNameChange}
           onDescriptionChange={handleDescriptionChange}
@@ -338,6 +340,44 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     </Stack>
   );
 };
+
+function TransformLink({ table }: { table: Table }) {
+  const shouldShowTransform =
+    table.transform_id != null && table.data_source === "metabase-transform";
+
+  if (!shouldShowTransform) {
+    return null;
+  }
+
+  return (
+    <Box
+      component={Link}
+      to={`/admin/transforms?id=${table.transform_id}`}
+      bg="var(--mb-color-accent-gray-light)"
+      p="sm"
+      style={{
+        borderRadius: 4,
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        cursor: "pointer",
+        textDecoration: "none",
+      }}
+    >
+      <Text
+        size="sm"
+        fw="bold"
+        c="brand"
+        style={{
+          fontSize: 12,
+          lineHeight: "16px",
+        }}
+      >
+        {t`via transform`}
+      </Text>
+    </Box>
+  );
+}
 
 function getQueryBuilderUrl(table: Table) {
   return `/question#?db=${table.db_id}&table=${table.id}`;
