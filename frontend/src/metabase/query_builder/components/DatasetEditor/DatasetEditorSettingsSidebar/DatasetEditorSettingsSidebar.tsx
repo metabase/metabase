@@ -19,7 +19,7 @@ export type ModelSettings = {
 type DatasetEditorSettingsSidebarProps = {
   onUpdateModelSettings: (settings: Partial<ModelSettings>) => void;
   visualizationSettings: ComputedVisualizationSettings;
-  display: CardDisplayType;
+  display?: CardDisplayType;
 };
 export const DatasetEditorSettingsSidebar = ({
   onUpdateModelSettings: onUpdateSettings,
