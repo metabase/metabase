@@ -8,6 +8,16 @@
 
 (set! *warn-on-reflection* true)
 
+(defmulti representation-type
+  "Returns the representation type for a toucan entity (e.g., :question, :model, :metric).
+   Dispatches on the toucan model type."
+  {:arglists '[[entity]]}
+  t2/model)
+
+(defmethod representation-type :default [entity]
+  (throw (ex-info (str "Unknown entity type: " (t2/model entity))
+                  {:entity entity})))
+
 (defn entity-id
   "Generates an entity-id stably from ref and collection-ref."
   [ref collection-ref]
@@ -164,6 +174,27 @@
   (when (nil? entity)
     (throw (ex-info "Entity not found." {})))
   entity)
+
+(defn ensure-correct-type
+  "Ensures the entity is of the expected representation type. Throws if not."
+  [entity expected-type]
+  (when (and entity
+             (not= expected-type (representation-type entity)))
+    (throw (ex-info (str "Entity is not the correct type. Expected: " expected-type "; Actual: " (representation-type entity))
+                    {:entity entity
+                     :expected-type expected-type
+                     :actual-type (representation-type entity)})))
+  entity)
+
+(defn entity->ref
+  "Get the internal ref for a toucan entity."
+  [t2-entity]
+  (reref (->ref (:id t2-entity) (representation-type t2-entity))))
+
+(defn id-model->ref
+  "Get the internal ref for a toucan model and id."
+  [id model]
+  (entity->ref (t2/select-one model id)))
 
 (defn ensure-correct-model-type [entity expected-type]
   (when (not= expected-type (t2/model entity))

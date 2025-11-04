@@ -4,7 +4,6 @@
    [metabase-enterprise.representations.core :as rep]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.v0.common :as v0-common]
-   [metabase-enterprise.representations.v0.core :as v0-core]
    [metabase-enterprise.representations.yaml :as yaml]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -174,4 +173,4 @@
 
 (deftest representation-type-test
   (doseq [entity (t2/select :model/Card :type :model)]
-    (is (= :model (v0-core/representation-type entity)))))
+    (is (= :model (v0-common/representation-type entity)))))

@@ -11,9 +11,7 @@
    [representations.read :as rep-read]
    [toucan2.core :as t2]))
 
-(defn representation-type
-  "Returns the representation type keyword for a transform."
-  [_entity]
+(defmethod v0-common/representation-type :model/Transform [_entity]
   :transform)
 
 (def toucan-model

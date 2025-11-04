@@ -9,9 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn representation-type
-  "Returns the representation type keyword for a snippet."
-  [_entity]
+(defmethod v0-common/representation-type :model/NativeQuerySnippet [_entity]
   :snippet)
 
 (def toucan-model
@@ -56,7 +54,7 @@
 
 (defn export-snippet
   "Export a NativeQuerySnippet Toucan entity to a v0 snippet representation."
-  [snippet _resolve]
+  [snippet]
   (let [snippet-ref (v0-common/unref (v0-common/->ref (:id snippet) :snippet))
         template-tags (into {}
                             (comp

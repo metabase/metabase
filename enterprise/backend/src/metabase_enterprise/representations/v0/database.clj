@@ -15,9 +15,7 @@
   "The toucan model keyword associated with database representations"
   :model/Database)
 
-(defn representation-type
-  "Returns the representation type keyword for a database."
-  [_entity]
+(defmethod v0-common/representation-type :model/Database [_entity]
   :database)
 
 (defn yaml->toucan

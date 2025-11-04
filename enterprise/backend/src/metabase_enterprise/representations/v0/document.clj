@@ -6,7 +6,6 @@
    [clojure.walk :as walk]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
-   [metabase-enterprise.representations.v0.core :as v0-core]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -18,9 +17,7 @@
   "The toucan model keyword associated with document representations"
   :model/Document)
 
-(defn representation-type
-  "Returns the representation type keyword for a document."
-  [_entity]
+(defmethod v0-common/representation-type :model/Document [_entity]
   :document)
 
 (defn- markdown->yaml [md]
@@ -78,7 +75,7 @@
      (cond-> node
        (and (map? node)
             (= "cardEmbed" (:type node)))
-       (update-in [:attrs :id] v0-core/id-model->ref :model/Card)))
+       (update-in [:attrs :id] v0-common/id-model->ref :model/Card)))
    yaml))
 
 (defn- edn->markdown

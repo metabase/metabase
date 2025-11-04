@@ -5,7 +5,6 @@
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
-   [metabase-enterprise.representations.v0.core :as v0-core]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -215,4 +214,4 @@
 
 (deftest representation-type-test
   (doseq [entity (t2/select :model/NativeQuerySnippet)]
-    (is (= :snippet (v0-core/representation-type entity)))))
+    (is (= :snippet (v0-common/representation-type entity)))))

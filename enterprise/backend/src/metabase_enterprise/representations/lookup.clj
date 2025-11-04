@@ -1,7 +1,6 @@
 (ns metabase-enterprise.representations.lookup
   (:require
    [metabase-enterprise.representations.v0.common :as v0-common]
-   [metabase-enterprise.representations.v0.core :as v0-core]
    [toucan2.core :as t2]))
 
 (defn lookup-by-id
@@ -38,6 +37,6 @@
     (let [database (or (v0-common/lookup-entity ref-index database)
                        (lookup-by-name :model/Database database)
                        (lookup-by-entity-id :model/Database database))]
-      (-> (v0-core/ensure-correct-type database :database)
+      (-> (v0-common/ensure-correct-type database :database)
           :id
           (v0-common/ensure-not-nil)))))

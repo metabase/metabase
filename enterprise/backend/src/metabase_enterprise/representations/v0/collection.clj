@@ -11,9 +11,7 @@
   "The toucan model keyword associated with collection representations"
   :model/Collection)
 
-(defn representation-type
-  "Returns the representation type keyword for a collection."
-  [_entity]
+(defmethod v0-common/representation-type :model/Collection [_entity]
   :collection)
 
 (defn- model->card-type ; TODO: DRY -- repeated in export.clj
