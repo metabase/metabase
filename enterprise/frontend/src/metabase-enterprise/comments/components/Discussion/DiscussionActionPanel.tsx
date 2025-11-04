@@ -18,29 +18,29 @@ import type { Comment } from "metabase-types/api";
 import S from "./Discussion.module.css";
 
 export type DiscussionActionPanelProps = {
-  canResolve?: boolean;
   canReact?: boolean;
+  canResolve?: boolean;
   comment: Comment;
-  onResolve?: (comment: Comment) => void;
-  onReopen?: (comment: Comment) => void;
-  onReaction?: (comment: Comment, emoji: string) => void;
+  onCopyLink?: (comment: Comment) => void;
   onDelete?: (comment: Comment) => void;
   onEdit?: (comment: Comment) => void;
-  onCopyLink?: (comment: Comment) => void;
+  onReaction?: (comment: Comment, emoji: string) => void;
+  onReopen: (comment: Comment) => void;
+  onResolve: (comment: Comment) => void;
 };
 
 const ACTION_ICON_SIZE = "md";
 
 export function DiscussionActionPanel({
-  canResolve,
   canReact = true,
+  canResolve,
   comment,
-  onResolve,
-  onReopen,
+  onCopyLink,
   onDelete,
   onEdit,
-  onCopyLink,
   onReaction,
+  onReopen,
+  onResolve,
 }: DiscussionActionPanelProps) {
   const [emojiPickerOpened, setEmojiPickerOpened] = useState(false);
   const [popoverOpened, setPopoverOpened] = useState(false);

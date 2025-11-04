@@ -210,6 +210,9 @@
     (when (#{:count :cum-count} ag-type)
       {:base_type :type/Number}))))
 
+(defmethod sql.tx/generated-column-sql :snowflake [_ expr]
+  (format "AS (%s)" expr))
+
 (defn- setup-tracking-db!
   "Idempotently create test tracking database"
   [conn driver]
@@ -379,3 +382,5 @@
          order by created"]
        (jdbc/reducible-query (no-db-connection-spec))
        (into [] (map (juxt :database_name :created)))))
+
+(defmethod sql.tx/session-schema :snowflake [_driver] "PUBLIC")

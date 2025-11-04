@@ -7,31 +7,31 @@ import { getMetabaseInstanceVersion } from "embedding-sdk-bundle/store/selectors
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import {
   isInvalidMetabaseVersion,
-  isSdkPackageCompatibleWithSdkBundle,
+  isSdkBundleCompatibleWithMetabaseInstance,
 } from "embedding-sdk-shared/lib/version-utils";
 import { Anchor } from "metabase/ui";
 
 export function SdkIncompatibilityWithInstanceBanner() {
-  const sdkPackageVersion = getBuildInfo(
-    "METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO",
-  ).version;
-  const sdkBundleVersion = useSdkSelector(getMetabaseInstanceVersion);
+  const sdkBundleVersion = getBuildInfo(
+    "METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO",
+  )?.version;
+  const metabaseInstanceVersion = useSdkSelector(getMetabaseInstanceVersion);
 
   const isSdkCompatibleWithInstance = useMemo(() => {
-    if (!sdkBundleVersion || !sdkPackageVersion) {
+    if (!sdkBundleVersion || !metabaseInstanceVersion) {
       // If we don't have the Metabase version, we can't determine compatibility.
       return true;
     }
 
-    if (isInvalidMetabaseVersion(sdkBundleVersion)) {
+    if (isInvalidMetabaseVersion(metabaseInstanceVersion)) {
       return true;
     }
 
-    return isSdkPackageCompatibleWithSdkBundle({
-      sdkPackageVersion,
+    return isSdkBundleCompatibleWithMetabaseInstance({
       sdkBundleVersion,
+      metabaseInstanceVersion,
     });
-  }, [sdkPackageVersion, sdkBundleVersion]);
+  }, [sdkBundleVersion, metabaseInstanceVersion]);
 
   if (isSdkCompatibleWithInstance) {
     return null;

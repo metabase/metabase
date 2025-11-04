@@ -1,8 +1,8 @@
 (ns metabase.test.data.mbql-query-impl
   "Internal implementation of [[metabase.test.data/$ids]] and [[metabase.test.data/$ids]] and related macros."
   (:require
-   #?@(:clj ([metabase.query-processor.store :as qp.store]
-             [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   #?@(:clj (^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+             [metabase.lib-be.core :as lib-be]
              [metabase.lib.metadata :as lib.metadata]))
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -113,7 +113,7 @@
    (defn- metadata-provider []
      (if (qp.store/initialized?)
        (qp.store/metadata-provider)
-       (lib.metadata.jvm/application-database-metadata-provider ((requiring-resolve 'metabase.test.data/id))))))
+       (lib-be/application-database-metadata-provider ((requiring-resolve 'metabase.test.data/id))))))
 
 #?(:clj
    (defn field-name [field-id]

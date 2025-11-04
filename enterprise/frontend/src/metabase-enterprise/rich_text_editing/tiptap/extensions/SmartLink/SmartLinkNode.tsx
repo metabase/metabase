@@ -20,15 +20,18 @@ import {
   getIcon,
 } from "metabase/lib/icon";
 import { useDispatch } from "metabase/lib/redux";
-import { type UrlableModel, modelToUrl } from "metabase/lib/urls/modelToUrl";
+import { modelToUrl } from "metabase/lib/urls/modelToUrl";
 import { extractEntityId } from "metabase/lib/urls/utils";
 import { Icon } from "metabase/ui";
 import {
   useGetDocumentQuery,
   useListMentionsQuery,
 } from "metabase-enterprise/api";
-import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import { updateMentionsCache } from "metabase-enterprise/documents/documents.slice";
+import {
+  METABSE_PROTOCOL_MD_LINK,
+  parseMetabaseProtocolMarkdownLink,
+} from "metabase-enterprise/metabot/utils/links";
 import type {
   Card,
   CardDisplayType,
@@ -38,16 +41,23 @@ import type {
   Document,
   MentionableUser,
   Table,
+  Transform,
 } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
+
+import {
+  entityToUrlableModel,
+  isMentionableUser,
+} from "../shared/suggestionUtils";
+import type { SuggestionModel } from "../shared/types";
 
 import styles from "./SmartLinkNode.module.css";
 
-type SmartLinkEntity =
+export type SmartLinkEntity =
   | Card
   | Dashboard
   | Collection
   | Table
+  | Transform
   | Database
   | Document
   | MentionableUser;
@@ -155,6 +165,10 @@ export const SmartLink = Node.create<{
         default: null,
         parseHTML: (element) => element.getAttribute("data-label"),
       },
+      href: {
+        default: "/",
+        parseHTML: (element) => element.getAttribute("data-href"),
+      },
     };
   },
 
@@ -170,22 +184,25 @@ export const SmartLink = Node.create<{
     ];
   },
 
-  renderHTML({ node, HTMLAttributes }) {
-    const { entityId, model } = node.attrs;
+  renderHTML({ node }) {
+    const { entityId, model, label, href } = node.attrs;
 
     return [
-      "span",
+      "a",
       mergeAttributes(
-        HTMLAttributes,
         {
           "data-type": "smart-link",
           "data-entity-id": entityId,
           "data-model": model,
-          "data-label": node.attrs.label ?? undefined,
+          "data-label": label ?? undefined,
+          "data-site-url": this.options.siteUrl,
+          href: this.options.siteUrl + href,
+          style: "text-decoration: none;",
         },
         this.options.HTMLAttributes,
       ),
-      `{% entity id="${entityId}" model="${model}" %}`,
+      // 0 is Tiptap’s “content placeholder,” which tells it to render the node’s inner content.
+      label ?? 0,
     ];
   },
 
@@ -214,11 +231,29 @@ export const SmartLink = Node.create<{
           return null; // Return null to prevent node creation
         },
       }),
+      nodePasteRule({
+        find: new RegExp(METABSE_PROTOCOL_MD_LINK, "g"),
+        type: this.type,
+        getAttributes: (match) => {
+          const url = match[0];
+          const parsedEntity = parseMetabaseProtocolMarkdownLink(url);
+
+          if (parsedEntity) {
+            return {
+              entityId: parsedEntity.id,
+              model: parsedEntity.model,
+              label: parsedEntity.name,
+            };
+          }
+
+          return null; // Return null to prevent node creation
+        },
+      }),
     ];
   },
 });
 
-const useEntityData = (
+export const useEntityData = (
   entityId: number | null,
   model: SuggestionModel | null,
 ) => {
@@ -324,17 +359,27 @@ const useEntityData = (
 
 export const SmartLinkComponent = memo(
   ({ node }: NodeViewProps) => {
-    const { entityId, model } = node.attrs;
-    const { entity, isLoading, error } = useEntityData(entityId, model);
+    const { entityId, model, label } = node.attrs;
+
+    const {
+      entity: networkEntity,
+      isLoading,
+      error,
+    } = useEntityData(entityId, model);
+    const cachedEntity = { id: parseInt(entityId, 10), model, name: label };
+    const entity = networkEntity || cachedEntity;
 
     const dispatch = useDispatch();
     useEffect(() => {
-      if (entity?.name) {
-        dispatch(updateMentionsCache({ entityId, model, name: entity.name }));
+      if (entity) {
+        const name =
+          "display_name" in entity ? entity.display_name : entity?.name;
+        dispatch(updateMentionsCache({ entityId, model, name }));
       }
-    }, [dispatch, entity?.name, entityId, model]);
+    }, [dispatch, entity, entityId, model]);
 
-    if (isLoading) {
+    const showLoading = isLoading && !entity;
+    if (showLoading) {
       return (
         <NodeViewWrapper as="span">
           <span className={styles.smartLink}>
@@ -371,7 +416,15 @@ export const SmartLinkComponent = memo(
     const entityUrlableModel = entityToUrlableModel(entity, model);
     const entityUrl = modelToUrl(entityUrlableModel);
 
-    const iconData = getIcon(entityToObjectWithModel(entity, model));
+    const iconData =
+      entity === cachedEntity
+        ? getIcon(cachedEntity)
+        : getIcon(
+            entityToObjectWithModel(
+              entity as NonNullable<typeof networkEntity>,
+              model,
+            ),
+          );
 
     return (
       <NodeViewWrapper as="span">
@@ -387,7 +440,7 @@ export const SmartLinkComponent = memo(
         >
           <span className={styles.smartLinkInner}>
             <Icon name={iconData.name} className={styles.icon} />
-            {entity.name}
+            {getName(entity)}
           </span>
         </a>
       </NodeViewWrapper>
@@ -406,29 +459,6 @@ export const SmartLinkComponent = memo(
 
 SmartLinkComponent.displayName = "SmartLinkComponent";
 
-function entityToUrlableModel(
-  entity: SmartLinkEntity,
-  model: SuggestionModel | null,
-): UrlableModel {
-  const result: UrlableModel = {
-    id: entity.id as number, // it is string | number in reality, but then gets casted to a string in "modelToUrl"
-    model: (entity as Dashboard).model || model || "",
-    name: isMentionableUser(entity) ? entity.common_name : entity.name,
-  };
-
-  if ("db_id" in entity && entity.db_id) {
-    result.database = {
-      id: entity.db_id,
-    };
-  }
-
-  if ("database_id" in entity && entity.database_id) {
-    result.database = { id: entity.database_id };
-  }
-
-  return result;
-}
-
 function entityToObjectWithModel(
   entity: SmartLinkEntity,
   model: SuggestionModel | null,
@@ -440,6 +470,12 @@ function entityToObjectWithModel(
   };
 }
 
-function isMentionableUser(value: unknown): value is MentionableUser {
-  return isObject(value) && typeof value.common_name === "string";
+function getName(entity: { name?: string; display_name?: string }) {
+  if ("display_name" in entity && entity.display_name !== "") {
+    return entity.display_name;
+  }
+  if ("name" in entity && entity.name !== "") {
+    return entity.name;
+  }
+  return "";
 }

@@ -6,7 +6,6 @@ import {
   isInstanceAnalyticsCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import { color } from "metabase/lib/colors";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
@@ -86,22 +85,26 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
     return (
       <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
         size={24}
-        color={color("brand")}
+        c="brand"
         collection={collection}
         entity="collection"
       />
     );
   }
 
+  if (PLUGIN_COLLECTIONS.isSyncedCollection(collection)) {
+    return <Icon name="synced_collection" size={24} c="brand" />;
+  }
+
   if (isRootTrashCollection(collection)) {
-    return <Icon name="trash" size={24} />;
+    return <Icon name="trash" size={24} c="text-disabled" />;
   }
 
   if (
     collection.archived &&
     PLUGIN_COLLECTIONS.isRegularCollection(collection)
   ) {
-    return <Icon name="folder" size={24} color="text-light" />;
+    return <Icon name="folder" size={24} c="text-disabled" />;
   }
 
   return (

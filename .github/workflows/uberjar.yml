@@ -134,7 +134,6 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: uberjar
           java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
       - name: Build
         run: ./bin/build.sh

@@ -43,7 +43,7 @@ interface Props {
   readonly?: boolean;
   onBlur?: (content: DocumentContent, editor: Editor) => void;
   onChange?: (content: DocumentContent) => void;
-  onSubmit?: (content: DocumentContent) => void;
+  onSubmit?: (content: DocumentContent, html: string) => void;
   onEscape?: () => void;
 }
 
@@ -147,13 +147,17 @@ export const CommentEditor = ({
     const content = editor.getJSON() as DocumentContent;
     const isEmpty = editor.isEmpty;
 
+    const html = stripInternalIds(editor.getHTML());
+
     if (!isEmpty && onSubmit) {
-      onSubmit(content);
+      onSubmit(content, html);
       editor.commands.clearContent(true);
       editor.commands.blur();
     }
   };
-  const handleKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
+  const handleKeyDownCapture: KeyboardEventHandler<HTMLDivElement> = (
+    event,
+  ) => {
     if (readonly) {
       return;
     }
@@ -164,6 +168,18 @@ export const CommentEditor = ({
     }
   };
 
+  // we have two different handlers and it is fine. handleKeyDownCapture works
+  // well with submitting data handleKeyDown is needed to prevent event to
+  // bubble to the global listener
+  const handleKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
+    // shortcut is used for code block extension, conflicts with global shortcut
+    // for opening metabot sidebar we have to stop event propagation as other
+    // variants didn't work or uglier that this solution
+    if ((event.ctrlKey || event.metaKey) && event.key === "e") {
+      event.stopPropagation();
+    }
+  };
+
   return (
     <Flex
       align="center"
@@ -171,7 +187,8 @@ export const CommentEditor = ({
         [S.readonly]: readonly,
         [S.active]: active,
       })}
-      onKeyDownCapture={handleKeyDown}
+      onKeyDownCapture={handleKeyDownCapture}
+      onKeyDown={handleKeyDown}
     >
       <Box className={S.contentWrapper}>
         <EditorContent
@@ -210,3 +227,11 @@ export const CommentEditor = ({
     </Flex>
   );
 };
+
+function stripInternalIds(html: string): string {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  const elements = doc.body.querySelectorAll("[_id]");
+  elements.forEach((el) => el.removeAttribute("_id"));
+  return doc.body.innerHTML;
+}

@@ -21,16 +21,22 @@ function getDocumentNodeButton({
   targetId,
   childTargetId,
   hasComments,
+  isCardEmbedNode,
 }: {
   targetId: DocumentId;
   childTargetId: string;
   hasComments?: boolean;
+  isCardEmbedNode?: boolean;
 }) {
   const threadUrl = `/document/${targetId}/comments/${childTargetId}${hasComments ? "" : "?new=true"}`;
 
-  return getDocumentNodeButtons().filter(
-    (_, element) => element.getAttribute("href") === threadUrl,
-  );
+  if (isCardEmbedNode) {
+    return cy.findByRole("button", { name: "Comments" });
+  } else {
+    return getDocumentNodeButtons().filter(
+      (_, element) => element.getAttribute("href") === threadUrl,
+    );
+  }
 }
 
 function getDocumentNodeButtons() {

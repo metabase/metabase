@@ -25,10 +25,11 @@
   `name` is `:remapped_from` `:category_id`.
 
   See also [[metabase.parameters.chain-filter]] for another explanation of remapping."
+  (:refer-clojure :exclude [mapv select-keys some empty? not-empty])
   (:require
    [clojure.data :as data]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -38,15 +39,15 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.middleware.large-int :as large-int]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [mapv select-keys some empty? not-empty]]))
 
 (mr/def ::simplified-ref
   [:tuple
@@ -90,12 +91,13 @@
   (let [col (lib.metadata/field metadata-providerable field-id)]
     (when-let [{remap-id :id, remap-name :name, remap-field-id :field-id} (:lib/external-remap col)]
       (when-let [remap-field (lib.metadata/field metadata-providerable remap-field-id)]
-        {:id                        remap-id
-         :name                      remap-name
-         :field-id                  (:id col)
-         :field-name                (:name col)
-         :human-readable-field-id   remap-field-id
-         :human-readable-field-name (:name remap-field)}))))
+        (when (not= (:visibility-type remap-field) :sensitive)
+          {:id                        remap-id
+           :name                      remap-name
+           :field-id                  (:id col)
+           :field-name                (:name col)
+           :human-readable-field-id   remap-field-id
+           :human-readable-field-name (:name remap-field)})))))
 
 (mr/def ::remap-info
   [:and
@@ -126,7 +128,7 @@
   ;;
   ;; TODO (Cam 7/23/25) -- this seems sorta busted, we should probably be using `:lib/desired-column-alias` here
   ;; instead.
-  (let [name-generator (lib.util/unique-name-generator)
+  (let [name-generator (lib/unique-name-generator)
         unique-name    (fn [field-id]
                          (assert (pos-int? field-id) (str "Invalid Field ID: " (pr-str field-id)))
                          (let [field (lib.metadata/field query field-id)]
@@ -236,6 +238,8 @@
                             (apply distinct? remappings)))]]]]
    [:query  ::lib.schema/query]])
 
+;; PERF: There's a ton of re-processing of the same fields lists building little indexes, I think that can be consolidated
+;; into a more pipelined thing. Not sure how much it buys us, but this is a seriously slow middleware with wide tables.
 (mu/defn- add-fk-remaps-to-fields :- [:maybe ::lib.schema/fields]
   [infos  :- [:maybe [:sequential ::remap-info]]
    fields :- [:maybe ::lib.schema/fields]]
@@ -262,6 +266,7 @@
                                      (map (fn [{:keys [original-field-clause new-field-clause]}]
                                             [(simplify-ref-options original-field-clause) new-field-clause]))
                                      infos)
+            ;; PERF: More indexing on the same stuff! This really needs to be poured into a common context.
             new-breakout       (add-fk-remaps-rewrite-breakout original->remapped breakout)
             new-order-by       (add-fk-remaps-rewrite-order-by original->remapped order-by)
             remaps             (into []
@@ -275,6 +280,7 @@
           (seq remaps)   (assoc ::remaps remaps)))
       ;; otherwise return query as-is
       (cond-> stage
+        ;; PERF: This is an edit to the query, busting the caching unnecessarily when there's nothing to remap.
         (seq previous-stage-remaps) (assoc ::remaps previous-stage-remaps)))))
 
 (mu/defn- add-fk-remaps-to-join :- [:maybe ::lib.schema.join/join]
@@ -605,7 +611,7 @@
     rff
     (fn remap-results-rff* [metadata]
       (let [mlv2-cols          (map
-                                #(lib.metadata.jvm/instance->metadata % :metadata/column)
+                                #(lib-be/instance->metadata % :metadata/column)
                                 (:cols metadata))
             internal-cols-info (internal-columns-info mlv2-cols)
             metadata           (add-remapped-to-and-from-metadata metadata external-remaps internal-cols-info)]

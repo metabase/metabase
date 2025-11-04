@@ -25,6 +25,12 @@ import {
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
+// There's a race condition when saving a dashboard
+// and then immediately editing it again. After saving,
+// we exit the edit mode and that can happen after
+// `H.editDashboard` is called for some reason
+const DASHBOARD_SAVE_WAIT_TIME = 450;
+
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
     H.restore();
@@ -218,7 +224,7 @@ describe("scenarios > dashboard", () => {
 
       H.commandPaletteButton().click();
       H.commandPalette().within(() => {
-        cy.findByText("Recent items").should("exist");
+        cy.findByText("Recents").should("exist");
         cy.findByRole("option", { name: "Orders in a dashboard" }).click();
       });
 
@@ -645,6 +651,33 @@ describe("scenarios > dashboard", () => {
         H.getDashboardCard(1).contains("bottom");
       },
     );
+
+    it("should not save the dashboard when the user clicks 'Discard changes'", () => {
+      // Navigate to the dashboard via client-side navigation (to trigger the client-side "Discard changes" prompt)
+      cy.visit("/");
+      cy.findByTestId("main-navbar-root").findByText("Our analytics").click();
+      cy.findByTestId("collection-table")
+        .findByText(originalDashboardName)
+        .click();
+
+      cy.log("Make a change to the dashboard");
+      H.editDashboard();
+      cy.findByTestId("dashboard-empty-state")
+        .findByText("Add a chart")
+        .click();
+      H.sidebar().findByText("Orders, Count").click();
+      H.getDashboardCards().should("have.length", 1);
+
+      cy.log("Navigate back and discard changes");
+      cy.go("back");
+      H.modal().button("Discard changes").click();
+      cy.findByTestId("collection-table")
+        .findByText(originalDashboardName)
+        .click();
+
+      cy.log("Verify changes were not saved");
+      cy.findByTestId("dashboard-empty-state").should("exist");
+    });
   });
 
   describe("iframe cards", () => {
@@ -1211,13 +1244,14 @@ describe("scenarios > dashboard", () => {
     cy.findByTestId("dashcard").findByText("Orders");
   });
 
-  describe("warn before leave", { tags: "@flaky" }, () => {
+  describe("warn before leave", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
     });
 
     it("should warn a user before leaving after adding, editing, or removing a card on a dashboard", () => {
       cy.visit("/");
+      cy.findByTestId("loading-indicator").should("not.exist");
 
       cy.findByTestId("home-page").should(
         "contain",
@@ -1240,7 +1274,7 @@ describe("scenarios > dashboard", () => {
           .eq(0);
       dragOnXAxis(card(), 100);
       assertPreventLeave();
-      H.saveDashboard();
+      H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
 
       // remove
       H.editDashboard();
@@ -1248,8 +1282,9 @@ describe("scenarios > dashboard", () => {
       assertPreventLeave();
     });
 
-    it("should warn a user before leaving after adding, removed, moving, or duplicating a tab", () => {
+    it("should warn a user before leaving after adding, removing, moving, or duplicating a tab", () => {
       cy.visit("/");
+      cy.findByTestId("loading-indicator").should("not.exist");
 
       // add tab
       createNewDashboard();
@@ -1287,7 +1322,7 @@ describe("scenarios > dashboard", () => {
       // can be a side effect
       cy.url().should("include", "tab-1");
       assertPreventLeave();
-      H.saveDashboard({ waitMs: 100 });
+      H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
 
       // rename tab
       H.editDashboard();

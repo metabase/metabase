@@ -1,10 +1,11 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
 
+import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
-import { transformSdkQuestion } from "embedding-sdk-bundle/lib/transform-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import { getPlugins } from "embedding-sdk-bundle/store/selectors";
+import { getError, getPlugins } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
+import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import {
   type OnCreateOptions,
@@ -45,12 +46,16 @@ export const SdkQuestionProvider = ({
   entityTypes,
   targetCollection,
   initialSqlParameters,
+  hiddenParameters,
   withDownloads,
   targetDashboardId,
   backToDashboard,
   getClickActionMode: userGetClickActionMode,
   navigateToNewCard: userNavigateToNewCard,
+  onVisualizationChange,
 }: SdkQuestionProviderProps) => {
+  const error = useSdkSelector(getError);
+
   const handleCreateQuestion = useCreateQuestion();
   const handleSaveQuestion = useSaveQuestion();
 
@@ -93,6 +98,7 @@ export const SdkQuestionProvider = ({
   const {
     question,
     originalQuestion,
+    parameterValues,
 
     queryResults,
 
@@ -103,6 +109,7 @@ export const SdkQuestionProvider = ({
     replaceQuestion,
     loadAndQueryQuestion,
     updateQuestion,
+    updateParameterValues,
     navigateToNewCard,
   } = useLoadQuestion({
     questionId,
@@ -143,6 +150,7 @@ export const SdkQuestionProvider = ({
     queryQuestion,
     replaceQuestion,
     updateQuestion,
+    updateParameterValues,
     navigateToNewCard:
       userNavigateToNewCard !== undefined
         ? userNavigateToNewCard
@@ -150,6 +158,7 @@ export const SdkQuestionProvider = ({
     plugins,
     question,
     originalQuestion,
+    parameterValues,
     queryResults,
     mode,
     onSave: handleSave,
@@ -159,6 +168,8 @@ export const SdkQuestionProvider = ({
     withDownloads,
     onRun,
     backToDashboard,
+    hiddenParameters,
+    onVisualizationChange,
   };
 
   useEffect(() => {
@@ -170,6 +181,10 @@ export const SdkQuestionProvider = ({
   useEffect(() => {
     dispatch(setEntityTypes(entityTypes));
   }, [dispatch, entityTypes]);
+
+  if (error) {
+    return <SdkError message={error.message} />;
+  }
 
   return (
     <SdkQuestionContext.Provider value={questionContext}>

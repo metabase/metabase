@@ -38,6 +38,6 @@
   padding: 0 0.5rem;
   transform: translateY(-50%);
   color: var(--mb-color-text-medium);
-  background-color: white;
+  background-color: var(--mb-color-bg-white);
   text-transform: uppercase;
 }

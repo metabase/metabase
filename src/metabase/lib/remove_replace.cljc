@@ -1,7 +1,7 @@
 (ns metabase.lib.remove-replace
+  (:refer-clojure :exclude [every? mapv run! some empty? not-empty #?(:clj for)])
   (:require
    [clojure.set :as set]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.equality :as lib.equality]
@@ -18,10 +18,12 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf :refer [every? mapv run! some empty? not-empty #?(:clj for)]]))
 
 (defn- stage-paths
   [query stage-number]
@@ -181,8 +183,8 @@
                             (keep (fn [clause]
                                     (lib.util.match/match-lite-recursive clause
                                       [(op :guard (= op target-op))
-                                       (_ :guard #(or (empty? target-opts)
-                                                      (set/subset? (set target-opts) (set %))))
+                                       (opts :guard (or (empty? target-opts)
+                                                        (set/subset? (set target-opts) (set opts))))
                                        (id :guard (= id target-ref-id))] [location clause]))))))
                    (stage-paths query stage-number))
         dead-joins (volatile! (transient []))]
@@ -195,7 +197,7 @@
                 (catch #?(:clj Exception :cljs js/Error) e
                   (let [{:keys [error join]} (ex-data e)]
                     (if (= error :metabase.lib.util/cannot-remove-final-join-condition)
-                        ;; Return the stage unchanged, but keep track of the dead joins.
+                      ;; Return the stage unchanged, but keep track of the dead joins.
                       (do (vswap! dead-joins conj! join)
                           %1)
                       (throw e)))))))
@@ -333,8 +335,8 @@
   [stage target replacement]
   (->> (if (lib.util/expression-name target)
          (local-replace-expression stage target replacement)
-         (walk/postwalk #(if (= % target) replacement %) stage))
-       (walk/postwalk #(if (= % (lib.options/uuid target)) (lib.options/uuid replacement) %))))
+         (perf/postwalk #(if (= % target) replacement %) stage))
+       (perf/postwalk #(if (= % (lib.options/uuid target)) (lib.options/uuid replacement) %))))
 
 (defn- returned-columns-at-stage
   [query stage-number]
@@ -545,7 +547,7 @@
         [idx old-name] (when (< -1 idx (count the-joins))
                          [idx (get-in the-joins [idx :alias])])]
     (if (and idx (not= old-name new-name))
-      (let [unique-name-fn (lib.util/unique-name-generator)
+      (let [unique-name-fn (lib.util.unique-name-generator/unique-name-generator)
             _              (run! unique-name-fn (map :alias the-joins))
             unique-name    (unique-name-fn new-name)]
         (-> stage

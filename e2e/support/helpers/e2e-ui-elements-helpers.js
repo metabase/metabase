@@ -56,7 +56,7 @@ export function entityPickerModalLevel(level) {
 /**
  *
  * @param {number} level
- * @param {string} name
+ * @param {string | RegExp} name
  */
 export function entityPickerModalItem(level, name) {
   return entityPickerModalLevel(level).findByText(name).parents("a");
@@ -252,6 +252,10 @@ export const queryBuilderFiltersPanel = () => {
 
 export const queryBuilderFooter = () => {
   return cy.findByTestId("view-footer");
+};
+
+export const queryBuilderFooterDisplayToggle = () => {
+  return cy.findByTestId("query-display-tabular-toggle");
 };
 
 export const closeQuestionActions = () => {
@@ -629,4 +633,12 @@ export function waitForLoaderToBeRemoved() {
 
 export function leaveConfirmationModal() {
   return cy.findByTestId("leave-confirmation");
+}
+
+export function ensureParameterColumnValue({ columnName, columnValue }) {
+  tableInteractiveBody().within(() => {
+    cy.get(`[data-column-id="${columnName}"]`).each((cell) => {
+      cy.wrap(cell).should("have.text", columnValue);
+    });
+  });
 }

@@ -24,6 +24,7 @@ import { getAreDimensionsAndMetricsValid } from "metabase/visualizations/shared/
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
+  VisualizationGridSize,
 } from "metabase/visualizations/types";
 import type { RawSeries, SingleSeries } from "metabase-types/api";
 
@@ -85,6 +86,7 @@ export const getCartesianChartModel = (
   hiddenSeries: string[],
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
+  gridSize?: VisualizationGridSize,
 ): CartesianChartModel => {
   // rawSeries has more than one element when two or more cards are combined on a dashboard
   const hasMultipleCards = rawSeries.length > 1;
@@ -183,6 +185,7 @@ export const getCartesianChartModel = (
     true,
     stackModels,
     isCompactFormatting,
+    gridSize,
   );
 
   const trendLinesModel = getTrendLines(

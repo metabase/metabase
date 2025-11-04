@@ -25,7 +25,7 @@ Click on the **User provisioning** tab.
 
 To set up user provisioning with SCIM, hit the toggle to enable it. Metabase will tell you the SCIM endpoint URL and SCIM token to share with your identity provider.
 
-> If you've previously set up user provisioning with SAML, Metabase will turn that setting off and use the SCIM setup instead.
+> SAML user provisioning is always disabled when SCIM is enabled.
 
 ## SCIM endpoint URL
 

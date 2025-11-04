@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
+import Color from "color";
 import { Component } from "react";
 import { t } from "ttag";
 
@@ -177,7 +178,7 @@ export default class FunnelNormal extends Component {
         <FunnelStep isFirst>
           <Head
             isNarrow={isNarrow}
-            style={{ fontSize: isDashboard ? "0.75rem" : "unset" }}
+            style={{ fontSize: isDashboard ? "0.8125rem" : "unset" }}
           >
             <Ellipsified data-testid="funnel-chart-header">
               {formatDimension(sortedRows[0][dimensionIndex])}
@@ -185,7 +186,9 @@ export default class FunnelNormal extends Component {
           </Head>
           <FunnelStart isNarrow={isNarrow}>
             <Title>{formatMetric(sortedRows[0][metricIndex])}</Title>
-            <Subtitle>{cols[metricIndex].display_name}</Subtitle>
+            <Subtitle>
+              <Ellipsified>{cols[metricIndex].display_name}</Ellipsified>
+            </Subtitle>
           </FunnelStart>
           {/* This part of code in used only to share height between .Start and .Graph columns. */}
           <Info isNarrow={isNarrow}>
@@ -201,7 +204,7 @@ export default class FunnelNormal extends Component {
             <FunnelStep key={index}>
               <Head
                 isNarrow={isNarrow}
-                style={{ fontSize: isDashboard ? "0.75rem" : "unset" }}
+                style={{ fontSize: isDashboard ? "0.8125rem" : "unset" }}
               >
                 <Ellipsified data-testid="funnel-chart-header">
                   {formatDimension(sortedRows[index + 1][dimensionIndex])}
@@ -221,7 +224,7 @@ export default class FunnelNormal extends Component {
                   <Ellipsified>{formatPercent(stepPercentage)}</Ellipsified>
                 </Title>
                 <Subtitle
-                  style={{ fontSize: isDashboard ? "0.75rem" : "unset" }}
+                  style={{ fontSize: isDashboard ? "0.8125rem" : "unset" }}
                 >
                   <Ellipsified>
                     {formatMetric(sortedRows[index + 1][metricIndex])}
@@ -272,7 +275,7 @@ const GraphSection = ({
       >
         <polygon
           opacity={1 - index * (0.9 / (infos.length + 1))}
-          fill={color("brand")}
+          fill={Color(color("brand")).hex()}
           points={`0 ${info.graph.startBottom}, 0 ${info.graph.startTop}, 1 ${info.graph.endTop}, 1 ${info.graph.endBottom}`}
         />
       </svg>

@@ -1,4 +1,5 @@
 (ns metabase.lib.limit
+  (:refer-clojure :exclude [empty?])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -8,7 +9,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [empty?]]))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :limit
   [query stage-number _k]
