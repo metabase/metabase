@@ -1141,6 +1141,7 @@ LIMIT
         targetTable: TARGET_TABLE,
         visitTransform: true,
       });
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
 
       cy.log("create and run another transform");
@@ -1149,6 +1150,7 @@ LIMIT
         targetTable: TARGET_TABLE_2,
         visitTransform: true,
       });
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
 
       cy.log("assert that the list is filtered by the current transform");
@@ -1166,6 +1168,7 @@ LIMIT
         sourceQuery: "SELECT * FROM abc",
         visitTransform: true,
       });
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForFailure();
       getRunErrorInfoButton().click();
       H.modal().should("contain.text", 'relation "abc" does not exist');
@@ -1178,7 +1181,8 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
 
       cy.log("delete the transform");
-      getTransformsContent().button("Delete transform").click();
+      H.DataStudio.Transforms.header().icon("ellipsis").click();
+      H.popover().findByText("Delete").click();
       H.modal().within(() => {
         cy.findByLabelText("Delete the transform only").should("not.exist");
         cy.findByLabelText("Delete the transform and the table").should(
@@ -1194,10 +1198,14 @@ LIMIT
     it("should be able to delete a transform and keep the table", () => {
       cy.log("create a transform and the table");
       createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
+      H.DataStudio.Transforms.targetTab().click();
+      getTableLink().should("have.attr", "aria-disabled", "false");
 
       cy.log("delete the transform but keep the table");
-      getTransformsContent().button("Delete transform").click();
+      H.DataStudio.Transforms.header().icon("ellipsis").click();
+      H.popover().findByText("Delete").click();
       H.modal().within(() => {
         cy.findByLabelText("Delete the transform only").should("be.checked");
         cy.button("Delete transform only").click();
@@ -1213,10 +1221,14 @@ LIMIT
     it("should be able to delete a transform and delete the table", () => {
       cy.log("create a transform and the table");
       createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
+      H.DataStudio.Transforms.targetTab().click();
+      getTableLink().should("have.attr", "aria-disabled", "false");
 
       cy.log("delete the transform and the table");
-      getTransformsContent().button("Delete transform").click();
+      H.DataStudio.Transforms.header().icon("ellipsis").click();
+      H.popover().findByText("Delete").click();
       H.modal().within(() => {
         cy.findByLabelText("Delete the transform and the table").click();
         cy.button("Delete transform and table").click();

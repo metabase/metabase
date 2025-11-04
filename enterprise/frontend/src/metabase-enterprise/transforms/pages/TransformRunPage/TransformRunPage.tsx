@@ -10,7 +10,11 @@ import type { Transform } from "metabase-types/api";
 import { ColumnLayout, ColumnLayoutBody } from "../../components/ColumnLayout";
 import { TransformHeader } from "../../components/TransformHeader";
 import { POLLING_INTERVAL } from "../../constants";
-import { isTransformCanceling, isTransformRunning } from "../../utils";
+import {
+  isTransformCanceling,
+  isTransformRunning,
+  isTransformSyncing,
+} from "../../utils";
 
 import { RunSection } from "./RunSection";
 
@@ -58,6 +62,8 @@ export function TransformRunPage({ params }: TransformRunPageProps) {
 function isPollingNeeded(transform?: Transform) {
   return (
     transform != null &&
-    (isTransformRunning(transform) || isTransformCanceling(transform))
+    (isTransformRunning(transform) ||
+      isTransformCanceling(transform) ||
+      isTransformSyncing(transform))
   );
 }
