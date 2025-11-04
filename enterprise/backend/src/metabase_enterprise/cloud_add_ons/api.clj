@@ -16,28 +16,93 @@
   (deferred-tru "Could not purchase this add-on."))
 (def ^:private error-unexpected
   (deferred-tru "Unexpected error"))
+(def ^:private error-not-hosted
+  (deferred-tru "Can only access Store API for Metabase Cloud instances."))
+(def ^:private error-not-eligible
+  (deferred-tru "Can only purchase add-ons for eligible subscriptions."))
+(def ^:private error-not-store-user
+  (deferred-tru "Only Metabase Store users can purchase add-ons."))
+(def ^:private error-terms-not-accepted
+  (deferred-tru "Need to accept terms of service."))
+
+(def ^:private response-not-hosted
+  {:status 400 :body error-not-hosted})
+(def ^:private response-not-eligible
+  {:status 400 :body error-not-eligible})
+(def ^:private response-not-store-user
+  {:status 403 :body error-not-store-user})
+(def ^:private response-terms-not-accepted
+  {:status 400 :body {:errors {:terms_of_service error-terms-not-accepted}}})
+(def ^:private response-success-empty
+  {:status 200 :body {}})
+
+(defn- handle-store-api-error
+  "Handle exceptions from Store API calls and return appropriate error response."
+  [exception & [extra-status-mappings]]
+  (let [status-code (-> exception ex-data :status)
+        default-mappings {404 error-no-connection
+                          403 error-no-connection
+                          401 error-no-connection}
+        status-mappings (merge default-mappings extra-status-mappings)
+        error-body (get status-mappings status-code error-unexpected)]
+    {:status (or status-code 500) :body error-body}))
+
+(api.macros/defendpoint :get "/plan"
+  "Get plan information from the Metabase Store API."
+  []
+  (api/check-superuser)
+  (cond
+    (not (premium-features/is-hosted?))
+    response-not-hosted
+
+    :else
+    (try
+      {:status 200 :body (hm.client/call :get-plan)}
+      (catch Exception e
+        (log/warn e "Error fetching plan information")
+        (handle-store-api-error e)))))
+
+(api.macros/defendpoint :get "/addons"
+  "Get addons information from the Metabase Store API."
+  []
+  (api/check-superuser)
+  (cond
+    (not (premium-features/is-hosted?))
+    response-not-hosted
+
+    :else
+    (try
+      {:status 200 :body (hm.client/call :get-addons)}
+      (catch Exception e
+        (log/warn e "Error fetching addons information")
+        (handle-store-api-error e)))))
 
 (api.macros/defendpoint :post "/:product-type"
   "Purchase an add-on."
   [{:keys [product-type]} :- [:map
-                              [:product-type [:enum "metabase-ai"]]]
+                              [:product-type [:enum "metabase-ai" "python-execution"]]]
    _query-params
    {:keys [terms_of_service]} :- [:map
                                   [:terms_of_service :boolean]]]
   (api/check-superuser)
   (cond
     (not terms_of_service)
-    {:status 400 :body {:errors {:terms_of_service "Need to accept terms of service."}}}
+    response-terms-not-accepted
 
     (not (premium-features/is-hosted?))
-    {:status 400 :body "Can only purchase add-ons for Metabase Cloud instances."}
+    response-not-hosted
 
-    (not (premium-features/offer-metabase-ai?))
-    {:status 400 :body "Can only purchase add-ons for eligible subscriptions."}
+    (and (= product-type "metabase-ai")
+         (not (premium-features/offer-metabase-ai?)))
+    response-not-eligible
+
+    (and (= product-type "python-execution")
+         (not (premium-features/enable-python-transforms?)))
+    response-not-eligible
 
     (not (contains? (set (map :email (:store-users (premium-features/token-status))))
                     (:email @api/*current-user*)))
-    {:status 403 :body "Only Metabase Store users can purchase add-ons."}
+    response-not-store-user
 
     :else
     (try
@@ -45,15 +110,10 @@
         (events/publish-event! :event/cloud-add-on-purchase {:details {:add-on add-on}, :user-id api/*current-user-id*})
         (hm.client/call :change-add-ons :upsert-add-ons [add-on]))
       (premium-features/clear-cache!)
-      {:status 200 :body {}}
+      response-success-empty
       (catch Exception e
         (log/warnf e "Error adding purchasing add-on '%s'" product-type)
-        (case (-> e ex-data :status)
-          404 {:status 404 :body error-no-connection}
-          403 {:status 403 :body error-no-connection}
-          401 {:status 401 :body error-no-connection}
-          400 {:status 400 :body error-cannot-purchase}
-          {:status 500 :body error-unexpected})))))
+        (handle-store-api-error e {400 error-cannot-purchase})))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/cloud-add-ons` routes."

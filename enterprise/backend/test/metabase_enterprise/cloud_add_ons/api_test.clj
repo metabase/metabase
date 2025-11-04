@@ -20,7 +20,7 @@
                                       {:terms_of_service false})))))
     (testing "requires token feature 'hosting'"
       (mt/with-premium-features #{}
-        (is (=? "Can only purchase add-ons for Metabase Cloud instances."
+        (is (=? "Can only access Store API for Metabase Cloud instances."
                 (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/metabase-ai"
                                       {:terms_of_service true})))))
     (testing "requires token feature 'offer-metabase-ai'"
@@ -69,3 +69,63 @@
                     (let [{:keys [details user_id]} (mt/latest-audit-log-entry "cloud-add-on-purchase")]
                       (is (= (:id user) user_id))
                       (is (= {:add-on {:product-type "metabase-ai"}} details)))))))))))))
+
+(deftest ^:sequential get-plan-test
+  (testing "GET /api/ee/cloud-add-ons/plan"
+    (testing "requires superuser"
+      (mt/with-premium-features #{}
+        (is (=? "You don't have permissions to do that."
+                (mt/user-http-request :rasta :get 403 "ee/cloud-add-ons/plan")))))
+    (testing "requires token feature 'hosting'"
+      (mt/with-premium-features #{}
+        (is (=? "Can only access Store API for Metabase Cloud instances."
+                (mt/user-http-request :crowberto :get 400 "ee/cloud-add-ons/plan")))))
+    (testing "when conditions are met"
+      (mt/with-premium-features #{:hosting}
+        (testing "passes through HTTP status from Store API"
+          (doseq [[status-code error-message] {404 "Could not establish a connection to Metabase Cloud."
+                                               403 "Could not establish a connection to Metabase Cloud."
+                                               401 "Could not establish a connection to Metabase Cloud."}]
+            (testing (format "error status %d" status-code)
+              (with-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {:status status-code})))]
+                (is (=? error-message
+                        (mt/user-http-request :crowberto :get status-code "ee/cloud-add-ons/plan")))))))
+        (testing "responds with HTTP status 500 for other errors"
+          (with-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {:status 500})))]
+            (is (=? "Unexpected error"
+                    (mt/user-http-request :crowberto :get 500 "ee/cloud-add-ons/plan")))))
+        (testing "succeeds"
+          (let [plan-data {:plan-name "Pro" :tier "premium"}]
+            (with-redefs [hm.client/call (fn [& _] plan-data)]
+              (is (=? plan-data
+                      (mt/user-http-request :crowberto :get 200 "ee/cloud-add-ons/plan"))))))))))
+
+(deftest ^:sequential get-addons-test
+  (testing "GET /api/ee/cloud-add-ons/addons"
+    (testing "requires superuser"
+      (mt/with-premium-features #{}
+        (is (=? "You don't have permissions to do that."
+                (mt/user-http-request :rasta :get 403 "ee/cloud-add-ons/addons")))))
+    (testing "requires token feature 'hosting'"
+      (mt/with-premium-features #{}
+        (is (=? "Can only access Store API for Metabase Cloud instances."
+                (mt/user-http-request :crowberto :get 400 "ee/cloud-add-ons/addons")))))
+    (testing "when conditions are met"
+      (mt/with-premium-features #{:hosting}
+        (testing "passes through HTTP status from Store API"
+          (doseq [[status-code error-message] {404 "Could not establish a connection to Metabase Cloud."
+                                               403 "Could not establish a connection to Metabase Cloud."
+                                               401 "Could not establish a connection to Metabase Cloud."}]
+            (testing (format "error status %d" status-code)
+              (with-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {:status status-code})))]
+                (is (=? error-message
+                        (mt/user-http-request :crowberto :get status-code "ee/cloud-add-ons/addons")))))))
+        (testing "responds with HTTP status 500 for other errors"
+          (with-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {:status 500})))]
+            (is (=? "Unexpected error"
+                    (mt/user-http-request :crowberto :get 500 "ee/cloud-add-ons/addons")))))
+        (testing "succeeds"
+          (let [addons-data [{:addon-id "metabase-ai" :status "active"}]]
+            (with-redefs [hm.client/call (fn [& _] addons-data)]
+              (is (=? addons-data
+                      (mt/user-http-request :crowberto :get 200 "ee/cloud-add-ons/addons"))))))))))
