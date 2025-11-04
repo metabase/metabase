@@ -6,6 +6,8 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import ModelActions from "metabase/models/containers/ModelActions/ModelActions";
 
+import { NewNativeModelPage, NewQueryModelPage } from "./pages/NewModelPage";
+
 export const getRoutes = () => (
   <Route path="/model/:slug/detail">
     <Route path="actions" component={ModelActions}>
@@ -37,5 +39,10 @@ export const getRoutes = () => (
 );
 
 export function getDataStudioModelRoutes() {
-  return <></>;
+  return (
+    <Route path="models">
+      <Route path="new/query" component={NewQueryModelPage} />
+      <Route path="new/native" component={NewNativeModelPage} />
+    </Route>
+  );
 }

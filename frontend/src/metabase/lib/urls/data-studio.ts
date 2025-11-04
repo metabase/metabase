@@ -6,12 +6,20 @@ export function dataStudio() {
   return ROOT_URL;
 }
 
-export function dataStudioModelList() {
-  return `${ROOT_URL}/models`;
+export function dataStudioModeling() {
+  return `${ROOT_URL}/modeling`;
+}
+
+export function newDataStudioQueryModel() {
+  return `${dataStudioModeling()}/models/new/query`;
+}
+
+export function newDataStudioNativeModel() {
+  return `${dataStudioModeling()}/models/new/native`;
 }
 
 export function dataStudioModel(modelId: CardId) {
-  return `${dataStudioModelList()}/${modelId}`;
+  return `${dataStudioModeling()}/models/${modelId}`;
 }
 
 export function dataStudioModelQuery(modelId: CardId) {

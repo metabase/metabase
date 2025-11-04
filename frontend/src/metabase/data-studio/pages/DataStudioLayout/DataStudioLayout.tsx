@@ -39,7 +39,11 @@ function DataStudioNav() {
           pathname.startsWith(Urls.transformList())
         }
       />
-      <DataStudioNavItem to="/" icon="model" isSelected={false} />
+      <DataStudioNavItem
+        to={Urls.dataStudioModeling()}
+        icon="model"
+        isSelected={pathname.startsWith(Urls.dataStudioModeling())}
+      />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <DataStudioNavItem
           icon="schema"

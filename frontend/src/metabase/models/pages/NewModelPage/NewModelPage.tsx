@@ -45,7 +45,7 @@ function NewModelPage({
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.dataStudioModelList()));
+    dispatch(push(Urls.dataStudioModeling()));
   };
 
   return (
