@@ -9,7 +9,7 @@ description: Version control your dashboards, questions, and models with Git. Sy
 
 ## Overview
 
-Remote Sync lets you develop analytics content in a development Metabase and automatically deploy it to a read-only production instance through Git.
+Remote Sync lets you develop analytics content in a development Metabase and automatically deploy it to a read-only production Metabase through Git.
 
 You work with Remote Sync through special collections called "synced collections". Content in these collections is automatically versioned and can be pushed to or pulled from your Git repository directly from the Metabase UI.
 
@@ -308,6 +308,22 @@ If your questions or dashboards rely on customized table metadata, you must manu
 **Why this matters:** If you have a question that displays a unixtime column as a date (because you changed the column type in development's table metadata), that question will sync to production, but the column will still appear as a unixtime in production unless you manually update the table metadata there as well.
 
 For more details on the serialization format and command-line workflows, see the [serialization documentation](./serialization.md).
+
+## Using remote sync for embedding
+
+If you're using Metabase for embedding, you might want synced content to appear at the top level of your navigation rather than nested under the Library collection. Since all synced content must be in sub-collections of the Library, you can use permissions to control how the collection hierarchy appears to different groups.
+
+### Making sub-collections appear at the top level
+
+To make synced collections appear at the top level for embedded groups:
+
+1. In your development Metabase, **Organize content in sub-collections of your Library collection**. For example, you might have `Library/Mammoth Statistics` and `Library/Giant Sloth Statistics`.
+
+2. In your production Metabase, **Set up permissions for embedded groups:** Groups should have: 
+   - **No view access** to the Library collection itself
+   - **View access** to specific sub-collections within the Library
+
+For groups with these permissions, the sub-collections they can access will appear at the top level of navigation, as if they were root-level collections. They won't see the top-level Library collection that you have in your development Metabase.
 
 ## Branch management
 
