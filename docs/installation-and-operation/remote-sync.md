@@ -45,7 +45,7 @@ Here's a basic remote-sync workflow:
 4. Merge the PR to production.
 5. Your **Metabase configured in Production mode** automatically pulls in the changes.
 
-We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-to-production workflow](#an-example-dev-to-production-workflow), and [branch management](#branch-management) and some other odds and ends.
+We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-to-production workflow](#an-example-dev-to-production-workflow), [branch management](#branch-management), and some other odds and ends.
 
 ### Remote Sync vs. Serialization
 
@@ -146,6 +146,8 @@ You can rename the Library collection if you want, and you can add sub-collectio
 
 ## 6. Push your changes to your repository
 
+![Push your changes](./images/push-changes.png)
+
 Once you've added content, you'll see a yellow dot on your Library collection indicating uncommitted changes.
 
 1. Click the up arrow (push) icon next to the Library collection in the left sidebar.
@@ -168,7 +170,7 @@ Now that you have content in your repository, you can set up your production Met
 
 2. Enter your repository URL:
 
-   - Use the same repository as your development Metabase, for example, `https://github.com/your-org/your-repo.git`.
+   - Use the same repository as your development Metabase, for example, `https://github.com/your-org/your-repo`.
 
 3. Select **Production mode**.
 
@@ -198,7 +200,7 @@ In your development Metabase, click the branch dropdown in the synced collection
 
 ### Step 2: Create content in your development Metabase
 
-Create a dashboard called "Megafauna Analytics" and add some questions. The questions should be saved to the dashboard or to the synced collection. Save the dashboard to the synced collection.
+Create a dashboard called "Megafauna Analytics" and add some questions. Save the questions either to the dashboard itself or to the synced collection. Save the dashboard to the synced collection.
 
 ### Step 3: Push to your development branch
 
@@ -275,7 +277,7 @@ To resolve this:
 2. Move those dependencies into synced collections first.
 3. Then save your item to the synced collection.
 
-Alternatively, you can modify your content to use a different source data that's already in synced collections.
+Alternatively, you can modify your content to use a different data source that's already in synced collections.
 
 ## What Metabase syncs
 
@@ -305,7 +307,7 @@ Remote Sync uses the same serialization format as the [Metabase CLI serializatio
 
 If your questions or dashboards rely on customized table metadata, you must manually apply the same metadata changes in your production instance. Otherwise, content that works in development may not work correctly in production.
 
-**Why this matters:** If you have a question that displays a unixtime column as a date (because you changed the column type in development's table metadata), that question will sync to production, but the column will still appear as a unixtime in production unless you manually update the table metadata there as well.
+**Why this matters:** If you have a question that displays a Unix timestamp column as a date (because you changed the column type in development's table metadata), that question will sync to production, but the column will still appear as a Unix timestamp in production unless you manually update the table metadata there as well.
 
 For more details on the serialization format and command-line workflows, see the [serialization documentation](./serialization.md).
 
@@ -319,11 +321,28 @@ To make synced collections appear at the top level for embedded groups:
 
 1. In your development Metabase, **Organize content in sub-collections of your Library collection**. For example, you might have `Library/Mammoth Statistics` and `Library/Giant Sloth Statistics`.
 
-2. In your production Metabase, **Set up permissions for embedded groups:** Groups should have: 
+2. In your production Metabase, **Set up permissions for embedded groups:** Groups should have:
    - **No view access** to the Library collection itself
    - **View access** to specific sub-collections within the Library
 
 For groups with these permissions, the sub-collections they can access will appear at the top level of navigation, as if they were root-level collections. They won't see the top-level Library collection that you have in your development Metabase.
+
+What you see in Development mode:
+
+```
+Collections
+└── Library
+    ├── Mammoth Statistics
+    ├── Giant Sloth Statistics
+```
+
+What embedding groups see in Production mode (with no access to Library, but access to Mammoth Statistics and Giant Sloth Statistics):
+
+```
+Collections
+├── Mammoth Statistics
+└── Giant Sloth Statistics
+```
 
 ## Branch management
 
@@ -341,7 +360,7 @@ To create a new branch in Metabase:
 2. Type a name for the new branch in the search box.
 3. Press Enter to create the branch.
 
-The new branch starts from the current commit (not the latest remote).
+The new branch is created from your current commit (not the latest commit from the remote).
 
 ### Switching branches
 
@@ -380,7 +399,7 @@ When you make changes to items in a synced collection, a yellow dot appears on y
 2. Enter a descriptive commit message explaining your changes.
 3. Click "Continue" to push your changes to Git.
 
-If you see "Remote is ahead of local", that means someone else pushed to the branch from another Metabase in Development mode. Pull the latest changes before pushing again.
+If you see a message that "Remote is ahead of local", that means someone else pushed to the branch from another Metabase in Development mode. Pull the latest changes before pushing again.
 
 ## Pulling changes from Git
 
