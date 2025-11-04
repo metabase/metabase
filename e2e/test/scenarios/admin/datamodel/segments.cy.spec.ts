@@ -163,8 +163,7 @@ describe("scenarios > admin > datamodel > segments", () => {
     });
 
     it("should update that segment", () => {
-      cy.visit("/admin");
-      cy.findByTestId("admin-navbar-items").contains("Table Metadata").click();
+      cy.visit("/data-studio/data");
       cy.findByRole("link", { name: /Segments/ }).click();
 
       cy.findByTestId("segment-list-app")
@@ -199,7 +198,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.findByTestId("field-set-content").findByText("Save changes").click();
 
       // get redirected to previous page and see the new segment name
-      cy.url().should("match", /datamodel\/segments$/);
+      cy.url().should("match", /data-studio\/data\/segments$/);
 
       cy.findByTestId("segment-list-app").findByText("Orders > 10");
 
