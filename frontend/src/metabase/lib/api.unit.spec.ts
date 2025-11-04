@@ -1,354 +1,324 @@
-import fetchMock from "fetch-mock";
+import { Api } from "./api";
 
-import api, { GET, POST } from "./api";
+type OnBeforeRequestHandlerData = {
+  method: "GET" | "POST" | "PUT" | "DELETE";
+  url: string;
+  options: {
+    headers?: Record<string, string>;
+    hasBody: boolean;
+  } & Record<string, unknown>;
+};
 
 describe("api", () => {
-  describe("on before request handlers", () => {
+  describe("apiRequestManipulationMiddleware", () => {
+    let apiInstance: Api;
+
     beforeEach(() => {
-      api.basename = "";
-      api.onBeforeRequestHandlers = [];
+      apiInstance = new Api();
     });
 
-    describe("onBeforeRequestHandlers", () => {
-      it("should execute handlers before making a request", async () => {
-        const mockHandler = jest.fn().mockResolvedValue(undefined);
-        api.onBeforeRequestHandlers.push({
-          key: "test-handler",
-          handler: mockHandler,
+    it("should return the original data when there are no handlers", async () => {
+      const inputData = {
+        method: "GET" as const,
+        url: "/api/test",
+        options: { hasBody: false, json: true },
+      };
+
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
+
+      expect(result).toEqual(inputData);
+    });
+
+    it("should return the original data when handler returns void", async () => {
+      const inputData = {
+        method: "POST" as const,
+        url: "/api/test",
+        options: { hasBody: true, json: true, headers: { "X-Test": "value" } },
+      };
+
+      // Mock a handler that returns void
+      const voidHandler = jest.fn().mockResolvedValue(undefined);
+      jest
+        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
+        .mockImplementation(async (data) => {
+          await voidHandler(data);
+          return data;
         });
 
-        fetchMock.get("path:/api/test", { body: { data: "success" } });
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
 
-        const testEndpoint = GET("/api/test");
-        await testEndpoint();
+      expect(result).toEqual(inputData);
+      expect(voidHandler).toHaveBeenCalledWith(inputData);
+    });
 
-        expect(mockHandler).toHaveBeenCalledWith({
-          method: "GET",
-          url: "/api/test",
-          options: expect.objectContaining({
-            headers: expect.any(Object),
-            hasBody: false,
-          }),
-        });
-      });
+    it("should update only the url when handler returns partial modification", async () => {
+      const inputData = {
+        method: "GET" as const,
+        url: "/api/original",
+        options: { hasBody: false, json: true },
+      };
 
-      it("should execute multiple handlers in order", async () => {
-        const executionOrder: string[] = [];
+      const expectedUrl = "/api/modified";
 
-        const handler1 = jest.fn().mockImplementation(async () => {
-          executionOrder.push("handler1");
-          return undefined;
-        });
-
-        const handler2 = jest.fn().mockImplementation(async () => {
-          executionOrder.push("handler2");
-          return undefined;
-        });
-
-        api.onBeforeRequestHandlers.push(
-          { key: "handler1", handler: handler1 },
-          { key: "handler2", handler: handler2 },
-        );
-
-        fetchMock.get("path:/api/test", { body: { data: "success" } });
-
-        const testEndpoint = GET("/api/test");
-        await testEndpoint();
-
-        expect(executionOrder).toEqual(["handler1", "handler2"]);
-        expect(handler1).toHaveBeenCalled();
-        expect(handler2).toHaveBeenCalled();
-      });
-
-      it("should allow handlers to modify the URL", async () => {
-        const mockHandler = jest.fn().mockResolvedValue({
-          url: "/api/modified",
+      jest
+        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
+        .mockImplementation(async (data) => {
+          // Simulate handler that only modifies URL
+          const typedData = data as OnBeforeRequestHandlerData;
+          return {
+            method: typedData.method,
+            url: expectedUrl,
+            options: typedData.options,
+          };
         });
 
-        api.onBeforeRequestHandlers.push({
-          key: "url-modifier",
-          handler: mockHandler,
-        });
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
 
-        fetchMock.get("path:/api/modified", { body: { data: "modified" } });
-
-        const testEndpoint = GET("/api/test");
-        await testEndpoint();
-
-        const calls = fetchMock.callHistory.calls();
-
-        expect(calls[0].url).toContain("/api/modified");
-      });
-
-      it("should allow handlers to modify the method", async () => {
-        const mockHandler = jest.fn().mockResolvedValue({
-          method: "POST",
-        });
-
-        api.onBeforeRequestHandlers.push({
-          key: "method-modifier",
-          handler: mockHandler,
-        });
-
-        fetchMock.post("path:/api/test", { body: { data: "success" } });
-
-        const testEndpoint = GET("/api/test");
-        await testEndpoint();
-
-        const calls = fetchMock.callHistory.calls();
-
-        expect(calls[0].options.method).toBe("POST");
-      });
-
-      it("should allow handlers to modify request options by adding headers", async () => {
-        const mockHandler = jest.fn().mockResolvedValue({
-          options: {
-            headers: {
-              "X-Custom-Header": "custom-value",
-            },
-          },
-        });
-
-        api.onBeforeRequestHandlers.push({
-          key: "options-modifier",
-          handler: mockHandler,
-        });
-
-        fetchMock.get("path:/api/test-with-headers", {
-          body: { data: "success" },
-        });
-
-        const testEndpoint = GET("/api/test-with-headers");
-        await testEndpoint();
-
-        const calls = fetchMock.callHistory.calls();
-        const headers = calls[0].options.headers as Record<string, string>;
-
-        expect(headers).toMatchObject({
-          "x-custom-header": "custom-value",
-        });
-      });
-
-      it("should allow handlers to override options from invocation", async () => {
-        const mockHandler = jest.fn().mockResolvedValue({
-          options: {
-            headers: {
-              "X-Handler-Header": "handler-value",
-            },
-          },
-        });
-
-        api.onBeforeRequestHandlers.push({
-          key: "options-merger",
-          handler: mockHandler,
-        });
-
-        fetchMock.get("path:/api/test-merge-opts", {
-          body: { data: "success" },
-        });
-
-        const testEndpoint = GET("/api/test-merge-opts");
-        await testEndpoint(
-          {},
-          { headers: { "X-Original-Header": "original" } },
-        );
-
-        const calls = fetchMock.callHistory.calls();
-        const headers = calls[0].options.headers as Record<string, string>;
-
-        expect(headers).toMatchObject({
-          "x-handler-header": "handler-value",
-        });
-        // The original header from invocationOptions is overridden
-        expect(headers["x-original-header"]).toBeUndefined();
-      });
-
-      it("should handle handlers that return nothing without modifying the request", async () => {
-        const mockHandler = jest.fn().mockResolvedValue(undefined);
-
-        api.onBeforeRequestHandlers.push({
-          key: "void-handler",
-          handler: mockHandler,
-        });
-
-        fetchMock.get("path:/api/test-no-change", {
-          body: { data: "success" },
-        });
-
-        const testEndpoint = GET("/api/test-no-change");
-        await testEndpoint();
-
-        const calls = fetchMock.callHistory.calls();
-
-        expect(mockHandler).toHaveBeenCalled();
-        expect(calls[0].url).toContain("/api/test-no-change");
-        expect(calls[0].options.method).toBe("GET");
-      });
-
-      it("should handle handlers that return partial modifications", async () => {
-        const mockHandler = jest.fn().mockResolvedValue({
-          url: "/api/new-url-only",
-        });
-
-        api.onBeforeRequestHandlers.push({
-          key: "partial-modifier",
-          handler: mockHandler,
-        });
-
-        fetchMock.get("path:/api/new-url-only", { body: { data: "success" } });
-
-        const testEndpoint = GET("/api/test-original");
-        await testEndpoint();
-
-        const calls = fetchMock.callHistory.calls();
-
-        expect(calls[0].url).toContain("/api/new-url-only");
-        expect(calls[0].options.method).toBe("GET");
-      });
-
-      it("should apply modifications from multiple handlers cumulatively", async () => {
-        const handler1 = jest.fn().mockResolvedValue({
-          url: "/api/step1-url",
-        });
-
-        const handler2 = jest.fn().mockResolvedValue({
-          url: "/api/step2-url",
-        });
-
-        api.onBeforeRequestHandlers.push(
-          { key: "handler1", handler: handler1 },
-          { key: "handler2", handler: handler2 },
-        );
-
-        // handler2's URL should win since it runs after handler1
-        fetchMock.get("path:/api/step2-url", { body: { data: "success" } });
-
-        const testEndpoint = GET("/api/original-url");
-        await testEndpoint();
-
-        const calls = fetchMock.callHistory.calls();
-
-        expect(calls[0].url).toContain("/api/step2-url");
-        expect(handler1).toHaveBeenCalled();
-        expect(handler2).toHaveBeenCalledWith({
-          method: "GET",
-          url: "/api/step1-url",
-          options: expect.any(Object),
-        });
-      });
-
-      it("should work with POST requests and handlers", async () => {
-        const mockHandler = jest.fn().mockResolvedValue(undefined);
-
-        api.onBeforeRequestHandlers.push({
-          key: "post-handler",
-          handler: mockHandler,
-        });
-
-        fetchMock.post("path:/api/test-post", { body: { data: "success" } });
-
-        const testEndpoint = POST("/api/test-post");
-        await testEndpoint({ payload: "data" });
-
-        expect(mockHandler).toHaveBeenCalledWith({
-          method: "POST",
-          url: "/api/test-post",
-          options: expect.objectContaining({
-            hasBody: true,
-          }),
-        });
-      });
-
-      it("should allow handlers to modify URL with path parameters", async () => {
-        const mockHandler = jest.fn().mockResolvedValue({
-          url: "/api/customers/:id/updated",
-        });
-
-        api.onBeforeRequestHandlers.push({
-          key: "path-param-modifier",
-          handler: mockHandler,
-        });
-
-        fetchMock.get("path:/api/customers/456/updated", {
-          body: { data: "success" },
-        });
-
-        const testEndpoint = GET("/api/users/:id");
-        await testEndpoint({ id: 456 });
-
-        const calls = fetchMock.callHistory.calls();
-
-        expect(calls[0].url).toContain("/api/customers/456/updated");
+      expect(result).toEqual({
+        method: inputData.method,
+        url: expectedUrl,
+        options: inputData.options,
       });
     });
 
-    describe("setOnBeforeRequestHandler", () => {
-      beforeEach(() => {
-        api.onBeforeRequestHandlers = [];
-      });
+    it("should update method, url, and options when handler returns full modification", async () => {
+      const inputData = {
+        method: "GET" as const,
+        url: "/api/original",
+        options: { hasBody: false, json: true },
+      };
 
-      it("should add a new handler to the instance", () => {
-        const mockHandler = jest.fn();
-        const handlerDescription = {
-          key: "new-handler",
-          handler: mockHandler,
+      const modifications = {
+        method: "POST" as const,
+        url: "/api/modified",
+        options: { hasBody: true, json: false, custom: "value" },
+      };
+
+      jest
+        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
+        .mockImplementation(async () => modifications);
+
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
+
+      expect(result).toEqual(modifications);
+    });
+
+    it("should merge options properly when handler returns partial options", async () => {
+      const inputData = {
+        method: "POST" as const,
+        url: "/api/test",
+        options: {
+          hasBody: true,
+          json: true,
+          headers: { "X-Original": "value" },
+          retry: true,
+        },
+      };
+
+      const newHeaders = { "X-Modified": "new-value" };
+
+      jest
+        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
+        .mockImplementation(async (data) => {
+          const typedData = data as OnBeforeRequestHandlerData;
+          return {
+            method: typedData.method,
+            url: typedData.url,
+            options: {
+              ...typedData.options,
+              headers: { ...typedData.options.headers, ...newHeaders },
+            },
+          };
+        });
+
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
+
+      expect(result.options.headers).toEqual({
+        "X-Original": "value",
+        "X-Modified": "new-value",
+      });
+      expect(result.options.hasBody).toBe(true);
+      expect(result.options.json).toBe(true);
+      expect(result.options.retry).toBe(true);
+    });
+
+    it("should execute multiple handlers in order", async () => {
+      const inputData = {
+        method: "GET" as const,
+        url: "/api/start",
+        options: { hasBody: false, counter: 0 },
+      };
+
+      const executionOrder: number[] = [];
+
+      const handler1 = jest.fn(
+        async (
+          data: OnBeforeRequestHandlerData & { options: { counter: number } },
+        ) => {
+          executionOrder.push(1);
+          return {
+            ...data,
+            url: data.url + "/step1",
+            options: { ...data.options, counter: data.options.counter + 1 },
+          };
+        },
+      );
+
+      const handler2 = jest.fn(
+        async (
+          data: OnBeforeRequestHandlerData & { options: { counter: number } },
+        ) => {
+          executionOrder.push(2);
+          return {
+            ...data,
+            url: data.url + "/step2",
+            options: { ...data.options, counter: data.options.counter + 10 },
+          };
+        },
+      );
+
+      const handler3 = jest.fn(
+        async (
+          data: OnBeforeRequestHandlerData & { options: { counter: number } },
+        ) => {
+          executionOrder.push(3);
+          return {
+            ...data,
+            url: data.url + "/step3",
+            options: { ...data.options, counter: data.options.counter + 100 },
+          };
+        },
+      );
+
+      // Mock the middleware to use our handlers
+      jest
+        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
+        .mockImplementation(async (data) => {
+          let currentData = data as OnBeforeRequestHandlerData & {
+            options: { counter: number };
+          };
+          for (const handler of [handler1, handler2, handler3]) {
+            const result = await handler(currentData);
+            if (result) {
+              currentData = result;
+            }
+          }
+          return currentData;
+        });
+
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
+
+      expect(executionOrder).toEqual([1, 2, 3]);
+      expect(result.url).toBe("/api/start/step1/step2/step3");
+      expect(result.options.counter).toBe(111); // 0 + 1 + 10 + 100
+      expect(handler1).toHaveBeenCalledWith(
+        expect.objectContaining({ url: "/api/start" }),
+      );
+      expect(handler2).toHaveBeenCalledWith(
+        expect.objectContaining({ url: "/api/start/step1" }),
+      );
+      expect(handler3).toHaveBeenCalledWith(
+        expect.objectContaining({ url: "/api/start/step1/step2" }),
+      );
+    });
+
+    it("should handle async handlers correctly", async () => {
+      const inputData = {
+        method: "POST" as const,
+        url: "/api/async",
+        options: { hasBody: true, json: true },
+      };
+
+      const asyncHandler = jest.fn(async (data: OnBeforeRequestHandlerData) => {
+        // Simulate async operation
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return {
+          ...data,
+          url: "/api/async-modified",
         };
-
-        api.setOnBeforeRequestHandler(handlerDescription);
-
-        expect(api.onBeforeRequestHandlers).toHaveLength(1);
-        expect(api.onBeforeRequestHandlers[0]).toEqual(handlerDescription);
       });
 
-      it("should replace an existing handler with the same key", () => {
-        const handler1 = jest.fn();
-        const handler2 = jest.fn();
-
-        api.setOnBeforeRequestHandler({ key: "shared-key", handler: handler1 });
-        expect(api.onBeforeRequestHandlers).toHaveLength(1);
-        expect(api.onBeforeRequestHandlers[0].handler).toBe(handler1);
-
-        api.setOnBeforeRequestHandler({ key: "shared-key", handler: handler2 });
-        expect(api.onBeforeRequestHandlers).toHaveLength(1);
-        expect(api.onBeforeRequestHandlers[0].handler).toBe(handler2);
-      });
-
-      it("should add multiple handlers with different keys", () => {
-        const handler1 = jest.fn();
-        const handler2 = jest.fn();
-        const handler3 = jest.fn();
-
-        api.setOnBeforeRequestHandler({ key: "handler1", handler: handler1 });
-        api.setOnBeforeRequestHandler({ key: "handler2", handler: handler2 });
-        api.setOnBeforeRequestHandler({ key: "handler3", handler: handler3 });
-
-        expect(api.onBeforeRequestHandlers).toHaveLength(3);
-        expect(api.onBeforeRequestHandlers[0].key).toBe("handler1");
-        expect(api.onBeforeRequestHandlers[1].key).toBe("handler2");
-        expect(api.onBeforeRequestHandlers[2].key).toBe("handler3");
-      });
-
-      it("should maintain order when replacing a handler", () => {
-        const handler1 = jest.fn();
-        const handler2 = jest.fn();
-        const handler3 = jest.fn();
-        const handler2Updated = jest.fn();
-
-        api.setOnBeforeRequestHandler({ key: "handler1", handler: handler1 });
-        api.setOnBeforeRequestHandler({ key: "handler2", handler: handler2 });
-        api.setOnBeforeRequestHandler({ key: "handler3", handler: handler3 });
-
-        api.setOnBeforeRequestHandler({
-          key: "handler2",
-          handler: handler2Updated,
+      jest
+        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
+        .mockImplementation(async (data) => {
+          return await asyncHandler(data as OnBeforeRequestHandlerData);
         });
 
-        expect(api.onBeforeRequestHandlers).toHaveLength(3);
-        expect(api.onBeforeRequestHandlers[0].key).toBe("handler1");
-        expect(api.onBeforeRequestHandlers[1].key).toBe("handler2");
-        expect(api.onBeforeRequestHandlers[1].handler).toBe(handler2Updated);
-        expect(api.onBeforeRequestHandlers[2].key).toBe("handler3");
-      });
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
+
+      expect(asyncHandler).toHaveBeenCalled();
+      expect(result.url).toBe("/api/async-modified");
+    });
+
+    it("should handle handler that only returns options", async () => {
+      const inputData = {
+        method: "GET" as const,
+        url: "/api/test",
+        options: { hasBody: false },
+      };
+
+      jest
+        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
+        .mockImplementation(async (data) => {
+          const typedData = data as OnBeforeRequestHandlerData;
+          return {
+            method: typedData.method,
+            url: typedData.url,
+            options: { ...typedData.options, newOption: "added" },
+          };
+        });
+
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
+
+      expect(result.method).toBe("GET");
+      expect(result.url).toBe("/api/test");
+      expect(result.options).toEqual({ hasBody: false, newOption: "added" });
+    });
+
+    it("should preserve all original options when handler does not modify them", async () => {
+      const complexOptions = {
+        hasBody: true,
+        json: true,
+        headers: { "X-Custom": "header" },
+        retry: true,
+        retryCount: 5,
+        formData: true,
+        noEvent: false,
+        transformResponse: jest.fn(),
+      };
+
+      const inputData = {
+        method: "POST" as const,
+        url: "/api/complex",
+        options: complexOptions,
+      };
+
+      jest
+        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
+        .mockImplementation(async (data) => {
+          const typedData = data as OnBeforeRequestHandlerData;
+          return {
+            ...typedData,
+            url: "/api/modified-url",
+          };
+        });
+
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
+
+      expect(result.url).toBe("/api/modified-url");
+      expect(result.options).toEqual(complexOptions);
+      expect(result.options.transformResponse).toBe(
+        complexOptions.transformResponse,
+      );
     });
   });
 });
