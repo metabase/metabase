@@ -362,7 +362,7 @@ async function runAddCardToDashboard({
   const nextState = store.getState();
 
   const tempDashCardId =
-    getDashboardById(nextState, dashId).dashcards.find(
+    getDashboardById(nextState, dashId)!.dashcards.find(
       (dashcardId) => dashcardId < 0,
     ) ?? -1;
 
