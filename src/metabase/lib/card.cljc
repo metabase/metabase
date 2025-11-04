@@ -1,5 +1,5 @@
 (ns metabase.lib.card
-  (:refer-clojure :exclude [mapv select-keys])
+  (:refer-clojure :exclude [mapv select-keys empty? not-empty])
   (:require
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
@@ -21,7 +21,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [mapv select-keys]]))
+   [metabase.util.performance :as perf :refer [mapv select-keys empty? not-empty]]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/card
   [_query _stage-number card-metadata _style]
