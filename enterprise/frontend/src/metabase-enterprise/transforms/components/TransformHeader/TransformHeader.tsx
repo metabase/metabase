@@ -2,6 +2,12 @@ import type { Location } from "history";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import {
+  PaneHeader,
+  PaneHeaderInput,
+  type PaneHeaderTab,
+  PaneHeaderTabs,
+} from "metabase/data-studio/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -10,12 +16,6 @@ import { getLocation } from "metabase/selectors/routing";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import type { TransformId } from "metabase-types/api";
 
-import {
-  PaneHeader,
-  PaneHeaderInput,
-  type PaneHeaderTab,
-  PaneHeaderTabs,
-} from "../../../../../../../frontend/src/metabase/data-studio/components/PaneHeader";
 import { NAME_MAX_LENGTH } from "../../constants";
 import { TransformMoreMenuWithModal } from "../TransformMoreMenu";
 
