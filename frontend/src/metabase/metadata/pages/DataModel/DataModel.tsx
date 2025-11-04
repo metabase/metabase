@@ -108,6 +108,7 @@ export const DataModel = ({ children, location, params }: Props) => {
           databaseId={databaseId}
           schemaName={schemaName}
           tableId={tableId}
+          params={params}
         />
 
         <Box className={S.footer} mx="xl" py="sm">
