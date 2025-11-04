@@ -759,6 +759,7 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
 
       cy.log("modify the transform before running");
+      H.DataStudio.Transforms.targetTab().click();
       getTransformsContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
@@ -771,26 +772,25 @@ LIMIT
         cy.button("Change target").click();
         cy.wait("@updateTransform");
       });
-
       getSchemaLink()
         .should("have.text", TARGET_SCHEMA_2)
         .should("have.attr", "aria-disabled", "false");
-
-      getTableLink()
+      getTableLink({ isActive: false })
         .should("have.text", TARGET_TABLE_2)
         .should("have.attr", "aria-disabled", "true");
 
       cy.log("run the transform and verify the table");
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
+
+      H.DataStudio.Transforms.targetTab().click();
       getSchemaLink()
         .should("have.text", TARGET_SCHEMA_2)
         .should("have.attr", "aria-disabled", "false");
-
       getTableLink()
         .should("have.text", TARGET_TABLE_2)
         .should("have.attr", "aria-disabled", "false")
         .click();
-
       H.queryBuilderHeader().findByText(TARGET_SCHEMA_2).should("be.visible");
       H.assertQueryBuilderRowCount(3);
     });
@@ -800,6 +800,7 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
 
       cy.log("modify the transform before running");
+      H.DataStudio.Transforms.targetTab().click();
       getTransformsContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
@@ -812,26 +813,25 @@ LIMIT
         cy.button("Change target").click();
         cy.wait("@updateTransform");
       });
-
       getSchemaLink()
         .should("have.text", CUSTOM_SCHEMA)
         .should("have.attr", "aria-disabled", "true");
-
-      getTableLink()
+      getTableLink({ isActive: false })
         .should("have.text", TARGET_TABLE_2)
         .should("have.attr", "aria-disabled", "true");
 
       cy.log("run the transform and verify the table");
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
+
+      H.DataStudio.Transforms.targetTab().click();
       getSchemaLink()
         .should("have.text", CUSTOM_SCHEMA)
         .should("have.attr", "aria-disabled", "false");
-
       getTableLink()
         .should("have.text", TARGET_TABLE_2)
         .should("have.attr", "aria-disabled", "false")
         .click();
-
       H.queryBuilderHeader().findByText(CUSTOM_SCHEMA).should("be.visible");
       H.assertQueryBuilderRowCount(3);
     });
@@ -839,9 +839,11 @@ LIMIT
     it("should be able to change the target after running a transform and keep the old target", () => {
       cy.log("create and run a transform");
       createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
 
       cy.log("modify the transform after running");
+      H.DataStudio.Transforms.targetTab().click();
       getTransformsContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
@@ -851,21 +853,21 @@ LIMIT
         cy.button("Change target").click();
         cy.wait("@updateTransform");
       });
-
       getSchemaLink()
         .should("have.text", TARGET_SCHEMA)
         .should("have.attr", "aria-disabled", "false");
-
-      getTableLink()
+      getTableLink({ isActive: false })
         .should("have.text", TARGET_TABLE_2)
         .should("have.attr", "aria-disabled", "true");
 
       cy.log("run the transform and verify the new table");
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
+
+      H.DataStudio.Transforms.targetTab().click();
       getSchemaLink()
         .should("have.text", TARGET_SCHEMA)
         .should("have.attr", "aria-disabled", "false");
-
       getTableLink()
         .should("have.text", TARGET_TABLE_2)
         .should("have.attr", "aria-disabled", "false")
@@ -883,9 +885,11 @@ LIMIT
     it("should be able to change the target after running a transform and delete the old target", () => {
       cy.log("create and run a transform");
       createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
 
       cy.log("modify the transform after running");
+      H.DataStudio.Transforms.targetTab().click();
       getTransformsContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
@@ -896,22 +900,21 @@ LIMIT
         cy.wait("@deleteTransformTable");
         cy.wait("@updateTransform");
       });
-
       getSchemaLink()
         .should("have.text", TARGET_SCHEMA)
         .should("have.attr", "aria-disabled", "false");
-
-      getTableLink()
+      getTableLink({ isActive: false })
         .should("have.text", TARGET_TABLE_2)
         .should("have.attr", "aria-disabled", "true");
 
       cy.log("run the transform and verify the new table");
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
 
+      H.DataStudio.Transforms.targetTab().click();
       getSchemaLink()
         .should("have.text", TARGET_SCHEMA)
         .should("have.attr", "aria-disabled", "false");
-
       getTableLink()
         .should("have.text", TARGET_TABLE_2)
         .should("have.attr", "aria-disabled", "false")
@@ -929,9 +932,11 @@ LIMIT
     it("should be able to delete the target and restore the same target back", () => {
       cy.log("create and run a transform");
       createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
 
       cy.log("delete the old target without creating the new one");
+      H.DataStudio.Transforms.targetTab().click();
       getTransformsContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
@@ -950,9 +955,11 @@ LIMIT
       });
 
       cy.log("run the transform to re-create the original target");
+      H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
 
       cy.log("verify the target is available");
+      H.DataStudio.Transforms.targetTab().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
       H.assertQueryBuilderRowCount(3);
@@ -962,6 +969,7 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
 
       cy.log("change the target to an existing table");
+      H.DataStudio.Transforms.targetTab().click();
       getTransformsContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").clear().type(SOURCE_TABLE);
