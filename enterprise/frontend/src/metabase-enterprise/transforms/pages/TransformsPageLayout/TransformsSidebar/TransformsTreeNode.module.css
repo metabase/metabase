@@ -13,7 +13,7 @@
     color: var(--mb-color-text-dark);
 
     &.isSelected {
-      color: var(--mb-color-link-hover);
+      color: var(--mb-color-text-hover);
     }
   }
 }

@@ -2,7 +2,7 @@
   color: var(--mb-color-text-primary);
 
   .icon {
-    color: var(--mb-color-border-interactive);
+    color: var(--mb-color-icon-primary);
   }
 
   .content {
@@ -20,10 +20,10 @@
 }
 
 .itemRoot.isActive {
-  color: var(--mb-color-link-hover);
+  color: var(--mb-color-text-hover);
 
   .subtitle {
-    color: var(--mb-color-link);
+    color: var(--mb-color-text-brand);
   }
 }
 
@@ -32,11 +32,11 @@
 
   &[data-active] {
     .itemRoot {
-      color: var(--mb-color-link-hover);
+      color: var(--mb-color-text-hover);
     }
 
     .subtitle {
-      color: var(--mb-color-link);
+      color: var(--mb-color-text-brand);
     }
   }
 
