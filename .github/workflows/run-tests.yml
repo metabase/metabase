@@ -8,6 +8,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   merge_group:
+  workflow_dispatch:
 
 jobs:
   files-changed:
@@ -48,8 +49,6 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "files-changed"
       - name: Build static-viz frontend
         run: yarn build-static-viz
         env:

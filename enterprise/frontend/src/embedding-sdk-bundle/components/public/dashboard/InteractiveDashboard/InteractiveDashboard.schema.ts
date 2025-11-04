@@ -42,6 +42,8 @@ const propsSchema: Yup.SchemaOf<InteractiveDashboardProps> = Yup.object({
   plugins: Yup.object({
     mapQuestionClickActions: Yup.mixed().optional(),
     dashboard: Yup.mixed().optional(),
+    getNoDataIllustration: Yup.mixed().optional(),
+    getNoObjectIllustration: Yup.mixed().optional(),
   })
     .optional()
     .noUnknown(),
@@ -50,6 +52,7 @@ const propsSchema: Yup.SchemaOf<InteractiveDashboardProps> = Yup.object({
   withCardTitle: Yup.mixed().optional(),
   withDownloads: Yup.mixed().optional(),
   withTitle: Yup.mixed().optional(),
+  onVisualizationChange: Yup.mixed().optional(),
 }).noUnknown();
 
 export const interactiveDashboardSchema: FunctionSchema = {

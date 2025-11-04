@@ -38,7 +38,7 @@ export const SettingsPage = (): JSX.Element => {
   const TOOLTIP_WIDTH = 220;
 
   const label = (
-    <Text size="sm" c="text-white">
+    <Text size="sm" c="var(--mb-color-tooltip-text)">
       {tooltipText}
     </Text>
   );
@@ -61,7 +61,7 @@ export const SettingsPage = (): JSX.Element => {
                   w={TOOLTIP_WIDTH}
                   ta="center"
                 >
-                  <Icon name="info_filled" aria-label={tooltipText} />
+                  <Icon name="info" aria-label={tooltipText} />
                 </Tooltip>
               </div>
             </Flex>

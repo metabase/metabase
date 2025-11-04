@@ -91,10 +91,6 @@
   color: var(--mb-color-text-secondary);
 }
 
-.DashboardNight .parameter.noPopover input:focus {
-  color: var(--mb-color-text-white);
-}
-
 .name {
   composes: mr1 from "style";
   font-size: 16px;
@@ -115,10 +111,4 @@
   &.hasValue {
     border-color: var(--mb-color-brand);
   }
-}
-
-.DashboardNight .parameter {
-  --mb-color-border: var(--mb-color-border-dark);
-
-  background-color: transparent;
 }

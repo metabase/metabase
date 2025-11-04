@@ -1,7 +1,6 @@
 import { createAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { automagicDashboardsApi, dashboardApi } from "metabase/api";
@@ -26,7 +25,6 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { entityCompatibleQuery } from "metabase/lib/entities";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
@@ -57,7 +55,8 @@ import type {
   DashboardCard,
   DashboardId,
   Dataset,
-  DatasetQuery,
+  JsonQuery,
+  ParameterValuesMap,
   QuestionDashboardCard,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
@@ -288,8 +287,8 @@ export const fetchCardDataAction = createAsyncThunk<
     const hasParametersChanged =
       !lastResult ||
       !equals(
-        getDatasetQueryParams(lastResult.json_query).parameters,
-        getDatasetQueryParams(datasetQuery).parameters,
+        getDatasetQueryParams(lastResult.json_query),
+        getDatasetQueryParams(datasetQuery),
       );
 
     if (clearCache || hasParametersChanged) {
@@ -600,34 +599,14 @@ export const clearCardData = createAction(
   (cardId, dashcardId) => ({ payload: { cardId, dashcardId } }),
 );
 
-function getDatasetQueryParams(datasetQuery: Partial<DatasetQuery> = {}) {
-  const parameters =
-    datasetQuery?.parameters
-      ?.map((parameter) => ({
-        ...parameter,
-        value: parameter.value ?? null,
-      }))
-      .sort(sortById) ?? [];
-
-  return match(datasetQuery)
-    .with({ type: "native" }, ({ native }) => ({
-      type: "native",
-      query: undefined,
-      native,
-      parameters,
+function getDatasetQueryParams(datasetQuery?: JsonQuery) {
+  const parameters = datasetQuery?.parameters ?? [];
+  return parameters
+    .map((parameter) => ({
+      ...parameter,
+      value: parameter.value ?? null,
     }))
-    .with({ type: "query" }, ({ query }) => ({
-      type: "query",
-      query,
-      native: undefined,
-      parameters,
-    }))
-    .otherwise(() => ({
-      type: undefined,
-      native: undefined,
-      query: undefined,
-      parameters: [],
-    }));
+    .sort(sortById);
 }
 
 function sortById(a: UiParameter, b: UiParameter) {
@@ -651,7 +630,7 @@ export const fetchDashboard = createAsyncThunk(
       options: { preserveParameters = false, clearCache = true } = {},
     }: {
       dashId: DashboardId;
-      queryParams: ParameterValues;
+      queryParams: ParameterValuesMap;
       options?: { preserveParameters?: boolean; clearCache?: boolean };
     },
     { getState, dispatch, rejectWithValue },

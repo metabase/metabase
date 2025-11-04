@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.events.core :as events]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -150,6 +151,11 @@
   ;; This check should be redundant in practice with the permission checks within perform-action!
   ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
   (api/check-superuser)
+  (events/publish-event! :event/action-v2-execute
+                         {:details {:action action
+                                    :scope scope
+                                    :input_count 1}
+                          :user-id api/*current-user-id*})
   {:outputs (execute!* action scope params [input])})
 
 (api.macros/defendpoint :post "/execute-bulk"
@@ -179,6 +185,11 @@
   ;; This check should be redundant in practice with the permission checks within perform-action!
   ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
   (api/check-superuser)
+  (events/publish-event! :event/action-v2-execute
+                         {:details {:action action
+                                    :scope scope
+                                    :input_count (count inputs)}
+                          :user-id api/*current-user-id*})
   {:outputs (execute!* action scope params inputs)})
 
 (api.macros/defendpoint :post "/execute-form"

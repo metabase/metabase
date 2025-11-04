@@ -20,12 +20,39 @@ title: Driver interface changelog
 - Added `metabase.driver/rename-tables!*` multimethod for atomic table renaming operations. Takes a map of {from-table to-table}
   pairs that has been topologically sorted.
 
-- Added the driver multi-methods `metabase.driver/schema-exists?` and `metabase.driver/create-schema-if-needed!` which should be implemented by drivers that support `:schemas` and `:transforms/table`.
+- Added `metabase.driver/rename-table!` multimethod for table renaming operations. Takes a single from-table to-table pair.
+  Fallbacks to singleton call to `rename-tables!*` if available.
+
+- Added the driver multi-methods `metabase.driver/schema-exists?` and `metabase.driver/create-schema-if-needed!`
+  which should be implemented by drivers that support `:schemas` and `:transforms/table`.
+
+- Added `metabase.driver/type->database-type` multimethod that returns the database type for a given Metabase
+  type (from the type hierarchy) as a HoneySQL spec. This method handles general Metabase base types.
+
+- Added driver multimethods driver/native-result-metadata, driver/validate-native-query-fields, driver.sql/resolve-field, driver.sql.normalize-unquoted-name, driver.sql.normalize/reserved-literal, driver.sql.references/find-used-fields, driver.sql.references/find-returned-fields, and driver.sql.references/field-references-impl for use with the :dependencies/native feature.
+
+- Added `metabase.driver/insert-from-source!` multimethod that abstracts data insertion from various sources
+  into existing tables. This multimethod dispatches on both the driver and the data source type
+  (`:rows` or `:jsonl-file`). It allows drivers to optimize based on the data source type and returns the number
+  of rows inserted. Default implementations are provided for both `:rows` and `:jsonl-file` source types.
+
+- Added `metabase.driver/insert-col->val` multimethod to parse values for insertion based on driver, data source type
+  and column definition. Drivers should implement this when their insertion mechanism needs values converted to proper types.
 
 - `metabase.driver/humanize-connection-error-message` now takes a list of all messages in the exception chain,
   instead of just the top-level message as a string.
 
 - Removed `driver/set-database-used`. Drivers should set default databases in their connection specs instead.
+
+- `metabase.driver.common.table-rows-sample/table-rows-sample`'s optional `:order-by` option should now be something
+  you can pass to [[metabase.lib.core/order-by]] -- for example a Lib `:metadata/column` or an [MBQL 5]
+  `metabase.driver-api.core/order-by-clause`.
+
+- `metabase.driver-api.core/nest-query` no longer automatically calls `metabase.driver-api.core/add-alias-info` on its
+  results, but it also no longer expect its input to have this information. If you were using both of these tools in
+  your driver, make change the order in which the are applied so `nest-query` happens first, followed by
+  `add-alias-info`. Note that drivers deriving from `:sql` do not need to make any changes, since this is done by the
+  base `:sql` driver implementation.
 
 ## Metabase 0.56.3
 
@@ -79,7 +106,7 @@ title: Driver interface changelog
 
 - Added a feature `:multi-level-schema` for drivers that support hierarchical levels between database and schema. Such as databricks' catalog. Defaults to false.
 
-- Added the multi-method `adjust-schema-qualification` that allows drivers to to qualify, or unqualify table schemas based on enabling or disabling multi-level-schema support. Drivers may need to implement `sql.qp/->honeysql [driver ::h2x/identifier]` to properly quote fully qualified schemas.
+- Added the multi-method `adjust-schema-qualification` that allows drivers to qualify, or unqualify table schemas based on enabling or disabling multi-level-schema support. Drivers may need to implement `sql.qp/->honeysql [driver ::h2x/identifier]` to properly quote fully qualified schemas.
 
 - Added the multi-method `float-dbtype` which returns the name of the float type we coerce to for coercion strategies and the `float()` custom expression function.
 
@@ -220,7 +247,7 @@ title: Driver interface changelog
   for better performance when saving Questions. Refer to the method docstring for more information and where to find
   an example implementation.
 
-- Prior to 0.51.0, to generate SQL queries with inline parameters, Metabase would generate a parameterized SQL string,
+- Before 0.51.0, to generate SQL queries with inline parameters, Metabase would generate a parameterized SQL string,
   then attempt to parse the SQL replace and replace `?` placeholders with inline values from the driver method
   `metabase.driver.sql.util.unprepare/unprepare-value`. In 0.51.0+, Metabase instead generates these queries using
   Honey SQL 2's `:inline` option, eliminating the need to parse and replace `?` placeholders. As such, the
@@ -298,7 +325,7 @@ title: Driver interface changelog
 - Similarly, `metabase.test.data.sql-jdbc.execute/execute-sql!` and helper functions like
   `metabase.test.data.sql-jdbc.execute/sequentially-execute-sql!` are now called with a `java.sql.Connection`
   instead of both a `DatabaseDefinition` and either `:server` or `:db` _context_; the appropriate connection type is
-  created automatically and passed in in the calling code. Update your method implementations and usages
+  created automatically and passed in the calling code. Update your method implementations and usages
   accordingly.
 
 - Added method `metabase.test.data.interface/dataset-already-loaded?` to check if a test dataset has already been
@@ -431,7 +458,7 @@ title: Driver interface changelog
 - New feature `:identifiers-with-spaces` has been added to indicate where a driver supports identifiers like table or
   column names that contains a space character. Defaults to `false`.
 
-- New feature `:uuid-type` has been added to indicate that this database is able to distinguish and filter against UUIDs.
+- New feature `:uuid-type` has been added to indicate that this database can distinguish and filter against UUIDs.
   Only a few database support native UUID types. The default is `false`.
 
 ## Metabase 0.49.22
@@ -555,7 +582,7 @@ title: Driver interface changelog
   new function takes a Field as returned by `lib.metadata/field`, i.e. a `kebab-case` map.
 
 - Tests should try to avoid using any of the `with-temp` helpers or application database objects; instead, use the
-  metadata functions above and and the helper _metadata providers_ in `metabase.lib`, `metabase.lib.test-util`, and
+  metadata functions above and the helper _metadata providers_ in `metabase.lib`, `metabase.lib.test-util`, and
   `metabase.query-processor.test-util` for mocking them, such as `mock-metadata-provider`,
   `metabase-provider-with-cards-for-queries`, `remap-metadata-provider`, and `merged-mock-metadata-provider`.
 
@@ -810,7 +837,7 @@ differences between the library versions.
 
 #### Breaking Changes in 0.46.0 related to the Honey SQL 2 transition
 
-**Note: these breaking changes will hopefully be fixed before 0.46.0 ships. This will be updated if they are.**
+**Note: we expect these breaking changes to be fixed before 0.46.0 ships. This will be updated if they are.**
 
 The classes `metabase.util.honeysql_extensions.Identifer` and `metabase.util.honeysql_extensions.TypedHoneySQLForm`
 have been moved to `metabase.util.honey_sql_1.Identifer` and `metabase.util.honey_sql_1.TypedHoneySQLForm`,

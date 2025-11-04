@@ -19,7 +19,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
@@ -756,3 +756,18 @@
                 {:filter [:expression "NameEquals" {:base-type                      :type/Boolean
                                                     driver-api/qp.add.source-table  driver-api/qp.add.none
                                                     driver-api/qp.add.desired-alias nil}]})))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct SQL Server types"
+    (are [base-type expected] (= expected (driver/type->database-type :sqlserver base-type))
+      :type/Boolean            [:bit]
+      :type/Date               [:date]
+      :type/DateTime           [:datetime2]
+      :type/DateTimeWithTZ     [:datetimeoffset]
+      :type/Decimal            [:decimal]
+      :type/Float              [:float]
+      :type/Integer            [:int]
+      :type/Number             [:bigint]
+      :type/Text               [:text]
+      :type/Time               [:time]
+      :type/UUID               [:uniqueidentifier])))

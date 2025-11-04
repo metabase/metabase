@@ -101,7 +101,6 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
     >
       <Flex
         gap={4}
-        bg="white"
         p="2px"
         className={S.bubbleMenu}
         data-testid="document-formatting-menu"

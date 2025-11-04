@@ -49,6 +49,7 @@ describe("parameters/utils/template-tag-options", () => {
       isCountry: () => false,
       isNumeric: () => false,
       isString: () => false,
+      isStringLike: () => false,
       isBoolean: () => false,
       isAddress: () => false,
     };
@@ -84,6 +85,19 @@ describe("parameters/utils/template-tag-options", () => {
         isAddress: () => true,
       };
       const availableOptions = getParameterOptionsForField(addressField);
+      expect(
+        availableOptions.length > 0 &&
+          availableOptions.every((option) => option.type.startsWith("string")),
+      ).toBe(true);
+    });
+
+    it("should return string options for a TextLike field", () => {
+      const enumField = {
+        ...field,
+        isString: () => false,
+        isStringLike: () => true,
+      };
+      const availableOptions = getParameterOptionsForField(enumField);
       expect(
         availableOptions.length > 0 &&
           availableOptions.every((option) => option.type.startsWith("string")),

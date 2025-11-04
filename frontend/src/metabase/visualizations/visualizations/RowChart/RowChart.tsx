@@ -137,7 +137,6 @@ const RowChartVisualization = ({
   const theme = useRowChartTheme(
     `${fontFamily}, Arial, sans-serif`,
     isDashboard,
-    isFullscreen,
   );
 
   const chartWarnings = useMemo(
@@ -210,12 +209,10 @@ const RowChartVisualization = ({
   };
 
   const handleSelectSeries = (event: React.MouseEvent, seriesIndex: number) => {
-    const clickData = getLegendClickData(
-      seriesIndex,
-      series,
-      settings,
-      chartColumns,
-    );
+    const clickData = {
+      ...getLegendClickData(seriesIndex, series, settings, chartColumns),
+      element: event.currentTarget,
+    };
 
     const areMultipleCards = rawMultipleSeries.length > 1;
     if (areMultipleCards) {
@@ -224,10 +221,7 @@ const RowChartVisualization = ({
     }
 
     if ("breakout" in chartColumns && visualizationIsClickable(clickData)) {
-      onVisualizationClick({
-        ...clickData,
-        element: event.currentTarget,
-      });
+      onVisualizationClick(clickData);
     } else if (isDashboard) {
       openQuestion();
     }

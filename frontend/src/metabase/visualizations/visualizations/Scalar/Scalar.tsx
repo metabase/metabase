@@ -1,10 +1,8 @@
-import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import {
   ScalarValue,
   ScalarWrapper,
@@ -182,32 +180,34 @@ export class Scalar extends Component<
       formatOptions,
     );
 
-    const clicked = {
-      value,
-      column,
-      data: rows[0]?.map((value, index) => ({ value, col: cols[index] })),
-      settings,
-    };
     const isClickable = onVisualizationClick != null;
 
     const handleClick = () => {
+      if (this._scalar == null) {
+        return;
+      }
+
+      const clickData = {
+        value,
+        column,
+        data: rows[0]?.map((value, index) => ({ value, col: cols[index] })),
+        settings,
+        element: this._scalar,
+      };
+
       if (
         this._scalar &&
         onVisualizationClick &&
-        visualizationIsClickable(clicked)
+        visualizationIsClickable(clickData)
       ) {
-        onVisualizationClick({ ...clicked, element: this._scalar });
+        onVisualizationClick(clickData);
       }
     };
 
     return (
       <ScalarWrapper>
         <ScalarContainer
-          className={cx(
-            DashboardS.fullscreenNormalText,
-            DashboardS.fullscreenNightText,
-            EmbedFrameS.fullscreenNightText,
-          )}
+          className={DashboardS.fullscreenNormalText}
           data-testid="scalar-container"
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== displayValue}

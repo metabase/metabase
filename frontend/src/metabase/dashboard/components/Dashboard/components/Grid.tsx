@@ -28,12 +28,11 @@ export const Grid = ({
     selectedTabId,
     isEditing,
     onRefreshPeriodChange,
-    shouldRenderAsNightMode,
     isLoadingWithoutCards,
     onAddQuestion,
+    isEditableDashboard,
   } = useDashboardContext();
 
-  const canWrite = Boolean(dashboard?.can_write);
   const currentTabDashcards = useMemo(() => {
     if (!dashboard || !Array.isArray(dashboard.dashcards)) {
       return [];
@@ -93,36 +92,28 @@ export const Grid = ({
 
   if (isEmpty) {
     if (!dashboardHasCards) {
-      return canWrite ? (
+      return isEditableDashboard ? (
         <DashboardEmptyState
           canCreateQuestions={canCreateQuestions}
           addQuestion={handleAddQuestion}
           isDashboardEmpty={true}
           isEditing={isEditing}
-          isNightMode={shouldRenderAsNightMode}
         />
       ) : (
-        <DashboardEmptyStateWithoutAddPrompt
-          isDashboardEmpty={true}
-          isNightMode={shouldRenderAsNightMode}
-        />
+        <DashboardEmptyStateWithoutAddPrompt isDashboardEmpty={true} />
       );
     }
 
     if (dashboardHasCards && !tabHasCards) {
-      return canWrite ? (
+      return isEditableDashboard ? (
         <DashboardEmptyState
           canCreateQuestions={canCreateQuestions}
           addQuestion={handleAddQuestion}
           isDashboardEmpty={false}
           isEditing={isEditing}
-          isNightMode={shouldRenderAsNightMode}
         />
       ) : (
-        <DashboardEmptyStateWithoutAddPrompt
-          isDashboardEmpty={false}
-          isNightMode={shouldRenderAsNightMode}
-        />
+        <DashboardEmptyStateWithoutAddPrompt isDashboardEmpty={false} />
       );
     }
   }
