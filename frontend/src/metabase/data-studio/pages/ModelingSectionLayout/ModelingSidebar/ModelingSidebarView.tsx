@@ -48,7 +48,7 @@ export function ModelingSidebarView({ collections }: ModelingSidebarViewProps) {
   }, [dispatch]);
 
   return (
-    <Box w={280} h="100%" bg="bg-white" className={S.sidebar}>
+    <Box w={320} h="100%" bg="bg-white" className={S.sidebar}>
       <Stack gap="md" p="md">
         <Menu
           opened={isCreateMenuOpen}

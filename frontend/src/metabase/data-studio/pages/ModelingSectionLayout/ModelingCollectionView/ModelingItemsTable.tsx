@@ -169,10 +169,10 @@ function ItemRow({ item }: { item?: ModelingItem }) {
         return;
       }
 
-      const { id, name, model } = item;
+      const { id, model } = item;
       const url =
         model === "metric"
-          ? Urls.metric({ id, name, type: "metric" })
+          ? Urls.dataStudioMetric(id)
           : Urls.dataStudioModel(id);
       const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
 

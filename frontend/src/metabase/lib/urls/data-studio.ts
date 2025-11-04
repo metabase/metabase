@@ -29,3 +29,23 @@ export function dataStudioModelQuery(modelId: CardId) {
 export function dataStudioModelDependencies(modelId: CardId) {
   return `${dataStudioModel(modelId)}/dependencies`;
 }
+
+export function newDataStudioQueryMetric() {
+  return `${dataStudioModeling()}/metrics/new/query`;
+}
+
+export function newDataStudioNativeMetric() {
+  return `${dataStudioModeling()}/metrics/new/native`;
+}
+
+export function dataStudioMetric(metricId: CardId) {
+  return `${dataStudioModeling()}/metrics/${metricId}`;
+}
+
+export function dataStudioMetricQuery(metricId: CardId) {
+  return `${dataStudioMetric(metricId)}/query`;
+}
+
+export function dataStudioMetricDependencies(metricId: CardId) {
+  return `${dataStudioMetric(metricId)}/dependencies`;
+}

@@ -12,7 +12,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
 
-import { ModelEditor } from "../../components/ModelEditor";
+import { MetricEditor } from "../../components/MetricEditor";
 import {
   getDefaultValues,
   getInitialNativeQuery,
@@ -20,19 +20,19 @@ import {
   getQuery,
 } from "../shared";
 
-import { CreateModelModal } from "./CreateModelModal";
+import { CreateMetricModal } from "./CreateMetricModal";
 
-type NewModelPageProps = {
+type NewMetricPageProps = {
   initialName?: string;
   initialQuery: Lib.Query;
   route: Route;
 };
 
-function NewModelPage({
-  initialName = t`New model`,
+function NewMetricPage({
+  initialName = t`New metric`,
   initialQuery,
   route,
-}: NewModelPageProps) {
+}: NewMetricPageProps) {
   const [name, setName] = useState(initialName);
   const [datasetQuery, setDatasetQuery] = useState(() =>
     Lib.toJsQuery(initialQuery),
@@ -48,8 +48,8 @@ function NewModelPage({
     [datasetQuery, metadata],
   );
 
-  const handleCreate = (model: Card) => {
-    dispatch(push(Urls.dataStudioModel(model.id)));
+  const handleCreate = (metric: Card) => {
+    dispatch(push(Urls.dataStudioMetric(metric.id)));
   };
 
   const handleChangeQuery = (query: Lib.Query) => {
@@ -62,7 +62,7 @@ function NewModelPage({
 
   return (
     <>
-      <ModelEditor
+      <MetricEditor
         name={name}
         query={query}
         uiState={uiState}
@@ -75,7 +75,7 @@ function NewModelPage({
         onCancel={handleCancel}
       />
       {isModalOpened && (
-        <CreateModelModal
+        <CreateMetricModal
           query={query}
           defaultValues={getDefaultValues(name)}
           onCreate={handleCreate}
@@ -87,25 +87,25 @@ function NewModelPage({
   );
 }
 
-type NewQueryModelPageProps = {
+type NewQueryMetricPageProps = {
   route: Route;
 };
 
-export function NewQueryModelPage({ route }: NewQueryModelPageProps) {
+export function NewQueryMetricPage({ route }: NewQueryMetricPageProps) {
   const metadata = useSelector(getMetadata);
   const initialQuery = useMemo(() => getInitialQuery(metadata), [metadata]);
-  return <NewModelPage initialQuery={initialQuery} route={route} />;
+  return <NewMetricPage initialQuery={initialQuery} route={route} />;
 }
 
-type NewNativeModelPageProps = {
+type NewNativeMetricPageProps = {
   route: Route;
 };
 
-export function NewNativeModelPage({ route }: NewNativeModelPageProps) {
+export function NewNativeMetricPage({ route }: NewNativeMetricPageProps) {
   const metadata = useSelector(getMetadata);
   const initialQuery = useMemo(
     () => getInitialNativeQuery(metadata),
     [metadata],
   );
-  return <NewModelPage initialQuery={initialQuery} route={route} />;
+  return <NewMetricPage initialQuery={initialQuery} route={route} />;
 }

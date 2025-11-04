@@ -2,8 +2,6 @@ import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { DatasetQuery } from "metabase-types/api";
 
-import type { NewModelValues } from "./types";
-
 export function getQuery(datasetQuery: DatasetQuery, metadata: Metadata) {
   return Question.create({ dataset_query: datasetQuery, metadata }).query();
 }
@@ -22,6 +20,6 @@ export function getInitialNativeQuery(metadata: Metadata) {
   }).query();
 }
 
-export function getDefaultValues(name: string): Partial<NewModelValues> {
+export function getDefaultValues(name: string) {
   return { name };
 }

@@ -1,7 +1,7 @@
 import type { CardId } from "metabase-types/api";
 
 import { EntityEditorActions } from "../../EntityEditorActions";
-import { ModelHeader } from "../../ModelHeader";
+import { MetricHeader } from "../../MetricHeader";
 import type { ValidationResult } from "../../types";
 
 type EditorHeaderProps = {
@@ -26,7 +26,7 @@ export function EditorHeader({
   onChangeName,
 }: EditorHeaderProps) {
   return (
-    <ModelHeader
+    <MetricHeader
       id={id}
       name={name}
       actions={

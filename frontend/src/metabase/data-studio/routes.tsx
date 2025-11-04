@@ -3,7 +3,10 @@ import { t } from "ttag";
 
 import { Route } from "metabase/hoc/Title";
 import { getDataStudioMetadataRoutes } from "metabase/metadata/routes";
-import { getDataStudioModelRoutes } from "metabase/models/routes";
+import {
+  getDataStudioMetricRoutes,
+  getDataStudioModelRoutes,
+} from "metabase/models/routes";
 import { PLUGIN_DEPENDENCIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
 
 import { DataSectionLayout } from "./pages/DataSectionLayout";
@@ -40,6 +43,7 @@ export function getDataStudioRoutes() {
         />
         <Route path="glossary" component={ModelingGlossary} />
         {getDataStudioModelRoutes()}
+        {getDataStudioMetricRoutes()}
       </Route>
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
