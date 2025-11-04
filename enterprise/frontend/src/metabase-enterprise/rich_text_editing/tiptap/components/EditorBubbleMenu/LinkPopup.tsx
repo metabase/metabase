@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Flex, TextInput } from "metabase/ui";
+import { ActionIcon, Box, FixedSizeIcon, Flex, TextInput } from "metabase/ui";
 
 interface LinkPopupProps {
   isOpen: boolean;
@@ -43,40 +43,38 @@ export const LinkPopup = ({
   }
 
   return (
-    <Box
-      bg="var(--mb-color-bg-white)"
-      bd="1px solid var(--mb-color-border)"
-      bdrs="sm"
-      p="xs"
-      style={{
-        boxShadow: "0 2px 12px var(--mb-color-shadow)",
-      }}
-    >
-      <Flex align="center" gap={4}>
-        <Box style={{ flexGrow: 1 }}>
-          <TextInput
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder={t`Enter URL...`}
-            size="sm"
-            onKeyDown={(e) => {
-              // TODO: We should be able to use a form element here
-              if (e.key === "Enter") {
-                handleSubmit();
-              } else if (e.key === "Escape") {
-                handleCancel();
-              }
-            }}
-            autoFocus
-          />
-        </Box>
-        <Button size="sm" onClick={handleSubmit}>
-          {t`OK`}
-        </Button>
-        <Button size="sm" variant="subtle" onClick={handleCancel}>
-          {t`Cancel`}
-        </Button>
-      </Flex>
-    </Box>
+    <Flex align="center" gap={4}>
+      <Box style={{ flexGrow: 1 }}>
+        <TextInput
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder={t`Enter URL...`}
+          size="sm"
+          onKeyDown={(e) => {
+            // TODO: We should be able to use a form element here
+            if (e.key === "Enter") {
+              handleSubmit();
+            } else if (e.key === "Escape") {
+              handleCancel();
+            }
+          }}
+          autoFocus
+        />
+      </Box>
+      {/* TODO: Add aria labels and/or tooltips */}
+      <ActionIcon onClick={handleSubmit}>
+        <FixedSizeIcon name="check" />
+      </ActionIcon>
+      <ActionIcon
+        onClick={() => {
+          // TODO: Remove
+        }}
+      >
+        <FixedSizeIcon name="trash" />
+      </ActionIcon>
+      <ActionIcon onClick={handleCancel}>
+        <FixedSizeIcon name="ellipsis" />
+      </ActionIcon>
+    </Flex>
   );
 };
