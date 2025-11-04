@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-938-crud-api-for-named-themes-on-the-backend",
     "hash": "4ea32a53efcb65f290fa08bb967581424e62c1f8"
+  },
+  "upstream": {
+    "branch": "emb-941-scaffold-theme-listing-page-in-embedding-admin-settings"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 65416,
+        "gqlID": "PR_kwDOAczgH86xZ83a"
+      }
+    }
   }
 }
