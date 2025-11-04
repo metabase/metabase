@@ -25,6 +25,7 @@ import {
 } from "metabase/ui";
 import type { CollectionId, DatabaseId, TableId } from "metabase-types/api";
 
+import { useSelection } from "../../../contexts/SelectionContext";
 import type { RouteParams } from "../../../types";
 import type { ChangeOptions, TreePath } from "../types";
 import { getFiltersCount } from "../utils";
@@ -48,6 +49,14 @@ export function TablePicker({
   className,
   onChange,
 }: TablePickerProps) {
+  const {
+    selectedTables,
+    selectedSchemas,
+    selectedDatabases,
+    resetSelection,
+    hasSelectedItems,
+  } = useSelection();
+
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const previousDeferredQuery = usePrevious(deferredQuery);
@@ -61,29 +70,11 @@ export function TablePicker({
   const [isOpen, { toggle, close }] = useDisclosure();
   const filtersCount = getFiltersCount(filters);
 
-  const [selectedTables, setSelectedTables] = useState<Set<TableId>>(new Set());
-  const [selectedSchemas, setSelectedSchemas] = useState<Set<string>>(
-    new Set(),
-  );
-  const [selectedDatabases, setSelectedDatabases] = useState<Set<DatabaseId>>(
-    new Set(),
-  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
   const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
     null,
   );
-
-  const hasSelectedItems =
-    selectedTables.size > 0 ||
-    selectedSchemas.size > 0 ||
-    selectedDatabases.size > 0;
-
-  function resetSelection() {
-    setSelectedTables(new Set());
-    setSelectedSchemas(new Set());
-    setSelectedDatabases(new Set());
-  }
 
   function handleModalUpdate() {
     if (onUpdateCallback) {
@@ -287,12 +278,6 @@ export function TablePicker({
           <Tree
             path={path}
             onChange={onChange}
-            selectedTables={selectedTables}
-            setSelectedTables={setSelectedTables}
-            selectedSchemas={selectedSchemas}
-            setSelectedSchemas={setSelectedSchemas}
-            selectedDatabases={selectedDatabases}
-            setSelectedDatabases={setSelectedDatabases}
             setOnUpdateCallback={setOnUpdateCallback}
           />
         ) : (
@@ -300,8 +285,6 @@ export function TablePicker({
             query={deferredQuery}
             params={params}
             filters={filters}
-            selectedTables={selectedTables}
-            setSelectedTables={setSelectedTables}
             setOnUpdateCallback={setOnUpdateCallback}
           />
         )}

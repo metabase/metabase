@@ -7,6 +7,7 @@ import { useListTablesQuery } from "metabase/api/table";
 import { Box, Checkbox, Flex, Icon, Loader, Stack, Text } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
+import { useSelection } from "../../../contexts/SelectionContext";
 import type { RouteParams } from "../../../types";
 import { getUrl, parseRouteParams } from "../../../utils";
 
@@ -17,8 +18,6 @@ interface SearchNewProps {
   query: string;
   params: RouteParams;
   filters: FilterState;
-  selectedTables: Set<TableId>;
-  setSelectedTables: (tables: Set<TableId>) => void;
   setOnUpdateCallback: (callback: (() => void) | null) => void;
 }
 
@@ -26,10 +25,9 @@ export function SearchNew({
   query,
   params,
   filters,
-  selectedTables,
-  setSelectedTables,
   setOnUpdateCallback,
 }: SearchNewProps) {
+  const { selectedTables, setSelectedTables } = useSelection();
   const routeParams = parseRouteParams(params);
   const {
     data: tables,

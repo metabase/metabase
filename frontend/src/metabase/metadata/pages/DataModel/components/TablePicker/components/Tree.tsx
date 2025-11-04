@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import type { DatabaseId, TableId } from "metabase-types/api";
 
+import { useSelection } from "../../../contexts/SelectionContext";
 import {
   type NodeSelection,
   getChildSchemas,
@@ -31,26 +32,22 @@ import { Results } from "./Results";
 interface Props {
   path: TreePath;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
-  selectedTables: Set<TableId>;
-  setSelectedTables: (tables: Set<TableId>) => void;
-  selectedSchemas: Set<string>;
-  setSelectedSchemas: (schemas: Set<string>) => void;
-  selectedDatabases: Set<DatabaseId>;
-  setSelectedDatabases: (databases: Set<DatabaseId>) => void;
   setOnUpdateCallback: (callback: (() => void) | null) => void;
 }
 
 export function Tree({
   path,
   onChange,
-  selectedTables,
-  setSelectedTables,
-  selectedSchemas,
-  setSelectedSchemas,
-  selectedDatabases,
-  setSelectedDatabases,
   setOnUpdateCallback,
 }: Props) {
+  const {
+    selectedTables,
+    setSelectedTables,
+    selectedSchemas,
+    setSelectedSchemas,
+    selectedDatabases,
+    setSelectedDatabases,
+  } = useSelection();
   const { databaseId, schemaName } = path;
   const { isExpanded, toggle } = useExpandedState(path);
   const { tree, reload } = useTableLoader(path);

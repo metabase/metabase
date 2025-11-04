@@ -4,19 +4,14 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
-  usePublishModelsMutation,
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
-import { useToast } from "metabase/common/hooks";
 import {
-  DataSourceInput,
   FieldOrderPicker,
-  LayerInput,
   NameDescriptionInput,
   SortableFieldList,
-  UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -32,24 +27,16 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import type {
-  FieldId,
-  Table,
-  TableDataSource,
-  TableFieldOrder,
-  TableVisibilityType2,
-  UserId,
-} from "metabase-types/api";
+import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
 import { ResponsiveButton } from "../ResponsiveButton";
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 import { SubstituteModelModal } from "../TablePicker/components/SubstituteModelModal";
-import { TitledSection } from "../TitledSection";
-import { TableMetadataSection } from "./TableMetadataSection";
 
 import { FieldList } from "./FieldList";
+import { TableMetadataSection } from "./TableMetadataSection";
 import S from "./TableSection.module.css";
 import { useResponsiveButtons } from "./hooks";
 
@@ -120,102 +107,6 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     }
   };
 
-  const handleLayerChange = async (
-    visibilityType: TableVisibilityType2 | null,
-  ) => {
-    if (visibilityType == null) {
-      return; // should never happen as the input is not clearable here
-    }
-
-    const { error } = await updateTable({
-      id: table.id,
-      data_layer: visibilityType,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update table layer`);
-    } else {
-      sendSuccessToast(t`Table layer updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          data_layer: table.data_layer,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
-  const handleDataSourceChange = async (
-    dataSource: TableDataSource | "unknown" | null,
-  ) => {
-    if (dataSource == null) {
-      return; // should never happen as the input is not clearable here
-    }
-
-    const { error } = await updateTable({
-      id: table.id,
-      data_source: dataSource === "unknown" ? null : dataSource,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update table data source`);
-    } else {
-      sendSuccessToast(t`Table data source updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          data_source: table.data_source,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
-  const handleOwnerEmailChange = async (email: string | null) => {
-    const { error } = await updateTable({
-      id: table.id,
-      owner_email: email,
-      owner_user_id: null,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update table owner`);
-    } else {
-      sendSuccessToast(t`Table owner updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          owner_email: table.owner_email,
-          owner_user_id: table.owner_user_id,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
-  const handleOwnerUserIdChange = async (userId: UserId | "unknown" | null) => {
-    if (userId == null) {
-      return; // should never happen as the input is not clearable here
-    }
-
-    const { error } = await updateTable({
-      id: table.id,
-      owner_email: null,
-      owner_user_id: userId === "unknown" ? null : userId,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update table owner`);
-    } else {
-      sendSuccessToast(t`Table owner updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          owner_email: table.owner_email,
-          owner_user_id: table.owner_user_id,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
   const handleFieldOrderTypeChange = async (fieldOrder: TableFieldOrder) => {
     const { error } = await updateTableSorting({
       id: table.id,
@@ -259,26 +150,6 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         } else {
           sendUndoToast(fieldsOrderError);
         }
-      });
-    }
-  };
-
-  const [publishModels] = usePublishModelsMutation();
-  const [sendToast] = useToast();
-
-  const handlePublishModel = async () => {
-    const { error } = await publishModels({
-      table_ids: [table.id],
-      target_collection_id: "library",
-    });
-
-    if (error) {
-      sendToast({
-        message: t`Failed to publish`,
-      });
-    } else {
-      sendToast({
-        message: t`Table published in the Library`,
       });
     }
   };
@@ -354,20 +225,6 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
               >
                 {t`Create model`}
               </Menu.Item>
-
-              {/*               <Menu.Item
-                leftSection={<Icon name="model_with_badge" />}
-                rightSection={
-                  <Tooltip
-                    label={t`Create a model and publish it in the Library.`}
-                  >
-                    <Icon name="info_outline" />
-                  </Tooltip>
-                }
-                onClick={handlePublishModel}
-              >
-                {t`Publish model`}
-              </Menu.Item> */}
 
               <Menu.Item
                 leftSection={<Icon name="sync" />}

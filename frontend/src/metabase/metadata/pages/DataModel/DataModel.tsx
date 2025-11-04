@@ -26,7 +26,9 @@ import {
   SyncOptionsModal,
   TableSection,
 } from "./components";
+import { EditTableMetadata } from "./components/TableSection/EditTableMetadata";
 import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
+import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
 import type { RouteParams } from "./types";
 import { getTableMetadataQuery, parseRouteParams } from "./utils";
 
@@ -37,6 +39,19 @@ interface Props {
 }
 
 export const DataModel = ({ children, location, params }: Props) => {
+  return (
+    <SelectionProvider>
+      <DataModelContent
+        children={children}
+        location={location}
+        params={params}
+      />
+    </SelectionProvider>
+  );
+};
+
+function DataModelContent({ children, location, params }: Props) {
+  const { hasSelectedItems } = useSelection();
   const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
   const { data: databasesData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include_editable_data_model: true });
@@ -134,7 +149,19 @@ export const DataModel = ({ children, location, params }: Props) => {
               </Stack>
             )}
 
-          {tableId && (
+          {hasSelectedItems && (
+            <Stack
+              className={S.column}
+              flex={COLUMN_CONFIG.table.flex}
+              h="100%"
+              justify={error ? "center" : undefined}
+              maw={COLUMN_CONFIG.table.max}
+              miw={COLUMN_CONFIG.table.min}
+            >
+              <EditTableMetadata />
+            </Stack>
+          )}
+          {tableId && !hasSelectedItems && (
             <Stack
               className={S.column}
               flex={COLUMN_CONFIG.table.flex}
@@ -264,4 +291,4 @@ export const DataModel = ({ children, location, params }: Props) => {
       )}
     </Flex>
   );
-};
+}
