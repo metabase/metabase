@@ -168,9 +168,9 @@
 (defn ->ref-database
   "Convert database from ID to representation ref for export."
   [query]
-  (if-some [db (:database query)]
-    (assoc query :database (v0-common/->ref db :database))
-    query))
+  (cond-> query
+    (:database query)
+    (assoc :database (v0-common/->ref (:database query) :database))))
 
 (defn- field?
   "Is x a field? ex: `[:field 34 {}]`"
