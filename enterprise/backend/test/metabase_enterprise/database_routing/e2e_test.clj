@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase-enterprise.database-routing.e2e-test
   (:require
+   [clojure.set :as set]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer [deftest is testing]]
    [clojurewerkz.quartzite.conversion :as qc]
@@ -314,28 +315,19 @@
                                       (mt/process-query)
                                       (mt/formatted-rows [int str]))))))
                       (testing "sync task can see database"
-                        (let [job-data    (reify qc/JobDataMapConversion
-                                            ;; i'm doign this at the "job-data" level so it's as close to what runs in
-                                            ;; the task itself without actually hitting scheduler stuff.
-                                            (from-job-data [_] {"db-id" (u/the-id router)})
-                                            (to-job-data [_]))
-                              max-task-id (t2/select-one-fn :id :model/TaskHistory
-                                                            {:order-by [[:id :desc]]})]
-                          (#'task.sync-databases/sync-and-analyze-database! job-data)
-                          ;; there's so much error handling involved, but before we wouldn't even get an entry here. It would fail trying to get the db metadata for the schema sync step.
-                          (let [sync-tables-steps (t2/select :model/TaskHistory
-                                                             :id [:> max-task-id]
-                                                             :task [:in ["sync-tables"
-                                                                         "sync"
-                                                                         "sync-fields"
-                                                                         "sync-timezone"]]
-                                                             {:order-by [[:id :desc]]})]
-                            (is (= 4 (count sync-tables-steps)))
-                            (is (=? {:task         "sync-tables"
-                                     :task_details {:updated-tables 0
-                                                    :total-tables   1}
-                                     :status :success}
-                                    (u/find-first-map sync-tables-steps [:task] "sync-tables")))))))))))))))))
+                        (let [job-data       (reify qc/JobDataMapConversion
+                                               ;; i'm doign this at the "job-data" level so it's as close to what runs in
+                                               ;; the task itself without actually hitting scheduler stuff.
+                                               (from-job-data [_] {"db-id" (u/the-id router)})
+                                               (to-job-data [_]))
+                              results        (#'task.sync-databases/sync-and-analyze-database! job-data)
+                              step-with-name (fn [step-name]
+                                               (->> results :metadata-results :steps
+                                                    (some (fn [step] (when (= step-name (first step)) (second step))))))]
+                          (is (set/subset? #{"sync-fields" "sync-tables"}
+                                           (->> results :metadata-results :steps (map first) set)))
+                          (is (=? {:updated-tables 0 :total-tables 1}
+                                  (step-with-name "sync-tables"))))))))))))))))
 
 (deftest athena-region-bucket-routing-test
   (mt/test-driver :athena

@@ -88,13 +88,15 @@
                     e))]
       (log/warnf ex "Cannot sync Database %s: %s" (:name database) (ex-message ex))
       (database-routing/with-database-routing-off
-        (do
-          (sync-metadata/sync-db-metadata! database)
-          ;; only run analysis if this is a "full sync" database
-          (when (:is_full_sync database)
-            (let [results (analyze/analyze-db! database)]
-              (when (and (:refingerprint database) (should-refingerprint-fields? results))
-                (analyze/refingerprint-db! database)))))))))
+        (let [metadata-results (sync-metadata/sync-db-metadata! database)
+              analyze-results (when (:is_full_sync database)
+                                (analyze/analyze-db! database))
+              refingerprint-results (when (and (:refingerprint database)
+                                               (should-refingerprint-fields? analyze-results))
+                                      (analyze/refingerprint-db! database))]
+          (cond-> {:metadata-results metadata-results}
+            analyze-results (assoc :analyze-results analyze-results)
+            refingerprint-results (assoc :refingerprint-results refingerprint-results)))))))
 
 (defn- sync-and-analyze-database!
   "The sync and analyze database job, as a function that can be used in a test"
