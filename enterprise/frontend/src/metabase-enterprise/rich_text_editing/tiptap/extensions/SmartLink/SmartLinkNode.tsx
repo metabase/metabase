@@ -52,6 +52,7 @@ import type {
 import {
   entityToUrlableModel,
   isMentionableUser,
+  mbProtocolModelToSuggestionModel,
 } from "../shared/suggestionUtils";
 import type { SuggestionModel } from "../shared/types";
 
@@ -246,9 +247,11 @@ export const SmartLink = Node.create<{
           const parsedEntity = parseMetabaseProtocolMarkdownLink(url);
 
           if (parsedEntity) {
+            const model = mbProtocolModelToSuggestionModel(parsedEntity?.model);
+
             return {
               entityId: parsedEntity.id,
-              model: parsedEntity.model,
+              model,
               label: parsedEntity.name,
             };
           }
@@ -260,8 +263,8 @@ export const SmartLink = Node.create<{
   },
 });
 
-function assertUnreachable(value: never): never {
-  throw new Error(`Unhandled model type: ${value}`);
+function assertUnreachable(value: never) {
+  console.warn(`Unhandled model type: ${value}`);
 }
 
 export const useEntityData = (
@@ -270,7 +273,9 @@ export const useEntityData = (
 ) => {
   const cardQuery = useGetCardQuery(
     { id: entityId! },
-    { skip: !entityId || (model !== "card" && model !== "dataset") },
+    {
+      skip: !entityId || (model !== "card" && model !== "dataset"),
+    },
   );
 
   const dashboardQuery = useGetDashboardQuery(
@@ -390,7 +395,8 @@ export const useEntityData = (
     case null:
       return { entity: null, isLoading: false, error: null };
     default:
-      return assertUnreachable(model);
+      assertUnreachable(model);
+      return { entity: null, isLoading: false, error: null };
   }
 };
 
