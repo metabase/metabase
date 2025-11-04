@@ -354,11 +354,11 @@
               others-coll-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))]
           (mt/with-temp [:model/Collection {public-coll-id :id} {}
                          :model/Dashboard  {dash-id-1 :id}      {:name "Our Dashboard",  :collection_id public-coll-id}
-                         :model/Dashboard  {dash-2-id :id}      {:name "My Dashboard",   :collection_id admins-coll-id}
+                         :model/Dashboard  {dash-id-2 :id}      {:name "My Dashboard",   :collection_id admins-coll-id}
                          :model/Dashboard  {dash-id-3 :id}      {:name "Your Dashboard", :collection_id others-coll-id}]
-            (let [test-id? #{dash-id-1 dash-2-id dash-id-3}]
+            (let [test-dashboard-ids #{dash-id-1 dash-id-2 dash-id-3}]
               (is (= #{"Our Dashboard" "My Dashboard"}
                      (->> (search/search {:term-queries ["Dashboard"]})
-                          (filter (comp test-id? :id))
+                          (filter (fn [{:keys [id type]}] (and (= "dashboard" type) (contains? test-dashboard-ids id))))
                           (map :name)
                           (set)))))))))))
