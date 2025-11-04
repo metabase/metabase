@@ -56,6 +56,13 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
                   name: name
                   type: varchar(255)
                   remarks: Name of the embed theme
