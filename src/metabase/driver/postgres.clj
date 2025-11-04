@@ -950,7 +950,7 @@
                 (driver-api/spec :postgres it)
                 (sql-jdbc.common/handle-additional-options it details-map))]
     (when (and use-iam? (not ssl?))
-      (log/error "You must enable SSL in order to use AWS IAM authentication"))
+      (throw (ex-info "You must enable SSL in order to use AWS IAM authentication" {})))
     props))
 
 (defmethod sql-jdbc.sync/excluded-schemas :postgres [_driver] #{"information_schema" "pg_catalog"})
