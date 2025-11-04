@@ -196,7 +196,14 @@ H.describeWithSnowplowEE("Remote Sync", () => {
     });
 
     describe("Branching", () => {
+      let branchCount = 0;
+
+      beforeEach(() => {
+        branchCount = 0;
+      });
+
       const createNewBranch = (newBranchName: string) => {
+        branchCount++;
         H.navigationSidebar().findByTestId("branch-picker-button").click();
         H.popover()
           .findByPlaceholderText("Find or create a branch...")
@@ -205,10 +212,13 @@ H.describeWithSnowplowEE("Remote Sync", () => {
           .findByRole("option", { name: /Create branch/ })
           .click();
 
-        H.expectUnstructuredSnowplowEvent({
-          event: "remote_sync_branch_created",
-          triggered_from: "branch-picker",
-        });
+        H.expectUnstructuredSnowplowEvent(
+          {
+            event: "remote_sync_branch_created",
+            triggered_from: "branch-picker",
+          },
+          branchCount,
+        );
 
         H.navigationSidebar()
           .findByTestId("branch-picker-button")
