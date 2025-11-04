@@ -157,7 +157,8 @@ export const PublicOrEmbeddedQuestion = ({
         throw { status: 404 };
       }
 
-      if (newResult.error) {
+      // If error is object it is because it was a non-query error
+      if (typeof newResult.error === "object") {
         dispatch(setErrorPage(newResult.error));
       } else {
         setResult(newResult as Dataset);
