@@ -1,13 +1,11 @@
 import { useLayoutEffect, useState } from "react";
 import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useListDatabasesQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
@@ -93,18 +91,8 @@ function TransformQueryPageBody({
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
-  const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   useRegisterMetabotTransformContext(transform, source);
-
-  const resetRef = useLatest(() => {
-    setSource(transform.source);
-    setUiState(getInitialUiState());
-  });
-
-  useLayoutEffect(() => {
-    resetRef.current();
-  }, [transform.id, resetRef]);
 
   const {
     checkData,
@@ -120,7 +108,6 @@ function TransformQueryPageBody({
         sendErrorToast(t`Failed to update transform query`);
       } else {
         sendSuccessToast(t`Transform query updated`);
-        dispatch(push(Urls.transform(transform.id)));
       }
     },
   });
@@ -137,6 +124,15 @@ function TransformQueryPageBody({
   const handleCancel = () => {
     setSourceAndRejectProposed(transform.source);
   };
+
+  const handleResetRef = useLatest(() => {
+    setSource(transform.source);
+    setUiState(getInitialUiState());
+  });
+
+  useLayoutEffect(() => {
+    handleResetRef.current();
+  }, [transform.id, handleResetRef]);
 
   return (
     <>
