@@ -48,8 +48,8 @@ function NewModelPage({
     [datasetQuery, metadata],
   );
 
-  const handleCreate = (card: Card) => {
-    dispatch(push(Urls.dataStudioModel(card.id)));
+  const handleCreate = (model: Card) => {
+    dispatch(push(Urls.dataStudioModel(model.id)));
   };
 
   const handleChangeQuery = (query: Lib.Query) => {

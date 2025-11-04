@@ -73,7 +73,7 @@ type TransformQueryPageBodyProps = {
   route: Route;
 };
 
-export function TransformQueryPageBody({
+function TransformQueryPageBody({
   transform,
   databases,
   route,
