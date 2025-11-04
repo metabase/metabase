@@ -1484,7 +1484,9 @@ LIMIT
           cy.button("Save").click();
         });
 
+        H.DataStudio.Transforms.runTab().click();
         runTransformAndWaitForSuccess();
+        H.DataStudio.Transforms.targetTab().click();
         getTableLink().click();
         H.queryBuilderHeader()
           .findByText("Python Transform")
@@ -1504,7 +1506,9 @@ LIMIT
               return a + b + 40
           `,
         );
+        H.DataStudio.Transforms.runTab().click();
         runTransformAndWaitForSuccess();
+        H.DataStudio.Transforms.targetTab().click();
         getTableLink().click();
         H.queryBuilderHeader()
           .findByText("Python Transform")
@@ -1519,7 +1523,7 @@ LIMIT
     }
 
     function getLibraryEditorHeader() {
-      return cy.findByTestId("library-editor-header");
+      return cy.findByTestId("python-library-header");
     }
   });
 });
