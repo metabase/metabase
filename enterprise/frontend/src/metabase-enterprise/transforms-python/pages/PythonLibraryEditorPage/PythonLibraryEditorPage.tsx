@@ -135,6 +135,7 @@ export function LibraryEditorHeader({
           </Group>
         )
       }
+      data-testid="python-library-header"
     />
   );
 }

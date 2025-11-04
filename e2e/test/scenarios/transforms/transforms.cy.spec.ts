@@ -66,18 +66,20 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       });
       getQueryEditor().button("Save").click();
       H.modal().within(() => {
-        cy.findByLabelText("Name").type("MBQL transform");
+        cy.findByLabelText("Name").clear().type("MBQL transform");
         cy.findByLabelText("Table name").type(TARGET_TABLE);
         cy.button("Save").click();
         cy.wait("@createTransform");
       });
 
       cy.log("run the transform and make sure its table can be queried");
+      H.DataStudio.Transforms.header().findByText("Run").click();
       runTransformAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
 
+      H.DataStudio.Transforms.header().findByText("Target").click();
       getTableLink().click();
       H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
       H.assertQueryBuilderRowCount(3);
@@ -91,7 +93,6 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       visitTransformListPage();
       getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("SQL query").click();
-
       H.expectUnstructuredSnowplowEvent({
         event: "transform_create",
         event_detail: "native",
@@ -101,22 +102,23 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       H.NativeEditor.type(`SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`);
       getQueryEditor().button("Save").click();
       H.modal().within(() => {
-        cy.findByLabelText("Name").type("SQL transform");
+        cy.findByLabelText("Name").clear().type("SQL transform");
         cy.findByLabelText("Table name").type(TARGET_TABLE);
         cy.button("Save").click();
         cy.wait("@createTransform");
       });
-
       H.expectUnstructuredSnowplowEvent({
         event: "transform_created",
       });
 
       cy.log("run the transform and make sure its table can be queried");
+      H.DataStudio.Transforms.header().findByText("Run").click();
       runTransformAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
 
+      H.DataStudio.Transforms.header().findByText("Target").click();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(3);
@@ -2715,8 +2717,10 @@ function getRunErrorInfoButton() {
   return cy.findByLabelText("See error");
 }
 
-function getTableLink() {
-  return cy.findByTestId("table-link");
+function getTableLink({ isActive = true }: { isActive?: boolean } = {}) {
+  return cy
+    .findByTestId("table-link")
+    .should("have.attr", "aria-disabled", String(!isActive));
 }
 
 function getDatabaseLink() {
@@ -2814,7 +2818,6 @@ function visitRunListPage() {
 function runTransformAndWaitForSuccess() {
   getRunButton().click();
   getRunButton().should("have.text", "Ran successfully");
-  return getTableLink().should("have.attr", "href");
 }
 
 function runTransformAndWaitForFailure() {
