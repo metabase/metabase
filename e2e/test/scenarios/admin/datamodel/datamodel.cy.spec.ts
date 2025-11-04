@@ -342,7 +342,7 @@ describe("scenarios > admin > datamodel", () => {
         it("should allow to navigate databases, schemas, and tables", () => {
           H.DataModel.visit();
 
-          cy.location("pathname").should("eq", "/data-studio/data/database");
+          cy.location("pathname").should("eq", "/data-studio/data");
           TablePicker.getDatabases().should("have.length", 2);
           TablePicker.getSchemas().should("have.length", 0);
           TablePicker.getTables().should("have.length", 0);
