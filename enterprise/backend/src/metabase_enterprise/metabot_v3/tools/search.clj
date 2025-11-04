@@ -137,6 +137,7 @@
                                             :is-sandboxed-user? (perms/sandboxed-user?)
                                             :is-superuser? api/*is-superuser?*
                                             :current-user-perms @api/*current-user-permissions-set*
+                                            :filter-items-in-personal-collection  "exclude-others"
                                             :context :metabot
                                             :archived false
                                             :limit limit

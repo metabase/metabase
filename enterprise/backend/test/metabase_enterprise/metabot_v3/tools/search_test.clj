@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search-core]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -344,3 +345,20 @@
           (search/search {:term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query nil}))))))
+
+(deftest other-user-collection-test
+  (testing "excludes entities from other users' collections"
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (let [admins-coll-id (t2/select-one-pk :model/Collection :personal_owner_id api/*current-user-id*)
+              others-coll-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))]
+          (mt/with-temp [:model/Collection {public-coll-id :id} {}
+                         :model/Dashboard  {dash-id-1 :id}      {:name "Our Dashboard",  :collection_id public-coll-id}
+                         :model/Dashboard  {dash-id-2 :id}      {:name "My Dashboard",   :collection_id admins-coll-id}
+                         :model/Dashboard  {dash-id-3 :id}      {:name "Your Dashboard", :collection_id others-coll-id}]
+            (let [test-dashboard-ids #{dash-id-1 dash-id-2 dash-id-3}]
+              (is (= #{"Our Dashboard" "My Dashboard"}
+                     (->> (search/search {:term-queries ["Dashboard"]})
+                          (filter (fn [{:keys [id type]}] (and (= "dashboard" type) (contains? test-dashboard-ids id))))
+                          (map :name)
+                          (set)))))))))))
