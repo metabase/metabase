@@ -775,6 +775,7 @@ export const PLUGIN_METABOT: PluginMetabotType = {
   MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,
   MetabotDataStudioButton: PluginPlaceholder,
+  MetabotDataStudioSidebar: PluginPlaceholder,
 };
 
 type DashCardMenuItemGetter = (
