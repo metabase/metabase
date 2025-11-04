@@ -14,9 +14,10 @@ import { ListViewColumnsSidebar } from "./ListViewColumnsSidebar";
 
 export type ModelSettings = {
   display: CardDisplayType;
+  visualizationSettings: ComputedVisualizationSettings;
 };
 type DatasetEditorSettingsSidebarProps = {
-  onUpdateModelSettings: (settings: ModelSettings) => void;
+  onUpdateModelSettings: (settings: Partial<ModelSettings>) => void;
   visualizationSettings: ComputedVisualizationSettings;
   display: CardDisplayType;
 };
