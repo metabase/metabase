@@ -3,13 +3,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import EditableText from "metabase/common/components/EditableText";
-import {
-  Button,
-  FixedSizeIcon,
-  Group,
-  type IconName,
-  Stack,
-} from "metabase/ui";
+import { Button, Group, Stack } from "metabase/ui";
 
 import S from "./PaneHeader.module.css";
 
@@ -76,7 +70,6 @@ export function PaneHeaderInput({
 export type PaneHeaderTab = {
   label: string;
   to: string;
-  icon: IconName;
   isSelected: boolean;
 };
 
@@ -87,7 +80,7 @@ type PaneHeaderTabsProps = {
 export function PaneHeaderTabs({ tabs }: PaneHeaderTabsProps) {
   return (
     <Group gap="sm">
-      {tabs.map(({ label, to, icon, isSelected }) => (
+      {tabs.map(({ label, to, isSelected }) => (
         <Button
           key={label}
           component={Link}
@@ -97,9 +90,6 @@ export function PaneHeaderTabs({ tabs }: PaneHeaderTabsProps) {
           c={isSelected ? "brand" : undefined}
           bg={isSelected ? "brand-light" : undefined}
           bd="none"
-          leftSection={
-            <FixedSizeIcon name={icon} opacity={isSelected ? 1 : 0.6} />
-          }
         >
           {label}
         </Button>

@@ -93,13 +93,11 @@ function getTabs(id: CardId, { pathname }: Location): PaneHeaderTab[] {
     {
       label: t`Overview`,
       to: Urls.dataStudioModel(id),
-      icon: "model",
       isSelected: Urls.dataStudioModel(id) === pathname,
     },
     {
       label: t`Query`,
       to: Urls.dataStudioModelQuery(id),
-      icon: "sql",
       isSelected: Urls.dataStudioModelQuery(id) === pathname,
     },
     ...(PLUGIN_DEPENDENCIES.isEnabled
@@ -107,7 +105,6 @@ function getTabs(id: CardId, { pathname }: Location): PaneHeaderTab[] {
           {
             label: t`Dependencies`,
             to: Urls.dataStudioModelDependencies(id),
-            icon: "schema" as const,
             isSelected: Urls.dataStudioModelDependencies(id) === pathname,
           },
         ]

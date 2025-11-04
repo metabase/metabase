@@ -106,19 +106,16 @@ function getTabs(id: TransformId, { pathname }: Location): PaneHeaderTab[] {
     {
       label: t`Query`,
       to: Urls.transform(id),
-      icon: "sql",
       isSelected: Urls.transform(id) === pathname,
     },
     {
       label: t`Run`,
       to: Urls.transformRun(id),
-      icon: "play_outlined",
       isSelected: Urls.transformRun(id) === pathname,
     },
     {
       label: t`Target`,
       to: Urls.transformTarget(id),
-      icon: "table2",
       isSelected: Urls.transformTarget(id) === pathname,
     },
     ...(PLUGIN_DEPENDENCIES.isEnabled
@@ -126,7 +123,6 @@ function getTabs(id: TransformId, { pathname }: Location): PaneHeaderTab[] {
           {
             label: t`Dependencies`,
             to: Urls.transformDependencies(id),
-            icon: "schema" as const,
             isSelected: Urls.transformDependencies(id) === pathname,
           },
         ]
