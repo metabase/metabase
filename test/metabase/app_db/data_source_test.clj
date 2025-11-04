@@ -92,8 +92,7 @@
               {"ApplicationName" config/mb-version-and-process-identifier
                "OpenSourceSubProtocolOverride" "true"
                "user" "cam"
-               "wrapperPlugins" "iam"
-               "useSSL" "true"})
+               "wrapperPlugins" "iam"})
              (mdb.data-source/broken-out-details->DataSource :postgres {:host "localhost"
                                                                         :port 5432
                                                                         :user "cam"
@@ -107,7 +106,6 @@
               "jdbc:aws-wrapper:mysql://localhost:3306/metabase"
               {"user" "root"
                "wrapperPlugins" "iam"
-               "useSSL" "true"
                "sslMode" "VERIFY_CA"})
              (mdb.data-source/broken-out-details->DataSource :mysql {:host "localhost"
                                                                      :port 3306
@@ -205,8 +203,7 @@
     (is (= (->DataSource
             "jdbc:aws-wrapper:postgresql://metabase"
             {"user" "cam"
-             "wrapperPlugins" "iam"
-             "useSSL" "true"})
+             "wrapperPlugins" "iam"})
            (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" nil nil true)))))
 
 (deftest ^:parallel raw-connection-string-with-aws-iam-test-2
@@ -214,8 +211,7 @@
     (is (= (->DataSource
             "jdbc:aws-wrapper:mysql://metabase"
             {"user" "cam"
-             "wrapperPlugins" "iam"
-             "useSSL" "true"})
+             "wrapperPlugins" "iam"})
            (mdb.data-source/raw-connection-string->DataSource "mysql://metabase" "cam" nil nil true)))))
 
 (deftest ^:parallel equality-test

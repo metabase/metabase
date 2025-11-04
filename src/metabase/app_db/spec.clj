@@ -31,8 +31,7 @@
 (defn- make-aws-iam-spec [subprotocol]
   {:subprotocol (str "aws-wrapper:" subprotocol)
    :classname "software.amazon.jdbc.ds.AwsWrapperDataSource"
-   :wrapperPlugins "iam"
-   :useSSL true})
+   :wrapperPlugins "iam"})
 
 (defmethod spec :postgres
   [_ {:keys [host port db aws-iam]
