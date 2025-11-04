@@ -47,7 +47,7 @@
     :ApplicationName               config/mb-version-and-process-identifier}
    (when aws-iam
      (make-aws-iam-spec "postgresql"))
-   (dissoc opts :host :port :db)))
+   (dissoc opts :host :port :db :aws-iam)))
 
 (defmethod spec :mysql
   [_ {:keys [host port db aws-iam]
@@ -61,7 +61,7 @@
      (assoc
       (make-aws-iam-spec "mysql")
       :sslMode "VERIFY_CA"))
-   (dissoc opts :host :port :db)))
+   (dissoc opts :host :port :db :aws-iam)))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!
