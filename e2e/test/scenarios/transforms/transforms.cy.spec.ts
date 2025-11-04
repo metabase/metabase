@@ -36,9 +36,6 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
     cy.intercept("DELETE", "/api/ee/transform/*/table").as(
       "deleteTransformTable",
     );
-    cy.intercept("GET", "/api/ee/transform/*/dependencies").as(
-      "transformDependencies",
-    );
     cy.intercept("POST", "/api/ee/transform-tag").as("createTag");
     cy.intercept("PUT", "/api/ee/transform-tag/*").as("updateTag");
     cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
@@ -414,7 +411,7 @@ LIMIT
       });
       getQueryEditor().button("Save").click();
       H.modal().within(() => {
-        cy.findByLabelText("Name").type("MBQL transform");
+        cy.findByLabelText("Name").clear().type("MBQL transform");
         cy.findByLabelText("Table name").type(SOURCE_TABLE);
         cy.button("Save").click();
         cy.wait("@createTransform");
@@ -435,7 +432,7 @@ LIMIT
       });
       getQueryEditor().button("Save").click();
       H.modal().within(() => {
-        cy.findByLabelText("Name").type("MBQL transform");
+        cy.findByLabelText("Name").clear().type("MBQL transform");
         cy.findByLabelText("Table name").type(TARGET_TABLE);
         cy.findByLabelText("Schema").clear().type(CUSTOM_SCHEMA);
       });
@@ -443,32 +440,32 @@ LIMIT
       H.modal().within(() => {
         cy.button("Save").click();
         cy.wait("@createTransform");
-        cy.wait("@transformDependencies");
       });
 
+      H.DataStudio.Transforms.targetPageLink().click();
       getSchemaLink()
         .should("have.text", CUSTOM_SCHEMA)
         .should("have.attr", "aria-disabled", "true")
         .realHover();
-
       H.tooltip()
         .should("be.visible")
         .should(
           "have.text",
           "This schema will be created when the transform runs",
         );
-
-      getTableLink()
+      getTableLink({ isActive: false })
         .should("have.text", TARGET_TABLE)
         .should("have.attr", "aria-disabled", "true");
 
       cy.log("run the transform and verify the table");
+      H.DataStudio.Transforms.runPageLink().click();
       runTransformAndWaitForSuccess();
+
+      H.DataStudio.Transforms.targetPageLink().click();
       getSchemaLink()
         .should("have.text", CUSTOM_SCHEMA)
         .should("have.attr", "aria-disabled", "false")
         .realHover();
-
       getTableLink().click();
       H.queryBuilderHeader().findByText(CUSTOM_SCHEMA).should("be.visible");
       H.assertQueryBuilderRowCount(3);
@@ -478,33 +475,33 @@ LIMIT
       visitTransformListPage();
       getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
-
       H.entityPickerModal().within(() => {
         cy.findByText(DB_NAME).click();
         cy.findByText(SOURCE_TABLE).click();
       });
       getQueryEditor().button("Save").click();
       H.modal().within(() => {
-        cy.findByLabelText("Name").type("MBQL transform");
+        cy.findByLabelText("Name").clear().type("MBQL transform");
         cy.findByLabelText("Table name").type(TARGET_TABLE);
         cy.button("Save").click();
         cy.wait("@createTransform");
       });
 
+      H.DataStudio.Transforms.targetPageLink().click();
       getSchemaLink()
         .should("have.text", TARGET_SCHEMA)
         .should("have.attr", "aria-disabled", "false");
-
-      getTableLink()
+      getTableLink({ isActive: false })
         .should("have.text", TARGET_TABLE)
         .should("have.attr", "aria-disabled", "true");
 
       cy.log("run the transform and verify the table");
+      H.DataStudio.Transforms.runPageLink().click();
       runTransformAndWaitForSuccess();
 
+      H.DataStudio.Transforms.targetPageLink().click();
       getSchemaLink().should("have.attr", "aria-disabled", "false");
       getTableLink().should("have.attr", "aria-disabled", "false").click();
-
       H.assertQueryBuilderRowCount(3);
     });
 
@@ -512,12 +509,10 @@ LIMIT
       visitTransformListPage();
       getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
-
       H.entityPickerModal().within(() => {
         cy.findAllByTestId("picker-item")
           .contains("Sample Database")
           .should("have.attr", "data-disabled", "true");
-
         cy.findAllByTestId("picker-item")
           .contains("Orders")
           .should("have.attr", "data-disabled", "true");
@@ -540,7 +535,6 @@ LIMIT
       visitTransformListPage();
       getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
-
       H.entityPickerModal().within(() => {
         cy.findByText("Collections").click();
         cy.findAllByTestId("picker-item")
@@ -553,7 +547,6 @@ LIMIT
       visitTransformListPage();
       getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("SQL query").click();
-
       H.popover()
         .findByRole("option", { name: "Sample Database" })
         .should("have.attr", "aria-disabled", "true")
