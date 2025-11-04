@@ -1,5 +1,6 @@
 import type { ChangeEvent } from "react";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -11,7 +12,6 @@ import Radio from "metabase/common/components/Radio";
 import type { SelectChangeEvent } from "metabase/common/components/Select";
 import Select, { Option } from "metabase/common/components/Select";
 import SelectButton from "metabase/common/components/SelectButton";
-import { useSafeAsyncFunction } from "metabase/common/hooks/use-safe-async-function";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import { connect, useSelector } from "metabase/lib/redux";
@@ -531,7 +531,6 @@ const useParameterValues = ({
   onFetchParameterValues,
 }: UseParameterValuesOpts) => {
   const [state, setState] = useState<ParameterValuesState>({ values: [] });
-  const handleFetchValues = useSafeAsyncFunction(onFetchParameterValues);
   const isValidSource = isValidSourceConfig(sourceType, sourceConfig);
 
   const parameter = useMemo(
@@ -543,11 +542,15 @@ const useParameterValues = ({
     [initialParameter, sourceType, sourceConfig],
   );
 
+  const [, handleFetchValues] = useAsyncFn(async () => {
+    return onFetchParameterValues({ parameter });
+  }, [onFetchParameterValues, parameter]);
+
   useLayoutEffect(() => {
     if (isValidSource) {
       setState(({ values }) => ({ values, isLoading: true }));
 
-      handleFetchValues({ parameter })
+      handleFetchValues()
         .then(({ values }) => setState({ values }))
         .catch(() => setState({ values: [], isError: true }));
     }

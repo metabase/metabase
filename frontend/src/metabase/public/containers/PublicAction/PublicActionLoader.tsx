@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
-import { useMount } from "react-use";
+import { useAsyncFn, useMount } from "react-use";
 
-import { useSafeAsyncFunction } from "metabase/common/hooks/use-safe-async-function";
 import { connect } from "metabase/lib/redux";
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
 import { setErrorPage } from "metabase/redux/app";
@@ -31,12 +30,15 @@ const mapDispatchToProps = {
 
 function PublicActionLoader({ params, setErrorPage }: Props) {
   const [action, setAction] = useState<WritebackAction | null>(null);
-  const fetchAction = useSafeAsyncFunction(PublicApi.action);
+
+  const [, fetchAction] = useAsyncFn(async () => {
+    return PublicApi.action({ uuid: params.uuid });
+  }, [params.uuid]);
 
   useMount(() => {
     async function loadAction() {
       try {
-        const action = await fetchAction({ uuid: params.uuid });
+        const action = await fetchAction();
         setAction(action);
       } catch (error) {
         setErrorPage(error as AppErrorDescriptor);
