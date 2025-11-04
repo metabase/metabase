@@ -8,7 +8,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Flex } from "metabase/ui";
+import { Button, Flex, Icon } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
 
 import { ListEmptyState } from "../ListEmptyState";
@@ -77,9 +77,18 @@ export const JobsSidebar = ({ selectedJobId }: JobsSidebarProps) => {
         <SidebarSearch value={searchQuery} onChange={setSearchQuery} />
         <SidebarSortControl
           value={sortType}
-          onChange={setSortType}
-          onAdd={handleAdd}
           options={JOB_SORT_OPTIONS}
+          addButton={
+            <Button
+              p="sm"
+              w={40}
+              h={40}
+              leftSection={<Icon name="add" size={16} />}
+              aria-label={t`Create a job`}
+              onClick={handleAdd}
+            />
+          }
+          onChange={setSortType}
         />
       </Flex>
       <Flex direction="column" flex={1} mih={0}>

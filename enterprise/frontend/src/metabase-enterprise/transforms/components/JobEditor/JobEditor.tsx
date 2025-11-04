@@ -34,7 +34,7 @@ export function JobEditor({
   onTagListChange,
 }: JobEditorProps) {
   return (
-    <ColumnLayout>
+    <ColumnLayout data-testid="jobs-editor">
       <PaneHeader
         title={
           <PaneHeaderInput
