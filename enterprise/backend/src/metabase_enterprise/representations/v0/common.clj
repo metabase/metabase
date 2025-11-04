@@ -69,12 +69,6 @@
     ;; "ref:"
     (subs x 4)))
 
-(defn reref
-  "Make that key a ref."
-  [x]
-  (when (string? x)
-    (str "ref:" x)))
-
 (defn refs
   "Returns all refs present in the entity-map, recursively walking to discover them."
   [representation]
@@ -189,7 +183,7 @@
 (defn entity->ref
   "Get the internal ref for a toucan entity."
   [t2-entity]
-  (reref (->ref (:id t2-entity) (representation-type t2-entity))))
+  (->ref (:id t2-entity) (representation-type t2-entity)))
 
 (defn id-model->ref
   "Get the internal ref for a toucan model and id."
