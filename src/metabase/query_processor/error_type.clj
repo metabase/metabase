@@ -104,6 +104,11 @@
   :parent invalid-query
   :show-in-embeds? true)
 
+(deferror circular-reference
+  "The query has circular referencing sub-queries."
+  :parent invalid-query
+  :show-in-embeds? true)
+
 ;;;; ### Server-Side Errors
 
 (deferror server
