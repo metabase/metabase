@@ -19,6 +19,7 @@ import {
   useImportChangesMutation,
 } from "metabase-enterprise/api";
 
+import { trackBranchSwitched } from "../../analytics";
 import { BRANCH_KEY, REMOTE_SYNC_KEY } from "../../constants";
 import { useSyncStatus } from "../../hooks/use-sync-status";
 import {
@@ -69,6 +70,11 @@ export const SyncedCollectionsSidebarSection = ({
 
       if (!isNewBranch) {
         await importChanges({ branch });
+
+        // Tracking only when not creating a new branch since it has its own event
+        trackBranchSwitched({
+          triggeredFrom: "sidebar",
+        });
       }
 
       setNextBranch(null);
