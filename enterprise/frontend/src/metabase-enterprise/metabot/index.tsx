@@ -6,6 +6,7 @@ import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/Admi
 import { Route } from "metabase/hoc/Title";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
+import { MetabotDataStudioSidebar } from "metabase-enterprise/metabot/components/MetabotDataStudioSidebar";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./components/Metabot";
@@ -51,6 +52,7 @@ if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.MetabotToggleButton = MetabotToggleButton;
   PLUGIN_METABOT.MetabotAppBarButton = MetabotAppBarButton;
   PLUGIN_METABOT.MetabotDataStudioButton = MetabotDataStudioButton;
+  PLUGIN_METABOT.MetabotDataStudioSidebar = MetabotDataStudioSidebar;
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 } else if (hasPremiumFeature("offer_metabase_ai")) {

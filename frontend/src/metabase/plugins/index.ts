@@ -750,6 +750,7 @@ type PluginMetabotType = {
   MetabotToggleButton: ComponentType<{ className?: string }>;
   MetabotAppBarButton: ComponentType;
   MetabotDataStudioButton: ComponentType;
+  MetabotDataStudioSidebar: ComponentType;
 };
 
 export const PLUGIN_METABOT: PluginMetabotType = {

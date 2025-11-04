@@ -4,7 +4,7 @@ import { Link } from "react-router";
 
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PLUGIN_DEPENDENCIES, PLUGIN_METABOT } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import { Box, Flex, Icon, type IconName, Stack } from "metabase/ui";
 
@@ -21,6 +21,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
       <Box h="100%" flex={1}>
         {children}
       </Box>
+      <PLUGIN_METABOT.MetabotDataStudioSidebar />
     </Flex>
   );
 }
