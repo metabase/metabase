@@ -28,6 +28,8 @@ export type ObjectWithModel = {
   display?: CardDisplayType | null;
   type?: Collection["type"];
   collection_type?: Collection["type"];
+  location?: Collection["location"];
+  effective_location?: Collection["location"];
   is_personal?: boolean;
 };
 

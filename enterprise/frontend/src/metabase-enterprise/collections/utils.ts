@@ -31,12 +31,14 @@ export function isRegularCollection({
 export function getCollectionType({
   authority_level,
   type,
-  collection_type,
-}: Partial<Collection> & { collection_type?: Collection["type"] }):
+  location,
+}: Partial<Collection>):
   | CollectionAuthorityLevelConfig
   | CollectionInstanceAnaltyicsConfig {
+  const virtualType =
+    type === "remote-synced" && location === "/" ? type : null;
   return (
-    COLLECTION_TYPES?.[String(type || collection_type || authority_level)] ??
+    COLLECTION_TYPES?.[String(virtualType || authority_level)] ??
     REGULAR_COLLECTION
   );
 }
@@ -57,8 +59,8 @@ export function isSyncedCollection(
 
 export const getIcon = (item: ObjectWithModel): IconData => {
   const collectionType = getCollectionType({
-    type: item.type,
-    collection_type: item.collection_type,
+    type: item.type || item.collection_type,
+    location: item.location || item.effective_location,
   }).type;
   if (collectionType === "instance-analytics") {
     return {
