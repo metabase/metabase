@@ -223,7 +223,9 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
 
     H.getDashboardCard(3).within(() => {
       cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-      applyBrush(200, 300);
+      const APPROX_DISTANCE_BETWEEN_BARS_PX = 10.5;
+      // drag until the middle of the 9th bar
+      applyBrush(200, 200 + APPROX_DISTANCE_BETWEEN_BARS_PX * 8.5);
       cy.wait("@dataset");
     });
 
