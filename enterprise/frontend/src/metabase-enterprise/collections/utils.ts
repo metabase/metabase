@@ -36,7 +36,7 @@ export function getCollectionType({
   | CollectionAuthorityLevelConfig
   | CollectionInstanceAnaltyicsConfig {
   const virtualType =
-    type === "remote-synced" && location === "/" ? type : null;
+    type === "remote-synced" && location !== "/" ? null : type;
   return (
     COLLECTION_TYPES?.[String(virtualType || authority_level)] ??
     REGULAR_COLLECTION
