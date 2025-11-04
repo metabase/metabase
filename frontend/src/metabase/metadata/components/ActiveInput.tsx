@@ -34,6 +34,7 @@ export const ActiveInput = ({
           value={value ? "true" : "false"}
           onChange={(value) => onChange(value === "true")}
           fullWidth
+          disabled
         />
       </Box>
     </Box>

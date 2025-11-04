@@ -153,25 +153,6 @@ export function TableMetadataSection({ table }: Props) {
     }
   };
 
-  const handleActiveChange = async (active: boolean) => {
-    const { error } = await updateTable({
-      id: table.id,
-      active,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update table active status`);
-    } else {
-      sendSuccessToast(t`Table active status updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          active: table.active,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
   return (
     <>
       <div className={S.container}>
