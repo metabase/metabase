@@ -96,11 +96,13 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
         py="xs"
       >
         <Flex align="center">
-          <ExternalLink href={href}>{href}</ExternalLink>
+          <ExternalLink href={href} target="_blank">
+            {href}
+          </ExternalLink>
           {editable && (
             <ActionIcon
               ml="sm"
-              c="var(--mb-color-text-primary)"
+              c="var(--mb-color-text-secondary)"
               onClick={() => {
                 editor.commands.focus();
                 const pos = editor.view.posAtDOM(hoveredLink, 0);

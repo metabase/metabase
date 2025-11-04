@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { ActionIcon, Box, FixedSizeIcon, Flex, TextInput } from "metabase/ui";
@@ -15,15 +15,32 @@ export const LinkPopup = ({
   onCancel,
 }: LinkPopupProps) => {
   const [url, setUrl] = useState(initialUrl);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setUrl(initialUrl);
+    const input = inputRef.current;
+    if (!input) {
+      return;
+    }
+    // TODO: There's gotta be a better way to do this
+    const observer = new IntersectionObserver(() => input.select());
+    observer.observe(input);
+    return () => observer.disconnect();
+  }, [initialUrl]);
 
   const handleSubmit = () => {
     let processedUrl = url.trim();
 
-    // FIXME: This keeps prepending more and more https://'s
-    if (processedUrl) {
-      // Check if it looks like a valid URL (contains a dot and doesn't start with special characters)
-      if (/^[a-zA-Z0-9].*\.[a-zA-Z]{2,}/.test(processedUrl)) {
-        processedUrl = `https://${processedUrl}`;
+    if (!processedUrl.startsWith("/") && processedUrl.includes(".")) {
+      const hasProtocol = /^\S+:\/\//.test(processedUrl);
+      if (!hasProtocol) {
+        const isEmailLike = /^\S+@\S+$/.test(processedUrl);
+        if (!isEmailLike) {
+          processedUrl = `https://${processedUrl}`;
+        } else if (!processedUrl.startsWith("mailto:")) {
+          processedUrl = `mailto:${processedUrl}`;
+        }
       }
     }
 
@@ -40,10 +57,12 @@ export const LinkPopup = ({
     <Flex align="center" gap={4}>
       <Box style={{ flexGrow: 1 }}>
         <TextInput
+          ref={inputRef}
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder={t`Enter URL...`}
           size="sm"
+          miw="18rem"
           onKeyDown={(e) => {
             // TODO: We should be able to use a form element here
             if (e.key === "Enter") {
@@ -56,7 +75,7 @@ export const LinkPopup = ({
         />
       </Box>
       {/* TODO: Add aria labels and/or tooltips */}
-      <Box c="var(--mb-color-text-primary)">
+      <Box c="var(--mb-color-text-secondary)">
         <ActionIcon c="inherit" onClick={handleSubmit}>
           <FixedSizeIcon name="check" />
         </ActionIcon>
