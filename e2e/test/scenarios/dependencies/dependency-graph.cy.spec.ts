@@ -19,7 +19,7 @@ import type {
   TransformId,
 } from "metabase-types/api";
 
-const BASE_URL = "/admin/tools/dependencies";
+const BASE_URL = "/data-studio/dependencies";
 const TABLE_NAME = "scoreboard_actions";
 const TABLE_DISPLAY_NAME = "Scoreboard Actions";
 const TABLE_ID_ALIAS = "tableId";

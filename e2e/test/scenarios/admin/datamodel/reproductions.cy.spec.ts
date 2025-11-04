@@ -70,7 +70,7 @@ describe("issue 18384", () => {
 
     cy.location("pathname").should(
       "eq",
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PEOPLE_ID}/field/${PEOPLE.ADDRESS}`,
+      `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PEOPLE_ID}/field/${PEOPLE.ADDRESS}`,
     );
 
     H.DataModel.FieldSection.getNameInput()
@@ -160,7 +160,7 @@ describe("issue 15542", () => {
 
     cy.wait("@fieldDimensionUpdate");
 
-    cy.findByRole("link", { name: "Exit admin" }).click();
+    H.DataStudio.exitButton().click();
     openOrdersTable();
 
     H.tableHeaderClick("Product ID");
@@ -176,7 +176,7 @@ describe("issue 15542", () => {
     H.DataModel.FieldSection.getDisplayValuesInput().click();
     H.popover().findByText("Use original value").click();
 
-    cy.findByRole("link", { name: "Exit admin" }).click();
+    H.DataStudio.exitButton().click();
     openOrdersTable();
 
     H.tableHeaderClick("Product ID");
