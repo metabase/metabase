@@ -11,8 +11,6 @@ description: Version control your dashboards, questions, and models with Git. Sy
 
 Remote Sync lets you develop analytics content in a development Metabase and automatically deploy it to a read-only production Metabase through Git.
 
-You work with Remote Sync through special collections called "synced collections". Content in these collections is automatically versioned and can be pushed to or pulled from your Git repository directly from the Metabase UI.
-
 ### How Remote Sync works
 
 Here's a basic remote-sync workflow:
@@ -87,7 +85,7 @@ Copy the token immediately after generating it—you'll need to paste it into yo
 
 4. Add your access token:
 
-   - Paste the personal access token you created earlier. Make sure the token has [read and write permissions](#2-create-a-personal-access-token-for-development). Metabase encrypts your token before storing it.
+   - Paste the personal access token (PAT) you created earlier. Make sure the token has [read and write permissions](#2-create-a-personal-access-token-for-development). Metabase encrypts your token before storing it.
 
 5. Save and test the connection:
 
@@ -192,7 +190,7 @@ On your production Metabase instance:
 2. The "Megafauna Analytics" dashboard appears in production with all its questions.
 3. The content is read-only for users (they can view and use it, but can't edit it).
 
-## How your synced collection works in Development mode
+## How synced collections work in Development mode
 
 Synced collections are special collections that are tracked in Git. Content in synced collections is versioned and can be pushed to or pulled from your repository.
 
@@ -276,7 +274,7 @@ Branching is only available in Development mode.
 
 You can create branches in Metabase or directly in your Git repository. Branches created in Git will appear in the Metabase branch dropdown once Metabase syncs with your repository.
 
-Push an initial commit to your main branch before creating branches. Branches work best when created from a main branch that has at least one commit.
+Before creating branches, push an initial commit to your main branch.
 
 To create a new branch in Metabase:
 
