@@ -232,7 +232,11 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (t2/delete! :model/Transform id)
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
+    (t2/delete! :model/Transform id)
+    (events/publish-event! :event/transform-delete
+                           {:object transform
+                            :user-id api/*current-user-id*}))
   nil)
 
 (api.macros/defendpoint :delete "/:id/table"

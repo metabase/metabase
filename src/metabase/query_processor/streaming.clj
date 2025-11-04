@@ -1,5 +1,5 @@
 (ns metabase.query-processor.streaming
-  (:refer-clojure :exclude [every? some mapv])
+  (:refer-clojure :exclude [every? some mapv not-empty])
   (:require
    [clojure.string :as str]
    [metabase.lib.core :as lib]
@@ -15,7 +15,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? mapv some]])
+   [metabase.util.performance :refer [every? mapv some not-empty]])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.io OutputStream)

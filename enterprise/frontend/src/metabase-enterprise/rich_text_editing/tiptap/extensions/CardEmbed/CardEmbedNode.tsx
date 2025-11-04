@@ -7,7 +7,6 @@ import {
 import cx from "classnames";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push } from "react-router-redux";
-import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
@@ -21,6 +20,7 @@ import { QuestionDownloadWidget } from "metabase/query_builder/components/Questi
 import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
+import { DocumentMode } from "metabase/visualizations/click-actions/modes/DocumentMode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
@@ -47,7 +47,7 @@ import { usePublicDocumentContext } from "metabase-enterprise/public/contexts/Pu
 import { usePublicDocumentCardData } from "metabase-enterprise/public/hooks/use-public-document-card-data";
 import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
-import type { Card, CardDisplayType, Dataset } from "metabase-types/api";
+import type { CardDisplayType, Dataset } from "metabase-types/api";
 
 import { CommentsButton } from "../../components/CommentsButton";
 import {
@@ -61,6 +61,9 @@ import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import { NativeQueryModal } from "./NativeQueryModal";
 import { PublicDocumentCardMenu } from "./PublicDocumentCardMenu";
+import { useDndHelpers } from "./use-dnd-helpers";
+import { useUpdateCardOperations } from "./use-update-card-operations";
+import { getEmbedIndex } from "./utils";
 
 interface CardEmbedMenuContext {
   canWrite: boolean;
@@ -196,7 +199,6 @@ const CardEmbedMenuDropdown = ({
 };
 
 export const DROP_ZONE_COLOR = "var(--mb-color-brand)";
-const DRAG_LEAVE_TIMEOUT = 300;
 
 interface DropZoneProps {
   isOver: boolean;
@@ -352,26 +354,15 @@ export const CardEmbedComponent = memo(
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
 
-    const isMountedRef = useRef(false);
+    const {
+      isBeingDragged,
+      dragState,
+      setDragState,
+      handleDragOver,
+      cardEmbedRef,
+    } = useDndHelpers({ editor, node, getPos });
 
-    let embedIndex = -1;
-
-    if (editor && getPos) {
-      const currentPos = getPos() ?? 0;
-      let nodeCount = 0;
-
-      // Count cardEmbed nodes that appear before this position
-      editor.state.doc.descendants((node, pos) => {
-        if (node.type.name === "cardEmbed") {
-          if (pos < currentPos) {
-            nodeCount++;
-          } else if (pos === currentPos) {
-            embedIndex = nodeCount;
-            return false; // Stop traversing
-          }
-        }
-      });
-    }
+    const embedIndex = getEmbedIndex(editor, getPos);
 
     // Use public hook when viewing a public document, otherwise use regular hook
     const isPublicDocument = Boolean(publicDocumentUuid);
@@ -393,14 +384,6 @@ export const CardEmbedComponent = memo(
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
     const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
     const [menuView, setMenuView] = useState<string | null>(null);
-    const [dragState, setDragState] = useState<{
-      isDraggedOver: boolean;
-      side: "left" | "right" | null;
-    }>({ isDraggedOver: false, side: null });
-    const draggedOverTimeoutRef = useRef<number | undefined>();
-    const cardEmbedRef = useRef<HTMLDivElement>(null);
-
-    const isBeingDragged = editor.view.draggingNode === node;
 
     const displayName = name || card?.name;
     const question = useMemo(
@@ -415,20 +398,25 @@ export const CardEmbedComponent = memo(
       documentId: document?.id,
     });
 
+    const {
+      handleChangeCardAndRun,
+      handleUpdateQuestion,
+      handleUpdateVisualizationSettings,
+    } = useUpdateCardOperations({
+      document,
+      regularCardData,
+      question,
+      editor,
+      embedIndex,
+      cardId: id,
+    });
+
     useEffect(() => {
       if (isEditingTitle && titleInputRef.current) {
         titleInputRef.current.focus();
         titleInputRef.current.select();
       }
     }, [isEditingTitle]);
-
-    useMount(() => {
-      isMountedRef.current = true;
-    });
-
-    useUnmount(() => {
-      isMountedRef.current = false;
-    });
 
     const handleTitleSave = () => {
       const trimmedTitle = editedTitle.trim();
@@ -516,107 +504,6 @@ export const CardEmbedComponent = memo(
       cleanupFlexContainerNodes(editor.view);
       editor.chain().focus();
     }, [deleteNode, editor, node]);
-
-    // Handle drill-through navigation
-    const handleChangeCardAndRun = useCallback(
-      ({
-        nextCard,
-      }: {
-        nextCard: Card;
-        previousCard?: Card;
-        objectId?: number;
-      }) => {
-        if (!metadata) {
-          console.warn("Metadata not available for drill-through navigation");
-          return;
-        }
-
-        try {
-          // For drill-through, we need to ensure the card is treated as adhoc
-          // Remove the ID so getUrl creates an adhoc question URL instead of navigating to saved question
-          const adhocCard = { ...nextCard, id: null };
-          const question = new Question(adhocCard, metadata);
-          const url = getUrl(question, { includeDisplayIsLocked: true });
-          dispatch(navigateToCardFromDocument(url, document));
-        } catch (error) {
-          console.error("Failed to create question URL:", error);
-          // Fallback: navigate to a new question with the dataset_query
-          if (nextCard.dataset_query) {
-            const params = new URLSearchParams();
-            params.set("dataset_query", JSON.stringify(nextCard.dataset_query));
-            dispatch(
-              navigateToCardFromDocument(
-                `/question?${params.toString()}`,
-                document,
-              ),
-            );
-          }
-        }
-      },
-      [dispatch, metadata, document],
-    );
-
-    const handleDragOver = useCallback(
-      (e: React.DragEvent) => {
-        e.preventDefault();
-
-        const draggingNode = editor.view.draggingNode;
-        if (
-          draggingNode &&
-          draggingNode.type.name === "cardEmbed" &&
-          cardEmbedRef.current
-        ) {
-          // Check if this cardEmbed is in a flexContainer that already has 3 children
-          const pos = getPos();
-          if (pos) {
-            const resolvedPos = editor.state.doc.resolve(pos);
-            const { parent } = resolvedPos;
-
-            if (
-              parent.type.name === "flexContainer" &&
-              parent.content.childCount >= 3
-            ) {
-              let containsDraggedNode = false;
-
-              for (let i = 0; i < parent.content.childCount; i++) {
-                const child = parent.child(i);
-                containsDraggedNode =
-                  containsDraggedNode || child === draggingNode;
-              }
-
-              if (!containsDraggedNode) {
-                // Don't show drop zones if flexContainer is already at max capacity
-                setDragState({ isDraggedOver: false, side: null });
-                return;
-              }
-            }
-          }
-
-          const rect = cardEmbedRef.current.getBoundingClientRect();
-          const relativeX = e.clientX - rect.left;
-          const nodeWidth = rect.width;
-
-          // Determine which side based on cursor position
-          let side: "left" | "right" | null = null;
-          if (relativeX < nodeWidth * 0.5) {
-            side = "left";
-          } else if (relativeX >= nodeWidth * 0.5) {
-            side = "right";
-          }
-
-          setDragState({ isDraggedOver: true, side });
-
-          window.clearTimeout(draggedOverTimeoutRef.current);
-
-          draggedOverTimeoutRef.current = window.setTimeout(() => {
-            if (isMountedRef.current) {
-              setDragState({ isDraggedOver: false, side: null });
-            }
-          }, DRAG_LEAVE_TIMEOUT);
-        }
-      },
-      [editor.view.draggingNode, getPos, editor.state.doc],
-    );
 
     if (isLoading && !card) {
       return (
@@ -852,8 +739,17 @@ export const CardEmbedComponent = memo(
                   <Visualization
                     rawSeries={series}
                     metadata={metadata}
+                    mode={DocumentMode}
                     onChangeCardAndRun={
                       isPublicDocument ? undefined : handleChangeCardAndRun
+                    }
+                    onUpdateQuestion={
+                      isPublicDocument ? undefined : handleUpdateQuestion
+                    }
+                    onUpdateVisualizationSettings={
+                      isPublicDocument
+                        ? undefined
+                        : handleUpdateVisualizationSettings
                     }
                     getExtraDataForClick={() => ({})}
                     isEditing={false}
@@ -884,7 +780,6 @@ export const CardEmbedComponent = memo(
                 onSave={(result) => {
                   updateAttributes({
                     id: result.card_id,
-                    name: null,
                   });
                   setIsModifyModalOpen(false);
                 }}
@@ -897,7 +792,6 @@ export const CardEmbedComponent = memo(
                 onSave={(result) => {
                   updateAttributes({
                     id: result.card_id,
-                    name: null,
                   });
                   setIsModifyModalOpen(false);
                 }}
