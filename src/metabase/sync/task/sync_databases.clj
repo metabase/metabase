@@ -11,6 +11,7 @@
    [java-time.api :as t]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -86,13 +87,14 @@
                   (catch Throwable e
                     e))]
       (log/warnf ex "Cannot sync Database %s: %s" (:name database) (ex-message ex))
-      (do
-        (sync-metadata/sync-db-metadata! database)
-        ;; only run analysis if this is a "full sync" database
-        (when (:is_full_sync database)
-          (let [results (analyze/analyze-db! database)]
-            (when (and (:refingerprint database) (should-refingerprint-fields? results))
-              (analyze/refingerprint-db! database))))))))
+      (database-routing/with-database-routing-off
+        (do
+          (sync-metadata/sync-db-metadata! database)
+          ;; only run analysis if this is a "full sync" database
+          (when (:is_full_sync database)
+            (let [results (analyze/analyze-db! database)]
+              (when (and (:refingerprint database) (should-refingerprint-fields? results))
+                (analyze/refingerprint-db! database)))))))))
 
 (defn- sync-and-analyze-database!
   "The sync and analyze database job, as a function that can be used in a test"
