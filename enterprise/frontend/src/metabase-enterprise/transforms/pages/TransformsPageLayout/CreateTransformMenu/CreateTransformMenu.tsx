@@ -25,6 +25,7 @@ export const CreateTransformMenu = () => {
       <Menu position="bottom-end">
         <Menu.Target>
           <Button
+            aria-label={t`Create a transform`}
             p="sm"
             w={40}
             h={40}

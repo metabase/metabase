@@ -52,7 +52,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
     it("should be able to create and run an mbql transform", () => {
       cy.log("create a new transform");
       visitTransformListPage();
-      getTransformListPage().button("Create a transform").click();
+      getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
 
       H.expectUnstructuredSnowplowEvent({
@@ -91,7 +91,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
     it("should be able to create and run a SQL transform", () => {
       cy.log("create a new transform");
       visitTransformListPage();
-      getTransformListPage().button("Create a transform").click();
+      getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("SQL query").click();
 
       H.expectUnstructuredSnowplowEvent({
@@ -133,7 +133,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       });
 
       visitTransformListPage();
-      getTransformListPage().button("Create a transform").click();
+      getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("SQL query").click();
       H.popover().findByText(DB_NAME).click();
 
@@ -196,7 +196,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         setPythonRunnerSettings();
         cy.log("create a new transform");
         visitTransformListPage();
-        getTransformListPage().button("Create a transform").click();
+        getTransformsSidebar().button("Create a transform").click();
         H.popover().findByText("Python script").click();
 
         H.expectUnstructuredSnowplowEvent({
@@ -331,8 +331,8 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
         cy.log("create a new transform");
         visitTransformListPage();
-        getTransformListPage().button("Create a transform").click();
-        H.popover().findByText("A copy of a saved question").click();
+        getTransformsSidebar().button("Create a transform").click();
+        H.popover().findByText("Copy of a saved question").click();
         H.expectUnstructuredSnowplowEvent({
           event: "transform_create",
           event_detail: "saved-question",
@@ -381,7 +381,7 @@ LIMIT
   5`;
 
       createMbqlTransform({ visitTransform: true });
-      getTransformPage().findByText("Edit query").click();
+      getTransformsContent().findByText("Edit query").click();
 
       getQueryEditor().icon("sql").click();
       H.sidebar().should("be.visible");
@@ -392,7 +392,7 @@ LIMIT
 
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
       getQueryEditor().button("Save changes").click();
-      getTransformPage().should("be.visible");
+      getTransformsContent().should("be.visible");
 
       cy.log("run the transform and make sure its table can be queried");
       runTransformAndWaitForSuccess();
@@ -409,7 +409,7 @@ LIMIT
     it("should not allow to overwrite an existing table when creating a transform", () => {
       cy.log("open the new transform page");
       visitTransformListPage();
-      getTransformListPage().button("Create a transform").click();
+      getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
 
       cy.log("set the query");
@@ -431,7 +431,7 @@ LIMIT
 
     it("should be able to create a new schema when saving a transform", () => {
       visitTransformListPage();
-      getTransformListPage().button("Create a transform").click();
+      getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
 
       H.entityPickerModal().within(() => {
@@ -481,7 +481,7 @@ LIMIT
 
     it("should be able to create a new table in an existing when saving a transform", () => {
       visitTransformListPage();
-      getTransformListPage().button("Create a transform").click();
+      getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
 
       H.entityPickerModal().within(() => {
@@ -515,7 +515,7 @@ LIMIT
 
     it("should not be possible to create an mbql transform from a table from an unsupported database", () => {
       visitTransformListPage();
-      getTransformListPage().button("Create a transform").click();
+      getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
 
       H.entityPickerModal().within(() => {
@@ -543,7 +543,7 @@ LIMIT
       );
 
       visitTransformListPage();
-      getTransformListPage().button("Create a transform").click();
+      getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
 
       H.entityPickerModal().within(() => {
@@ -556,7 +556,7 @@ LIMIT
 
     it("should not be possible to create a sql transform from a table from an unsupported database", () => {
       visitTransformListPage();
-      getTransformListPage().button("Create a transform").click();
+      getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("SQL query").click();
 
       H.popover()
@@ -588,8 +588,8 @@ LIMIT
 
         cy.log("create a new transform");
         visitTransformListPage();
-        getTransformListPage().button("Create a transform").click();
-        H.popover().findByText("A copy of a saved question").click();
+        getTransformsSidebar().button("Create a transform").click();
+        H.popover().findByText("Copy of a saved question").click();
         H.entityPickerModal().within(() => {
           H.entityPickerModalTab(label);
           cy.findAllByTestId("picker-item")
@@ -605,7 +605,7 @@ LIMIT
     it("should not auto-pivot query results for MBQL transforms", () => {
       cy.log("create a new transform");
       visitTransformListPage();
-      getTransformListPage().button("Create a transform").click();
+      getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
 
       cy.log("build a query with 1 aggregation and 2 breakouts");
@@ -749,17 +749,17 @@ LIMIT
     it("should be able to edit the name and description after creation", () => {
       createMbqlTransform({ visitTransform: true });
 
-      getTransformPage()
+      getTransformsContent()
         .findByPlaceholderText("Name")
         .clear()
         .type("New name")
         .blur();
       H.undoToast().findByText("Transform name updated").should("be.visible");
-      getTransformPage()
+      getTransformsContent()
         .findByPlaceholderText("Name")
         .should("have.value", "New name");
 
-      getTransformPage()
+      getTransformsContent()
         .findByPlaceholderText("No description yet")
         .clear()
         .type("New description")
@@ -769,7 +769,7 @@ LIMIT
         .last()
         .findByText("Transform description updated")
         .should("be.visible");
-      getTransformPage()
+      getTransformsContent()
         .findByPlaceholderText("No description yet")
         .should("have.value", "New description");
     });
@@ -858,7 +858,7 @@ LIMIT
 
       cy.log("Navigate to transform B");
       getNavSidebar().findByText("Transforms").click();
-      getTransformListPage().findByText("Transform B").click();
+      getTransformsSidebar().findByText("Transform B").click();
 
       cy.log("Remove the new tag from transform B");
       getTagsInput().click();
@@ -874,7 +874,7 @@ LIMIT
 
       cy.log("Navigate to transform A");
       cy.findByTestId("admin-layout-sidebar").findByText("Transforms").click();
-      getTransformListPage().findByText("Transform A").click();
+      getTransformsSidebar().findByText("Transform A").click();
 
       cy.log("The tag should be gone");
       getTagsInput()
@@ -891,7 +891,7 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
 
       cy.log("modify the transform before running");
-      getTransformPage().button("Change target").click();
+      getTransformsContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
@@ -932,7 +932,7 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
 
       cy.log("modify the transform before running");
-      getTransformPage().button("Change target").click();
+      getTransformsContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
@@ -974,7 +974,7 @@ LIMIT
       runTransformAndWaitForSuccess();
 
       cy.log("modify the transform after running");
-      getTransformPage().button("Change target").click();
+      getTransformsContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
@@ -1018,7 +1018,7 @@ LIMIT
       runTransformAndWaitForSuccess();
 
       cy.log("modify the transform after running");
-      getTransformPage().button("Change target").click();
+      getTransformsContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
@@ -1064,7 +1064,7 @@ LIMIT
       runTransformAndWaitForSuccess();
 
       cy.log("delete the old target without creating the new one");
-      getTransformPage().button("Change target").click();
+      getTransformsContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
         cy.findByLabelText("Delete transform_table").click();
@@ -1074,7 +1074,7 @@ LIMIT
       });
 
       cy.log("change the target back to the original one");
-      getTransformPage().button("Change target").click();
+      getTransformsContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").clear().type(TARGET_TABLE);
         cy.button("Change target").click();
@@ -1094,7 +1094,7 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
 
       cy.log("change the target to an existing table");
-      getTransformPage().button("Change target").click();
+      getTransformsContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").clear().type(SOURCE_TABLE);
         cy.button("Change target").click();
@@ -1110,13 +1110,13 @@ LIMIT
     it("should be able to edit table metadata after table creation", () => {
       cy.log("before table creation");
       createMbqlTransform({ visitTransform: true });
-      getTransformPage()
+      getTransformsContent()
         .findByText("Edit this table’s metadata")
         .should("not.exist");
 
       cy.log("after table creation");
       runTransformAndWaitForSuccess();
-      getTransformPage().findByText("Edit this table’s metadata").click();
+      getTransformsContent().findByText("Edit this table’s metadata").click();
       H.DataModel.TableSection.clickField("Name");
       H.DataModel.FieldSection.getNameInput().clear().type("New name").blur();
       cy.wait("@updateField");
@@ -1362,7 +1362,7 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
 
       cy.log("update the query");
-      getTransformPage().findByRole("link", { name: "Edit query" }).click();
+      getTransformsContent().findByRole("link", { name: "Edit query" }).click();
       H.getNotebookStep("data").button("Filter").click();
       H.popover().within(() => {
         cy.findByText("Name").click();
@@ -1388,7 +1388,7 @@ LIMIT
       });
 
       cy.log("update the query");
-      getTransformPage().findByRole("link", { name: "Edit query" }).click();
+      getTransformsContent().findByRole("link", { name: "Edit query" }).click();
       H.NativeEditor.type(" WHERE name = 'Duck'");
       getQueryEditor().button("Save changes").click();
       cy.wait("@updateTransform");
@@ -1419,7 +1419,9 @@ LIMIT
       );
 
       cy.log("update the query");
-      getTransformPage().findByRole("link", { name: "Edit script" }).click();
+      getTransformsContent()
+        .findByRole("link", { name: "Edit script" })
+        .click();
       H.PythonEditor.type("{backspace}{backspace}{backspace} + 10 }])");
 
       getQueryEditor().button("Save changes").click();
@@ -1477,7 +1479,7 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
 
       cy.log("delete the transform");
-      getTransformPage().button("Delete transform").click();
+      getTransformsContent().button("Delete transform").click();
       H.modal().within(() => {
         cy.findByLabelText("Delete the transform only").should("not.exist");
         cy.findByLabelText("Delete the transform and the table").should(
@@ -1486,8 +1488,8 @@ LIMIT
         cy.button("Delete transform").click();
         cy.wait("@deleteTransform");
       });
-      getTransformListPage().should("be.visible");
-      getTransformListPage().findByText("MBQL transform").should("not.exist");
+      getTransformsSidebar().should("be.visible");
+      getTransformsSidebar().findByText("MBQL transform").should("not.exist");
     });
 
     it("should be able to delete a transform and keep the table", () => {
@@ -1496,13 +1498,13 @@ LIMIT
       runTransformAndWaitForSuccess();
 
       cy.log("delete the transform but keep the table");
-      getTransformPage().button("Delete transform").click();
+      getTransformsContent().button("Delete transform").click();
       H.modal().within(() => {
         cy.findByLabelText("Delete the transform only").should("be.checked");
         cy.button("Delete transform only").click();
         cy.wait("@deleteTransform");
       });
-      getTransformListPage().should("be.visible");
+      getTransformsSidebar().should("be.visible");
 
       cy.log("make sure the table still exists");
       visitTableQuestion();
@@ -1515,14 +1517,14 @@ LIMIT
       runTransformAndWaitForSuccess();
 
       cy.log("delete the transform and the table");
-      getTransformPage().button("Delete transform").click();
+      getTransformsContent().button("Delete transform").click();
       H.modal().within(() => {
         cy.findByLabelText("Delete the transform and the table").click();
         cy.button("Delete transform and table").click();
         cy.wait("@deleteTransformTable");
         cy.wait("@deleteTransform");
       });
-      getTransformListPage().should("be.visible");
+      getTransformsSidebar().should("be.visible");
 
       cy.log("make sure the table is deleted");
       visitTableQuestion();
@@ -1622,7 +1624,7 @@ LIMIT
 
     it("should be possible to cancel a SQL transform from the preview (metabase#64474)", () => {
       createSlowTransform(500);
-      getTransformPage().findByText("Edit query").click();
+      getTransformsContent().findByText("Edit query").click();
 
       getQueryEditor().within(() => {
         cy.findAllByTestId("run-button").eq(0).click();
@@ -1725,7 +1727,7 @@ LIMIT
         );
 
         visitTransformListPage();
-        getTransformListPage().button("Create a transform").click();
+        getTransformsSidebar().button("Create a transform").click();
         H.popover().findByText("Python script").click();
 
         H.PythonEditor.clear().type(
@@ -1831,7 +1833,7 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
       targetSchema: null,
     });
 
-    getTransformPage().button("Change target").click();
+    getTransformsContent().button("Change target").click();
 
     H.modal().findByLabelText("Schema").should("not.exist");
   });
@@ -1839,7 +1841,7 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
   it("should be not be possible to create a new schema when the database does not support schemas", () => {
     cy.log("create a new transform");
     visitTransformListPage();
-    getTransformListPage().button("Create a transform").click();
+    getTransformsSidebar().button("Create a transform").click();
     H.popover().findByText("Query builder").click();
 
     H.entityPickerModal().within(() => {
@@ -1867,7 +1869,7 @@ describe("scenarios > admin > transforms > jobs", () => {
   describe("creation", () => {
     it("should be able to create a job with default properties", () => {
       visitJobListPage();
-      getJobListPage().findByRole("link", { name: "Create a job" }).click();
+      getJobsSidebar().findByRole("link", { name: "Create a job" }).click();
 
       getJobPage().button("Save").click();
       cy.wait("@createJob");
@@ -1883,7 +1885,7 @@ describe("scenarios > admin > transforms > jobs", () => {
 
     it("should be able to create a job with custom property values", () => {
       visitJobListPage();
-      getJobListPage().findByRole("link", { name: "Create a job" }).click();
+      getJobsSidebar().findByRole("link", { name: "Create a job" }).click();
 
       getJobPage().within(() => {
         cy.findByPlaceholderText("Name").clear().type("Job");
@@ -1988,7 +1990,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         "Monthly job": "monthly",
       };
       Object.entries(jobNameToFrequency).forEach(([jobName, frequency]) => {
-        getJobListPage().findByText(jobName).click();
+        getJobsSidebar().findByText(jobName).click();
         getJobPage().within(() => {
           getScheduleFrequencyInput().should("have.value", frequency);
         });
@@ -2085,8 +2087,8 @@ describe("scenarios > admin > transforms > jobs", () => {
         cy.button("Delete job").click();
         cy.wait("@deleteJob");
       });
-      getJobListPage().should("be.visible");
-      getJobListPage().findByText("New job").should("not.exist");
+      getJobsSidebar().should("be.visible");
+      getJobsSidebar().findByText("New job").should("not.exist");
     });
   });
 
@@ -2107,7 +2109,7 @@ describe("scenarios > admin > transforms > jobs", () => {
       });
 
       cy.log("make sure that default tags are available for selection");
-      getJobListPage().findByRole("link", { name: "Create a job" }).click();
+      getJobsSidebar().findByRole("link", { name: "Create a job" }).click();
       getTagsInput().click();
       H.popover().within(() => {
         tagNames.forEach((tagName) =>
@@ -2679,16 +2681,16 @@ describe("scenarios > admin > transforms > runs", () => {
   });
 });
 
-function getTransformListPage() {
-  return cy.findByTestId("transform-list-page");
+function getTransformsSidebar() {
+  return cy.findByTestId("transforms-sidebar");
 }
 
-function getTransformPage() {
-  return cy.findByTestId("transform-page");
+function getTransformsContent() {
+  return cy.findByTestId("transforms-content");
 }
 
-function getJobListPage() {
-  return cy.findByTestId("job-list-page");
+function getJobsSidebar() {
+  return cy.findByTestId("jobs-sidebar");
 }
 
 function getJobPage() {

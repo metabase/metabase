@@ -71,7 +71,7 @@ export const JobsSidebar = ({ selectedJobId }: JobsSidebarProps) => {
   }
 
   return (
-    <SidebarContainer>
+    <SidebarContainer data-testid="jobs-sidebar">
       <Flex direction="column" gap="md" px="md" pt="md" pb="md">
         <TransformsInnerNav />
         <SidebarSearch value={searchQuery} onChange={setSearchQuery} />

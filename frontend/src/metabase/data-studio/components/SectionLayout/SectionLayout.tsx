@@ -24,6 +24,7 @@ export function SectionLayout({ title, tabs, children }: SectionLayoutProps) {
   return (
     <Stack h="100%" gap={0}>
       <Group
+        data-testid="data-studio-header"
         className={S.header}
         px="lg"
         justify="space-between"

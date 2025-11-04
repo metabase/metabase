@@ -99,7 +99,7 @@ export const TransformsSidebar = ({
   }
 
   return (
-    <SidebarContainer>
+    <SidebarContainer data-testid="transforms-sidebar">
       <Flex direction="column" gap="md" p="md">
         <TransformsInnerNav />
         <SidebarSearch value={searchQuery} onChange={setSearchQuery} />
@@ -133,8 +133,6 @@ export const TransformsSidebar = ({
             }}
             TreeNode={TransformsTreeNode}
             estimateSize={getTreeItemEstimateSize}
-            px="md"
-            p={0}
           />
         ) : (
           <SidebarList>

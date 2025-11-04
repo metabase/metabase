@@ -134,9 +134,8 @@ describe("issue 15542", () => {
   function openOrdersProductIdSettings() {
     // Navigate without reloading the page
     H.appBar().icon("gear").click();
-    H.popover().findByText("Admin settings").click();
+    H.popover().findByText("Data studio").click();
 
-    H.appBar().findByText("Table Metadata").click();
     H.DataModel.TablePicker.getTable("Orders").click();
     H.DataModel.TableSection.clickField("Product ID");
   }
