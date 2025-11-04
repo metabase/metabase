@@ -45,32 +45,32 @@
                                                   :config   {:unit    :hours
                                                              :duration 1}}]
           (testing "Card 1 has count hidden and sum visible"
-            (is (=? {:cached nil?
-                     :data {:viz-settings {:metabase.models.visualization-settings/table-columns
-                                           [{:metabase.models.visualization-settings/table-column-enabled false
-                                             :metabase.models.visualization-settings/table-column-name "count"}
-                                            {:metabase.models.visualization-settings/table-column-enabled true
-                                             :metabase.models.visualization-settings/table-column-name "sum"}]}}}
-                    (result-for-dashcard dashboard-id dashcard-1 card-1)))
-            (is (=? {:cached some?
-                     :data {:viz-settings {:metabase.models.visualization-settings/table-columns
-                                           [{:metabase.models.visualization-settings/table-column-enabled true
-                                             :metabase.models.visualization-settings/table-column-name "count"}
-                                            {:metabase.models.visualization-settings/table-column-enabled false
-                                             :metabase.models.visualization-settings/table-column-name "sum"}]}}}
-                    (result-for-dashcard dashboard-id dashcard-2 card-2))))
+            (let [result (result-for-dashcard dashboard-id dashcard-1 card-1)]
+              (is (nil? (:cached result)))
+              (is (= [{:metabase.models.visualization-settings/table-column-enabled false
+                       :metabase.models.visualization-settings/table-column-name "count"}
+                      {:metabase.models.visualization-settings/table-column-enabled true
+                       :metabase.models.visualization-settings/table-column-name "sum"}]
+                     (get-in result [:data :viz-settings :metabase.models.visualization-settings/table-columns]))))
+            (let [result (result-for-dashcard dashboard-id dashcard-2 card-2)]
+              (is (some? (:cached result)))
+              (is (= [{:metabase.models.visualization-settings/table-column-enabled true
+                       :metabase.models.visualization-settings/table-column-name "count"}
+                      {:metabase.models.visualization-settings/table-column-enabled false
+                       :metabase.models.visualization-settings/table-column-name "sum"}]
+                     (get-in result [:data :viz-settings :metabase.models.visualization-settings/table-columns])))))
           (testing "Card 2 has count visible and sum hidden"
-            (is (=? {:cached some?
-                     :data {:viz-settings {:metabase.models.visualization-settings/table-columns
-                                           [{:metabase.models.visualization-settings/table-column-enabled false
-                                             :metabase.models.visualization-settings/table-column-name "count"}
-                                            {:metabase.models.visualization-settings/table-column-enabled true
-                                             :metabase.models.visualization-settings/table-column-name "sum"}]}}}
-                    (result-for-card card-1)))
-            (is (=? {:cached some?
-                     :data {:viz-settings {:metabase.models.visualization-settings/table-columns
-                                           [{:metabase.models.visualization-settings/table-column-enabled true
-                                             :metabase.models.visualization-settings/table-column-name "count"}
-                                            {:metabase.models.visualization-settings/table-column-enabled false
-                                             :metabase.models.visualization-settings/table-column-name "sum"}]}}}
-                    (result-for-card card-2)))))))))
+            (let [result (result-for-card card-1)]
+              (is (some? (:cached result)))
+              (is (= [{:metabase.models.visualization-settings/table-column-enabled false
+                       :metabase.models.visualization-settings/table-column-name "count"}
+                      {:metabase.models.visualization-settings/table-column-enabled true
+                       :metabase.models.visualization-settings/table-column-name "sum"}]
+                     (get-in result [:data :viz-settings :metabase.models.visualization-settings/table-columns]))))
+            (let [result (result-for-card card-2)]
+              (is (some? (:cached result)))
+              (is (= [{:metabase.models.visualization-settings/table-column-enabled true
+                       :metabase.models.visualization-settings/table-column-name "count"}
+                      {:metabase.models.visualization-settings/table-column-enabled false
+                       :metabase.models.visualization-settings/table-column-name "sum"}]
+                     (get-in result [:data :viz-settings :metabase.models.visualization-settings/table-columns]))))))))))
