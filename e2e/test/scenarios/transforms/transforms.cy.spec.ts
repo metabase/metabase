@@ -196,7 +196,6 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         visitTransformListPage();
         getTransformsSidebar().button("Create a transform").click();
         H.popover().findByText("Python script").click();
-
         H.expectUnstructuredSnowplowEvent({
           event: "transform_create",
           event_detail: "python",
@@ -289,13 +288,14 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         });
 
         cy.log("run the transform and make sure its table can be queried");
+        H.DataStudio.Transforms.header().findByText("Run").click();
         runTransformAndWaitForSuccess();
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
         });
-
         getRunSection().should("contain", "Executing Python transform");
 
+        H.DataStudio.Transforms.header().findByText("Target").click();
         getTableLink().click();
         H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
         H.assertQueryBuilderRowCount(1);
@@ -340,7 +340,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         });
         getQueryEditor().button("Save").click();
         H.modal().within(() => {
-          cy.findByLabelText("Name").type(`${type} transform`);
+          cy.findByLabelText("Name").clear().type(`${type} transform`);
           cy.findByLabelText("Table name").type(`${type}_transform`);
           cy.button("Save").click();
           cy.wait("@createTransform");
@@ -351,11 +351,13 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         });
 
         cy.log("run the transform and make sure its table can be queried");
+        H.DataStudio.Transforms.header().findByText("Run").click();
         runTransformAndWaitForSuccess();
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
         });
 
+        H.DataStudio.Transforms.header().findByText("Target").click();
         getTableLink().click();
         H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
         H.assertQueryBuilderRowCount(3);
