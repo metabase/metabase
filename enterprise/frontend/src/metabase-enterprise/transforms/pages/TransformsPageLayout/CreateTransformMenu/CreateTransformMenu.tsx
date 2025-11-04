@@ -9,6 +9,8 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Button, Center, Icon, Loader, Menu } from "metabase/ui";
 
+import { trackTransformCreate } from "../../../analytics";
+
 import { shouldDisableItem } from "./utils";
 
 export const CreateTransformMenu = () => {
@@ -42,27 +44,39 @@ export const CreateTransformMenu = () => {
               <Menu.Label>{t`Create your transform with…`}</Menu.Label>
               <Menu.Item
                 leftSection={<Icon name="notebook" />}
-                onClick={() => dispatch(push(Urls.newQueryTransform()))}
+                onClick={() => {
+                  trackTransformCreate({ creationType: "query" });
+                  dispatch(push(Urls.newQueryTransform()));
+                }}
               >
                 {t`Query builder`}
               </Menu.Item>
               <Menu.Item
                 leftSection={<Icon name="sql" />}
-                onClick={() => dispatch(push(Urls.newNativeTransform()))}
+                onClick={() => {
+                  trackTransformCreate({ creationType: "native" });
+                  dispatch(push(Urls.newNativeTransform()));
+                }}
               >
                 {t`SQL query`}
               </Menu.Item>
               {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
                 <Menu.Item
                   leftSection={<Icon name="code_block" />}
-                  onClick={() => dispatch(push(Urls.newPythonTransform()))}
+                  onClick={() => {
+                    trackTransformCreate({ creationType: "python" });
+                    dispatch(push(Urls.newPythonTransform()));
+                  }}
                 >
                   {t`Python script`}
                 </Menu.Item>
               )}
               <Menu.Item
                 leftSection={<Icon name="folder" />}
-                onClick={openPicker}
+                onClick={() => {
+                  trackTransformCreate({ creationType: "saved-question" });
+                  openPicker();
+                }}
               >
                 {t`Copy of a saved question`}
               </Menu.Item>
