@@ -1,7 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.database-routing.e2e-test
   (:require
-   [clojure.set :as set]
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
    [clojurewerkz.quartzite.conversion :as qc]
    [metabase-enterprise.test :as met]
