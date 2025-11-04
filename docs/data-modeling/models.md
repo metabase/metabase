@@ -16,7 +16,7 @@ Models:
 - Can [surface individual records in search results](#surface-individual-records-in-search-by-matching-against-this-column).
 - Can be [persisted for faster loading](./model-persistence.md).
 
-For a deep dive on why and how to use models, check out our [Learn article on models][learn-models].
+For more on why and how to use models, check out our [Learn article on models][learn-models].
 
 ## How to use models
 
