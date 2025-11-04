@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { useEditTablesMutation } from "metabase/api";
 import {
@@ -8,7 +8,7 @@ import {
   UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box } from "metabase/ui";
+import { Box, Group, Icon, rem, Stack, Title } from "metabase/ui";
 import type {
   TableDataLayer,
   TableDataSource,
@@ -20,7 +20,12 @@ import { useSelection } from "../../contexts/SelectionContext";
 import S from "./TableMetadataSection.module.css";
 
 export function EditTableMetadata() {
-  const { selectedTables, selectedSchemas, selectedDatabases } = useSelection();
+  const {
+    selectedTables,
+    selectedSchemas,
+    selectedDatabases,
+    selectedItemsCount,
+  } = useSelection();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [editTables] = useEditTablesMutation();
   const [dataLayer, setDataLayer] = useState<TableDataLayer | null>(null);
@@ -77,63 +82,86 @@ export function EditTableMetadata() {
   };
 
   return (
-    <Box p="xl" className={S.container}>
-      <LayerInput
-        clearable
-        value={dataLayer}
-        onChange={(newDataLayer) => handleSubmit({ dataLayer: newDataLayer })}
-        className={S.gridLabelInput}
-        styles={{
-          label: {
-            gridColumn: 1,
-            fontWeight: "normal",
-          },
-          input: {
-            gridColumn: 2,
-          },
-        }}
-      />
+    <Stack gap="lg">
+      <Group
+        align="center"
+        c="text-light"
+        gap={10}
+        flex="1"
+        fs="lg"
+        lh="normal"
+        wrap="nowrap"
+        px="xl"
+        mt="lg"
+      >
+        <Title
+          order={4}
+          c="text-dark"
+          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+        >
+          <Icon c="brand" flex="0 0 auto" name="table2" size={20} />
+          {jt`${selectedItemsCount} item${selectedItemsCount === 1 ? "" : "s"} selected`}
+        </Title>
+      </Group>
 
-      <UserInput
-        clearable
-        email={email}
-        label={t`Owner`}
-        userId={userId}
-        onEmailChange={(newEmail) => {
-          handleSubmit({ email: newEmail });
-        }}
-        onUserIdChange={(newUserId) => {
-          handleSubmit({ userId: newUserId });
-        }}
-        className={S.gridLabelInput}
-        styles={{
-          label: {
-            gridColumn: 1,
-            fontWeight: "normal",
-          },
-          input: {
-            gridColumn: 2,
-          },
-        }}
-      />
+      <Box className={S.container} px="xl">
+        <LayerInput
+          clearable
+          value={dataLayer}
+          onChange={(newDataLayer) => handleSubmit({ dataLayer: newDataLayer })}
+          className={S.gridLabelInput}
+          styles={{
+            label: {
+              gridColumn: 1,
+              fontWeight: "normal",
+            },
+            input: {
+              gridColumn: 2,
+            },
+          }}
+        />
 
-      <DataSourceInput
-        clearable
-        value={dataSource}
-        onChange={(newDataSource) =>
-          handleSubmit({ dataSource: newDataSource })
-        }
-        className={S.gridLabelInput}
-        styles={{
-          label: {
-            gridColumn: 1,
-            fontWeight: "normal",
-          },
-          input: {
-            gridColumn: 2,
-          },
-        }}
-      />
-    </Box>
+        <UserInput
+          clearable
+          email={email}
+          label={t`Owner`}
+          userId={userId}
+          onEmailChange={(newEmail) => {
+            handleSubmit({ email: newEmail });
+          }}
+          onUserIdChange={(newUserId) => {
+            handleSubmit({ userId: newUserId });
+          }}
+          className={S.gridLabelInput}
+          styles={{
+            label: {
+              gridColumn: 1,
+              fontWeight: "normal",
+            },
+            input: {
+              gridColumn: 2,
+            },
+          }}
+        />
+
+        <DataSourceInput
+          clearable
+          value={dataSource}
+          onChange={(newDataSource) =>
+            handleSubmit({ dataSource: newDataSource })
+          }
+          className={S.gridLabelInput}
+          styles={{
+            label: {
+              gridColumn: 1,
+              fontWeight: "normal",
+            },
+            input: {
+              gridColumn: 2,
+            },
+          }}
+        />
+      </Box>
+    </Stack>
   );
 }
