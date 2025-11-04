@@ -29,6 +29,7 @@ import { CustomStarterKit } from "metabase-enterprise/rich_text_editing/tiptap/e
 import { DisableMetabotSidebar } from "metabase-enterprise/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
 import { FlexContainer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
 import { HandleEditorDrop } from "metabase-enterprise/rich_text_editing/tiptap/extensions/HandleEditorDrop/HandleEditorDrop";
+import { LinkHoverMenu } from "metabase-enterprise/rich_text_editing/tiptap/extensions/LinkHoverMenu/LinkHoverMenu";
 import { MentionExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
 import {
@@ -42,6 +43,7 @@ import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensio
 import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/suggestionRenderer";
 
 import S from "./Editor.module.css";
+import { PLAIN_LINK_CLASS } from "./constants";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
 
@@ -123,7 +125,7 @@ export const Editor: React.FC<EditorProps> = ({
       }),
       Link.configure({
         HTMLAttributes: {
-          class: CS.link,
+          class: cx(CS.link, PLAIN_LINK_CLASS),
         },
       }),
       Placeholder.configure({
@@ -262,6 +264,7 @@ export const Editor: React.FC<EditorProps> = ({
             disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
           />
         )}
+        <LinkHoverMenu editor={editor} editable={editable} />
       </Box>
     </Box>
   );
