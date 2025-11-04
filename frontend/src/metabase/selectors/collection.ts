@@ -8,6 +8,8 @@ export const getCollectionFromCollectionsTree = (
   collectionId: CollectionId,
 ): Collection | undefined => {
   const queriesCache = state[collectionApi.reducerPath]?.queries || {};
+  let collection: Collection | undefined;
+  let latestQueryTimestamp = 0;
 
   for (const [queryName, queryState] of Object.entries(queriesCache)) {
     if (
@@ -15,14 +17,19 @@ export const getCollectionFromCollectionsTree = (
       queryState?.status === "fulfilled" &&
       queryState?.data
     ) {
-      const collections = queryState.data as Collection[];
-      const collection = findCollectionById(collections, collectionId);
+      if (queryState.fulfilledTimeStamp < latestQueryTimestamp) {
+        continue;
+      }
 
-      if (collection) {
-        return collection;
+      const collectionsTree = queryState.data as Collection[];
+      const foundCollection = findCollectionById(collectionsTree, collectionId);
+
+      if (foundCollection) {
+        latestQueryTimestamp = queryState.fulfilledTimeStamp;
+        collection = foundCollection;
       }
     }
   }
 
-  return undefined;
+  return collection;
 };
