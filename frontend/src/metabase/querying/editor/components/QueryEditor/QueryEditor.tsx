@@ -80,7 +80,7 @@ export function QueryEditor({
 
   return (
     <>
-      <Flex flex={1} h="100%">
+      <Flex flex={1} h="100%" mih={0}>
         <Flex flex="2 1 0" direction="column" pos="relative">
           <QuerySection
             question={question}
