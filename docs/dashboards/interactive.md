@@ -90,7 +90,7 @@ You can also use values to construct URLs to external resources.
 
 From the **Click behavior** sidebar, select **Go to a custom destination** and link to **URL**. The **Enter a URL to link to** modal will pop up, allowing you to specify a URL, as well as a column or dashboard filter.
 
-What we need to do here is to type in the full URL of where a user should go when they click on a value in a card. But the powerful thing we can do is to include variables in the URL. These variables will insert the value that the user clicks on into the URL.
+What we need to do here is to type in the full URL of where a user should go when they click on a value in a card. But the really powerful thing we can do is to include variables in the URL. These variables will insert the value that the user clicks on into the URL.
 
 For example, we could type a URL like this:
 

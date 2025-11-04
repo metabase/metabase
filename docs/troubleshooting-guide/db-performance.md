@@ -67,7 +67,7 @@ By default, Metabase makes regular sync and scan queries against your database t
 
 **Explanation**
 
-If a question uses data stored as the wrong [data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview) in your database (most common with number, date, or timestamp values stored as strings), Metabase will generate a query that requires your database to convert the values on the fly. Typing your columns correctly at the schema level will help your database avoid that extra step to return results faster in Metabase.
+If a question uses data stored as the wrong [data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview) in your database (most common with number, date, or timestamp values stored as strings), Metabase will generate a query that asks your database to convert the values on the fly. Typing your columns correctly at the schema level will help your database avoid that extra step to return results faster in Metabase.
 
 ## Related problems
 

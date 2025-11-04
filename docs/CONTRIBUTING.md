@@ -65,7 +65,7 @@ All PRs that involve more than an insignificant change should be reviewed. See o
 
 If all goes well, the feature gets coded up, verified and then the pull request gets merged! High-fives all around.
 
-If there are tests missing, code style concerns or specific architectural issues in the pull request, they should be fixed before merging. We have a high bar on both code and product quality and it's important that this be maintained going forward, so please be patient with us here.
+If there are tests missing, code style concerns or specific architectural issues in the pull request, they should be fixed before merging. We have a very high bar on both code and product quality and it's important that this be maintained going forward, so please be patient with us here.
 
 ## Ways to help
 

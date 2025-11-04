@@ -7,7 +7,7 @@ summary: Configure how much information Metabase displays in its logs.
 
 # Metabase logs
 
-Metabase logs a lot of information by default. Metabase uses [Log4j 2](https://logging.apache.org/log4j/2.x/) under the hood, so you can configure how much information Metabase logs.
+Metabase logs quite a bit of information by default. Metabase uses [Log4j 2](https://logging.apache.org/log4j/2.x/) under the hood, so you can configure how much information Metabase logs.
 
 ## View and download Metabase logs
 
