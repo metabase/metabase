@@ -24,6 +24,7 @@
    [metabase.geojson.api]
    [metabase.glossary.api]
    [metabase.indexed-entities.api]
+   [metabase.links.api]
    [metabase.logger.api]
    [metabase.login-history.api]
    [metabase.model-persistence.api]
@@ -72,6 +73,7 @@
          metabase.geojson.api/keep-me
          metabase.glossary.api/keep-me
          metabase.indexed-entities.api/keep-me
+         metabase.links.api/keep-me
          metabase.logger.api/keep-me
          metabase.login-history.api/keep-me
          metabase.model-persistence.api/keep-me
@@ -154,6 +156,7 @@
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
+   "/link" (+auth 'metabase.links.api)
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)

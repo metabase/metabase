@@ -664,6 +664,17 @@
            settings
            util}}
 
+  links
+  {:team "UX West"
+   :api #{metabase.links.api
+          metabase.links.core
+          metabase.links.schema}
+   :uses #{collections
+           lib
+           models
+           permissions
+           util}}
+
   logger
   {:team "DevEx"
    :api  #{metabase.logger.api

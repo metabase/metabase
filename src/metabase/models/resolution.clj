@@ -24,6 +24,7 @@
     :model/ChannelTemplate                   metabase.channel.models.channel
     :model/CloudMigration                    metabase.cloud-migration.models.cloud-migration
     :model/Collection                        metabase.collections.models.collection
+    :model/CollectionLink metabase.links.models.link
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
     :model/CollectionPermissionGraphRevision metabase.permissions.models.collection-permission-graph-revision
     :model/Comment                           metabase-enterprise.comments.models.comment

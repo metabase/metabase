@@ -238,7 +238,8 @@
     "pulse"                             ; I think the only kinds of Pulses we still have are Alerts?
     "snippet"
     "no_models"
-    "timeline"})
+    "timeline"
+    "link"})
 
 (def ^:private ModelString
   (into [:enum] valid-model-param-values))
@@ -434,6 +435,29 @@
             :description :collection_position :display :authority_level
             :moderated_status :icon :personal_owner_id :collection_preview
             :dataset_query :table_id :query_type :is_upload)))
+
+(defmethod collection-children-query :link
+  [_ collection {:keys [pinned-state]}]
+  {:select [:link.id
+            :link.collection_id
+            :link.name
+            :link.description
+            :link.entity_id
+            :link.target_model
+            :link.target_id
+            [(h2x/literal "link") :model]]
+   :from [[:collection_link :link]]
+   :where [:and
+           (poison-when-pinned-clause pinned-state)
+           [:= :collection_id (:id collection)]]})
+
+(defmethod post-process-collection-children :link
+  [_ _options _collection rows]
+  (when (seq rows)
+    (let [links-with-targets (t2/hydrate (map #(t2/instance :model/CollectionLink %) rows) :target)]
+      (for [{:keys [target] :as link} links-with-targets
+            :when (some? target)]
+        (dissoc link :target)))))
 
 (defn- card-query [card-type collection {:keys [archived? pinned-state show-dashboard-questions?]}]
   (-> {:select    (cond->
@@ -769,7 +793,8 @@
     :document   :model/Document
     :pulse      :model/Pulse
     :snippet    :model/NativeQuerySnippet
-    :timeline   :model/Timeline))
+    :timeline :model/Timeline
+    :link :model/CollectionLink))
 
 (defn post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
@@ -812,7 +837,9 @@
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
    :collection_type [:archived :boolean] [:last_used_at :timestamp]
    ;; for determining whether a model is based on a csv-uploaded table
-   [:table_id :integer] [:is_upload :boolean] :query_type])
+   [:table_id :integer] [:is_upload :boolean] :query_type
+   ;; for links
+   :target_model [:target_id :integer]])
 
 (defn- add-missing-columns
   "Ensures that all necessary columns are in the select-columns collection, adding `[nil :column]` as necessary."
@@ -938,7 +965,7 @@
                              ;; :total_count
                              :limit  (if (zero? limit) 1 limit)
                              :offset offset))
-        rows        (mdb/query limit-query)
+        rows        (t2/query limit-query)
         res         {:total  (->> rows first :total_count)
                      :data   (if (= limit 0)
                                []
@@ -955,13 +982,14 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline]
+  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :link]
                                       (premium-features/enable-documents?) (conj :document))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)
                                      allowed-namespaces (collection/allowed-namespaces toucan-model)]
                            :when    (or (= model-kw :collection)
+                                        (= model-kw :link)
                                         (contains? allowed-namespaces (keyword collection-namespace)))]
                        model-kw)]
     (if (seq valid-models)

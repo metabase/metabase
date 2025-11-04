@@ -38,6 +38,173 @@ databaseChangeLog:
             tableName: report_card
             columnName: embedding_type
 
+  - changeSet:
+      id: v58.2025-11-04T18:27:45
+      author: edwardpaget
+      comment: Create collection_link table for linking objects across collections
+      changes:
+        - createTable:
+            tableName: collection_link
+            remarks: Links that reference objects in other collections
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The collection containing this link
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target_model
+                  type: varchar(254)
+                  remarks: The type of object being linked to (card, dashboard, collection, etc.)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target_id
+                  type: int
+                  remarks: The ID of the object being linked to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: Optional custom name for the link
+                  constraints:
+                    nullable: true
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: Optional description for the link
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: The timestamp when the link was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: The timestamp when the link was last updated
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by_id
+                  type: int
+                  remarks: The user who created this link
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropTable:
+            tableName: collection_link
+
+  - changeSet:
+      id: v58.2025-11-04T18:27:46
+      author: edwardpaget
+      comment: Add foreign key constraint for collection_link.collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: collection_link
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_collection_link_collection_id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: collection_link
+            constraintName: fk_collection_link_collection_id
+
+  - changeSet:
+      id: v58.2025-11-04T18:27:47
+      author: edwardpaget
+      comment: Add foreign key constraint for collection_link.created_by_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: collection_link
+            baseColumnNames: created_by_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_collection_link_created_by_id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: collection_link
+            constraintName: fk_collection_link_created_by_id
+
+  - changeSet:
+      id: v58.2025-11-04T18:27:48
+      author: edwardpaget
+      comment: Add unique index to prevent duplicate links
+      changes:
+        - createIndex:
+            tableName: collection_link
+            columns:
+              - column:
+                  name: collection_id
+              - column:
+                  name: target_model
+              - column:
+                  name: target_id
+            indexName: idx_collection_link_unique
+            unique: true
+      rollback:
+        - dropIndex:
+            tableName: collection_link
+            indexName: idx_collection_link_unique
+
+  - changeSet:
+      id: v58.2025-11-04T18:27:49
+      author: edwardpaget
+      comment: Add index for reverse lookups by target
+      changes:
+        - createIndex:
+            tableName: collection_link
+            columns:
+              - column:
+                  name: target_model
+              - column:
+                  name: target_id
+            indexName: idx_collection_link_target
+      rollback:
+        - dropIndex:
+            tableName: collection_link
+            indexName: idx_collection_link_target
+
+  - changeSet:
+      id: v58.2025-11-04T18:27:50
+      author: edwardpaget
+      comment: Add index on collection_id for collection queries
+      changes:
+        - createIndex:
+            tableName: collection_link
+            columns:
+              - column:
+                  name: collection_id
+            indexName: idx_collection_link_collection_id
+      rollback:
+        - dropIndex:
+            tableName: collection_link
+            indexName: idx_collection_link_collection_id
+
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
