@@ -87,7 +87,7 @@ export const Default = {
 };
 
 const ThemedRowChart = () => {
-  const theme = useRowChartTheme("Lato", false, false);
+  const theme = useRowChartTheme("Lato", false);
 
   return (
     <Box h={600} bg="white" p="8px">

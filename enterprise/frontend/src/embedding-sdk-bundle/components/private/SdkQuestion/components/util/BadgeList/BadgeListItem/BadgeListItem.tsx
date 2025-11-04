@@ -37,6 +37,7 @@ const _BadgeListItem = (
           onRemoveItem?.();
         }}
         className={S.BadgeListRemoveButton}
+        data-testid="badge-remove-button"
       >
         <Icon name="close" c="var(--mb-color-text-brand)" size={10} />
       </ActionIcon>

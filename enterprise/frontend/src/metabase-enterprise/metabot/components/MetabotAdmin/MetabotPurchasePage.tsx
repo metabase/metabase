@@ -9,7 +9,7 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
-import { usePurchaseMetabotCloudAddOnMutation } from "metabase/api/metabot";
+import { usePurchaseCloudAddOnMutation } from "metabase/api";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Markdown from "metabase/common/components/Markdown";
 import { useSetting } from "metabase/common/hooks";
@@ -84,11 +84,12 @@ export const MetabotPurchasePage = () => {
     storeUserEmails.length > 0 ? storeUserEmails[0] : undefined;
 
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
-  const [purchaseMetabotAddOn] = usePurchaseMetabotCloudAddOnMutation();
+  const [purchaseCloudAddOn] = usePurchaseCloudAddOnMutation();
   const onSubmit = useCallback(
     async ({ terms_of_service }: MetabotPurchaseFormFields) => {
       settingUpModalHandlers.open();
-      await purchaseMetabotAddOn({
+      await purchaseCloudAddOn({
+        product_type: "metabase-ai",
         terms_of_service,
       })
         .unwrap()
@@ -97,7 +98,7 @@ export const MetabotPurchasePage = () => {
           isFetchBaseQueryError(error) && handleFieldError(error.data);
         });
     },
-    [purchaseMetabotAddOn, settingUpModalHandlers],
+    [purchaseCloudAddOn, settingUpModalHandlers],
   );
 
   return (
@@ -149,7 +150,7 @@ export const MetabotPurchasePage = () => {
                     label={
                       <Text>
                         {t`I agree with the Metabot AI add-on`}{" "}
-                        <ExternalLink href="https://www.metabase.com/license/metabot-addendum">{t`Terms of Service`}</ExternalLink>
+                        <ExternalLink href="https://www.metabase.com/license/hosting">{t`Terms of Service`}</ExternalLink>
                       </Text>
                     }
                   />

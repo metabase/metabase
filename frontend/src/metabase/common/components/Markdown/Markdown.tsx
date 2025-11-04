@@ -2,6 +2,8 @@ import type { ComponentPropsWithRef } from "react";
 import type ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+import type { ColorName } from "metabase/lib/colors/types";
+
 import { MarkdownRoot } from "./Markdown.styled";
 
 const REMARK_PLUGINS = [remarkGfm];
@@ -14,7 +16,7 @@ export interface MarkdownProps
   unstyleLinks?: boolean;
   children: string;
   lineClamp?: number;
-  c?: string;
+  c?: ColorName;
   components?: Record<string, any>;
 }
 

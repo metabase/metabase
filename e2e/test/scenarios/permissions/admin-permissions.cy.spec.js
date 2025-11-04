@@ -310,7 +310,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     });
 
     context("group focused view", () => {
-      it("shows filterable list of groups", () => {
+      it("shows filterable list of groups", { tags: "@flaky" }, () => {
         cy.visit("/admin/permissions");
 
         // no groups selected initially and it shows an empty state

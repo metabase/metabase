@@ -1,5 +1,6 @@
 (ns metabase.lib.join
   "Functions related to manipulating EXPLICIT joins in MBQL."
+  (:refer-clojure :exclude [mapv run! some empty? not-empty #?(:clj for)])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -25,14 +26,17 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.stage.util :as lib.stage.util]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv run! some empty? not-empty #?(:clj for)]]))
 
 (defn- join? [x]
   (= (lib.dispatch/dispatch-value x) :mbql/join))
@@ -306,8 +310,10 @@
    {:keys [stages], :as _join} :- ::lib.schema.join/join
    options                     :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (let [join-query (assoc query :stages stages)]
-    (lib.metadata.calculation/returned-columns join-query -1 (lib.util/query-stage join-query -1) options)))
+    (lib.metadata.calculation/returned-columns join-query -1 -1 options)))
 
+;;; TODO (Cam 9/5/25) -- rename this to `join-last-stage-returned-columns-relative-to-parent-stage` to make it's clear
+;;; it's talking about the columns returned by the join's last stage and has nothing to do with the join's `:fields`
 (mu/defn join-returned-columns-relative-to-parent-stage :- ::lib.metadata.calculation/visible-columns
   "All columns made 'visible' by the join (regardless of `:fields`) -- i.e., the columns returned by the last stage of
   the join -- updated so their metadata is relative to the parent stage.
@@ -359,10 +365,16 @@
                         ;; should disallow refs with `:source-field`/remove it automatically.
                         :let      [field-ref (lib.options/update-options field-ref dissoc :source-field)
                                    match (or (lib.equality/find-matching-column field-ref cols)
-                                             (log/warnf "Failed to find matching column in join %s for ref %s, found:\n%s"
-                                                        (pr-str join-alias)
-                                                        (pr-str field-ref)
-                                                        (pr-str (map (juxt :id :metabase.lib.join/join-alias :lib/source-column-alias) cols))))]
+                                             (when-let [resolved (lib.metadata.calculation/metadata (-> (assoc query :stages (:stages join))
+                                                                                                        lib.stage.util/append-stage)
+                                                                                                    (with-join-alias field-ref nil))]
+                                               (when-not (:metabase.lib.field.resolution/fallback-metadata? resolved)
+                                                 resolved))
+                                             (log/debugf "Failed to find matching column in join %s for ref %s, found:\n%s"
+                                                         (pr-str join-alias)
+                                                         (pr-str field-ref)
+                                                         (pr-str (map (juxt :id :metabase.lib.join/join-alias :lib/source-column-alias) cols))))]
+
                         :when     (and match
                                        (not (false? (:active match))))]
                     (-> match
@@ -600,7 +612,7 @@
       condition)))
 
 (defn- generate-unique-name [base-name taken-names]
-  (let [generator (lib.util/unique-name-generator)]
+  (let [generator (lib.util.unique-name-generator/unique-name-generator)]
     (run! generator taken-names)
     (generator base-name)))
 

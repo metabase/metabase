@@ -49,6 +49,16 @@ export const isValidDimensionReference = (
   ].some((predicate) => predicate(mbql));
 };
 
+export const isDimensionReferenceWithOptions = (
+  mbql: unknown,
+): mbql is DimensionReferenceWithOptions => {
+  return (
+    isFieldReference(mbql) ||
+    isExpressionReference(mbql) ||
+    isAggregationReference(mbql)
+  );
+};
+
 export const normalizeReferenceOptions = (
   options?: ReferenceOptions | null,
 ): ReferenceOptions | null => {
@@ -109,13 +119,19 @@ export const BASE_DIMENSION_REFERENCE_OMIT_OPTIONS = [
   "binning",
 ];
 
-export const getBaseDimensionReference = (
+export const getDimensionReferenceWithoutTemporalUnitAndBinning = (
   mbql: DimensionReferenceWithOptions,
 ) =>
   getDimensionReferenceWithoutOptions(
     mbql,
     BASE_DIMENSION_REFERENCE_OMIT_OPTIONS,
   );
+
+const BASE_TYPE_OPTIONS = ["base-type"];
+
+export const getDimensionReferenceWithoutBaseType = (
+  mbql: DimensionReferenceWithOptions,
+) => getDimensionReferenceWithoutOptions(mbql, BASE_TYPE_OPTIONS);
 
 /**
  * Whether this Field clause has a string Field name (as opposed to an integer Field ID). This generally means the

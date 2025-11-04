@@ -25,17 +25,17 @@ export interface ListSnippetsParams {
 }
 
 export interface CreateSnippetRequest {
-  content: string;
   name: string;
-  description?: string;
+  content: string;
+  description?: string | null;
   collection_id?: RegularCollectionId | null;
 }
 
 export interface UpdateSnippetRequest {
   id: NativeQuerySnippetId;
-  archived?: boolean;
-  content?: string | null;
-  name?: string | null;
+  name?: string;
   description?: string | null;
+  content?: string;
   collection_id?: RegularCollectionId | null;
+  archived?: boolean;
 }

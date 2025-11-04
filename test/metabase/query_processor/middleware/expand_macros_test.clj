@@ -8,7 +8,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
-   [metabase.query-processor.store :as qp.store]))
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]))
 
 (defn- expand-macros
   "If input is a legacy query, convert to pMBQL, call [[expand-macros/expand-macros]], then convert back to legacy. This

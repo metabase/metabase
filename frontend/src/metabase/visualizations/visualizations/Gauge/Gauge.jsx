@@ -8,8 +8,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
+import { color } from "metabase/ui/utils/colors";
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
@@ -367,16 +367,24 @@ const GaugeArc = ({
     .outerRadius(OUTER_RADIUS)
     .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
 
-  const clicked = segment && { value: segment.min, column, settings };
-  const isClickable = clicked && onVisualizationClick != null;
+  const isClickable = segment != null && onVisualizationClick != null;
   const options = column && settings?.column ? settings.column(column) : {};
   const range = segment ? [segment.min, segment.max] : [];
   const value = range.map((v) => formatValue(v, options)).join(" - ");
   const hovered = segment ? { data: [{ key: segment.label, value }] } : {};
 
   const handleClick = (e) => {
-    if (onVisualizationClick && visualizationIsClickable(clicked)) {
-      onVisualizationClick({ ...clicked, event: e.nativeEvent });
+    if (!segment) {
+      return;
+    }
+    const clickData = {
+      value: segment.min,
+      column,
+      settings,
+      event: e.nativeEvent,
+    };
+    if (onVisualizationClick && visualizationIsClickable(clickData)) {
+      onVisualizationClick(clickData);
     }
   };
 

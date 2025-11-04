@@ -51,6 +51,7 @@
    :collection_position nil
    :enable_embedding    false
    :embedding_params    nil
+   :embedding_type      nil
    :parameters          []
    :archived_directly   (:archived_directly dashboard)})
 

@@ -22,7 +22,7 @@
    [metabase.query-processor-test.order-by-test :as qp-test.order-by-test]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -538,9 +538,9 @@
   (mt/test-driver :oracle
     (mt/dataset date-cols-with-datetime-values
       (testing "Oracle's DATE columns are mapped to type/DateTime (#49440)"
-        (testing "Filtering with day temporal unit returns expected resutls"
+        (testing "Filtering with day temporal unit returns expected results"
           (let [query (mt/mbql-query dates_with_time
-                        {:filter [:= [:field %date_with_time {:base-type :type/Date :temporal-unit :day}] "2024-11-06"]})]
+                        {:filter [:= [:field %date_with_time {:temporal-unit :day}] "2024-11-06"]})]
             (mt/with-native-query-testing-context query
               (is (= [[2M "2024-11-06T13:13:13Z"]]
                      (mt/rows (qp/process-query query)))))))))))
@@ -582,15 +582,15 @@
         date-cols-with-datetime-values
         (doseq [widget-type [:date/single :date/all-options]]
           (let [query (mt/native-query
-                        {:query "SELECT *
+                       {:query "SELECT *
                                FROM \"mb_test\".\"date_cols_with_datetime_values_dates_with_time\"
                                WHERE {{date_filter}}"
-                         :template-tags {"date_filter"
-                                         {:name         "date_filter"
-                                          :display-name "Date Filter"
-                                          :type         :dimension
-                                          :dimension    [:field (mt/id :date_cols_with_datetime_values_dates_with_time :date_with_time) nil]
-                                          :widget-type  widget-type}}})
+                        :template-tags {"date_filter"
+                                        {:name         "date_filter"
+                                         :display-name "Date Filter"
+                                         :type         :dimension
+                                         :dimension    [:field (mt/id :date_cols_with_datetime_values_dates_with_time :date_with_time) nil]
+                                         :widget-type  widget-type}}})
                 query-with-params (assoc query :parameters [{:type   widget-type
                                                              :target [:dimension [:template-tag "date_filter"]]
                                                              :value  "2024-11-06"}])]
@@ -634,15 +634,15 @@
       (mt/dataset
         date-cols-with-datetime-values
         (let [query (mt/native-query
-                      {:query "SELECT * FROM \"mb_test\".\"date_cols_with_datetime_values_dates_with_time\" WHERE {{date_filter}}"
-                       :template-tags
-                       {"date_filter"
-                        {:name         "date_filter"
-                         :display-name "Date Filter"
-                         :type         :dimension
-                         :widget-type :date/relative
-                         :dimension    [:field (mt/id
-                                                :date_cols_with_datetime_values_dates_with_time :date_with_time) nil]}}})]
+                     {:query "SELECT * FROM \"mb_test\".\"date_cols_with_datetime_values_dates_with_time\" WHERE {{date_filter}}"
+                      :template-tags
+                      {"date_filter"
+                       {:name         "date_filter"
+                        :display-name "Date Filter"
+                        :type         :dimension
+                        :widget-type :date/relative
+                        :dimension    [:field (mt/id
+                                               :date_cols_with_datetime_values_dates_with_time :date_with_time) nil]}}})]
           (doseq [value ["past30days" "past3hours"]
                   :let [query-with-params (assoc query :parameters [{:type   :date/relative
                                                                      :value  value

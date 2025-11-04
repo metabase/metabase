@@ -1,5 +1,3 @@
-import type { Query } from "history";
-
 import {
   normalizeBooleanParameterValue,
   normalizeDateParameterValue,
@@ -22,10 +20,10 @@ import type {
 
 export function getParameterValueFromQueryParams(
   parameter: Parameter,
-  queryParams: Query,
+  queryParams: ParameterValuesMap,
   lastUsedParametersValues?: ParameterValuesMap,
 ): ParameterValueOrArray | null {
-  const params: Query = queryParams || {};
+  const params: ParameterValuesMap = queryParams || {};
   const lastUsedValues: ParameterValuesMap = lastUsedParametersValues || {};
 
   const maybeParameterValue = params[parameter.slug || parameter.id];
@@ -155,7 +153,7 @@ function normalizeParameterValueForWidget(
 
 export function getParameterValuesByIdFromQueryParams(
   parameters: Parameter[],
-  queryParams: Query,
+  queryParams: ParameterValuesMap,
   lastUsedParametersValues?: ParameterValuesMap,
 ): ParameterValuesMap {
   const result: ParameterValuesMap = {};

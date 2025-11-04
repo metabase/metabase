@@ -67,3 +67,10 @@ x.com")
   :default    false
   :visibility :admin
   :export?    true)
+
+(defsetting hide-stacktraces
+  (deferred-tru "Prevent the exception middleware from including stacktraces in responses.")
+  :type       :boolean
+  :default    false
+  :visibility :admin
+  :export?    false)

@@ -41,7 +41,6 @@ import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_DOCUMENTS,
-  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
   PLUGIN_TABLE_EDITING,
@@ -55,6 +54,7 @@ import FieldListContainer from "metabase/reference/databases/FieldListContainer"
 import TableDetailContainer from "metabase/reference/databases/TableDetailContainer";
 import TableListContainer from "metabase/reference/databases/TableListContainer";
 import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer";
+import { GlossaryContainer } from "metabase/reference/glossary/GlossaryContainer";
 import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
 import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
 import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
@@ -62,7 +62,6 @@ import SegmentListContainer from "metabase/reference/segments/SegmentListContain
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SearchApp from "metabase/search/containers/SearchApp";
-import { EmbeddingSetup } from "metabase/setup/components/EmbeddingSetup/EmbeddingSetup";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
@@ -91,13 +90,6 @@ export const getRoutes = (store) => {
           if (hasUserSetup) {
             replace("/");
           }
-          const searchParams = new URLSearchParams(window.location.search);
-          if (
-            searchParams.get("use_case") === "embedding" &&
-            searchParams.get("new_embedding_flow") === "true"
-          ) {
-            replace("/setup/embedding" + window.location.search);
-          }
           trackPageView(location.pathname);
         }}
         onChange={(prevState, nextState) => {
@@ -106,19 +98,8 @@ export const getRoutes = (store) => {
         disableCommandPalette
       />
 
-      {/* EMBEDDING SETUP */}
-      <Route
-        path="/setup/embedding"
-        component={EmbeddingSetup}
-        onEnter={async (nextState, replace, done) => {
-          if (hasUserSetup) {
-            replace("/");
-          }
-          trackPageView(location.pathname);
-          done();
-        }}
-        disableCommandPalette
-      />
+      {/* For compatibility: use the standard setup for embedding */}
+      <Redirect from="/setup/embedding" to="/setup" />
 
       {/* APP */}
       <Route
@@ -182,11 +163,6 @@ export const getRoutes = (store) => {
           />
 
           {PLUGIN_DOCUMENTS.getRoutes()}
-
-          <Route
-            path="embed-js"
-            component={PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetup}
-          />
 
           <Route
             path="collection/entity/:entity_id(**)"
@@ -379,6 +355,7 @@ export const getRoutes = (store) => {
               path="databases/:databaseId/tables/:tableId/questions"
               component={TableQuestionsContainer}
             />
+            <Route path="glossary" component={GlossaryContainer} />
           </Route>
 
           {/* ACCOUNT */}

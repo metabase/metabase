@@ -280,24 +280,6 @@ describe("scenarios > question > summarize sidebar", () => {
       H.popover().contains("199 distinct values");
     },
   );
-
-  // TODO: fixme!
-  it(
-    "should render custom expression helper near the custom expression field",
-    { tags: "@skip" },
-    () => {
-      H.openReviewsTable({ mode: "notebook" });
-      H.summarize({ mode: "notebook" });
-
-      H.popover().within(() => {
-        cy.findByText("Custom Expression").click();
-
-        H.enterCustomColumnDetails({ formula: "floor" });
-
-        H.checkExpressionEditorHelperPopoverPosition();
-      });
-    },
-  );
 });
 
 function removeMetricFromSidebar(metricName) {

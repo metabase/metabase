@@ -1,24 +1,66 @@
-exports.updateComment = updateComment;
+const TYPES = new Set([
+  "feat",
+  "fix",
+  "perf",
+  "docs",
+  "style",
+  "refactor",
+  "test",
+  "build",
+  "ci",
+]);
+
+/**
+ * @param title {string}
+ */
+function isConventionalTitle(title) {
+  const match = /^(?<type>\w+)\((?<rawScopes>[^)]+)\):/.exec(title);
+
+  if (!match) {
+    return false;
+  }
+
+  const [, type, rawScopes] = match;
+  const scopes = rawScopes
+    .split(",")
+    .map((scope) => scope.trim())
+    .filter(Boolean);
+
+  return TYPES.has(type) && scopes.length > 0;
+}
 
 /** @param {import('@types/github-script').AsyncFunctionArguments} AsyncFunctionArguments */
-async function updateComment({ github, context }) {
+async function updateCommentForEmbedding({ github, context }) {
   const githubUsername = context.payload.sender.login;
-  const comment = `${CONVENTIONAL_COMMIT_REMINDER_COMMENT_IDENTIFIER}
-@${githubUsername} You have modified embedding SDK code. Please make sure the PR title follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) style.
-Here are all the supported types that will be shown in the changelog:
+
+  const comment = `${CONVENTIONAL_COMMENT_IDENTIFIER}
+@${githubUsername} You have modified embedding code. Please make sure the PR title follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) style.
+Here are all the supported types:
 - \`feat\`
 - \`fix\`
 - \`perf\`
+- \`docs\`
+- \`style\`
+- \`refactor\`
+- \`test\`
+- \`build\`
+- \`ci\`
 
-These types \`docs\`, \`style\`, \`refactor\`, \`test\`, \`build\`, and \`ci\` are also encouraged for non-changelog related tasks.
-
-Please also make sure to include \`sdk\` scope, otherwise, the changelog will not include this task.
+Please also make sure to include a scope.
 
 For example, these are valid PR titles:
-- \`feat(sdk): Add interactive dashboard component\`
-- \`feat(sdk): Support theming pie chart\`
-- \`fix(sdk): Fix static dashboard crash\``;
+- \`feat(sdk-bundle): Add interactive dashboard component\`
+- \`fix(sdk-package): Fixed MetabaseProviderPropsStore logic\`
+- \`fix(sdk-package, embed-js): Fix API\``;
 
+  return updateComment(comment, { github, context });
+}
+
+/**
+ * @param comment {string}
+ * @param {import('@types/github-script').AsyncFunctionArguments} AsyncFunctionArguments
+ */
+async function updateComment(comment, { github, context }) {
   const owner = context.repo.owner;
   const repo = context.repo.repo;
   const pullRequestNumber = context.issue.number;
@@ -49,20 +91,19 @@ For example, these are valid PR titles:
   }
 }
 
-const CONVENTIONAL_COMMIT_REMINDER_COMMENT_IDENTIFIER =
-  "<!---conventional commit reminder comment ID-->";
+const CONVENTIONAL_COMMENT_IDENTIFIER =
+  "<!---conventional comment identifier-->";
+
 /**
- * @typedef Comment
- * @property {string} body
- *
- * @param {Comment[]} comments
+ * @param comments {{body: string}[]}
  */
 function getExistingConventionalCommitReminderComment(comments) {
   for (const comment of comments) {
-    if (
-      comment.body.startsWith(CONVENTIONAL_COMMIT_REMINDER_COMMENT_IDENTIFIER)
-    ) {
+    if (comment.body.startsWith(CONVENTIONAL_COMMENT_IDENTIFIER)) {
       return comment;
     }
   }
 }
+
+exports.isConventionalTitle = isConventionalTitle;
+exports.updateCommentForEmbedding = updateCommentForEmbedding;

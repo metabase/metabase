@@ -1,3 +1,5 @@
+import type { ColorName } from "metabase/lib/colors/types";
+
 export interface CheckBoxInputProps {
   size: number;
 }
@@ -8,14 +10,14 @@ export interface CheckBoxContainerProps {
 
 export interface CheckBoxIconProps {
   checked: boolean;
-  uncheckedColor: string;
+  uncheckedColor: ColorName;
 }
 
 export interface CheckBoxIconContainerProps {
   checked: boolean | undefined;
   size: number;
-  checkedColor: string;
-  uncheckedColor: string;
+  checkedColor: ColorName;
+  uncheckedColor: ColorName;
 }
 
 export interface CheckBoxLabelProps {

@@ -27,3 +27,12 @@ export interface ColumnSizeConfig {
   min: number;
   max: number;
 }
+
+export type MetadataEditAnalyticsDetail =
+  | "type_casting"
+  | "semantic_type_change"
+  | "visibility_change"
+  | "filtering_change"
+  | "display_values"
+  | "json_unfolding"
+  | "formatting";

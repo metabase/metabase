@@ -31,6 +31,7 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isNavBarEnabled: getIsNavBarEnabled(state, props),
   isMetabotVisible: PLUGIN_METABOT.getMetabotVisible(state),
   isDocumentSidebarOpen: PLUGIN_DOCUMENTS.getSidebarOpen(state),
+  isCommentSidebarOpen: PLUGIN_DOCUMENTS.getCommentSidebarOpen(state),
   isLogoVisible: getIsLogoVisible(state),
   isSearchVisible: getIsSearchVisible(state),
   isEmbeddingIframe: getIsEmbeddingIframe(state),
