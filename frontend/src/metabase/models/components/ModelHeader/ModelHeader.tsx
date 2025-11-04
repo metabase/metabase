@@ -93,7 +93,7 @@ function getTabs(id: CardId, { pathname }: Location): PaneHeaderTab[] {
     {
       label: t`Overview`,
       to: Urls.dataStudioModel(id),
-      icon: "sql",
+      icon: "model",
       isSelected: Urls.dataStudioModel(id) === pathname,
     },
     {
