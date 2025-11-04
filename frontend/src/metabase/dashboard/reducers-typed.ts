@@ -345,18 +345,18 @@ export const dashboards = createReducer(
       )
       .addMatcher(
         updateDashboardEmbeddingParams.matchFulfilled,
-        (state, { payload }) =>
-          assocIn(
-            state,
-            [payload.id, "embedding_params"],
-            payload.embedding_params,
-          ),
+        (state, { payload }) => {
+          const dashboard = state[payload.id];
+          dashboard.embedding_params = payload.embedding_params;
+          dashboard.embedding_type = payload.embedding_type;
+        },
       )
       .addMatcher(
         updateDashboardEnableEmbedding.matchFulfilled,
         (state, { payload }) => {
           const dashboard = state[payload.id];
           dashboard.enable_embedding = payload.enable_embedding;
+          dashboard.embedding_type = payload.embedding_type;
           dashboard.initially_published_at = payload.initially_published_at;
         },
       );

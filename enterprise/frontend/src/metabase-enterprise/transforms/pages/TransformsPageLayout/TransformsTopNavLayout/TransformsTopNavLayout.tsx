@@ -13,8 +13,8 @@ export const TransformsTopNavLayout = ({
 }: TransformsTopNavLayoutProps) => {
   return (
     <Flex direction="column" w="100%" h="100%">
-      <Box className={S.header} p="md">
-        <Box w={360}>
+      <Box className={S.header}>
+        <Box w={360} p="md">
           <TransformsInnerNav />
         </Box>
       </Box>

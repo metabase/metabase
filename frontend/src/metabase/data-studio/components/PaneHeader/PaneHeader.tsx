@@ -18,11 +18,24 @@ interface PaneHeaderProps {
   menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
+  "data-testid"?: string;
 }
 
-export const PaneHeader = ({ title, menu, tabs, actions }: PaneHeaderProps) => {
+export const PaneHeader = ({
+  title,
+  menu,
+  tabs,
+  actions,
+  "data-testid": dataTestId,
+}: PaneHeaderProps) => {
   return (
-    <Group className={S.header} p="md" justify="space-between" gap="sm">
+    <Group
+      className={S.header}
+      p="md"
+      justify="space-between"
+      gap="sm"
+      data-testid={dataTestId}
+    >
       <Stack gap="sm">
         <Group align="center" gap="xs">
           {title}

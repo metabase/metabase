@@ -1,6 +1,7 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { Button, Group, Icon, Select } from "metabase/ui";
+import { Group, Select } from "metabase/ui";
 
 export type SortOption = "tree" | "alphabetical" | "last-modified";
 
@@ -47,16 +48,14 @@ export const JOB_SORT_OPTIONS: SortOptionData[] = [
 
 interface SidebarSortControlProps {
   value: SortOption;
-  onChange: (value: SortOption) => void;
-  onAdd?: () => void;
-  addButton?: React.ReactNode;
   options: SortOptionData[];
+  addButton?: ReactNode;
+  onChange: (value: SortOption) => void;
 }
 
 export const SidebarSortControl = ({
   value,
   onChange,
-  onAdd,
   addButton,
   options,
 }: SidebarSortControlProps) => {
@@ -76,7 +75,6 @@ export const SidebarSortControl = ({
   return (
     <Group gap="sm" wrap="nowrap">
       <Select
-        size="sm"
         flex={1}
         value={validValue}
         onChange={(value) => {
@@ -86,16 +84,7 @@ export const SidebarSortControl = ({
         }}
         data={selectData}
       />
-      {addButton ||
-        (onAdd && (
-          <Button
-            p="sm"
-            w={36}
-            h={36}
-            leftSection={<Icon name="add" size={16} />}
-            onClick={onAdd}
-          />
-        ))}
+      {addButton}
     </Group>
   );
 };

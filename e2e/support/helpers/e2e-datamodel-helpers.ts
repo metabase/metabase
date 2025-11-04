@@ -94,7 +94,7 @@ function visit({
     fieldId != null
   ) {
     cy.visit(
-      `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}/field/${fieldId}`,
+      `/data-studio/data/database/${databaseId}/schema/${schemaId}/table/${tableId}/field/${fieldId}`,
     );
 
     if (!skipWaiting) {
@@ -112,7 +112,7 @@ function visit({
 
   if (databaseId != null && schemaId != null && tableId != null) {
     cy.visit(
-      `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}`,
+      `/data-studio/data/database/${databaseId}/schema/${schemaId}/table/${tableId}`,
     );
 
     if (!skipWaiting) {
@@ -128,7 +128,7 @@ function visit({
   }
 
   if (databaseId != null && schemaId != null) {
-    cy.visit(`/admin/datamodel/database/${databaseId}/schema/${schemaId}`);
+    cy.visit(`/data-studio/data/database/${databaseId}/schema/${schemaId}`);
 
     if (!skipWaiting) {
       cy.wait([
@@ -141,7 +141,7 @@ function visit({
   }
 
   if (databaseId != null) {
-    cy.visit(`/admin/datamodel/database/${databaseId}`);
+    cy.visit(`/data-studio/data/database/${databaseId}`);
 
     if (!skipWaiting) {
       cy.wait([
@@ -154,7 +154,7 @@ function visit({
     return;
   }
 
-  cy.visit("/admin/datamodel");
+  cy.visit("/data-studio/data");
   cy.wait(["@datamodel/visit/databases"]);
 }
 

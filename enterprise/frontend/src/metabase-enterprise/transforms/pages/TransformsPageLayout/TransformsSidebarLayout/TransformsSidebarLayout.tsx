@@ -30,7 +30,9 @@ export const TransformsSidebarLayout = ({
         <TransformsSidebar selectedTransformId={selectedTransformId} />
       )}
       {currentTab === "jobs" && <JobsSidebar selectedJobId={selectedJobId} />}
-      <Box flex={1}>{children}</Box>
+      <Box data-testid="transforms-content" flex={1}>
+        {children}
+      </Box>
     </Flex>
   );
 };

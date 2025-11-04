@@ -88,9 +88,7 @@ H.describeWithSnowplow(
       cy.findByTestId("app-bar")
         .findByRole("button", { name: "Settings" })
         .click();
-      H.popover().findByText("Admin settings").click();
-
-      cy.findByRole("link", { name: "Table Metadata" }).click();
+      H.popover().findByText("Data studio").click();
 
       H.DataModel.TablePicker.getDatabase("Writable Postgres12").click();
       H.DataModel.TablePicker.getTables().should("have.length", 2);

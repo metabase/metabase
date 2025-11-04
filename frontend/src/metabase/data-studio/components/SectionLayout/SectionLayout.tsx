@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Box, Button, Group, Stack, Tabs } from "metabase/ui";
+import { PLUGIN_METABOT } from "metabase/plugins";
+import { Box, Button, Flex, Group, Stack, Tabs } from "metabase/ui";
 
 import S from "./SectionLayout.module.css";
 
@@ -15,23 +16,29 @@ type SectionLayoutProps = {
 export function SectionLayout({ title, tabs, children }: SectionLayoutProps) {
   return (
     <Stack h="100%" gap={0}>
-      <Group
+      <Flex
+        data-testid="data-studio-header"
         className={S.header}
         px="lg"
         justify="space-between"
         align={tabs ? "start" : "center"}
+        aria-label={t`Navigation bar`}
       >
         <Stack gap="sm" pt="md" py={tabs ? undefined : "md"}>
           {title}
           {tabs}
         </Stack>
-        <Button my="md" component={Link} to="/">
-          {t`Exit data studio`}
-        </Button>
-      </Group>
-      <Box flex={1} mih={0}>
-        {children}
-      </Box>
+        <Group my="md">
+          <PLUGIN_METABOT.MetabotDataStudioButton />
+          <Button component={Link} to="/">
+            {t`Exit data studio`}
+          </Button>
+        </Group>
+      </Flex>
+      <Flex flex={1} mih={0}>
+        <Box flex={1}>{children}</Box>
+        <PLUGIN_METABOT.MetabotDataStudioSidebar />
+      </Flex>
     </Stack>
   );
 }

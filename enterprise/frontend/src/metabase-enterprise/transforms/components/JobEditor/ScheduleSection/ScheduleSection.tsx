@@ -122,10 +122,7 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
       return;
     }
 
-    trackTransformJobTriggerManualRun({
-      jobId: job.id,
-      triggeredFrom: "job-page",
-    });
+    trackTransformJobTriggerManualRun({ jobId: job.id });
 
     const { error } = await runJob(job.id);
 

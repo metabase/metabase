@@ -103,10 +103,7 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
   ] = useDisclosure(false);
 
   const handleRun = async () => {
-    trackTransformTriggerManualRun({
-      transformId: transform.id,
-      triggeredFrom: "transform-page",
-    });
+    trackTransformTriggerManualRun({ transformId: transform.id });
     const { error } = await runTransform(transform.id);
     if (error) {
       sendErrorToast(t`Failed to run transform`);
