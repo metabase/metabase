@@ -1,7 +1,9 @@
 import { IndexRedirect } from "react-router";
+import { t } from "ttag";
 
 import { Route } from "metabase/hoc/Title";
-import { getMetadataRoutes } from "metabase/metadata/routes";
+import { getDataStudioMetadataRoutes } from "metabase/metadata/routes";
+import { getDataStudioModelRoutes } from "metabase/models/routes";
 import { PLUGIN_DEPENDENCIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
 
 import { DataSectionLayout } from "./pages/DataSectionLayout";
@@ -13,18 +15,32 @@ export function getDataStudioRoutes() {
   return (
     <Route component={DataStudioLayout}>
       <IndexRedirect to="data" />
-      <Route component={DataSectionLayout}>
-        {getMetadataRoutes()}
-        {PLUGIN_TRANSFORMS.getTransformRoutes()}
+      <Route title={t`Data`} path="data" component={DataSectionLayout}>
+        {getDataStudioMetadataRoutes()}
       </Route>
-      <Route component={ModelingSectionLayout} />
+      {PLUGIN_TRANSFORMS.isEnabled && (
+        <Route
+          title={t`Transforms`}
+          path="transforms"
+          component={DataSectionLayout}
+        >
+          {PLUGIN_TRANSFORMS.getDataStudioTransformRoutes()}
+        </Route>
+      )}
+      <Route
+        title={t`Modeling`}
+        path="modeling"
+        component={ModelingSectionLayout}
+      >
+        {getDataStudioModelRoutes()}
+      </Route>
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
-          title={`Dependency graph`}
+          title={t`Dependency graph`}
           path="dependencies"
           component={DependenciesSectionLayout}
         >
-          {PLUGIN_DEPENDENCIES.getDependencyGraphRoutes()}
+          {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
         </Route>
       )}
     </Route>

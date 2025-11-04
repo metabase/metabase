@@ -900,14 +900,16 @@ export type TransformPickerProps = {
 };
 
 export type TransformsPlugin = {
+  isEnabled: boolean;
   canAccessTransforms: (state: State) => boolean;
-  getTransformRoutes(): ReactNode;
+  getDataStudioTransformRoutes(): ReactNode;
   TransformPicker: ComponentType<TransformPickerProps>;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  isEnabled: false,
   canAccessTransforms: () => false,
-  getTransformRoutes: () => null,
+  getDataStudioTransformRoutes: () => null,
   TransformPicker: PluginPlaceholder,
 };
 
@@ -972,7 +974,7 @@ export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
 
 type DependenciesPlugin = {
   isEnabled: boolean;
-  getDependencyGraphRoutes: () => ReactNode;
+  getDataStudioDependencyRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
@@ -1034,7 +1036,7 @@ function useCheckDependencies<TChange>({
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   isEnabled: false,
-  getDependencyGraphRoutes: () => null,
+  getDataStudioDependencyRoutes: () => null,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,

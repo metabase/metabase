@@ -1,5 +1,4 @@
 import { IndexRoute } from "react-router";
-import { t } from "ttag";
 
 import { Route } from "metabase/hoc/Title";
 import {
@@ -25,9 +24,9 @@ import { TransformTargetPage } from "./pages/TransformTargetPage";
 import { TransformsSidebarLayout } from "./pages/TransformsPageLayout/TransformsSidebarLayout";
 import { TransformsTopNavLayout } from "./pages/TransformsPageLayout/TransformsTopNavLayout";
 
-export function getTransformRoutes() {
+export function getDataStudioTransformRoutes() {
   return (
-    <Route title={t`Transforms`} path="transforms">
+    <>
       <Route path="runs" component={TransformsTopNavLayout}>
         <IndexRoute component={RunListPage} />
       </Route>
@@ -55,6 +54,6 @@ export function getTransformRoutes() {
         )}
         {PLUGIN_TRANSFORMS_PYTHON.getPythonLibraryRoutes()}
       </Route>
-    </Route>
+    </>
   );
 }

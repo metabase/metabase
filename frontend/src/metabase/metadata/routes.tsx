@@ -1,5 +1,4 @@
 import { IndexRoute, Redirect } from "react-router";
-import { t } from "ttag";
 
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
@@ -8,49 +7,46 @@ import { Route } from "metabase/hoc/Title";
 
 import { DataModel } from "./pages/DataModel";
 
-export function getMetadataRoutes() {
+export function getDataStudioMetadataRoutes() {
   return (
-    <Route title={t`Data`}>
+    <>
       <IndexRoute component={DataModel} />
-      <Route path="data">
-        <IndexRoute component={DataModel} />
-        <Route path="database" component={DataModel} />
-        <Route path="database/:databaseId" component={DataModel} />
-        <Route
-          path="database/:databaseId/schema/:schemaId"
-          component={DataModel}
-        />
-        <Route
-          path="database/:databaseId/schema/:schemaId/table/:tableId"
-          component={DataModel}
-        />
-        <Route
-          path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-          component={DataModel}
-        />
-        <Redirect
-          from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-          to="database/:databaseId/schema/:schemaId/table/:tableId"
-        />
-        <Redirect
-          from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
-          to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-        />
-        <Route component={DataModel}>
-          <Route path="segments" component={SegmentListApp} />
-          <Route path="segment/create" component={SegmentApp} />
-          <Route path="segment/:id" component={SegmentApp} />
-          <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
-        </Route>
-        <Redirect
-          from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-          to="database/:databaseId/schema/:schemaId/table/:tableId"
-        />
-        <Redirect
-          from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
-          to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-        />
+      <Route path="database" component={DataModel} />
+      <Route path="database/:databaseId" component={DataModel} />
+      <Route
+        path="database/:databaseId/schema/:schemaId"
+        component={DataModel}
+      />
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId"
+        component={DataModel}
+      />
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+        component={DataModel}
+      />
+      <Redirect
+        from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
+        to="database/:databaseId/schema/:schemaId/table/:tableId"
+      />
+      <Redirect
+        from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
+        to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+      />
+      <Route component={DataModel}>
+        <Route path="segments" component={SegmentListApp} />
+        <Route path="segment/create" component={SegmentApp} />
+        <Route path="segment/:id" component={SegmentApp} />
+        <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
       </Route>
-    </Route>
+      <Redirect
+        from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
+        to="database/:databaseId/schema/:schemaId/table/:tableId"
+      />
+      <Redirect
+        from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
+        to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+      />
+    </>
   );
 }
