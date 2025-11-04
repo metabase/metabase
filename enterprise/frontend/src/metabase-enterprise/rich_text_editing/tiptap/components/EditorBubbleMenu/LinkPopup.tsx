@@ -4,14 +4,12 @@ import { t } from "ttag";
 import { ActionIcon, Box, FixedSizeIcon, Flex, TextInput } from "metabase/ui";
 
 interface LinkPopupProps {
-  isOpen: boolean;
   initialUrl: string;
   onSubmit: (url: string) => void;
   onCancel: () => void;
 }
 
 export const LinkPopup = ({
-  isOpen,
   initialUrl,
   onSubmit,
   onCancel,
@@ -37,10 +35,6 @@ export const LinkPopup = ({
     onCancel();
     setUrl("");
   };
-
-  if (!isOpen) {
-    return null;
-  }
 
   return (
     <Flex align="center" gap={4}>

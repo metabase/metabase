@@ -19,7 +19,7 @@ import type { FormattingOptions } from "./types";
 
 declare module "@tiptap/core" {
   interface EditorEvents {
-    openLinkPopup: boolean;
+    openLinkPopup: string; // The href of the link
   }
 }
 
@@ -54,18 +54,11 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
   className,
 }) => {
   const forceUpdate = useForceUpdate();
-  const [isLinkPopupOpen, setIsLinkPopupOpen] = useState(false);
-  const [initialLinkUrl, setInitialLinkUrl] = useState("");
+  const [initialLinkUrl, setInitialLinkUrl] = useState<string | null>(null);
 
   const handleLinkClick = () => {
-    if (isLinkPopupOpen) {
-      setIsLinkPopupOpen(false);
-      editor.commands.focus();
-      return;
-    }
     const existingLink = editor.getAttributes("link");
     setInitialLinkUrl(existingLink.href || "");
-    setIsLinkPopupOpen(true);
   };
 
   const handleLinkSubmit = (url: string) => {
@@ -74,22 +67,22 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
     } else {
       editor.chain().focus().unsetLink().run();
     }
-    setIsLinkPopupOpen(false);
+    setInitialLinkUrl(null);
   };
 
   const handleLinkCancel = () => {
-    setIsLinkPopupOpen(false);
+    setInitialLinkUrl(null);
   };
 
   useEffect(() => {
     editor.on("selectionUpdate", forceUpdate);
     editor.on("update", forceUpdate);
-    editor.on("openLinkPopup", setIsLinkPopupOpen);
+    editor.on("openLinkPopup", setInitialLinkUrl);
 
     return () => {
       editor.off("selectionUpdate", forceUpdate);
       editor.off("update", forceUpdate);
-      editor.off("openLinkPopup", setIsLinkPopupOpen);
+      editor.off("openLinkPopup", setInitialLinkUrl);
     };
   }, [editor, forceUpdate]);
 
@@ -98,7 +91,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
       className={className}
       editor={editor}
       options={{
-        onHide: () => setIsLinkPopupOpen(false),
+        onHide: () => setInitialLinkUrl(null),
         ...options,
       }}
       shouldShow={({
@@ -145,9 +138,8 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
         className={S.bubbleMenu}
         data-testid="document-formatting-menu"
       >
-        {isLinkPopupOpen ? (
+        {initialLinkUrl != null ? (
           <LinkPopup
-            isOpen={isLinkPopupOpen}
             initialUrl={initialLinkUrl}
             onSubmit={handleLinkSubmit}
             onCancel={handleLinkCancel}
@@ -188,7 +180,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
             )}
             {allowedFormatting.link && (
               <FormatButton
-                isActive={isLinkPopupOpen || editor.isActive("link")}
+                isActive={initialLinkUrl != null || editor.isActive("link")}
                 onClick={handleLinkClick}
                 tooltip={t`Link`}
                 icon="link"
