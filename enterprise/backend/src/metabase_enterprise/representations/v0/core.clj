@@ -1,7 +1,7 @@
 (ns metabase-enterprise.representations.v0.core
   (:require
    [metabase-enterprise.representations.toucan.core :as rep-t2]
-   [metabase-enterprise.representations.v0.card]
+   [metabase-enterprise.representations.v0.card :as v0-card]
    [metabase-enterprise.representations.v0.collection :as v0-coll]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.database :as v0-database]
@@ -25,20 +25,42 @@
     :snippet v0-snippet/toucan-model
     :transform v0-transform/toucan-model))
 
+(defn representation-type
+  "Returns the representation type for a toucan entity (e.g., :question, :model, :metric)."
+  [t2-entity]
+  (case (t2/model t2-entity)
+    :model/Card (v0-card/representation-type t2-entity)
+    :model/Collection (v0-coll/representation-type t2-entity)
+    :model/Database (v0-database/representation-type t2-entity)
+    :model/Document (v0-document/representation-type t2-entity)
+    :model/NativeQuerySnippet (v0-snippet/representation-type t2-entity)
+    :model/Transform (v0-transform/representation-type t2-entity)))
+
+(defn ensure-correct-type
+  "Ensures the entity is of the expected representation type. Throws if not."
+  [entity expected-type]
+  (when (and entity
+             (not= expected-type (representation-type entity)))
+    (throw (ex-info (str "Entity is not the correct type. Expected: " expected-type "; Actual: " (representation-type entity))
+                    {:entity entity
+                     :expected-type expected-type
+                     :actual-type (representation-type entity)})))
+  entity)
+
 (defn export-entity
   "Export the Toucan entity to a v0 representation.
 
   resolve is a function that takes id and toucan model name and returns a ref"
-  [t2-entity resolve]
-  (case (v0-common/representation-type t2-entity)
-    :collection (v0-coll/export-collection     t2-entity resolve)
-    :database   (v0-database/export-database   t2-entity resolve)
-    :document   (v0-document/export-document   t2-entity resolve)
-    :metric     (v0-metric/export-metric       t2-entity resolve)
-    :model      (v0-model/export-model         t2-entity resolve)
-    :question   (v0-question/export-question   t2-entity resolve)
-    :snippet    (v0-snippet/export-snippet     t2-entity resolve)
-    :transform  (v0-transform/export-transform t2-entity resolve)))
+  [t2-entity]
+  (case (representation-type t2-entity)
+    :collection (v0-coll/export-collection t2-entity)
+    :database (v0-database/export-database t2-entity)
+    :document (v0-document/export-document t2-entity)
+    :metric (v0-metric/export-metric t2-entity)
+    :model (v0-model/export-model t2-entity)
+    :question (v0-question/export-question t2-entity)
+    :snippet (v0-snippet/export-snippet t2-entity)
+    :transform (v0-transform/export-transform t2-entity)))
 
 (defn yaml->toucan
   "Convert a v0 representation into data suitable for creating/updating an entity."
@@ -87,3 +109,13 @@
           toucan (yaml->toucan representation ref-index)]
       (t2/update! model id toucan)
       (t2/select-one model :id id))))
+
+(defn entity->ref
+  "Get the internal ref for a toucan entity."
+  [t2-entity]
+  (v0-common/reref (v0-common/->ref (:id t2-entity) (representation-type t2-entity))))
+
+(defn id-model->ref
+  "Get the internal ref for a toucan model and id."
+  [id model]
+  (entity->ref (t2/select-one model id)))

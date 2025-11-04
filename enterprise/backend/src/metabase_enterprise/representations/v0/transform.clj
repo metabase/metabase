@@ -11,7 +11,9 @@
    [representations.read :as rep-read]
    [toucan2.core :as t2]))
 
-(defmethod v0-common/representation-type :model/Transform [_entity]
+(defn representation-type
+  "Returns the representation type keyword for a transform."
+  [_entity]
   :transform)
 
 (def toucan-model
@@ -99,8 +101,8 @@
 
 (defn export-transform
   "Export a Transform Toucan entity to a v0 transform representation."
-  [transform resolve]
-  (let [query (v0-mbql/export-dataset-query (-> transform :source :query) resolve)]
+  [transform]
+  (let [query (v0-mbql/export-dataset-query (-> transform :source :query))]
     (cond-> (ordered-map
              :name (v0-common/unref (v0-common/->ref (:id transform) :transform))
              :type :transform

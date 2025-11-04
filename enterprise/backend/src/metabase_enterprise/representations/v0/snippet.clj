@@ -9,7 +9,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod v0-common/representation-type :model/NativeQuerySnippet [_entity]
+(defn representation-type
+  "Returns the representation type keyword for a snippet."
+  [_entity]
   :snippet)
 
 (def toucan-model

@@ -121,14 +121,14 @@
 
 (defn- card-ref
   "Convert a card reference string (e.g. 'card__123') to a representation ref."
-  [s resolve]
+  [s]
   (let [[_type id] (str/split s #"__")
         id (Long/parseLong id)]
-    (str "ref:" (resolve id :model/Card))))
+    (v0-common/id-model->ref id :model/Card)))
 
 (defn ->ref-source-table
   "Convert source_table from IDs to representation refs for export."
-  [query default-db resolve]
+  [query default-db]
   (walk/postwalk
    (fn [node]
      (cond
@@ -137,7 +137,7 @@
        node
 
        (string? (:source-table node))
-       (update node :source-table card-ref resolve)
+       (update node :source-table card-ref)
 
        (number? (:source-table node))
        (update node :source-table table-ref default-db)
@@ -149,7 +149,7 @@
 
 (defn ->ref-source-card
   "Convert source_card from IDs to representation refs for export."
-  [query resolve]
+  [query]
   (walk/postwalk
    (fn [node]
      (cond
@@ -158,7 +158,7 @@
        node
 
        (number? (:source-card node))
-       (update node :source-card resolve :model/Card)
+       (update node :source-card v0-common/id-model->ref :model/Card)
 
        :else
        (throw (ex-info "Unknown source table type" {:query query
@@ -214,18 +214,18 @@
   "Take a query and convert dependency ids to refs for export.
 
   It currently updates database, source table, and fields."
-  [query resolve]
+  [query]
   (let [query (->ref-database query)]
     (-> query
-        (->ref-source-table (:database query) resolve)
-        (->ref-source-card resolve)
+        (->ref-source-table (:database query))
+        (->ref-source-card)
         (->ref-fields (:database query)))))
 
 (defn export-dataset-query
   "Export a dataset query to representation compatible format.
   Will have database (as a ref) and query."
-  [query resolve]
-  (let [patched-query (patch-refs-for-export query resolve)]
+  [query]
+  (let [patched-query (patch-refs-for-export query)]
     {:database (:database patched-query)
      :query (if (lib/native-only-query? query)
               (lib/raw-native-query query)

@@ -17,18 +17,12 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- default-resolve
-  [id model]
-  (str (name (v0-common/representation-type (t2/select-one model id)))
-       "-"
-       id))
-
 (defn export-entity
   "Export a Metabase entity to its human-readable representation format.
    Dispatches on [model type] for Cards, [model nil] for other entities."
   [t2-entity]
   ;; v0 because that's the latest version
-  (v0/export-entity t2-entity default-resolve))
+  (v0/export-entity t2-entity))
 
 (defn- read-from-ref [version ref]
   (let [[type id] (str/split ref #"-" 2)]

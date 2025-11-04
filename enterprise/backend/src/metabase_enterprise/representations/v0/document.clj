@@ -18,7 +18,9 @@
   "The toucan model keyword associated with document representations"
   :model/Document)
 
-(defmethod v0-common/representation-type :model/Document [_entity]
+(defn representation-type
+  "Returns the representation type keyword for a document."
+  [_entity]
   :document)
 
 (defn- markdown->yaml [md]
@@ -70,13 +72,13 @@
         (first (t2/insert-returning-instances! :model/Document document-data))))))
 
 (defn- patch-refs-for-export
-  [yaml resolve]
+  [yaml]
   (walk/postwalk
    (fn [node]
-     (if-not (and (map? node)
-                  (= "cardEmbed" (:type node)))
-       node
-       (update-in node [:attrs :id] resolve :model/Card)))
+     (cond-> node
+       (and (map? node)
+            (= "cardEmbed" (:type node)))
+       (update-in [:attrs :id] v0-common/id-model->ref :model/Card)))
    yaml))
 
 (defn- edn->markdown
@@ -104,9 +106,9 @@
 
 (defn export-document
   "Export a Document Toucan entity to a v0 document representation."
-  [document resolve]
+  [document]
   (let [document-ref (v0-common/unref (v0-common/->ref (:id document) :document))
-        document (patch-refs-for-export document resolve)
+        document (patch-refs-for-export document)
         doc-content (let [doc (:document document)]
                       (cond
                         (nil? doc)

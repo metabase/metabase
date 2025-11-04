@@ -65,7 +65,7 @@
 
 (defn export-metric
   "Export a Metric Card Toucan entity to a v0 metric representation."
-  [card resolve]
+  [card]
   (-> (ordered-map
        :name (v0-common/unref (v0-common/->ref (:id card) :metric))
        :type (:type card)
@@ -75,5 +75,5 @@
        :columns (into []
                       (map #(select-keys % rep-v0-column/column-keys))
                       (:result_metadata card)))
-      (merge (v0-mbql/export-dataset-query (:dataset_query card) resolve))
+      (merge (v0-mbql/export-dataset-query (:dataset_query card)))
       u/remove-nils))

@@ -6,6 +6,7 @@
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.v0.core :as v0-core]
    [metabase-enterprise.representations.v0.document :as v0-document]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.lib.core :as lib]
@@ -86,7 +87,7 @@
                                                       :document {:type "doc"
                                                                  :content []}}]
       (let [document (t2/select-one :model/Document :id document-id)]
-        (is (= :document (v0-common/representation-type document)))))))
+        (is (= :document (v0-core/representation-type document)))))))
 
 (deftest document-card-embed-refs
   (mt/with-temp [:model/Card card {:type :question

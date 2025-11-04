@@ -8,16 +8,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defmulti representation-type
-  "Returns the representation type for an entity (e.g., :question, :model, :metric).
-   For plain maps (like MBQL data), uses :type field. For Toucan models, uses t2/model."
-  {:arglists '[[entity]]}
-  t2/model)
-
-(defmethod representation-type :default [entity]
-  (throw (ex-info (str "Unknown entity type: " (t2/model entity))
-                  {:entity entity})))
-
 (defn entity-id
   "Generates an entity-id stably from ref and collection-ref."
   [ref collection-ref]
@@ -68,6 +58,12 @@
   (when (ref? x)
     ;; "ref:"
     (subs x 4)))
+
+(defn reref
+  "Make that key a ref."
+  [x]
+  (when (string? x)
+    (str "ref:" x)))
 
 (defn refs
   "Returns all refs present in the entity-map, recursively walking to discover them."
@@ -150,7 +146,7 @@
 
 (defprotocol EntityLookup
   (lookup-entity [this ref])
-  (lookup-id     [this ref]))
+  (lookup-id [this ref]))
 
 (defrecord MapEntityIndex [idx]
   EntityLookup
@@ -167,15 +163,6 @@
 (defn ensure-not-nil [entity]
   (when (nil? entity)
     (throw (ex-info "Entity not found." {})))
-  entity)
-
-(defn ensure-correct-type [entity expected-type]
-  (when (and entity
-             (not= expected-type (representation-type entity)))
-    (throw (ex-info "Entity is not the correct type. Expected: " expected-type "; Actual: " (representation-type entity)
-                    {:entity entity
-                     :expected-type expected-type
-                     :actual-type (representation-type entity)})))
   entity)
 
 (defn ensure-correct-model-type [entity expected-type]

@@ -15,7 +15,9 @@
   "The toucan model keyword associated with database representations"
   :model/Database)
 
-(defmethod v0-common/representation-type :model/Database [_entity]
+(defn representation-type
+  "Returns the representation type keyword for a database."
+  [_entity]
   :database)
 
 (defn yaml->toucan
@@ -102,7 +104,7 @@
 
 (defn export-database
   "Export a Database Toucan entity to a v0 database representation."
-  [database _resolve]
+  [database]
   (let [ref (v0-common/unref (v0-common/->ref (:id database) :database))]
     (-> (ordered-map
          :name ref
