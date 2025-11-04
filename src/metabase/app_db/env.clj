@@ -176,6 +176,24 @@
                              "If Metabase fails to launch, please add it and try again."
                              "See https://github.com/metabase/metabase/issues/8908 for more details."]))))
 
+;; If someone is using mysql and wants to authenticate with AWS IAM, they need to either specify the server ssl certificate
+;; or trust it. Let's let them know in case they don't.
+(when-let [raw-connection-string (not-empty (:mb-db-connection-uri env))]
+  (when (and (:aws-iam env)
+             (= db-type :mysql)
+             (not
+              (or
+               (str/includes? raw-connection-string "trustServerCertificate=true")
+               (and
+                (str/includes? raw-connection-string "sslMode=VERIFY_CA")
+                (str/includes? raw-connection-string "serverSslCert=")))))
+    ;; Unfortunately this can't be i18n'ed because the application DB hasn't been initialized yet at the time we log
+    ;; this and thus the site locale is unavailable.
+    (log/warn (str/join " " ["Warning: MySQL connection string with AWS IAM authentication detected."
+                             "You must add one of the following to your application DB connection string:"
+                             "`?sslMode=VERIFY_CA&serverSslCert=/path/to/certificate.pem` or `?trustServerCertificate=true`"
+                             "SSL certificates can be found at: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html"]))))
+
 (def ^javax.sql.DataSource data-source
   "A [[javax.sql.DataSource]] ultimately derived from the environment variables."
   (env->DataSource db-type env))
