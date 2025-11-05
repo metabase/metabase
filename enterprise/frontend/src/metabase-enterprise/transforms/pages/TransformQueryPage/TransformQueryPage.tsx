@@ -169,6 +169,7 @@ function TransformQueryPageBody({
               onCancel={handleCancel}
             />
           }
+          hasMenu={!isDirty}
         />
         {source.type === "python" ? (
           <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
