@@ -909,18 +909,11 @@
                                                 (cond-> (nil? type)
                                                   (assoc :type :question))
                                                 (m/update-existing :dataset_query lib-be/normalize-query))
-         {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
-                                             {:query     (:dataset_query card-data)
-                                              :metadata  result_metadata
-                                              :entity-id (:entity_id card-data)
-                                              :model?    (model? card-data)})
          card                               (t2/with-transaction [_conn]
                                               ;; Adding a new card at `collection_position` could cause other cards in
                                               ;; this collection to change position, check that and fix it if needed
                                               (api/maybe-reconcile-collection-position! position-info)
-                                              (u/prog1 (t2/insert-returning-instance! :model/Card (cond-> card-data
-                                                                                                    metadata
-                                                                                                    (assoc :result_metadata metadata)))
+                                              (u/prog1 (t2/insert-returning-instance! :model/Card card-data)
                                                 (when (collections/remote-synced-collection? (:collection_id <>))
                                                   (collections/check-non-remote-synced-dependencies <>))))]
      (let [{:keys [dashboard_id]} card]
@@ -928,9 +921,6 @@
          (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card)))
      (when-not delay-event?
        (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
-     (when metadata-future
-       (log/info "Metadata not available soon enough. Saving new card and asynchronously updating metadata")
-       (card.metadata/save-metadata-async! metadata-future card))
      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
      ;; returned one -- See #4283
      card)))
