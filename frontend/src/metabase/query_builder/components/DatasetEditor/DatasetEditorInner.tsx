@@ -69,6 +69,7 @@ import type {
   RawSeries,
   ResultsMetadata,
   Series,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
@@ -167,7 +168,7 @@ function getSidebar(
     onFieldMetadataChange: (values: Partial<DatasetColumn>) => void;
     onMappedDatabaseColumnChange: (value: number) => void;
     onUpdateModelSettings: (settings: Partial<ModelSettings>) => void;
-    modelSettings: Partial<ModelSettings>;
+    modelSettings: ModelSettings;
   },
 ): ReactNode {
   const {
@@ -223,11 +224,10 @@ function getSidebar(
      * origin.
      */
     const questionSettings = question.settings();
-    const listViewSettings = (
+    const listViewSettings: ComputedVisualizationSettings =
       "list.columns" in questionSettings
         ? questionSettings
-        : modelSettings.visualizationSettings
-    ) as ComputedVisualizationSettings;
+        : modelSettings.visualizationSettings;
 
     return (
       <DatasetEditorSettingsSidebar
@@ -274,7 +274,10 @@ function getColumnTabIndex(columnIndex: number, focusedFieldIndex: number) {
   );
 }
 
-function getTempRawSeries(rawSeries: RawSeries, display: string) {
+function getTempRawSeries(
+  rawSeries: RawSeries,
+  display: VisualizationDisplay,
+): RawSeries {
   if (!rawSeries || !rawSeries.length) {
     return rawSeries;
   }
@@ -287,10 +290,16 @@ function getTempRawSeries(rawSeries: RawSeries, display: string) {
   ] as RawSeries;
 }
 
-function getTempVisualizationSettings(series: Series) {
+function getTempVisualizationSettings(
+  series: Series | null,
+): ComputedVisualizationSettings | null {
+  if (series == null) {
+    return series;
+  }
+
   return getComputedSettingsForSeries(
     getVisualizationTransformed(extractRemappings(series)).series,
-  );
+  ) as ComputedVisualizationSettings;
 }
 
 const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
@@ -343,16 +352,17 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
    * - `tempRawSeries` is introduced for the same reason. It patches `rawSeries` property inside nested `VisualizationResult` component,
    *  so that it renders correct visualization for 'Columns' tab.
    */
-  const [tempModelSettings, setTempModelSettings] = useState<
-    Partial<ModelSettings>
-  >(() => {
-    return {
-      display: question.display(),
-      visualizationSettings: rawSeries
-        ? getTempVisualizationSettings(rawSeries)
-        : question.settings(),
-    };
-  });
+  const [tempModelSettings, setTempModelSettings] = useState<ModelSettings>(
+    () => {
+      return {
+        display: question.display(),
+        visualizationSettings:
+          rawSeries != null
+            ? getTempVisualizationSettings(rawSeries) || question.settings()
+            : question.settings(),
+      };
+    },
+  );
   const tempRawSeries = useMemo(() => {
     if (!rawSeries || !rawSeries.length || !tempModelSettings.display) {
       return rawSeries;
@@ -479,10 +489,10 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
         }
       }
       if (tab === "metadata") {
-        setTempModelSettings(() => ({
-          visualizationSettings: getTempVisualizationSettings(
-            tempRawSeries as Series,
-          ),
+        setTempModelSettings((prevSettings) => ({
+          visualizationSettings:
+            getTempVisualizationSettings(tempRawSeries) ||
+            prevSettings.visualizationSettings,
           display: question.display(),
         }));
       }
@@ -548,7 +558,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     let questionWithUpdatedSettings = question;
     if (
       !!tempModelSettings.display &&
-      tempModelSettings?.display !== question.display()
+      tempModelSettings.display !== question.display()
     ) {
       questionWithUpdatedSettings = question.setDisplay(
         tempModelSettings.display,
@@ -704,12 +714,12 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
         setSettingsDirty(settings.display !== question.display());
         if (settings.display !== undefined) {
           setTempModelSettings((prevSettings) => ({
-            display: settings.display,
+            display: settings.display || prevSettings.display,
             visualizationSettings:
               settings.display === "list" && rawSeries != null
                 ? getTempVisualizationSettings(
                     getTempRawSeries(rawSeries, settings.display),
-                  )
+                  ) || prevSettings.visualizationSettings
                 : prevSettings.visualizationSettings,
           }));
         }

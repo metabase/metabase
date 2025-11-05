@@ -207,9 +207,7 @@ describe("scenarios > models list view", () => {
       cy.findByTestId("sidebar-right").as("sidebarRight");
 
       cy.log("Check that used column is not present in unused columns list.");
-      cy.get("@sidebarRight").within(() => {
-        cy.findByText("PRODUCT_ID").should("not.exist");
-      });
+      cy.get("@sidebarRight").findByText("PRODUCT_ID").should("not.exist");
 
       cy.get("@rightColumns").within(() => {
         cy.get("input").type("{Backspace}{Backspace}");
