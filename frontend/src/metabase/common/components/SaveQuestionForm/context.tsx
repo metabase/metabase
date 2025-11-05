@@ -13,7 +13,6 @@ import { useListRecentsQuery } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { FormProvider } from "metabase/forms";
-import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
@@ -72,16 +71,11 @@ export const SaveQuestionProvider = ({
   );
 
   const currentUser = useSelector(getCurrentUser);
-  const { id: collectionId } = useValidatedEntityId({
-    type: "collection",
-    id: userTargetCollection,
-  });
 
   const targetCollection =
-    collectionId ||
-    (currentUser && userTargetCollection === "personal"
+    userTargetCollection === "personal" && currentUser
       ? currentUser.personal_collection_id
-      : userTargetCollection);
+      : userTargetCollection;
 
   const [hasLoadedRecentItems, setHasLoadedRecentItems] = useState(false);
   const { data: recentItems, isLoading } = useListRecentsQuery(
@@ -170,9 +164,10 @@ export const SaveQuestionProvider = ({
     originalQuestion.type() !== "metric" &&
     originalQuestion.canWrite();
 
-  const saveToDashboard = originalQuestion
-    ? undefined
-    : (question.dashboardId() ?? undefined);
+  const saveToDashboard =
+    originalQuestion || !question.creationType()
+      ? undefined
+      : (question.dashboardId() ?? undefined);
 
   return (
     <FormProvider

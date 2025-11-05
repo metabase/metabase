@@ -790,7 +790,7 @@ describe("issue 40064", () => {
   });
 });
 
-describe.skip("issue 10493", () => {
+describe("issue 10493", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -1955,7 +1955,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
       });
     });
 
-    it("should work with models", () => {
+    it("should work with models", { tags: "@flaky" }, () => {
       createGuiModel({ sourceTableId: ORDERS_ID });
       verifyRemappedFilter({
         visitCard: () => cy.get("@modelId").then(H.visitModel),
@@ -2038,7 +2038,7 @@ describe("issue 41464", () => {
   });
 });
 
-describe.skip("issue 45359", () => {
+describe("issue 45359", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.intercept("/app/fonts/Lato/lato-v16-latin-regular.woff2").as(
@@ -2415,8 +2415,8 @@ describe("issue 50038", () => {
                   strategy: "left-join",
                   condition: [
                     "=",
-                    ["field", ORDERS_ID, {}],
-                    ["field", PRODUCTS_ID, {}],
+                    ["field", PRODUCTS.ID, null],
+                    ["field", ORDERS.PRODUCT_ID, { "join-alias": "Orders" }],
                   ],
                 },
               ],

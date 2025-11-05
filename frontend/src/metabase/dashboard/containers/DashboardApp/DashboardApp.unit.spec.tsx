@@ -269,4 +269,14 @@ describe("DashboardApp", () => {
       dashboardSearchParams.get("dashboard_load_id"),
     );
   });
+
+  it("should not allow to enter a dashboard name longer than 254 characters", async () => {
+    await setup();
+
+    const input = await screen.findByPlaceholderText("Add title");
+    await userEvent.clear(input);
+    await userEvent.paste("A".repeat(256));
+
+    expect(input).toHaveValue("A".repeat(254));
+  });
 });

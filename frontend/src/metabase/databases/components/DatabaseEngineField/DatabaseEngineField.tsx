@@ -6,7 +6,7 @@ import type { DatabaseData, Engine } from "metabase-types/api";
 import { getEngineOptions } from "../../utils/engine";
 import { DatabaseEngineList } from "../DatabaseEngineList";
 
-import DatabaseEngineSelect from "./DatabaseEngineSelect";
+import { DatabaseEngineSelect } from "./DatabaseEngineSelect";
 
 interface DatabaseEngineFieldProps {
   engineKey: string | undefined;
@@ -28,7 +28,10 @@ export const DatabaseEngineField = ({
   const { values } = useFormikContext<DatabaseData>();
 
   const options = useMemo(() => {
-    return getEngineOptions(engines, engineKey, isAdvanced);
+    return getEngineOptions(engines, engineKey, isAdvanced).map((option) => ({
+      label: option.name,
+      value: option.value,
+    }));
   }, [engines, engineKey, isAdvanced]);
 
   if (isAdvanced) {
@@ -37,6 +40,7 @@ export const DatabaseEngineField = ({
         options={options}
         disabled={disabled || values.is_sample}
         onChange={onChange}
+        engineKey={engineKey}
       />
     );
   }

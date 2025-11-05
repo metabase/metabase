@@ -1,22 +1,22 @@
 import { t } from "ttag";
 
-import type { MetabaseColors } from "embedding-sdk";
+import type { MetabaseColors } from "embedding-sdk-bundle/types/ui";
 import type { ColorName } from "metabase/lib/colors/types";
 
 export const getConfigurableThemeColors = () =>
   [
     {
-      name: t`Brand Color`,
+      name: t`Brand color`,
       key: "brand",
       originalColorKey: "brand",
     },
     {
-      name: t`Text Color`,
+      name: t`Text color`,
       key: "text-primary",
       originalColorKey: "text-dark",
     },
     {
-      name: t`Background Color`,
+      name: t`Background color`,
       key: "background",
       originalColorKey: "bg-white",
     },

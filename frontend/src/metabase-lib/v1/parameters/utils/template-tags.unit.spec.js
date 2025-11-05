@@ -7,14 +7,21 @@ import { createMockTemplateTag } from "metabase-types/api/mocks";
 
 describe("parameters/utils/cards", () => {
   describe("getTemplateTags", () => {
-    it("should return an empty array for an invalid card", () => {
-      expect(getTemplateTags({})).toEqual([]);
-    });
-
     it("should return an empty array for a non-native query", () => {
       const card = {
         dataset_query: {
           type: "query",
+        },
+      };
+      expect(getTemplateTags(card)).toEqual([]);
+    });
+
+    it("should return an empty array for an internal query", () => {
+      const card = {
+        dataset_query: {
+          type: "internal",
+          fn: "metabase-enterprise.audit-app.pages.queries/bad-table",
+          args: [],
         },
       };
       expect(getTemplateTags(card)).toEqual([]);

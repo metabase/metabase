@@ -2,32 +2,45 @@ import { memo, useMemo } from "react";
 import _ from "underscore";
 
 import { createMockMetadata } from "__support__/metadata";
+import { isFieldHidden } from "metabase/metadata/pages/DataModel/components/PreviewSection/utils";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import * as Lib from "metabase-lib";
 import type {
   DatabaseId,
+  Field,
   FieldId,
   FieldReference,
   Table,
 } from "metabase-types/api";
 
+import { HiddenFieldEmptyStateBlock } from "./EmptyStateBlock";
+
 interface Props {
   databaseId: DatabaseId;
+  field: Field;
   fieldId: FieldId;
   table: Table;
 }
 
 const STAGE_INDEX = 0;
 
-const FilteringPreviewBase = ({ databaseId, fieldId, table }: Props) => {
+const FilteringPreviewBase = ({ databaseId, field, fieldId, table }: Props) => {
   const query = useMemo(
     () => getPreviewQuery(table, databaseId),
     [databaseId, table],
   );
   const column = useMemo(
-    () => getPreviewColumn(query, fieldId),
+    () => query && getPreviewColumn(query, fieldId),
     [fieldId, query],
   );
+
+  if (isFieldHidden(field)) {
+    return <HiddenFieldEmptyStateBlock />;
+  }
+
+  if (query == null || column == null) {
+    return null;
+  }
 
   return (
     <FilterPickerBody
@@ -41,7 +54,10 @@ const FilteringPreviewBase = ({ databaseId, fieldId, table }: Props) => {
   );
 };
 
-function getPreviewQuery(table: Table, databaseId: number): Lib.Query {
+function getPreviewQuery(
+  table: Table,
+  databaseId: number,
+): Lib.Query | undefined {
   const metadata = createMockMetadata({
     tables: table
       ? [
@@ -55,14 +71,11 @@ function getPreviewQuery(table: Table, databaseId: number): Lib.Query {
       : [],
   });
   const metadataProvider = Lib.metadataProvider(databaseId, metadata);
-
-  return Lib.fromLegacyQuery(databaseId, metadataProvider, {
-    type: "query",
-    database: databaseId,
-    query: {
-      "source-table": table.id,
-    },
-  });
+  const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
+  if (tableMetadata == null) {
+    return undefined;
+  }
+  return Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata);
 }
 
 function getPreviewColumn(

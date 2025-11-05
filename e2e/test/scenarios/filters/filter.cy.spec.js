@@ -581,30 +581,34 @@ describe("scenarios > question > filter", () => {
     });
   });
 
-  it.skip("column filters should work for metrics (metabase#15333)", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          breakout: [["field-id", PRODUCTS.CATEGORY]],
+  it(
+    "column filters should work for metrics (metabase#15333)",
+    { tags: "@skip" },
+    () => {
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [["field-id", PRODUCTS.CATEGORY]],
+          },
+          database: SAMPLE_DB_ID,
         },
-        database: SAMPLE_DB_ID,
-      },
-      display: "table",
-    });
+        display: "table",
+      });
 
-    cy.get("[data-testid=cell-data]").contains("Count").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter by this column").click();
-    cy.findByPlaceholderText("Enter a number").type("42");
-    cy.button("Update filter").should("not.be.disabled").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Doohickey");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Gizmo").should("not.exist");
-  });
+      cy.get("[data-testid=cell-data]").contains("Count").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Filter by this column").click();
+      cy.findByPlaceholderText("Enter a number").type("42");
+      cy.button("Update filter").should("not.be.disabled").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Doohickey");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Gizmo").should("not.exist");
+    },
+  );
 
   it("custom expression filter should reference fields by their name, not by their id (metabase#15748)", () => {
     H.openOrdersTable({ mode: "notebook" });
@@ -709,7 +713,7 @@ describe("scenarios > question > filter", () => {
     // Esc closes the suggestion popover
     cy.realPress("Escape");
 
-    H.CustomExpressionEditor.completions().should("be.visible");
+    H.CustomExpressionEditor.completions().should("not.be.visible");
   });
 
   it("should work on twice summarized questions and preserve both summaries (metabase#15620)", () => {
@@ -1021,20 +1025,6 @@ describe("scenarios > question > filter", () => {
       H.visualize(() => {
         cy.contains("2").should("exist");
       });
-    });
-  });
-
-  // TODO: fixme!
-  it.skip("should render custom expression helper near the custom expression field", () => {
-    H.openReviewsTable({ mode: "notebook" });
-    H.filter({ mode: "notebook" });
-
-    H.expressionEditorWidget().within(() => {
-      cy.findByText("Custom Expression").click();
-
-      H.enterCustomColumnDetails({ formula: "floor" });
-
-      H.checkExpressionEditorHelperPopoverPosition();
     });
   });
 

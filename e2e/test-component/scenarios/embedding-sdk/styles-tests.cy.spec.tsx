@@ -4,9 +4,11 @@ import {
   InteractiveDashboard,
   InteractiveQuestion,
   MetabaseProvider,
+  type MetabaseTheme,
   StaticQuestion,
   defineMetabaseTheme,
 } from "@metabase/embedding-sdk-react";
+import { useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -131,6 +133,42 @@ describe("scenarios > embedding-sdk > styles", () => {
         .findByText("Pick your starting data")
         .invoke("css", "color")
         .should("equal", "rgb(255, 0, 0)");
+    });
+
+    it('should be able to reset theme colors by setting it to "undefined" (EMB-696)', () => {
+      const THEME = defineMetabaseTheme({
+        colors: {
+          "text-primary": "#0000ff",
+        },
+      });
+      function TestComponent() {
+        const [theme, setTheme] = useState<MetabaseTheme | undefined>(
+          undefined,
+        );
+        return (
+          <MetabaseProvider
+            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+            theme={theme}
+          >
+            <button onClick={() => setTheme(THEME)}>Set theme</button>
+            <button onClick={() => setTheme(undefined)}>Remove theme</button>
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          </MetabaseProvider>
+        );
+      }
+      cy.mount(<TestComponent />);
+
+      getSdkRoot().within(() => {
+        cy.findByRole("button", { name: "Set theme" }).click();
+        cy.findByText("Orders")
+          .invoke("css", "color")
+          .should("equal", "rgb(0, 0, 255)");
+        cy.findByRole("button", { name: "Remove theme" }).click();
+        cy.findByText("Orders")
+          .invoke("css", "color")
+          // --mb-color-text-primary
+          .should("equal", "rgba(7, 23, 34, 0.84)");
+      });
     });
   });
 

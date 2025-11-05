@@ -1,11 +1,13 @@
 (ns metabase.lib.convert
+  (:refer-clojure :exclude [mapv some select-keys not-empty #?(:clj doseq) #?(:clj for)])
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.error :as me]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert.metadata-to-legacy :as lib.convert.metadata-to-legacy]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -15,10 +17,12 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf :refer [mapv some select-keys not-empty #?(:clj doseq) #?(:clj for)]])
   #?@(:cljs [(:require-macros [metabase.lib.convert :refer [with-aggregation-list]])]))
 
 (def ^:private ^:dynamic *pMBQL-uuid->legacy-index*
@@ -123,15 +127,24 @@
   lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
 
-(defn- default-MBQL-clause->pMBQL [mbql-clause]
-  (let [last-elem (peek mbql-clause)
-        last-elem-option? (map? last-elem)
-        [clause-type & args] (cond-> mbql-clause
-                               last-elem-option? pop)
-        options (if last-elem-option?
-                  last-elem
-                  {})]
-    (lib.options/ensure-uuid (into [clause-type options] (map ->pMBQL) args))))
+(defn- default-MBQL-clause->pMBQL [[tag & args :as clause]]
+  (if (map? (first args))
+    ;; already MBQL 5
+    clause
+    ;; decode from legacy MBQL
+    (let [[tag options & args] (case (mbql.s/options-style tag)
+                                 ::mbql.s/options-style.none                     (list* tag nil args)
+                                 ::mbql.s/options-style.mbql5                    clause
+                                 (::mbql.s/options-style.last-always
+                                  ::mbql.s/options-style.last-always.snake_case) (list* tag (or (last args) {}) (butlast args))
+                                 ::mbql.s/options-style.last-unless-empty        (if (map? (last args))
+                                                                                   (list* tag (last args) (butlast args))
+                                                                                   (list* tag {} args))
+                                 ::mbql.s/options-style.𝕨𝕚𝕝𝕕                     (cond
+                                                                                       (> (count args) 2) clause
+                                                                                       (map? (last args)) (list* tag (last args) (butlast args))
+                                                                                       :else              (list* tag {} args)))]
+      (lib.options/ensure-uuid (into [tag options] (map ->pMBQL) args)))))
 
 (defmethod ->pMBQL :default
   [x]
@@ -161,7 +174,7 @@
   Only deduplicate the default `__join` aliases; we don't want the [[lib.util/unique-name-generator]] to touch other
   aliases and truncate them or anything like that."
   [joins]
-  (let [unique-name-fn (lib.util/unique-name-generator)]
+  (let [unique-name-fn (lib.util.unique-name-generator/unique-name-generator)]
     (mapv (fn [join]
             (cond-> join
               (= (:alias join) legacy-default-join-alias) (update :alias unique-name-fn)))
@@ -294,7 +307,19 @@
                                        (if (sequential? fields)
                                          (mapv ->pMBQL fields)
                                          (keyword fields))))
-      (not (:alias join)) (assoc :alias legacy-default-join-alias))))
+      (not (:alias join)) (assoc :alias legacy-default-join-alias)
+      ;; MBQL 5 does not support `:parameters` at the top level of a join, so move them to the join's first stage.
+      ;;
+      ;; TODO (Cam 8/8/25) -- this is not really a 100% correct transformation, parameters that specify
+      ;; `:stage-number` should get moved to the corresponding stage. (The first stage is the default tho so this is
+      ;; correct if `:stage-number` is unspecified.) We do this in the QP
+      ;; in [[metabase.query-processor.middleware.parameters/move-top-level-params-to-stage*]].
+      ;;
+      ;; IRL parameters are never actually attached to joins at all, and the only reason we're even pretending
+      ;; to "support them" (in air quotes) even this much is because we had a few tests that act like this is ok and I
+      ;; don't want to fix them. But we don't really need to be serious about actually supporting this.
+      (:parameters join) (-> (update-in [:stages 0 :parameters] #(into (vec %) (:parameters join)))
+                             (dissoc :parameters)))))
 
 (defmethod ->pMBQL :dispatch-type/sequential
   [xs]
@@ -456,10 +481,15 @@
          (dissoc :metabase.lib.query/transformation-added-base-type :base-type)
 
          ;; Removing the namespaces from a few
-         true (update-keys #(get options-preserved-in-legacy % %)))
+         true (perf/update-keys #(get options-preserved-in-legacy % %)))
        (into {} (comp (disqualify)
-                      (remove (fn [[k _v]]
-                                (#{:effective-type :ident} k)))))
+                      ;; remove `:effective-type` if `:base-type` is not present OR if it's the same as `:base-type`.
+                      (remove (let [keys-to-remove (if (or (nil? (:base-type m))
+                                                           (= (:effective-type m) (:base-type m)))
+                                                     #{:effective-type :ident}
+                                                     #{:ident})]
+                                (fn [[k _v]]
+                                  (keys-to-remove k))))))
        not-empty))
 
 (defmulti ^:private aggregation->legacy-MBQL
@@ -487,12 +517,33 @@
   [clause]
   (->legacy-MBQL clause))
 
-(defn- clause-with-options->legacy-MBQL [[k options & args]]
-  (if (map? options)
-    (into [k] (concat (map ->legacy-MBQL args)
-                      (when-let [options (not-empty (options->legacy-MBQL options))]
-                        [options])))
-    (into [k] (map ->legacy-MBQL (cons options args)))))
+(defn- clause-with-options->legacy-MBQL
+  [[tag & args :as clause]]
+  (if-not ((some-fn nil? map?) (first args))
+    ;; probably something like `:dimension` which is not a 'real' MBQL clause
+    clause
+    (let [[options & args] args
+          args             (map ->legacy-MBQL args)]
+      (loop [style (mbql.s/options-style tag), options options]
+        (case style
+          ::mbql.s/options-style.none                   (into [tag] args)
+          ::mbql.s/options-style.mbql5                  (into [tag (or options {})] args)
+          ::mbql.s/options-style.last-always            (-> (into [tag] args)
+                                                            (conj (not-empty (options->legacy-MBQL options))))
+          ::mbql.s/options-style.last-always.snake_case (recur ::mbql.s/options-style.last-always
+                                                               (into (empty options)
+                                                                     (map (fn [[k v]]
+                                                                            [(cond-> k
+                                                                               (simple-keyword? k) u/->snake_case_en)
+                                                                             v]))
+                                                                     (options->legacy-MBQL options)))
+          ::mbql.s/options-style.last-unless-empty      (let [options (options->legacy-MBQL options)]
+                                                          (cond-> (into [tag] args)
+                                                            (seq options)
+                                                            (conj options)))
+          ::mbql.s/options-style.𝕨𝕚𝕝𝕕                   (if (> (count args) 2)
+                                                              (recur ::mbql.s/options-style.mbql5 (options->legacy-MBQL options))
+                                                              (recur ::mbql.s/options-style.last-unless-empty options)))))))
 
 (defmethod ->legacy-MBQL :default
   [x]
@@ -566,11 +617,15 @@
        (and top-level? (:native inner-query)) (set/rename-keys {:native :query})))))
 
 (defmethod ->legacy-MBQL :dispatch-type/map [m]
-  (into {}
-        (comp (disqualify)
-              (map (fn [[k v]]
-                     [k (->legacy-MBQL v)])))
-        m))
+  (if (and (:database m)
+           (#{:query :native} (:type m)))
+    ;; already a legacy query
+    m
+    (into {}
+          (comp (disqualify)
+                (map (fn [[k v]]
+                       [k (->legacy-MBQL v)])))
+          m)))
 
 (defmethod ->legacy-MBQL :aggregation [[_ opts agg-uuid :as ag]]
   (if (map? opts)
@@ -594,42 +649,14 @@
 (defmethod ->legacy-MBQL :field [[_ opts id]]
   ;; Fields are not like the normal clauses - they need that options field even if it's null.
   ;; TODO: Sometimes the given field is in the legacy order - that seems wrong.
-  (let [[opts id] (if (or (nil? opts) (map? opts))
-                    [opts id]
-                    [id opts])]
-    [:field
-     (->legacy-MBQL id)
-     (options->legacy-MBQL opts)]))
-
-(defmethod ->legacy-MBQL :value
-  [[_tag opts value]]
-  (let [opts (-> opts
-                 ;; remove effective type since it's not used/allowed in legacy MBQL
-                 (dissoc :effective-type)
-                 ;; as mentioned above, `:value` in legacy MBQL expects `snake_case` keys for type info keys.
-                 (set/rename-keys  {:base-type      :base_type
-                                    :semantic-type  :semantic_type
-                                    :database-type  :database_type
-                                    :effective-type :effective_type})
-                 options->legacy-MBQL)]
-    ;; in legacy MBQL, `:value` has to be three args; `opts` has to be present, but it should can be `nil` if it is
-    ;; empty.
-    [:value value opts]))
-
-;; `:offset` is the same in legacy and pMBQL, but we need to update the expr it wraps.
-(defmethod ->legacy-MBQL :offset
-  [[tag opts expr n, :as clause]]
-  {:pre [(= (count clause) 4)]}
-  [tag opts (->legacy-MBQL expr) n])
-
-(defmethod ->legacy-MBQL ::string-comparison
-  [[tag opts & args]]
-  (if (> (count args) 2)
-    (into [tag (disqualify opts)] (map ->legacy-MBQL args)) ; Multi-arg, pMBQL style: [tag {opts...} x y z ...]
-    ;; Two-arg, legacy style: [tag x y] or [tag x y opts].
-    (let [opts (disqualify opts)]
-      (cond-> (into [tag] (map ->legacy-MBQL args))
-        (seq opts) (conj opts)))))
+  (let [[opts id]        (if ((some-fn nil? map?) opts)
+                           [opts id]
+                           [id opts])
+        ensure-base-type (fn [[tag field-name legacy-opts, :as _legacy-ref]]
+                           [tag field-name (merge (select-keys opts [:base-type]) legacy-opts)])
+        legacy-ref       (clause-with-options->legacy-MBQL [:field opts id])]
+    (cond-> legacy-ref
+      (string? id) ensure-base-type)))
 
 (defn- update-list->legacy-boolean-expression
   [m pMBQL-key legacy-key]
@@ -701,7 +728,15 @@
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage
       disqualify
-      (update-vals ->legacy-MBQL)))
+      (update-vals ->legacy-MBQL)
+      ;; a native stage becomes
+      ;;
+      ;;    {:native "SELECT ..."}
+      ;;
+      ;; IF it is used as a source query. If it's a top-level inner query it's
+      ;;
+      ;;    {:database 1, :type :native, :native {:query "SELECT ..."}}
+      (set/rename-keys {:query :native})))
 
 (defmethod ->legacy-MBQL :mbql/query [query]
   (try
@@ -733,7 +768,8 @@
     stage-number :- :int
     legacy-ref   :- some?]
    (let [legacy-ref                  (->> #?(:clj legacy-ref :cljs (js->clj legacy-ref :keywordize-keys true))
-                                          (mbql.normalize/normalize-fragment nil))
+                                          #_{:clj-kondo/ignore [:deprecated-var]}
+                                          mbql.normalize/normalize-field-ref)
          {aggregations :aggregation} (lib.util/query-stage query stage-number)]
      (with-aggregation-list aggregations
        (try

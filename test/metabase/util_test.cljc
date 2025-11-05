@@ -133,7 +133,9 @@
       (doseq [[s expected] s->expected]
         (testing (list 'u/slugify s)
           (is (= expected
-                 (u/slugify s))))))))
+                 (u/slugify s)))))))
+  (testing "non-ASCII characters are not truncated in the middle"
+    (is (= "%E5%8B%87" (u/slugify "勇士" {:max-length 10})))))
 
 (deftest ^:parallel slugify-unicode-test
   (doseq [[group s->expected]
@@ -233,6 +235,72 @@
 (deftest ^:parallel snake-key-test
   (is (= {:num_cans 2, :lisp_case? {:nested_maps? true}}
          (u/deep-snake-keys {:num-cans 2, :lisp-case? {:nested-maps? true}}))))
+
+(deftest ^:parallel kebab->snake-test
+  (testing "kebab->snake converts kebab-case to snake_case"
+    (are [input expected] (= expected (u/kebab->snake input))
+      ;; Keywords
+      :kebab-case          :kebab_case
+      :multi-word-example  :multi_word_example
+      :already_snake       :already_snake
+
+      ;; Namespaced keywords
+      :namespace/kebab-key :namespace/kebab_key
+
+      ;; Strings
+      "kebab-case"         "kebab_case"
+      "multi-word-example" "multi_word_example"
+
+      ;; Preserves camelCase and mixed case
+      :camelCase           :camelCase
+      :PascalCase          :PascalCase
+      :mixedCase-with-kebab :mixedCase_with_kebab
+
+      ;; Edge cases
+      :simple              :simple
+      ""                   ""
+      nil                  nil
+      123                  123)))
+
+(deftest ^:parallel kebab->snake-keys-test
+  (testing "kebab->snake-keys converts top-level keys only"
+    (is (= {:user_id 1
+            :profile_id "abc"
+            :nested {:still-kebab-case true}}
+           (u/kebab->snake-keys {:user-id 1
+                                 :profile-id "abc"
+                                 :nested {:still-kebab-case true}})))
+
+    (testing "preserves camelCase keys"
+      (is (= {:userId 1
+              :profileId "abc"
+              :conversation_id "def"}
+             (u/kebab->snake-keys {:userId 1
+                                   :profileId "abc"
+                                   :conversation-id "def"}))))))
+
+(deftest ^:parallel deep-kebab->snake-keys-test
+  (testing "deep-kebab->snake-keys recursively converts all keys"
+    (is (= {:user_id 1
+            :profile_id "abc"
+            :nested {:inner_key {:deeply_nested true}}}
+           (u/deep-kebab->snake-keys {:user-id 1
+                                      :profile-id "abc"
+                                      :nested {:inner-key {:deeply-nested true}}}))))
+
+  (testing "preserves camelCase throughout the structure"
+    (is (= {:userId 1
+            :nested {:innerKey {:deeplyNested true
+                                :kebab_converted "yes"}}}
+           (u/deep-kebab->snake-keys {:userId 1
+                                      :nested {:innerKey {:deeplyNested true
+                                                          :kebab-converted "yes"}}}))))
+
+  (testing "works with vectors and other collections"
+    (is (= [{:user_id 1} {:user_id 2}]
+           (u/deep-kebab->snake-keys [{:user-id 1} {:user-id 2}])))
+    (is (= {:items [{:item_id 1 :item_name "test"}]}
+           (u/deep-kebab->snake-keys {:items [{:item-id 1 :item-name "test"}]})))))
 
 (deftest ^:parallel one-or-many-test
   (are [input expected] (= expected
@@ -469,6 +537,20 @@
     [1 2]   true
     [1 2 1] false))
 
+(deftest ^:parallel traverse-test
+  (testing "u/traverse tracks deps correctly"
+    (let [graph {:a [:b :d]
+                 :b [:c :d]
+                 :c nil
+                 :d [:e]
+                 :e nil}]
+      (is (= {:a nil
+              :b #{:a}
+              :c #{:b}
+              :d #{:a :b}
+              :e #{:d}}
+             (u/traverse [:a] #(zipmap (get graph %) (repeat #{%}))))))))
+
 (deftest ^:parallel round-to-decimals-test
   (are [decimal-place expected] (= expected
                                    (u/round-to-decimals decimal-place 1250.04253))
@@ -628,3 +710,14 @@
       (is (nil? (u/find-first-map test-maps [:a :b] 5)))
       (is (= {:a {:b 2}}
              (u/find-first-map test-maps [:a :b] 2))))))
+
+(deftest ^:parallel last-test
+  (testing "u/last works"
+    (are [res src] (= res (u/last src))
+      9      (range 10)
+      3      '(1 2 3)
+      nil    '()
+      3      [1 2 3]
+      nil    []
+      \c     "abc"
+      [:b 2] {:a 1 :b 2})))

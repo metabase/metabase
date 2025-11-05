@@ -5,6 +5,8 @@ import { isTest } from "metabase/env";
 import { isWithinIframe } from "metabase/lib/dom";
 import { delay } from "metabase/lib/promise";
 
+import { IS_EMBED_PREVIEW } from "./embed";
+
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
 
@@ -40,7 +42,7 @@ export class Api extends EventEmitter {
   onResponseError;
 
   /**
-   * @type {string|{name: string, version: string}}
+   * @type {string|{name: string, version: string | null}}
    */
   requestClient;
 
@@ -70,16 +72,18 @@ export class Api extends EventEmitter {
       headers["X-Metabase-Session"] = self.sessionToken;
     }
 
-    // For simple embedding, we use "embedding-simple" instead of "embedding-iframe"
-    const isSimpleEmbedHeader =
-      typeof self.requestClient === "object" &&
-      self.requestClient.name === "embedding-simple";
-
-    if (isWithinIframe() && !isSimpleEmbedHeader) {
+    if (isWithinIframe() && !self.requestClient) {
       // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
       headers["X-Metabase-Embedded"] = "true";
-      // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-      headers["X-Metabase-Client"] = "embedding-iframe";
+      /**
+       * We counted static embed preview query executions which led to wrong embedding stats (EMB-930)
+       * This header is only used for analytics and for checking if we want to disable some features in the
+       * embedding iframe (only for Documents at the time of this comment)
+       */
+      if (!IS_EMBED_PREVIEW) {
+        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        headers["X-Metabase-Client"] = "embedding-iframe";
+      }
     }
 
     if (self.requestClient) {
@@ -87,7 +91,8 @@ export class Api extends EventEmitter {
         // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
         headers["X-Metabase-Client"] = self.requestClient.name;
         // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-        headers["X-Metabase-Client-Version"] = self.requestClient.version;
+        headers["X-Metabase-Client-Version"] =
+          self.requestClient.version ?? "unknown";
       } else {
         // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
         headers["X-Metabase-Client"] = self.requestClient;

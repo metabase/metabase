@@ -1,6 +1,6 @@
 (ns metabase.lib.equality
   "Logic for determining whether two pMBQL queries are equal."
-  (:refer-clojure :exclude [=])
+  (:refer-clojure :exclude [= every? some mapv empty? not-empty #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
@@ -20,7 +20,8 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? some mapv empty? not-empty #?(:clj for)]]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -103,46 +104,70 @@
     (sequential? x) ((get-method = :dispatch-type/sequential) x y)
     :else           (clojure.core/= x y)))
 
-(defn- columns-equal-by-fn-when-non-nil-in-both [f col-1 col-2]
+;; for debugging purposes the implementation of [[=]] for two columns return the "reason" things are not equal so we
+;; can log this; [[=]] is basically just (not <reason>)
+
+(defn- columns-not-equal-by-fn-when-non-nil-in-both
+  [f col-1 col-2]
   (let [v1 (f col-1)
         v2 (f col-2)]
-    (if (and v1 v2)
-      (clojure.core/= v1 v2)
-      true)))
+    (when (and v1 v2 (not= v1 v2))
+      f)))
 
-(defn- columns-equal-by-fn [f col-1 col-2]
-  (clojure.core/= (f col-1) (f col-2)))
+(defn- columns-not-equal-by-fn
+  [f col-1 col-2]
+  (when (not= (f col-1) (f col-2))
+    f))
 
 (defn- ignore-default-temporal-bucket [bucket]
   (when-not (clojure.core/= bucket :default)
     bucket))
 
-(defmethod = :metadata/column
+(defn- columns-not-equal-reason
+  "Returns a keyword representing the reason why two columns fail an [[=]] check (for debugging purposes)."
   [col-1 col-2]
-  (and
-   ;; two column metadatas with different IDs are NEVER equal.
-   (columns-equal-by-fn-when-non-nil-in-both :id col-1 col-2)
-   ;; from the same source.
-   (columns-equal-by-fn-when-non-nil-in-both :lib/source col-1 col-2)
-   ;; same join alias
-   (columns-equal-by-fn lib.join.util/current-join-alias col-1 col-2)
-   ;;
-   ;; columns that don't have the same binning or temporal bucketing are never the same.
-   ;;
-   ;; same binning
-   (columns-equal-by-fn :metabase.lib.field/binning col-1 col-2)
-   ;; same bucketing
-   (columns-equal-by-fn (comp ignore-default-temporal-bucket lib.temporal-bucket/raw-temporal-bucket) col-1 col-2)
-   ;; check `:inherited-temporal-unit` as well if both columns have it.
-   (columns-equal-by-fn-when-non-nil-in-both (comp ignore-default-temporal-bucket :inherited-temporal-unit) col-1 col-2)
-   ;; finally make sure they have the same `:lib/source-column-alias` (if both columns have it) or `:name` (if for
-   ;; some reason they do not)
+  (or
+    ;; two column metadatas with different IDs are NEVER equal.
+   (columns-not-equal-by-fn-when-non-nil-in-both :id col-1 col-2)
+    ;; from the same source.
+   (columns-not-equal-by-fn-when-non-nil-in-both :lib/source col-1 col-2)
+    ;; same join alias
+   (columns-not-equal-by-fn :metabase.lib.join/join-alias col-1 col-2)
+    ;; same FK Field (for implicitly joined columns)
+   (columns-not-equal-by-fn-when-non-nil-in-both :fk-field-id col-1 col-2)
+   (columns-not-equal-by-fn :fk-join-alias col-1 col-2)
+    ;; TODO (Cam 9/4/25) -- not super clear that this ought to be a reason for columns to be considered different since
+    ;; `:fk-field-name` doesn't really seem to be super important... but this check seems to be needed, otherwise when
+    ;; a there are multiple remappings from Col A => Col B (e.g. in a self-join) we'll potentially accidentally match
+    ;; the wrong one. Maybe we can figure out a better way to make sure that doesn't happen.
+   (columns-not-equal-by-fn-when-non-nil-in-both :fk-field-name col-1 col-2)
+    ;;
+    ;; columns that don't have the same binning or temporal bucketing are never the same.
+    ;;
+    ;; same binning
+   (columns-not-equal-by-fn :metabase.lib.field/binning col-1 col-2)
+    ;; same bucketing
+   (when (columns-not-equal-by-fn (comp ignore-default-temporal-bucket lib.temporal-bucket/raw-temporal-bucket) col-1 col-2)
+     'temporal-bucket)
+    ;; check `:inherited-temporal-unit` as well if both columns have it.
+   (when (columns-not-equal-by-fn-when-non-nil-in-both (comp ignore-default-temporal-bucket :inherited-temporal-unit) col-1 col-2)
+     :inherited-temporal-unit)
+    ;; finally make sure they have the same `:lib/source-column-alias` (if both columns have it) or `:name` (if for
+    ;; some reason they do not)
    (let [k (m/find-first (fn [k]
                            (and (k col-1)
                                 (k col-2)))
                          [:lib/source-column-alias :name])]
      (assert k "No key common to both columns")
-     (columns-equal-by-fn k col-1 col-2))))
+     (columns-not-equal-by-fn k col-1 col-2))))
+
+(defmethod = :metadata/column
+  [col-1 col-2]
+  (let [not-equal-reason (columns-not-equal-reason col-1 col-2)]
+    (if not-equal-reason
+      (log/debugf "Columns are not equal. Reason: %s" (pr-str not-equal-reason))
+      (log/debug "Columns are equal."))
+    (not not-equal-reason)))
 
 (mu/defn- resolve-field-id-in-source-card :- ::lib.schema.metadata/column
   "Integer Field ID: get metadata from the metadata provider. If this is the first stage of the query, merge in
@@ -176,7 +201,7 @@
                       source-field-join-alias]} _ref-id] :- ::lib.schema.ref/ref
    column                                                :- ::lib.schema.metadata/column]
   (if source-field
-    (and (clojure.core/= source-field (:fk-field-id column))
+    (and (clojure.core/= source-field ((some-fn :fk-field-id :lib/original-fk-field-id) column))
          ;; `source-field-name` is not available on old refs
          (or (nil? source-field-name) (clojure.core/= source-field-name (:fk-field-name column)))
          (clojure.core/= source-field-join-alias (:fk-join-alias column)))
@@ -412,9 +437,9 @@
     {:keys [generous?]}               :- FindMatchingColumnOptions]
    (case ref-kind
      ;; Aggregations are referenced by the UUID of the column being aggregated.
-     :aggregation  (m/find-first #(and (clojure.core/= (:lib/source %) :source/aggregations)
-                                       (clojure.core/= (:lib/source-uuid %) ref-id))
-                                 columns)
+     :aggregation (m/find-first #(and (clojure.core/= (:lib/source %) :source/aggregations)
+                                      (clojure.core/= (:lib/source-uuid %) ref-id))
+                                columns)
      ;; Expressions are referenced by name; fields by ID or name.
      (:expression
       :field)     (let [plausible (if (string? ref-id)
@@ -434,35 +459,47 @@
     a-ref-or-column :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
     columns         :- [:sequential ::lib.schema.metadata/column]
     opts            :- FindMatchingColumnOptions]
-   (let [[ref-kind ref-opts ref-id :as a-ref] (if (lib.util/clause? a-ref-or-column)
-                                                a-ref-or-column
-                                                (lib.ref/ref a-ref-or-column))]
-     (or (find-matching-column a-ref columns opts)
-         ;; Aggregations are matched by `:source-uuid` but if we're comparing old columns to new refs or vice versa
-         ;; the random UUIDs won't match up. This falls back to the `:lib/source-name` option on aggregation refs, if
-         ;; present.
-         (when (and (clojure.core/= ref-kind :aggregation)
-                    (:lib/source-name ref-opts))
-           (m/find-first #(and (clojure.core/= (:lib/source %) :source/aggregations)
-                               (clojure.core/= (:name %) (:lib/source-name ref-opts)))
-                         columns))
-         ;; We failed to match by ID, so try again with the column's name. Any columns with `:id` set are dropped.
-         ;; Why? Suppose there are two CREATED_AT columns in play - if one has an :id and it failed to match above, then
-         ;; it certainly shouldn't match by name just because of the coincidence of column names!
-         (when (and query (number? ref-id))
-           (when-let [no-id-columns (not-empty (remove :id columns))]
-             (when-let [resolved (if (lib.util/clause? a-ref-or-column)
-                                   (resolve-field-id-in-source-card query stage-number ref-id)
-                                   a-ref-or-column)]
-               (find-matching-column (-> (assoc a-ref 2 (or (:lib/desired-column-alias resolved)
-                                                            (:name resolved)))
-                                         ;; make sure the :field ref has a `:base-type`, it's against the rules for a
-                                         ;; nominal :field ref not to have a base-type -- this can fail schema
-                                         ;; validation if it's missing in the Field ID ref we generate the nominal ref
-                                         ;; from.
-                                         (lib.options/update-options (partial merge {:base-type :type/*})))
-                                     no-id-columns
-                                     opts))))))))
+   ;; if we're matching against column metadata then we can try to use [[=]] to match instead of trying to do
+   ;; ref-based matching.
+   (or
+    (when (clojure.core/= (:lib/type a-ref-or-column) :metadata/column)
+      (let [col     a-ref-or-column
+            matches (filter #(= % col) columns)]
+        ;; only return the match found this way if it is unambiguous.
+        ;;
+        ;; TODO (Cam 8/19/25) -- we should update this to disambiguate matches for these instead of falling back to
+        ;; the ref-based-resolution code, since finding matches between column metadata is more accurate
+        (when (clojure.core/= (count matches) 1)
+          (first matches))))
+    (let [[ref-kind ref-opts ref-id :as a-ref] (if (lib.util/clause? a-ref-or-column)
+                                                 a-ref-or-column
+                                                 (lib.ref/ref a-ref-or-column))]
+      (or (find-matching-column a-ref columns opts)
+          ;; Aggregations are matched by `:source-uuid` but if we're comparing old columns to new refs or vice versa
+          ;; the random UUIDs won't match up. This falls back to the `:lib/source-name` option on aggregation refs, if
+          ;; present.
+          (when (and (clojure.core/= ref-kind :aggregation)
+                     (:lib/source-name ref-opts))
+            (m/find-first #(and (clojure.core/= (:lib/source %) :source/aggregations)
+                                (clojure.core/= (:name %) (:lib/source-name ref-opts)))
+                          columns))
+          ;; We failed to match by ID, so try again with the column's name. Any columns with `:id` set are dropped.
+          ;; Why? Suppose there are two CREATED_AT columns in play - if one has an :id and it failed to match above, then
+          ;; it certainly shouldn't match by name just because of the coincidence of column names!
+          (when (and query (number? ref-id))
+            (when-let [no-id-columns (not-empty (remove :id columns))]
+              (when-let [resolved (if (lib.util/clause? a-ref-or-column)
+                                    (resolve-field-id-in-source-card query stage-number ref-id)
+                                    a-ref-or-column)]
+                (find-matching-column (-> (assoc a-ref 2 (or (:lib/desired-column-alias resolved)
+                                                             (:name resolved)))
+                                          ;; make sure the :field ref has a `:base-type`, it's against the rules for a
+                                          ;; nominal :field ref not to have a base-type -- this can fail schema
+                                          ;; validation if it's missing in the Field ID ref we generate the nominal ref
+                                          ;; from.
+                                          (lib.options/update-options (partial merge {:base-type :type/*})))
+                                      no-id-columns
+                                      opts)))))))))
 
 (defn- ref-id-or-name [[_ref-kind _opts id-or-name]]
   id-or-name)
@@ -551,17 +588,16 @@
      (log/errorf "[mark-selected-columns] There are more selected columns (%d) than there are total columns (%d)"
                  (count selected-columns-or-refs) (count cols)))
    (when (seq cols)
-     (let [selected-refs          (mapv lib.ref/ref selected-columns-or-refs)
-           matching-selected-cols (into #{}
-                                        (keep (fn [field-ref]
-                                                (or (find-matching-column query stage-number field-ref cols)
+     (let [matching-selected-cols (into #{}
+                                        (keep (fn [selected-col-or-ref]
+                                                (or (find-matching-column query stage-number selected-col-or-ref cols)
                                                     (do
-                                                      (log/warnf "[mark-selected-columns] failed to find match for %s" (pr-str field-ref))
+                                                      (log/warnf "[mark-selected-columns] failed to find match for %s" (pr-str selected-col-or-ref))
                                                       nil))))
-                                        selected-refs)]
-       (when-not (clojure.core/= (count selected-refs) (count matching-selected-cols))
+                                        selected-columns-or-refs)]
+       (when-not (clojure.core/= (count selected-columns-or-refs) (count matching-selected-cols))
          (log/warnf "[mark-selected-columns] %d refs are selected, but we found %d matches"
-                    (count selected-refs)
+                    (count selected-columns-or-refs)
                     (count matching-selected-cols)))
        (mapv #(assoc % :selected? (contains? matching-selected-cols %)) cols)))))
 

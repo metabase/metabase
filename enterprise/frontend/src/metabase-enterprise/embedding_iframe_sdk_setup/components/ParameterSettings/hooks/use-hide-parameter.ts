@@ -1,33 +1,38 @@
-import { useSdkIframeEmbedSetupContext } from "../../../context";
+import { useCallback } from "react";
 
-export function useHideParameter() {
-  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
+import type { SdkIframeEmbedSetupContextType } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
 
-  const toggleParameterVisibility = (parameterName: string) => {
-    // Dashboard parameters are shown by default and can be hidden,
-    // while question parameters are always hidden in the SDK and cannot be shown.
-    if (!settings.dashboardId) {
-      return;
-    }
+export function useHideParameter({
+  settings,
+  updateSettings,
+}: Pick<SdkIframeEmbedSetupContextType, "settings" | "updateSettings">) {
+  const toggleParameterVisibility = useCallback(
+    (parameterName: string) => {
+      if (!settings.dashboardId && !settings.questionId) {
+        return;
+      }
 
-    const hiddenParameters = settings?.hiddenParameters ?? [];
+      const hiddenParameters = settings?.hiddenParameters ?? [];
 
-    const nextHiddenParameters = hiddenParameters.includes(parameterName)
-      ? hiddenParameters.filter((name) => name !== parameterName)
-      : [...hiddenParameters, parameterName];
+      const nextHiddenParameters = hiddenParameters.includes(parameterName)
+        ? hiddenParameters.filter((name) => name !== parameterName)
+        : [...hiddenParameters, parameterName];
 
-    updateSettings({ hiddenParameters: nextHiddenParameters });
-  };
+      updateSettings({ hiddenParameters: nextHiddenParameters });
+    },
+    [settings, updateSettings],
+  );
 
-  const isParameterHidden = (parameterName: string) => {
-    // Dashboard parameters are shown by default and can be hidden,
-    // while question parameters are always hidden in the SDK and cannot be shown.
-    if (!settings.dashboardId) {
-      return true;
-    }
+  const isParameterHidden = useCallback(
+    (parameterName: string) => {
+      if (!settings.dashboardId && !settings.questionId) {
+        return true;
+      }
 
-    return (settings.hiddenParameters ?? []).includes(parameterName);
-  };
+      return (settings.hiddenParameters ?? []).includes(parameterName);
+    },
+    [settings],
+  );
 
   return {
     isParameterHidden,

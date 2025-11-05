@@ -1,15 +1,22 @@
 import type { ReactNode } from "react";
 import { P, match } from "ts-pattern";
 
-import { ComponentProvider } from "embedding-sdk/components/public/ComponentProvider";
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion";
-import { StaticQuestion } from "embedding-sdk/components/public/StaticQuestion";
+import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
+import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { SdkBreadcrumbsProvider } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
+import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
+import { MetabotQuestion } from "embedding-sdk-bundle/components/public/MetabotQuestion";
+import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
+import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
 import {
   InteractiveDashboard,
   StaticDashboard,
-} from "embedding-sdk/components/public/dashboard";
-import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-package/lib/public/define-metabase-auth-config";
+} from "embedding-sdk-bundle/components/public/dashboard";
+import { getSdkStore, useSdkSelector } from "embedding-sdk-bundle/store";
+import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
+import type { MetabaseAuthConfig } from "embedding-sdk-package";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
+import { createTracker } from "metabase/lib/analytics-untyped";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
 
@@ -17,6 +24,7 @@ import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
 
+import { MetabaseBrowser } from "./MetabaseBrowser";
 import {
   SdkIframeApiKeyInProductionError,
   SdkIframeExistingUserSessionInProductionError,
@@ -29,8 +37,13 @@ const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
     settings?.useExistingUserSession || false;
 };
 
+const store = getSdkStore();
+createTracker(store);
+
 export const SdkIframeEmbedRoute = () => {
-  const { embedSettings } = useSdkIframeEmbedEventBus({ onSettingsChanged });
+  const { embedSettings } = useSdkIframeEmbedEventBus({
+    onSettingsChanged,
+  });
 
   // The embed settings won't be available until the parent sends it via postMessage.
   // The SDK will show its own loading indicator, so we don't need to show it twice.
@@ -60,13 +73,19 @@ export const SdkIframeEmbedRoute = () => {
 
   const { theme, locale } = embedSettings;
 
-  const authConfig = defineMetabaseAuthConfig({
+  const authConfig: MetabaseAuthConfig = {
     metabaseInstanceUrl: embedSettings.instanceUrl,
     apiKey: embedSettings.apiKey,
-  });
+  };
 
   return (
-    <ComponentProvider authConfig={authConfig} theme={theme} locale={locale}>
+    <ComponentProvider
+      authConfig={authConfig}
+      theme={theme}
+      locale={locale}
+      reduxStore={store}
+      isLocalHost={embedSettings._isLocalhost}
+    >
       <Box h="100vh" bg={theme?.colors?.background}>
         <SdkIframeEmbedView settings={embedSettings} />
       </Box>
@@ -80,78 +99,103 @@ const SdkIframeEmbedView = ({
   settings: SdkIframeEmbedSettings;
 }): ReactNode => {
   const rerenderKey = useParamRerenderKey(settings);
+  const loginStatus = useSdkSelector(getLoginStatus);
 
-  return (
-    match(settings)
-      // .with({ template: "curate-content" }, (_settings) => null)
-      // .with({ template: "view-content" }, (_settings) => null)
-      .with(
-        {
-          componentName: "metabase-dashboard",
-          dashboardId: P.nonNullable,
-          drills: false,
-        },
-        (settings) => (
-          <StaticDashboard
-            dashboardId={settings.dashboardId}
-            withTitle={settings.withTitle}
-            withDownloads={settings.withDownloads}
-            initialParameters={settings.initialParameters}
-            hiddenParameters={settings.hiddenParameters}
+  if (loginStatus?.status === "error") {
+    return (
+      <PublicComponentStylesWrapper>
+        <SdkError
+          error={loginStatus.error}
+          message={loginStatus.error.message}
+        />
+      </PublicComponentStylesWrapper>
+    );
+  }
+
+  return match(settings)
+    .with(
+      {
+        componentName: "metabase-browser",
+      },
+      (settings) => (
+        // re-mount breadcrumbs when initial collection changes
+        <SdkBreadcrumbsProvider key={settings.initialCollection}>
+          <MetabaseBrowser settings={settings} />
+        </SdkBreadcrumbsProvider>
+      ),
+    )
+    .with(
+      {
+        componentName: "metabase-dashboard",
+        dashboardId: P.nonNullable,
+        drills: false,
+      },
+      (settings) => (
+        <StaticDashboard
+          dashboardId={settings.dashboardId}
+          withTitle={settings.withTitle}
+          withDownloads={settings.withDownloads}
+          initialParameters={settings.initialParameters}
+          hiddenParameters={settings.hiddenParameters}
+          key={rerenderKey}
+        />
+      ),
+    )
+    .with(
+      {
+        componentName: "metabase-dashboard",
+        dashboardId: P.nonNullable,
+        drills: P.optional(true),
+      },
+      (settings) => (
+        <InteractiveDashboard
+          dashboardId={settings.dashboardId}
+          withTitle={settings.withTitle}
+          withDownloads={settings.withDownloads}
+          initialParameters={settings.initialParameters}
+          hiddenParameters={settings.hiddenParameters}
+          drillThroughQuestionHeight="100%"
+          drillThroughQuestionProps={{ isSaveEnabled: false }}
+          key={rerenderKey}
+        />
+      ),
+    )
+    .with(
+      {
+        componentName: "metabase-question",
+        questionId: P.nonNullable,
+      },
+      (settings) => {
+        const commonProps = {
+          questionId: settings.questionId,
+          withDownloads: settings.withDownloads,
+          height: "100%",
+          initialSqlParameters: settings.initialSqlParameters,
+          title: settings.withTitle ?? true, // defaulting title to true even if in the sdk it defaults to false for static
+        };
+
+        // note: to create a new question we need to render InteractiveQuestion
+        if (settings.drills === false && settings.questionId !== "new") {
+          // note: this disable drills but also removes the top toolbar
+          return <StaticQuestion {...commonProps} key={rerenderKey} />;
+        }
+
+        return (
+          <SdkQuestion
+            {...commonProps}
+            isSaveEnabled={settings.isSaveEnabled ?? false}
             key={rerenderKey}
+            targetCollection={settings.targetCollection}
+            entityTypes={settings.entityTypes}
           />
-        ),
-      )
-      .with(
-        {
-          componentName: "metabase-dashboard",
-          dashboardId: P.nonNullable,
-          drills: P.optional(true),
-        },
-        (settings) => (
-          <InteractiveDashboard
-            dashboardId={settings.dashboardId}
-            withTitle={settings.withTitle}
-            withDownloads={settings.withDownloads}
-            initialParameters={settings.initialParameters}
-            hiddenParameters={settings.hiddenParameters}
-            drillThroughQuestionHeight="100%"
-            drillThroughQuestionProps={{ isSaveEnabled: false }}
-            key={rerenderKey}
-          />
-        ),
-      )
-      .with(
-        {
-          componentName: "metabase-question",
-          questionId: P.nonNullable,
-        },
-        (settings) => {
-          const commonProps = {
-            questionId: settings.questionId,
-            withDownloads: settings.withDownloads,
-            height: "100%",
-            initialSqlParameters: settings.initialSqlParameters,
-            title: settings.withTitle ?? true, // defaulting title to true even if in the sdk it defaults to false for static
-          };
-
-          // note: to create a new question we need to render InteractiveQuestion
-          if (settings.drills === false && settings.questionId !== "new") {
-            // note: this disable drills but also removes the top toolbar
-            return <StaticQuestion {...commonProps} key={rerenderKey} />;
-          }
-
-          return (
-            <SdkQuestion
-              {...commonProps}
-              isSaveEnabled={settings.isSaveEnabled ?? false}
-              key={rerenderKey}
-              targetCollection={settings.targetCollection}
-              entityTypes={settings.entityTypes}
-            />
-          );
-        },
-      )
-      .otherwise(() => null)
-  );
+        );
+      },
+    )
+    .with(
+      {
+        componentName: "metabase-metabot",
+      },
+      (settings) => <MetabotQuestion layout={settings.layout} height="100%" />,
+    )
+    .otherwise(() => null);
 };

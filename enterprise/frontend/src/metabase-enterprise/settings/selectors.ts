@@ -23,6 +23,9 @@ const getCustomLogoUrl = (settingValues: EnterpriseSettings) => {
 export const getLogoUrl = (state: EnterpriseState) =>
   getCustomLogoUrl(getSettings(state));
 
+export const getIsDefaultMetabaseLogo = (state: EnterpriseState) =>
+  getLogoUrl(state) === DEFAULT_LOGO_URL;
+
 export const getLoadingMessage = (state: EnterpriseState) => {
   const setting = getSetting(state, "loading-message");
   // default to empty string to account for a historical bug where the

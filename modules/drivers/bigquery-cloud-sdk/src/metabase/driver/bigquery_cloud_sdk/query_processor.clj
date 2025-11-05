@@ -1,4 +1,5 @@
 (ns metabase.driver.bigquery-cloud-sdk.query-processor
+  (:refer-clojure :exclude [select-keys some not-empty])
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -8,15 +9,18 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common :as driver.common]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys some not-empty]])
   (:import
    (com.google.cloud.bigquery
     Field
@@ -34,6 +38,8 @@
    (metabase.driver.common.parameters FieldFilter)))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.driver.common.parameters/keep-me)
 
 (defn- valid-project-identifier?
   "Is String `s` a valid BigQuery project identifier (a.k.a. project-id)? Identifiers are only allowed to contain
@@ -554,7 +560,8 @@
   (let [datetime     (fn [x target-timezone]
                        [:datetime x target-timezone])
         hsql-form    (sql.qp/->honeysql driver arg)
-        timestamptz? (h2x/is-of-type? hsql-form "timestamp")]
+        timestamptz? (or (sql.qp.u/field-with-tz? arg)
+                         (h2x/is-of-type? hsql-form "timestamp"))]
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           hsql-form

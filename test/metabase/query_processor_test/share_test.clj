@@ -3,6 +3,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]))
 
@@ -91,28 +94,40 @@
 (deftest ^:parallel segment-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Share containing a Segment"
-      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                      :definition {:source-table (mt/id :venues)
-                                                                   :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
+      (let [mp (lib.tu/mock-metadata-provider
+                (mt/metadata-provider)
+                {:segments [{:id         1
+                             :table-id   (mt/id :venues)
+                             :definition {:source-table (mt/id :venues)
+                                          :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]})]
         (is (= [[0.94]]
                (mt/formatted-rows
                 [2.0]
-                (mt/run-mbql-query venues
-                  {:aggregation [[:share [:segment segment-id]]]}))))))))
+                (qp/process-query
+                 (lib/query
+                  mp
+                  (mt/mbql-query venues
+                    {:aggregation [[:share [:segment 1]]]}))))))))))
 
 (deftest ^:parallel metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Share inside a Metric"
-      (mt/with-temp [:model/Card {metric-id :id} {:dataset_query (mt/mbql-query venues
-                                                                   {:aggregation [:share [:< $price 4]]
-                                                                    :source-table $$venues})
-                                                  :type :metric}]
+      (let [mp (lib.tu/mock-metadata-provider
+                (mt/metadata-provider)
+                {:cards [{:id            1
+                          :dataset-query (mt/mbql-query venues
+                                           {:aggregation  [:share [:< $price 4]]
+                                            :source-table $$venues})
+                          :type          :metric}]})]
         (is (= [[0.94]]
                (mt/formatted-rows
                 [2.0]
-                (mt/run-mbql-query venues
-                  {:aggregation [[:metric metric-id]]
-                   :source-table (str "card__" metric-id)}))))))))
+                (qp/process-query
+                 (lib/query
+                  mp
+                  (mt/mbql-query venues
+                    {:aggregation  [[:metric 1]]
+                     :source-table "card__1"}))))))))))
 
 (deftest ^:parallel share-containing-expression-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)

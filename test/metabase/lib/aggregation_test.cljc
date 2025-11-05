@@ -685,10 +685,10 @@
         first-stage (lib.util/query-stage query 0)
         first-join (first (lib/joins query 0))]
     (is (= 1 (count (:stages query))))
-    (is (not (contains? first-stage :fields)))
+    (is (contains? first-stage :fields))
     (is (not (contains? first-stage :order-by)))
     (is (= 1 (count (lib/joins query 0))))
-    (is (not (contains? first-join :fields))))
+    (is (contains? first-join :fields)))
   (testing "Already summarized query should be left alone"
     (let [query (-> (lib.tu/venues-query)
                     (lib/breakout (meta/field-metadata :venues :category-id))
@@ -698,6 +698,19 @@
           first-stage (lib.util/query-stage query 0)]
       (is (= 2 (count (:stages query))))
       (is (contains? first-stage :order-by)))))
+
+(deftest ^:parallel aggregate-should-preserve-fields
+  (testing "adding and removing an aggregation keeps original fields"
+    (let [orig-query (-> (lib.tu/venues-query)
+                         (lib/with-fields [(meta/field-metadata :venues :price)])
+                         (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
+                                                        [(lib/=
+                                                          (meta/field-metadata :venues :category-id)
+                                                          (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
+                                       (lib/with-join-fields [(meta/field-metadata :categories :id)]))))
+          agg-query (lib/aggregate orig-query (lib/count))
+          query (lib/remove-clause agg-query (first (lib/aggregations agg-query)))]
+      (is (= orig-query query)))))
 
 (deftest ^:parallel aggregation-with-case-expression-metadata-test
   (let [query (-> (lib.tu/venues-query)

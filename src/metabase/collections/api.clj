@@ -14,11 +14,10 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.config.core :as config]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
@@ -145,7 +144,7 @@
         (cond->> collections
           (mi/can-read? root)
           (cons root))))
-    (t2/hydrate collections :can_write :is_personal :can_delete)
+    (t2/hydrate collections :can_write :is_personal :can_delete :is_remote_synced)
     ;; remove the :metabase.collection.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal collections we translate the name to user's locale
     (collection/personal-collections-with-ui-details  (for [collection collections]
@@ -256,9 +255,14 @@
 (def ^:private valid-sort-directions #{"asc" "desc"})
 (defn- normalize-sort-choice [w] (when w (keyword (str/replace w #"_" "-"))))
 
+(def ^:private CollectionType
+  "Collection types that the root/items endpoint can filter on"
+  [:enum "remote-synced"])
+
 (def ^:private CollectionChildrenOptions
   [:map
    [:show-dashboard-questions?     :boolean]
+   [:collection-type {:optional true} [:maybe CollectionType]]
    [:archived?                     :boolean]
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
    ;; when specified, only return results of this type.
@@ -337,7 +341,7 @@
                                          "/"))
                     (update :archived api/bit->boolean)
                     (update :archived_directly api/bit->boolean)))
-              :can_write :can_restore :can_delete))
+              :can_write :can_restore :can_delete :is_remote_synced))
 
 (defmethod collection-children-query :document
   [_ collection {:keys [archived? pinned-state]}]
@@ -499,52 +503,9 @@
   [_ collection options]
   (card-query :question collection options))
 
-(defn- fully-parameterized-text?
-  "Decide if `text`, usually (a part of) a query, is fully parameterized given the parameter types
-  described by `template-tags` (usually the template tags of a native query).
-
-  The rules to consider a piece of text fully parameterized is as follows:
-
-  1. All parameters not in an optional block are field-filters or snippets or have a default value.
-  2. All required parameters have a default value.
-
-  The first rule is absolutely necessary, as queries violating it cannot be executed without
-  externally supplied parameter values. The second rule is more controversial, as field-filters
-  outside of optional blocks ([[ ... ]]) don't prevent the query from being executed without
-  external parameter values (neither do parameters in optional blocks). The rule has been added
-  nonetheless, because marking a parameter as required is something the user does intentionally
-  and queries that are technically executable without parameters can be unacceptably slow
-  without the necessary constraints. (Marking parameters in optional blocks as required doesn't
-  seem to be useful any way, but if the user said it is required, we honor this flag.)"
-  [text template-tags]
-  (try
-    (let [obligatory-params (into #{}
-                                  (comp (filter params/Param?)
-                                        (map :k))
-                                  (params.parse/parse text))]
-      (and (every? #(or (#{:dimension :snippet :card} (:type %))
-                        (:default %))
-                   (map template-tags obligatory-params))
-           (every? #(or (not (:required %))
-                        (:default %))
-                   (vals template-tags))))
-    (catch clojure.lang.ExceptionInfo _
-      ;; An exception might be thrown during parameter parsing if the syntax is invalid. In this case we return
-      ;; true so that we still can try to generate a preview for the query and display an error.
-      false)))
-
-(defn fully-parameterized-query?
-  "Given a Card, returns `true` if its query is fully parameterized."
-  [row]
-;; TODO TB handle pMBQL native queries
-  (let [native-query (-> row :dataset_query :native)]
-    (if-let [template-tags (:template-tags native-query)]
-      (fully-parameterized-text? (:query native-query) template-tags)
-      true)))
-
 (defn- post-process-card-row [row]
   (-> (t2/instance :model/Card row)
-      (update :dataset_query (:out mi/transform-metabase-query))
+      (update :dataset_query (:out lib-be/transform-query))
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)))
@@ -552,7 +513,7 @@
 (defn- post-process-card-row-after-hydrate [row]
   (-> (dissoc row :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
-      (assoc :fully_parameterized (fully-parameterized-query? row))))
+      (assoc :fully_parameterized (queries/fully-parameterized? row))))
 
 (defn- post-process-card-like
   [{:keys [include-can-run-adhoc-query hydrate-based-on-upload]} rows]
@@ -560,14 +521,14 @@
                            :can_restore
                            :can_delete
                            :dashboard_count
+                           :is_remote_synced
                            [:dashboard :moderation_status]]
                     include-can-run-adhoc-query (conj :can_run_adhoc_query))]
-    (lib.metadata.jvm/with-metadata-provider-cache
-      (as-> (map post-process-card-row rows) $
-        (apply t2/hydrate $ hydration)
-        (cond-> $
-          hydrate-based-on-upload upload/model-hydrate-based-on-upload)
-        (map post-process-card-row-after-hydrate $)))))
+    (as-> (map post-process-card-row rows) $
+      (apply t2/hydrate $ hydration)
+      (cond-> $
+        hydrate-based-on-upload upload/model-hydrate-based-on-upload)
+      (map post-process-card-row-after-hydrate $))))
 
 (defmethod post-process-collection-children :card
   [_ options _ rows]
@@ -625,7 +586,7 @@
                            "/"))
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
-      (t2/hydrate :can_write :can_restore :can_delete)
+      (t2/hydrate :can_write :can_restore :can_delete :is_remote_synced)
       (dissoc :display :authority_level :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
 
@@ -667,7 +628,7 @@
    [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
-  [collection {:keys [archived? collection-namespace pinned-state]}]
+  [collection {:keys [archived? collection-namespace pinned-state collection-type]}]
   (-> (assoc
        (collection/effective-children-query
         collection
@@ -677,6 +638,8 @@
            [:= :archived true]
            [:= :id (collection/trash-collection-id)]]
           [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])
+        (when collection-type
+          [:= :type collection-type])
         (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
@@ -738,7 +701,7 @@
 
         ;; the set of collections that contain collections (in terms of *effective* location)
         collections-containing-collections
-        (->> (t2/hydrate descendant-collections :effective_parent)
+        (->> (t2/hydrate descendant-collections :effective_parent :is_remote_synced)
              (reduce (fn [accu {:keys [effective_parent] :as _coll}]
                        (let [parent-id (:id effective_parent)]
                          (conj accu parent-id)))
@@ -792,8 +755,9 @@
         ;; don't use contains as they all have the key, we care about a value present
         (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
 
-(defn- remove-unwanted-keys [row]
-  (dissoc row :collection_type :model_ranking :archived_directly :total_count))
+(defn- remove-unwanted-keys [{:keys [model] :as row}]
+  (cond-> (dissoc row :model_ranking :archived_directly :total_count)
+    (not= model :collection) (dissoc :collection_type)))
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
@@ -1160,6 +1124,9 @@
       #{:collection}
       #{:no_models})))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
   doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no
@@ -1179,9 +1146,10 @@
   changed, that should too."
   [_route-params
    {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
-           include_can_run_adhoc_query
+           include_can_run_adhoc_query collection_type
            show_dashboard_questions]} :- [:map
                                           [:models                      {:optional true} [:maybe Models]]
+                                          [:collection_type {:optional true} CollectionType]
                                           [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
                                           [:archived                    {:default false} [:maybe ms/BooleanValue]]
                                           [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
@@ -1200,6 +1168,7 @@
      {:archived?                   (boolean archived)
       :include-can-run-adhoc-query include_can_run_adhoc_query
       :show-dashboard-questions?   (boolean show_dashboard_questions)
+      :collection-type collection_type
       :models                      model-kwds
       :pinned-state                (keyword pinned_state)
       :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
@@ -1214,9 +1183,6 @@
   "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
   Root Collection perms."
   [collection-id collection-namespace]
-  (when (collection/is-trash? collection-id)
-    (throw (ex-info (tru "You cannot modify the Trash Collection.")
-                    {:status-code 400})))
   (api/write-check (if collection-id
                      (t2/select-one :model/Collection :id collection-id)
                      (cond-> collection/root-collection
@@ -1224,7 +1190,7 @@
 
 (defn create-collection!
   "Create a new collection."
-  [{:keys [name description parent_id namespace authority_level] :as params}]
+  [{:keys [name description parent_id namespace authority_level type] :as params}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id namespace)
   (when (some? authority_level)
@@ -1232,22 +1198,30 @@
     (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
     (api/check-superuser))
   ;; Get namespace from parent collection if not provided
-  (let [parent-collection (when parent_id
-                            (t2/select-one [:model/Collection :location :id :namespace] :id parent_id))
+  (let [{parent-type :type
+         :as parent-collection} (when parent_id
+                                  (t2/select-one [:model/Collection :location :id :namespace :type] :id parent_id))
         effective-namespace (cond
                               (contains? params :namespace) namespace
                               parent-collection (:namespace parent-collection)
-                              :else nil)]
-  ;; Now create the new Collection :)
+                              :else nil)
+        effective-type (cond
+                         (contains? params :type) type
+                         parent-type parent-type
+                         :else nil)]
+     ;; Now create the new Collection :)
     (u/prog1 (t2/insert-returning-instance!
               :model/Collection
               (merge
                {:name            name
                 :description     description
+                :type            effective-type
                 :authority_level authority_level
                 :namespace       effective-namespace}
                (when parent-collection
                  {:location (collection/children-location parent-collection)})))
+      (when config/ee-available?
+        (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*}))
       (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*}))))
 
 (api.macros/defendpoint :post "/"
@@ -1259,6 +1233,7 @@
             [:description     {:optional true} [:maybe ms/NonBlankString]]
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
             [:namespace       {:optional true} [:maybe ms/NonBlankString]]
+            [:type            {:optional true} [:maybe CollectionType]]
             [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
   (create-collection! body))
 
@@ -1285,18 +1260,17 @@
           new-location  (collection/children-location new-parent)]
       ;; check and make sure we're actually supposed to be moving something
       (when (not= orig-location new-location)
+        ;; Check that we have write perms on the new parent collection
+        (api/write-check new-parent)
         ;; ok, make sure we have perms to do this operation
         (api/check-403
          (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
                                                   (collection/perms-for-moving collection-before-update new-parent)))
 
-        ;; We can't move a collection to the Trash
-        (api/check
-         (not (collection/is-trash? new-parent))
-         [400 "You cannot modify the Trash Collection."])
-
         ;; ok, we're good to move!
-        (collection/move-collection! collection-before-update new-location)))))
+        (collection/move-collection! collection-before-update new-location
+                                     (collection/moving-into-remote-synced? (collection/location-path->parent-id orig-location)
+                                                                            new-parent-id))))))
 
 (defn- archive-collection!
   "If input to the `PUT /api/collection/:id` endpoint specifies that we should archive a collection, do the appropriate
@@ -1417,6 +1391,7 @@
                                                                   [:description     {:optional true} [:maybe ms/NonBlankString]]
                                                                   [:archived        {:default false} [:maybe ms/BooleanValue]]
                                                                   [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
+                                                                  [:type            {:optional true} [:maybe CollectionType]]
                                                                   [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
@@ -1427,15 +1402,54 @@
       (api/check-403 api/*is-superuser?*))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
+    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level :type])]
       (when (seq updates)
-        (t2/update! :model/Collection id updates)))
+        (t2/with-transaction [_conn]
+          (t2/update! :model/Collection id updates)
+          ;; if type is changing, cascade the type change to all child collections
+          (when (api/column-will-change? :type collection-before-update updates)
+            (let [child-location (collection/children-location collection-before-update)]
+              (t2/query-one {:update :collection
+                             :where [:like :location (str child-location "%")]
+                             :set {:type (:type updates)}}))
+            (when (= (:type updates) "remote-synced")
+              (collection/check-non-remote-synced-dependencies (t2/select-one :model/Collection :id id)))))))
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
-    (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
+    (let [updated-collection (t2/select-one :model/Collection :id id)]
+      (when config/ee-available?
+        (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*}))
+      (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*})))
   ;; finally, return the updated object
   (collection-detail (t2/select-one :model/Collection :id id)))
 
+(api.macros/defendpoint :delete "/:id"
+  "Deletes a collection permanently"
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (api/check-403 api/*is-superuser?*)
+  (let [collection (t2/select-one :model/Collection id)
+        old-children-location (collection/children-location collection)
+        new-children-location (:location collection)]
+    (api/check-400 (:archived collection)
+                   "Collection must be trashed before deletion.")
+    (api/check-400 (nil? (:namespace collection))
+                   "Collections in non-nil namespaces cannot be deleted.")
+    ;; Shouldn't happen, because they can't be archived either... but juuuuust in case.
+    (api/check-400 (nil? (:personal_owner_id collection))
+                   "Personal collections cannot be deleted.")
+    (t2/with-transaction [_tx]
+      ;; First, move all children (along with their children) that were archived directly OUT of this collection
+      (doseq [child (t2/select :model/Collection
+                               :location [:like (str old-children-location "%")]
+                               :archived_directly true)]
+        (collection/move-collection! child new-children-location))
+      ;; Now we can safely delete this collection and anything left under it.
+      (t2/delete! :model/Collection :id id))))
+
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id/items"
   "Fetch a specific Collection's items with the following options:
 

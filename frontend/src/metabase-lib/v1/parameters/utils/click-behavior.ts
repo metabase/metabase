@@ -31,7 +31,7 @@ import type {
   DatasetColumn,
   DatetimeUnit,
   Parameter,
-  ParameterValueOrArray,
+  ParameterValuesMap,
   QuestionDashboardCard,
   UserAttributeMap,
 } from "metabase-types/api";
@@ -65,7 +65,7 @@ export function getDataFromClicked({
 }: {
   extraData?: {
     dashboard?: Dashboard;
-    parameterValuesBySlug?: Record<string, ParameterValueOrArray>;
+    parameterValuesBySlug?: ParameterValuesMap;
     userAttributes?: UserAttributeMap | null;
   };
   dimensions?: DimensionType[];

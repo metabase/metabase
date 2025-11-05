@@ -4,7 +4,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useGetDatabaseQuery } from "metabase/api";
+import {
+  useGetDatabaseQuery,
+  useGetDatabaseSettingsAvailableQuery,
+} from "metabase/api";
 import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -15,6 +18,7 @@ import { connect, useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_DB_ROUTING,
+  PLUGIN_TABLE_EDITING,
 } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
@@ -62,6 +66,9 @@ function DatabaseEditAppInner({
     error,
   } = useGetDatabaseQuery({ id: databaseId }, { pollingInterval });
 
+  const { data: settingsAvailable } =
+    useGetDatabaseSettingsAvailableQuery(databaseId);
+
   useEffect(
     function pollDatabaseWhileSyncing() {
       const isSyncing = database?.initial_sync_status === "incomplete";
@@ -105,6 +112,12 @@ function DatabaseEditAppInner({
 
                   <PLUGIN_DATABASE_REPLICATION.DatabaseReplicationSection
                     database={database}
+                  />
+
+                  <PLUGIN_TABLE_EDITING.AdminDatabaseTableEditingSection
+                    database={database}
+                    settingsAvailable={settingsAvailable?.settings}
+                    updateDatabase={updateDatabase}
                   />
 
                   <PLUGIN_DB_ROUTING.DatabaseRoutingSection

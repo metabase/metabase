@@ -1,3 +1,4 @@
+import { setupTableEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
 import type { Table } from "metabase-types/api";
@@ -11,6 +12,8 @@ type SetupOpts = {
 };
 
 function setup({ table }: SetupOpts) {
+  setupTableEndpoints(table);
+
   const state = createMockState({
     entities: createMockEntitiesState({
       tables: [table],

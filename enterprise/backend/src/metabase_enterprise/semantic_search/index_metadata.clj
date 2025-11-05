@@ -9,10 +9,13 @@
    [honey.sql.helpers :as sql.helpers]
    ;; TODO: extract schema code to go under db.migration
    [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
+
+(set! *warn-on-reflection* true)
 
 ;; metadata and control tables allow multiple indexes to coexist
 ;; while maintaining a single active pointer.
@@ -33,10 +36,11 @@
     [:indexer_last_poll :timestamp-with-time-zone :null]
     [:indexer_last_seen :timestamp-with-time-zone :null]
     [:indexer_last_seen_id :text :null]
-    [:indexer_last_seen_hash :text :null]]
+    [:indexer_last_seen_hash :text :null]
+    [:indexer_stalled_at :timestamp-with-time-zone :null]]
 
    :control
-   [[:id :bigint [:primary-key]]                            ;; not auto-inc, only one row - still useful to ensure only one row when inserting.
+   [[:id :bigint [:primary-key]] ;; not auto-inc, only one row - still useful to ensure only one row when inserting.
     [:version :text :not-null]
     [:active_id :int :null]
     [:active_updated_at :timestamp-with-time-zone :null]]
@@ -55,25 +59,26 @@
     [:document_hash :text :null]]})
 
 (defn qualify-index
-  "Qualifies an index-map, returning a new index-map that might have additional disambiguating prefixes applied
-  to table names.
+  "Qualifies an index-map, returning a new index-map that might have additional disambiguating prefixes
+   applied to table names.
 
   This ensures tables/constraints created as part of operating a meta index can be isolated within
   the same database."
   [index index-metadata]
   ;; if created databases for namespacing in tests we could probably remove this whole idea.
   (let [{:keys [index-table-qualifier]} index-metadata
-        qualify (partial format index-table-qualifier)]
+        qualify (fn [table-name]
+                  (format index-table-qualifier table-name))]
     (-> index
         (update :table-name qualify))))
 
 (def default-index-metadata
   "The default index metadata configuration that will be used for the search engine integration."
-  {:version               "1"
-   :metadata-table-name   "index_metadata"
-   :control-table-name    "index_control"
-   :gate-table-name       "index_gate"
-   :index-table-qualifier "%s"})
+  {:version                   "2"
+   :metadata-table-name       "index_metadata"
+   :control-table-name        "index_control"
+   :gate-table-name           "index_gate"
+   :index-table-qualifier     "%s"})
 
 (defn- create-index-metadata-table-if-not-exists-sql [index-metadata]
   (let [{:keys [metadata-table-name]} index-metadata
@@ -149,6 +154,16 @@
        [(keyword (str (:gate-table-name index-metadata) "_gated_at")) :if-not-exists]
        [(keyword (:gate-table-name index-metadata)) :gated_at :id])
       :quoted true))
+    (log/info "Creating gate table tombstone cleanup index if not exists")
+    ;; Partial index on nil documents in the gate table to optimize identification of old tombstones
+    (jdbc/execute!
+     pgvector
+     (sql/format
+      {:create-index
+       [[(keyword (str (:gate-table-name index-metadata) "_tombstone_cleanup")) :if-not-exists]
+        [(keyword (:gate-table-name index-metadata)) :gated_at]]
+       :where [:and [:= :document nil] [:= :document_hash nil]]}
+      :quoted true))
     nil))
 
 (defn drop-tables-if-exists!
@@ -180,26 +195,19 @@
                            vector_dimensions
                            table_name
                            index_version]}]
-  {:embedding-model {:provider          provider
-                     :model-name        model_name
-                     :vector-dimensions vector_dimensions}
-   :table-name      table_name
-   :version         index_version})
-
-(defn- table-exists? [pgvector table-name]
-  (-> (jdbc/execute-one! pgvector
-                         ["SELECT exists (select 1 FROM information_schema.tables WHERE table_name = ?) table_exists"
-                          table-name]
-                         {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-      (:table_exists false)))
+  {:embedding-model  {:provider          provider
+                      :model-name        model_name
+                      :vector-dimensions vector_dimensions}
+   :table-name       table_name
+   :version          index_version})
 
 (defn- index-table-exists? [pgvector index]
-  (table-exists? pgvector (:table-name index)))
+  (semantic.util/table-exists? pgvector (:table-name index)))
 
 (defn- control-and-metadata-tables-exist?
   [pgvector index-metadata]
-  (and (table-exists? pgvector (:metadata-table-name index-metadata))
-       (table-exists? pgvector (:control-table-name index-metadata))))
+  (and (semantic.util/table-exists? pgvector (:metadata-table-name index-metadata))
+       (semantic.util/table-exists? pgvector (:control-table-name index-metadata))))
 
 (defn get-active-index-state
   "Returns the currently active index configuration, or nil if none active.
@@ -239,15 +247,18 @@
     (jdbc/execute! pgvector activation-sql)
     nil))
 
-(defn find-best-index!
-  "Locates the optimal index to be used for the given embedding model.
+(defn find-compatible-index!
+  "Locates a compatible existing index for the given embedding model.
 
-  Returns information that helps you decide what to do next in order to start using the index.
+  Returns information about the compatible index if found, or nil if no compatible index exists.
 
-  Returns map with
+  Returns map with:
   - :index              the index parameters, table name, version etc.
-  - :metadata-row       the unqualified next.jdbc row, nil if it is a new index or if the metadata row has somehow been deleted
-  - :index-table-exists whether the table named by the `:index` actually exists in the database"
+  - :metadata-row       the unqualified next.jdbc row
+  - :index-table-exists whether the table named by the `:index` actually exists in the database
+  - :active             whether this index is currently active
+
+  Returns nil if no compatible index is found."
   [pgvector index-metadata embedding-model]
   (let [{:keys [metadata-table-name
                 control-table-name]}
@@ -264,7 +275,8 @@
                             :where  [:and
                                      [:= :provider provider]
                                      [:= :model_name model-name]
-                                     [:= :vector_dimensions vector-dimensions]]}
+                                     [:= :vector_dimensions vector-dimensions]]
+                            :order-by [[:index_created_at :desc]]}
                            (sql/format :quoted true))
         model-rows     (jdbc/execute! pgvector model-rows-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
 
@@ -284,19 +296,25 @@
 
       ;; has an inactive index
       (seq inactive)
-      (let [best-index-row (first inactive)                 ; 'best' is undefined right now, not sure if it matters
+      (let [best-index-row (first inactive)
             best-index     (row->index best-index-row)]
         {:index              best-index
          :index-table-exists (index-table-exists? pgvector best-index)
          :metadata-row       best-index-row
          :active             false})
 
-      ;; new or untracked index
+      ;; no compatible index found
       :else
-      (let [index (qualify-index (semantic.index/default-index embedding-model) index-metadata)]
-        {:index              index
-         :index-table-exists (index-table-exists? pgvector index)
-         :active             false}))))
+      nil)))
+
+(defn create-new-index-spec
+  "Creates a new index specification for the given embedding model.
+  This is used when no compatible index exists and a new one needs to be created."
+  [pgvector index-metadata embedding-model]
+  (let [index (qualify-index (semantic.index/default-index embedding-model) index-metadata)]
+    {:index              index
+     :index-table-exists (index-table-exists? pgvector index)
+     :active             false}))
 
 (defn record-new-index-table!
   "Records an index in the metadata table and returns its assigned ID.
@@ -338,7 +356,4 @@
   (-> (get-active-index-state pgvector index-metadata)
       :metadata-row
       :indexer_last_poll
-      class)
-  (find-best-index! pgvector index-metadata embedding-model)
-  (record-new-index-table! pgvector index-metadata (:index (find-best-index! pgvector index-metadata embedding-model)))
-  (activate-index! pgvector index-metadata (:id (:metadata-row (find-best-index! pgvector index-metadata embedding-model)))))
+      class))

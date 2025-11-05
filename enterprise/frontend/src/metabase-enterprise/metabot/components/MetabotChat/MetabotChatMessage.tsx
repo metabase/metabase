@@ -1,9 +1,9 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useState } from "react";
+import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { downloadObjectAsJson } from "metabase/lib/download";
 import {
   ActionIcon,
   Flex,
@@ -12,14 +12,21 @@ import {
   type IconName,
   Text,
 } from "metabase/ui";
+import { useSubmitMetabotFeedbackMutation } from "metabase-enterprise/api/metabot";
 import type {
+  MetabotAgentChatMessage,
+  MetabotAgentTextChatMessage,
   MetabotChatMessage,
   MetabotErrorMessage,
+  MetabotUserChatMessage,
 } from "metabase-enterprise/metabot/state";
 import type { MetabotFeedback } from "metabase-types/api";
 
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
+import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
+import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
+import { AgentToolCallMessage } from "./MetabotAgentToolCallMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
 
@@ -49,7 +56,8 @@ export const MessageContainer = ({
   />
 );
 
-interface UserMessageProps extends BaseMessageProps {
+interface UserMessageProps extends Omit<BaseMessageProps, "message"> {
+  message: MetabotUserChatMessage;
   onCopy: () => void;
 }
 
@@ -61,14 +69,22 @@ export const UserMessage = ({
   ...props
 }: UserMessageProps) => (
   <MessageContainer chatRole={message.role} {...props}>
-    <Text
-      className={cx(
-        Styles.message,
-        message.role === "user" && Styles.messageUser,
-      )}
-    >
-      {message.message}
-    </Text>
+    {message.type === "text" && (
+      <AIMarkdown className={cx(Styles.message, Styles.messageUser)}>
+        {message.message}
+      </AIMarkdown>
+    )}
+
+    {message.type === "action" && (
+      <Flex direction="column" gap="xs">
+        <Flex align="center" gap="xs">
+          <Text className={cx(Styles.message, Styles.messageUserAction)}>
+            {message.userMessage}
+          </Text>
+        </Flex>
+      </Flex>
+    )}
+
     <Flex className={Styles.messageActions}>
       {!hideActions && (
         <ActionIcon
@@ -104,11 +120,14 @@ const FeedbackButton = ({
   </ActionIcon>
 );
 
-interface AgentMessageProps extends BaseMessageProps {
-  onRetry: (messageId: string) => void;
+interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
+  message: MetabotAgentChatMessage;
+  onRetry?: (messageId: string) => void;
   onCopy: (messageId: string) => void;
+  showFeedbackButtons: boolean;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
+  onInternalLinkClick?: (link: string) => void;
 }
 
 export const AgentMessage = ({
@@ -116,63 +135,86 @@ export const AgentMessage = ({
   className,
   onCopy,
   onRetry,
+  showFeedbackButtons,
   setFeedbackMessage,
   submittedFeedback,
+  onInternalLinkClick,
   hideActions,
   ...props
-}: AgentMessageProps) => (
-  <MessageContainer chatRole={message.role} {...props}>
-    <AIMarkdown className={Styles.message}>{message.message}</AIMarkdown>
-    <Flex className={Styles.messageActions}>
-      {!hideActions && (
-        <>
-          <ActionIcon
-            h="sm"
-            data-testid="metabot-chat-message-copy"
-            onClick={() => onCopy(message.id)}
-          >
-            <Icon name="copy" size="1rem" />
-          </ActionIcon>
-          {setFeedbackMessage && (
-            <>
-              <FeedbackButton
-                data-testid="metabot-chat-message-thumbs-up"
-                icon="thumbs_up"
-                hasBeenClicked={submittedFeedback === "positive"}
-                disabled={!!submittedFeedback}
-                onClick={() =>
-                  setFeedbackMessage({
-                    messageId: message.id,
-                    positive: true,
-                  })
-                }
-              />
-              <FeedbackButton
-                data-testid="metabot-chat-message-thumbs-down"
-                icon="thumbs_down"
-                hasBeenClicked={submittedFeedback === "negative"}
-                disabled={!!submittedFeedback}
-                onClick={() =>
-                  setFeedbackMessage({
-                    messageId: message.id,
-                    positive: false,
-                  })
-                }
-              />
-            </>
-          )}
-          <ActionIcon
-            onClick={() => onRetry(message.id)}
-            h="sm"
-            data-testid="metabot-chat-message-retry"
-          >
-            <Icon name="revert" size="1rem" />
-          </ActionIcon>
-        </>
+}: AgentMessageProps) => {
+  return (
+    <MessageContainer chatRole={message.role} {...props}>
+      {message.type === "text" && (
+        <AIMarkdown
+          className={Styles.message}
+          onInternalLinkClick={onInternalLinkClick}
+        >
+          {message.message}
+        </AIMarkdown>
       )}
-    </Flex>
-  </MessageContainer>
-);
+      {message.type === "edit_suggestion" && (
+        <AgentSuggestionMessage message={message} />
+      )}
+      {message.type === "todo_list" && (
+        <AgentTodoListMessage todos={message.payload} />
+      )}
+      {message.type === "tool_call" && (
+        <AgentToolCallMessage message={message} />
+      )}
+      <Flex className={Styles.messageActions}>
+        {!hideActions && (
+          <>
+            <ActionIcon
+              h="sm"
+              data-testid="metabot-chat-message-copy"
+              onClick={() => onCopy(message.id)}
+            >
+              <Icon name="copy" size="1rem" />
+            </ActionIcon>
+            {showFeedbackButtons && setFeedbackMessage && (
+              <>
+                <FeedbackButton
+                  data-testid="metabot-chat-message-thumbs-up"
+                  icon="thumbs_up"
+                  hasBeenClicked={submittedFeedback === "positive"}
+                  disabled={!!submittedFeedback}
+                  onClick={() =>
+                    setFeedbackMessage({
+                      messageId: message.id,
+                      positive: true,
+                    })
+                  }
+                />
+                <FeedbackButton
+                  data-testid="metabot-chat-message-thumbs-down"
+                  icon="thumbs_down"
+                  hasBeenClicked={submittedFeedback === "negative"}
+                  disabled={!!submittedFeedback}
+                  onClick={() =>
+                    setFeedbackMessage({
+                      messageId: message.id,
+                      positive: false,
+                    })
+                  }
+                />
+              </>
+            )}
+
+            {onRetry && (
+              <ActionIcon
+                onClick={() => onRetry(message.id)}
+                h="sm"
+                data-testid="metabot-chat-message-retry"
+              >
+                <Icon name="revert" size="1rem" />
+              </ActionIcon>
+            )}
+          </>
+        )}
+      </Flex>
+    </MessageContainer>
+  );
+};
 
 export const AgentErrorMessage = ({
   message,
@@ -228,11 +270,15 @@ export const Messages = ({
   errorMessages,
   onRetryMessage,
   isDoingScience,
+  showFeedbackButtons,
+  onInternalLinkClick,
 }: {
   messages: MetabotChatMessage[];
   errorMessages: MetabotErrorMessage[];
-  onRetryMessage: (messageId: string) => void;
+  onRetryMessage?: (messageId: string) => void;
   isDoingScience: boolean;
+  showFeedbackButtons: boolean;
+  onInternalLinkClick?: (navigateToPath: string) => void;
 }) => {
   const clipboard = useClipboard();
   const [sendToast] = useToast();
@@ -245,34 +291,48 @@ export const Messages = ({
     modal: undefined,
   });
 
+  const [submitMetabotFeedback] = useSubmitMetabotFeedbackMutation();
+
   const submitFeedback = async (metabotFeedback: MetabotFeedback) => {
     const { message_id, positive } = metabotFeedback.feedback;
 
-    downloadObjectAsJson(metabotFeedback, `metabot-feedback-${message_id}`);
-    sendToast({ icon: "check", message: "Feedback downloaded successfully" });
+    try {
+      await submitMetabotFeedback(metabotFeedback).unwrap();
+      sendToast({ icon: "check", message: t`Feedback submitted` });
 
-    setFeedbackState((prevState) => ({
-      submitted: {
-        ...prevState.submitted,
-        [message_id]: positive ? "positive" : "negative",
-      },
-      modal: undefined,
-    }));
+      setFeedbackState((prevState) => ({
+        submitted: {
+          ...prevState.submitted,
+          [message_id]: positive ? "positive" : "negative",
+        },
+        modal: undefined,
+      }));
+    } catch (error) {
+      sendToast({ icon: "warning", message: t`Failed to submit feedback` });
+    }
   };
 
   const onAgentMessageCopy = useCallback(
     (messageId: string) => {
       const allMessages = getFullAgentReply(messages, messageId);
-      clipboard.copy(allMessages.map((msg) => msg.message).join("\n\n"));
+      const textMessages = allMessages.filter(
+        (msg): msg is MetabotAgentTextChatMessage =>
+          msg.role === "agent" && msg.type === "text",
+      );
+      clipboard.copy(textMessages.map((msg) => msg.message).join("\n\n"));
     },
     [messages, clipboard],
   );
 
   const setFeedbackModal = useCallback(
     (data: { messageId: string; positive: boolean } | undefined) => {
+      if (!showFeedbackButtons) {
+        return;
+      }
+
       setFeedbackState((prev) => ({ ...prev, modal: data }));
     },
-    [],
+    [showFeedbackButtons],
   );
 
   return (
@@ -280,22 +340,32 @@ export const Messages = ({
       {messages.map((message, index) =>
         message.role === "agent" ? (
           <AgentMessage
-            key={"msg-" + index}
+            key={"msg-" + message.id}
             data-testid="metabot-chat-message"
             message={message}
             onRetry={onRetryMessage}
             onCopy={onAgentMessageCopy}
+            showFeedbackButtons={showFeedbackButtons}
             setFeedbackMessage={setFeedbackModal}
             submittedFeedback={feedbackState.submitted[message.id]}
-            hideActions={messages[index + 1]?.role === "agent"}
+            hideActions={
+              isDoingScience || messages[index + 1]?.role === "agent"
+            }
+            onInternalLinkClick={onInternalLinkClick}
           />
         ) : (
           <UserMessage
-            key={"msg-" + index}
+            key={"msg-" + message.id}
             data-testid="metabot-chat-message"
             message={message}
             hideActions={isDoingScience && messages.length === index + 1}
-            onCopy={() => clipboard.copy(message.message)}
+            onCopy={() => {
+              const copyText =
+                message.type === "action"
+                  ? `${message.userMessage}: ${message.message}`
+                  : message.message;
+              clipboard.copy(copyText);
+            }}
           />
         ),
       )}

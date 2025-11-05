@@ -31,6 +31,7 @@ export function PieChart(props: VisualizationProps) {
     settings,
     onRender,
     isDashboard,
+    isDocument,
     isFullscreen,
   } = props;
   const hoveredIndex = props.hovered?.index;
@@ -186,6 +187,7 @@ export function PieChart(props: VisualizationProps) {
       hovered={props.hovered}
       isDashboard={isDashboard}
       onToggleSeriesVisibility={handleToggleSeriesVisibility}
+      isDocument={isDocument}
     >
       <ResponsiveEChartsRenderer
         ref={containerRef}

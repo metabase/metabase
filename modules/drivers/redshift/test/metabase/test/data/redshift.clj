@@ -246,10 +246,10 @@
 
 (defonce ^:private ^{:arglists '([driver database])}
   original-describe-database
-  (get-method driver/describe-database :redshift))
+  (get-method driver/describe-database* :redshift))
 
 ;; For test databases, only sync the tables that are qualified by the db name
-(defmethod driver/describe-database :redshift
+(defmethod driver/describe-database* :redshift
   [driver database]
   (if *override-describe-database-to-filter-by-db-name?*
     (let [r                (original-describe-database driver database)
@@ -349,3 +349,5 @@
                            (format "REVOKE ALL PRIVILEGES ON SCHEMA %s FROM %s;" schema role-name)
                            (format "DROP USER IF EXISTS %s" role-name)]]
           (jdbc/execute! spec [statement] {:transaction? false}))))))
+
+(defmethod sql.tx/generated-column-sql :redshift [_ _] nil)

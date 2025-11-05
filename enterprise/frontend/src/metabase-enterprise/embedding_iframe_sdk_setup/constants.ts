@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { GetCodeStep } from "./components/GetCodeStep";
 import { SelectEmbedExperienceStep } from "./components/SelectEmbedExperienceStep";
 import { SelectEmbedOptionsStep } from "./components/SelectEmbedOptionsStep";
@@ -10,29 +12,57 @@ import type {
 /** The maximum number of recent items to show in the resource selection step. */
 export const EMBED_RESOURCE_LIST_MAX_RECENTS = 6;
 
-export const EMBED_EXPERIENCES = [
-  {
-    value: "dashboard" as SdkIframeEmbedSetupExperience,
-    title: "Dashboard",
-    description: "Embed an entire dashboard with multiple charts and filters",
-  },
-  {
-    value: "chart" as SdkIframeEmbedSetupExperience,
-    title: "Chart",
-    description: "Embed a single chart or visualization",
-  },
-  {
-    value: "exploration" as SdkIframeEmbedSetupExperience,
-    title: "Exploration",
-    description: "Embed an interactive data exploration experience",
-  },
-];
+export const getEmbedExperiences = ({
+  isMetabotAvailable,
+}: {
+  isMetabotAvailable: boolean;
+}) =>
+  [
+    {
+      value: "dashboard",
+      title: t`Dashboard`,
+      description: t`Embed an entire dashboard with multiple charts and filters`,
+    },
+    {
+      value: "chart",
+      title: t`Chart`,
+      description: t`Embed a single chart`,
+    },
+    {
+      value: "exploration",
+      title: t`Exploration`,
+      description: t`Embed an interactive data exploration experience`,
+    },
+    {
+      value: "browser",
+      title: t`Browser`,
+      description: t`Embed a browser to manage dashboards and charts`,
+    },
+    ...(isMetabotAvailable
+      ? [
+          {
+            value: "metabot" as const,
+            title: t`Metabot`,
+            description: t`Embed a Metabot chat interface`,
+          },
+        ]
+      : []),
+  ] satisfies {
+    title: string;
+    description: string;
+    value: SdkIframeEmbedSetupExperience;
+  }[];
 
 type EmbedStepConfig = {
   id: SdkIframeEmbedSetupStep;
   component: React.ComponentType;
   skipFor?: SdkIframeEmbedSetupExperience[];
 };
+
+export const STEPS_WITHOUT_RESOURCE_SELECTION = [
+  "exploration",
+  "metabot",
+] as const satisfies SdkIframeEmbedSetupExperience[];
 
 export const EMBED_STEPS: EmbedStepConfig[] = [
   {
@@ -42,7 +72,7 @@ export const EMBED_STEPS: EmbedStepConfig[] = [
   {
     id: "select-embed-resource",
     component: SelectEmbedResourceStep,
-    skipFor: ["exploration"],
+    skipFor: STEPS_WITHOUT_RESOURCE_SELECTION,
   },
   {
     id: "select-embed-options",
