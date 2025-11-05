@@ -1,13 +1,15 @@
 (ns metabase-enterprise.cloud-add-ons.api
   "/api/ee/cloud-add-ons endpoints. "
   (:require
+   [clj-http.client :as http]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.store-api.core :as store-api]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
 
 (def ^:private error-no-connection
@@ -47,6 +49,13 @@
         error-body (get status-mappings status-code error-unexpected)]
     {:status (or status-code 500) :body error-body}))
 
+(defn- make-public-store-request!
+  "Make a GET request to fetch publicly available info from Metabase Store API endpoints."
+  [endpoint]
+  (if-let [url (store-api/store-api-url)]
+    (:body (http/get (str url "/api/v2" endpoint) {:as :json}))
+    (throw (ex-info (tru "Please configure store-api-url") {:status-code 400}))))
+
 (api.macros/defendpoint :get "/plan"
   "Get plan information from the Metabase Store API."
   []
@@ -57,7 +66,7 @@
 
     :else
     (try
-      {:status 200 :body (hm.client/call :get-plan)}
+      {:status 200 :body (make-public-store-request! "/plan")}
       (catch Exception e
         (log/warn e "Error fetching plan information")
         (handle-store-api-error e)))))
@@ -72,7 +81,7 @@
 
     :else
     (try
-      {:status 200 :body (hm.client/call :get-addons)}
+      {:status 200 :body (make-public-store-request! "/addons")}
       (catch Exception e
         (log/warn e "Error fetching addons information")
         (handle-store-api-error e)))))
