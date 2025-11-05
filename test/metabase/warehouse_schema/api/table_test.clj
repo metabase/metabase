@@ -412,11 +412,10 @@
     (mt/with-temp [:model/Table table]
       (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                             {:display_name     "Userz"
-                             :visibility_type  "hidden"
                              :description      "What a nice table!"
                              ;; bulk-metadata-editing
                              :data_source      "metabase-transform"
-                             :data_layer "copper"
+                             :data_layer       "copper"
                              :owner_email      "bob@org.com"
                              :owner_user_id    (mt/user->id :crowberto)})
       (is (= (merge
@@ -432,7 +431,7 @@
                :is_writable     nil
                ;; bulk-metadata-editing
                :data_source      "metabase-transform"
-               :data_layer "copper"
+               :data_layer       "copper"
                ;; exclusive later (not now)
                :owner_email      "bob@org.com"
                :owner_user_id    (mt/user->id :crowberto)})
