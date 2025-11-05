@@ -285,7 +285,7 @@ export const getCollectionsPermissionEditor = createSelector(
 
         const isIACollection = isInstanceAnalyticsCollection(collection);
 
-        const options = isIACollection || (isTenantCollection && isExternal)
+        const options = isIACollection || (isTenantCollection && isTenantGroup)
           ? [COLLECTION_OPTIONS.read, COLLECTION_OPTIONS.none]
           : [
               COLLECTION_OPTIONS.write,
@@ -295,12 +295,14 @@ export const getCollectionsPermissionEditor = createSelector(
 
         const disabledTooltip = isIACollection
           ? PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE
-          : isExternal
+          : isTenantGroup
             ? Messages.EXTERNAL_USERS_NO_ACCESS_COLLECTION
             : Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
 
         const disabled =
-          (isTenantCollection && !isExternal) || isAdmin || isExternal;
+          (isTenantCollection && !isTenantGroup) ||
+          (!isTenantCollection && isTenantGroup) ||
+          isAdmin;
 
         return {
           id: group.id,
