@@ -44,7 +44,7 @@ export function CreateEmbeddingThemeModal({
 
   return (
     <Modal
-      title={<Text size="xl" mb="sm">{t`Create a new theme`}</Text>}
+      title={<Text size="xl" mb="sm">{t`Create a theme`}</Text>}
       opened={opened}
       padding="xl"
       onClose={onClose}

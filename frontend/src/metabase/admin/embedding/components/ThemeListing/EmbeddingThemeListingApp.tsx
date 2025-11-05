@@ -7,6 +7,7 @@ import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import {
   Button,
   Flex,
+  Icon,
   Loader,
   SimpleGrid,
   Stack,
@@ -37,12 +38,12 @@ export function EmbeddingThemeListingApp() {
           <Button
             variant="filled"
             onClick={() => setIsCreateModalOpen(true)}
-            leftSection={<span>+</span>}
+            leftSection={<Icon name="add" size={12} />}
           >{t`New theme`}</Button>
         </Flex>
 
         <Text c="text-secondary">
-          {t`Configure themes for Embedded Analytics JS, SDK for React, and new static embedding.`}
+          {t`Configure themes for Embedded Analytics JS and SDK for React`}
         </Text>
       </Stack>
 
@@ -63,7 +64,7 @@ export function EmbeddingThemeListingApp() {
         <Stack align="center" justify="center" h={200}>
           {/** This would only show up when an admin intentionally deletes the default themes. */}
           <EmptyState
-            message={t`Create your first theme to get started.`}
+            message={t`Create your first theme to get started`}
             illustrationElement={<NoObjectError mb="-3rem" />}
           />
         </Stack>
