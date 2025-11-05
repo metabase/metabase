@@ -45,6 +45,7 @@ export function EmbeddingThemeListingApp() {
       <Stack gap="xs">
         <Flex justify="space-between" align="center">
           <Title order={1}>{t`Themes`}</Title>
+
           <Button
             variant="filled"
             onClick={handleCreateTheme}
