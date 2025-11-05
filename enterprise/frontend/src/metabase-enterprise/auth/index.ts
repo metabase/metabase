@@ -6,7 +6,9 @@ import {
   PLUGIN_LDAP_FORM_FIELDS,
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
+import type { AuthProvider } from "metabase/plugins/types";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import type { User } from "metabase-types/api";
 
 import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 
@@ -40,7 +42,7 @@ export function initializePlugin() {
   }
 
   // Add provider function that handles SSO and password login
-  const enhancedProviderFunction = (providers: any) => {
+  const enhancedProviderFunction = (providers: AuthProvider[]) => {
     if (
       (hasPremiumFeature("sso_jwt") || hasPremiumFeature("sso_saml")) &&
       MetabaseSettings.get("other-sso-enabled?")
@@ -52,7 +54,7 @@ export function initializePlugin() {
       !MetabaseSettings.isPasswordLoginEnabled() &&
       !MetabaseSettings.isLdapEnabled()
     ) {
-      providers = providers.filter((p: any) => p.name !== "password");
+      providers = providers.filter((p) => p.name !== "password");
     }
     return providers;
   };
@@ -60,7 +62,7 @@ export function initializePlugin() {
   PLUGIN_AUTH_PROVIDERS.providers.push(enhancedProviderFunction);
 
   if (hasPremiumFeature("disable_password_login")) {
-    const passwordUserFunction = (user: any) =>
+    const passwordUserFunction = (user: User) =>
       Boolean(
         user.sso_source !== "google" &&
           user.sso_source !== "ldap" &&

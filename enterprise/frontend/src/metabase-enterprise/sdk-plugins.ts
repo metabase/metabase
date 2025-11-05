@@ -9,7 +9,6 @@ import "./shared";
 import { initializePlugin as initializeEmbedding } from "./embedding";
 import { initializePlugin as initializeEmbeddingSdk } from "./embedding-sdk";
 import { initializePlugin as initializeMetabot } from "./metabot";
-// TODO import the regular plugins here and remove the sdk-overrides file
 import { initializePlugin as initializeWhitelabelPlugin } from "./whitelabel";
 
 /**

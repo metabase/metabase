@@ -34,7 +34,7 @@ type ComponentProviderInternalProps = ComponentProviderProps & {
 
 let hasInitializedPlugins = false;
 
-function usePluginsInitialization() {
+function useInitPlugins() {
   const tokenFeatures = useSelector(
     (state) => state.settings.values["token-features"],
   );
@@ -71,7 +71,7 @@ export const ComponentProviderInternal = ({
   // - Unit tests
   useInitDataInternal({ reduxStore, authConfig, isLocalHost });
 
-  usePluginsInitialization();
+  useInitPlugins();
 
   useEffect(() => {
     if (fontFamily) {
