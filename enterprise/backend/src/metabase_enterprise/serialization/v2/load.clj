@@ -201,8 +201,8 @@
                 ctx
                 contents)))
     (when reindex?
-    ;; Hack: the transaction above typically takes much longer than our delay on the search indexing queue.
-    ;;       this means that the corresponding entries would have been missing or stale when we indexed them.
-    ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
-    ;;       while we're figuring that out, here's a crude stopgap.
-      (search/reindex!))))
+      ;; Hack: the transaction above typically takes much longer than our delay on the search indexing queue.
+      ;;       this means that the corresponding entries would have been missing or stale when we indexed them.
+      ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
+      ;;       while we're figuring that out, here's a crude stopgap.
+      (search/trigger-reindex!))))

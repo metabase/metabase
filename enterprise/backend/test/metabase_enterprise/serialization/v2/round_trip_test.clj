@@ -92,7 +92,7 @@
 (defn load-extract!
   "Perform a round-trip of loading an existing serialization, then serializing it again."
   [input-dir output-dir]
-  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex!* (constantly nil)]
     (serdes/with-cache
       (load/load-metabase! (ingest/ingest-yaml input-dir))))
   ;; Use a separate cache to make sure there is no cross-contamination.

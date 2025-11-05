@@ -19,7 +19,7 @@
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
-                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+                      (mt/with-dynamic-fn-redefs [search/reindex!* (constantly nil)]
                         (thunk))))
 
 (defn- no-labels [path]

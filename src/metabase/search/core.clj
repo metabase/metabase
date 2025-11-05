@@ -1,6 +1,7 @@
 (ns metabase.search.core
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
+   [clojurewerkz.quartzite.jobs :as jobs]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.search.config :as search.config]
@@ -9,6 +10,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
+   [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p]))
@@ -127,11 +129,13 @@
         (analytics/inc! :metabase-search/index-error)
         (throw e)))))
 
-(defn reindex!
+(defn reindex!*
   "Populate a new index, and make it active. Simultaneously updates the current index.
   Returns a future that will complete when the reindexing is done.
-  Respects `search.ingestion/*force-sync*` and waits for the future if it's true.
-  Alternately, if `:async?` is false, it will also run synchronously."
+  Respects `search.ingestion/*force-sync*` and waits for the future, if it's true.
+  Alternately, if `:async?` is false, it will also run synchronously.
+
+  You probably don't want to call this directly - in production you should call [[trigger-reindex!]]."
   [& {:keys [async?] :or {async? true} :as opts}]
   (let [f (fn []
             (try
@@ -143,6 +147,15 @@
     (if (or search.ingestion/*force-sync* (not async?))
       (doto (promise) (deliver (f)))
       (future (f)))))
+
+(defn trigger-reindex!
+  "Trigger a reindex via Quartz job (or a future, when running certain tests in dev)."
+  []
+  (let [job-key (jobs/key "metabase.task.search-index.reindex.job")]
+    ;; The job appears to wait on the main thread when run from tests, so, unfortunately, testing this branch is hard.
+    (if (and (task/job-exists? job-key) (not search.ingestion/*force-sync*))
+      (do (task/trigger-now! job-key) ::task-triggered)
+      (reindex!*))))
 
 (defn reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."

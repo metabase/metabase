@@ -21,7 +21,7 @@
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [f]
-                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+                      (mt/with-dynamic-fn-redefs [search/reindex!* (constantly nil)]
                         (test-helpers/clean-remote-sync-state f))))
 
 ;; import! tests
