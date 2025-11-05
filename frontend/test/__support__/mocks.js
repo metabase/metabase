@@ -52,3 +52,7 @@ jest.mock("@uiw/react-codemirror", () => {
     default: MockEditor,
   };
 });
+
+jest.mock(
+  "metabase-enterprise/transforms-python/services/pyodide-worker/pyodide-worker-manager",
+);

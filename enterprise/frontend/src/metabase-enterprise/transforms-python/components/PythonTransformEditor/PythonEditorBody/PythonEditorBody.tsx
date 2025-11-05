@@ -8,6 +8,7 @@ import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWit
 import { Box, Button, Checkbox, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
 
+// Pyodide status is now handled in the Web Worker
 import { PythonEditor } from "../../PythonEditor";
 
 import S from "./PythonEditorBody.module.css";
