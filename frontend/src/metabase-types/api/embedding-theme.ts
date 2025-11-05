@@ -1,9 +1,7 @@
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 
-export type EmbeddingThemeId = number;
-
 export interface EmbeddingTheme {
-  id: EmbeddingThemeId;
+  id: number;
   name: string;
   settings: MetabaseTheme;
   created_at: string;
@@ -16,7 +14,7 @@ export interface CreateEmbeddingThemeRequest {
 }
 
 export interface UpdateEmbeddingThemeRequest {
-  id: EmbeddingThemeId;
+  id: number;
   name?: string;
   settings?: MetabaseTheme;
 }
