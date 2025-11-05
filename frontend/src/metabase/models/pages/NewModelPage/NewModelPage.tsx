@@ -16,7 +16,7 @@ import { getInitialUiState } from "metabase/querying/editor/components/QueryEdit
 import { getMetadata } from "metabase/selectors/metadata";
 import { Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { Card } from "metabase-types/api";
+import type { Card, Field } from "metabase-types/api";
 
 import { ModelQueryEditor } from "../../components/ModelQueryEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
@@ -41,6 +41,7 @@ function NewModelPage({
     Lib.toJsQuery(initialQuery),
   );
   const [uiState, setUiState] = useState(getInitialUiState);
+  const [resultMetadata, setResultMetadata] = useState<Field[] | null>(null);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const metadata = useSelector(getMetadata);
@@ -98,12 +99,13 @@ function NewModelPage({
           uiState={uiState}
           onChangeQuery={handleChangeQuery}
           onChangeUiState={setUiState}
+          onChangeResultMetadata={setResultMetadata}
         />
       </Stack>
       {isModalOpened && (
         <CreateModelModal
           query={query}
-          defaultValues={{ name }}
+          defaultValues={{ name, resultMetadata }}
           onCreate={handleCreate}
           onClose={closeModal}
         />

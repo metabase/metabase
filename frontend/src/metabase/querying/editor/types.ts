@@ -28,13 +28,14 @@ export type QueryEditorDatabasePickerItem = Omit<
   "tables" | "schemas"
 >;
 
+export type QueryEditorModalSnippet =
+  | NativeQuerySnippet
+  | Partial<Omit<NativeQuerySnippet, "id">>;
+
 export type QueryEditorUiState = {
   lastRunQuery: DatasetQuery | null;
   selectionRange: SelectionRange[];
-  modalSnippet:
-    | NativeQuerySnippet
-    | Partial<Omit<NativeQuerySnippet, "id">>
-    | null;
+  modalSnippet: QueryEditorModalSnippet | null;
   modalType: QueryEditorModalType | null;
   sidebarType: QueryEditorSidebarType | null;
 };

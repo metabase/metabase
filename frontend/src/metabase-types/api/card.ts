@@ -395,7 +395,7 @@ export interface CreateCardRequest {
   document_id?: DocumentId | null;
   dashboard_tab_id?: DashboardTabId;
   collection_position?: number;
-  result_metadata?: Field[];
+  result_metadata?: Field[] | null;
   cache_ttl?: number;
 }
 

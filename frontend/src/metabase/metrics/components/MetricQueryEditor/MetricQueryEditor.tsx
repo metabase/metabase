@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { QueryEditor } from "metabase/querying/editor/components/QueryEditor";
 import type { QueryEditorUiState } from "metabase/querying/editor/types";
 import type * as Lib from "metabase-lib";
+import type { Field } from "metabase-types/api";
 
 import { getEditorOptions } from "./utils";
 
@@ -11,6 +12,7 @@ type MetricQueryEditorProps = {
   uiState: QueryEditorUiState;
   onChangeQuery: (query: Lib.Query) => void;
   onChangeUiState: (state: QueryEditorUiState) => void;
+  onChangeResultMetadata?: (newResultMetadata: Field[] | null) => void;
 };
 
 export function MetricQueryEditor({

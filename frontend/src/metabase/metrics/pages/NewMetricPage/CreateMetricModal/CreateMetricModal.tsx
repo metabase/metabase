@@ -114,13 +114,14 @@ function getInitialValues(
   return {
     name: "",
     description: null,
+    resultMetadata: null,
     ...defaultValues,
   };
 }
 
 function getCreateRequest(
   query: Lib.Query,
-  { name, description }: NewMetricValues,
+  { name, description, resultMetadata }: NewMetricValues,
 ): CreateCardRequest {
   const { display, settings = {} } = Lib.defaultDisplay(query);
   return {
@@ -130,5 +131,6 @@ function getCreateRequest(
     display,
     dataset_query: Lib.toJsQuery(query),
     visualization_settings: settings,
+    result_metadata: resultMetadata,
   };
 }

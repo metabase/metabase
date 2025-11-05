@@ -20,7 +20,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Center, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
+import type { Card, Field } from "metabase-types/api";
 
 import { MetricHeader } from "../../components/MetricHeader";
 import { MetricQueryEditor } from "../../components/MetricQueryEditor";
@@ -60,15 +60,19 @@ type MetricQueryPageBodyProps = {
 };
 
 function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
+  const metadata = useSelector(getMetadata);
   const [datasetQuery, setDatasetQuery] = useState(card.dataset_query);
   const [uiState, setUiState] = useState(getInitialUiState);
-  const metadata = useSelector(getMetadata);
+  const [resultMetadata, setResultMetadata] = useState<Field[] | null>(null);
   const [updateCard, { isLoading: isSaving }] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const question = useMemo(() => {
-    return Question.create({ dataset_query: datasetQuery, metadata });
-  }, [datasetQuery, metadata]);
+    return Question.create({
+      dataset_query: datasetQuery,
+      metadata,
+    }).setResultsMetadata({ columns: resultMetadata });
+  }, [datasetQuery, metadata, resultMetadata]);
 
   const validationResult = useMemo(
     () => getValidationResult(question.query()),
@@ -152,6 +156,7 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
           uiState={uiState}
           onChangeQuery={handleChangeQuery}
           onChangeUiState={setUiState}
+          onChangeResultMetadata={setResultMetadata}
         />
       </Stack>
       {isConfirmationShown && checkData != null && (
