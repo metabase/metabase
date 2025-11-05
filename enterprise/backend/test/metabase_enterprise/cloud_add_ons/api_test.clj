@@ -15,7 +15,7 @@
                 (mt/user-http-request :rasta :post 403 "ee/cloud-add-ons/metabase-ai"
                                       {:terms_of_service true})))))
     (testing "requires accepting terms of service"
-      (mt/with-premium-features #{}
+      (mt/with-premium-features #{:hosting}
         (is (=? {:errors {:terms_of_service "Need to accept terms of service."}}
                 (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/metabase-ai"
                                       {:terms_of_service false})))))
