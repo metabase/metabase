@@ -104,7 +104,7 @@ function TransformQueryPageBody({
   const validationResult = useMemo(() => {
     return source.type === "query"
       ? getValidationResult(Lib.fromJsQueryAndMetadata(metadata, source.query))
-      : { isValid: true };
+      : PLUGIN_TRANSFORMS_PYTHON.getPythonSourceValidationResult(source);
   }, [source, metadata]);
 
   const {

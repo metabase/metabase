@@ -954,9 +954,17 @@ export type PythonTransformEditorProps = {
   onRejectProposed: () => void;
 };
 
+export type PythonTransformSourceValidationResult = {
+  isValid: boolean;
+  errorMessage?: string;
+};
+
 export type PythonTransformsPlugin = {
   isEnabled: boolean;
   getPythonLibraryRoutes: () => ReactNode;
+  getPythonSourceValidationResult: (
+    source: PythonTransformSourceDraft,
+  ) => PythonTransformSourceValidationResult;
   TransformEditor: ComponentType<PythonTransformEditorProps>;
   PythonRunnerSettingsPage: ComponentType;
 };
@@ -964,6 +972,7 @@ export type PythonTransformsPlugin = {
 export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
   isEnabled: false,
   getPythonLibraryRoutes: () => null,
+  getPythonSourceValidationResult: () => ({ isValid: true }),
   TransformEditor: PluginPlaceholder,
   PythonRunnerSettingsPage: NotFoundPlaceholder,
 };
