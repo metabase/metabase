@@ -257,7 +257,7 @@ export const RemoteSyncAdminSettings = () => {
                       >
                         <Box>
                           <Radio
-                            description={t`In production mode, synced collections are read-only, and automatically sync with the specified branch`}
+                            description={t`In production mode, synced collections are read-only, and they automatically sync with the specified branch. You can also turn off auto-sync to manually pull changes.`}
                             disabled={hasUnsyncedChanges}
                             label={t`Production`}
                             value="production"
