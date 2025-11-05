@@ -35,7 +35,10 @@
     (conj "Setting")
 
     (not (:no-transforms opts))
-    (conj "Transform" "TransformTag" "TransformJob")))
+    (conj "Transform" "TransformTag" "TransformJob")
+
+    (not (:no-embedding-themes opts))
+    (conj "EmbeddingTheme")))
 
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"
