@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import type { DatabaseId, TableId } from "metabase-types/api";
@@ -6,7 +6,6 @@ import type { DatabaseId, TableId } from "metabase-types/api";
 import { useSelection } from "../../../contexts/SelectionContext";
 import {
   type NodeSelection,
-  getChildSchemas,
   getSchemaChildrenTableIds,
   getSchemaId,
   getSchemaTableIds,
@@ -20,14 +19,17 @@ import type {
   ChangeOptions,
   DatabaseNode,
   FlatItem,
+  SchemaItem,
   SchemaNode,
+  TableItem,
+  TableNode,
   TreeNode,
   TreePath,
 } from "../types";
 import { flatten } from "../utils";
 
 import { EmptyState } from "./EmptyState";
-import { Results } from "./Results";
+import { TablePickerResults } from "./Results";
 
 interface Props {
   path: TreePath;
@@ -51,6 +53,12 @@ export function Tree({
   const { databaseId, schemaName } = path;
   const { isExpanded, toggle } = useExpandedState(path);
   const { tree, reload } = useTableLoader(path);
+  // refs were used to avoid unnecessary re-renders
+  // re-think approach later
+  const loadedTablesRef = useRef<Set<TableId>>(new Set());
+  const reloadRef = useRef(reload);
+
+  reloadRef.current = reload;
 
   useEffect(() => {
     setOnUpdateCallback(() => () => reload(path));
@@ -67,6 +75,56 @@ export function Tree({
       databases: selectedDatabases,
     },
   });
+
+  const loadTableFields = useCallback((tableId: TableId, databaseId: DatabaseId, schemaName: string) => {
+    if (!loadedTablesRef.current.has(tableId)) {
+      loadedTablesRef.current.add(tableId);
+      reloadRef.current({ databaseId, schemaName, tableId });
+    }
+  }, []);
+
+  useEffect(() => {
+    const expandedDatabases = items.filter(
+      (item) =>
+        item.type === "database" &&
+        item.isExpanded &&
+        item.children.length === 0,
+    );
+
+    expandedDatabases.forEach((database) => {
+      const databaseId = database.value?.databaseId;
+      if (databaseId) {
+        reloadRef.current({ databaseId });
+      }
+    });
+  }, [items]);
+
+  useEffect(() => {
+    // Load tables when schemas are expanded
+    const expandedSchemas = items.filter(
+      (item) => item.type === "schema" && item.isExpanded && item.children.length === 0,
+    ) as SchemaItem[];
+
+    expandedSchemas.forEach((schema) => {
+      const { databaseId, schemaName } = schema.value ?? {};
+      if (databaseId && schemaName) {
+        reloadRef.current({ databaseId, schemaName });
+      }
+    });
+  }, [items]);
+
+  useEffect(() => {
+    const expandedTables = items.filter(
+      (item) => item.type === "table" && item.isExpanded && item.children.length === 0,
+    ) as TableItem[];
+
+    expandedTables.forEach((table) => {
+      const tableId = table.value?.tableId;
+      if (tableId) {
+        loadTableFields(tableId, table.value.databaseId, table.value.schemaName);
+      }
+    });
+  }, [items, loadTableFields]);
   const isEmpty = items.length === 0;
 
   useEffect(() => {
@@ -224,7 +282,7 @@ export function Tree({
         const targetChecked = isSelected === "yes" ? "no" : "yes";
 
         const { schemasSelection, tablesSelection, databasesSelection } =
-          markAllSchemas(item, items, targetChecked, {
+          markAllSchemas(item, targetChecked, {
             tables: selectedTables,
             schemas: selectedSchemas,
             databases: selectedDatabases,
@@ -279,7 +337,7 @@ export function Tree({
   }
 
   return (
-    <Results
+    <TablePickerResults
       items={items}
       path={path}
       toggle={toggle}
@@ -291,14 +349,23 @@ export function Tree({
 
 function markAllSchemas(
   item: FlatItem,
-  allItems: FlatItem,
   targetChecked: "yes" | "no",
   selection: NodeSelection,
 ) {
   const schemasSelection = new Set(selection.schemas);
   const tablesSelection = new Set(selection.tables);
 
-  const schemas = getChildSchemas(item);
+  if (item.type !== "database") {
+    return {
+      schemasSelection,
+      tablesSelection,
+      databasesSelection: selection.databases,
+    };
+  }
+
+  const schemas = item.children.filter(
+    (child): child is SchemaNode => child.type === "schema",
+  );
   schemas.forEach((schema) => {
     const schemaId = getSchemaId(schema);
     if (!schemaId) {

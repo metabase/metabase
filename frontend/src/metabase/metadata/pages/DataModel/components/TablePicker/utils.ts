@@ -1,22 +1,21 @@
 import { getUrl as getUrl_ } from "../../utils";
 
+import { type NodeSelection, isItemSelected } from "./bulk-selection.utils";
 import { CHILD_TYPES, UNNAMED_SCHEMA_NAME } from "./constants";
 import type {
   DatabaseNode,
   ExpandedState,
+  FilterState,
   FlatItem,
   ItemType,
-  FilterState,
   NodeKey,
   RootNode,
   TreeNode,
   TreePath,
 } from "./types";
 
-import { type NodeSelection, isItemSelected } from "./bulk-selection.utils";
-
 export function hasChildren(type: ItemType): boolean {
-  return type !== "table";
+  return type !== "field";
 }
 
 export function getUrl(value: TreePath) {
@@ -38,15 +37,22 @@ export function expandPath(
     ...state,
     [toKey({
       ...path,
+      fieldId: undefined,
+    })]: true,
+    [toKey({
+      ...path,
+      fieldId: undefined,
       tableId: undefined,
     })]: true,
     [toKey({
       ...path,
+      fieldId: undefined,
       tableId: undefined,
       schemaName: undefined,
     })]: true,
     [toKey({
       ...path,
+      fieldId: undefined,
       tableId: undefined,
       schemaName: undefined,
       databaseId: undefined,
@@ -185,8 +191,8 @@ export function merge(
 /**
  * Create a unique key for a TreePath
  */
-export function toKey({ databaseId, schemaName, tableId }: TreePath) {
-  return JSON.stringify([databaseId, schemaName, tableId]);
+export function toKey({ databaseId, schemaName, tableId, fieldId }: TreePath) {
+  return JSON.stringify([databaseId, schemaName, tableId, fieldId]);
 }
 
 type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
@@ -222,6 +228,7 @@ export function loadingItem(
     parent: parent?.type === "root" ? undefined : parent?.key,
     isLoading: true,
     key: Math.random().toString(),
+    children: [],
   };
 }
 

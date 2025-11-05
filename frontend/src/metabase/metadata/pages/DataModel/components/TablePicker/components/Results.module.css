@@ -8,7 +8,7 @@
   position: absolute;
   border-radius: 8px;
   cursor: pointer;
-  padding-left: var(--mantine-spacing-sm);
+  padding-left: 0;
   padding-right: var(--mantine-spacing-sm);
   left: var(--mantine-spacing-xl);
   right: var(--mantine-spacing-xl);
@@ -41,6 +41,25 @@
   flex-shrink: 0;
 }
 
+.checkbox {
+  flex-shrink: 0;
+}
+
+.checkboxColumn {
+  flex-shrink: 0;
+  width: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-right: var(--mantine-spacing-sm);
+}
+
+.chevronSlot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .chevron {
   transition: transform 100ms ease-in-out;
   opacity: 0.35;
@@ -54,6 +73,7 @@
 .label {
   user-select: none;
   overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
 .hidden {

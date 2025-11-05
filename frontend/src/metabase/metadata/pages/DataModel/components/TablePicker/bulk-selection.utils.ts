@@ -15,6 +15,9 @@ export function isItemSelected(
   if (!selection) {
     return "no";
   }
+  if (node.type === "field") {
+    return "no";
+  }
   if (node.type === "table") {
     return selection.tables.has(node.value?.tableId ?? -1) ? "yes" : "no";
   }
@@ -74,7 +77,7 @@ function areChildSchemasSelected(
 }
 
 export function getSchemaId(item: FlatItem) {
-  if (item.type !== "table" && item.type !== "schema") {
+  if (item.type !== "table" && item.type !== "schema" && item.type !== "field") {
     return undefined;
   }
   return `${item.value?.databaseId}:${item.value?.schemaName}`;

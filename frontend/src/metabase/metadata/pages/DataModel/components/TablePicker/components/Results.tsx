@@ -3,7 +3,10 @@ import cx from "classnames";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 
+import { getColumnIcon } from "metabase/common/utils/columns";
 import { Box, Checkbox, Flex, Icon, Skeleton, rem } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import type { Field } from "metabase-types/api";
 
 import { useSelection } from "../../../contexts/SelectionContext";
 import { getUrl } from "../../../utils";
@@ -12,6 +15,7 @@ import type { FlatItem, TreePath } from "../types";
 import { hasChildren } from "../utils";
 
 import S from "./Results.module.css";
+
 
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32; // items can vary in size because of text wrapping
@@ -27,7 +31,7 @@ interface Props {
   onItemToggle?: (item: FlatItem) => void;
 }
 
-export function Results({
+export function TablePickerResults({
   items,
   path,
   selectedIndex,
@@ -45,6 +49,7 @@ export function Results({
     getScrollElement: () => ref.current,
     overscan: VIRTUAL_OVERSCAN,
     estimateSize: () => ITEM_MIN_HEIGHT,
+    measureElement: (element) => element?.getBoundingClientRect().height ?? ITEM_MIN_HEIGHT,
   });
 
   const virtualItems = virtual.getVirtualItems();
@@ -61,21 +66,18 @@ export function Results({
         return;
       }
 
-      virtual.scrollToIndex(index);
-    },
-    [path.tableId, items, virtual],
-  );
-
-  useEffect(
-    function measureItemsWhenTheyChange() {
-      const { startIndex = 0, endIndex = 0 } = virtual.range ?? {};
-      for (let idx = startIndex; idx <= endIndex; idx++) {
-        virtual.measureElement(
-          ref.current?.querySelector(`[data-index='${idx}']`),
-        );
+      const visibleIndices = virtual
+        .getVirtualItems()
+        .map((virtualItem) => virtualItem.index);
+      if (visibleIndices.includes(index)) {
+        return;
       }
+
+      virtual.scrollToIndex(index, { align: "start", behavior: "auto" });
     },
-    [items, virtual],
+    // TODO: fix it, avoids unnecessary jumps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [path.tableId],
   );
 
   useEffect(() => {
@@ -109,6 +111,9 @@ export function Results({
             value?.tableId === activeTableId &&
             selectedItemsCount === 0;
           const parentIndex = items.findIndex((item) => item.key === parent);
+          const indent = level * INDENT_OFFSET;
+          const hasToggle = hasChildren(type);
+
           const handleItemSelect = (open?: boolean) => {
             if (selectedItemsCount > 0 && type === "table") {
               onItemToggle?.(item);
@@ -117,9 +122,11 @@ export function Results({
               return;
             }
 
+            const isExpanding = hasChildren(type) && !isExpanded && open !== false;
+
             toggle?.(key, open);
 
-            if (value && (!isExpanded || type === "table")) {
+            if (value && (!isExpanded || type === "field") && !isExpanding) {
               onItemClick?.(value);
             }
 
@@ -153,7 +160,7 @@ export function Results({
               event.preventDefault();
             }
             if (event.code === "ArrowLeft") {
-              if (isExpanded && type !== "table") {
+              if (isExpanded && type !== "field") {
                 // when expanded, close the item
                 toggle?.(key, false);
               } else {
@@ -165,7 +172,7 @@ export function Results({
             if (event.code === "ArrowRight") {
               if (!isExpanded) {
                 // expand the item
-                if (type !== "table") {
+                if (type !== "field") {
                   handleItemSelect(true);
                 }
               } else {
@@ -191,8 +198,8 @@ export function Results({
               key={key}
               aria-selected={isActive}
               align="center"
-              justify="space-between"
-              gap="sm"
+              justify="flex-start"
+              gap={0}
               className={cx(S.item, S[type], {
                 [S.active]: isActive,
                 [S.selected]: selectedIndex === index,
@@ -202,7 +209,6 @@ export function Results({
               tabIndex={disabled ? -1 : 0}
               style={{
                 top: start,
-                marginLeft: level * INDENT_OFFSET,
                 pointerEvents: disabled ? "none" : undefined,
               }}
               to={getUrl({
@@ -222,23 +228,41 @@ export function Results({
                 handleItemSelect();
               }}
               onFocus={() => onSelectedIndexChange?.(index)}
-              pe="sm"
             >
-              <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xs" w="100%">
+              <Box className={S.checkboxColumn}>
+                <ElementCheckbox item={item} onItemToggle={onItemToggle} disabled={disabled} />
+              </Box>
+
+              <Flex
+                align="center"
+                mih={ITEM_MIN_HEIGHT}
+                py="xs"
+                w="100%"
+                style={{ paddingLeft: indent }}
+              >
                 <Flex align="flex-start" gap="xs" w="100%">
                   <Flex align="center" gap="xs">
-                    {hasChildren(type) && (
-                      <Icon
-                        name="chevronright"
-                        size={10}
-                        color="var(--mb-color-text-light)"
-                        className={cx(S.chevron, {
-                          [S.expanded]: isExpanded,
-                        })}
-                      />
-                    )}
+                    <Box className={S.chevronSlot} style={{ width: `${INDENT_OFFSET}px` }}>
+                      {hasToggle && (
+                        <Icon
+                          name="chevronright"
+                          size={10}
+                          color="var(--mb-color-text-light)"
+                          className={cx(S.chevron, {
+                            [S.expanded]: isExpanded,
+                          })}
+                        />
+                      )}
+                    </Box>
 
-                    <Icon name={TYPE_ICONS[type]} className={S.icon} />
+                    <Icon
+                      name={
+                        type === "field" && item.field
+                          ? getIconForField(item.field)
+                          : TYPE_ICONS[type]
+                      }
+                      className={S.icon}
+                    />
                   </Flex>
 
                   {isLoading ? (
@@ -248,9 +272,9 @@ export function Results({
                       className={S.label}
                       c={
                         type === "table" &&
-                        item.table &&
-                        item.table.visibility_type != null &&
-                        !isActive
+                          item.table &&
+                          item.table.visibility_type != null &&
+                          !isActive
                           ? "text-secondary"
                           : undefined
                       }
@@ -262,8 +286,6 @@ export function Results({
                   )}
                 </Flex>
               </Flex>
-
-              <ElementCheckbox item={item} onItemToggle={onItemToggle} />
             </Flex>
           );
         })}
@@ -275,9 +297,11 @@ export function Results({
 function ElementCheckbox({
   item,
   onItemToggle,
+  disabled = false,
 }: {
   item: FlatItem;
   onItemToggle: ((item: FlatItem) => void) | undefined;
+  disabled?: boolean;
 }) {
   if (item.isLoading) {
     return null;
@@ -290,10 +314,15 @@ function ElementCheckbox({
     <Checkbox
       size="sm"
       checked={isSelected !== "no"}
+      className={S.checkbox}
+      disabled={disabled}
       onClick={(event) => {
         event.stopPropagation();
       }}
       onChange={() => {
+        if (disabled) {
+          return;
+        }
         onItemToggle?.(item);
       }}
       indeterminate={indeterminate}
@@ -312,4 +341,9 @@ function Loading() {
       radius="sm"
     />
   );
+}
+
+function getIconForField(field: Field) {
+  const typeInfo = Lib.legacyColumnTypeInfo(field);
+  return getColumnIcon(typeInfo);
 }

@@ -1,5 +1,7 @@
 import type {
   DatabaseId,
+  Field,
+  FieldId,
   SchemaName,
   Table,
   TableId,
@@ -14,9 +16,10 @@ export type TreePath = {
   databaseId?: DatabaseId;
   schemaName?: SchemaName;
   tableId?: TableId;
+  fieldId?: FieldId;
 };
 
-export type TreeNode = RootNode | DatabaseNode | SchemaNode | TableNode;
+export type TreeNode = RootNode | DatabaseNode | SchemaNode | TableNode | FieldNode;
 
 export type RootNode = {
   type: "root";
@@ -47,16 +50,27 @@ export type TableNode = {
   label: string;
   key: string;
   value: { databaseId: DatabaseId; schemaName: SchemaName; tableId: TableId };
-  children: [];
+  children: FieldNode[];
   table?: Table;
+  disabled?: boolean;
+};
+
+export type FieldNode = {
+  type: "field";
+  label: string;
+  key: string;
+  value: { databaseId: DatabaseId; schemaName: SchemaName; tableId: TableId; fieldId: FieldId };
+  children: [];
+  field?: Field;
   disabled?: boolean;
 };
 
 export type DatabaseItem = Omit<DatabaseNode, "children">;
 export type SchemaItem = Omit<SchemaNode, "children">;
 export type TableItem = Omit<TableNode, "children">;
+export type FieldItem = Omit<FieldNode, "children">;
 
-export type Item = DatabaseItem | SchemaItem | TableItem;
+export type Item = DatabaseItem | SchemaItem | TableItem | FieldItem;
 
 export type ItemType = Item["type"];
 
@@ -69,6 +83,7 @@ type ExpandedItem = Item & {
   level: number;
   disabled?: boolean;
   isSelected?: "yes" | "no" | "some";
+  children: TreeNode[];
 };
 
 type LoadingItem = {
@@ -81,7 +96,9 @@ type LoadingItem = {
   label?: string;
   parent?: NodeKey;
   table?: undefined;
+  field?: undefined;
   disabled?: never;
+  children: [];
 };
 
 export type ExpandedState = {

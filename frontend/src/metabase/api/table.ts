@@ -194,6 +194,7 @@ export const {
   useEditTablesMutation,
   useGetTableQuery,
   useGetTableQueryMetadataQuery,
+  useLazyGetTableQueryMetadataQuery,
   useGetTableDataQuery,
   useListTableForeignKeysQuery,
   useLazyListTableForeignKeysQuery,
