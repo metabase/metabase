@@ -16,6 +16,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
@@ -93,10 +95,11 @@
              :write
              :none))))
 
-(defn- card-database-supports-nested-queries? [{{database-id :database, :as database} :dataset_query, :as _card}]
+(defn- card-database-supports-nested-queries? [{{database-id :database, :as query} :dataset_query, :as _card}]
   (when database-id
     (when-let [driver (driver.u/database->driver database-id)]
-      (driver.u/supports? driver :nested-queries database))))
+      (when-let [database (some-> query not-empty lib.metadata/database)]
+        (driver.u/supports? driver :nested-queries database)))))
 
 (defn- card-has-ambiguous-columns?
   "We know a card has ambiguous columns if any of the columns that come back end in `_2` (etc.) because that's what
@@ -113,17 +116,18 @@
    would be ambiguous. Too many things break when attempting to use a query like this. In the future, this may be
    supported, but it will likely require rewriting the source SQL query to add appropriate aliases (this is even
    trickier if the source query uses `SELECT *`)."
-  [{result-metadata :result_metadata, dataset-query :dataset_query}]
-  (and (= (:type dataset-query) :native)
+  [{result-metadata :result_metadata, query :dataset_query, :as _card}]
+  (and (lib/native-only-query? query)
        (some (partial re-find #"_2$")
              (map (comp name :name) result-metadata))))
 
-(defn- card-uses-unnestable-aggregation?
+(mu/defn- card-uses-unnestable-aggregation?
   "Since cumulative count and cumulative sum aggregations are done in Clojure-land we can't use Cards that use queries
   with those aggregations as source queries. This function determines whether `card` is using one of those queries so
   we can filter it out in Clojure-land."
-  [{{{aggregations :aggregation} :query} :dataset_query}]
-  (lib.util.match/match aggregations #{:cum-count :cum-sum}))
+  [{query :dataset_query, :as _card} :- [:map
+                                         [:dataset_query ::queries.schema/query]]]
+  (lib.util.match/match (lib/aggregations query) #{:cum-count :cum-sum}))
 
 (defn card-can-be-used-as-source-query?
   "Does `card`'s query meet the conditions required for it to be used as a source query for another query?"
@@ -284,6 +288,9 @@
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
       include-only-uploadable?     (#(filter uploadable-db? %)))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Fetch all `Databases`.
 
@@ -301,9 +308,9 @@
   * `include_only_uploadable` will only include DBs into which Metabase can insert new data.
 
   Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in
-  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
-  in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
-  database details."
+  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for
+  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user
+  lacks permission to change the database details."
   [_route-params
    {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics
            router_database_id]}
@@ -406,6 +413,9 @@
     include-editable-data-model? check-db-data-model-perms
     (mi/can-write? db)           (assoc :can-manage true)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
   belonging to this database, or the Tables and Fields, respectively. If the requestor has write permissions for the
@@ -482,6 +492,8 @@
              [:in :table_id table-ids]
              always-false-hsql-expr)})
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/:id/usage_info"
   "Get usage info for a database.
   Returns a map with keys are models and values are the number of entities that use this database."
@@ -544,6 +556,9 @@
                             (filter :active tables))
                           identity)))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
@@ -662,6 +677,8 @@
         fields (readable-fields-only (autocomplete-fields db-id match-string limit))]
     (autocomplete-results tables fields limit)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/:id/autocomplete_suggestions"
   "Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but
   `substring` will have priority if both are present.
@@ -694,6 +711,12 @@
     (catch Throwable e
       (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+;;
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id/card_autocomplete_suggestions"
   "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
 
@@ -890,6 +913,8 @@
 
 ;;; --------------------------------------- POST /api/database/sample_database ----------------------------------------
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/sample_database"
   "Add the sample database as a new `Database`."
   []
@@ -1010,17 +1035,21 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/let-404 [db (t2/select-one :model/Database :id id)]
-    (api/check-403 (mi/can-write? db))
-    (t2/delete! :model/Database :router_database_id id)
-    (database-routing/delete-associated-database-router! id)
-    (t2/delete! :model/Database :id id)
-    (events/publish-event! :event/database-delete {:object db :user-id api/*current-user-id*}))
+  (t2/with-transaction [_conn]
+    (api/let-404 [db (t2/select-one :model/Database :id id)]
+      (api/check-403 (mi/can-write? db))
+      (t2/delete! :model/Database :router_database_id id)
+      (database-routing/delete-associated-database-router! id)
+      (t2/delete! :model/Database :id id)
+      (events/publish-event! :event/database-delete {:object db :user-id api/*current-user-id*})))
   api/generic-204-no-content)
 
 ;;; ------------------------------------------ POST /api/database/:id/sync_schema -------------------------------------------
 
 ;; Should somehow trigger sync-database/sync-database!
+;;
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Database`."
   [{:keys [id]} :- [:map
@@ -1046,6 +1075,8 @@
              (sync/analyze-db! db))))
         {:status :ok}))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/dismiss_spinner"
   "Manually set the initial sync status of the `Database` and corresponding
   tables to be `complete` (see #20863)"
@@ -1070,6 +1101,9 @@
   true)
 
 ;; Should somehow trigger cached-values/cache-field-values-for-database!
+;;
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
   [{:keys [id]} :- [:map
@@ -1099,6 +1133,9 @@
                                :where      [:= :t.db_id (u/the-id database-or-id)]}]}))
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
+;;
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/discard_values"
   "Discards all saved field values for this `Database`."
   [{:keys [id]} :- [:map
@@ -1130,6 +1167,8 @@
                                                 schema-name))
    (current-user-can-manage-schema-metadata? database-id schema-name)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/:id/syncable_schemas"
   "Returns a list of all syncable schemas found for the database `id`."
   [{:keys [id]} :- [:map
@@ -1169,6 +1208,9 @@
          distinct
          sort)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id/schemas"
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
   [{:keys [id]} :- [:map
@@ -1228,6 +1270,9 @@
          tables)
        (filter mi/can-read? tables)))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
   [{:keys [id schema]} :- [:map
@@ -1241,6 +1286,9 @@
                        include_hidden
                        include_editable_data_model))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id/schema/"
   "Return a list of Tables for a Database whose `schema` is `nil` or an empty string."
   [{:keys [id]} :- [:map

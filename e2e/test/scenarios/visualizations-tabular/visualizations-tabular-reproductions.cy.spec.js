@@ -639,8 +639,7 @@ describe("issue 37726", () => {
   });
 });
 
-// unskip once metabase#42049 is addressed
-describe("issue 42049", { tags: "@skip" }, () => {
+describe("issue 42049", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -703,11 +702,11 @@ describe("issue 42049", { tags: "@skip" }, () => {
     cy.get("@headerCells").eq(1).should("have.text", "Created At");
     cy.get("@headerCells").eq(2).should("have.text", "Quantity");
 
-    cy.findByRole("button", { name: "Filter" }).click();
+    cy.findByTestId("question-filter-header").click();
 
-    cy.findByRole("dialog").within(() => {
-      cy.findByRole("button", { name: "Last month" }).click();
-      cy.findByRole("button", { name: "Apply filters" }).click();
+    H.popover().within(() => {
+      cy.findByText("Created At").click();
+      cy.button("Previous month").click();
     });
 
     cy.wait("@cardQuery");
@@ -917,7 +916,8 @@ describe("issue 7884", () => {
             cy.request("PUT", `/api/card/${sourceQuestion.id}`, {
               ...sourceQuestion,
               dataset_query: {
-                ...sourceQuestion.dataset_query,
+                type: "native",
+                database: SAMPLE_DB_ID,
                 native: newSourceQuestionDetails.native,
               },
             });
@@ -1546,5 +1546,54 @@ describe("issue 63745", () => {
       const map = new Map(chunk(cellsFlat, 2));
       expect(map.get("User ID")).to.eq("1");
     });
+  });
+});
+
+describe("issue 56094", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow to switch between automatic pivot table and usual table visualization (metabase#56094)", () => {
+    H.visitQuestionAdhoc({
+      name: "56094",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PRODUCTS.CATEGORY,
+              {
+                "base-type": "type/Text",
+              },
+            ],
+            [
+              "field",
+              PRODUCTS.RATING,
+              {
+                binning: {
+                  strategy: "default",
+                },
+              },
+            ],
+          ],
+
+          limit: 20,
+        },
+      },
+    });
+
+    H.queryBuilderFooter().findByLabelText("Switch to data").click();
+
+    H.queryBuilderFooterDisplayToggle().should("exist");
+
+    H.queryBuilderFooter().findByLabelText("Switch to visualization").click();
+
+    H.queryBuilderFooterDisplayToggle().should("exist");
   });
 });

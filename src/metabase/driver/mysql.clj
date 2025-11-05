@@ -1,6 +1,6 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [some not-empty])
   (:require
    [clojure.java.io :as jio]
    [clojure.java.jdbc :as jdbc]
@@ -28,7 +28,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [metabase.util.performance :as perf :refer [some]])
+   [metabase.util.performance :as perf :refer [some not-empty]])
   (:import
    (java.io File)
    (java.sql
@@ -93,7 +93,10 @@
                               :database-routing                       true
                               :metadata/table-existence-check         true
                               :transforms/python                      true
-                              :transforms/table                       true}]
+                              :transforms/table                       true
+                              :describe-default-expr                  true
+                              :describe-is-nullable                   true
+                              :describe-is-generated                  true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -239,10 +242,7 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :mysql
   [driver hsql-form amount unit]
-  ;; MySQL doesn't support `:millisecond` as an option, but does support fractional seconds
-  (if (= unit :millisecond)
-    (recur driver hsql-form (/ amount 1000.0) :second)
-    [:date_add hsql-form [:raw (format "INTERVAL %s %s" amount (name unit))]]))
+  (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql
@@ -550,7 +550,8 @@
 (defmethod sql.qp/->honeysql [:mysql :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [expr       (sql.qp/->honeysql driver arg)
-        timestamp? (h2x/is-of-type? expr "timestamp")]
+        timestamp? (or (sql.qp.u/field-with-tz? arg)
+                       (h2x/is-of-type? expr "timestamp"))]
     (sql.u/validate-convert-timezone-args timestamp? target-timezone source-timezone)
     (h2x/with-database-type-info
      [:convert_tz expr (or source-timezone (driver-api/results-timezone-id)) target-timezone]
@@ -1061,7 +1062,9 @@
          (-> col
              (update :pk? pos?)
              (update :database-required pos?)
-             (update :database-is-auto-increment pos?)))))
+             (update :database-is-auto-increment pos?)
+             (update :database-is-nullable pos?)
+             (update :database-is-generated pos?)))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :mysql
   [driver & {:keys [table-names details]}]
@@ -1079,6 +1082,16 @@
                           [:not [:= :c.extra [:inline "auto_increment"]]]]
                          :database-required]
                         [[:= :c.column_key [:inline "PRI"]] :pk?]
+                        [[:= :is_nullable [:inline "YES"]] :database-is-nullable]
+                        [[:if [:= [:lower :column_default] [:inline "null"]] nil :column_default] :database-default]
+
+                        [[:and
+                          ;; mariadb
+                          [:!= :generation_expression nil]
+                          ;; mysql
+                          [:<> :generation_expression ""]]
+                         :database-is-generated]
+
                         [[:nullif :c.column_comment [:inline ""]] :field-comment]]
                :from [[:information_schema.columns :c]]
                :where

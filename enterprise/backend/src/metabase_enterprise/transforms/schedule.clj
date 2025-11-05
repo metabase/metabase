@@ -85,7 +85,9 @@
   (let [job-id (-> (conversion/from-job-data context)
                    (get "job-id"))]
     (log/info "Executing scheduled run of transform job" job-id)
-    (task-history/with-task-history {:task "run-transforms"}
+    (task-history/with-task-history {:task "run-transforms"
+                                     :task_details {:job-id job-id
+                                                    :run-method :cron}}
       (transforms.jobs/run-job! job-id {:run-method :cron}))))
 
 (defn initialize-job!

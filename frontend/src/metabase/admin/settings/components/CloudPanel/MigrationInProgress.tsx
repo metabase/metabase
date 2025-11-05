@@ -5,7 +5,6 @@ import { useCancelCloudMigrationMutation } from "metabase/api";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -67,17 +66,13 @@ export const MigrationInProgress = ({
       <MigrationCard>
         <Flex gap="1.5rem" align="start">
           <Flex
-            bg={color("brand-light")}
+            bg="brand-light"
             h="64px"
             style={{ borderRadius: "50%", flex: "0 0 64px" }}
             justify="center"
             align="center"
           >
-            <Icon
-              name="cloud_filled"
-              size="2.375rem"
-              style={{ color: color("brand") }}
-            />
+            <Icon name="cloud_filled" size="2.375rem" c="brand" />
           </Flex>
           <Box style={{ flex: "1 0 0" }}>
             <Text fw="bold">{t`Migrating to Metabase Cloud…`}</Text>

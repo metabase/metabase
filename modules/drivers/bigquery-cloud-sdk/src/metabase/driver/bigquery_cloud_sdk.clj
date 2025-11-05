@@ -1,5 +1,5 @@
 (ns metabase.driver.bigquery-cloud-sdk
-  (:refer-clojure :exclude [mapv some])
+  (:refer-clojure :exclude [mapv some empty? not-empty])
   (:require
    [clojure.core.async :as a]
    [clojure.set :as set]
@@ -15,6 +15,7 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql.normalize :as driver.sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
@@ -23,7 +24,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv some]]
+   [metabase.util.performance :refer [mapv some empty? not-empty]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -992,17 +993,19 @@
   [_]
   nil)
 
-(defmethod driver/native-query-deps :bigquery-cloud-sdk
-  [driver query]
-  (let [db-tables (driver-api/tables (driver-api/metadata-provider))
+(mu/defmethod driver/native-query-deps :bigquery-cloud-sdk :- ::driver/native-query-deps
+  [driver :- :keyword
+   query  :- :metabase.lib.schema/native-only-query]
+  (let [db-tables (driver-api/tables query)
         transforms (t2/select [:model/Transform :id :target])]
     (into #{} (comp
                (map :component)
-               (map #(assoc % :table (driver.sql/normalize-name driver (:table %))))
+               (map #(assoc % :table (driver.sql.normalize/normalize-name driver (:table %))))
                (map #(let [parts (str/split (:table %) #"\.")]
                        {:schema (first parts) :table (second parts)}))
                (keep #(driver.sql/find-table-or-transform driver db-tables transforms %)))
           (-> query
+              driver-api/raw-native-query
               macaw/parsed-query
               macaw/query->components
               :tables))))

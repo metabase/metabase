@@ -87,3 +87,143 @@
         query-with-source-card (lib/query mp (lib.metadata/card mp 1))]
     (is (= #{1}
            (lib/all-source-card-ids query-with-source-card)))))
+
+(deftest ^:parallel all-implicitly-joined-field-ids-test
+  (testing "Returns field IDs from implicitly joined tables (fields with :source-field but no :join-alias)"
+    (is (= (lib.tu.macros/$ids nil #{%venues.name %users.name})
+           (lib/all-implicitly-joined-field-ids
+            (lib/query
+             meta/metadata-provider
+             (lib.tu.macros/mbql-query nil
+               {:source-table $$checkins
+                :fields [[:field $venues.name {:source-field %checkins.venue-id}]
+                         [:field $users.name {:source-field %checkins.user-id}]]}))))))
+  (testing "Ignores explicit joins (fields with both :source-field and :join-alias)"
+    (is (= #{}
+           (lib/all-implicitly-joined-field-ids
+            (lib/query
+             meta/metadata-provider
+             (lib.tu.macros/mbql-query nil
+               {:source-table $$checkins
+                :fields [[:field $venues.name {:source-field %checkins.venue-id
+                                               :join-alias "V"}]]
+                :joins [{:source-table $$venues
+                         :alias "V"
+                         :condition [:= $checkins.venue-id &V.venues.id]}]}))))))
+  (testing "Works with breakouts and aggregations"
+    (is (= (lib.tu.macros/$ids nil #{%venues.name})
+           (lib/all-implicitly-joined-field-ids
+            (lib/query
+             meta/metadata-provider
+             (lib.tu.macros/mbql-query nil
+               {:source-table $$checkins
+                :breakout [[:field $venues.name {:source-field %checkins.venue-id}]]
+                :aggregation [[:count]]}))))))
+  (testing "Works with filters"
+    (is (= (lib.tu.macros/$ids nil #{%venues.name})
+           (lib/all-implicitly-joined-field-ids
+            (lib/query
+             meta/metadata-provider
+             (lib.tu.macros/mbql-query nil
+               {:source-table $$checkins
+                :filter [:= [:field $venues.name {:source-field %checkins.venue-id}] "Bird's Nest"]}))))))
+  (testing "Works with aggregations"
+    (is (= (lib.tu.macros/$ids nil #{%venues.price})
+           (lib/all-implicitly-joined-field-ids
+            (lib/query
+             meta/metadata-provider
+             (lib.tu.macros/mbql-query nil
+               {:source-table $$checkins
+                :aggregation [[:sum [:field $venues.price {:source-field %checkins.venue-id}]]]}))))))
+  (testing "Works with order-by"
+    (is (= (lib.tu.macros/$ids nil #{%venues.name})
+           (lib/all-implicitly-joined-field-ids
+            (lib/query
+             meta/metadata-provider
+             (lib.tu.macros/mbql-query nil
+               {:source-table $$checkins
+                :order-by [[:asc [:field $venues.name {:source-field %checkins.venue-id}]]]}))))))
+  (testing "Works in join conditions"
+    (is (= (lib.tu.macros/$ids nil #{%categories.name})
+           (lib/all-implicitly-joined-field-ids
+            (lib/query
+             meta/metadata-provider
+             (lib.tu.macros/mbql-query nil
+               {:source-table $$venues
+                :joins [{:source-table $$users
+                         :alias "U"
+                         :condition [:= [:field $categories.name {:source-field %venues.category-id}] &U.users.name]}]})))))))
+
+(deftest ^:parallel all-implicitly-joined-table-ids-test
+  (testing "Returns table IDs from implicit joins by resolving FK relationships"
+    (is (= (lib.tu.macros/$ids nil #{$$venues $$users})
+           (lib/all-implicitly-joined-table-ids
+            (lib/query
+             meta/metadata-provider
+             (lib.tu.macros/mbql-query nil
+               {:source-table $$checkins
+                :fields [[:field $venues.name {:source-field %checkins.venue-id}]
+                         [:field $users.name {:source-field %checkins.user-id}]]}))))))
+  (testing "Returns empty set when no implicit joins"
+    (is (= nil
+           (lib/all-implicitly-joined-table-ids
+            (lib/query
+             meta/metadata-provider
+             (lib.tu.macros/mbql-query nil
+               {:source-table $$checkins
+                :fields [$checkins.id $checkins.date]}))))))
+  (testing "Ignores explicit joins"
+    (is (= nil
+           (lib/all-implicitly-joined-table-ids
+            (lib/query
+             meta/metadata-provider
+             (lib.tu.macros/mbql-query nil
+               {:source-table $$checkins
+                :fields [[:field $venues.name {:source-field %checkins.venue-id
+                                               :join-alias "V"}]]
+                :joins [{:source-table $$venues
+                         :alias "V"
+                         :condition [:= $checkins.venue-id &V.venues.id]}]}))))))
+  (testing "Works with breakouts"
+    (is (= (lib.tu.macros/$ids nil #{$$venues})
+           (lib/all-implicitly-joined-table-ids
+            (lib/query
+             meta/metadata-provider
+             (lib.tu.macros/mbql-query nil
+               {:source-table $$checkins
+                :breakout [[:field $venues.name {:source-field %checkins.venue-id}]]
+                :aggregation [[:count]]}))))))
+  (testing "Works with filters"
+    (is (= (lib.tu.macros/$ids nil #{$$venues})
+           (lib/all-implicitly-joined-table-ids
+            (lib/query
+             meta/metadata-provider
+             (lib.tu.macros/mbql-query nil
+               {:source-table $$checkins
+                :filter [:= [:field $venues.name {:source-field %checkins.venue-id}] "Bird's Nest"]}))))))
+  (testing "Works with aggregations"
+    (is (= (lib.tu.macros/$ids nil #{$$venues})
+           (lib/all-implicitly-joined-table-ids
+            (lib/query
+             meta/metadata-provider
+             (lib.tu.macros/mbql-query nil
+               {:source-table $$checkins
+                :aggregation [[:sum [:field $venues.price {:source-field %checkins.venue-id}]]]}))))))
+  (testing "Works with order-by"
+    (is (= (lib.tu.macros/$ids nil #{$$venues})
+           (lib/all-implicitly-joined-table-ids
+            (lib/query
+             meta/metadata-provider
+             (lib.tu.macros/mbql-query nil
+               {:source-table $$checkins
+                :order-by [[:asc [:field $venues.name {:source-field %checkins.venue-id}]]]}))))))
+  (testing "Works in join conditions"
+    (is (= (lib.tu.macros/$ids nil #{$$categories})
+           (lib/all-implicitly-joined-table-ids
+            (lib/query
+             meta/metadata-provider
+             (lib.tu.macros/mbql-query nil
+               {:source-table $$venues
+                :joins [{:source-table $$users
+                         :alias "U"
+                         :condition [:= [:field $categories.name {:source-field %venues.category-id}] &U.users.name]}]})))))))
