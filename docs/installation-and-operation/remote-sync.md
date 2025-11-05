@@ -69,7 +69,7 @@ Create a [fine-grained personal access token](https://docs.github.com/en/authent
 - **Contents:** Read and write
 - **Metadata:** Read-only (required)
 
-Copy the token immediately after generating it—you'll need to paste it into your Metabase.
+Copy the token immediately after generating it — you'll need to paste it into your Metabase.
 
 ### 3. Connect your development Metabase to your repository
 
