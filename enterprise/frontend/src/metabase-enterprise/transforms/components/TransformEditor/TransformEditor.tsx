@@ -9,7 +9,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type { Database, QueryTransformSource } from "metabase-types/api";
 
-import { getEditorOptions, getQuery } from "./utils";
+import { getEditorOptions } from "./utils";
 
 type TransformEditorProps = {
   source: QueryTransformSource;
@@ -33,9 +33,15 @@ export function TransformEditor({
   onRejectProposed,
 }: TransformEditorProps) {
   const metadata = useSelector(getMetadata);
-  const query = useMemo(() => getQuery(source, metadata), [source, metadata]);
+  const query = useMemo(
+    () => Lib.fromJsQueryAndMetadata(metadata, source.query),
+    [source, metadata],
+  );
   const proposedQuery = useMemo(
-    () => (proposedSource ? getQuery(proposedSource, metadata) : undefined),
+    () =>
+      proposedSource
+        ? Lib.fromJsQueryAndMetadata(metadata, proposedSource.query)
+        : undefined,
     [proposedSource, metadata],
   );
   const uiOptions = useMemo(() => getEditorOptions(databases), [databases]);
