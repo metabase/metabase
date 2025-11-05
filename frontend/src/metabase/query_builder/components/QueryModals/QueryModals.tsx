@@ -7,7 +7,7 @@ import { getDashboard } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import Modal from "metabase/common/components/Modal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
-import { useToast } from "metabase/common/hooks";
+import { type ToastArgs, useToast } from "metabase/common/hooks";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -23,6 +23,7 @@ import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionM
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
+import { Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
 import type { QueryBuilderMode } from "metabase-types/store";
@@ -136,11 +137,7 @@ export function QueryModals({
         onCloseModal();
         setQueryBuilderMode("view");
 
-        sendToast({
-          message: t`Saved!`,
-          actionLabel: t`Add this to a dashboard`,
-          action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
-        });
+        sendToast(getAddToDashboardToastProps(onOpenModal));
       }
 
       return newQuestion;
@@ -177,11 +174,7 @@ export function QueryModals({
         onCloseModal();
         setQueryBuilderMode("view");
 
-        sendToast({
-          message: t`Saved!`,
-          actionLabel: t`Add this to a dashboard`,
-          action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
-        });
+        sendToast(getAddToDashboardToastProps(onOpenModal));
       }
     },
     [
@@ -317,4 +310,14 @@ export function QueryModals({
         <QuestionEmbedWidget card={question._card} onClose={onCloseModal} />
       );
   }
+}
+
+function getAddToDashboardToastProps(
+  onOpenModal: (modalType: QueryModalType) => void,
+): ToastArgs {
+  return {
+    message: () => <Text c="inherit" fw="bold" mr="2.5rem">{t`Saved`}</Text>,
+    actionLabel: t`Add this to a dashboard`,
+    action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
+  };
 }
