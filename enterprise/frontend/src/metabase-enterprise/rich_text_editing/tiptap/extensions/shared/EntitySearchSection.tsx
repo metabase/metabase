@@ -9,6 +9,7 @@ import {
   MenuItemComponent,
   SearchResultsFooter,
 } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
+import { CreateQuestionModal } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/CreateQuestionModal";
 import type { SearchResult } from "metabase-types/api";
 
 interface EntitySearchSectionProps {
@@ -18,13 +19,14 @@ interface EntitySearchSectionProps {
   onFooterClick: () => void;
   query: string;
   searchResults: SearchResult[];
-  modal: "question-picker" | "create-new" | null;
+  modal: "question-picker" | "new-question-type" | null;
   onModalSelect: (item: QuestionPickerValueItem) => void;
   onModalClose: () => void;
   onItemHover: (index: number) => void;
   canBrowseAll?: boolean;
   selectedSearchModelName?: string;
-  onCreateNew: () => void;
+  onTriggerCreateNew: () => void;
+  onSaveNewQuestion: (id: number, name: string) => void;
 }
 
 export function EntitySearchSection({
@@ -40,7 +42,8 @@ export function EntitySearchSection({
   onItemHover,
   selectedSearchModelName,
   canBrowseAll,
-  onCreateNew,
+  onTriggerCreateNew,
+  onSaveNewQuestion,
 }: EntitySearchSectionProps) {
   return (
     <>
@@ -72,7 +75,7 @@ export function EntitySearchSection({
           {menuItems.length > 0 && <Divider my="sm" mx="sm" />}
           <CreateNewQuestionFooter
             isSelected={selectedIndex === menuItems.length}
-            onClick={onCreateNew}
+            onClick={onTriggerCreateNew}
             onMouseEnter={() => onItemHover(menuItems.length)}
           />
 
@@ -89,9 +92,9 @@ export function EntitySearchSection({
             />
           )}
 
-          {modal === "create-new" && (
-            <QuestionPickerModal
-              onChange={onModalSelect}
+          {modal === "new-question-type" && (
+            <CreateQuestionModal
+              onSave={onSaveNewQuestion}
               onClose={onModalClose}
             />
           )}

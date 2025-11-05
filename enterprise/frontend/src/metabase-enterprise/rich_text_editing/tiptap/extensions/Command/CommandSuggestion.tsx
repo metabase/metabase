@@ -400,7 +400,8 @@ export const CommandSuggestion = forwardRef<
           onModalSelect={entityHandlers.handleModalSelect}
           onModalClose={entityHandlers.handleModalClose}
           canBrowseAll
-          onCreateNew={entityHandlers.createNewQuestion}
+          onTriggerCreateNew={entityHandlers.onTriggerCreateQuestion}
+          onSaveNewQuestion={entityHandlers.onSaveNewQuestion}
         />
       ) : (
         <>

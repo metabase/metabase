@@ -38,7 +38,7 @@ interface UseEntitySuggestionsResult {
   isLoading: boolean;
   searchResults: SearchResult[];
   selectedIndex: number;
-  modal: "question-picker" | "create-new" | null;
+  modal: "question-picker" | "new-question-type" | null;
   totalItems: number;
   selectedSearchModelName?: string;
   handlers: {
@@ -51,7 +51,8 @@ interface UseEntitySuggestionsResult {
     handleModalClose: () => void;
     openModal: () => void;
     hoverHandler: (index: number) => void;
-    createNewQuestion: () => void;
+    onTriggerCreateQuestion: () => void;
+    onSaveNewQuestion: (id: number, name: string) => void;
   };
 }
 
@@ -66,9 +67,9 @@ export function useEntitySuggestions({
   canBrowseAll,
 }: UseEntitySuggestionsOptions): UseEntitySuggestionsResult {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [modal, setModal] = useState<"question-picker" | "create-new" | null>(
-    null,
-  );
+  const [modal, setModal] = useState<
+    "question-picker" | "new-question-type" | null
+  >(null);
   const [selectedSearchModel, setSelectedSearchModel] =
     useState<SuggestionModel | null>(null);
 
@@ -190,7 +191,10 @@ export function useEntitySuggestions({
     (index: number) => {
       if (index < menuItems.length) {
         menuItems[index].action();
-      } else {
+      } else if (index === menuItems.length) {
+        setModal("new-question-type");
+      } else if (index === menuItems.length + 1) {
+        // TODO: add proper index getters
         setModal("question-picker");
       }
     },
@@ -261,9 +265,19 @@ export function useEntitySuggestions({
     setModal("question-picker");
   }, []);
 
-  const createNewQuestion = useCallback(() => {
-    setModal("create-new");
+  const onTriggerCreateQuestion = useCallback(() => {
+    setModal("new-question-type");
   }, []);
+
+  const onSaveNewQuestion = (id: number, name: string, db_id: number) => {
+    onSelectEntity({
+      id: id,
+      model: "card",
+      db_id: db_id,
+      label: name,
+      href: modelToUrl(entityToUrlableModel({ id, name }, "card")),
+    });
+  };
 
   useEffect(() => {
     setSelectedIndex(0);
@@ -292,7 +306,8 @@ export function useEntitySuggestions({
       handleModalClose,
       openModal,
       hoverHandler,
-      createNewQuestion,
+      onTriggerCreateQuestion,
+      onSaveNewQuestion,
     },
   };
 }

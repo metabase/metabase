@@ -105,7 +105,7 @@ const documentsSlice = createSlice({
     createDraftCard: (
       state,
       action: PayloadAction<{
-        originalCard: Card;
+        originalCard: Card | undefined;
         modifiedData: Partial<Card>;
         draftId: number;
       }>,
