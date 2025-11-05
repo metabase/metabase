@@ -43,13 +43,13 @@ describe(suiteTitle, () => {
 
     getEmbedSidebar().within(() => {
       cy.findByText("Authentication").should("be.visible");
-      cy.findByText("Choose the authentication method for embedding:").should(
-        "be.visible",
-      );
 
-      cy.findByLabelText("Existing Metabase session")
+      cy.findByLabelText("Unauthenticated")
         .should("be.visible")
         .should("be.checked");
+      cy.findByLabelText("Existing Metabase session")
+        .should("be.visible")
+        .should("not.be.checked");
 
       cy.findByLabelText("Single sign-on (SSO)")
         .should("be.visible")

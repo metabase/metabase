@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { withStaticNotAllowedGuard } from "embedding-sdk-bundle/components/private/StaticEmbeddingNotAllowedGuard";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getPlugins } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
@@ -58,6 +59,9 @@ const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
   );
 };
 
-export const InteractiveDashboard = Object.assign(InteractiveDashboardInner, {
-  schema: interactiveDashboardSchema,
-});
+export const InteractiveDashboard = Object.assign(
+  withStaticNotAllowedGuard(InteractiveDashboardInner),
+  {
+    schema: interactiveDashboardSchema,
+  },
+);

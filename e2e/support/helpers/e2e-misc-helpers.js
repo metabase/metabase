@@ -102,14 +102,18 @@ export const cypressWaitAll = function (commands) {
  * Visit a question and wait for its query to load.
  *
  * @param {number|string} questionIdOrAlias
+ * @param {() => void} [afterVisit]
  */
-export function visitQuestion(questionIdOrAlias) {
+export function visitQuestion(questionIdOrAlias, afterVisit) {
   if (typeof questionIdOrAlias === "number") {
     visitQuestionById(questionIdOrAlias);
   }
 
   if (typeof questionIdOrAlias === "string") {
-    cy.get(questionIdOrAlias).then((id) => visitQuestionById(id));
+    cy.get(questionIdOrAlias).then((id) => {
+      visitQuestionById(id);
+      afterVisit?.(id);
+    });
   }
 }
 

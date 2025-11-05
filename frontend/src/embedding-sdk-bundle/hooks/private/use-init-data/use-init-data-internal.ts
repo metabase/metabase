@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
+import { overrideRequestsForStaticEmbedding } from "embedding-sdk-bundle/lib/override-requests-for-static-embedding";
 import { initAuth } from "embedding-sdk-bundle/store/auth";
 import {
   setFetchRefreshTokenFn,
@@ -17,12 +18,14 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
+import { refreshSiteSettings } from "metabase/redux/settings";
 import registerVisualizations from "metabase/visualizations/register";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
 interface InitDataLoaderParameters {
   reduxStore: SdkStore;
+  isStatic?: boolean;
   authConfig: MetabaseAuthConfig;
   isLocalHost?: boolean;
 }
@@ -43,12 +46,14 @@ export const useInitData = () => {
 
   useInitDataInternal({
     reduxStore,
+    isStatic: props.isStatic,
     authConfig,
   });
 };
 
 export const useInitDataInternal = ({
   reduxStore,
+  isStatic,
   authConfig,
   isLocalHost,
 }: InitDataLoaderParameters) => {
@@ -58,6 +63,7 @@ export const useInitDataInternal = ({
     reduxStore.getState().sdk.loginStatus.status === "uninitialized";
 
   const fetchRefreshTokenFnFromStore = useLazySelector(getFetchRefreshTokenFn);
+
   const sdkPackageVersion =
     getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO").version ?? null;
 
@@ -99,7 +105,12 @@ export const useInitDataInternal = ({
   }, [authConfig.fetchRequestToken, fetchRefreshTokenFnFromStore, dispatch]);
 
   useMount(function initializeData() {
-    if (isAuthUninitialized()) {
+    if (isStatic) {
+      overrideRequestsForStaticEmbedding();
+      dispatch(refreshSiteSettings());
+    }
+
+    if (!isStatic && isAuthUninitialized()) {
       dispatch(initAuth({ ...authConfig, isLocalHost }));
     }
   });

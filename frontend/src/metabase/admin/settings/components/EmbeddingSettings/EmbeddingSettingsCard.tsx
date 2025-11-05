@@ -1,3 +1,5 @@
+import type { PropsWithChildren } from "react";
+
 import ExternalLink from "metabase/common/components/ExternalLink";
 import {
   Alert,
@@ -11,35 +13,34 @@ import {
 } from "metabase/ui";
 
 import S from "./EmbeddingSettings.module.css";
-import { EmbeddingToggle } from "./EmbeddingToggle";
+import { type EmbeddingSettingKey, EmbeddingToggle } from "./EmbeddingToggle";
 
 type LinkItem = { icon: IconName; title: string; href: string };
 
 export function EmbeddingSettingsCard({
+  children,
   title,
   description,
   settingKey,
+  dependentSettingKeys,
   isFeatureEnabled = true,
   links,
   rightSideContent,
   alertInfoText,
   actionButton,
   testId,
-}: {
+}: PropsWithChildren<{
   title: string;
   description: string;
-  settingKey:
-    | "enable-embedding-sdk"
-    | "enable-embedding-simple"
-    | "enable-embedding-static"
-    | "enable-embedding-interactive";
+  settingKey: EmbeddingSettingKey;
+  dependentSettingKeys?: EmbeddingSettingKey[];
   isFeatureEnabled?: boolean;
   links?: LinkItem[];
   rightSideContent?: React.ReactNode;
   alertInfoText?: React.ReactNode;
   actionButton?: React.ReactNode;
   testId?: string;
-}) {
+}>) {
   const hasLinksContent = links && links.length > 0;
 
   return (
@@ -56,6 +57,7 @@ export function EmbeddingSettingsCard({
         <Group justify="space-between" align="center">
           <EmbeddingToggle
             settingKey={settingKey}
+            dependentSettingKeys={dependentSettingKeys}
             labelPosition="right"
             disabled={!isFeatureEnabled}
             aria-label={`${title} toggle`}
@@ -86,6 +88,8 @@ export function EmbeddingSettingsCard({
           </Alert>
         )}
       </Stack>
+
+      {children}
 
       {(hasLinksContent || actionButton) && (
         <Group

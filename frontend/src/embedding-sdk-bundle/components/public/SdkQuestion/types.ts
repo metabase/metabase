@@ -1,3 +1,4 @@
+import type { SdkEntityToken } from "embedding-sdk-bundle/types";
 import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
 
 export type SdkQuestionIdProps = {
@@ -13,4 +14,11 @@ export type SdkQuestionIdProps = {
    * - `new` to show the notebook editor for creating new questions. `isSaveEnabled` must be `true` to allow saving the question
    */
   questionId: SdkQuestionId | null;
+};
+
+export type SdkQuestionTokenProps = {
+  /**
+   * A valid JWT token for the anonymous embedding.
+   */
+  token: SdkEntityToken;
 };

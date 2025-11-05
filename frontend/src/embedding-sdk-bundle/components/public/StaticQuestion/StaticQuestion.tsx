@@ -26,23 +26,24 @@ import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
-import { StaticQuestionSdkMode } from "embedding-sdk-bundle/components/public/StaticQuestion/mode";
+import { useSdkSelector } from "embedding-sdk-bundle/store";
+import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
+import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
 import { Box, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 
 import { staticQuestionSchema } from "./StaticQuestion.schema";
 
 /**
- * @interface
  * @expand
  * @category StaticQuestion
  */
 export type StaticQuestionProps = PropsWithChildren<
   Pick<
     SdkQuestionProps,
-    | "questionId"
     | "withChartTypeSelector"
     | "height"
     | "width"
@@ -53,7 +54,8 @@ export type StaticQuestionProps = PropsWithChildren<
     | "withDownloads"
     | "title"
   >
->;
+> &
+  SdkQuestionEntityPublicProps;
 
 /**
  * @interface
@@ -79,6 +81,7 @@ export type StaticQuestionComponents = {
 
 const StaticQuestionInner = ({
   questionId,
+  token,
   withChartTypeSelector,
   height,
   width,
@@ -90,6 +93,8 @@ const StaticQuestionInner = ({
   title = false, // Hidden by default for backwards-compatibility.
   children,
 }: StaticQuestionProps): JSX.Element | null => {
+  const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
+
   const getClickActionMode: ClickActionModeGetter = ({
     question,
   }: {
@@ -99,7 +104,7 @@ const StaticQuestionInner = ({
       question &&
       getEmbeddingMode({
         question,
-        queryMode: StaticQuestionSdkMode,
+        queryMode: EmbeddingSdkStaticMode,
       })
     );
   };
@@ -108,7 +113,8 @@ const StaticQuestionInner = ({
 
   return (
     <SdkQuestion
-      questionId={questionId}
+      questionId={questionId ?? null}
+      token={token}
       getClickActionMode={getClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}
@@ -137,6 +143,12 @@ const StaticQuestionInner = ({
                     {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
                     {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
                   </ResultToolbar>
+                )}
+
+                {isStaticEmbedding && (
+                  <Box w="100%">
+                    <SdkQuestion.SqlParametersList />
+                  </Box>
                 )}
               </Stack>
             )}

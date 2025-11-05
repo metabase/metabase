@@ -25,21 +25,19 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js", () 
     getEmbedSidebar().findByLabelText("info icon").trigger("mouseover");
 
     H.hovercard()
-      .contains(/When using the Embedded analytics SDK/)
+      .contains(
+        /You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature/,
+      )
       .should("be.visible");
 
-    H.hovercard()
-      .contains(/Sharing Metabase accounts is a security risk/)
-      .should("be.visible");
+    getEmbedSidebar().findByLabelText("info icon").trigger("mouseout");
 
-    cy.findByRole("button", { name: "Enable to continue" }).should(
-      "be.visible",
-    );
+    cy.findByRole("button", { name: "Agree and enable" }).should("be.visible");
 
     cy.log("preview panel should show placeholder");
     cy.get('[alt="No results"]').should("be.visible");
 
-    cy.findByRole("button", { name: "Enable to continue" }).click();
+    cy.findByRole("button", { name: "Agree and enable" }).click();
 
     cy.log("button should change to Enabled state");
     cy.findByRole("button", { name: /Enabled/ })

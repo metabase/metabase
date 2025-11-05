@@ -33,11 +33,13 @@ describe(suiteTitle, () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("toggles drill-throughs for dashboards", () => {
+  it("toggles drill-throughs for dashboards when non-authorized auth method is selected", () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
     });
+
+    cy.findByLabelText("Existing Metabase session").click();
 
     getEmbedSidebar()
       .findByLabelText("Allow people to drill through on data points")
@@ -67,7 +69,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=default,auth=user_session,drills=false,withDownloads=false,withTitle=true",
+        "settings=custom,theme=default,auth=user_session,drills=false,withDownloads=false,withTitle=true,isSaveEnabled=false",
     });
 
     codeBlock().should("contain", 'drills="false"');
@@ -103,7 +105,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=true,withTitle=true",
+        "settings=custom,theme=default,auth=unauthorized,drills=false,withDownloads=true,withTitle=true",
     });
 
     codeBlock().should("contain", 'with-downloads="true"');
@@ -139,17 +141,18 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=false,withTitle=false",
+        "settings=custom,theme=default,auth=unauthorized,drills=false,withDownloads=false,withTitle=false",
     });
 
     codeBlock().should("contain", 'with-title="false"');
   });
 
-  it("toggles drill-through for charts", () => {
+  it("toggles drill-through for charts for non-authorized auth mode", () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
     });
+    cy.findByLabelText("Existing Metabase session").click();
 
     getEmbedSidebar()
       .findByLabelText("Allow people to drill through on data points")
@@ -211,7 +214,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=true,withTitle=true,isSaveEnabled=false",
+        "settings=custom,theme=default,auth=unauthorized,drills=false,withDownloads=true,withTitle=true,isSaveEnabled=false",
     });
 
     codeBlock().should("contain", 'with-downloads="true"');
@@ -222,6 +225,7 @@ describe(suiteTitle, () => {
       experience: "chart",
       resourceName: QUESTION_NAME,
     });
+    cy.findByLabelText("Existing Metabase session").click();
 
     cy.log("chart title should be visible by default");
     getEmbedSidebar().findByLabelText("Show chart title").should("be.checked");
@@ -284,6 +288,8 @@ describe(suiteTitle, () => {
           ? { experience: "chart", resourceName: QUESTION_NAME }
           : { experience: "exploration" },
       );
+
+      cy.findByLabelText("Existing Metabase session").click();
 
       if (experience === "exploration") {
         cy.log("visualize a question to enable the save button");
@@ -409,7 +415,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=custom,auth=user_session,drills=true,withDownloads=false,withTitle=true",
+        "settings=custom,theme=custom,auth=unauthorized,drills=false,withDownloads=false,withTitle=true",
     });
 
     codeBlock().should("contain", '"theme": {');
@@ -446,6 +452,7 @@ describe(suiteTitle, () => {
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
     });
+    cy.findByLabelText("Existing Metabase session").click();
 
     cy.log("click on brand color picker");
     cy.findByTestId("brand-color-picker").findByRole("button").click();
@@ -477,7 +484,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=custom,auth=user_session,drills=true,withDownloads=false,withTitle=true",
+        "settings=custom,theme=custom,auth=user_session,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=false",
     });
 
     // derived-colors-for-embed-flow.unit.spec.ts contains the tests for other derived colors.

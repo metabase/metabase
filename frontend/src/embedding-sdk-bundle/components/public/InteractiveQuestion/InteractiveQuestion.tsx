@@ -22,6 +22,7 @@ import {
   Title,
   VisualizationButton,
 } from "embedding-sdk-bundle/components/private/SdkQuestion/components";
+import { withStaticNotAllowedGuard } from "embedding-sdk-bundle/components/private/StaticEmbeddingNotAllowedGuard";
 import {
   SdkQuestion,
   type SdkQuestionProps,
@@ -36,7 +37,7 @@ import { interactiveQuestionSchema } from "./InteractiveQuestion.schema";
  */
 export type InteractiveQuestionProps = Omit<
   SdkQuestionProps,
-  "getClickActionMode" | "navigateToNewCard" | "backToDashboard"
+  "token" | "getClickActionMode" | "navigateToNewCard" | "backToDashboard"
 >;
 
 /**
@@ -103,7 +104,7 @@ const subComponents: InteractiveQuestionComponents = {
 };
 
 export const InteractiveQuestion = Object.assign(
-  _InteractiveQuestion,
+  withStaticNotAllowedGuard(_InteractiveQuestion),
   subComponents,
   { schema: interactiveQuestionSchema },
 );

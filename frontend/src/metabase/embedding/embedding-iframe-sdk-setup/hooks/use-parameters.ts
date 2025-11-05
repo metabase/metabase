@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
@@ -20,6 +20,8 @@ export const useParameters = ({
 }: UseParameterListProps) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
+
+  const initialAvailableParametersRef = useRef<Parameter[] | null>(null);
 
   // This prevents `availableParameters` from being updated on every metadata change,
   // which would cause unnecessary re-renders in the component using this hook.
@@ -48,6 +50,10 @@ export const useParameters = ({
     return [];
   }, [resource, experience, metadata, metadataRef]);
 
+  if (resource && initialAvailableParametersRef.current === null) {
+    initialAvailableParametersRef.current = availableParameters;
+  }
+
   useEffect(() => {
     if (resource && "param_fields" in resource && resource.param_fields) {
       // This is needed to make some parameter widget populate the dropdown list
@@ -58,5 +64,6 @@ export const useParameters = ({
 
   return {
     availableParameters,
+    initialAvailableParameters: initialAvailableParametersRef.current,
   };
 };

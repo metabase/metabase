@@ -3,15 +3,21 @@ import { P, match } from "ts-pattern";
 
 import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { convertParameterValuesBySlugToById } from "metabase/embedding/embedding-iframe-sdk-setup/utils/convert-parameter-values-by-slug-to-by-id";
-import type { EmbeddingParametersValues } from "metabase/public/lib/types";
+import { getPreviewParamsBySlug } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-preview-params-by-slug";
+import type {
+  EmbeddingParameters,
+  EmbeddingParametersValues,
+} from "metabase/public/lib/types";
 import type { Parameter } from "metabase-types/api";
 
 export const useParametersValues = ({
   settings,
   availableParameters,
+  embeddingParameters,
 }: {
   settings: SdkIframeEmbedSetupSettings;
   availableParameters: Parameter[];
+  embeddingParameters: EmbeddingParameters;
 }) => {
   /**
    * Widgets (and most of metabase logic) expect parameter values keyed by
@@ -32,7 +38,18 @@ export const useParametersValues = ({
     );
   }, [availableParameters, settings]);
 
+  const previewParameterValuesBySlug = useMemo(
+    () =>
+      getPreviewParamsBySlug({
+        resourceParameters: availableParameters,
+        embeddingParams: embeddingParameters,
+        parameterValues: parametersValuesById,
+      }),
+    [availableParameters, embeddingParameters, parametersValuesById],
+  );
+
   return {
     parametersValuesById,
+    previewParameterValuesBySlug,
   };
 };

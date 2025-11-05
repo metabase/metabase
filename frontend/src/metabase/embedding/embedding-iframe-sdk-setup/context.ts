@@ -1,7 +1,10 @@
 import { createContext, useContext } from "react";
 
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
-import type { EmbeddingParametersValues } from "metabase/public/lib/types";
+import type {
+  EmbeddingParameters,
+  EmbeddingParametersValues,
+} from "metabase/public/lib/types";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
 import type {
@@ -13,6 +16,16 @@ import type {
 } from "./types";
 
 export interface SdkIframeEmbedSetupContextType {
+  // User features
+  isSimpleEmbedFeatureAvailable: boolean;
+
+  // User settings
+  isSimpleEmbeddingEnabled: boolean;
+  isSimpleEmbeddingTermsAccepted: boolean;
+
+  isStaticEmbeddingEnabled: boolean;
+  isStaticEmbeddingTermsAccepted: boolean;
+
   // Navigation
   currentStep: SdkIframeEmbedSetupStep;
   setCurrentStep: (step: SdkIframeEmbedSetupStep) => void;
@@ -48,9 +61,23 @@ export interface SdkIframeEmbedSetupContextType {
 
   // Parameters for dashboards and questions
   availableParameters: Parameter[];
+  initialEmbeddingParameters: EmbeddingParameters | null;
   parametersValuesById: EmbeddingParametersValues;
+  previewParameterValuesBySlug: EmbeddingParametersValues;
+  areEmbeddingParametersInitialized: boolean;
+  embeddingParameters: EmbeddingParameters;
+  onEmbeddingParametersChange: (
+    embeddingParameters: EmbeddingParameters,
+  ) => void;
 
   isEmbedSettingsLoaded: boolean;
+
+  // static embedding
+  staticEmbeddingSignedTokenForSnippet: string | null;
+  staticEmbeddingSignedTokenForPreview: string | null;
+
+  // modal handlers
+  onClose: () => void;
 }
 
 export const SdkIframeEmbedSetupContext =

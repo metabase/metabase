@@ -8,6 +8,8 @@ import type {
 import { Api } from "./api";
 import { handleQueryFulfilled } from "./utils/lifecycle";
 
+export const sessionPropertiesPath = "/api/session/properties";
+
 export const sessionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     getPasswordResetTokenStatus: builder.query<
@@ -30,7 +32,7 @@ export const sessionApi = Api.injectEndpoints({
     getSessionProperties: builder.query<EnterpriseSettings, void>({
       query: () => ({
         method: "GET",
-        url: "/api/session/properties",
+        url: sessionPropertiesPath,
       }),
       providesTags: ["session-properties"],
       onQueryStarted: (_, { queryFulfilled, dispatch }) =>

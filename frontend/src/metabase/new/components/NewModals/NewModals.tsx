@@ -8,17 +8,18 @@ import ActionCreator from "metabase/actions/containers/ActionCreator";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import Modal from "metabase/common/components/Modal";
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
+import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import {
-  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
-  type SdkIframeEmbedSetupModalProps,
-} from "metabase/plugins";
+import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import { getCurrentOpenModalState } from "metabase/selectors/ui";
+// TODO: FIX IT!
+// eslint-disable-next-line -- SdkIframeEmbedSetupModal must be moved to OSS folder
+import { SdkIframeEmbedSetupModal } from "metabase-enterprise/embedding_iframe_sdk_setup/components/SdkIframeEmbedSetupModal";
 import type { WritebackAction } from "metabase-types/api";
 
 export const NewModals = withRouter((props: WithRouterProps) => {
@@ -92,12 +93,16 @@ export const NewModals = withRouter((props: WithRouterProps) => {
       );
     case "embed": {
       return (
-        <PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetupModal
+        <SdkIframeEmbedSetupModal
           opened
           initialState={currentNewModalProps?.initialState}
           onClose={handleModalClose}
         />
       );
+    }
+    case STATIC_LEGACY_EMBEDDING_TYPE: {
+      // Do nothing, we trigger the modal from `use-sharing-modal.ts` hook and render it in `SharingMenu/SharingModals.tsx`
+      return null;
     }
     default:
       return (

@@ -1,4 +1,5 @@
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { withStaticNotAllowedGuard } from "embedding-sdk-bundle/components/private/StaticEmbeddingNotAllowedGuard";
 import {
   getCollectionIdSlugFromReference,
   getCollectionIdValueFromReference,
@@ -74,6 +75,8 @@ const CreateDashboardModalInner = ({
 };
 
 export const CreateDashboardModal = Object.assign(
-  withPublicComponentWrapper(CreateDashboardModalInner),
+  withStaticNotAllowedGuard(
+    withPublicComponentWrapper(CreateDashboardModalInner),
+  ),
   { schema: createDashboardModalSchema },
 );

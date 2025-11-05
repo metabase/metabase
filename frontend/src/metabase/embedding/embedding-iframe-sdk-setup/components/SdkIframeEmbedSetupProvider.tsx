@@ -1,7 +1,15 @@
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { useMount } from "react-use";
 
 import { useSearchQuery } from "metabase/api";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
+import { useSetting } from "metabase/common/hooks";
+import {
+  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
+  type SdkIframeEmbedSetupModalInitialState,
+} from "metabase/plugins";
+import { trackEmbedWizardOpened } from "metabase-enterprise/embedding_iframe_sdk_setup/analytics";
+import { useEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-embedding-paramers";
+import { useGetStaticEmbeddingSignedToken } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-get-static-embedding-signed-token";
 
 import {
   SdkIframeEmbedSetupContext,
@@ -20,12 +28,27 @@ import { getExperienceFromSettings } from "../utils/get-default-sdk-iframe-embed
 interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
   initialState: SdkIframeEmbedSetupModalInitialState | undefined;
+  onClose: () => void;
 }
 
 export const SdkIframeEmbedSetupProvider = ({
   children,
   initialState,
+  onClose,
 }: SdkIframeEmbedSetupProviderProps) => {
+  const isSimpleEmbedFeatureAvailable =
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled();
+
+  const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
+  const isSimpleEmbeddingTermsAccepted = !useSetting("show-simple-embed-terms");
+
+  const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
+  const isStaticEmbeddingTermsAccepted = !useSetting("show-static-embed-terms");
+
+  useMount(() => {
+    trackEmbedWizardOpened();
+  });
+
   // We don't want to re-fetch the recent items every time we switch between
   // steps, therefore we load recent items once in the provider.
   const {
@@ -67,6 +90,7 @@ export const SdkIframeEmbedSetupProvider = ({
     recentDashboards,
     isRecentsLoading,
     modelCount,
+    isStaticEmbeddingEnabled,
   });
 
   // Which embed experience are we setting up?
@@ -80,17 +104,58 @@ export const SdkIframeEmbedSetupProvider = ({
     settings,
   });
 
-  const { availableParameters } = useParameters({
+  const { availableParameters, initialAvailableParameters } = useParameters({
     experience,
     resource,
   });
-
-  const { parametersValuesById } = useParametersValues({
+  const {
+    areEmbeddingParametersInitialized,
+    embeddingParameters,
+    initialEmbeddingParameters,
+    onEmbeddingParametersChange,
+  } = useEmbeddingParameters({
     settings,
+    updateSettings,
+    resource,
+    initialAvailableParameters,
     availableParameters,
   });
 
+  const { parametersValuesById, previewParameterValuesBySlug } =
+    useParametersValues({
+      settings,
+      availableParameters,
+      embeddingParameters,
+    });
+
+  const {
+    signedTokenForSnippet: staticEmbeddingSignedTokenForSnippet,
+    signedTokenForPreview: staticEmbeddingSignedTokenForPreview,
+  } = useGetStaticEmbeddingSignedToken({
+    settings,
+    experience,
+    previewParameterValuesBySlug,
+    embeddingParameters,
+  });
+
+  useEffect(() => {
+    if (!settings.isStatic || !initialEmbeddingParameters) {
+      return;
+    }
+
+    onEmbeddingParametersChange(initialEmbeddingParameters);
+  }, [
+    settings.isStatic,
+    initialEmbeddingParameters,
+    onEmbeddingParametersChange,
+  ]);
+
   const value: SdkIframeEmbedSetupContextType = {
+    isSimpleEmbedFeatureAvailable,
+    isSimpleEmbeddingEnabled,
+    isSimpleEmbeddingTermsAccepted,
+    isStaticEmbeddingEnabled,
+    isStaticEmbeddingTermsAccepted,
     currentStep,
     setCurrentStep,
     initialState,
@@ -109,7 +174,15 @@ export const SdkIframeEmbedSetupProvider = ({
     addRecentItem,
     isEmbedSettingsLoaded,
     availableParameters,
+    initialEmbeddingParameters,
     parametersValuesById,
+    previewParameterValuesBySlug,
+    areEmbeddingParametersInitialized,
+    embeddingParameters,
+    onEmbeddingParametersChange,
+    staticEmbeddingSignedTokenForSnippet,
+    staticEmbeddingSignedTokenForPreview,
+    onClose,
   };
 
   return (

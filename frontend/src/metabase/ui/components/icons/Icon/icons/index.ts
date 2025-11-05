@@ -204,6 +204,8 @@ import gear_settings_filled_component from "./gear_settings_filled.svg?component
 import gear_settings_filled_source from "./gear_settings_filled.svg?source";
 import gem_component from "./gem.svg?component";
 import gem_source from "./gem.svg?source";
+import ghost_component from "./ghost.svg?component";
+import ghost_source from "./ghost.svg?source";
 import git_branch_component from "./git_branch.svg?component";
 import git_branch_source from "./git_branch.svg?source";
 import globe_component from "./globe.svg?component";
@@ -910,6 +912,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     gem: {
       component: gem_component,
       source: gem_source,
+    },
+    ghost: {
+      component: ghost_component,
+      source: ghost_source,
     },
     git_branch: {
       component: git_branch_component,
@@ -1683,6 +1689,7 @@ export type IconName =
   | "gear"
   | "gear_settings_filled"
   | "gem"
+  | "ghost"
   | "globe"
   | "git_branch"
   | "grabber"

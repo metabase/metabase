@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
+import type { ComponentType } from "react";
 
 import { screen, waitFor, within } from "__support__/ui";
+import type { SdkDashboardProps } from "embedding-sdk-bundle/components/public/dashboard/SdkDashboard";
 
 import {
   type SetupSdkDashboardOptions,
@@ -18,7 +20,7 @@ const setup = async (
 ) => {
   return setupSdkDashboard({
     ...options,
-    component: StaticDashboard,
+    component: StaticDashboard as ComponentType<SdkDashboardProps>,
   });
 };
 console.warn = () => {};

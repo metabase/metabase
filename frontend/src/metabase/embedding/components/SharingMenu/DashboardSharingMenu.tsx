@@ -1,12 +1,13 @@
-import { useState } from "react";
-
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
 import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
+import { STATIC_EMBED_JS_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
 import { Flex, Menu } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
+
+import { useSharingModal } from "../../hooks/use-sharing-modal";
 
 import { EmbedMenuItem } from "./MenuItems/EmbedMenuItem";
 import { ExportPdfMenuItem } from "./MenuItems/ExportPdfMenuItem";
@@ -26,9 +27,11 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
       setDashboardSubscriptionSidebarOpen(!isDashboardSubscriptionSidebarOpen),
     );
 
-  const [modalType, setModalType] = useState<DashboardSharingModalType | null>(
-    null,
-  );
+  const { modalType, setModalType } =
+    useSharingModal<DashboardSharingModalType>({
+      resource: dashboard,
+      resourceType: "dashboard",
+    });
 
   const hasPublicLink = !!dashboard?.public_uuid;
   const isArchived = dashboard.archived;
@@ -56,7 +59,9 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
               hasPublicLink={hasPublicLink}
               onClick={() => setModalType("dashboard-public-link")}
             />
-            <EmbedMenuItem onClick={() => setModalType("dashboard-embed")} />
+            <EmbedMenuItem
+              onClick={() => setModalType(STATIC_EMBED_JS_EMBEDDING_TYPE)}
+            />
           </>
         )}
       </SharingMenu>

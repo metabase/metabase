@@ -8,9 +8,10 @@ import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-
 import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
 
-const publicBase = "/api/public";
+export const internalBase = "/api";
+export const publicBase = "/api/public";
 // use different endpoints for embed previews
-const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
+export const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 
 export const ActivityApi = {
   most_recently_viewed_dashboard: GET(
@@ -90,6 +91,7 @@ export async function runQuestionQuery(
   {
     cancelDeferred,
     isDirty = false,
+    token,
     ignoreCache = false,
     collectionPreview = false,
     // Ability to override or add extra query params to the request, used by Embedding SDK
@@ -106,7 +108,7 @@ export async function runQuestionQuery(
     const { dashboardId, dashcardId } = question.getDashboardProps();
 
     const queryParams = {
-      cardId: question.id(),
+      ...(token ? { token } : { cardId: question.id() }),
       dashboardId,
       dashcardId,
       ignore_cache: ignoreCache,
@@ -368,7 +370,7 @@ function setCardEndpoints({ base, encodedUuid, encodedToken }) {
   const prefix = `${base}/card/${encodedUuid ?? encodedToken}`;
 
   // RTK query
-  PLUGIN_API.getRemappedCardParameterValueUrl = (_dashboardId, parameterId) =>
+  PLUGIN_API.getRemappedCardParameterValueUrl = (_cardId, parameterId) =>
     `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
 
   // legacy API

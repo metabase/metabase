@@ -1,0 +1,54 @@
+import type { ReactNode } from "react";
+import { t } from "ttag";
+
+import { UpsellGem } from "metabase/admin/upsells/components";
+import { UpsellCard } from "metabase/common/components/UpsellCard";
+import { useSelector } from "metabase/lib/redux";
+import { getUpgradeUrl } from "metabase/selectors/settings";
+import { useSdkIframeEmbedSetupContext } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
+
+import { TooltipWarning, type TooltipWarningMode } from "./TooltipWarning";
+
+const UPSELL_CARD_WIDTH = 252;
+
+export const WithSimpleEmbeddingFeatureUpsellTooltip = ({
+  mode,
+  children,
+  shouldWrap,
+}: {
+  mode?: TooltipWarningMode;
+  children: (data: { disabled: boolean; hoverCard: ReactNode }) => ReactNode;
+  shouldWrap: boolean;
+}) => {
+  const { settings } = useSdkIframeEmbedSetupContext();
+
+  const disabled = !!settings.isStatic;
+
+  const upgradeUrl = useSelector((state) =>
+    getUpgradeUrl(state, { utm_content: "admin_permissions" }),
+  );
+
+  return (
+    <TooltipWarning
+      mode={mode}
+      shouldWrap={shouldWrap}
+      icon={<UpsellGem />}
+      warning={
+        <UpsellCard
+          title={t`Get more powerful embedding`}
+          buttonLink={upgradeUrl}
+          campaign="embedded-analytics-js"
+          location="embedding-page"
+          /* eslint-disable-next-line no-literal-metabase-strings -- Button text */
+          buttonText={t`Upgrade to Metabase Pro`}
+          maxWidth={UPSELL_CARD_WIDTH}
+        >
+          {t`Upgrade to get access to embeds with single sign-on, drill through, the SDK for React, and more.`}
+        </UpsellCard>
+      }
+      disabled={disabled}
+    >
+      {children}
+    </TooltipWarning>
+  );
+};
