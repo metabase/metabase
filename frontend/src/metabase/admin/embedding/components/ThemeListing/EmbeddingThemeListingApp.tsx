@@ -6,6 +6,7 @@ import {
 } from "metabase/api/embedding-theme";
 import EmptyState from "metabase/common/components/EmptyState";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
+import { useToast } from "metabase/common/hooks";
 import {
   Button,
   Flex,
@@ -22,16 +23,22 @@ import { EmbeddingThemeCard } from "./EmbeddingThemeCard";
 export function EmbeddingThemeListingApp() {
   const { data: themes, isLoading } = useListEmbeddingThemesQuery();
   const [createTheme] = useCreateEmbeddingThemeMutation();
+  const [sendToast] = useToast();
 
   const handleCreateTheme = async () => {
-    await createTheme({
-      name: t`Untitled theme`,
+    try {
+      await createTheme({
+        name: t`Untitled theme`,
 
-      // TODO(EMB-962): Add default theme colors based on instance's appearance settings
-      settings: {},
-    }).unwrap();
+        // TODO(EMB-962): Add default theme colors based on instance's appearance settings
+        settings: {},
+      }).unwrap();
 
-    // TODO(EMB-946): Navigate to the theme editor to edit the newly created theme.
+      // TODO(EMB-946): Navigate to the theme editor to edit the newly created theme.
+    } catch (error) {
+      console.error("Failed to create theme:", error);
+      sendToast({ message: t`Failed to create theme`, icon: "warning" });
+    }
   };
 
   if (isLoading) {
