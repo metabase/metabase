@@ -56,8 +56,8 @@
     (:body (http/get (str url "/api/v2" endpoint) {:as :json}))
     (throw (ex-info (tru "Please configure store-api-url") {:status-code 400}))))
 
-(api.macros/defendpoint :get "/plan"
-  "Get plan information from the Metabase Store API."
+(api.macros/defendpoint :get "/plans"
+  "Get plans information from the Metabase Store API."
   []
   (api/check-superuser)
   (cond
@@ -68,7 +68,7 @@
     (try
       {:status 200 :body (make-public-store-request! "/plan")}
       (catch Exception e
-        (log/warn e "Error fetching plan information")
+        (log/warn e "Error fetching plans information")
         (handle-store-api-error e)))))
 
 (api.macros/defendpoint :get "/addons"
@@ -92,10 +92,11 @@
                               [:product-type [:enum "metabase-ai" "python-execution"]]]
    _query-params
    {:keys [terms_of_service]} :- [:map
-                                  [:terms_of_service :boolean]]]
+                                  [:terms_of_service {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (cond
-    (not terms_of_service)
+    (and (= product-type "metabase-ai")
+         (not terms_of_service))
     response-terms-not-accepted
 
     (not (premium-features/is-hosted?))
