@@ -21,6 +21,8 @@ import {
   useGetBranchesQuery,
 } from "metabase-enterprise/api";
 
+import { trackBranchCreated } from "../../analytics";
+
 export interface BranchPickerProps {
   value: string;
   onChange: (branch: string, isNewBranch?: boolean) => void;
@@ -81,6 +83,10 @@ export const BranchPicker = ({
       await createBranch({
         name: branchName,
       }).unwrap();
+
+      trackBranchCreated({
+        triggeredFrom: "branch-picker",
+      });
 
       onChange(branchName, true);
     } catch (error) {

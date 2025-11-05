@@ -266,6 +266,21 @@
                         (update :edges set)
                         (update :nodes #(sort-by :type %)))))))))))
 
+(deftest graph-transform-hydrates-creator-test
+  (testing "GET /api/ee/dependencies/graph hydrates creator for transforms"
+    (mt/with-premium-features #{:dependencies :transforms}
+      (mt/with-temp [:model/Transform {transform-id :id} {:name "Test Transform"
+                                                          :creator_id (mt/user->id :crowberto)}]
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                             :id transform-id
+                                             :type "transform")
+              transform-node (first (filter #(= (:type %) "transform") (:nodes response)))
+              crowberto-id (mt/user->id :crowberto)]
+          (testing "Transform node has creator hydrated"
+            (is (some? transform-node))
+            (is (map? (get-in transform-node [:data :creator])))
+            (is (= crowberto-id (get-in transform-node [:data :creator :id])))))))))
+
 (deftest graph-table-root-test
   (testing "GET /api/ee/dependencies/graph with table as root node"
     (mt/dataset test-data
