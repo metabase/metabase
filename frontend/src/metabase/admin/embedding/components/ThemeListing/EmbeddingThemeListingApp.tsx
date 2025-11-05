@@ -43,6 +43,7 @@ export function EmbeddingThemeListingApp() {
         </SimpleGrid>
       ) : (
         <Stack align="center" justify="center" h={200}>
+          {/** This would only show up when an admin intentionally deletes the default themes. */}
           <EmptyState
             message={t`Create your first theme to get started.`}
             illustrationElement={<NoObjectError mb="-1.5rem" />}
