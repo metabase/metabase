@@ -62,16 +62,15 @@
   (let [file (temp-file!)
         ;; make sure this is the mirror analogue of how we open it in [[read-rows-from-file]]
         os (-> (io/output-stream file)
-               BufferedOutputStream.
+               (BufferedOutputStream. (* 8 1024))
                DataOutputStream.)]
     {:file file
      :output-stream os}))
 
-(defn- write-row-block-to-stream!
+(defn- write-row-to-stream!
   "Write a collection of rows to the output stream using nippy serialization."
-  [^DataOutputStream os row-block]
-  (nippy/freeze-to-out! os row-block)
-  (.flush os))
+  [^DataOutputStream os row]
+  (nippy/freeze-to-out! os row))
 
 (defn- read-rows-from-file
   "Read rows from a temp file. Returns vector of rows.
@@ -111,13 +110,13 @@
                      (if (= count-or-marker ::streaming)
                        ;; Streaming format - read until EOF
                        (loop [rows (transient [])]
-                         (let [row-block (try
+                         (let [row-read (try
                                            (nippy/thaw-from-in! is)
                                            (catch java.io.EOFException _
                                              ::eof))]
-                           (if (= row-block ::eof)
+                           (if (= row-read ::eof)
                              (persistent! rows)
-                             (recur (reduce conj! rows row-block)))))
+                             (recur (conj! rows row-read)))))
 
                        ;; Counted format - read exact number of rows
                        (loop [rows (transient [])
@@ -216,8 +215,6 @@
               ;; Close the streaming file and return TempFileStorage
               (let [{:keys [^DataOutputStream output-stream ^File file]} @streaming-state]
                 (try
-                  (when-let [remaining-rows (seq (persistent! @rows))]
-                    (write-row-block-to-stream! output-stream remaining-rows))
                   (.close output-stream)
                   (let [file-size (.length file)
                         max-bytes (notification.settings/notification-temp-file-size-max-bytes)]
@@ -259,31 +256,22 @@
           ;; streaming to disk, we periodically flush this to disk; if we are collecting in memory the collection is
           ;; used the same as in the default-rff
           (vswap! row-count inc)
-          (vswap! rows conj! row)
           (if @streaming?
             ;; Already streaming - write row directly to file
             (let [{:keys [^DataOutputStream output-stream ^File file]} @streaming-state]
-              (if-not (zero? (mod @row-count 5000))
-                ;; only flush the volatile transient every 5000 rows. If we aren't on a 5,000 row multiple, we've
-                ;; already added the row above so nothing to do here.
-                result
-                (do
-                  ;; else we write the row block and then check if the size has gotten too large and we can abandon
-                  ;; the query with `(reduced result)`
-                  (write-row-block-to-stream! output-stream (persistent! @rows))
-                  (vreset! rows (transient []))
-                  (if (and (pos? (notification.settings/notification-temp-file-size-max-bytes))
-                           (> (.length file) (* 1.3 (notification.settings/notification-temp-file-size-max-bytes))))
-                    (do (vswap! streaming-state assoc :notification/truncated? true)
-                        (log/warnf "Results have exceeded 1.3 times of `notification-temp-file-size-max-bytes` of %s (max: %s). Truncating query results. %s"
-                                   (human-readable-size (.length file))
-                                   (human-readable-size (notification.settings/notification-temp-file-size-max-bytes))
-                                   (when context (format "(%s)" (pr-str context))))
-                        (reduced result))
-                    result))))
+              (write-row-to-stream! output-stream row)
+              (if (and (pos? (notification.settings/notification-temp-file-size-max-bytes))
+                       (> (.length file) (* 1.3 (notification.settings/notification-temp-file-size-max-bytes))))
+                (do (vswap! streaming-state assoc :notification/truncated? true)
+                    (log/warnf "Results have exceeded 1.3 times of `notification-temp-file-size-max-bytes` of %s (max: %s). Truncating query results. %s"
+                               (human-readable-size (.length file))
+                               (human-readable-size (notification.settings/notification-temp-file-size-max-bytes))
+                               (when context (format "(%s)" (pr-str context))))
+                    (reduced result))
+                result))
 
-            ;; Still in memory - check if we should start streaming
             (do
+              (vswap! rows conj! row)
               ;; Check if we've hit the threshold to switch to disk based streaming
               (when (>= @row-count max-row-count)
                 (log/infof "Row count reached threshold (%d), switching to streaming mode"
@@ -300,7 +288,8 @@
                     (.flush output-stream)
 
                     ;; Write all accumulated rows
-                    (write-row-block-to-stream! output-stream (persistent! @rows))
+                    (doseq [row (persistent! @rows)]
+                      (write-row-to-stream! output-stream row))
 
                     ;; Switch to streaming mode
                     (vreset! streaming? true)
