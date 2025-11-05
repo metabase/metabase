@@ -13,13 +13,13 @@ import {
   rem,
 } from "metabase/ui";
 
+import { useSelection } from "../../../contexts/SelectionContext";
 import { getUrl } from "../../../utils";
 import { TYPE_ICONS } from "../constants";
 import type { FlatItem, TreePath } from "../types";
 import { hasChildren } from "../utils";
 
 import S from "./Results.module.css";
-import { useSelection } from "../../../contexts/SelectionContext";
 
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32; // items can vary in size because of text wrapping
@@ -117,12 +117,10 @@ export function Results({
             value?.tableId === activeTableId &&
             selectedItemsCount === 0;
           const parentIndex = items.findIndex((item) => item.key === parent);
-          const children = items.filter((item) => item.parent === key);
-          const hasTableChildren = children.some(
-            (child) => child.type === "table",
-          );
-
           const handleItemSelect = (open?: boolean) => {
+            if (selectedItemsCount > 0 && type === "table") {
+              onItemToggle?.(item);
+            }
             if (disabled) {
               return;
             }
