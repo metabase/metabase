@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -13,6 +14,7 @@ interface PaneHeaderProps {
   menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
+  className?: string;
   "data-testid"?: string;
 }
 
@@ -21,11 +23,12 @@ export const PaneHeader = ({
   menu,
   tabs,
   actions,
+  className,
   "data-testid": dataTestId,
 }: PaneHeaderProps) => {
   return (
     <Group
-      className={S.header}
+      className={cx(S.header, className)}
       p="md"
       justify="space-between"
       gap="sm"
@@ -83,7 +86,7 @@ export function PaneHeaderTabs({ tabs }: PaneHeaderTabsProps) {
           size="sm"
           radius="xl"
           c={isSelected ? "brand" : undefined}
-          bg={isSelected ? "brand-light" : undefined}
+          bg={isSelected ? "brand-light" : "transparent"}
           bd="none"
         >
           {label}

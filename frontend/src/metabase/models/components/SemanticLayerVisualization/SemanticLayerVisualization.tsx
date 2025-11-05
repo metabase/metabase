@@ -8,13 +8,17 @@ import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
-import S from "./MetricVisualization.module.css";
+import S from "./SemanticLayerVisualization.module.css";
 
-type MetricVisualizationProps = {
+type SemanticLayerVisualizationProps = {
   card: Card;
+  className?: string;
 };
 
-export function MetricVisualization({ card }: MetricVisualizationProps) {
+export function SemanticLayerVisualization({
+  card,
+  className,
+}: SemanticLayerVisualizationProps) {
   const metadata = useSelector(getMetadata);
   const question = useMemo(
     () => new Question(card, metadata),
@@ -30,6 +34,7 @@ export function MetricVisualization({ card }: MetricVisualizationProps) {
   return (
     <DebouncedFrame className={S.root}>
       <QueryVisualization
+        className={className}
         question={question}
         result={data}
         rawSeries={rawSeries}
