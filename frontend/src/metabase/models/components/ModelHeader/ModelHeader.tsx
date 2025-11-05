@@ -14,7 +14,7 @@ import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
-import type { Card, CardId } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";
 
@@ -70,28 +70,28 @@ type ModelTabsProps = {
 
 function ModelTabs({ card }: ModelTabsProps) {
   const location = useSelector(getLocation);
-  const tabs = getTabs(card.id, location);
+  const tabs = getTabs(card, location);
   return <PaneHeaderTabs tabs={tabs} />;
 }
 
-function getTabs(id: CardId, { pathname }: Location): PaneHeaderTab[] {
+function getTabs(card: Card, { pathname }: Location): PaneHeaderTab[] {
   return [
     {
       label: t`Overview`,
-      to: Urls.dataStudioModel(id),
-      isSelected: Urls.dataStudioModel(id) === pathname,
+      to: Urls.dataStudioModel(card.id),
+      isSelected: Urls.dataStudioModel(card.id) === pathname,
     },
     {
       label: t`Query`,
-      to: Urls.dataStudioModelQuery(id),
-      isSelected: Urls.dataStudioModelQuery(id) === pathname,
+      to: Urls.dataStudioModelQuery(card.id),
+      isSelected: Urls.dataStudioModelQuery(card.id) === pathname,
     },
     ...(PLUGIN_DEPENDENCIES.isEnabled
       ? [
           {
             label: t`Dependencies`,
-            to: Urls.dataStudioModelDependencies(id),
-            isSelected: Urls.dataStudioModelDependencies(id) === pathname,
+            to: Urls.dataStudioModelDependencies(card.id),
+            isSelected: Urls.dataStudioModelDependencies(card.id) === pathname,
           },
         ]
       : []),

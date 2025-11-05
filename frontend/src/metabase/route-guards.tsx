@@ -2,7 +2,6 @@ import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
-import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import { MetabaseReduxContext } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
@@ -78,15 +77,6 @@ const UserCanAccessOnboarding = connectedReduxRedirect<Props, State>({
   context: MetabaseReduxContext,
 });
 
-const UserCanAccessDataStudio = connectedReduxRedirect<Props, State>({
-  wrapperDisplayName: "UserCanAccessDataStudio",
-  redirectPath: "/unauthorized",
-  allowRedirectBack: false,
-  authenticatedSelector: (state) => canAccessDataStudio(state),
-  redirectAction: routerActions.replace,
-  context: MetabaseReduxContext,
-});
-
 export const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
@@ -103,9 +93,5 @@ export const CanAccessSettings = MetabaseIsSetup(
 );
 
 export const CanAccessOnboarding = UserCanAccessOnboarding(
-  ({ children }) => children,
-);
-
-export const CanAccessDataStudio = UserCanAccessDataStudio(
   ({ children }) => children,
 );

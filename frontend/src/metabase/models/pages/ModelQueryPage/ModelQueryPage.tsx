@@ -3,14 +3,11 @@ import type { Route } from "react-router";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetCardQuery,
-  useUpdateCardMutation,
-} from "metabase/api";
+import { useUpdateCardMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaneHeaderActions } from "metabase/data-studio/components/PaneHeader";
+import { useLoadCardWithMetadata } from "metabase/data-studio/hooks/use-load-card-with-metadata";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -37,11 +34,7 @@ type ModelQueryPageProps = {
 
 export function ModelQueryPage({ params, route }: ModelQueryPageProps) {
   const cardId = Urls.extractEntityId(params.cardId);
-  const {
-    data: card,
-    isLoading,
-    error,
-  } = useGetCardQuery(cardId != null ? { id: cardId } : skipToken);
+  const { card, isLoading, error } = useLoadCardWithMetadata(cardId);
 
   if (isLoading || error != null || card == null) {
     return (

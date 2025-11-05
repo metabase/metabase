@@ -8,7 +8,6 @@ import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/complex";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import Search from "metabase/entities/search";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
@@ -16,7 +15,10 @@ import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import {
+  PLUGIN_CACHING,
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+} from "metabase/plugins";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
@@ -52,7 +54,9 @@ export const useCommandPalette = ({
 
   const isAdmin = useSelector(getUserIsAdmin);
   const canUserAccessSettings = useSelector(canAccessSettings);
-  const hasDataStudioAccess = useSelector(canAccessDataStudio);
+  const hasDataModelAccess = useSelector(
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
+  );
 
   const isSearchTypeaheadEnabled = useSetting("search-typeahead-enabled");
 
@@ -325,8 +329,8 @@ export const useCommandPalette = ({
       }));
   }, [disabled, canUserAccessSettings, isAdmin, settingValues]);
 
-  const dataStudioActions = useMemo<PaletteAction[]>(() => {
-    if (disabled || !hasDataStudioAccess) {
+  const dataModelActions = useMemo<PaletteAction[]>(() => {
+    if (disabled || !hasDataModelAccess) {
       return [];
     }
 
@@ -342,11 +346,11 @@ export const useCommandPalette = ({
         },
       },
     ];
-  }, [disabled, hasDataStudioAccess]);
+  }, [disabled, hasDataModelAccess]);
 
   useRegisterActions(
-    hasQuery ? [...adminActions, ...settingsActions, ...dataStudioActions] : [],
-    [adminActions, settingsActions, dataStudioActions, hasQuery],
+    hasQuery ? [...adminActions, ...settingsActions, ...dataModelActions] : [],
+    [adminActions, settingsActions, dataModelActions, hasQuery],
   );
 
   return {
