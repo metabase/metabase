@@ -14,10 +14,11 @@ export function createPauses<Count extends number>(count: Count) {
 export function createMockReadableStream(
   textChunks: string[] | AsyncGenerator<string, void, unknown>,
   options?: {
-    disableAutoInsertNewLines: boolean;
+    disableAutoInsertNewLines?: boolean;
+    streamOptions?: Partial<ConstructorParameters<typeof ReadableStream>[0]>;
   },
-) {
-  return new ReadableStream({
+): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
     async start(controller) {
       const textEncoder = new TextEncoder();
       try {
@@ -30,6 +31,7 @@ export function createMockReadableStream(
         controller.close();
       }
     },
+    ...(options?.streamOptions ?? {}),
   });
 }
 
