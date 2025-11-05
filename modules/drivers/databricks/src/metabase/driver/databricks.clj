@@ -27,7 +27,8 @@
     PreparedStatement
     ResultSet
     ResultSetMetaData
-    Statement]
+    Statement
+    Types]
    [java.time
     LocalDate
     LocalDateTime
@@ -501,3 +502,8 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :databricks
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42P01"))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:databricks Types/ARRAY]
+  [_driver ^java.sql.ResultSet rs _rsmeta ^Integer i]
+  (fn []
+    (.getObject rs i)))

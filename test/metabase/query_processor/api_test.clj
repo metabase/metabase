@@ -668,7 +668,7 @@
                                                         "asdf;"))]
         (is (= {:error_type "invalid-query"
                 :status "failed"
-                :class "class com.databricks.client.support.exceptions.ErrorException"}
+                :class "class com.databricks.jdbc.exception.DatabricksSQLException"}
                (select-keys res [:error_type :status :class])))
         (is (not (str/includes? (:error res) "\n\tat ")))))))
 
