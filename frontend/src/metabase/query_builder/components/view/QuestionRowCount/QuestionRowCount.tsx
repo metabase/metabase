@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { useMemo } from "react";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
@@ -8,6 +8,8 @@ import {
   type NumberFormatter,
   useNumberFormatter,
 } from "metabase/common/hooks/use-number-formatter";
+import { formatRowCount } from "metabase/common/utils/format-row-count";
+import { getRowCountMessage } from "metabase/common/utils/get-row-count-message";
 import CS from "metabase/css/core/index.css";
 import Database from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
@@ -163,11 +165,6 @@ function RowCountLabel({
   );
 }
 
-const formatRowCount = (count: number, formatNumber: NumberFormatter) => {
-  const countString = formatNumber(count);
-  return ngettext(msgid`${countString} row`, `${countString} rows`, count);
-};
-
 function getLimitMessage(
   question: Question,
   result: Dataset,
@@ -191,16 +188,6 @@ function getLimitMessage(
   }
 
   return t`Showing first ${formatRowCount(HARD_ROW_LIMIT, formatNumber)} rows`;
-}
-
-function getRowCountMessage(result: Dataset, formatNumber: NumberFormatter) {
-  if (result.data.rows_truncated > 0) {
-    return t`Showing first ${formatRowCount(result.row_count, formatNumber)}`;
-  }
-  if (result.row_count === HARD_ROW_LIMIT) {
-    return t`Showing first ${formatRowCount(HARD_ROW_LIMIT, formatNumber)} rows`;
-  }
-  return t`Showing ${formatRowCount(result.row_count, formatNumber)}`;
 }
 
 function getDatabaseId(_state: State, { question }: OwnProps & StateProps) {

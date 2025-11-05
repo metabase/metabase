@@ -4,7 +4,6 @@ import { Component, forwardRef } from "react";
 
 import ExplicitSize from "metabase/common/components/ExplicitSize";
 import DashboardS from "metabase/css/dashboard.module.css";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 import styles from "./ChartWithLegend.module.css";
 import LegendHorizontal from "./LegendHorizontal";
@@ -104,6 +103,7 @@ class ChartWithLegend extends Component {
         titles={legendTitles}
         hiddenIndices={legendHiddenIndices}
         colors={legendColors}
+        dotSize={isDashboard ? "8px" : "12px"}
         hovered={hovered}
         onHoverChange={onHoverChange}
         onToggleSeriesVisibility={onToggleSeriesVisibility}
@@ -115,8 +115,6 @@ class ChartWithLegend extends Component {
         className={cx(
           className,
           DashboardS.fullscreenNormalText,
-          DashboardS.fullscreenNightText,
-          EmbedFrameS.fullscreenNightText,
           styles.ChartWithLegend,
           styles[type],
           flexChart && styles.flexChart,

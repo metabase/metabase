@@ -16,6 +16,7 @@ import {
   QuestionVisualization,
   SaveButton,
   SdkSaveQuestionForm,
+  SqlParametersList,
   Summarize,
   SummarizeDropdown,
   Title,
@@ -25,6 +26,8 @@ import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
+
+import { interactiveQuestionSchema } from "./InteractiveQuestion.schema";
 
 /**
  * @interface
@@ -65,6 +68,7 @@ export type InteractiveQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+  SqlParametersList: typeof SqlParametersList;
 };
 
 export const _InteractiveQuestion = (props: InteractiveQuestionProps) => (
@@ -95,9 +99,11 @@ const subComponents: InteractiveQuestionComponents = {
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
   VisualizationButton: VisualizationButton,
+  SqlParametersList: SqlParametersList,
 };
 
 export const InteractiveQuestion = Object.assign(
   _InteractiveQuestion,
   subComponents,
+  { schema: interactiveQuestionSchema },
 );

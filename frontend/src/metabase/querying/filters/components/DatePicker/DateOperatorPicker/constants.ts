@@ -14,14 +14,14 @@ export const OPERATOR_OPTIONS: OperatorOption[] = [
     get label() {
       return t`Previous`;
     },
-    value: "last",
+    value: "past",
     operators: [],
   },
   {
     get label() {
       return t`Next`;
     },
-    value: "next",
+    value: "future",
     operators: [],
   },
   {

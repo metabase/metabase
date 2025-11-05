@@ -26,7 +26,12 @@ export function UpdateTagModal({
   onClose,
 }: UpdateTagModalProps) {
   return (
-    <Modal title={t`Rename tag`} opened padding="xl" onClose={onClose}>
+    <Modal
+      title={t`Rename the ${tag.name} tag`}
+      opened
+      padding="xl"
+      onClose={onClose}
+    >
       <FocusTrap.InitialFocus />
       <UpdateTagForm tag={tag} onUpdate={onUpdate} onClose={onClose} />
     </Modal>

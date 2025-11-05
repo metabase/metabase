@@ -8,6 +8,7 @@ import {
 } from "metabase/api";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Button,
@@ -21,12 +22,8 @@ import {
 import type { Transform } from "metabase-types/api";
 
 import { SplitSection } from "../../../components/SplitSection";
-import {
-  getBrowseDatabaseUrl,
-  getBrowseSchemaUrl,
-  getQueryBuilderUrl,
-  getTableMetadataUrl,
-} from "../../../urls";
+import { sourceDatabaseId } from "../../../utils";
+import { isTransformRunning } from "../utils";
 
 import { UpdateTargetModal } from "./UpdateTargetModal";
 
@@ -58,7 +55,7 @@ type TargetInfoProps = {
 
 function TargetInfo({ transform }: TargetInfoProps) {
   const { source, target, table } = transform;
-  const { database: databaseId } = source.query;
+  const databaseId = sourceDatabaseId(source);
 
   const { data: databaseFromApi, isLoading: isDatabaseLoading } =
     useGetDatabaseQuery(
@@ -76,7 +73,6 @@ function TargetInfo({ transform }: TargetInfoProps) {
     );
 
   const database = table?.db ?? databaseFromApi;
-
   const isLoading = isDatabaseLoading || isSchemasLoading;
 
   if (isLoading) {
@@ -94,7 +90,7 @@ function TargetInfo({ transform }: TargetInfoProps) {
           <TargetItemLink
             label={database.name}
             icon="database"
-            to={getBrowseDatabaseUrl(database.id)}
+            to={Urls.dataModelDatabase(database.id)}
             data-testid="database-link"
           />
           <TargetItemDivider />
@@ -107,7 +103,7 @@ function TargetInfo({ transform }: TargetInfoProps) {
             icon="folder"
             to={
               table || targetSchemaExists
-                ? getBrowseSchemaUrl(database.id, target.schema)
+                ? Urls.dataModelSchema(database.id, target.schema)
                 : undefined
             }
             tooltip={
@@ -124,7 +120,7 @@ function TargetInfo({ transform }: TargetInfoProps) {
         <TargetItemLink
           label={target.name}
           icon="table2"
-          to={table ? getQueryBuilderUrl(table.id, table.db_id) : undefined}
+          to={table ? Urls.queryBuilderTable(table.id, table.db_id) : undefined}
           data-testid="table-link"
         />
       </Group>
@@ -185,6 +181,7 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
     <>
       <Button
         leftSection={<Icon name="pencil_lines" aria-hidden />}
+        disabled={isTransformRunning(transform)}
         onClick={openModal}
       >
         {t`Change target`}
@@ -213,7 +210,7 @@ function EditMetadataButton({ transform }: EditMetadataButtonProps) {
   return (
     <Button
       component={Link}
-      to={getTableMetadataUrl(table.id, table.schema, table.db_id)}
+      to={Urls.dataModelTable(table.db_id, table.schema, table.id)}
       leftSection={<Icon name="label" aria-hidden />}
       data-testid="table-metadata-link"
     >

@@ -1,18 +1,17 @@
 (ns metabase.query-processor.middleware.permissions-test
   "Tests for the middleware that checks whether the current user has permissions to run a given query."
-  {:clj-kondo/config '{:linters
-                       ;; allowing `with-temp` here for now since perms is mostly still app-DB based.
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+  {:clj-kondo/config '{:linters {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.test-metadata :as meta]
    [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.setup :as qp.setup]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.fn :as mu.fn])
@@ -246,7 +245,7 @@
         (mt/with-no-data-perms-for-all-users!
           (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
           (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
-          (let [query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})
+          (let [query (lib-be/normalize-query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2}))
                 check! (fn [query]
                          (binding [api/*current-user-id* (mt/user->id :rasta)]
                            (qp.store/with-metadata-provider (mt/id)
@@ -358,11 +357,11 @@
               (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id (u/the-id collection)
                                                                       :dataset_query card-1-query}]
                 (let [card-2-query (mt/native-query
-                                     {:query "SELECT * FROM {{card}}"
-                                      :template-tags {"card" {:name "card"
-                                                              :display-name "card"
-                                                              :type :card
-                                                              :card-id card-1-id}}})]
+                                    {:query "SELECT * FROM {{card}}"
+                                     :template-tags {"card" {:name "card"
+                                                             :display-name "card"
+                                                             :type :card
+                                                             :card-id card-1-id}}})]
                   (mt/with-temp [:model/Card card-2 {:collection_id (u/the-id collection)
                                                      :dataset_query card-2-query}]
                     (testing "should be able to read nested-nested Card if we have Collection permissions"
@@ -406,10 +405,10 @@
           (mt/with-temp [:model/Collection collection]
             (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
             (let [card-1-query (mt/native-query
-                                 {:query (str "SELECT id, name, category_id, latitude, longitude, price "
-                                              "FROM venues "
-                                              "ORDER BY id ASC "
-                                              "LIMIT 2")})]
+                                {:query (str "SELECT id, name, category_id, latitude, longitude, price "
+                                             "FROM venues "
+                                             "ORDER BY id ASC "
+                                             "LIMIT 2")})]
               (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id (u/the-id collection)
                                                                       :dataset_query card-1-query}]
                 (let [card-2-query (mt/mbql-query nil
@@ -457,18 +456,18 @@
           (mt/with-temp [:model/Collection collection]
             (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
             (let [card-1-query (mt/native-query
-                                 {:query (str "SELECT id, name, category_id, latitude, longitude, price "
-                                              "FROM venues "
-                                              "ORDER BY id ASC "
-                                              "LIMIT 2")})]
+                                {:query (str "SELECT id, name, category_id, latitude, longitude, price "
+                                             "FROM venues "
+                                             "ORDER BY id ASC "
+                                             "LIMIT 2")})]
               (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id (u/the-id collection)
                                                                       :dataset_query card-1-query}]
                 (let [card-2-query (mt/native-query
-                                     {:query "SELECT * FROM {{card}}"
-                                      :template-tags {"card" {:name "card"
-                                                              :display-name "card"
-                                                              :type :card
-                                                              :card-id card-1-id}}})]
+                                    {:query "SELECT * FROM {{card}}"
+                                     :template-tags {"card" {:name "card"
+                                                             :display-name "card"
+                                                             :type :card
+                                                             :card-id card-1-id}}})]
                   (mt/with-temp [:model/Card card-2 {:collection_id (u/the-id collection)
                                                      :dataset_query card-2-query}]
                     (testing "should be able to read nested-nested Card if we have Collection permissions"
@@ -571,11 +570,11 @@
               (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id collection-1-id
                                                                       :dataset_query card-1-query}]
                 (let [card-2-query (mt/native-query
-                                     {:query "SELECT * FROM {{card}}"
-                                      :template-tags {"card" {:name "card"
-                                                              :display-name "card"
-                                                              :type :card
-                                                              :card-id card-1-id}}})]
+                                    {:query "SELECT * FROM {{card}}"
+                                     :template-tags {"card" {:name "card"
+                                                             :display-name "card"
+                                                             :type :card
+                                                             :card-id card-1-id}}})]
                   (mt/with-temp [:model/Card card-2 {:collection_id collection-2-id
                                                      :dataset_query card-2-query}]
                     (mt/with-test-user :rasta
@@ -624,10 +623,10 @@
             ;; Grant read permissions for Collection 2 but not Collection 1
             (perms/grant-collection-read-permissions! (perms/all-users-group) collection-2-id)
             (let [card-1-query (mt/native-query
-                                 {:query (str "SELECT id, name, category_id, latitude, longitude, price "
-                                              "FROM venues "
-                                              "ORDER BY id ASC "
-                                              "LIMIT 2")})]
+                                {:query (str "SELECT id, name, category_id, latitude, longitude, price "
+                                             "FROM venues "
+                                             "ORDER BY id ASC "
+                                             "LIMIT 2")})]
               (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id collection-1-id
                                                                       :dataset_query card-1-query}]
                 (let [card-2-query (mt/mbql-query nil
@@ -680,18 +679,18 @@
             ;; Grant read permissions for Collection 2 but not Collection 1
             (perms/grant-collection-read-permissions! (perms/all-users-group) collection-2-id)
             (let [card-1-query (mt/native-query
-                                 {:query (str "SELECT id, name, category_id, latitude, longitude, price "
-                                              "FROM venues "
-                                              "ORDER BY id ASC "
-                                              "LIMIT 2")})]
+                                {:query (str "SELECT id, name, category_id, latitude, longitude, price "
+                                             "FROM venues "
+                                             "ORDER BY id ASC "
+                                             "LIMIT 2")})]
               (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id collection-1-id
                                                                       :dataset_query card-1-query}]
                 (let [card-2-query (mt/native-query
-                                     {:query "SELECT * FROM {{card}}"
-                                      :template-tags {"card" {:name "card"
-                                                              :display-name "card"
-                                                              :type :card
-                                                              :card-id card-1-id}}})]
+                                    {:query "SELECT * FROM {{card}}"
+                                     :template-tags {"card" {:name "card"
+                                                             :display-name "card"
+                                                             :type :card
+                                                             :card-id card-1-id}}})]
                   (mt/with-temp [:model/Card card-2 {:collection_id collection-2-id
                                                      :dataset_query card-2-query}]
                     (mt/with-test-user :rasta
@@ -767,13 +766,13 @@
                #"You do not have permissions to run this query"
                (process-query))))))))
 
-(deftest e2e-ignore-user-supplied-gtapped-tables-test
-  (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/gtapped-table` in the query"
+(deftest e2e-ignore-user-supplied-sandboxed-tables-test
+  (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/sandboxed-table` in the query"
     (mt/with-no-data-perms-for-all-users!
       (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
       (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
       (let [bad-query {:database (mt/id), :type :query, :query {:source-query {:native "SELECT * FROM VENUES LIMIT 1"
-                                                                               :query-permissions/gtapped-table (mt/id :venues)}}
+                                                                               :query-permissions/sandboxed-table (mt/id :venues)}}
                        :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
                                                          :perms/create-queries :query-builder-and-native}}}]
         (mt/with-test-user :rasta
@@ -785,7 +784,7 @@
           (letfn [(process-query []
                     (qp/process-query bad-query))]
             (testing "Testing that we will still throw due to the :query-permissions/perms stripping"
-              (with-redefs [qp.perms/remove-gtapped-table-keys identity]
+              (with-redefs [qp.perms/remove-sandboxed-table-keys identity]
                 (is (thrown-with-msg?
                      clojure.lang.ExceptionInfo
                      #"You do not have permissions to run this query"
@@ -1541,11 +1540,11 @@
 
             ;; Card 1: Native query in accessible collection
             (let [card-1-query (mt/native-query
-                                 {:query (str "SELECT id, name, category_id, price "
-                                              "FROM venues "
-                                              "WHERE price > 1 "
-                                              "ORDER BY id ASC "
-                                              "LIMIT 2")})]
+                                {:query (str "SELECT id, name, category_id, price "
+                                             "FROM venues "
+                                             "WHERE price > 1 "
+                                             "ORDER BY id ASC "
+                                             "LIMIT 2")})]
               (mt/with-temp [:model/Card {card-1-id :id} {:collection_id coll-1
                                                           :dataset_query card-1-query}]
                 ;; Card 2: MBQL query in restricted collection
@@ -1556,11 +1555,11 @@
                                                               :dataset_query card-2-query}]
                     ;; Card 3: Native query with template tag in accessible collection
                     (let [card-3-query (mt/native-query
-                                         {:query "SELECT * FROM {{card}} WHERE id = 1"
-                                          :template-tags {"card" {:name "card"
-                                                                  :display-name "card"
-                                                                  :type :card
-                                                                  :card-id card-2-id}}})]
+                                        {:query "SELECT * FROM {{card}} WHERE id = 1"
+                                         :template-tags {"card" {:name "card"
+                                                                 :display-name "card"
+                                                                 :type :card
+                                                                 :card-id card-2-id}}})]
                       (mt/with-temp [:model/Card {card-3-id :id} {:collection_id coll-3
                                                                   :dataset_query card-3-query}]
                         (mt/with-test-user :rasta

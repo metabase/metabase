@@ -1,19 +1,15 @@
-import { humanize, titleize } from "metabase/lib/formatting";
 import { isNullOrUndefined } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   CollectionItem,
   CollectionItemModel,
-  Database,
   DatabaseId,
   RecentItem,
-  SchemaName,
-  Table,
-  TableId,
 } from "metabase-types/api";
 
 import type { QuestionPickerItem } from "../QuestionPicker";
+import type { TablePickerValue } from "../TablePicker";
 
 import type {
   DataPickerFolderItem,
@@ -23,16 +19,7 @@ import type {
   MetricItem,
   ModelItem,
   QuestionItem,
-  TablePickerValue,
 } from "./types";
-
-export const generateKey = (
-  dbItem: DataPickerFolderItem | null,
-  schemaItem: DataPickerFolderItem | null,
-  tableItem: DataPickerValueItem | null,
-) => {
-  return [dbItem?.id, schemaItem?.id, tableItem?.id].join("-");
-};
 
 export const getDataPickerValue = (
   query: Lib.Query,
@@ -66,62 +53,6 @@ export const getDataPickerValue = (
     db_id: pickerInfo.databaseId,
     schema: getSchemaName(displayInfo.schema),
   };
-};
-
-export const getDbItem = (
-  databases: Database[] | undefined,
-  dbId: DatabaseId | undefined,
-): DataPickerFolderItem | null => {
-  if (typeof dbId === "undefined") {
-    return null;
-  }
-
-  const database = databases?.find((db) => db.id === dbId);
-  const name = database?.name ?? "";
-
-  return { model: "database", id: dbId, name };
-};
-
-export const getSchemaItem = (
-  dbId: DatabaseId | undefined,
-  dbName: string | undefined,
-  schemaName: SchemaName | undefined,
-  isOnlySchema: boolean,
-): DataPickerFolderItem | null => {
-  if (typeof schemaName === "undefined" || typeof dbId === "undefined") {
-    return null;
-  }
-
-  const name = getSchemaDisplayName(schemaName);
-
-  return { model: "schema", id: schemaName, name, dbId, dbName, isOnlySchema };
-};
-
-export const getTableItem = (
-  tables: Table[] | undefined,
-  tableId: TableId | undefined,
-): DataPickerValueItem | null => {
-  if (typeof tableId === "undefined") {
-    return null;
-  }
-
-  const table = tables?.find((db) => db.id === tableId);
-  const name = table?.name ?? "";
-
-  return {
-    model: "table",
-    id: tableId,
-    name,
-    database_id: table?.db_id,
-  };
-};
-
-export const getSchemaDisplayName = (schemaName: SchemaName | undefined) => {
-  if (typeof schemaName === "undefined") {
-    return "";
-  }
-
-  return titleize(humanize(schemaName));
 };
 
 export const isCollectionItem = (

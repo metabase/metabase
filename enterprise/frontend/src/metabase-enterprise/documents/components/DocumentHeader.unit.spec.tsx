@@ -1,7 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen } from "__support__/ui";
-import { createMockDocument, createMockUser } from "metabase-types/api/mocks";
+import { renderWithProviders, screen } from "__support__/ui";
+import {
+  createMockDocument,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 
@@ -19,11 +23,14 @@ const setup = ({
   canWrite = true,
   showSaveButton = false,
   isBookmarked = false,
+  isAdmin = false,
+  isPublicSharingEnabled = false,
   onTitleChange = jest.fn(),
   onSave = jest.fn(),
   onMove = jest.fn(),
   onToggleBookmark = jest.fn(),
   onArchive = jest.fn(),
+  onToggleComments = jest.fn(),
 } = {}) => {
   const props = {
     document,
@@ -37,9 +44,21 @@ const setup = ({
     onMove,
     onToggleBookmark,
     onArchive,
+    onToggleComments,
   };
 
-  render(<DocumentHeader {...props} />);
+  renderWithProviders(<DocumentHeader {...props} />, {
+    storeInitialState: {
+      currentUser: createMockUser({ is_superuser: isAdmin }),
+      settings: {
+        values: {
+          "enable-public-sharing": isPublicSharingEnabled,
+          "token-features": createMockTokenFeatures({ documents: true }),
+        } as any,
+        loading: false,
+      },
+    },
+  });
 
   return props;
 };

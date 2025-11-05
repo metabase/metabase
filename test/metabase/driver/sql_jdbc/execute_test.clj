@@ -143,3 +143,23 @@
         (is (false? (sql-jdbc.execute/is-conn-open? conn :check-valid? true)))
         (is (true? @close-called?) "Connection should be closed when invalid")
         (is (true? (.isClosed conn)))))))
+
+(deftest statement-is-closed-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+    (testing "can check isClosed on statement"
+      (when (driver/database-supports? driver/*driver* :jdbc/statements nil)
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver/*driver* (mt/id) nil
+         (fn [^Connection conn]
+           (let [stmt (sql-jdbc.execute/statement driver/*driver* conn)]
+             (is (false? (.isClosed stmt)))
+             (.close stmt)
+             (is (true? (.isClosed stmt))))))))
+    (testing "can check isClosed on prepared statement"
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver/*driver* (mt/id) nil
+       (fn [^Connection conn]
+         (let [prepared-stmt (sql-jdbc.execute/prepared-statement driver/*driver* conn "select 1" [])]
+           (is (false? (.isClosed prepared-stmt)))
+           (.close prepared-stmt)
+           (is (true? (.isClosed prepared-stmt)))))))))

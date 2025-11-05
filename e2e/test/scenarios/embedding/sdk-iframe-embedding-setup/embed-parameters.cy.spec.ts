@@ -104,17 +104,9 @@ H.describeWithSnowplow(suiteTitle, () => {
         .findByLabelText("Product ID")
         .should("contain", "456");
 
-      H.expectUnstructuredSnowplowEvent(
-        {
-          event: "embed_wizard_option_changed",
-          event_detail: "initialParameters",
-        },
-        2,
-      );
-
       cy.log("both default values should be in the code snippet");
       getEmbedSidebar().within(() => {
-        cy.findByText("Get Code").click();
+        cy.findByText("Get code").click();
         codeBlock().should("contain", "initial-parameters=");
         codeBlock().should("contain", '"id":[123]');
         codeBlock().should("contain", '"product_id":[456]');
@@ -147,17 +139,9 @@ H.describeWithSnowplow(suiteTitle, () => {
         .findByTestId("dashboard-parameters-widget-container")
         .should("not.exist");
 
-      H.expectUnstructuredSnowplowEvent(
-        {
-          event: "embed_wizard_option_changed",
-          event_detail: "hiddenParameters",
-        },
-        2,
-      );
-
       cy.log("code snippet should contain the hidden parameters");
       getEmbedSidebar().within(() => {
-        cy.findByText("Get Code").click();
+        cy.findByText("Get code").click();
         codeBlock().should("contain", "hidden-parameters=");
         codeBlock().should("contain", '"id"');
         codeBlock().should("contain", '"product_id"');
@@ -218,13 +202,8 @@ H.describeWithSnowplow(suiteTitle, () => {
         cy.findAllByText("75.41").first().should("be.visible");
       });
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_option_changed",
-        event_detail: "initialSqlParameters",
-      });
-
       getEmbedSidebar().within(() => {
-        cy.findByText("Get Code").click();
+        cy.findByText("Get code").click();
         codeBlock().should("contain", "initial-sql-parameters=");
         codeBlock().should("not.contain", "hidden-parameters="); // not supported for questions yet
         codeBlock().should("contain", '"id":"123"');

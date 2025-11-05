@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useSetting } from "metabase/common/hooks";
+import { getHelpUrl } from "metabase/common/utils/help-url";
 import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { UtilApi } from "metabase/services";
@@ -14,13 +15,13 @@ export const useHelpLink = (): { visible: boolean; href: string } => {
   );
   const [bugReportDetails, setBugReportDetails] = useState(null);
   const user = useSelector(getUser);
-  const isAdmin = user?.is_superuser;
+  const isAdmin = !!user?.is_superuser;
   const isPaidPlan = useSelector(getIsPaidPlan);
   const version = useSetting("version");
 
-  const compactBugReportDetailsForUrl = encodeURIComponent(
-    JSON.stringify(bugReportDetails),
-  );
+  const compactBugReportDetailsForUrl = bugReportDetails
+    ? encodeURIComponent(JSON.stringify(bugReportDetails))
+    : undefined;
 
   useEffect(() => {
     if (isAdmin && isPaidPlan) {
@@ -29,12 +30,15 @@ export const useHelpLink = (): { visible: boolean; href: string } => {
   }, [isAdmin, isPaidPlan]);
 
   const visible = helpLinkSetting !== "hidden";
+  const showPremiumHelp = isAdmin && isPaidPlan;
   const href =
     helpLinkSetting === "custom"
       ? helpLinkCustomDestinationSetting
-      : isAdmin && isPaidPlan
-        ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=${version.tag}&diag=${compactBugReportDetailsForUrl}`
-        : `https://www.metabase.com/help?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=${version.tag}`;
+      : getHelpUrl(
+          showPremiumHelp,
+          version.tag,
+          showPremiumHelp ? compactBugReportDetailsForUrl : undefined,
+        );
 
   return { visible, href };
 };

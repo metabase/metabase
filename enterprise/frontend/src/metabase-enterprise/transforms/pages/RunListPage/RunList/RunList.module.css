@@ -2,6 +2,10 @@
   cursor: pointer;
 }
 
+.wrap {
+  overflow-wrap: anywhere;
+}
+
 .nowrap {
   white-space: nowrap;
 }

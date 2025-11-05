@@ -1,0 +1,7 @@
+.SqlParametersListContainer {
+  background: transparent;
+
+  .SqlParametersList {
+    margin: 0;
+  }
+}

@@ -14,20 +14,24 @@ import {
   QuestionSettings,
   QuestionSettingsDropdown,
   QuestionVisualization,
+  SqlParametersList,
   Summarize,
   SummarizeDropdown,
   Title,
 } from "embedding-sdk-bundle/components/private/SdkQuestion/components";
+import { ResultToolbar } from "embedding-sdk-bundle/components/private/SdkQuestion/components/ResultToolbar/ResultToolbar";
 import { DefaultViewTitle } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/DefaultViewTitle";
 import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { StaticQuestionSdkMode } from "embedding-sdk-bundle/components/public/StaticQuestion/mode";
-import { Group, Stack } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
+
+import { staticQuestionSchema } from "./StaticQuestion.schema";
 
 /**
  * @interface
@@ -44,6 +48,7 @@ export type StaticQuestionProps = PropsWithChildren<
     | "className"
     | "style"
     | "initialSqlParameters"
+    | "hiddenParameters"
     | "withDownloads"
     | "title"
   >
@@ -68,16 +73,18 @@ export type StaticQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+  SqlParametersList: typeof SqlParametersList;
 };
 
-const _StaticQuestion = ({
-  questionId: initialQuestionId,
+const StaticQuestionInner = ({
+  questionId,
   withChartTypeSelector,
   height,
   width,
   className,
   style,
   initialSqlParameters,
+  hiddenParameters,
   withDownloads,
   title = false, // Hidden by default for backwards-compatibility.
   children,
@@ -98,10 +105,11 @@ const _StaticQuestion = ({
 
   return (
     <SdkQuestion
-      questionId={initialQuestionId}
+      questionId={questionId}
       getClickActionMode={getClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}
+      hiddenParameters={hiddenParameters}
       withDownloads={withDownloads}
     >
       {children ?? (
@@ -115,10 +123,10 @@ const _StaticQuestion = ({
             {title && <DefaultViewTitle title={title} />}
 
             {(withChartTypeSelector || withDownloads) && (
-              <Group justify="space-between">
+              <ResultToolbar>
                 {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
                 {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
-              </Group>
+              </ResultToolbar>
             )}
 
             <SdkQuestion.QuestionVisualization
@@ -150,6 +158,11 @@ const subComponents: StaticQuestionComponents = {
   BreakoutDropdown: BreakoutDropdown,
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
+  SqlParametersList: SqlParametersList,
 };
 
-export const StaticQuestion = Object.assign(_StaticQuestion, subComponents);
+export const StaticQuestion = Object.assign(
+  StaticQuestionInner,
+  subComponents,
+  { schema: staticQuestionSchema },
+);

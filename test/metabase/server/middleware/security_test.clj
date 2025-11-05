@@ -55,9 +55,10 @@
 
 (deftest csp-header-iframe-hosts-tests
   (testing "Allowed iframe hosts setting is used in the CSP frame-src directive."
-    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org, https://www.metabase.com   https://clojure.org"]
-      (is (= (str "frame-src 'self' https://wikipedia.org https://*.wikipedia.org https://www.wikipedia.org "
-                  "https://metabase.com https://*.metabase.com https://www.metabase.com "
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org, https://www.typescriptlang.org/   https://clojure.org"]
+      (is (= (str "frame-src 'self' https://www.metabase.com/ https://metabase.com/ "
+                  "https://wikipedia.org https://*.wikipedia.org https://www.wikipedia.org "
+                  "https://typescriptlang.org https://*.typescriptlang.org https://www.typescriptlang.org "
                   "https://clojure.org https://*.clojure.org")
              (csp-directive "frame-src")))))
   (testing "Includes 'self' so embed previews work (#49142)"
@@ -109,7 +110,9 @@
       "https://example.com"     {:protocol "https" :domain "example.com" :port nil}
       "http://example.com:8080" {:protocol "http" :domain "example.com" :port "8080"}
       "example.com:80"          {:protocol nil :domain "example.com" :port "80"}
-      "example.com:*"           {:protocol nil :domain "example.com" :port "*"}))
+      "example.com:*"           {:protocol nil :domain "example.com" :port "*"}
+      "app://localhost"         {:protocol "app" :domain "localhost" :port nil}
+      "capacitor://localhost"   {:protocol "capacitor" :domain "localhost" :port nil}))
   (testing "Should return nil for invalid urls"
     (are [url] (nil? (mw.security/parse-url url))
       "ftp://example.com"
@@ -140,9 +143,11 @@
     (is (mw.security/approved-protocol? "http" "http"))
     (is (mw.security/approved-protocol? "https" "https"))
     (is (not (mw.security/approved-protocol? "http" "https"))))
-  (testing "Nil reference should allow any protocol"
+  (testing "Nil reference should allow only http/https"
     (is (mw.security/approved-protocol? "http" nil))
-    (is (mw.security/approved-protocol? "https" nil))))
+    (is (mw.security/approved-protocol? "https" nil))
+    (is (not (mw.security/approved-protocol? "app" nil)))
+    (is (not (mw.security/approved-protocol? "capacitor" nil)))))
 
 (deftest ^:parallel test-approved-port?
   (testing "Exact port match"
@@ -183,10 +188,11 @@
       (is (mw.security/approved-origin? "https://example3.com" approved))))
   (testing "Different protocol should fail"
     (is (not (mw.security/approved-origin? "https://example1.com" "http://example1.com"))))
-  (testing "Origins without protocol should accept both http and https"
+  (testing "Origins without protocol should accept only http and https"
     (let [approved "example.com"]
       (is (mw.security/approved-origin? "http://example.com" approved))
-      (is (mw.security/approved-origin? "https://example.com" approved))))
+      (is (mw.security/approved-origin? "https://example.com" approved))
+      (is (not (mw.security/approved-origin? "app://example.com" approved)))))
   (testing "Different ports should fail"
     (is (not (mw.security/approved-origin? "http://example.com:3000" "http://example.com:3003"))))
   (testing "Should allow anything with *"
@@ -306,62 +312,63 @@
   (testing "The allowed iframe hosts parse in the expected way."
     (let [default-hosts @#'server.settings/default-allowed-iframe-hosts]
       (testing "The defaults hosts parse correctly"
-        (is (= ["'self'"
-                "youtube.com"
-                "*.youtube.com"
-                "youtu.be"
-                "*.youtu.be"
-                "loom.com"
-                "*.loom.com"
-                "vimeo.com"
-                "*.vimeo.com"
-                "docs.google.com"
-                "calendar.google.com"
-                "airtable.com"
-                "*.airtable.com"
-                "typeform.com"
-                "*.typeform.com"
-                "canva.com"
-                "*.canva.com"
-                "codepen.io"
-                "*.codepen.io"
-                "figma.com"
-                "*.figma.com"
-                "grafana.com"
-                "*.grafana.com"
-                "miro.com"
-                "*.miro.com"
-                "excalidraw.com"
-                "*.excalidraw.com"
-                "notion.com"
-                "*.notion.com"
-                "atlassian.com"
-                "*.atlassian.com"
-                "trello.com"
-                "*.trello.com"
-                "asana.com"
-                "*.asana.com"
-                "gist.github.com"
-                "linkedin.com"
-                "*.linkedin.com"
-                "twitter.com"
-                "*.twitter.com"
-                "x.com"
-                "*.x.com"]
+        (is (= (concat @#'mw.security/always-allowed-iframe-hosts
+                       ["youtube.com"
+                        "*.youtube.com"
+                        "youtu.be"
+                        "*.youtu.be"
+                        "loom.com"
+                        "*.loom.com"
+                        "vimeo.com"
+                        "*.vimeo.com"
+                        "docs.google.com"
+                        "calendar.google.com"
+                        "airtable.com"
+                        "*.airtable.com"
+                        "typeform.com"
+                        "*.typeform.com"
+                        "canva.com"
+                        "*.canva.com"
+                        "codepen.io"
+                        "*.codepen.io"
+                        "figma.com"
+                        "*.figma.com"
+                        "grafana.com"
+                        "*.grafana.com"
+                        "miro.com"
+                        "*.miro.com"
+                        "excalidraw.com"
+                        "*.excalidraw.com"
+                        "notion.com"
+                        "*.notion.com"
+                        "atlassian.com"
+                        "*.atlassian.com"
+                        "trello.com"
+                        "*.trello.com"
+                        "asana.com"
+                        "*.asana.com"
+                        "gist.github.com"
+                        "linkedin.com"
+                        "*.linkedin.com"
+                        "twitter.com"
+                        "*.twitter.com"
+                        "x.com"
+                        "*.x.com"])
                (mw.security/parse-allowed-iframe-hosts default-hosts))))
       (testing "Additional hosts a user may configure will parse correctly as well"
-        (is (= ["'self'" "localhost"
-                "http://localhost:8000"
-                "my.domain.local:9876"
-                "*"
-                "mysite.com"
-                "*.mysite.com"
-                "www.mysite.com"
-                "mysite.cool.com"
-                "www.mysite.cool.com"]
+        (is (= (concat @#'mw.security/always-allowed-iframe-hosts
+                       ["localhost"
+                        "http://localhost:8000"
+                        "my.domain.local:9876"
+                        "*"
+                        "mysite.com"
+                        "*.mysite.com"
+                        "www.mysite.com"
+                        "mysite.cool.com"
+                        "www.mysite.cool.com"])
                (mw.security/parse-allowed-iframe-hosts "localhost, http://localhost:8000,    my.domain.local:9876, *, www.mysite.com/, www.mysite.cool.com"))))
       (testing "invalid hosts are not included"
-        (is (= ["'self'"]
+        (is (= @#'mw.security/always-allowed-iframe-hosts
                (mw.security/parse-allowed-iframe-hosts "asdf/wasd/:8000 */localhost:*")))))))
 
 (defn- run-add-security-headers-mw-test! [enable-embedding-sdk-value
