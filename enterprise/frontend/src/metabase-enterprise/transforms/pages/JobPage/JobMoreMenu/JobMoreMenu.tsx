@@ -6,17 +6,16 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
-import type { TransformJobId } from "metabase-types/api";
+import type { TransformJob } from "metabase-types/api";
 
 import { DeleteJobModal } from "./DeleteJobModal";
-import type { JobMoreMenuModalState } from "./types";
+import type { JobMoreMenuModalType } from "./types";
 
 type JobMoreMenuProps = {
-  jobId: TransformJobId;
-  onOpenModal: (modal: JobMoreMenuModalState) => void;
+  onOpenModal: (modalType: JobMoreMenuModalType) => void;
 };
 
-export function JobMoreMenu({ jobId, onOpenModal }: JobMoreMenuProps) {
+export function JobMoreMenu({ onOpenModal }: JobMoreMenuProps) {
   const handleIconClick = (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -32,7 +31,7 @@ export function JobMoreMenu({ jobId, onOpenModal }: JobMoreMenuProps) {
       <Menu.Dropdown>
         <Menu.Item
           leftSection={<Icon name="trash" />}
-          onClick={() => onOpenModal({ jobId, modalType: "delete" })}
+          onClick={() => onOpenModal("delete")}
         >
           {t`Delete`}
         </Menu.Item>
@@ -42,11 +41,16 @@ export function JobMoreMenu({ jobId, onOpenModal }: JobMoreMenuProps) {
 }
 
 type JobMoreMenuModalProps = {
-  modal: JobMoreMenuModalState;
+  job: TransformJob;
+  modalType: JobMoreMenuModalType;
   onClose: () => void;
 };
 
-export function JobMoreMenuModal({ modal, onClose }: JobMoreMenuModalProps) {
+export function JobMoreMenuModal({
+  job,
+  modalType,
+  onClose,
+}: JobMoreMenuModalProps) {
   const { sendSuccessToast } = useMetadataToasts();
   const dispatch = useDispatch();
 
@@ -56,14 +60,10 @@ export function JobMoreMenuModal({ modal, onClose }: JobMoreMenuModalProps) {
     onClose();
   };
 
-  switch (modal.modalType) {
+  switch (modalType) {
     case "delete":
       return (
-        <DeleteJobModal
-          jobId={modal.jobId}
-          onDelete={handleDelete}
-          onClose={onClose}
-        />
+        <DeleteJobModal job={job} onDelete={handleDelete} onClose={onClose} />
       );
     default:
       return null;
@@ -71,17 +71,21 @@ export function JobMoreMenuModal({ modal, onClose }: JobMoreMenuModalProps) {
 }
 
 type JobMoreMenuWithModalProps = {
-  jobId: TransformJobId;
+  job: TransformJob;
 };
 
-export function JobMoreMenuWithModal({ jobId }: JobMoreMenuWithModalProps) {
-  const [modal, setModal] = useState<JobMoreMenuModalState>();
+export function JobMoreMenuWithModal({ job }: JobMoreMenuWithModalProps) {
+  const [modalType, setModalType] = useState<JobMoreMenuModalType>();
 
   return (
     <>
-      <JobMoreMenu jobId={jobId} onOpenModal={setModal} />
-      {modal != null && (
-        <JobMoreMenuModal modal={modal} onClose={() => setModal(undefined)} />
+      <JobMoreMenu onOpenModal={setModalType} />
+      {modalType != null && (
+        <JobMoreMenuModal
+          job={job}
+          modalType={modalType}
+          onClose={() => setModalType(undefined)}
+        />
       )}
     </>
   );
