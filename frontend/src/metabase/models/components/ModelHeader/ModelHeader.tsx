@@ -13,7 +13,10 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getLocation } from "metabase/selectors/routing";
+import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";
@@ -69,31 +72,45 @@ type ModelTabsProps = {
 };
 
 function ModelTabs({ card }: ModelTabsProps) {
+  const metadata = useSelector(getMetadata);
   const location = useSelector(getLocation);
-  const tabs = getTabs(card, location);
+  const tabs = getTabs(card, metadata, location);
   return <PaneHeaderTabs tabs={tabs} />;
 }
 
-function getTabs(card: Card, { pathname }: Location): PaneHeaderTab[] {
-  return [
+function getTabs(
+  card: Card,
+  metadata: Metadata,
+  { pathname }: Location,
+): PaneHeaderTab[] {
+  const tabs: PaneHeaderTab[] = [
     {
       label: t`Overview`,
       to: Urls.dataStudioModel(card.id),
       isSelected: Urls.dataStudioModel(card.id) === pathname,
     },
-    {
-      label: t`Query`,
-      to: Urls.dataStudioModelQuery(card.id),
-      isSelected: Urls.dataStudioModelQuery(card.id) === pathname,
-    },
-    ...(PLUGIN_DEPENDENCIES.isEnabled
-      ? [
-          {
-            label: t`Dependencies`,
-            to: Urls.dataStudioModelDependencies(card.id),
-            isSelected: Urls.dataStudioModelDependencies(card.id) === pathname,
-          },
-        ]
-      : []),
   ];
+
+  if (card.can_write) {
+    const query = Lib.fromJsQueryAndMetadata(metadata, card.dataset_query);
+    const queryInfo = Lib.queryDisplayInfo(query);
+
+    if (queryInfo.isEditable) {
+      tabs.push({
+        label: t`Query`,
+        to: Urls.dataStudioModelQuery(card.id),
+        isSelected: Urls.dataStudioModelQuery(card.id) === pathname,
+      });
+    }
+  }
+
+  if (PLUGIN_DEPENDENCIES.isEnabled) {
+    tabs.push({
+      label: t`Dependencies`,
+      to: Urls.dataStudioModelDependencies(card.id),
+      isSelected: Urls.dataStudioModelDependencies(card.id) === pathname,
+    });
+  }
+
+  return tabs;
 }
