@@ -55,4 +55,3 @@ runs:
         variant: ${{ inputs.variant || inputs.output-name }}
         org-slug: metabase
         token: ${{ inputs.trunk-api-token }}
-      continue-on-error: true

@@ -78,4 +78,4 @@ Run your app and visit the page with the embedded dashboard.
 ## Next steps
 
 - Explore [theming to change the look and feel](./appearance.md).
-- Continue by [setting up JWT SSO in Metabase and your app](./authentication.md) in order to sign people in, manage permissions, and deploy your app in production.
+- Continue by [setting up JWT SSO in Metabase and your app](./authentication.md) to sign people in, manage permissions, and deploy your app in production.

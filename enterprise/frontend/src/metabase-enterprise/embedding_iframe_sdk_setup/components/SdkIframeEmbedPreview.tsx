@@ -6,7 +6,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useSearchParam } from "react-use";
 import { match } from "ts-pattern";
 
 import { useSetting } from "metabase/common/hooks";
@@ -37,8 +36,6 @@ declare global {
 export const SdkIframeEmbedPreview = () => {
   const { settings } = useSdkIframeEmbedSetupContext();
   const [isLoading, setIsLoading] = useState(true);
-
-  const localeOverride = useSearchParam("locale");
 
   const instanceUrl = useSetting("site-url");
   const applicationColors = useSetting("application-colors");
@@ -84,11 +81,10 @@ export const SdkIframeEmbedPreview = () => {
   const metabaseConfig = useMemo(
     () => ({
       instanceUrl,
-      useExistingUserSession: true,
       theme: derivedTheme,
-      ...(localeOverride ? { locale: localeOverride } : {}),
+      useExistingUserSession: true,
     }),
-    [instanceUrl, localeOverride, derivedTheme],
+    [instanceUrl, derivedTheme],
   );
 
   // initial configuration, needed so that the element finds the config on first render
@@ -153,13 +149,16 @@ export const SdkIframeEmbedPreview = () => {
             drills: s.drills,
             "with-title": s.withTitle,
             "with-downloads": s.withDownloads,
-            "initial-sql-parameters": s.initialSqlParameters
-              ? JSON.stringify(s.initialSqlParameters)
-              : undefined,
             "is-save-enabled": s.isSaveEnabled,
             "target-collection": s.targetCollection,
             "entity-types": s.entityTypes
               ? JSON.stringify(s.entityTypes)
+              : undefined,
+            "initial-sql-parameters": s.initialSqlParameters
+              ? JSON.stringify(s.initialSqlParameters)
+              : undefined,
+            "hidden-parameters": s.hiddenParameters
+              ? JSON.stringify(s.hiddenParameters)
               : undefined,
           }),
         )
@@ -186,9 +185,15 @@ export const SdkIframeEmbedPreview = () => {
               : undefined,
           }),
         )
+        .with({ componentName: "metabase-metabot" }, (s) =>
+          createElement("metabase-metabot", { layout: s.layout }),
+        )
         .exhaustive()}
 
-      <EmbedPreviewLoadingOverlay isVisible={isLoading} />
+      <EmbedPreviewLoadingOverlay
+        isVisible={isLoading}
+        bg={settings.theme?.colors?.background}
+      />
     </Card>
   );
 };

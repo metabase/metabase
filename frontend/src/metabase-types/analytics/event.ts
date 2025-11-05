@@ -201,7 +201,8 @@ export type SdkIframeEmbedSetupExperience =
   | "dashboard"
   | "chart"
   | "exploration"
-  | "browser";
+  | "browser"
+  | "metabot";
 
 export type EmbedWizardOpenedEvent = ValidateEvent<{
   event: "embed_wizard_opened";
@@ -371,7 +372,7 @@ export type TableEditingEvent =
 export type MetabotChatOpenedEvent = ValidateEvent<{
   event: "metabot_chat_opened";
   triggered_from:
-    | "search"
+    | "header"
     | "command_palette"
     | "keyboard_shortcut"
     | "native_editor";
@@ -451,6 +452,46 @@ export type ClickActionPerformedEvent = ValidateEvent<{
   triggered_from: ClickActionSection;
 }>;
 
+export type RemoteSyncBranchSwitchedEvent = ValidateEvent<{
+  event: "remote_sync_branch_switched";
+  triggered_from: "sidebar" | "admin-settings";
+}>;
+
+export type RemoteSyncBranchCreatedEvent = ValidateEvent<{
+  event: "remote_sync_branch_created";
+  triggered_from: "branch-picker" | "conflict-modal";
+}>;
+
+export type RemoteSyncPullChangesEvent = ValidateEvent<{
+  event: "remote_sync_pull_changes";
+  triggered_from: "sidebar" | "admin-settings";
+  event_detail?: "force";
+}>;
+
+export type RemoteSyncPushChangesEvent = ValidateEvent<{
+  event: "remote_sync_push_changes";
+  triggered_from: "sidebar" | "conflict-modal";
+  event_detail?: "force";
+}>;
+
+export type RemoteSyncSettingsChangedEvent = ValidateEvent<{
+  event: "remote_sync_settings_changed";
+  triggered_from: "admin-settings";
+}>;
+
+export type RemoteSyncDeactivatedEvent = ValidateEvent<{
+  event: "remote_sync_deactivated";
+  triggered_from: "admin-settings";
+}>;
+
+export type RemoteSyncEvent =
+  | RemoteSyncBranchSwitchedEvent
+  | RemoteSyncBranchCreatedEvent
+  | RemoteSyncPullChangesEvent
+  | RemoteSyncPushChangesEvent
+  | RemoteSyncSettingsChangedEvent
+  | RemoteSyncDeactivatedEvent;
+
 export type BookmarkEvent =
   | BookmarkQuestionEvent
   | BookmarkModelEvent
@@ -508,4 +549,5 @@ export type SimpleEvent =
   | LearnAboutDataClickedEvent
   | MetadataEditEvent
   | BookmarkEvent
+  | RemoteSyncEvent
   | ClickActionPerformedEvent;

@@ -19,13 +19,14 @@ import {
   SummarizeDropdown,
   Title,
 } from "embedding-sdk-bundle/components/private/SdkQuestion/components";
+import { ResultToolbar } from "embedding-sdk-bundle/components/private/SdkQuestion/components/ResultToolbar/ResultToolbar";
 import { DefaultViewTitle } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/DefaultViewTitle";
 import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { StaticQuestionSdkMode } from "embedding-sdk-bundle/components/public/StaticQuestion/mode";
-import { Group, Stack } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
@@ -75,8 +76,8 @@ export type StaticQuestionComponents = {
   SqlParametersList: typeof SqlParametersList;
 };
 
-const _StaticQuestion = ({
-  questionId: initialQuestionId,
+const StaticQuestionInner = ({
+  questionId,
   withChartTypeSelector,
   height,
   width,
@@ -104,7 +105,7 @@ const _StaticQuestion = ({
 
   return (
     <SdkQuestion
-      questionId={initialQuestionId}
+      questionId={questionId}
       getClickActionMode={getClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}
@@ -122,10 +123,10 @@ const _StaticQuestion = ({
             {title && <DefaultViewTitle title={title} />}
 
             {(withChartTypeSelector || withDownloads) && (
-              <Group justify="space-between">
+              <ResultToolbar>
                 {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
                 {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
-              </Group>
+              </ResultToolbar>
             )}
 
             <SdkQuestion.QuestionVisualization
@@ -160,6 +161,8 @@ const subComponents: StaticQuestionComponents = {
   SqlParametersList: SqlParametersList,
 };
 
-export const StaticQuestion = Object.assign(_StaticQuestion, subComponents, {
-  schema: staticQuestionSchema,
-});
+export const StaticQuestion = Object.assign(
+  StaticQuestionInner,
+  subComponents,
+  { schema: staticQuestionSchema },
+);

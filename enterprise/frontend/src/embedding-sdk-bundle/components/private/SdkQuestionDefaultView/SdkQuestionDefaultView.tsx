@@ -37,6 +37,7 @@ import { Editor } from "../SdkQuestion/components/Editor";
 import { EditorButton } from "../SdkQuestion/components/EditorButton/EditorButton";
 import { FilterDropdown } from "../SdkQuestion/components/Filter/FilterDropdown";
 import { QuestionSettingsDropdown } from "../SdkQuestion/components/QuestionSettings";
+import { ResultToolbar } from "../SdkQuestion/components/ResultToolbar/ResultToolbar";
 import {
   SaveButton,
   shouldShowSaveButton,
@@ -191,13 +192,7 @@ export const SdkQuestionDefaultView = ({
           {showSaveButton && <SaveButton onClick={openSaveModal} />}
         </Group>
         {queryResults && (
-          <Group
-            justify="space-between"
-            p="sm"
-            bg="var(--mb-color-bg-sdk-question-toolbar)"
-            style={{ borderRadius: "0.5rem" }}
-            data-testid="interactive-question-result-toolbar"
-          >
+          <ResultToolbar data-testid="interactive-question-result-toolbar">
             <Group gap="xs">
               {isEditorOpen ? (
                 <PopoverBackButton
@@ -242,7 +237,7 @@ export const SdkQuestionDefaultView = ({
               {withDownloads && <DownloadWidgetDropdown />}
               <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
             </Group>
-          </Group>
+          </ResultToolbar>
         )}
       </Stack>
 

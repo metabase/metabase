@@ -91,9 +91,7 @@ export function DetailViewSidesheet({
     error,
     isLoading,
   } = useGetAdhocQueryQuery(
-    query != null && rowFromProps == null
-      ? Lib.toLegacyQuery(query)
-      : skipToken,
+    query != null && rowFromProps == null ? Lib.toJsQuery(query) : skipToken,
   );
   const { columns, row } = useMemo(
     () => extractData(dataset, columnsFromProp, columnSettings, rowFromProps),
@@ -374,11 +372,8 @@ export function DetailViewSidesheet({
                 py={rem(48)}
               >
                 <Relationships
-                  columns={columns}
-                  row={row}
                   rowId={rowId}
                   rowName={rowName}
-                  table={table}
                   tableForeignKeys={tableForeignKeys}
                   onClick={onClose}
                 />

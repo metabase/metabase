@@ -91,7 +91,7 @@ export const getAxisNameDefaultOption = (
   nameLocation: "middle",
   nameRotate: rotate,
   nameTextStyle: {
-    color: getColor("text-dark"),
+    color: getColor("text-primary"),
     fontSize: theme.cartesian.label.fontSize,
     fontWeight: CHART_STYLE.axisName.weight,
     fontFamily,
@@ -105,7 +105,7 @@ export const getTicksDefaultOption = ({
 }: RenderingContext) => {
   return {
     hideOverlap: true,
-    color: getColor("text-dark"),
+    color: getColor("text-primary"),
     fontSize: theme.cartesian.label.fontSize,
     fontWeight: CHART_STYLE.axisTicks.weight,
     fontFamily,

@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import { setupAutoDashboardEndpoints } from "__support__/server-mocks";
+import {
+  setupAutoDashboardEndpoints,
+  setupDatabaseListEndpoint,
+} from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
@@ -32,6 +35,7 @@ const setup = async () => {
       databases: [TEST_DATABASE_WITH_ACTIONS],
     }),
   );
+  setupDatabaseListEndpoint([TEST_DATABASE_WITH_ACTIONS]);
 
   renderWithProviders(
     <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />,
