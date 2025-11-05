@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "stack",
+        "restack"
+      ],
+      "branch": "emb-938-crud-api-for-named-themes-on-the-backend"
+    }
+  ]
 }
