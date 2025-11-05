@@ -357,9 +357,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       return {
         display: question.display(),
         visualizationSettings:
-          rawSeries != null
-            ? getTempVisualizationSettings(rawSeries) || question.settings()
-            : question.settings(),
+          getTempVisualizationSettings(rawSeries) || question.settings(),
       };
     },
   );
