@@ -74,8 +74,7 @@ function linkPasteRule(config: Parameters<typeof markPasteRule>[0]) {
 
 /**
  * Custom extension that extends the built-in `Link` extension to add additional input and paste
- * rules for converting the Markdown link syntax [Doist](https://doist.com) into links. This
- * extension also adds support for the `title` attribute.
+ * rules for converting the Markdown link syntax [Doist](https://doist.com) into links.
  */
 export const PlainLink = Link.extend({
   addOptions() {
@@ -89,14 +88,6 @@ export const PlainLink = Link.extend({
     };
   },
 
-  addAttributes() {
-    return {
-      ...this.parent?.(),
-      title: {
-        default: null,
-      },
-    };
-  },
   addInputRules() {
     return [
       linkInputRule({
@@ -108,7 +99,6 @@ export const PlainLink = Link.extend({
         // capture group in the match (this makes the attribute order important)
         getAttributes(match) {
           return {
-            title: match.pop()?.trim(),
             href: processUrl(match.pop()?.trim() ?? ""),
           };
         },
@@ -126,7 +116,6 @@ export const PlainLink = Link.extend({
         // capture group in the match (this makes the attribute order important)
         getAttributes(match) {
           return {
-            title: match.pop()?.trim(),
             href: processUrl(match.pop()?.trim() ?? ""),
           };
         },
