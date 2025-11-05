@@ -12,7 +12,7 @@
   (testing "POST /api/embed-theme"
     (testing "creates a new embedding theme"
       (mt/with-empty-h2-app-db!
-        (let [theme-name (str "My Test Theme " (random-uuid))
+        (let [theme-name "My Test Theme"
               settings   {:color {:brand "#FF0000"}}
               response   (mt/user-http-request :crowberto :post 200 "embed-theme"
                                                {:name     theme-name
