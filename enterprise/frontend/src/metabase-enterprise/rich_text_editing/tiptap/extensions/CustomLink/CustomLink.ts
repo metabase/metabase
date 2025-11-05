@@ -6,6 +6,8 @@ import {
 } from "@tiptap/core";
 import { Link } from "@tiptap/extension-link";
 
+import { processUrl } from "metabase-enterprise/documents/utils/processUrl";
+
 // Adapted from https://github.com/ueberdosis/tiptap/discussions/1865#discussioncomment-2568739
 
 /**
@@ -92,7 +94,7 @@ export const CustomLink = Link.extend({
         getAttributes(match) {
           return {
             title: match.pop()?.trim(),
-            href: match.pop()?.trim(),
+            href: processUrl(match.pop()?.trim() ?? ""),
           };
         },
       }),
@@ -110,7 +112,7 @@ export const CustomLink = Link.extend({
         getAttributes(match) {
           return {
             title: match.pop()?.trim(),
-            href: match.pop()?.trim(),
+            href: processUrl(match.pop()?.trim() ?? ""),
           };
         },
       }),

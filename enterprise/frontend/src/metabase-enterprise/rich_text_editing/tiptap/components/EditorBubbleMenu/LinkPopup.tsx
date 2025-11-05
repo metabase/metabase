@@ -9,6 +9,7 @@ import {
   TextInput,
   Tooltip,
 } from "metabase/ui";
+import { processUrl } from "metabase-enterprise/documents/utils/processUrl";
 
 interface LinkPopupProps {
   initialUrl: string;
@@ -37,21 +38,7 @@ export const LinkPopup = ({
   }, [initialUrl]);
 
   const handleSubmit = () => {
-    let processedUrl = url.trim();
-
-    if (!processedUrl.startsWith("/") && processedUrl.includes(".")) {
-      const hasProtocol = /^\S+:\/\//.test(processedUrl);
-      if (!hasProtocol) {
-        const isEmailLike = /^\S+@\S+$/.test(processedUrl);
-        if (!isEmailLike) {
-          processedUrl = `https://${processedUrl}`;
-        } else if (!processedUrl.startsWith("mailto:")) {
-          processedUrl = `mailto:${processedUrl}`;
-        }
-      }
-    }
-
-    onSubmit(processedUrl);
+    onSubmit(processUrl(url) ?? "");
     setUrl("");
   };
 
