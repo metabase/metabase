@@ -1,6 +1,4 @@
-import { t } from "ttag";
-
-import { Button, Group, Tooltip } from "metabase/ui";
+import { PaneHeaderActions } from "metabase/data-studio/components/PaneHeader";
 import type { TransformId } from "metabase-types/api";
 
 import { TransformHeader } from "../../TransformHeader";
@@ -28,26 +26,18 @@ export function EditorHeader({
   onCancel,
   onChangeName,
 }: EditorHeaderProps) {
-  const canSave = isDirty && !isSaving && validationResult.isValid;
-
   return (
     <TransformHeader
       id={id}
       name={name}
       actions={
-        isDirty && (
-          <Group>
-            <Button onClick={onCancel}>{t`Cancel`}</Button>
-            <Tooltip
-              label={validationResult.errorMessage}
-              disabled={validationResult.errorMessage == null}
-            >
-              <Button variant="filled" disabled={!canSave} onClick={onSave}>
-                {t`Save`}
-              </Button>
-            </Tooltip>
-          </Group>
-        )
+        <PaneHeaderActions
+          validationResult={validationResult}
+          isDirty={isDirty}
+          isSaving={isSaving}
+          onSave={onSave}
+          onCancel={onCancel}
+        />
       }
       hasMenu={!isDirty}
       onChangeName={onChangeName}
