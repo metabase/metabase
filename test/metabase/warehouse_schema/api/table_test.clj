@@ -1245,18 +1245,18 @@
       (mt/user-http-request :crowberto :post 200 "table/edit" {:database_ids     [clojure jvm]
                                                                :data_layer "copper"})
 
-      (is (= #{"copper"} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
+      (is (= #{:copper} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
 
       (mt/user-http-request :crowberto :post 200 "table/edit" {:database_ids     [clojure]
                                                                :table_ids        [classes]
                                                                :schema_ids       [(format "%d:jre" jvm)]
                                                                :data_layer "silver"})
-      (is (= {vars       "silver"
-              namespaces "silver"
-              beans      "copper"
-              classes    "silver"
-              gc         "silver"
-              jit        "silver"}
+      (is (= {vars       :silver
+              namespaces :silver
+              beans      :copper
+              classes    :silver
+              gc         :silver
+              jit        :silver}
              (t2/select-pk->fn :data_layer :model/Table :db_id [:in [clojure jvm]]))))))
 
 (deftest publish-model-test
