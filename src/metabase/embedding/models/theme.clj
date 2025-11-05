@@ -32,3 +32,8 @@
    :skip      []
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)}})
+
+(defmethod serdes/storage-path "EmbeddingTheme"
+  [entity _ctx]
+  (let [{:keys [id label]} (-> entity serdes/path last)]
+    ["embedding_themes" (serdes/storage-leaf-file-name id label)]))
