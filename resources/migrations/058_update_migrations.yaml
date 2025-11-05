@@ -117,11 +117,7 @@ databaseChangeLog:
 #
 # 2) Migrations should go in the ###_update_migrations.yaml file for the target version.
 #
-<<<<<<< HEAD
 # 3) Run mage lint-migrations to run core.spec checks against any changes you make here. Liquibase is pretty
-=======
-# 3) Run mage lint-migrations-file to run core.spec checks against any changes you make here. Liquibase is pretty
->>>>>>> 338462e101c (update migration file)
 #    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
 #    this check but it's nicer to know now instead of waiting for CI.
 #
