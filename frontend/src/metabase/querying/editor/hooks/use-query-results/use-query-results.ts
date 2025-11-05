@@ -10,7 +10,7 @@ import type { QueryEditorUiState } from "../../types";
 export function useQueryResults(
   question: Question,
   uiState: QueryEditorUiState,
-  setUiState: (newUiState: QueryEditorUiState) => void,
+  onChangeUiState: (newUiState: QueryEditorUiState) => void,
 ) {
   const { lastRunQuery } = uiState;
   const [runAdhocQuery, { data = null, isFetching: isRunning = false }] =
@@ -54,7 +54,7 @@ export function useQueryResults(
     });
     abortRef.current = result.abort;
     await result;
-    setUiState({ ...uiState, lastRunQuery: question.datasetQuery() });
+    onChangeUiState({ ...uiState, lastRunQuery: question.datasetQuery() });
   };
 
   const cancelQuery = () => {

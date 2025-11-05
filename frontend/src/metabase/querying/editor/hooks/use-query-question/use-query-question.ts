@@ -20,7 +20,7 @@ export function useQueryQuestion(
     cardDisplay,
     cardVizSettings = DEFAULT_VIZ_SETTINGS,
   }: QueryEditorUiOptions = {},
-  setQuery: (newQuery: Lib.Query) => void,
+  onChangeQuery: (newQuery: Lib.Query) => void,
 ) {
   const metadata = useSelector(getMetadata);
 
@@ -46,7 +46,7 @@ export function useQueryQuestion(
   );
 
   const setQuestion = (newQuestion: Question) => {
-    setQuery(newQuestion.query());
+    onChangeQuery(newQuestion.query());
   };
 
   return { question, proposedQuestion, setQuestion };
