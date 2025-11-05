@@ -434,6 +434,8 @@ import sun_component from "./sun.svg?component";
 import sun_source from "./sun.svg?source";
 import sync_component from "./sync.svg?component";
 import sync_source from "./sync.svg?source";
+import synced_collection_component from "./synced_collection.svg?component";
+import synced_collection_source from "./synced_collection.svg?source";
 import t_shirt_component from "./t-shirt.svg?component";
 import t_shirt_source from "./t-shirt.svg?source";
 import tab_component from "./tab.svg?component";
@@ -1231,6 +1233,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: sync_component,
       source: sync_source,
     },
+    synced_collection: {
+      component: synced_collection_component,
+      source: synced_collection_source,
+    },
     question: {
       component: question_component,
       source: question_source,
@@ -1706,6 +1712,7 @@ export type IconName =
   | "sort_arrows"
   | "sum"
   | "sync"
+  | "synced_collection"
   | "question"
   | "quote"
   | "redo"
