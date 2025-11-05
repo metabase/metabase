@@ -476,17 +476,6 @@
           (update :stages #(into [] (take (inc (canonical-stage-index query stage-number))) %)))
       new-query)))
 
-(defn find-stage-index-and-clause-by-uuid
-  "Find the clause in `query` with the given `lib-uuid`. Return a [stage-index clause] pair, if found."
-  ([query lib-uuid]
-   (find-stage-index-and-clause-by-uuid query -1 lib-uuid))
-  ([query stage-number lib-uuid]
-   (first (keep-indexed (fn [idx stage]
-                          (lib.util.match/match-lite-recursive stage
-                            (clause :guard (= lib-uuid (lib.options/uuid clause)))
-                            [idx clause]))
-                        (:stages (drop-later-stages query stage-number))))))
-
 (defn fresh-uuids
   "Recursively replace all the :lib/uuids in `x` with fresh ones. Useful if you need to attach something to a query more
   than once."
@@ -511,6 +500,21 @@
      :else
      x)))
 
+(defn fresh-uuids-preserving-aggregation-refs
+  "Recursively replace all `:lib/uuid`s on an MBQL structure with fresh ones. Avoids duplicate UUID errors when
+  attaching something to a query more than once. This builds on [[fresh-uuids]] to include updating any
+  `[:aggregation {} \"uuid\"]` refs to use the corresponding new UUID."
+  [query]
+  (let [remapping (volatile! (transient {}))
+        query     (fresh-uuids query (fn [old-uuid new-uuid]
+                                       (vswap! remapping assoc! old-uuid new-uuid)))
+        remapping (persistent! @remapping)]
+    (lib.util.match/replace query
+      [:aggregation opts old-uuid]
+      [:aggregation opts (or (remapping old-uuid)
+                             (throw (ex-info "Could not convert old :aggregation ref to new UUIDs"
+                                             {:aggregation &match})))])))
+
 (mu/defn normalized-query-type :- [:maybe [:enum #_MLv2 :mbql/query #_legacy :query :native #_audit :internal]]
   "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
   [query :- [:maybe :map]]
@@ -529,3 +533,10 @@
     (:query :native) :mbql-version/legacy
     ;; otherwise, this is not a valid MBQL query.
     nil))
+
+(defn drop-summary-clauses
+  "Remove :aggregation and :breakout from the stage at `stage-number` of a `query`."
+  ([query]
+   (drop-summary-clauses query -1))
+  ([query stage-number]
+   (update-query-stage query stage-number dissoc :aggregation :breakout)))

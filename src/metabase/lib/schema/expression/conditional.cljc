@@ -1,14 +1,14 @@
 (ns metabase.lib.schema.expression.conditional
   "Conditional expressions like `:case` and `:coalesce`."
-  #?(:clj (:refer-clojure :exclude [doseq]))
+  (:refer-clojure :exclude [not-empty #?(:clj doseq)])
   (:require
-   #?(:clj [metabase.util.performance :refer [doseq]])
    [clojure.set :as set]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.types.core :as types]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [not-empty #?(:clj doseq)]]))
 
 ;;; the logic for calculating the return type of a `:case` or similar statement is not optimal nor perfect. But it
 ;;; should be ok for now and errors on the side of being permissive. See this Slack thread for more info:

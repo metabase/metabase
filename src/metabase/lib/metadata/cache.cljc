@@ -2,6 +2,7 @@
   "Cache arbitrary immutable values on `metadata-providerable` (eg. a query), by using the `CachedMetadataProvider`'s
   general caching facilities. Has helpers for constructing a cache key that includes the query and stage, making it
   easy to cache things like `visible-columns`."
+  (:refer-clojure :exclude [not-empty])
   (:require
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -11,7 +12,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [not-empty]])
   #?(:cljs (:require-macros [metabase.lib.metadata.cache])))
 
 (mr/def ::cache-key

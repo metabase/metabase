@@ -81,7 +81,7 @@
     .cm-completionMatchedText {
       text-decoration: none;
       font-weight: bold;
-      color: var(--mb-color-focus);
+      color: var(--mb-color-text-brand);
     }
 
     .cm-completionDetail {
@@ -129,6 +129,7 @@
         &:hover,
         &[aria-selected="true"] {
           background-color: var(--mb-color-bg-hover);
+          color: var(--mb-color-text-dark);
         }
       }
 

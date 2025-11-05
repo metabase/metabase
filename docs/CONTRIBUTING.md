@@ -37,7 +37,7 @@ The core team runs a pretty well defined product process. It is actively being t
 
 ### A) Identify product needs from the community
 
-We actively look for new feature ideas from our community, user base and our own use of Metabase internally. We concentrate on the underlying _problem_ or _need_ as opposed to requests for specific features. While sometimes suggested features are built as requested, often we find that they involve changes to existing features, and perhaps an entirely different solution to the underlying problem. These will typically be collected in a number of issues, and tagged [Proposal](https://github.com/metabase/metabase/labels/.Proposal)
+We actively look for new feature ideas from our community, user base and our own use of Metabase internally. We concentrate on the underlying _problem_ or _need_ as opposed to requests for specific features. While sometimes suggested features are built as requested, often we find that they involve changes to existing features, and potentially an entirely different solution to the underlying problem. These will typically be collected in a number of issues, and tagged [Proposal](https://github.com/metabase/metabase/labels/.Proposal)
 
 ### B) Synthesize these needs into a concrete feature
 
@@ -107,4 +107,4 @@ Generally speaking, any issue in [Help Wanted](https://github.com/metabase/metab
 
 ### #YOLO JUST SUBMIT A PR
 
-If you come up with something really cool, and want to share it with us, just submit a PR. If it hasn't gone through the above process, we probably won't merge it as is, but if it's compelling, we're more than willing to help you via code review, design review and generally OCD nitpicking so that it fits into the rest of our codebase.
+If you come up with something cool, and want to share it with us, just submit a PR. If it hasn't gone through the above process, we probably won't merge it as is, but if it's compelling, we're more than willing to help you via code review, design review and generally OCD nitpicking so that it fits into the rest of our codebase.

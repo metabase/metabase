@@ -9,8 +9,10 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
+(use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 (use-fixtures :each (fn [f] (mt/with-premium-features #{:documents} (f))))
 
 (deftest post-document-basic-creation-test
@@ -82,6 +84,17 @@
     (mt/with-non-admin-groups-no-collection-perms coll-id
       (mt/user-http-request :rasta :put 403 (str "ee/document/" document-id)
                             {:name "Meow"}))))
+
+(deftest put-document-archived-test
+  (testing "PUT /api/ee/document/:id - cannot update archived document"
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Test Document"
+                                                 :document (documents.test-util/text->prose-mirror-ast "Initial")
+                                                 :archived true}]
+      (testing "editing archived document returns 404"
+        (is (= "The object has been archived."
+               (:message (mt/user-http-request :crowberto
+                                               :put 404 (format "ee/document/%s" doc-id)
+                                               {:name "Updated Name"}))))))))
 
 (deftest post-document-with-no-perms-test
   (mt/with-temp [:model/Collection {coll-id :id} {}]
@@ -2536,3 +2549,36 @@
                                 :put 200 (format "ee/document/%s" doc-id)
                                 {:document (prose-mirror-with-smartlink "Good" remote-card-id)
                                  :collection_id regular-id}))))))
+
+(deftest post-document-to-personal-collection-test
+  (testing "POST /api/ee/document/ - creating a document in a personal collection"
+    (mt/with-model-cleanup [:model/Document]
+      (let [personal-coll-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))]
+        (testing "User can create a document in their own personal collection"
+          (let [result (mt/user-http-request :rasta
+                                             :post 200 "ee/document/"
+                                             {:name "Personal Document"
+                                              :document (documents.test-util/text->prose-mirror-ast "My personal notes")
+                                              :collection_id personal-coll-id})]
+            (is (pos? (:id result)))
+            (is (= "Personal Document" (:name result)))
+            (is (= personal-coll-id (:collection_id result)))
+            (testing "Document is successfully saved in the database"
+              (let [doc (t2/select-one :model/Document :id (:id result))]
+                (is (some? doc))
+                (is (= personal-coll-id (:collection_id doc)))
+                (is (= "Personal Document" (:name doc)))))))
+        (testing "Admin can also create a document in someone else's personal collection"
+          (let [result (mt/user-http-request :crowberto
+                                             :post 200 "ee/document/"
+                                             {:name "Admin Document in Personal Collection"
+                                              :document (documents.test-util/text->prose-mirror-ast "Admin's notes")
+                                              :collection_id personal-coll-id})]
+            (is (pos? (:id result)))
+            (is (= personal-coll-id (:collection_id result)))))
+        (testing "Other users cannot create documents in someone else's personal collection"
+          (mt/user-http-request :lucky
+                                :post 403 "ee/document/"
+                                {:name "Should Fail"
+                                 :document (documents.test-util/text->prose-mirror-ast "Should not be created")
+                                 :collection_id personal-coll-id}))))))
