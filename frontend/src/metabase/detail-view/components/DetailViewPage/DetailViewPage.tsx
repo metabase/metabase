@@ -96,7 +96,7 @@ export function DetailViewPage({
           w={isMediumBreakpoint ? "100%" : undefined}
         >
           <Stack gap={rem(64)} h="100%" maw={rem(900)} w="100%">
-            {columns.length - headerColumns.length > 0 && (
+            {columns.length > 0 && (
               <DetailsGroup
                 columns={columns}
                 responsive={isSmallBreakpoint}
@@ -116,11 +116,8 @@ export function DetailViewPage({
             w={isMediumBreakpoint ? "100%" : rem(440)}
           >
             <Relationships
-              columns={columns}
-              row={row}
               rowId={rowId}
               rowName={rowName}
-              table={table}
               tableForeignKeys={tableForeignKeys}
             />
           </Box>

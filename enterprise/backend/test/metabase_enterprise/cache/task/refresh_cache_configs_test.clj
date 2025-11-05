@@ -21,7 +21,8 @@
   []
   {:database (mt/id)
    :type     :native
-   :native   {:template-tags {"date" {:name         "date"
+   :native   {:template-tags {"date" {:id           "04ae45bd-f8fd-4e8d-9bc6-a9737f231a50"
+                                      :name         "date"
                                       :display-name "Check-In Date"
                                       :type         :text}}
               :query "SELECT count(*) FROM CHECKINS [[WHERE date = {{date}}]]"}})
@@ -105,16 +106,18 @@
     (testing "Given a card, we rerun a limited number of variations of the card's query"
       (binding [qp.util/*execute-async?*             false
                 task.cache/*run-cache-refresh-async* false]
-        (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
+        (mt/with-temp [:model/Card {card-id :id} {:name          "Cached card"
                                                   :dataset_query (parameterized-native-query)}]
           (let [param-val-1 "2024-12-01"
-                params-1    [{:type  :text
+                params-1    [{:id     "_DATE_"
+                              :type   :text
                               :target [:variable [:template-tag "date"]]
-                              :value param-val-1}]
+                              :value  param-val-1}]
                 param-val-2 "2024-12-02"
-                params-2    [{:type  :text
+                params-2    [{:id     "_DATE_"
+                              :type   :text
                               :target [:variable [:template-tag "date"]]
-                              :value param-val-2}]
+                              :value  param-val-2}]
                 to-rerun    #(@#'task.cache/scheduled-queries-to-rerun card-id (t/minus (t/offset-date-time) (t/minutes 10)))
                 param-vals  #(-> % :parameters first :value)]
             ;; Sanity check that the query actually runs
@@ -239,21 +242,23 @@
     (testing "We refresh expired :duration caches for queries that were run at least once in the last caching duration"
       (binding [qp.util/*execute-async?*             false
                 task.cache/*run-cache-refresh-async* false]
-        (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
+        (mt/with-temp [:model/Card {card-id :id} {:name          "Cached card"
                                                   :dataset_query (parameterized-native-query)}
-                       :model/CacheConfig _ {:model "question"
-                                             :model_id card-id
-                                             :strategy :duration
+                       :model/CacheConfig _ {:model                 "question"
+                                             :model_id              card-id
+                                             :strategy              :duration
                                              :refresh_automatically true
-                                             :config {:unit "hours" :duration 1}}]
+                                             :config                {:unit "hours" :duration 1}}]
           (let [param-val-1 "2024-12-01"
-                params-1    [{:type  :text
+                params-1    [{:id     "_DATE_"
+                              :type   :text
                               :target [:variable [:template-tag "date"]]
-                              :value param-val-1}]
+                              :value  param-val-1}]
                 param-val-2 "2024-12-02"
-                params-2    [{:type  :text
+                params-2    [{:id     "_DATE_"
+                              :type   :text
                               :target [:variable [:template-tag "date"]]
-                              :value param-val-2}]
+                              :value  param-val-2}]
                 to-rerun    (fn [card-id]
                               (let [queries (@#'task.cache/duration-queries-to-rerun)]
                                 (filter #(= (:card-id %) card-id) queries)))
@@ -517,7 +522,8 @@
     :result [[1000]]}
    {:label "parameterized native query"
     :query (parameterized-native-query)
-    :parameters [{:type  :text
+    :parameters [{:id "_DATE_"
+                  :type  :text
                   :target [:variable [:template-tag "date"]]
                   :value  "2014-05-31"}]
     :result [[2]]}

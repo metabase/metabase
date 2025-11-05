@@ -16,6 +16,7 @@ import {
   QuestionVisualization,
   SaveButton,
   SdkSaveQuestionForm,
+  SqlParametersList,
   Summarize,
   SummarizeDropdown,
   Title,
@@ -67,6 +68,7 @@ export type InteractiveQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+  SqlParametersList: typeof SqlParametersList;
 };
 
 export const _InteractiveQuestion = (props: InteractiveQuestionProps) => (
@@ -97,6 +99,7 @@ const subComponents: InteractiveQuestionComponents = {
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
   VisualizationButton: VisualizationButton,
+  SqlParametersList: SqlParametersList,
 };
 
 export const InteractiveQuestion = Object.assign(

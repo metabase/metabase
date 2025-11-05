@@ -11,6 +11,7 @@ import {
   Text,
 } from "metabase/ui";
 
+import S from "./RelatedSettingsSection.module.css";
 import type { RelatedSettingItem } from "./constants";
 
 export function RelatedSettingsSection({
@@ -24,7 +25,7 @@ export function RelatedSettingsSection({
         {t`Related settings`}
       </Text>
 
-      <SimpleGrid cols={3} spacing="md">
+      <SimpleGrid cols={{ xs: 1, md: 3 }} spacing="md">
         {items?.map((item) => (
           <RelatedSettingCard
             key={item.to}
@@ -57,6 +58,7 @@ const RelatedSettingCard = ({
       data-testid="related-setting-card"
       shadow="none"
       h="3rem"
+      className={S.relatedSettingCard}
     >
       <Group gap="sm" align="center" h="100%">
         <Icon name={icon} color="var(--mb-color-brand)" />

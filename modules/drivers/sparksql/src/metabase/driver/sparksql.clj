@@ -1,5 +1,5 @@
 (ns metabase.driver.sparksql
-  (:refer-clojure :exclude [select-keys every?])
+  (:refer-clojure :exclude [select-keys every? empty? not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -18,7 +18,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.performance :refer [select-keys every?]])
+   [metabase.util.performance :refer [select-keys every? empty? not-empty]])
   (:import
    (java.sql Connection ResultSet Types)))
 
@@ -39,19 +39,19 @@
   (let [parent-method (get-method sql.qp/->honeysql [:hive-like :field])
         field-clause  (driver-api/update-field-options
                        field-clause
-                       update
-                       driver-api/qp.add.source-table
-                       (fn [source-table]
-                         (cond
-                            ;; DO NOT qualify fields from field filters with `t1`, that won't
-                            ;; work unless the user-written SQL query is doing the same
-                            ;; thing.
-                           compiling-field-filter? driver-api/qp.add.none
-                            ;; for all other fields from the source table qualify them with
-                            ;; `t1`
-                           (integer? source-table) source-table-alias
-                            ;; no changes for anyone else.
-                           :else                   source-table)))]
+                       (fn [{source-table driver-api/qp.add.source-table, :as options}]
+                         (-> options
+                             (cond-> (pos-int? source-table) (assoc :qp/allow-coercion-for-columns-without-integer-qp.add.source-table true))
+                             (assoc driver-api/qp.add.source-table (cond
+                                                                     ;; DO NOT qualify fields from field filters with `t1`, that won't
+                                                                     ;; work unless the user-written SQL query is doing the same
+                                                                     ;; thing.
+                                                                     compiling-field-filter? driver-api/qp.add.none
+                                                                     ;; for all other fields from the source table qualify them with
+                                                                     ;; `t1`
+                                                                     (pos-int? source-table) source-table-alias
+                                                                     ;; no changes for anyone else.
+                                                                     :else                   source-table)))))]
     (parent-method driver field-clause)))
 
 (defn- format-over

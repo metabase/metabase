@@ -55,9 +55,7 @@
    #'add-preprocessed-query-to-result-metadata-for-userland-query
    #'cache/maybe-return-cached-results
    #'qp.perms/check-query-permissions
-   #'qp.middleware.enterprise/check-download-permissions-middleware
-   ;; TODO (Cam 9/11/25) -- update this middleware to use Lib/MBQL 5. Does a [[lib/->legacy]] call under the hood.
-   #'qp.middleware.enterprise/maybe-apply-column-level-perms-check-middleware])
+   #'qp.middleware.enterprise/check-download-permissions-middleware])
 
 (def ^:private execute* nil)
 

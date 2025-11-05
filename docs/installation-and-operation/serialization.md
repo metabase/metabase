@@ -9,7 +9,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Serialization" %}
 
-Once you really get rolling with Metabase, it's often the case that you'll have more than one Metabase instance spun up. You might have a couple of testing or development instances and a few production ones, or maybe you have a separate Metabase per office or region.
+Once you get rolling with Metabase, it's often the case that you'll have more than one Metabase instance spun up. You might have a couple of testing or development instances and a few production ones, or maybe you have a separate Metabase per office or region.
 
 To help you out in situations like this, Metabase has a serialization feature which lets you create an _export_ of the contents of a Metabase that can then be _imported_ into one or more Metabases.
 
@@ -50,6 +50,8 @@ Metabase will only export the following entities:
 - Collections (but personal collections don't get exported unless explicitly specified them through [export options](#customize-what-gets-exported))
 - Dashboards
 - Saved questions
+- Transforms (including jobs)
+- Documents (without comments)
 - Actions
 - Models
 - Metrics
@@ -61,7 +63,7 @@ Metabase will only export the following entities:
 - Events and timelines
 - Database connection strings (only if specified through [export options](#customize-what-gets-exported))
 
-All other entities—including users, groups, permissions, alerts, subscriptions—won't get exported.
+All other entities—including users, groups, permissions, alerts, subscriptions, document comments—won't get exported.
 
 Metabase will export its artifacts to a directory of YAML files. The export includes:
 

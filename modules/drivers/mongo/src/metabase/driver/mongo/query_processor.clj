@@ -1,7 +1,7 @@
 (ns metabase.driver.mongo.query-processor
   "Logic for translating MBQL queries into Mongo Aggregation Pipeline queries. See
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
-  (:refer-clojure :exclude [some mapv select-keys])
+  (:refer-clojure :exclude [some mapv select-keys empty?])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -28,7 +28,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [some mapv select-keys]])
+   [metabase.util.performance :as perf :refer [some mapv select-keys empty?]])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -241,8 +241,10 @@ function(bin) {
 ")
 
 (defmethod ->rvalue :metadata/column
-  [{coercion :coercion-strategy, ::keys [source-alias join-field] :as field}]
-  (let [field-name (str \$ (scope-with-join-field (field->name field) join-field source-alias))]
+  [{coercion :coercion-strategy, ::keys [source-alias join-field inherited?] :as field}]
+  (let [field-name (str \$ (scope-with-join-field (field->name field) join-field source-alias))
+        coercion   (when-not inherited?
+                     coercion)]
     (cond
       (isa? coercion :Coercion/UNIXNanoSeconds->DateTime)
       {:$dateFromParts {:millisecond {$divide [field-name 1000000]}, :year 1970, :timezone "UTC"}}
@@ -438,14 +440,15 @@ function(bin) {
 
 (defmethod ->rvalue :field
   [[_ id-or-name {:keys [temporal-unit join-alias] :as opts} :as field]]
-  (let [join-field (get-join-alias join-alias)
+  (let [join-field   (get-join-alias join-alias)
         source-alias (driver-api/qp.add.source-alias opts)]
     (cond-> (if (integer? id-or-name)
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
                 (->rvalue (assoc (driver-api/field (driver-api/metadata-provider) id-or-name)
                                  ::source-alias source-alias
-                                 ::join-field join-field)))
+                                 ::join-field   join-field
+                                 ::inherited?   (not (pos-int? (driver-api/qp.add.source-table opts))))))
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
                 (str \$ (scope-with-join-field (name id-or-name) join-field source-alias))))
@@ -1779,7 +1782,7 @@ function(bin) {
   (let [query (update query :query preprocess)]
     (binding [*query* query
               *next-alias-index* (volatile! 0)]
-      (let [source-table-name (if-let [source-table-id #_{:clj-kondo/ignore [:deprecated-var]} (driver-api/query->source-table-id query)]
+      (let [source-table-name (if-let [source-table-id (driver-api/query->source-table-id query)]
                                 (:name (driver-api/table (driver-api/metadata-provider) source-table-id))
                                 (query->collection-name query))
             compiled (mbql->native-rec (:query query))]

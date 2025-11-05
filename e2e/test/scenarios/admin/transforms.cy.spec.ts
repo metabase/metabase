@@ -6,7 +6,6 @@ import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   CardType,
-  ListTransformRunsResponse,
   PythonTransformTableAliases,
   TransformTagId,
 } from "metabase-types/api";
@@ -192,7 +191,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
     it(
       "should be possible to create and run a Python transform",
-      { tags: ["@transforms-python"] },
+      { tags: ["@python"] },
       () => {
         setPythonRunnerSettings();
         cy.log("create a new transform");
@@ -393,6 +392,7 @@ LIMIT
 
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
       getQueryEditor().button("Save changes").click();
+      getTransformPage().should("be.visible");
 
       cy.log("run the transform and make sure its table can be queried");
       runTransformAndWaitForSuccess();
@@ -1400,7 +1400,7 @@ LIMIT
       H.assertQueryBuilderRowCount(1);
     });
 
-    it("should be able to update a Python query", () => {
+    it("should be able to update a Python query", { tags: ["@python"] }, () => {
       setPythonRunnerSettings();
       cy.log("create a new transform");
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
@@ -1619,6 +1619,19 @@ LIMIT
         "This run succeeded before it had a chance to cancel.",
       );
     });
+
+    it("should be possible to cancel a SQL transform from the preview (metabase#64474)", () => {
+      createSlowTransform(500);
+      getTransformPage().findByText("Edit query").click();
+
+      getQueryEditor().within(() => {
+        cy.findAllByTestId("run-button").eq(0).click();
+        cy.findByTestId("loading-indicator").should("be.visible");
+
+        cy.findAllByTestId("run-button").eq(0).click();
+        cy.findByTestId("loading-indicator").should("not.exist");
+      });
+    });
   });
 
   describe("dependencies", () => {
@@ -1662,7 +1675,7 @@ LIMIT
   describe("python > common library", () => {
     it(
       "should be possible to edit and save the common library",
-      { tags: ["@transforms-python"] },
+      { tags: ["@python"] },
       () => {
         visitCommonLibrary();
 
@@ -1700,7 +1713,7 @@ LIMIT
 
     it(
       "should be possible to use the common library",
-      { tags: ["@transforms-python"] },
+      { tags: ["@python"] },
       () => {
         setPythonRunnerSettings();
         createPythonLibrary(
@@ -1944,7 +1957,7 @@ describe("scenarios > admin > transforms > jobs", () => {
           tag_ids: [tag.id],
         });
       });
-      waitForRuns();
+      H.waitForSucceededTransformRuns();
       visitRunListPage();
       getContentTable().within(() => {
         cy.findAllByText("MBQL transform").should("have.length.gte", 1);
@@ -2687,7 +2700,7 @@ function getQueryEditor() {
 }
 
 function getRunButton(options: { timeout?: number } = {}) {
-  return cy.findByTestId("run-button", options);
+  return cy.findAllByTestId("run-button").eq(0, options);
 }
 
 function getCancelButton() {
@@ -2827,96 +2840,41 @@ function runJobAndWaitForFailure() {
   getRunButton().should("have.text", "Run failed");
 }
 
-function createMbqlTransform({
-  sourceTable = SOURCE_TABLE,
-  targetTable = TARGET_TABLE,
-  targetSchema = TARGET_SCHEMA,
-  tagIds,
-  databaseId,
-  name = "MBQL transform",
-  visitTransform,
-}: {
-  sourceTable?: string;
-  targetTable?: string;
-  targetSchema?: string | null;
-  tagIds?: TransformTagId[];
-  name?: string;
-  databaseId?: number;
-  visitTransform?: boolean;
-} = {}) {
-  return H.getTableId({ databaseId, name: sourceTable }).then((tableId) => {
-    return H.createTransform(
-      {
-        name,
-        source: {
-          type: "query",
-          query: {
-            database: WRITABLE_DB_ID,
-            type: "query",
-            query: {
-              "source-table": tableId,
-              limit: 5,
-            },
-          },
-        },
-        target: {
-          type: "table",
-          database: WRITABLE_DB_ID,
-          name: targetTable,
-          schema: targetSchema,
-        },
-        tag_ids: tagIds,
-      },
-      { visitTransform },
-    );
+function createMbqlTransform(
+  opts: {
+    sourceTable?: string;
+    targetTable?: string;
+    targetSchema?: string | null;
+    tagIds?: TransformTagId[];
+    name?: string;
+    databaseId?: number;
+    visitTransform?: boolean;
+  } = {},
+) {
+  return H.createMbqlTransform({
+    sourceTable: SOURCE_TABLE,
+    targetTable: TARGET_TABLE,
+    targetSchema: TARGET_SCHEMA,
+    name: "MBQL transform",
+    ...opts,
   });
 }
 
-function createSqlTransform({
-  sourceQuery,
-  targetTable = TARGET_TABLE,
-  targetSchema = TARGET_SCHEMA,
-  tagIds,
-  visitTransform,
-}: {
+function createSqlTransform(opts: {
   sourceQuery: string;
   targetTable?: string;
   targetSchema?: string;
   tagIds?: TransformTagId[];
   visitTransform?: boolean;
 }) {
-  H.createTransform(
-    {
-      name: "SQL transform",
-      source: {
-        type: "query",
-        query: {
-          database: WRITABLE_DB_ID,
-          type: "native",
-          native: {
-            query: sourceQuery,
-          },
-        },
-      },
-      target: {
-        type: "table",
-        database: WRITABLE_DB_ID,
-        name: targetTable,
-        schema: targetSchema,
-      },
-      tag_ids: tagIds,
-    },
-    { wrapId: true, visitTransform },
-  );
+  return H.createSqlTransform({
+    targetTable: TARGET_TABLE,
+    targetSchema: TARGET_SCHEMA,
+    ...opts,
+  });
 }
-function createPythonTransform({
-  body,
-  sourceTables,
-  targetTable = TARGET_TABLE,
-  targetSchema = TARGET_SCHEMA,
-  tagIds,
-  visitTransform,
-}: {
+
+function createPythonTransform(opts: {
   body: string;
   sourceTables: PythonTransformTableAliases;
   targetTable?: string;
@@ -2924,25 +2882,11 @@ function createPythonTransform({
   tagIds?: TransformTagId[];
   visitTransform?: boolean;
 }) {
-  H.createTransform(
-    {
-      name: "Python transform",
-      source: {
-        type: "python",
-        "source-database": WRITABLE_DB_ID,
-        "source-tables": sourceTables,
-        body,
-      },
-      target: {
-        type: "table",
-        database: WRITABLE_DB_ID,
-        name: targetTable,
-        schema: targetSchema,
-      },
-      tag_ids: tagIds,
-    },
-    { wrapId: true, visitTransform },
-  );
+  return H.createPythonTransform({
+    targetTable: TARGET_TABLE,
+    targetSchema: TARGET_SCHEMA,
+    ...opts,
+  });
 }
 
 function visitTableQuestion({
@@ -2959,24 +2903,6 @@ function visitTableQuestion({
     },
     { visitQuestion: true },
   );
-}
-
-const WAIT_TIMEOUT = 10000;
-const WAIT_INTERVAL = 100;
-
-function waitForRuns(timeout = WAIT_TIMEOUT): Cypress.Chainable {
-  return cy
-    .request<ListTransformRunsResponse>("GET", "/api/ee/transform/run")
-    .then((response) => {
-      if (response.body.data.length > 0) {
-        return cy.wrap(response);
-      } else if (timeout > 0) {
-        cy.wait(WAIT_INTERVAL);
-        return waitForRuns(timeout - WAIT_INTERVAL);
-      } else {
-        throw new Error("Run retry timeout");
-      }
-    });
 }
 
 function assertTableDoesNotExistError({

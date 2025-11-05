@@ -43,7 +43,7 @@ export const EmbeddedEngineDocContent = ({ engineKey }: Props) => {
   return (
     <Box ref={markdownRef} w="100%">
       {loadingError && (
-        <Alert color="bg-dark" variant="outline" mt="xl">
+        <Alert color="info" variant="outline" mt="xl">
           <Text>{loadingError}</Text>
         </Alert>
       )}

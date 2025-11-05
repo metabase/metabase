@@ -37,7 +37,7 @@ export function ListViewColumnsSidebar({
   onDone,
 }: ListViewColumnsSidebarProps) {
   const [query, setQuery] = useState("");
-  const { titleColumn, subtitleColumn, rightColumns } = useListColumns(
+  const { titleColumn, rightColumns } = useListColumns(
     cols,
     settings?.["list.columns"],
   );
@@ -50,7 +50,6 @@ export function ListViewColumnsSidebar({
     const used = new Set<string | undefined>(
       [
         ...(titleColumn ? [titleColumn.name] : []),
-        ...(subtitleColumn ? [subtitleColumn.name] : []),
         ...rightColumns.map((col) => col?.name),
       ].filter(Boolean),
     );
@@ -58,7 +57,7 @@ export function ListViewColumnsSidebar({
     const unusedOptions = allOptions.filter((opt) => !used.has(opt.value));
 
     return { unusedOptions };
-  }, [cols, titleColumn, subtitleColumn, rightColumns]);
+  }, [cols, titleColumn, rightColumns]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

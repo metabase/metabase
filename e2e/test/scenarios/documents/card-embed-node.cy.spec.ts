@@ -22,7 +22,7 @@ describe("documents card embed node custom logic", () => {
         idAlias: "documentId",
       });
 
-      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+      H.visitDocument("@documentId");
     });
 
     it("should create a flexContainer when dropping one cardEmbed onto another standalone cardEmbed", () => {
@@ -129,7 +129,7 @@ describe("documents card embed node custom logic", () => {
         idAlias: "documentId",
       });
 
-      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+      H.visitDocument("@documentId");
     });
 
     it("should allow you to resize the cards inside a flex container", () => {
@@ -430,6 +430,19 @@ describe("documents card embed node custom logic", () => {
   });
 
   describe("deleting a cardEmbed", () => {
+    it("should allow you to remove a card if it is the first item in a docuemnt (UXW-2169)", () => {
+      cy.visit("/document/new");
+
+      H.documentContent().click();
+      H.addToDocument("/ord", false);
+      H.commandSuggestionItem(/Orders, Count$/).click();
+
+      H.openDocumentCardMenu("Orders, Count");
+      H.popover().findByText("Remove Chart").click();
+
+      cy.findAllByTestId("document-card-embed").should("have.length", 0);
+    });
+
     it("should delete a cardEmbed when selected and Backspace is pressed", () => {
       H.createDocument({
         name: "DnD Test Document",
@@ -439,7 +452,7 @@ describe("documents card embed node custom logic", () => {
         idAlias: "documentId",
       });
 
-      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+      H.visitDocument("@documentId");
 
       // Wait for cards to load
       H.getDocumentCard("Orders")
@@ -463,7 +476,10 @@ describe("documents card embed node custom logic", () => {
       cy.realPress("Backspace");
 
       // Verify the Orders card has been deleted
-      H.getDocumentCard("Orders", false).should("not.exist");
+      H.documentContent()
+        .findAllByTestId("card-embed-title")
+        .filter((_index, element) => element.innerText === "Orders")
+        .should("not.exist");
 
       // Verify only one card remains
       H.documentContent()
@@ -483,7 +499,7 @@ describe("documents card embed node custom logic", () => {
         idAlias: "documentId",
       });
 
-      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+      H.visitDocument("@documentId");
 
       // First create a flexContainer by dropping one card onto another
       H.getDocumentCard("Orders")
@@ -517,7 +533,10 @@ describe("documents card embed node custom logic", () => {
       cy.realPress("Backspace");
 
       // Verify the Orders card has been deleted from the flexContainer
-      H.getDocumentCard("Orders", false).should("not.exist");
+      H.documentContent()
+        .findAllByTestId("card-embed-title")
+        .filter((_index, element) => element.innerText === "Orders")
+        .should("not.exist");
 
       H.documentContent()
         .findAllByTestId("document-card-embed")
