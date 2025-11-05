@@ -34,7 +34,7 @@ We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-t
 
 **Synced collections must be self-contained.** Everything a dashboard or question needs must be inside the synced collections for Remote Sync to work properly. This includes questions that reference models, dashboards with questions, click behaviors linking to other content, and @ mentions in documents. Exception: questions that reference snippets can't be synced, since snippets live outside collections.
 
-**If it's not in the collection, it won't sync** — and that includes metadata. The one critical exception: table metadata (column types, descriptions, etc.) doesn't sync at all, even when questions that depend on it do sync. See [table metadata limitations](#important-table-metadata-limitations) for details.
+**If it's not in the collection, it won't sync** — and that includes metadata. The one critical exception: table metadata (column types, descriptions, etc.) doesn't sync at all, even when questions that depend on it do sync. See [table metadata limitations](#remote-sync-excludes-table-metadata) for details.
 
 **Serialized YAML files**: Remote Sync stores your Metabase content as YAML files in your Git repository. Each dashboard, question, model, and document is represented as a YAML file that can be reviewed in pull requests and versioned like code. For more details on the YAML format and command-line workflows, see [serialization](./serialization.md).
 
@@ -103,7 +103,7 @@ You can rename the Synced Collection if you want, and you can add sub-collection
    - **Create new content:** Click "New" and choose a dashboard, question, or document. Save it to the Synced Collection.
    - **Move existing content:** Drag and drop items from other collections into the Synced Collection, or use the move option in the item's menu.
 
-[Items in synced collections can't depend on items outside of synced collections](#items-in-synced-collections-cant-depend-on-items-outside-of-the-synced-collection). For example, if you try to add a question that references a model, make sure the model is also in a synced collection.
+Remember that [items in synced collections can't depend on items outside of synced collections](#items-in-synced-collections-cant-depend-on-items-outside-of-the-synced-collection). For example, if you add a question that references a model, make sure the model is also in a synced collection.
 
 ### 5. Push your changes to your repository
 
@@ -214,6 +214,19 @@ In Production mode, synced collections appear in the regular collections list (n
 **Deletions sync to production:** When you remove content from a synced collection in Development mode and push that change, the content will also be removed from your Production instance when it syncs. This applies to moving content out of the synced collection or deleting it entirely.
 
 Content in other Metabases that depended on this item may break since the dependency will no longer be in a synced collection.
+
+### Items in synced collections can't depend on items outside of the synced collection
+
+For Remote Sync to work properly, synced collections must be self-contained. Everything a dashboard or question needs must be inside synced collections. This includes:
+
+- Questions that reference models
+- Dashboards with questions
+- Click behaviors linking to other content
+- @ mentions in documents
+
+Exception: questions that reference snippets can't be synced, since snippets live outside collections.
+
+If you try to add a question that references a model, make sure the model is also in a synced collection.
 
 ### Making sub-collections appear at the top level
 
