@@ -9,19 +9,20 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
 (defn- ingest-content
   [file-content]
   (serialization/read-timestamps (yaml/parse-string file-content {:key-fn serialization/parse-key})))
 
 (defn- ingest-all
-  [source]
-  (into {} (for [path (source.p/list-files source)
+  [snapshot]
+  (into {} (for [path (source.p/list-files snapshot)
                  :when (and (not (str/starts-with? path "."))
                             (str/ends-with? path ".yaml"))
                  :let [content (try
-                                 (source.p/read-file source path)
+                                 (source.p/read-file snapshot path)
                                  (catch Exception e
                                    (log/error e "Error reading file" path)))
                        loaded (try
@@ -95,16 +96,15 @@
   [root-dependencies ingestable]
   (->RootDependencyIngestable ingestable root-dependencies (atom {})))
 
-;; Wraps a source object providing the ingestable interface for serdes
-(defrecord IngestableSource [source cache]
+;; Wraps a snapshot object providing the ingestable interface for serdes
+(defrecord IngestableSnapshot [^SourceSnapshot snapshot cache]
   serialization/Ingestable
   (ingest-list [_]
-    (keys (or @cache (reset! cache (ingest-all source)))))
+    (keys (or @cache (reset! cache (ingest-all snapshot)))))
 
   (ingest-one [_ serdes-path]
-    source
-    (when-not cache
-      (reset! cache (ingest-all source)))
+    (when-not @cache
+      (reset! cache (ingest-all snapshot)))
     (when-let [target (get @cache (serialization/strip-labels serdes-path))]
       (try
         (ingest-content (second target))

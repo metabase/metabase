@@ -19,7 +19,8 @@ import {
   useImportChangesMutation,
 } from "metabase-enterprise/api";
 
-import { BRANCH_KEY } from "../../constants";
+import { trackBranchSwitched } from "../../analytics";
+import { BRANCH_KEY, REMOTE_SYNC_KEY } from "../../constants";
 import { useSyncStatus } from "../../hooks/use-sync-status";
 import {
   SyncConflictModal,
@@ -45,6 +46,7 @@ export const SyncedCollectionsSidebarSection = ({
   const hasSyncedCollections = syncedCollections.length > 0;
   const isAdmin = useSelector(getUserIsAdmin);
 
+  const { value: isRemoteSyncEnabled } = useAdminSetting(REMOTE_SYNC_KEY);
   const { value: currentBranch } = useAdminSetting(BRANCH_KEY);
   const [importChanges] = useImportChangesMutation();
   const [syncConflictVariant, setSyncConflictVariant] =
@@ -70,6 +72,11 @@ export const SyncedCollectionsSidebarSection = ({
 
       if (!isNewBranch) {
         await importChanges({ branch });
+
+        // Tracking only when not creating a new branch since it has its own event
+        trackBranchSwitched({
+          triggeredFrom: "sidebar",
+        });
       }
 
       setNextBranch(null);
@@ -107,6 +114,10 @@ export const SyncedCollectionsSidebarSection = ({
   );
 
   const isSwitchingBranch = !!nextBranch;
+
+  if (!isRemoteSyncEnabled) {
+    return null;
+  }
 
   return (
     <>
