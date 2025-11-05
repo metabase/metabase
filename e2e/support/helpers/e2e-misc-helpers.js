@@ -343,10 +343,10 @@ export function saveQuestion(
 
 export function checkSavedToCollectionQuestionToast(addToDashboard) {
   undoToast().within(() => {
-    cy.findByText(/Saved!/i).should("be.visible");
+    cy.findByText(/Saved/i).should("be.visible");
 
     if (addToDashboard) {
-      cy.button(/add this to a dashboard/i).click();
+      cy.button(/Add this to a dashboard/i).click();
     }
   });
 }
