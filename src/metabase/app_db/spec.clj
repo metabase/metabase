@@ -31,6 +31,7 @@
 (defn- make-aws-iam-spec [subprotocol]
   {:subprotocol (str "aws-wrapper:" subprotocol)
    :classname "software.amazon.jdbc.ds.AwsWrapperDataSource"
+   :useSSL true
    :wrapperPlugins "iam"})
 
 (defmethod spec :postgres
@@ -55,7 +56,6 @@
   (merge
    {:classname   "org.mariadb.jdbc.Driver"
     :subprotocol "mysql"
-    :useSSL true
     :subname     (make-subname host (or port 3306) db)}
    (when aws-iam
      (merge

@@ -92,6 +92,7 @@
               {"ApplicationName" config/mb-version-and-process-identifier
                "OpenSourceSubProtocolOverride" "true"
                "user" "cam"
+               "useSSL" true
                "wrapperPlugins" "iam"})
              (mdb.data-source/broken-out-details->DataSource :postgres {:host "localhost"
                                                                         :port 5432
