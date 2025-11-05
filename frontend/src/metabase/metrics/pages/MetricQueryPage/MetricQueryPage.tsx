@@ -70,6 +70,11 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
     return Question.create({ dataset_query: datasetQuery, metadata });
   }, [datasetQuery, metadata]);
 
+  const validationResult = useMemo(
+    () => getValidationResult(question.query()),
+    [question],
+  );
+
   const isDirty = useMemo(() => {
     return !Lib.areLegacyQueriesEqual(datasetQuery, card.dataset_query);
   }, [datasetQuery, card.dataset_query]);
@@ -133,7 +138,8 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
           card={card}
           actions={
             <PaneHeaderActions
-              validationResult={getValidationResult(question.query())}
+              errorMessage={validationResult.errorMessage}
+              isValid={validationResult.isValid}
               isDirty={isDirty}
               isSaving={isSaving || isCheckingDependencies}
               onSave={handleSave}

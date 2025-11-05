@@ -12,10 +12,31 @@ import { DeleteJobModal } from "./DeleteJobModal";
 import type { JobMoreMenuModalType } from "./types";
 
 type JobMoreMenuProps = {
+  job: TransformJob;
+};
+
+export function JobMoreMenu({ job }: JobMoreMenuProps) {
+  const [modalType, setModalType] = useState<JobMoreMenuModalType>();
+
+  return (
+    <>
+      <JobMenu onOpenModal={setModalType} />
+      {modalType != null && (
+        <JobModal
+          job={job}
+          modalType={modalType}
+          onClose={() => setModalType(undefined)}
+        />
+      )}
+    </>
+  );
+}
+
+type JobMenuProps = {
   onOpenModal: (modalType: JobMoreMenuModalType) => void;
 };
 
-export function JobMoreMenu({ onOpenModal }: JobMoreMenuProps) {
+function JobMenu({ onOpenModal }: JobMenuProps) {
   const handleIconClick = (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -40,17 +61,13 @@ export function JobMoreMenu({ onOpenModal }: JobMoreMenuProps) {
   );
 }
 
-type JobMoreMenuModalProps = {
+type JobModalProps = {
   job: TransformJob;
   modalType: JobMoreMenuModalType;
   onClose: () => void;
 };
 
-export function JobMoreMenuModal({
-  job,
-  modalType,
-  onClose,
-}: JobMoreMenuModalProps) {
+function JobModal({ job, modalType, onClose }: JobModalProps) {
   const { sendSuccessToast } = useMetadataToasts();
   const dispatch = useDispatch();
 
@@ -68,25 +85,4 @@ export function JobMoreMenuModal({
     default:
       return null;
   }
-}
-
-type JobMoreMenuWithModalProps = {
-  job: TransformJob;
-};
-
-export function JobMoreMenuWithModal({ job }: JobMoreMenuWithModalProps) {
-  const [modalType, setModalType] = useState<JobMoreMenuModalType>();
-
-  return (
-    <>
-      <JobMoreMenu onOpenModal={setModalType} />
-      {modalType != null && (
-        <JobMoreMenuModal
-          job={job}
-          modalType={modalType}
-          onClose={() => setModalType(undefined)}
-        />
-      )}
-    </>
-  );
 }

@@ -45,6 +45,8 @@ export function NewMetricPage({ route }: NewMetricPageProps) {
     [datasetQuery, metadata],
   );
 
+  const validationResult = useMemo(() => getValidationResult(query), [query]);
+
   const handleCreate = (card: Card) => {
     dispatch(push(Urls.dataStudioMetric(card.id)));
   };
@@ -77,9 +79,9 @@ export function NewMetricPage({ route }: NewMetricPageProps) {
           }
           actions={
             <PaneHeaderActions
-              validationResult={getValidationResult(query)}
+              errorMessage={validationResult.errorMessage}
+              isValid={validationResult.isValid}
               isDirty
-              isSaving={false}
               onSave={openModal}
               onCancel={handleCancel}
             />

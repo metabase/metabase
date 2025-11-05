@@ -51,6 +51,8 @@ function NewModelPage({
     [datasetQuery, metadata],
   );
 
+  const validationResult = useMemo(() => getValidationResult(query), [query]);
+
   const handleCreate = (card: Card) => {
     dispatch(push(Urls.dataStudioModel(card.id)));
   };
@@ -83,9 +85,9 @@ function NewModelPage({
           }
           actions={
             <PaneHeaderActions
-              validationResult={getValidationResult(query)}
+              errorMessage={validationResult.errorMessage}
+              isValid={validationResult.isValid}
               isDirty
-              isSaving={false}
               onSave={openModal}
               onCancel={handleCancel}
             />

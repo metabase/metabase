@@ -51,7 +51,7 @@ export function TransformRunPage({ params }: TransformRunPageProps) {
 
   return (
     <ColumnLayout>
-      <TransformHeader id={transform.id} name={transform.name} />
+      <TransformHeader transform={transform} />
       <ColumnLayoutBody>
         <RunSection transform={transform} />
       </ColumnLayoutBody>

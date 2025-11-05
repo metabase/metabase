@@ -23,24 +23,24 @@ import {
   useDeleteTransformTargetMutation,
   useGetTransformQuery,
 } from "metabase-enterprise/api";
-import type { Transform, TransformId } from "metabase-types/api";
+import type { Transform } from "metabase-types/api";
 
 type DeleteTransformModalProps = {
-  transformId: TransformId;
+  transform: Transform;
   onDelete: () => void;
   onClose: () => void;
 };
 
 export function DeleteTransformModal({
-  transformId,
+  transform,
   onDelete,
   onClose,
 }: DeleteTransformModalProps) {
   const {
-    data: transform,
+    data: transformWithTable,
     isLoading,
     error,
-  } = useGetTransformQuery(transformId);
+  } = useGetTransformQuery(transform.id);
 
   return (
     <Modal
@@ -50,11 +50,11 @@ export function DeleteTransformModal({
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
-      {isLoading || error != null || transform == null ? (
+      {isLoading || error != null || transformWithTable == null ? (
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
       ) : (
         <DeleteTransformForm
-          transform={transform}
+          transform={transformWithTable}
           onDelete={onDelete}
           onClose={onClose}
         />
@@ -125,8 +125,8 @@ function DeleteTransformForm({
   );
 }
 
-function getModalTitle(transform: Transform | undefined) {
-  return transform?.table != null
+function getModalTitle(transform: Transform) {
+  return transform.table != null
     ? t`Delete only the transform, or the table it generates, too?`
     : t`Delete this transform?`;
 }

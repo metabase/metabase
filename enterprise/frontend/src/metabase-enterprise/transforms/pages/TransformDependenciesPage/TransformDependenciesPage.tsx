@@ -39,7 +39,7 @@ export function TransformDependenciesPage({
 
   return (
     <Flex direction="column" h="100%">
-      <TransformHeader id={transform.id} name={transform.name} />
+      <TransformHeader transform={transform} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
           baseUrl: Urls.transformDependencies(transform.id),

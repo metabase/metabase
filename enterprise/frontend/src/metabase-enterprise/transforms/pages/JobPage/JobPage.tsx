@@ -20,7 +20,7 @@ import type {
 import { JobEditor } from "../../components/JobEditor";
 import { POLLING_INTERVAL } from "../../constants";
 
-import { JobMoreMenuWithModal } from "./JobMoreMenu";
+import { JobMoreMenu } from "./JobMoreMenu";
 
 type JobPageParams = {
   jobId: string;
@@ -127,7 +127,7 @@ function JobPageBody({ job }: JobPageBodyProps) {
   return (
     <JobEditor
       job={job}
-      menu={<JobMoreMenuWithModal job={job} />}
+      menu={<JobMoreMenu job={job} />}
       onNameChange={handleNameChange}
       onScheduleChange={handleScheduleChange}
       onTagListChange={handleTagListChange}

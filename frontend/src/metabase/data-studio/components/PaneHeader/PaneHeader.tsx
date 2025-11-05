@@ -6,7 +6,7 @@ import EditableText from "metabase/common/components/EditableText";
 import { Button, Group, Stack, Tooltip } from "metabase/ui";
 
 import S from "./PaneHeader.module.css";
-import type { PaneHeaderTab, PaneHeaderValidationResult } from "./types";
+import type { PaneHeaderTab } from "./types";
 
 interface PaneHeaderProps {
   title: ReactNode;
@@ -94,33 +94,32 @@ export function PaneHeaderTabs({ tabs }: PaneHeaderTabsProps) {
 }
 
 type PaneHeaderActionsProps = {
-  validationResult: PaneHeaderValidationResult;
-  isDirty: boolean;
-  isSaving: boolean;
+  errorMessage?: string;
+  isValid?: boolean;
+  isDirty?: boolean;
+  isSaving?: boolean;
   onSave: () => void;
   onCancel: () => void;
 };
 
 export function PaneHeaderActions({
-  validationResult,
-  isDirty,
-  isSaving,
+  errorMessage,
+  isValid = true,
+  isDirty = false,
+  isSaving = false,
   onSave,
   onCancel,
 }: PaneHeaderActionsProps) {
-  const canSave = isDirty && !isSaving && validationResult.isValid;
+  const canSave = isDirty && !isSaving && isValid;
 
-  if (!isDirty || isSaving) {
+  if (!isDirty || !isSaving) {
     return null;
   }
 
   return (
     <Group>
       <Button onClick={onCancel}>{t`Cancel`}</Button>
-      <Tooltip
-        label={validationResult.errorMessage}
-        disabled={validationResult.errorMessage == null}
-      >
+      <Tooltip label={errorMessage} disabled={errorMessage == null}>
         <Button variant="filled" disabled={!canSave} onClick={onSave}>
           {t`Save`}
         </Button>

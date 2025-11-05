@@ -3,8 +3,3 @@ export type PaneHeaderTab = {
   to: string;
   isSelected: boolean;
 };
-
-export type PaneHeaderValidationResult = {
-  isValid: boolean;
-  errorMessage?: string;
-};

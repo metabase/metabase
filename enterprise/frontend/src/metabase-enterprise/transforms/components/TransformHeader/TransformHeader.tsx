@@ -14,35 +14,28 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
-import type { TransformId } from "metabase-types/api";
+import type { Transform, TransformId } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";
-import { TransformMoreMenuWithModal } from "../TransformMoreMenu";
+
+import { TransformMoreMenu } from "./TransformMoreMenu";
 
 type TransformHeaderProps = {
-  id?: TransformId;
-  name: string;
+  transform: Transform;
   actions?: ReactNode;
   hasMenu?: boolean;
-  onChangeName?: (name: string) => void;
 };
 
 export function TransformHeader({
-  id,
-  name,
+  transform,
   actions,
   hasMenu = true,
-  onChangeName,
 }: TransformHeaderProps) {
   return (
     <PaneHeader
-      title={
-        <TransformNameInput id={id} name={name} onChangeName={onChangeName} />
-      }
-      menu={
-        id != null && hasMenu && <TransformMoreMenuWithModal transformId={id} />
-      }
-      tabs={id != null && <TransformTabs id={id} />}
+      title={<TransformNameInput transform={transform} />}
+      menu={hasMenu && <TransformMoreMenu transform={transform} />}
+      tabs={<TransformTabs transform={transform} />}
       actions={actions}
       data-testid="transforms-header"
     />
@@ -50,28 +43,16 @@ export function TransformHeader({
 }
 
 type TransformNameInputProps = {
-  id: TransformId | undefined;
-  name: string;
-  onChangeName?: (name: string) => void;
+  transform: Transform;
 };
 
-function TransformNameInput({
-  id,
-  name,
-  onChangeName,
-}: TransformNameInputProps) {
+function TransformNameInput({ transform }: TransformNameInputProps) {
   const [updateTransform] = useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const handleChangeName = async (newName: string) => {
-    onChangeName?.(newName);
-
-    if (id == null) {
-      return;
-    }
-
     const { error } = await updateTransform({
-      id,
+      id: transform.id,
       name: newName,
     });
 
@@ -84,7 +65,7 @@ function TransformNameInput({
 
   return (
     <PaneHeaderInput
-      initialValue={name}
+      initialValue={transform.name}
       maxLength={NAME_MAX_LENGTH}
       onChange={handleChangeName}
     />
@@ -92,12 +73,12 @@ function TransformNameInput({
 }
 
 type TransformTabsProps = {
-  id: TransformId;
+  transform: Transform;
 };
 
-function TransformTabs({ id }: TransformTabsProps) {
+function TransformTabs({ transform }: TransformTabsProps) {
   const location = useSelector(getLocation);
-  const tabs = getTabs(id, location);
+  const tabs = getTabs(transform.id, location);
   return <PaneHeaderTabs tabs={tabs} />;
 }
 

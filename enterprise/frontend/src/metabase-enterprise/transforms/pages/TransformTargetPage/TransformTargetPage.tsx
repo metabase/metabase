@@ -51,7 +51,7 @@ export function TransformTargetPage({ params }: TransformTargetPageProps) {
 
   return (
     <ColumnLayout>
-      <TransformHeader id={transform.id} name={transform.name} />
+      <TransformHeader transform={transform} />
       <ColumnLayoutBody>
         <TargetSection transform={transform} />
       </ColumnLayoutBody>
