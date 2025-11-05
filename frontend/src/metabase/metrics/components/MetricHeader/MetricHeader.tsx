@@ -14,53 +14,37 @@ import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
-import type { CardId } from "metabase-types/api";
+import type { Card, CardId } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";
 
 type MetricHeaderProps = {
-  id?: CardId;
-  name: string;
+  card: Card;
   actions?: ReactNode;
-  onChangeName?: (name: string) => void;
 };
 
-export function MetricHeader({
-  id,
-  name,
-  actions,
-  onChangeName,
-}: MetricHeaderProps) {
+export function MetricHeader({ card, actions }: MetricHeaderProps) {
   return (
     <PaneHeader
-      title={
-        <MetricNameInput id={id} name={name} onChangeName={onChangeName} />
-      }
-      tabs={id != null && <MetricTabs id={id} />}
+      title={<MetricNameInput card={card} />}
+      tabs={card != null && <MetricTabs card={card} />}
       actions={actions}
     />
   );
 }
 
 type MetricNameInputProps = {
-  id: CardId | undefined;
-  name: string;
+  card: Card;
   onChangeName?: (name: string) => void;
 };
 
-function MetricNameInput({ id, name, onChangeName }: MetricNameInputProps) {
+function MetricNameInput({ card }: MetricNameInputProps) {
   const [updateCard] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const handleChangeName = async (newName: string) => {
-    onChangeName?.(newName);
-
-    if (id == null) {
-      return;
-    }
-
     const { error } = await updateCard({
-      id,
+      id: card.id,
       name: newName,
     });
 
@@ -73,7 +57,7 @@ function MetricNameInput({ id, name, onChangeName }: MetricNameInputProps) {
 
   return (
     <PaneHeaderInput
-      initialValue={name}
+      initialValue={card.name}
       maxLength={NAME_MAX_LENGTH}
       onChange={handleChangeName}
     />
@@ -81,12 +65,12 @@ function MetricNameInput({ id, name, onChangeName }: MetricNameInputProps) {
 }
 
 type MetricTabsProps = {
-  id: CardId;
+  card: Card;
 };
 
-function MetricTabs({ id }: MetricTabsProps) {
+function MetricTabs({ card }: MetricTabsProps) {
   const location = useSelector(getLocation);
-  const tabs = getTabs(id, location);
+  const tabs = getTabs(card.id, location);
   return <PaneHeaderTabs tabs={tabs} />;
 }
 

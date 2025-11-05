@@ -38,7 +38,7 @@ export function MetricDependenciesPage({
 
   return (
     <Flex direction="column" h="100%">
-      <MetricHeader id={card.id} name={card.name} />
+      <MetricHeader card={card} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
           baseUrl: Urls.dataStudioMetricDependencies(card.id),

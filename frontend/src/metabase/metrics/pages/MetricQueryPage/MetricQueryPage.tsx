@@ -10,18 +10,21 @@ import {
 } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PaneHeaderActions } from "metabase/data-studio/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Center } from "metabase/ui";
+import { Center, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
-import { MetricEditor } from "../../components/MetricEditor";
+import { MetricHeader } from "../../components/MetricHeader";
+import { MetricQueryEditor } from "../../components/MetricQueryEditor";
+import { getValidationResult } from "../../utils";
 
 type MetricQueryPageParams = {
   cardId: string;
@@ -118,18 +121,33 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
 
   return (
     <>
-      <MetricEditor
-        id={card.id}
-        name={card.name}
-        query={question.query()}
-        uiState={uiState}
-        isDirty={isDirty}
-        isSaving={isSaving || isCheckingDependencies}
-        onChangeQuery={handleChangeQuery}
-        onChangeUiState={setUiState}
-        onSave={handleSave}
-        onCancel={handleCancel}
-      />
+      <Stack
+        pos="relative"
+        w="100%"
+        h="100%"
+        bg="bg-white"
+        data-testid="metric-query-editor"
+        gap={0}
+      >
+        <MetricHeader
+          card={card}
+          actions={
+            <PaneHeaderActions
+              validationResult={getValidationResult(question.query())}
+              isDirty={isDirty}
+              isSaving={isSaving || isCheckingDependencies}
+              onSave={handleSave}
+              onCancel={handleCancel}
+            />
+          }
+        />
+        <MetricQueryEditor
+          query={question.query()}
+          uiState={uiState}
+          onChangeQuery={handleChangeQuery}
+          onChangeUiState={setUiState}
+        />
+      </Stack>
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
           checkData={checkData}

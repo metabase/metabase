@@ -33,7 +33,7 @@ export function MetricOverviewPage({ params }: MetricOverviewPageProps) {
 
   return (
     <Flex direction="column" h="100%">
-      <MetricHeader id={card.id} name={card.name} />
+      <MetricHeader card={card} />
       <MetricVisualization card={card} />
     </Flex>
   );
