@@ -36,7 +36,7 @@
 
         (and (nil? existing-tenant)
              (sso-settings/jwt-user-provisioning-enabled?))
-        (u/the-id (tenants/create-tenant! {:slug tenant-slug :name tenant-slug}))
+        (u/the-id (request/as-admin (tenants/create-tenant! {:slug tenant-slug :name tenant-slug})))
 
         ;; possibilities here:
         ;; - we have an existing, active tenant - return its id
