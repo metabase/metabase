@@ -187,18 +187,20 @@
 
   Returns an rff (function that takes metadata and returns an rf) that:
   - Accumulates rows in memory initially
-  - Once max-row-count is reached, switches to streaming mode
+  - Once max-cell-count is reached, switches to streaming mode
   - In streaming mode, writes all accumulated rows to disk then streams subsequent rows
   - Final result contains either in-memory rows or a StreamingTempFileStorage reference
 
   Parameters:
-  - max-row-count: Maximum number of rows to keep in memory before streaming to disk
+
+  - max-cell-count: Maximum number of \"cells\" or values to keep in memory before streaming to disk.
   - context: Optional context map to include in temp file preamble (for debugging)"
-  ([max-row-count]
-   (notification-rff max-row-count {}))
-  ([max-row-count context]
+  ([max-cell-count]
+   (notification-rff max-cell-count {}))
+  ([max-cell-count context]
    (fn rff [metadata]
      (let [row-count (volatile! 0)
+           cell-count (volatile! 0)
            rows (volatile! (transient []))
            streaming? (volatile! false)
            streaming-state (volatile! nil)] ; {:file File :output-stream DataOutputStream}
@@ -272,10 +274,11 @@
 
             (do
               (vswap! rows conj! row)
+              (vswap! cell-count #(+ % (count row)))
               ;; Check if we've hit the threshold to switch to disk based streaming
-              (when (>= @row-count max-row-count)
-                (log/infof "Row count reached threshold (%d), switching to streaming mode"
-                           max-row-count)
+              (when (>= @cell-count max-cell-count)
+                (log/infof "Cell count reached threshold (%d, %d rows), switching to streaming mode"
+                           max-cell-count @row-count)
                 ;; Open streaming file
                 (let [{:keys [file ^DataOutputStream output-stream]} (open-streaming-file!)]
                   (try

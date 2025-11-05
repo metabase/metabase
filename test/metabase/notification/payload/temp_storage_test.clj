@@ -17,18 +17,18 @@
 (defn- rows
   "Generate n rows of test data."
   [n]
-  (for [i (range n)] [i (* i 10)]))
+  (for [i (range n)] (repeat 10 (* 10 i))))
 
 (deftest streaming-threshold-test
   (testing "Under threshold - rows stay in memory"
-    (let [result (run-rff 5 (rows 4))]
+    (let [result (run-rff 50 (rows 4))]
       (is (= 4 (:row_count result)))
       (is (= :completed (:status result)))
       (is (vector? (get-in result [:data :rows])))
       (is (= (rows 4) (get-in result [:data :rows])))))
 
   (testing "At threshold - rows stream to disk"
-    (let [result  (run-rff 5 (rows 5))
+    (let [result  (run-rff 50 (rows 5))
           storage (get-in result [:data :rows])]
       (is (= 5 (:row_count result)))
       (is (temp-storage/streaming-temp-file? storage))
@@ -36,7 +36,7 @@
       (temp-storage/cleanup! storage)))
 
   (testing "Over threshold - rows stream to disk"
-    (let [result  (run-rff 5 (rows 6))
+    (let [result  (run-rff 50 (rows 6))
           storage (get-in result [:data :rows])]
       (is (= 6 (:row_count result)))
       (is (temp-storage/streaming-temp-file? storage))
@@ -45,7 +45,7 @@
 
   (testing "Over max-file-size threshold, aborts query"
     (mt/with-temporary-setting-values [notification-temp-file-size-max-bytes (* 4 1024)]
-      (let [many-rows 5000000
+      (let [many-rows 50000
             result    (run-rff 5 (rows many-rows))
             storage   (get-in result [:data :rows])]
         ;; row count here is how many query results were returned
@@ -61,8 +61,8 @@
   ;; in testing on my machine, this test takes this whole test from 262ms to 1550 ms. Seems worthwhile to me
   (testing "When bytes size is set to 0 allows for arbitrary sizes"
     (mt/with-temporary-setting-values [notification-temp-file-size-max-bytes 0]
-      (let [many-rows 2500000
-            result    (run-rff 5 (rows many-rows))
+      (let [many-rows 250000
+            result    (run-rff 50 (rows many-rows))
             storage   (get-in result [:data :rows])]
         ;; row count here is how many query results were returned
         (is (= (:row_count result) many-rows))
@@ -145,9 +145,39 @@
       (mt/with-temporary-setting-values [notification-temp-file-size-max-bytes (* 10 1024 1024)]
         (let [qp-results (mt/process-query query)
               temp-file-results (mt/process-query query
-                                                  (temp-storage/notification-rff 2000))]
+                                                  (temp-storage/notification-rff 20000))]
           (is (not (:notification/truncated? temp-file-results)))
           (is (temp-storage/streaming-temp-file? (-> temp-file-results :data :rows)))
           (is (= (-> qp-results :data :rows)
                  (-> temp-file-results :data :rows deref)))
           (-> temp-file-results :data :rows temp-storage/cleanup!))))))
+
+(comment
+  (mt/set-test-drivers! #{:postgres})
+  (time
+   (mt/test-driver :postgres
+     (select-keys (mt/process-query (mt/native-query {:query "SELECT
+    row_num AS id,
+    -- Random Integer between 1 and 100000
+    floor(random() * 100000 + 1)::INTEGER AS random_int,
+    -- Random Float
+    (random() * 1000)::NUMERIC(10, 4) AS random_float,
+    -- Random Date within the last 5 years
+    (current_date - (random() * 5 * 365)::INTEGER)::DATE AS random_date,
+    -- Random Timestamp within the last 30 days
+    (NOW() - (random() * 30 * '1 day'::interval)) AS random_timestamp,
+    -- Random String: Generates a random alphanumeric string about 1000 characters long
+    (
+        SELECT string_agg(
+            chr(
+                (CASE WHEN random() < 0.5 THEN 65 ELSE 97 END) + (random() * 25)::INTEGER
+            ),
+            ''
+        )
+        FROM generate_series(1, 1000)
+    ) AS random_string
+FROM
+    generate_series(1, 500000) AS row_num;"})
+                        (temp-storage/notification-rff 2000 :testing))
+                  [:row_count :status :data.rows-file-size :notification/truncated?])))
+  )
