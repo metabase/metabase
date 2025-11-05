@@ -149,6 +149,7 @@
    "/eid-translation"      'metabase.eid-translation.api
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding.api/embedding-routes)
+   "/embed-theme"          (+auth metabase.embedding.api/theme-routes)
    "/field"                (+auth metabase.warehouse-schema.api/field-routes)
    "/geojson"              'metabase.geojson.api
    "/glossary"             (+auth 'metabase.glossary.api)
