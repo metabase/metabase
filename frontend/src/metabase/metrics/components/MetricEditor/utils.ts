@@ -21,8 +21,13 @@ export function getValidationResult(
   return { isValid: Lib.canSave(query, "metric") };
 }
 
-export function getEditorOptions(): QueryEditorUiOptions {
+export function getEditorOptions(query: Lib.Query): QueryEditorUiOptions {
+  const { display, settings } = Lib.defaultDisplay(query);
+
   return {
+    cardType: "metric",
+    cardDisplay: display,
+    cardVizSettings: settings,
     convertToNativeTitle: t`SQL for this metric`,
     convertToNativeButtonLabel: t`Convert this metric to SQL`,
   };

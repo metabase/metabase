@@ -22,6 +22,8 @@ export function useQueryResults(
       ? Question.create({
           dataset_query: lastRunQuery,
           metadata: question.metadata(),
+          cardType: question.type(),
+          display: question.display(),
           visualization_settings: question.settings(),
         })
       : null;

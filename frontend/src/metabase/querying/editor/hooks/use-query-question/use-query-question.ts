@@ -6,6 +6,8 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
 
+import type { QueryEditorUiOptions } from "../../types";
+
 const DEFAULT_VIZ_SETTINGS: VisualizationSettings = {
   "table.pivot": false,
 };
@@ -13,6 +15,11 @@ const DEFAULT_VIZ_SETTINGS: VisualizationSettings = {
 export function useQueryQuestion(
   query: Lib.Query,
   proposedQuery: Lib.Query | undefined,
+  {
+    cardType,
+    cardDisplay,
+    cardVizSettings = DEFAULT_VIZ_SETTINGS,
+  }: QueryEditorUiOptions = {},
   setQuery: (newQuery: Lib.Query) => void,
 ) {
   const metadata = useSelector(getMetadata);
@@ -22,7 +29,9 @@ export function useQueryQuestion(
       question: Question.create({
         dataset_query: Lib.toJsQuery(query),
         metadata,
-        visualization_settings: DEFAULT_VIZ_SETTINGS,
+        cardType,
+        display: cardDisplay,
+        visualization_settings: cardVizSettings,
       }),
       proposedQuestion:
         proposedQuery != null
@@ -33,7 +42,7 @@ export function useQueryQuestion(
             })
           : undefined,
     }),
-    [query, proposedQuery, metadata],
+    [query, proposedQuery, metadata, cardType, cardDisplay, cardVizSettings],
   );
 
   const setQuestion = (newQuestion: Question) => {

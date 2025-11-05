@@ -38,7 +38,7 @@ export function MetricEditor({
   onSave,
   onCancel,
 }: MetricEditorProps) {
-  const uiOptions = useMemo(() => getEditorOptions(), []);
+  const uiOptions = useMemo(() => getEditorOptions(query), [query]);
   const validationResult = useMemo(() => getValidationResult(query), [query]);
 
   return (

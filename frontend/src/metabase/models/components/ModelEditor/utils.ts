@@ -23,6 +23,7 @@ export function getValidationResult(
 
 export function getEditorOptions(): QueryEditorUiOptions {
   return {
+    cardType: "model",
     convertToNativeTitle: t`SQL for this model`,
     convertToNativeButtonLabel: t`Convert this model to SQL`,
   };

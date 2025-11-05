@@ -65,6 +65,7 @@ export function QueryEditor({
   } = useQueryEditor({
     query,
     uiState,
+    uiOptions,
     proposedQuery,
     onChangeQuery,
     onChangeUiState,

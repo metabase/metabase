@@ -2,10 +2,13 @@ import type { CollectionPickerItem } from "metabase/common/components/Pickers/Co
 import type { DataPickerItem } from "metabase/common/components/Pickers/DataPicker/types";
 import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
 import type {
+  CardDisplayType,
+  CardType,
   Database,
   DatasetQuery,
   NativeQuerySnippet,
   RecentCollectionItem,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 export type QueryEditorSidebarType =
@@ -37,6 +40,9 @@ export type QueryEditorUiState = {
 };
 
 export type QueryEditorUiOptions = {
+  cardType?: CardType;
+  cardDisplay?: CardDisplayType;
+  cardVizSettings?: VisualizationSettings;
   convertToNativeTitle?: string;
   convertToNativeButtonLabel?: string;
   shouldDisableDataPickerItem?: (item: QueryEditorDataPickerItem) => boolean;
