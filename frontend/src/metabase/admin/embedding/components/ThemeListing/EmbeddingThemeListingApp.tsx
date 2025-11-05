@@ -1,7 +1,9 @@
-import { useState } from "react";
 import { t } from "ttag";
 
-import { useListEmbeddingThemesQuery } from "metabase/api/embedding-theme";
+import {
+  useCreateEmbeddingThemeMutation,
+  useListEmbeddingThemesQuery,
+} from "metabase/api/embedding-theme";
 import EmptyState from "metabase/common/components/EmptyState";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import {
@@ -15,12 +17,20 @@ import {
   Title,
 } from "metabase/ui";
 
-import { CreateEmbeddingThemeModal } from "./CreateEmbeddingThemeModal";
 import { EmbeddingThemeCard } from "./EmbeddingThemeCard";
 
 export function EmbeddingThemeListingApp() {
   const { data: themes, isLoading } = useListEmbeddingThemesQuery();
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createTheme] = useCreateEmbeddingThemeMutation();
+
+  const handleCreateTheme = async () => {
+    await createTheme({
+      name: t`Untitled theme`,
+      settings: {},
+    }).unwrap();
+
+    // TODO(EMB-946): Navigate to the theme editor to edit the newly created theme.
+  };
 
   if (isLoading) {
     return (
@@ -37,7 +47,7 @@ export function EmbeddingThemeListingApp() {
           <Title order={1}>{t`Themes`}</Title>
           <Button
             variant="filled"
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={handleCreateTheme}
             leftSection={<Icon name="add" size={12} />}
           >{t`New theme`}</Button>
         </Flex>
@@ -69,11 +79,6 @@ export function EmbeddingThemeListingApp() {
           />
         </Stack>
       )}
-
-      <CreateEmbeddingThemeModal
-        opened={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-      />
     </Stack>
   );
 }
