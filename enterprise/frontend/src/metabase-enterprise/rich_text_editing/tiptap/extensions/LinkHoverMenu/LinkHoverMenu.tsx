@@ -1,12 +1,14 @@
 import type { Editor } from "@tiptap/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { ActionIcon, Box, Card, FixedSizeIcon, Flex } from "metabase/ui";
 
 import S from "../PlainLink/PlainLink.module.css";
 
 const HOVER_TIMEOUT_MS = 150;
+const MAX_W = 480;
 
 interface LinkHoverMenuProps {
   editor: Editor;
@@ -42,10 +44,11 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
       if (target.tagName === "A" && target.classList.contains(S.plainLink)) {
         const targetRect = target.getBoundingClientRect();
         const editorRect = editor.view.dom.getBoundingClientRect();
+        const leftMax = editorRect.width - MAX_W;
         clearHoverTimeout();
         setHoverPosition({
           top: targetRect.bottom - editorRect.top,
-          left: targetRect.left - editorRect.left,
+          left: Math.min(targetRect.left - editorRect.left, leftMax),
         });
         setHoveredLink(target);
       }
@@ -89,11 +92,14 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
         bdrs="sm"
         px="sm"
         py="xs"
+        maw={MAX_W}
       >
         <Flex align="center">
-          <ExternalLink href={href} target="_blank">
-            {href}
-          </ExternalLink>
+          <Ellipsified showTooltip={false}>
+            <ExternalLink href={href} target="_blank">
+              {href}
+            </ExternalLink>
+          </Ellipsified>
           {editable && (
             <ActionIcon
               ml="sm"
