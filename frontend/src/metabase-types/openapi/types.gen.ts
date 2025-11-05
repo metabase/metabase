@@ -566,14 +566,14 @@ export type MbqlClauseTime = [
 export type MbqlClauseTimeInterval = [
     'time-interval',
     {
-        'lib/uuid': MetabaseLibSchemaCommonUuid;
         'base-type'?: MetabaseLibSchemaCommonBaseType | null;
-        'effective-type'?: MetabaseLibSchemaCommonBaseType | null;
-        'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
         'database-type'?: MetabaseLibSchemaCommonNonBlankString | null;
-        name?: MetabaseLibSchemaCommonNonBlankString | null;
         'display-name'?: MetabaseLibSchemaCommonNonBlankString | null;
+        'effective-type'?: MetabaseLibSchemaCommonBaseType | null;
         'include-current'?: boolean;
+        name?: MetabaseLibSchemaCommonNonBlankString | null;
+        'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
+        'lib/uuid': MetabaseLibSchemaCommonUuid;
     } & unknown,
     MetabaseLibSchemaExpressionTemporal,
     'current' | 'last' | 'next' | MetabaseLibSchemaExpressionInteger,
@@ -1148,35 +1148,35 @@ export type MetabaseEnterpriseMetabotV3ToolsApiSearchResultItem = {
         authority_level?: string;
         name?: string;
     };
+    created_at?: string;
+    database_id?: number;
+    database_schema?: string;
+    description?: string;
+    display_name?: string;
     id: number;
     name: string;
-    verified?: boolean;
-    database_id?: number;
-    updated_at?: string;
-    display_name?: string;
     type: 'table' | 'model' | 'dashboard' | 'question' | 'metric' | 'database';
-    database_schema?: string;
-    created_at?: string;
-    description?: string;
+    updated_at?: string;
+    verified?: boolean;
 };
 
 export type MetabaseEnterpriseMetabotV3ToolsApiStatistics = {
-    values?: MetabaseEnterpriseMetabotV3ToolsApiFieldValues;
-    min?: number;
-    percent_url?: MetabaseEnterpriseMetabotV3ToolsApiProportion;
     average_length?: number;
-    earliest?: string;
-    q1?: number;
-    max?: number;
-    distinct_count?: MetabaseEnterpriseMetabotV3ToolsApiCount;
-    percent_state?: MetabaseEnterpriseMetabotV3ToolsApiProportion;
-    percent_null?: MetabaseEnterpriseMetabotV3ToolsApiProportion;
     avg?: number;
-    sd?: number;
-    percent_email?: MetabaseEnterpriseMetabotV3ToolsApiProportion;
+    distinct_count?: MetabaseEnterpriseMetabotV3ToolsApiCount;
+    earliest?: string;
     latest?: string;
-    q3?: number;
+    max?: number;
+    min?: number;
+    percent_email?: MetabaseEnterpriseMetabotV3ToolsApiProportion;
     percent_json?: MetabaseEnterpriseMetabotV3ToolsApiProportion;
+    percent_null?: MetabaseEnterpriseMetabotV3ToolsApiProportion;
+    percent_state?: MetabaseEnterpriseMetabotV3ToolsApiProportion;
+    percent_url?: MetabaseEnterpriseMetabotV3ToolsApiProportion;
+    q1?: number;
+    q3?: number;
+    sd?: number;
+    values?: MetabaseEnterpriseMetabotV3ToolsApiFieldValues;
 };
 
 export type MetabaseEnterpriseMetabotV3ToolsApiStringFilter = {
@@ -1205,15 +1205,15 @@ export type MetabaseEnterpriseMetabotV3ToolsApiSubscriptionSchedule = ({
 };
 
 export type MetabaseEnterpriseMetabotV3ToolsApiTableResult = {
-    id: number;
-    name: string;
     database_id: number;
-    display_name: string;
-    type: 'model' | 'table';
-    fields: MetabaseEnterpriseMetabotV3ToolsApiColumns;
     database_schema?: string;
-    metrics?: Array<MetabaseEnterpriseMetabotV3ToolsApiBasicMetric>;
     description?: string;
+    display_name: string;
+    fields: MetabaseEnterpriseMetabotV3ToolsApiColumns;
+    id: number;
+    metrics?: Array<MetabaseEnterpriseMetabotV3ToolsApiBasicMetric>;
+    name: string;
+    type: 'model' | 'table';
 };
 
 export type MetabaseEnterpriseMetabotV3ToolsApiTemporalExtractionFilter = {
@@ -1306,17 +1306,17 @@ export type MetabaseActionsSchemaActionForInsert = {
  * Schema for updating an Action (REST API or internally).
  */
 export type MetabaseActionsSchemaActionForUpdate = {
+    archived?: boolean;
+    description?: string;
+    id?: MetabaseActionsSchemaId;
+    model_id?: MetabaseLibSchemaIdCard;
+    name?: string;
+    parameter_mappings?: MetabaseParametersSchemaParameterMappings;
+    parameters?: MetabaseParametersSchemaParameters;
+    type?: MetabaseActionsSchemaType;
     visualization_settings?: {
         [key: string]: unknown;
     };
-    parameter_mappings?: MetabaseParametersSchemaParameterMappings;
-    id?: MetabaseActionsSchemaId;
-    name?: string;
-    archived?: boolean;
-    type?: MetabaseActionsSchemaType;
-    model_id?: MetabaseLibSchemaIdCard;
-    parameters?: MetabaseParametersSchemaParameters;
-    description?: string;
 } & (MetabaseActionsSchemaHttpAction | MetabaseActionsSchemaImplicitAction | MetabaseActionsSchemaQueryAction | {
     [key: string]: unknown;
 });
@@ -1355,25 +1355,25 @@ export type MetabaseActionsSchemaImplicitActionKind = typeof MetabaseActionsSche
  * An Action as it should appear when we `SELECT` it from the app DB.
  */
 export type MetabaseActionsSchemaAction = {
-    visualization_settings?: {
-        [key: string]: unknown;
-    };
-    parameter_mappings?: MetabaseParametersSchemaParameterMappings;
+    archived?: boolean;
+    created_at?: unknown;
+    creator_id?: MetabaseLibSchemaIdUser;
+    description?: string;
     id: MetabaseActionsSchemaId;
     made_public_by_id?: MetabaseLibSchemaIdUser;
+    model_id?: MetabaseLibSchemaIdCard;
     name?: string;
-    archived?: boolean;
-    updated_at?: unknown;
-    type?: MetabaseActionsSchemaType;
-    created_at?: unknown;
+    parameter_mappings?: MetabaseParametersSchemaParameterMappings;
+    parameters?: MetabaseParametersSchemaParameters;
     /**
      * value must be a valid UUID.
      */
     public_uuid?: string;
-    model_id?: MetabaseLibSchemaIdCard;
-    parameters?: MetabaseParametersSchemaParameters;
-    creator_id?: MetabaseLibSchemaIdUser;
-    description?: string;
+    type?: MetabaseActionsSchemaType;
+    updated_at?: unknown;
+    visualization_settings?: {
+        [key: string]: unknown;
+    };
 } & (MetabaseActionsSchemaHttpAction | MetabaseActionsSchemaImplicitAction | MetabaseActionsSchemaQueryAction | {
     [key: string]: unknown;
 });
@@ -1880,24 +1880,24 @@ export type MetabaseLegacyMbqlSchemaJoin = {
 export type MetabaseLegacyMbqlSchemaJoins = Array<MetabaseLegacyMbqlSchemaJoin>;
 
 export type MetabaseLegacyMbqlSchemaMbqlQuery = {
+    aggregation?: Array<MetabaseLegacyMbqlSchemaAggregation>;
     breakout?: Array<MetabaseLegacyMbqlSchemaFieldOrExpressionRef>;
+    expressions?: {
+        [key: string]: MetabaseLegacyMbqlSchemaFieldOrExpressionDef;
+    };
+    fields?: MetabaseLegacyMbqlSchemaFields;
+    filter?: MetabaseLegacyMbqlSchemaFilter;
+    joins?: MetabaseLegacyMbqlSchemaJoins;
+    limit?: MetabaseLibSchemaCommonIntGreaterThanOrEqualToZero;
+    'order-by'?: MetabaseLegacyMbqlSchemaOrderBys;
+    page?: MetabaseLibSchemaPage;
     /**
      * Info about the columns of the source query. Added in automatically by middleware. This metadata is
      * primarily used to let power things like binning when used with Field Literals instead of normal Fields.
      */
     'source-metadata'?: Array<MetabaseLegacyMbqlSchemaLegacyColumnMetadata>;
     'source-query'?: MetabaseLegacyMbqlSchemaSourceQuery;
-    limit?: MetabaseLibSchemaCommonIntGreaterThanOrEqualToZero;
-    filter?: MetabaseLegacyMbqlSchemaFilter;
-    joins?: MetabaseLegacyMbqlSchemaJoins;
-    aggregation?: Array<MetabaseLegacyMbqlSchemaAggregation>;
-    fields?: MetabaseLegacyMbqlSchemaFields;
     'source-table'?: MetabaseLibSchemaIdTable | string;
-    'order-by'?: MetabaseLegacyMbqlSchemaOrderBys;
-    page?: MetabaseLibSchemaPage;
-    expressions?: {
-        [key: string]: MetabaseLegacyMbqlSchemaFieldOrExpressionDef;
-    };
 } & unknown;
 
 export type MetabaseLegacyMbqlSchemaNativeSourceQuery = {
@@ -1920,28 +1920,28 @@ export type MetabaseLegacyMbqlSchemaOrderBys = Array<MetabaseLegacyMbqlSchemaOrd
 export type MetabaseLegacyMbqlSchemaOrderComparable = MetabaseLegacyMbqlSchemaValue | number | string | MetabaseLegacyMbqlSchemaTemporalLiteral | MetabaseLegacyMbqlSchemaExpressionArg | MetabaseLegacyMbqlSchemaRelativeDatetime | MetabaseLegacyMbqlSchemaFieldOrExpressionRef;
 
 export type MetabaseLegacyMbqlSchemaQuery = {
-    'update-row'?: MetabaseLibSchemaActionsRow;
-    settings?: MetabaseLibSchemaSettingsSettings;
     constraints?: MetabaseLibSchemaConstraintsConstraints;
-    query?: MetabaseLegacyMbqlSchemaMbqlQuery;
-    native?: {
-        collection?: MetabaseLibSchemaCommonNonBlankString;
-        query: unknown;
-        'template-tags'?: MetabaseLegacyMbqlSchemaTemplateTagMap;
-    } & unknown;
+    'create-row'?: MetabaseLibSchemaActionsRow;
+    database?: MetabaseLegacyMbqlSchemaDatabaseId;
     /**
      * Used when recording info about this run in the QueryExecution log; things like context query was
      * ran in and User who ran it.
      */
     info?: MetabaseLibSchemaInfoInfo;
     middleware?: MetabaseLibSchemaMiddlewareOptionsMiddlewareOptions;
-    database?: MetabaseLegacyMbqlSchemaDatabaseId;
+    native?: {
+        collection?: MetabaseLibSchemaCommonNonBlankString;
+        query: unknown;
+        'template-tags'?: MetabaseLegacyMbqlSchemaTemplateTagMap;
+    } & unknown;
+    parameters?: MetabaseLibSchemaParameterParameters;
+    query?: MetabaseLegacyMbqlSchemaMbqlQuery;
+    settings?: MetabaseLibSchemaSettingsSettings;
     /**
      * Type of query. `:query` = MBQL; `:native` = native.
      */
     type: 'query' | 'native';
-    parameters?: MetabaseLibSchemaParameterParameters;
-    'create-row'?: MetabaseLibSchemaActionsRow;
+    'update-row'?: MetabaseLibSchemaActionsRow;
 } & MetabaseLegacyMbqlSchemaCheckKeysForQueryType & MetabaseLegacyMbqlSchemaCheckQueryDoesNotHaveSourceMetadata & unknown;
 
 export type MetabaseLegacyMbqlSchemaReference = MetabaseLegacyMbqlSchemaAggregation2 | MetabaseLegacyMbqlSchemaExpression | MetabaseLegacyMbqlSchemaField;
@@ -2004,20 +2004,20 @@ export type MetabaseLegacyMbqlSchemaTemplateTag = MetabaseLegacyMbqlSchemaTempla
  * Schema for a field filter template tag.
  */
 export type MetabaseLegacyMbqlSchemaTemplateTag_FieldFilter = {
+    alias?: string;
+    default?: unknown;
+    dimension: MetabaseLegacyMbqlSchemaField;
     'display-name': MetabaseLibSchemaCommonNonBlankString;
     id?: MetabaseLibSchemaTemplateTagId;
     name: MetabaseLibSchemaCommonNonBlankString;
-    required?: boolean;
-    type: 'dimension';
-    alias?: string;
     /**
      * optional map to be appended to filter clause
      */
     options?: {
         [key: string]: unknown;
     };
-    dimension: MetabaseLegacyMbqlSchemaField;
-    default?: unknown;
+    required?: boolean;
+    type: 'dimension';
     /**
      * which type of widget the frontend should show for this Field Filter; this also affects which parameter types
      * are allowed to be specified for it.
@@ -2430,18 +2430,18 @@ export type MetabaseLegacyMbqlSchemaIsNull = unknown;
  * `:metabase.lib.schema.metadata/column`.
  */
 export type MetabaseLegacyMbqlSchemaLegacyColumnMetadata = {
+    base_type: MetabaseLibSchemaCommonBaseType;
+    converted_timezone?: MetabaseLibSchemaExpressionTemporalTimezoneId;
+    display_name: string;
+    effective_type?: MetabaseLibSchemaCommonBaseType;
     field_ref?: MetabaseLegacyMbqlSchemaReference;
     fingerprint?: MetabaseLibSchemaMetadataFingerprintFingerprint;
-    visibility_type?: MetabaseLibSchemaMetadataColumnVisibilityType;
-    base_type: MetabaseLibSchemaCommonBaseType;
     id?: MetabaseLibSchemaIdField;
     name: string;
     semantic_type?: MetabaseLibSchemaCommonSemanticOrRelationType;
-    display_name: string;
-    converted_timezone?: MetabaseLibSchemaExpressionTemporalTimezoneId;
     source?: MetabaseLibSchemaMetadataColumnLegacySource;
-    effective_type?: MetabaseLibSchemaCommonBaseType;
     unit?: MetabaseLibSchemaTemporalBucketingUnit;
+    visibility_type?: MetabaseLibSchemaMetadataColumnVisibilityType;
 };
 
 /**
@@ -2689,20 +2689,20 @@ export type MetabaseLibSchemaStageInitial = {
 } | unknown;
 
 export type MetabaseLibSchemaStageMbql = {
-    'source-card'?: MetabaseLibSchemaIdCard;
-    'lib/type': 'mbql.stage/mbql';
-    'lib/stage-metadata'?: MetabaseLibSchemaMetadataStage;
-    breakout?: MetabaseLibSchemaBreakouts;
-    filters?: MetabaseLibSchemaFilters;
-    limit?: MetabaseLibSchemaCommonIntGreaterThanOrEqualToZero;
-    joins?: MetabaseLibSchemaJoinJoins;
     aggregation?: MetabaseLibSchemaAggregationAggregations;
+    breakout?: MetabaseLibSchemaBreakouts;
+    expressions?: MetabaseLibSchemaExpressionExpressions;
     fields?: MetabaseLibSchemaFields;
-    'source-table'?: MetabaseLibSchemaIdTable;
+    filters?: MetabaseLibSchemaFilters;
+    joins?: MetabaseLibSchemaJoinJoins;
+    'lib/stage-metadata'?: MetabaseLibSchemaMetadataStage;
+    'lib/type': 'mbql.stage/mbql';
+    limit?: MetabaseLibSchemaCommonIntGreaterThanOrEqualToZero;
     'order-by'?: MetabaseLibSchemaOrderByOrderBys;
     page?: MetabaseLibSchemaPage;
     parameters?: MetabaseLibSchemaParameterParameters;
-    expressions?: MetabaseLibSchemaExpressionExpressions;
+    'source-card'?: MetabaseLibSchemaIdCard;
+    'source-table'?: MetabaseLibSchemaIdTable;
 } & MetabaseLibSchemaStageValidRefs & unknown;
 
 export type MetabaseLibSchemaStageNative = {
@@ -3046,19 +3046,19 @@ export type MetabaseLibSchemaInfoHash = string;
  * like [[metabase.query-processor/userland-query]] some of these keys (e.g. `:context`) are in fact required
  */
 export type MetabaseLibSchemaInfoInfo = {
-    'query-hash'?: MetabaseLibSchemaInfoHash;
     'action-id'?: MetabaseLibSchemaIdAction;
+    'card-id'?: MetabaseLibSchemaIdCard;
+    'card-name'?: MetabaseLibSchemaCommonNonBlankString;
+    context?: MetabaseLibSchemaInfoContext;
+    'dashboard-id'?: MetabaseLibSchemaIdDashboard;
+    'executed-by'?: MetabaseLibSchemaIdUser;
+    'metadata/model-metadata'?: Array<MetabaseLibSchemaMetadataLibOrLegacyColumn>;
     'pivot/original-query'?: {
         [key: string]: unknown;
     };
-    'executed-by'?: MetabaseLibSchemaIdUser;
-    'card-id'?: MetabaseLibSchemaIdCard;
     'pivot/result-metadata'?: 'none' | Array<MetabaseLibSchemaMetadataColumn>;
-    context?: MetabaseLibSchemaInfoContext;
-    'dashboard-id'?: MetabaseLibSchemaIdDashboard;
-    'metadata/model-metadata'?: Array<MetabaseLibSchemaMetadataLibOrLegacyColumn>;
     'pulse-id'?: MetabaseLibSchemaIdPulse;
-    'card-name'?: MetabaseLibSchemaCommonNonBlankString;
+    'query-hash'?: MetabaseLibSchemaInfoHash;
 };
 
 /**
@@ -3329,53 +3329,53 @@ export type MetabaseLibSchemaMetadataColumnVisibilityType = typeof MetabaseLibSc
  * to differentiate between the two versions.
  */
 export type MetabaseLibSchemaMetadataColumn = {
-    'visibility-type'?: MetabaseLibSchemaMetadataColumnVisibilityType;
-    'fk-join-alias'?: MetabaseLibSchemaJoinAlias;
-    'lib/external-remap'?: MetabaseLibSchemaMetadataColumnRemappingExternal;
-    'inherited-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
-    'lib/source-column-alias'?: MetabaseLibSchemaMetadataSourceColumnAlias;
+    active?: boolean;
+    'base-type': MetabaseLibSchemaCommonBaseType;
     'database-type'?: string;
+    'display-name'?: string;
+    'effective-type'?: MetabaseLibSchemaCommonBaseType;
+    'field-ref'?: MetabaseLegacyMbqlSchemaReference;
+    fingerprint?: MetabaseLibSchemaMetadataFingerprintFingerprint;
+    'fk-field-id'?: MetabaseLibSchemaIdField;
+    'fk-field-name'?: string;
+    'fk-join-alias'?: MetabaseLibSchemaJoinAlias;
+    'fk-target-field-id'?: MetabaseLibSchemaIdField;
+    'has-field-values'?: MetabaseLibSchemaMetadataColumnHasFieldValues;
+    id?: MetabaseLibSchemaIdField;
+    'inherited-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
+    'lib/breakout?'?: boolean;
+    'lib/card-id'?: MetabaseLibSchemaIdCard;
+    'lib/deduplicated-name'?: MetabaseLibSchemaMetadataDeduplicatedName;
+    'lib/desired-column-alias'?: MetabaseLibSchemaMetadataDesiredColumnAlias;
+    'lib/expression-name'?: MetabaseLibSchemaCommonNonBlankString;
+    'lib/external-remap'?: MetabaseLibSchemaMetadataColumnRemappingExternal;
+    'lib/internal-remap'?: MetabaseLibSchemaMetadataColumnRemappingInternal;
+    'lib/model-display-name'?: string;
+    'lib/original-binning'?: MetabaseLibSchemaBinningBinning;
+    'lib/original-display-name'?: string;
+    'lib/original-expression-name'?: MetabaseLibSchemaCommonNonBlankString;
+    'lib/original-join-alias'?: MetabaseLibSchemaJoinAlias;
+    'lib/original-name'?: MetabaseLibSchemaMetadataOriginalName;
+    'lib/ref-display-name'?: string;
+    'lib/ref-name'?: string;
+    'lib/source'?: MetabaseLibSchemaMetadataColumnSource;
+    'lib/source-column-alias'?: MetabaseLibSchemaMetadataSourceColumnAlias;
+    'lib/source-uuid'?: MetabaseLibSchemaCommonUuid;
     'lib/type': 'metadata/column';
+    'metabase.lib.field/binning'?: MetabaseLibSchemaBinningBinning;
+    'metabase.lib.field/temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
+    'metabase.lib.join/join-alias'?: MetabaseLibSchemaJoinAlias;
+    name: string;
+    'nfc-path'?: Array<string>;
+    'qp/implicit-field?'?: boolean;
+    'selected?'?: boolean;
+    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType;
     settings?: {
         [key: string]: unknown;
     };
-    fingerprint?: MetabaseLibSchemaMetadataFingerprintFingerprint;
-    'display-name'?: string;
-    'lib/source-uuid'?: MetabaseLibSchemaCommonUuid;
-    'qp/implicit-field?'?: boolean;
-    'lib/ref-name'?: string;
-    id?: MetabaseLibSchemaIdField;
-    'effective-type'?: MetabaseLibSchemaCommonBaseType;
-    'lib/deduplicated-name'?: MetabaseLibSchemaMetadataDeduplicatedName;
-    'base-type': MetabaseLibSchemaCommonBaseType;
-    'lib/original-expression-name'?: MetabaseLibSchemaCommonNonBlankString;
-    'fk-field-name'?: string;
-    name: string;
-    'lib/card-id'?: MetabaseLibSchemaIdCard;
-    'lib/expression-name'?: MetabaseLibSchemaCommonNonBlankString;
-    'lib/breakout?'?: boolean;
-    'metabase.lib.field/temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
-    'metabase.lib.field/binning'?: MetabaseLibSchemaBinningBinning;
-    'nfc-path'?: Array<string>;
-    'lib/model-display-name'?: string;
-    'has-field-values'?: MetabaseLibSchemaMetadataColumnHasFieldValues;
-    'lib/internal-remap'?: MetabaseLibSchemaMetadataColumnRemappingInternal;
-    'selected?'?: boolean;
-    'source-alias'?: MetabaseLibSchemaCommonNonBlankString;
     source?: MetabaseLibSchemaMetadataColumnLegacySource;
-    'metabase.lib.join/join-alias'?: MetabaseLibSchemaJoinAlias;
-    'fk-field-id'?: MetabaseLibSchemaIdField;
-    'lib/original-binning'?: MetabaseLibSchemaBinningBinning;
-    'lib/original-join-alias'?: MetabaseLibSchemaJoinAlias;
-    'lib/original-display-name'?: string;
-    'lib/source'?: MetabaseLibSchemaMetadataColumnSource;
-    active?: boolean;
-    'lib/ref-display-name'?: string;
-    'lib/original-name'?: MetabaseLibSchemaMetadataOriginalName;
-    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType;
-    'fk-target-field-id'?: MetabaseLibSchemaIdField;
-    'field-ref'?: MetabaseLegacyMbqlSchemaReference;
-    'lib/desired-column-alias'?: MetabaseLibSchemaMetadataDesiredColumnAlias;
+    'source-alias'?: MetabaseLibSchemaCommonNonBlankString;
+    'visibility-type'?: MetabaseLibSchemaMetadataColumnVisibilityType;
 } & MetabaseLibSchemaCommonKebabCasedMap & MetabaseLibSchemaMetadataColumnValidateForSource;
 
 /**
@@ -3469,53 +3469,53 @@ export type MetabaseLibSchemaMetadataFingerprintPercent = number;
  * metadata, but they should NOT be a mixture of both -- if we mixed them somehow there is a bug in our code.
  */
 export type MetabaseLibSchemaMetadataLibOrLegacyColumn = ({
-    'visibility-type'?: MetabaseLibSchemaMetadataColumnVisibilityType;
-    'fk-join-alias'?: MetabaseLibSchemaJoinAlias;
-    'lib/external-remap'?: MetabaseLibSchemaMetadataColumnRemappingExternal;
-    'inherited-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
-    'lib/source-column-alias'?: MetabaseLibSchemaMetadataSourceColumnAlias;
+    active?: boolean;
+    'base-type': MetabaseLibSchemaCommonBaseType;
     'database-type'?: string;
+    'display-name'?: string;
+    'effective-type'?: MetabaseLibSchemaCommonBaseType;
+    'field-ref'?: MetabaseLegacyMbqlSchemaReference;
+    fingerprint?: MetabaseLibSchemaMetadataFingerprintFingerprint;
+    'fk-field-id'?: MetabaseLibSchemaIdField;
+    'fk-field-name'?: string;
+    'fk-join-alias'?: MetabaseLibSchemaJoinAlias;
+    'fk-target-field-id'?: MetabaseLibSchemaIdField;
+    'has-field-values'?: MetabaseLibSchemaMetadataColumnHasFieldValues;
+    id?: MetabaseLibSchemaIdField;
+    'inherited-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
+    'lib/breakout?'?: boolean;
+    'lib/card-id'?: MetabaseLibSchemaIdCard;
+    'lib/deduplicated-name'?: MetabaseLibSchemaMetadataDeduplicatedName;
+    'lib/desired-column-alias'?: MetabaseLibSchemaMetadataDesiredColumnAlias;
+    'lib/expression-name'?: MetabaseLibSchemaCommonNonBlankString;
+    'lib/external-remap'?: MetabaseLibSchemaMetadataColumnRemappingExternal;
+    'lib/internal-remap'?: MetabaseLibSchemaMetadataColumnRemappingInternal;
+    'lib/model-display-name'?: string;
+    'lib/original-binning'?: MetabaseLibSchemaBinningBinning;
+    'lib/original-display-name'?: string;
+    'lib/original-expression-name'?: MetabaseLibSchemaCommonNonBlankString;
+    'lib/original-join-alias'?: MetabaseLibSchemaJoinAlias;
+    'lib/original-name'?: MetabaseLibSchemaMetadataOriginalName;
+    'lib/ref-display-name'?: string;
+    'lib/ref-name'?: string;
+    'lib/source'?: MetabaseLibSchemaMetadataColumnSource;
+    'lib/source-column-alias'?: MetabaseLibSchemaMetadataSourceColumnAlias;
+    'lib/source-uuid'?: MetabaseLibSchemaCommonUuid;
     'lib/type': 'metadata/column';
+    'metabase.lib.field/binning'?: MetabaseLibSchemaBinningBinning;
+    'metabase.lib.field/temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
+    'metabase.lib.join/join-alias'?: MetabaseLibSchemaJoinAlias;
+    name: string;
+    'nfc-path'?: Array<string>;
+    'qp/implicit-field?'?: boolean;
+    'selected?'?: boolean;
+    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType;
     settings?: {
         [key: string]: unknown;
     };
-    fingerprint?: MetabaseLibSchemaMetadataFingerprintFingerprint;
-    'display-name'?: string;
-    'lib/source-uuid'?: MetabaseLibSchemaCommonUuid;
-    'qp/implicit-field?'?: boolean;
-    'lib/ref-name'?: string;
-    id?: MetabaseLibSchemaIdField;
-    'effective-type'?: MetabaseLibSchemaCommonBaseType;
-    'lib/deduplicated-name'?: MetabaseLibSchemaMetadataDeduplicatedName;
-    'base-type': MetabaseLibSchemaCommonBaseType;
-    'lib/original-expression-name'?: MetabaseLibSchemaCommonNonBlankString;
-    'fk-field-name'?: string;
-    name: string;
-    'lib/card-id'?: MetabaseLibSchemaIdCard;
-    'lib/expression-name'?: MetabaseLibSchemaCommonNonBlankString;
-    'lib/breakout?'?: boolean;
-    'metabase.lib.field/temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
-    'metabase.lib.field/binning'?: MetabaseLibSchemaBinningBinning;
-    'nfc-path'?: Array<string>;
-    'lib/model-display-name'?: string;
-    'has-field-values'?: MetabaseLibSchemaMetadataColumnHasFieldValues;
-    'lib/internal-remap'?: MetabaseLibSchemaMetadataColumnRemappingInternal;
-    'selected?'?: boolean;
-    'source-alias'?: MetabaseLibSchemaCommonNonBlankString;
     source?: MetabaseLibSchemaMetadataColumnLegacySource;
-    'metabase.lib.join/join-alias'?: MetabaseLibSchemaJoinAlias;
-    'fk-field-id'?: MetabaseLibSchemaIdField;
-    'lib/original-binning'?: MetabaseLibSchemaBinningBinning;
-    'lib/original-join-alias'?: MetabaseLibSchemaJoinAlias;
-    'lib/original-display-name'?: string;
-    'lib/source'?: MetabaseLibSchemaMetadataColumnSource;
-    active?: boolean;
-    'lib/ref-display-name'?: string;
-    'lib/original-name'?: MetabaseLibSchemaMetadataOriginalName;
-    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType;
-    'fk-target-field-id'?: MetabaseLibSchemaIdField;
-    'field-ref'?: MetabaseLegacyMbqlSchemaReference;
-    'lib/desired-column-alias'?: MetabaseLibSchemaMetadataDesiredColumnAlias;
+    'source-alias'?: MetabaseLibSchemaCommonNonBlankString;
+    'visibility-type'?: MetabaseLibSchemaMetadataColumnVisibilityType;
 } & MetabaseLibSchemaCommonKebabCasedMap & MetabaseLibSchemaMetadataColumnValidateForSource) | MetabaseLegacyMbqlSchemaLegacyColumnMetadata;
 
 /**
@@ -3775,17 +3775,17 @@ export const MetabaseLibSchemaParameterWidgetType = {
 export type MetabaseLibSchemaParameterWidgetType = typeof MetabaseLibSchemaParameterWidgetType[keyof typeof MetabaseLibSchemaParameterWidgetType];
 
 export type MetabaseLibSchemaQuery = {
-    'lib/metadata'?: MetabaseLibSchemaMetadataMetadataProvider;
-    'update-row'?: MetabaseLibSchemaActionsRow;
-    'lib/type': 'mbql/query';
-    settings?: MetabaseLibSchemaSettingsSettings;
     constraints?: MetabaseLibSchemaConstraintsConstraints;
-    info?: MetabaseLibSchemaInfoInfo;
-    middleware?: MetabaseLibSchemaMiddlewareOptionsMiddlewareOptions;
-    database?: MetabaseLibSchemaIdSavedQuestionsVirtualDatabase | MetabaseLibSchemaIdDatabase;
-    stages: MetabaseLibSchemaStages;
-    parameters?: MetabaseLibSchemaParameterParameters;
     'create-row'?: MetabaseLibSchemaActionsRow;
+    database?: MetabaseLibSchemaIdSavedQuestionsVirtualDatabase | MetabaseLibSchemaIdDatabase;
+    info?: MetabaseLibSchemaInfoInfo;
+    'lib/metadata'?: MetabaseLibSchemaMetadataMetadataProvider;
+    'lib/type': 'mbql/query';
+    middleware?: MetabaseLibSchemaMiddlewareOptionsMiddlewareOptions;
+    parameters?: MetabaseLibSchemaParameterParameters;
+    settings?: MetabaseLibSchemaSettingsSettings;
+    stages: MetabaseLibSchemaStages;
+    'update-row'?: MetabaseLibSchemaActionsRow;
 } & MetabaseLibSchemaUtilUniqueUuids & unknown;
 
 export type MetabaseLibSchemaRefExpressionOptions = {
@@ -3812,39 +3812,39 @@ export type MetabaseLibSchemaRefFieldLiteral = [
 ];
 
 export type MetabaseLibSchemaRefFieldLiteralOptions = {
+    'base-type': string;
     binning?: MetabaseLibSchemaBinningBinning;
-    'inherited-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
     'database-type'?: MetabaseLibSchemaCommonNonBlankString;
-    'metabase.lib.field/original-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
     'display-name'?: MetabaseLibSchemaCommonNonBlankString;
     'effective-type'?: MetabaseLibSchemaCommonBaseType;
-    'base-type': string;
-    'lib/uuid': MetabaseLibSchemaCommonUuid;
-    name?: MetabaseLibSchemaCommonNonBlankString;
-    'metabase.lib.field/original-effective-type'?: MetabaseLibSchemaCommonBaseType;
-    'source-field'?: MetabaseLibSchemaIdField;
+    'inherited-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
     'join-alias'?: MetabaseLibSchemaJoinAlias;
     'lib/original-binning'?: MetabaseLibSchemaBinningBinning;
-    'temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
+    'lib/uuid': MetabaseLibSchemaCommonUuid;
+    'metabase.lib.field/original-effective-type'?: MetabaseLibSchemaCommonBaseType;
+    'metabase.lib.field/original-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
+    name?: MetabaseLibSchemaCommonNonBlankString;
     'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType;
+    'source-field'?: MetabaseLibSchemaIdField;
+    'temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
 };
 
 export type MetabaseLibSchemaRefFieldOptions = {
+    'base-type'?: MetabaseLibSchemaCommonBaseType;
     binning?: MetabaseLibSchemaBinningBinning;
-    'inherited-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
     'database-type'?: MetabaseLibSchemaCommonNonBlankString;
-    'metabase.lib.field/original-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
     'display-name'?: MetabaseLibSchemaCommonNonBlankString;
     'effective-type'?: MetabaseLibSchemaCommonBaseType;
-    'base-type'?: MetabaseLibSchemaCommonBaseType;
-    'lib/uuid': MetabaseLibSchemaCommonUuid;
-    name?: MetabaseLibSchemaCommonNonBlankString;
-    'metabase.lib.field/original-effective-type'?: MetabaseLibSchemaCommonBaseType;
-    'source-field'?: MetabaseLibSchemaIdField;
+    'inherited-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
     'join-alias'?: MetabaseLibSchemaJoinAlias;
     'lib/original-binning'?: MetabaseLibSchemaBinningBinning;
-    'temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
+    'lib/uuid': MetabaseLibSchemaCommonUuid;
+    'metabase.lib.field/original-effective-type'?: MetabaseLibSchemaCommonBaseType;
+    'metabase.lib.field/original-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
+    name?: MetabaseLibSchemaCommonNonBlankString;
     'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType;
+    'source-field'?: MetabaseLibSchemaIdField;
+    'temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
 };
 
 export type MetabaseLibSchemaRefAggregationOptions = {
@@ -3908,15 +3908,15 @@ export type MetabaseLibSchemaTemplateTagCommon = {
 export type MetabaseLibSchemaTemplateTagDisallowDimension = unknown;
 
 export type MetabaseLibSchemaTemplateTagFieldFilter = {
+    alias?: string;
+    default?: unknown;
+    dimension?: MbqlClauseField;
     'display-name': MetabaseLibSchemaCommonNonBlankString;
     id?: MetabaseLibSchemaTemplateTagId;
     name: MetabaseLibSchemaCommonNonBlankString;
+    options?: MetabaseLibSchemaTemplateTagFieldFilterOptions;
     required?: boolean;
     type: 'dimension';
-    alias?: string;
-    options?: MetabaseLibSchemaTemplateTagFieldFilterOptions;
-    dimension?: MbqlClauseField;
-    default?: unknown;
     'widget-type': MetabaseLibSchemaTemplateTagWidgetType;
 };
 
@@ -4414,19 +4414,19 @@ export type MetabaseParametersSchemaLegacyRef = MetabaseLegacyMbqlSchemaExpressi
  * parameter must be a map with :id and :type keys
  */
 export type MetabaseParametersSchemaParameter = {
-    filteringParameters?: Array<MetabaseLibSchemaCommonNonBlankString>;
-    mappings?: Array<MetabaseParametersSchemaParameterMapping> | Array<MetabaseParametersSchemaParameterMapping>;
-    sectionId?: MetabaseLibSchemaCommonNonBlankString;
-    values_source_config?: MetabaseParametersSchemaValuesSourceConfig;
-    id: MetabaseLibSchemaCommonNonBlankString;
-    name?: string;
-    slug?: string;
-    values_query_type?: MetabaseParametersSchemaValuesQueryType;
-    type: MetabaseLibSchemaParameterType;
-    temporal_units?: Array<MetabaseLibSchemaTemporalBucketingUnit>;
-    target?: MetabaseLibSchemaParameterTarget;
-    values_source_type?: MetabaseParametersSchemaValuesSourceType;
     default?: unknown;
+    filteringParameters?: Array<MetabaseLibSchemaCommonNonBlankString>;
+    id: MetabaseLibSchemaCommonNonBlankString;
+    mappings?: Array<MetabaseParametersSchemaParameterMapping> | Array<MetabaseParametersSchemaParameterMapping>;
+    name?: string;
+    sectionId?: MetabaseLibSchemaCommonNonBlankString;
+    slug?: string;
+    target?: MetabaseLibSchemaParameterTarget;
+    temporal_units?: Array<MetabaseLibSchemaTemporalBucketingUnit>;
+    type: MetabaseLibSchemaParameterType;
+    values_query_type?: MetabaseParametersSchemaValuesQueryType;
+    values_source_config?: MetabaseParametersSchemaValuesSourceConfig;
+    values_source_type?: MetabaseParametersSchemaValuesSourceType;
 };
 
 /**
@@ -4495,20 +4495,20 @@ export type MetabaseQueriesSchemaEmptyMap = unknown;
  * query.
  */
 export type MetabaseQueriesSchemaQuery = MetabaseQueriesSchemaEmptyMap | ({
+    constraints?: MetabaseLibSchemaConstraintsConstraints;
+    'create-row'?: MetabaseLibSchemaActionsRow;
+    database?: MetabaseLibSchemaIdSavedQuestionsVirtualDatabase | MetabaseLibSchemaIdDatabase;
+    info?: MetabaseLibSchemaInfoInfo;
     /**
      * Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol.
      */
     'lib/metadata': unknown;
-    'update-row'?: MetabaseLibSchemaActionsRow;
     'lib/type': 'mbql/query';
-    settings?: MetabaseLibSchemaSettingsSettings;
-    constraints?: MetabaseLibSchemaConstraintsConstraints;
-    info?: MetabaseLibSchemaInfoInfo;
     middleware?: MetabaseLibSchemaMiddlewareOptionsMiddlewareOptions;
-    database?: MetabaseLibSchemaIdSavedQuestionsVirtualDatabase | MetabaseLibSchemaIdDatabase;
-    stages: MetabaseLibSchemaStages;
     parameters?: MetabaseLibSchemaParameterParameters;
-    'create-row'?: MetabaseLibSchemaActionsRow;
+    settings?: MetabaseLibSchemaSettingsSettings;
+    stages: MetabaseLibSchemaStages;
+    'update-row'?: MetabaseLibSchemaActionsRow;
 } & MetabaseLibSchemaUtilUniqueUuids & unknown);
 
 /**
@@ -4613,71 +4613,56 @@ export type MetabaseUsersApiPaginatedUsers = {
 };
 
 /**
- * Schema for password update response.
- */
-export type MetabaseUsersApiPasswordUpdateResponse = {
-    session_id?: string;
-    success?: true;
-};
-
-/**
- * Schema for simple success responses.
- */
-export type MetabaseUsersApiSuccessResponse = {
-    success: true;
-};
-
-/**
  * Schema for a User object returned by the API.
  */
 export type MetabaseUsersApiUser = {
-    has_model?: boolean;
-    /**
-     * login attribute keys must be a keyword or string
-     */
-    login_attributes?: {
-        [key: string]: unknown;
+    common_name?: string;
+    custom_homepage?: {
+        dashboard_id: number;
     };
-    sso_source?: 'google' | 'ldap' | 'jwt' | 'saml';
+    date_joined: unknown;
+    /**
+     * value must be a valid email address.
+     */
+    email: string;
+    first_login?: unknown;
+    first_name?: string;
+    group_ids?: Array<number>;
+    has_invited_second_user?: boolean;
+    has_model?: boolean;
+    has_question_and_dashboard?: boolean;
+    id: number;
+    is_active: boolean;
+    is_datasetnewb?: boolean;
+    is_installer?: boolean;
+    is_qbnewb?: boolean;
+    is_superuser: boolean;
     /**
      * login attribute keys must be a keyword or string
      */
     jwt_attributes?: {
         [key: string]: unknown;
     };
-    is_qbnewb?: boolean;
-    user_group_memberships?: Array<MetabaseUsersApiUserGroupMembership>;
-    is_active: boolean;
     last_login?: unknown;
-    id: number;
-    /**
-     * value must be a valid email address.
-     */
-    email: string;
-    group_ids?: Array<number>;
+    last_name?: string;
     /**
      * String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.
      */
     locale?: string;
+    /**
+     * login attribute keys must be a keyword or string
+     */
+    login_attributes?: {
+        [key: string]: unknown;
+    };
+    personal_collection_id?: number;
+    sso_source?: 'google' | 'ldap' | 'jwt' | 'saml';
     structured_attributes?: {
         [key: string]: unknown;
     };
-    updated_at?: unknown;
-    is_datasetnewb?: boolean;
-    first_login?: unknown;
-    is_superuser: boolean;
     tenant_id?: number;
-    custom_homepage?: {
-        dashboard_id: number;
-    };
-    last_name?: string;
-    is_installer?: boolean;
-    first_name?: string;
-    date_joined: unknown;
-    has_invited_second_user?: boolean;
-    personal_collection_id?: number;
-    common_name?: string;
-    has_question_and_dashboard?: boolean;
+    updated_at?: unknown;
+    user_group_memberships?: Array<MetabaseUsersApiUserGroupMembership>;
 };
 
 /**
@@ -6218,29 +6203,9 @@ export type GetApiCardResponses = {
 export type PostApiCardData = {
     body?: {
         /**
-         * Value must be a map.
-         */
-        visualization_settings: {
-            [key: string]: unknown;
-        };
-        /**
          * value must be an integer greater than zero.
          */
-        dashboard_tab_id?: number;
-        entity_id?: string;
-        /**
-         * Value must be a map.
-         */
-        dataset_query: {
-            [key: string]: unknown;
-        };
-        parameter_mappings?: MetabaseParametersSchemaParameterMappings;
-        name: string;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_position?: number;
-        result_metadata?: MetabaseAnalyzeQueryResultsResultsMetadata;
+        cache_ttl?: number;
         /**
          * value must be an integer greater than zero.
          */
@@ -6248,15 +6213,35 @@ export type PostApiCardData = {
         /**
          * value must be an integer greater than zero.
          */
-        cache_ttl?: number;
-        type?: MetabaseLibSchemaMetadataCardType;
-        display: string;
-        parameters?: MetabaseParametersSchemaParameters;
-        description?: string;
+        collection_position?: number;
         /**
          * value must be an integer greater than zero.
          */
         dashboard_id?: number;
+        /**
+         * value must be an integer greater than zero.
+         */
+        dashboard_tab_id?: number;
+        /**
+         * Value must be a map.
+         */
+        dataset_query: {
+            [key: string]: unknown;
+        };
+        description?: string;
+        display: string;
+        entity_id?: string;
+        name: string;
+        parameter_mappings?: MetabaseParametersSchemaParameterMappings;
+        parameters?: MetabaseParametersSchemaParameters;
+        result_metadata?: MetabaseAnalyzeQueryResultsResultsMetadata;
+        type?: MetabaseLibSchemaMetadataCardType;
+        /**
+         * Value must be a map.
+         */
+        visualization_settings: {
+            [key: string]: unknown;
+        };
     };
     path?: never;
     query?: never;
@@ -6651,38 +6636,11 @@ export type GetApiCardByIdResponses = {
 
 export type PutApiCardByIdData = {
     body?: {
-        enable_embedding?: boolean;
-        /**
-         * Value must be a map.
-         */
-        visualization_settings?: {
-            [key: string]: unknown;
-        };
-        /**
-         * value must be an integer greater than zero.
-         */
-        dashboard_tab_id?: number;
-        collection_preview?: boolean;
-        /**
-         * Value must be a map.
-         */
-        dataset_query?: {
-            [key: string]: unknown;
-        };
-        parameter_mappings?: MetabaseParametersSchemaParameterMappings;
-        name?: string;
         archived?: boolean;
         /**
          * value must be an integer greater than zero.
          */
-        collection_position?: number;
-        /**
-         * value must be a valid embedding params map.
-         */
-        embedding_params?: {
-            [key: string]: 'disabled' | 'enabled' | 'locked';
-        };
-        result_metadata?: MetabaseAnalyzeQueryResultsResultsMetadata;
+        cache_ttl?: number;
         /**
          * value must be an integer greater than zero.
          */
@@ -6690,15 +6648,42 @@ export type PutApiCardByIdData = {
         /**
          * value must be an integer greater than zero.
          */
-        cache_ttl?: number;
-        type?: MetabaseLibSchemaMetadataCardType;
-        display?: string;
-        parameters?: MetabaseParametersSchemaParameters;
-        description?: string;
+        collection_position?: number;
+        collection_preview?: boolean;
         /**
          * value must be an integer greater than zero.
          */
         dashboard_id?: number;
+        /**
+         * value must be an integer greater than zero.
+         */
+        dashboard_tab_id?: number;
+        /**
+         * Value must be a map.
+         */
+        dataset_query?: {
+            [key: string]: unknown;
+        };
+        description?: string;
+        display?: string;
+        /**
+         * value must be a valid embedding params map.
+         */
+        embedding_params?: {
+            [key: string]: 'disabled' | 'enabled' | 'locked';
+        };
+        enable_embedding?: boolean;
+        name?: string;
+        parameter_mappings?: MetabaseParametersSchemaParameterMappings;
+        parameters?: MetabaseParametersSchemaParameters;
+        result_metadata?: MetabaseAnalyzeQueryResultsResultsMetadata;
+        type?: MetabaseLibSchemaMetadataCardType;
+        /**
+         * Value must be a map.
+         */
+        visualization_settings?: {
+            [key: string]: unknown;
+        };
     };
     path: {
         /**
@@ -8269,36 +8254,12 @@ export type GetApiDashboardByIdResponses = {
 
 export type PutApiDashboardByIdData = {
     body?: {
-        points_of_interest?: string;
-        enable_embedding?: boolean;
-        width?: 'fixed' | 'full';
-        show_in_getting_started?: boolean;
-        /**
-         * value must be an integer greater than zero.
-         */
-        position?: number;
-        name?: string;
         archived?: boolean;
         /**
          * value must be an integer greater than zero.
          */
-        collection_position?: number;
-        /**
-         * value must be a valid embedding params map.
-         */
-        embedding_params?: {
-            [key: string]: 'disabled' | 'enabled' | 'locked';
-        };
-        /**
-         * value must be seq of maps in which ids are unique
-         */
-        tabs?: Array<{
-            /**
-             * value must be an integer.
-             */
-            id: number;
-            name: string;
-        }>;
+        cache_ttl?: number;
+        caveats?: string;
         /**
          * value must be an integer greater than zero.
          */
@@ -8306,9 +8267,7 @@ export type PutApiDashboardByIdData = {
         /**
          * value must be an integer greater than zero.
          */
-        cache_ttl?: number;
-        caveats?: string;
-        parameters?: MetabaseParametersSchemaParameters;
+        collection_position?: number;
         /**
          * value must be seq of maps in which ids are unique
          */
@@ -8337,6 +8296,32 @@ export type PutApiDashboardByIdData = {
             size_y: number;
         }>;
         description?: string;
+        /**
+         * value must be a valid embedding params map.
+         */
+        embedding_params?: {
+            [key: string]: 'disabled' | 'enabled' | 'locked';
+        };
+        enable_embedding?: boolean;
+        name?: string;
+        parameters?: MetabaseParametersSchemaParameters;
+        points_of_interest?: string;
+        /**
+         * value must be an integer greater than zero.
+         */
+        position?: number;
+        show_in_getting_started?: boolean;
+        /**
+         * value must be seq of maps in which ids are unique
+         */
+        tabs?: Array<{
+            /**
+             * value must be an integer.
+             */
+            id: number;
+            name: string;
+        }>;
+        width?: 'fixed' | 'full';
     };
     path: {
         /**
@@ -8656,26 +8641,26 @@ export type GetApiDatabaseResponses = {
 
 export type PostApiDatabaseData = {
     body?: {
-        provider_name?: string;
-        name: string;
-        is_on_demand?: boolean;
+        auto_run_queries?: boolean;
         /**
          * value must be an integer greater than zero.
          */
         cache_ttl?: number;
-        /**
-         * value must be a valid database engine.
-         */
-        engine: string;
+        connection_source?: 'admin' | 'setup';
         /**
          * Value must be a map.
          */
         details: {
             [key: string]: unknown;
         };
+        /**
+         * value must be a valid database engine.
+         */
+        engine: string;
         is_full_sync?: boolean;
-        connection_source?: 'admin' | 'setup';
-        auto_run_queries?: boolean;
+        is_on_demand?: boolean;
+        name: string;
+        provider_name?: string;
         schedules?: MetabaseSyncSchedulesExpandedSchedulesMap;
     };
     path?: never;
@@ -8827,34 +8812,34 @@ export type GetApiDatabaseByIdResponses = {
 
 export type PutApiDatabaseByIdData = {
     body?: {
-        points_of_interest?: string;
-        provider_name?: string;
-        /**
-         * Value must be a map.
-         */
-        settings?: {
-            [key: string]: unknown;
-        };
-        name?: string;
+        auto_run_queries?: boolean;
         /**
          * value must be an integer greater than zero.
          */
         cache_ttl?: number;
-        /**
-         * value must be a valid database engine.
-         */
-        engine?: string;
+        caveats?: string;
+        description?: string;
         /**
          * Value must be a map.
          */
         details?: {
             [key: string]: unknown;
         };
-        auto_run_queries?: boolean;
-        caveats?: string;
+        /**
+         * value must be a valid database engine.
+         */
+        engine?: string;
+        name?: string;
+        points_of_interest?: string;
+        provider_name?: string;
         refingerprint?: boolean;
         schedules?: MetabaseSyncSchedulesExpandedSchedulesMap;
-        description?: string;
+        /**
+         * Value must be a map.
+         */
+        settings?: {
+            [key: string]: unknown;
+        };
     };
     path: {
         /**
@@ -10294,24 +10279,9 @@ export type DeleteApiEeAuditAppUserByIdSubscriptionsResponses = {
 export type PostApiEeAutodescribeCardSummarizeData = {
     body?: {
         /**
-         * Value must be a map.
-         */
-        visualization_settings: {
-            [key: string]: unknown;
-        };
-        dataset?: boolean;
-        /**
-         * Value must be a map.
-         */
-        dataset_query: {
-            [key: string]: unknown;
-        };
-        parameter_mappings?: Array<MetabaseParametersSchemaParameterMapping>;
-        /**
          * value must be an integer greater than zero.
          */
-        collection_position?: number;
-        result_metadata?: MetabaseAnalyzeQueryResultsResultsMetadata;
+        cache_ttl?: number;
         /**
          * value must be an integer greater than zero.
          */
@@ -10319,10 +10289,25 @@ export type PostApiEeAutodescribeCardSummarizeData = {
         /**
          * value must be an integer greater than zero.
          */
-        cache_ttl?: number;
-        display: string;
-        parameters?: Array<MetabaseParametersSchemaParameter>;
+        collection_position?: number;
+        dataset?: boolean;
+        /**
+         * Value must be a map.
+         */
+        dataset_query: {
+            [key: string]: unknown;
+        };
         description?: string;
+        display: string;
+        parameter_mappings?: Array<MetabaseParametersSchemaParameterMapping>;
+        parameters?: Array<MetabaseParametersSchemaParameter>;
+        result_metadata?: MetabaseAnalyzeQueryResultsResultsMetadata;
+        /**
+         * Value must be a map.
+         */
+        visualization_settings: {
+            [key: string]: unknown;
+        };
     };
     path?: never;
     query?: never;
@@ -10995,34 +10980,34 @@ export type PostApiEeDocumentData = {
         cards?: {
             [key: string]: {
                 /**
-                 * Value must be a map.
+                 * value must be an integer greater than zero.
                  */
-                visualization_settings: {
-                    [key: string]: unknown;
-                };
-                entity_id?: string;
+                cache_ttl?: number;
                 /**
                  * Value must be a map.
                  */
                 dataset_query: {
                     [key: string]: unknown;
                 };
+                description?: string;
+                display: string;
+                entity_id?: string;
+                name: string;
                 parameter_mappings?: Array<{
                     [key: string]: unknown;
                 }>;
-                name: string;
+                parameters?: Array<{
+                    [key: string]: unknown;
+                }>;
                 result_metadata?: Array<{
                     [key: string]: unknown;
                 }>;
                 /**
-                 * value must be an integer greater than zero.
+                 * Value must be a map.
                  */
-                cache_ttl?: number;
-                display: string;
-                parameters?: Array<{
+                visualization_settings: {
                     [key: string]: unknown;
-                }>;
-                description?: string;
+                };
             };
         };
         /**
@@ -11125,34 +11110,34 @@ export type PutApiEeDocumentByDocumentIdData = {
         cards?: {
             [key: string]: {
                 /**
-                 * Value must be a map.
+                 * value must be an integer greater than zero.
                  */
-                visualization_settings: {
-                    [key: string]: unknown;
-                };
-                entity_id?: string;
+                cache_ttl?: number;
                 /**
                  * Value must be a map.
                  */
                 dataset_query: {
                     [key: string]: unknown;
                 };
+                description?: string;
+                display: string;
+                entity_id?: string;
+                name: string;
                 parameter_mappings?: Array<{
                     [key: string]: unknown;
                 }>;
-                name: string;
+                parameters?: Array<{
+                    [key: string]: unknown;
+                }>;
                 result_metadata?: Array<{
                     [key: string]: unknown;
                 }>;
                 /**
-                 * value must be an integer greater than zero.
+                 * Value must be a map.
                  */
-                cache_ttl?: number;
-                display: string;
-                parameters?: Array<{
+                visualization_settings: {
                     [key: string]: unknown;
-                }>;
-                description?: string;
+                };
             };
         };
         /**
@@ -14432,7 +14417,25 @@ export type GetApiFieldByIdResponses = {
 
 export type PutApiFieldByIdData = {
     body?: {
+        caveats?: string;
+        /**
+         * value must be a valid coercion strategy (keyword or string).
+         */
+        coercion_strategy?: unknown;
+        description?: string;
+        display_name?: string;
+        /**
+         * value must be an integer greater than zero.
+         */
+        fk_target_field_id?: number;
+        has_field_values?: MetabaseLibSchemaMetadataColumnHasFieldValues;
+        json_unfolding?: boolean;
+        nfc_path?: Array<string>;
         points_of_interest?: string;
+        /**
+         * value must be a valid field semantic or relation type (keyword or string).
+         */
+        semantic_type?: unknown;
         /**
          * Value must be a map.
          */
@@ -14440,24 +14443,6 @@ export type PutApiFieldByIdData = {
             [key: string]: unknown;
         };
         visibility_type?: 'retired' | 'sensitive' | 'normal' | 'hidden' | 'details-only';
-        /**
-         * value must be a valid coercion strategy (keyword or string).
-         */
-        coercion_strategy?: unknown;
-        json_unfolding?: boolean;
-        /**
-         * value must be a valid field semantic or relation type (keyword or string).
-         */
-        semantic_type?: unknown;
-        has_field_values?: MetabaseLibSchemaMetadataColumnHasFieldValues;
-        display_name?: string;
-        nfc_path?: Array<string>;
-        caveats?: string;
-        description?: string;
-        /**
-         * value must be an integer greater than zero.
-         */
-        fk_target_field_id?: number;
     };
     path: {
         /**
@@ -19426,18 +19411,18 @@ export type GetApiTableResponses = {
 
 export type PutApiTableData = {
     body?: {
-        points_of_interest?: string;
-        visibility_type?: 'technical' | 'hidden' | 'cruft';
-        data_authority?: MetabaseWarehouseSchemaApiTableDataAuthorityWrite;
-        show_in_getting_started?: boolean;
-        ids: Array<number>;
-        display_name?: string;
         caveats?: string;
+        data_authority?: MetabaseWarehouseSchemaApiTableDataAuthorityWrite;
+        description?: string;
+        display_name?: string;
         /**
          * value must be a valid entity type (keyword or string).
          */
         entity_type?: unknown;
-        description?: string;
+        ids: Array<number>;
+        points_of_interest?: string;
+        show_in_getting_started?: boolean;
+        visibility_type?: 'technical' | 'hidden' | 'cruft';
     };
     path?: never;
     query?: never;
@@ -19556,18 +19541,18 @@ export type GetApiTableByIdResponses = {
 
 export type PutApiTableByIdData = {
     body?: {
-        points_of_interest?: string;
-        visibility_type?: 'technical' | 'hidden' | 'cruft';
-        data_authority?: MetabaseWarehouseSchemaApiTableDataAuthorityWrite;
-        show_in_getting_started?: boolean;
-        display_name?: string;
         caveats?: string;
+        data_authority?: MetabaseWarehouseSchemaApiTableDataAuthorityWrite;
+        description?: string;
+        display_name?: string;
         /**
          * value must be a valid entity type (keyword or string).
          */
         entity_type?: unknown;
         field_order?: 'alphabetical' | 'custom' | 'database' | 'smart';
-        description?: string;
+        points_of_interest?: string;
+        show_in_getting_started?: boolean;
+        visibility_type?: 'technical' | 'hidden' | 'cruft';
     };
     path: {
         /**
@@ -20380,25 +20365,25 @@ export type GetApiTilesByZoomByXByYResponses = {
 
 export type PostApiTimelineEventData = {
     body?: {
+        archived?: boolean;
+        description?: string;
+        icon?: 'star' | 'cake' | 'mail' | 'warning' | 'bell' | 'cloud';
+        name: string;
         /**
          * value must be an integer greater than zero.
          */
         question_id?: number;
-        timezone: string;
-        /**
-         * value must be a valid date string
-         */
-        timestamp: string;
-        name: string;
-        archived?: boolean;
+        source?: 'collections' | 'question';
+        time_matters?: boolean;
         /**
          * value must be an integer greater than zero.
          */
         timeline_id: number;
-        source?: 'collections' | 'question';
-        time_matters?: boolean;
-        description?: string;
-        icon?: 'star' | 'cake' | 'mail' | 'warning' | 'bell' | 'cloud';
+        /**
+         * value must be a valid date string
+         */
+        timestamp: string;
+        timezone: string;
     };
     path?: never;
     query?: never;
@@ -20945,321 +20930,6 @@ export type GetApiUserResponses = {
 };
 
 export type GetApiUserResponse = GetApiUserResponses[keyof GetApiUserResponses];
-
-export type PostApiUserData = {
-    body?: {
-        /**
-         * value must be a valid email address.
-         */
-        email: string;
-        first_name?: string;
-        last_name?: string;
-        /**
-         * login attribute keys must be a keyword or string
-         */
-        login_attributes?: {
-            [key: string]: unknown;
-        };
-        source?: string;
-        user_group_memberships?: Array<MetabaseUsersApiUserGroupMembership>;
-    };
-    path?: never;
-    query?: never;
-    url: '/api/user/';
-};
-
-export type PostApiUserErrors = {
-    /**
-     * Client error response
-     */
-    '4XX': unknown;
-    /**
-     * Server error response
-     */
-    '5XX': unknown;
-};
-
-export type PostApiUserResponses = {
-    /**
-     * Schema for a User object returned by the API.
-     */
-    '2XX': MetabaseUsersApiUser;
-};
-
-export type PostApiUserResponse = PostApiUserResponses[keyof PostApiUserResponses];
-
-export type GetApiUserCurrentData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/user/current';
-};
-
-export type GetApiUserCurrentErrors = {
-    /**
-     * Client error response
-     */
-    '4XX': unknown;
-    /**
-     * Server error response
-     */
-    '5XX': unknown;
-};
-
-export type GetApiUserCurrentResponses = {
-    /**
-     * Schema for a User object returned by the API.
-     */
-    '2XX': MetabaseUsersApiUser;
-};
-
-export type GetApiUserCurrentResponse = GetApiUserCurrentResponses[keyof GetApiUserCurrentResponses];
-
-export type GetApiUserRecipientsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/user/recipients';
-};
-
-export type GetApiUserRecipientsErrors = {
-    /**
-     * Client error response
-     */
-    '4XX': unknown;
-    /**
-     * Server error response
-     */
-    '5XX': unknown;
-};
-
-export type GetApiUserRecipientsResponses = {
-    /**
-     * Schema for paginated user list responses.
-     */
-    '2XX': MetabaseUsersApiPaginatedUsers;
-};
-
-export type GetApiUserRecipientsResponse = GetApiUserRecipientsResponses[keyof GetApiUserRecipientsResponses];
-
-export type DeleteApiUserByIdData = {
-    body?: never;
-    path: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        id: number;
-    };
-    query?: never;
-    url: '/api/user/{id}';
-};
-
-export type DeleteApiUserByIdErrors = {
-    /**
-     * Client error response
-     */
-    '4XX': unknown;
-    /**
-     * Server error response
-     */
-    '5XX': unknown;
-};
-
-export type DeleteApiUserByIdResponses = {
-    /**
-     * Schema for simple success responses.
-     */
-    '2XX': MetabaseUsersApiSuccessResponse;
-};
-
-export type DeleteApiUserByIdResponse = DeleteApiUserByIdResponses[keyof DeleteApiUserByIdResponses];
-
-export type GetApiUserByIdData = {
-    body?: never;
-    path: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        id: number;
-    };
-    query?: never;
-    url: '/api/user/{id}';
-};
-
-export type GetApiUserByIdErrors = {
-    /**
-     * Client error response
-     */
-    '4XX': unknown;
-    /**
-     * Server error response
-     */
-    '5XX': unknown;
-};
-
-export type GetApiUserByIdResponses = {
-    /**
-     * Schema for a User object returned by the API.
-     */
-    '2XX': MetabaseUsersApiUser;
-};
-
-export type GetApiUserByIdResponse = GetApiUserByIdResponses[keyof GetApiUserByIdResponses];
-
-export type PutApiUserByIdData = {
-    body?: {
-        /**
-         * value must be a valid email address.
-         */
-        email?: string;
-        first_name?: string;
-        is_group_manager?: boolean;
-        is_superuser?: boolean;
-        last_name?: string;
-        /**
-         * String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.
-         */
-        locale?: string;
-        /**
-         * login attribute keys must be a keyword or string
-         */
-        login_attributes?: {
-            [key: string]: unknown;
-        };
-        user_group_memberships?: Array<MetabaseUsersApiUserGroupMembership>;
-    };
-    path: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        id: number;
-    };
-    query?: never;
-    url: '/api/user/{id}';
-};
-
-export type PutApiUserByIdErrors = {
-    /**
-     * Client error response
-     */
-    '4XX': unknown;
-    /**
-     * Server error response
-     */
-    '5XX': unknown;
-};
-
-export type PutApiUserByIdResponses = {
-    /**
-     * Schema for a User object returned by the API.
-     */
-    '2XX': MetabaseUsersApiUser;
-};
-
-export type PutApiUserByIdResponse = PutApiUserByIdResponses[keyof PutApiUserByIdResponses];
-
-export type PutApiUserByIdModalByModalData = {
-    body?: never;
-    path: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        id: number;
-        modal: string;
-    };
-    query?: never;
-    url: '/api/user/{id}/modal/{modal}';
-};
-
-export type PutApiUserByIdModalByModalErrors = {
-    /**
-     * Client error response
-     */
-    '4XX': unknown;
-    /**
-     * Server error response
-     */
-    '5XX': unknown;
-};
-
-export type PutApiUserByIdModalByModalResponses = {
-    /**
-     * Schema for simple success responses.
-     */
-    '2XX': MetabaseUsersApiSuccessResponse;
-};
-
-export type PutApiUserByIdModalByModalResponse = PutApiUserByIdModalByModalResponses[keyof PutApiUserByIdModalByModalResponses];
-
-export type PutApiUserByIdPasswordData = {
-    body?: {
-        old_password?: string;
-        /**
-         * password is too common.
-         */
-        password: string;
-    };
-    path: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        id: number;
-    };
-    query?: never;
-    url: '/api/user/{id}/password';
-};
-
-export type PutApiUserByIdPasswordErrors = {
-    /**
-     * Client error response
-     */
-    '4XX': unknown;
-    /**
-     * Server error response
-     */
-    '5XX': unknown;
-};
-
-export type PutApiUserByIdPasswordResponses = {
-    /**
-     * Schema for password update response.
-     */
-    '2XX': MetabaseUsersApiPasswordUpdateResponse;
-};
-
-export type PutApiUserByIdPasswordResponse = PutApiUserByIdPasswordResponses[keyof PutApiUserByIdPasswordResponses];
-
-export type PutApiUserByIdReactivateData = {
-    body?: never;
-    path: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        id: number;
-    };
-    query?: never;
-    url: '/api/user/{id}/reactivate';
-};
-
-export type PutApiUserByIdReactivateErrors = {
-    /**
-     * Client error response
-     */
-    '4XX': unknown;
-    /**
-     * Server error response
-     */
-    '5XX': unknown;
-};
-
-export type PutApiUserByIdReactivateResponses = {
-    /**
-     * Schema for a User object returned by the API.
-     */
-    '2XX': MetabaseUsersApiUser;
-};
-
-export type PutApiUserByIdReactivateResponse = PutApiUserByIdReactivateResponses[keyof PutApiUserByIdReactivateResponses];
 
 export type GetApiUtilRandomTokenData = {
     body?: never;
