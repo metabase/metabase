@@ -10,6 +10,8 @@
 
 (doto :model/EmbeddingTheme
   (derive :metabase/model)
+  (derive ::mi/write-policy.superuser)
+  (derive ::mi/read-policy.superuser)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
