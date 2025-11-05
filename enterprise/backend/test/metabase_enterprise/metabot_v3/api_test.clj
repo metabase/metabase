@@ -58,3 +58,40 @@
                           :role         :assistant
                           :data         [{:role "assistant" :content "Hello from streaming!"}]}]
                         messages))))))))))
+
+(deftest feedback-endpoint-test
+  (mt/with-premium-features #{:metabot-v3}
+    (mt/with-random-premium-token! [premium-token]
+      (let [store-url "http://hm.example"]
+        (testing "Submits feedback to Harbormaster with token and base URL"
+          (mt/with-temporary-setting-values [store-api-url store-url]
+            (let [captured     (atom nil)
+                  feedback     {:metabot_id        1
+                                :feedback          {:positive          true
+                                                    :message_id        "m-1"
+                                                    :freeform_feedback "ok"}
+                                :conversation_data {}
+                                :version           "v0.0.0"
+                                :submission_time   "2025-01-01T00:00:00Z"
+                                :is_admin          false}
+                  expected-url (str store-url "/api/v2/metabot/feedback/" premium-token)]
+              (mt/with-dynamic-fn-redefs
+                [http/post (fn [url opts]
+                             (reset! captured {:url  url
+                                               :body (json/decode+kw (:body opts))}))]
+                (let [_resp (mt/user-http-request :rasta :post 204 "ee/metabot-v3/feedback" feedback)]
+                  (is (= {:url expected-url :body feedback}
+                         @captured)))))))
+
+        (testing "Returns 500 when http post fails"
+          (mt/with-temporary-setting-values [premium-embedding-token premium-token]
+            (mt/with-dynamic-fn-redefs
+              [http/post (fn [_url _opts]
+                           (throw (ex-info "boom" {:status 404})))]
+              (mt/user-http-request :rasta :post 500 "ee/metabot-v3/feedback" {:any "payload"}))))
+
+        ;; We're not testing the branch where the store-api-url is missing because that defsetting
+        ;; has the default value. It doesn't work well with `with-temporary-setting-values` helper.
+        (testing "Throws when premium token is missing"
+          (mt/with-temporary-setting-values [premium-embedding-token nil]
+            (mt/user-http-request :rasta :post 400 "ee/metabot-v3/feedback" {:foo "bar"})))))))

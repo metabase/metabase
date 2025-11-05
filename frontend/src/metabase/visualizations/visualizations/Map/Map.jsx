@@ -309,7 +309,8 @@ export class Map extends Component {
       this.props.width === nextProps.width &&
       this.props.height === nextProps.height;
     const sameSeries = isSameSeries(this.props.series, nextProps.series);
-    return !(sameSize && sameSeries);
+    const sameIsEditing = this.props.isEditing === nextProps.isEditing;
+    return !(sameSize && sameSeries && sameIsEditing);
   }
 
   render() {

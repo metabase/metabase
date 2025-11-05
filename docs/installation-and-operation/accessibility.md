@@ -9,7 +9,7 @@ redirect_from:
 
 While we're working to make a product that is easy to use and inclusive to all, we're not yet fully compliant with [the U.S. federal government's Section 508 standards](https://www.section508.gov/) or the [Web Content Accessibility Guidelines (WCAG) 2.1](https://www.w3.org/TR/WCAG21/) at Level AA. We expect to build on our current state in the future, and as of today these are some general notes on our state of compliance:
 
-- **Navigation and screen readers:** Most information is presented in a way to ensure it can be accessed by screen readers. Some interactive elements are not operable for screen reader users.
+- **Navigation and screen readers:** Most information should be accessible to screen readers. Some interactive elements are not operable for screen reader users.
 - **Non-text content:** While Metabase provides text alternatives for most non-text elements, some functional images either lack descriptions or have incomplete alt text.
 - **Keyboard navigation:** Most form elements are keyboard-accessible, but certain interactive components, such as custom controls and non-modal dialogs, may lack full keyboard operability.
 - **Focus management:** Some interactive elements lack a visible focus indicator. A few hidden interactive elements receive the keyboard focus.

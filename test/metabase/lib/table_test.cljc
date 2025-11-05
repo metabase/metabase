@@ -66,3 +66,25 @@
                {:position 3, :name "LATITUDE", :semantic-type :type/Latitude}
                {:position 4, :name "LONGITUDE", :semantic-type :type/Longitude}]
               (lib/returned-columns (lib/native-query mp "WHATEVER") (lib.metadata/table mp (meta/id :venues))))))))
+
+(deftest ^:parallel returned-columns-do-not-truncate-names-test
+  ;; do not truncate really long column names coming back from Tables, if we have them then presumably they're ok with
+  ;; the database that ran the query and we need to use the original name to refer back to it in subsequent stages.
+  (let [mp    (lib.tu/mock-metadata-provider
+               {:database (assoc meta/database :id 1)
+                :tables   [(assoc (meta/table-metadata :venues) :id 1, :database_id 1)]
+                :fields   [(assoc (meta/field-metadata :venues :id)
+                                  :id 1
+                                  :table_id 1
+                                  :name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count")
+                           (assoc (meta/field-metadata :venues :id)
+                                  :id 2
+                                  :table_id 1
+                                  :name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count")]})
+        query (lib/query mp (lib.metadata/table mp 1))]
+    (is (=? [{:lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+              :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}
+             {:lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+              :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count_2"}]
+            (map #(select-keys % [:lib/source-column-alias :lib/desired-column-alias])
+                 (lib/returned-columns query (lib.metadata/table mp 1)))))))

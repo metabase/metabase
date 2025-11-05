@@ -33,9 +33,8 @@ Like with all generative AI, you'll always need to double-check results.
 
 There are multiple ways to start a chat with Metabot:
 
-- Type cmd+b on Mac, ctrl+b on Windows, to open up the [chat sidebar](#the-metabot-chat-sidebar).
-- Click the Metabot icon in the search bar.
-- Type cmd+k on Mac, or ctrl+k on Windows, to open the [command palette](../exploration-and-organization/exploration.md#command-palette). Select the Metabot option to **Ask me to do something, or ask a question**.
+- Type cmd+e on Mac, ctrl+e on Windows, to open up the [chat sidebar](#the-metabot-chat-sidebar).
+- Click the Metabot icon in top right.
 
 You can chat with Metabot (though predictably, it's only interested in helping you answer questions about your data).
 
@@ -53,7 +52,7 @@ Some tips:
 Hover over Metabot's response to:
 
 - Copy the response.
-- Give thumbs-up/thumbs-down feedback on responses. If you downvote a response, you can optionally contribute a bug report to help us improve Metabot.
+- Give thumbs-up/thumbs-down [feedback on responses](#giving-feedback-on-metabot-responses). If you upvote a response, you can optionally add some feedback. If you downvote a response, you can optionally contribute a bug report to help us improve Metabot.
 - Re-run the prompt with Metabot. This is useful if you've updated the chart or just want to have Metabot take another pass (since AI responses aren't deterministic, Metabot may give a different response on another run).
 
 ## Analyze charts with Metabot
@@ -68,7 +67,7 @@ You can also ask Metabot to tell you about specific tables in your database.
 
 ## How Metabot uses the query builder
 
-When you ask Metabot to create a chart from natural language, it first looks for existing questions that might answer your request. If it finds a relevant question, it'll point you to that instead of creating something new. Otherwise, Metabot will use the [query builder](../questions/query-builder/editor.md) to create a new chart for you. 
+When you ask Metabot to create a chart from natural language, it first looks for existing questions that might answer your request. If it finds a relevant question, it'll point you to that instead of creating something new. Otherwise, Metabot will use the [query builder](../questions/query-builder/editor.md) to create a new chart for you.
 
 Keep in mind that Metabot is still learning the query builder. Metabot can only handle basic query builder operations, and it lacks access to the library of [custom expressions](../questions/query-builder/expressions-list.md). Metabot is also limited to single-level aggregation and grouping, so if you need more complex analysis, you can take over and refine the query yourself, or switch to the SQL editor.
 
@@ -80,7 +79,7 @@ To have Metabot generate SQL for you:
 
 1. Open the [SQL editor](../questions/native-editor/writing-sql.md).
 2. Select the database you want to query.
-3. Type cmd+b on Mac, ctrl+b on Windows, to open up the [chat sidebar](#the-metabot-chat-sidebar).
+3. Type cmd+e on Mac, ctrl+e on Windows, to open up the [chat sidebar](#the-metabot-chat-sidebar).
 4. Ask it to "Write a SQL query that..." and type your prompt.
 
 Metabot will generate the SQL for you, but it won't run the query. This gives you a chance to inspect the code before running it.
@@ -98,3 +97,19 @@ When you get an error in a SQL query, you can click the **Have Metabot fix it** 
 If Metabot creates a query or takes you to a new item but you want to return to the previous screen, you can navigate using your browser's back button.
 
 You can also save any chart that Metabot creates to a dashboard or collection.
+
+## Giving feedback on Metabot responses
+
+When you hover over Metabot's responses, you'll see options to give feedback.
+
+Thumbs up are just as helpful as thumbs down. If you give a thumbs down, you can optionally provide more details about the issue and set an issue type:
+
+- UI bug
+- Took incorrect actions
+- Overall refusal
+- Did not follow request
+- Not factually correct
+- Incomplete response
+- Other
+
+> When you submit feedback, the form you send may contain sensitive data from your conversation.

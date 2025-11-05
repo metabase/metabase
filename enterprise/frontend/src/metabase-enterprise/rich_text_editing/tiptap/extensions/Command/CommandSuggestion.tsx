@@ -231,6 +231,8 @@ export const CommandSuggestion = forwardRef<
     onSelectEntity: onSelectLinkEntity,
     enabled: true,
     searchModels: showLinkSearch ? LINK_SEARCH_MODELS : EMBED_SEARCH_MODELS,
+    canFilterSearchModels: false,
+    canBrowseAll: true,
   });
 
   const {
@@ -397,6 +399,7 @@ export const CommandSuggestion = forwardRef<
           modal={entityModal}
           onModalSelect={entityHandlers.handleModalSelect}
           onModalClose={entityHandlers.handleModalClose}
+          canBrowseAll
         />
       ) : (
         <>

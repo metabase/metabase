@@ -135,10 +135,11 @@ jobs:
     - uses: actions/checkout@v4
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
-      env:
-        METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-      run: ./.github/scripts/setup-python-runner.sh
+      uses: ./.github/actions/setup-python-runner
+      with:
+        metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
     - name: Test BigQuery Cloud SDK driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
@@ -154,6 +155,12 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+    - name: Cleanup python-runner
+      if: ${{ always() && matrix.job.needs-python-runner == true }}
+      uses: ./.github/actions/cleanup-python-runner
+      with:
+        upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
+        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-clickhouse-ee:
     if: ${{ !inputs.skip }}
@@ -183,9 +190,9 @@ jobs:
     - uses: actions/checkout@v4
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
-      env:
-        METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-      run: ./.github/scripts/setup-python-runner.sh
+      uses: ./.github/actions/setup-python-runner
+      with:
+        metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
     - name: Add ClickHouse TLS instance to /etc/hosts
       run: |
         sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
@@ -202,6 +209,7 @@ jobs:
           clickhouse_cluster_node2
           nginx
     - name: Test Clickhouse driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-clickhouse-ee'
@@ -217,6 +225,12 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+    - name: Cleanup python-runner
+      if: ${{ always() && matrix.job.needs-python-runner == true }}
+      uses: ./.github/actions/cleanup-python-runner
+      with:
+        upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
+        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-druid-ee:
     needs: determine-driver-skips
@@ -376,11 +390,8 @@ jobs:
     name: H2
     steps:
     - uses: actions/checkout@v4
-    - name: Setup python-runner
-      env:
-        METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-      run: ./.github/scripts/setup-python-runner.sh
     - name: Test H2 driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-h2'
@@ -431,7 +442,7 @@ jobs:
           - name: Driver Tests
             test-args: >-
               :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
+            exclude-tag: ':mb/transforms-python-test'
           - name: Transforms Python Tests
             test-args: >-
               :only-tags [:mb/transforms-python-test]
@@ -491,11 +502,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup python-runner
-      #if: ${{ matrix.job.needs-python-runner == true }}
-        env:
-          METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-        run: ./.github/scripts/setup-python-runner.sh
+        if: ${{ matrix.job.needs-python-runner == true }}
+        uses: ./.github/actions/setup-python-runner
+        with:
+          metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
       - name: Test ${{ matrix.version.name }}
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           junit-name: ${{ matrix.version.junit-name }}
@@ -513,6 +525,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+      - name: Cleanup python-runner
+        if: always()
+        uses: ./.github/actions/cleanup-python-runner
+        with:
+          upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
+          logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-mongo:
     needs: determine-driver-skips
@@ -556,10 +574,11 @@ jobs:
     - uses: actions/checkout@v4
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
-      env:
-        METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-      run: ./.github/scripts/setup-python-runner.sh
+      uses: ./.github/actions/setup-python-runner
+      with:
+        metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
     - name: Test ${{ matrix.version.name }}
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: ${{ matrix.version.junit-name }}
@@ -575,6 +594,12 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+    - name: Cleanup python-runner
+      if: ${{ always() && matrix.job.needs-python-runner == true }}
+      uses: ./.github/actions/cleanup-python-runner
+      with:
+        upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
+        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-mongo-ssl:
     needs: determine-driver-skips
@@ -770,7 +795,7 @@ jobs:
           - name: Driver Tests
             test-args: >-
               :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
+            exclude-tag: ':mb/transforms-python-test'
           - name: Transforms Python Tests
             test-args: >-
               :only-tags [:mb/transforms-python-test]
@@ -817,11 +842,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup python-runner
-      #if: ${{ matrix.job.needs-python-runner == true }}
-        env:
-          METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-        run: ./.github/scripts/setup-python-runner.sh
+        if: ${{ matrix.job.needs-python-runner == true }}
+        uses: ./.github/actions/setup-python-runner
+        with:
+          metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
       - name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           junit-name: 'be-tests-${{ matrix.version.junit-name }}'
@@ -839,6 +865,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+      - name: Cleanup python-runner
+        if: always()
+        uses: ./.github/actions/cleanup-python-runner
+        with:
+          upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
+          logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-presto-jdbc-ee:
     needs: determine-driver-skips
@@ -949,10 +981,11 @@ jobs:
     - uses: actions/checkout@v4
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
-      env:
-        METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-      run: ./.github/scripts/setup-python-runner.sh
+      uses: ./.github/actions/setup-python-runner
+      with:
+        metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
     - name: Test ${{ matrix.job.name }}
+      id: test-driver
       if: ${{ !matrix.job.skip }}
       uses: ./.github/actions/test-driver
       with:
@@ -970,66 +1003,82 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+    - name: Cleanup python-runner
+      if: ${{ always() && matrix.job.needs-python-runner == true }}
+      uses: ./.github/actions/cleanup-python-runner
+      with:
+        upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
+        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
-  be-tests-snowflake-ee:
-    if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        job:
-          - name: Driver Tests
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
+  # dan sutton 2025-10-23: disable snowflake because of account
+  # issues. https://linear.app/metabase/issue/DEV-997/reenable-snowflake-in-ci. Note that the transforms tests were
+  # disabled previously
+  # be-tests-snowflake-ee:
+  #   if: ${{ !inputs.skip }}
+  #   runs-on: ubuntu-22.04
+  #   timeout-minutes: 60
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       job:
+  #         - name: Driver Tests
+  #           test-args: >-
+  #             :only-tags [:mb/driver-tests]
+  #             :exclude-tags [:mb/transforms-python-test]
 # DS 2025-09-26 temporarily disabled while we diagnose flakes
 #          - name: Transforms Python Tests
 #            test-args: >-
 #              :only-tags [:mb/transforms-python-test]
 #            needs-python-runner: true
-    env:
-      CI: 'true'
-      DRIVERS: snowflake
-      MB_SNOWFLAKE_TEST_USER: METABASE CI
-      MB_SNOWFLAKE_TEST_ACCOUNT: ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
-      MB_SNOWFLAKE_TEST_PASSWORD: ${{ secrets.MB_SNOWFLAKE_TEST_PASSWORD }}
-      MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
-      MB_SNOWFLAKE_TEST_PK_USER: METABASE PK
-      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY }}
-      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2 }}
-      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY }}
-      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2 }}
+    # env:
+    #   CI: 'true'
+    #   DRIVERS: snowflake
+    #   MB_SNOWFLAKE_TEST_USER: METABASE CI
+    #   MB_SNOWFLAKE_TEST_ACCOUNT: ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
+    #   MB_SNOWFLAKE_TEST_PASSWORD: ${{ secrets.MB_SNOWFLAKE_TEST_PASSWORD }}
+    #   MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
+    #   MB_SNOWFLAKE_TEST_PK_USER: METABASE PK
+    #   MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY }}
+    #   MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2 }}
+    #   MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY }}
+    #   MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2 }}
 
-      # RSA Role testing:
-      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DEFAULT_USER: RSA_ROLE_TEST_DEFAULT_USER
-      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER
-      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
-      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
-    name: Snowflake ${{ matrix.job.name }}
-    steps:
-    - uses: actions/checkout@v4
-    - name: Setup python-runner
-      if: ${{ matrix.job.needs-python-runner == true }}
-      env:
-        METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-      run: ./.github/scripts/setup-python-runner.sh
-    - name: Test Snowflake driver
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-snowflake-ee'
-        test-args: ${{ matrix.job.test-args }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+    #   # RSA Role testing:
+    #   MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DEFAULT_USER: RSA_ROLE_TEST_DEFAULT_USER
+    #   MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER
+    #   MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
+    #   MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
+    # name: Snowflake ${{ matrix.job.name }}
+    # steps:
+    # - uses: actions/checkout@v4
+    # - name: Setup python-runner
+    #   if: ${{ matrix.job.needs-python-runner == true }}
+    #   uses: ./.github/actions/setup-python-runner
+    #   with:
+    #     metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+    # - name: Test Snowflake driver
+    #   id: test-driver
+    #   uses: ./.github/actions/test-driver
+    #   with:
+    #     junit-name: 'be-tests-snowflake-ee'
+    #     test-args: ${{ matrix.job.test-args }}
+    # - name: Upload Test Results
+    #   uses: ./.github/actions/upload-test-results
+    #   if: always()
+    #   with:
+    #     input-path: ./target/junit/
+    #     output-name: ${{ github.job }}
+    #     bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+    #     aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+    #     aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+    #     aws-region: ${{ vars.AWS_REGION }}
+    #     trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+    # - name: Cleanup python-runner
+    #   if: ${{ always() && matrix.job.needs-python-runner == true }}
+    #   uses: ./.github/actions/cleanup-python-runner
+    #   with:
+    #     upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
+    #     logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-sparksql-ee:
     needs: determine-driver-skips
@@ -1140,10 +1189,11 @@ jobs:
     - uses: actions/checkout@v4
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
-      env:
-        METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-      run: ./.github/scripts/setup-python-runner.sh
+      uses: ./.github/actions/setup-python-runner
+      with:
+        metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
     - name: Test ${{ matrix.version.name }}
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: ${{ matrix.version.junit-name }}
@@ -1159,6 +1209,12 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+    - name: Cleanup python-runner
+      if: ${{ always() && matrix.job.needs-python-runner == true }}
+      uses: ./.github/actions/cleanup-python-runner
+      with:
+        upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
+        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   # TODO(dpsutton, 2025-08-20): Re-enable starburst when we figure out why it randomly dies in CI
   # be-tests-starburst-ee:
@@ -1286,7 +1342,8 @@ jobs:
       - be-tests-postgres
       - be-tests-presto-jdbc-ee
       - be-tests-redshift-ee
-      - be-tests-snowflake-ee
+      # dan: disabled for account reasons. https://linear.app/metabase/issue/DEV-997/reenable-snowflake-in-ci
+      # - be-tests-snowflake-ee
       - be-tests-sparksql-ee
       - be-tests-sqlite-ee
       - be-tests-sqlserver

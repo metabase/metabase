@@ -1,12 +1,12 @@
 import dayjs from "dayjs";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { resetSnowplow } from "e2e/support/helpers/e2e-snowplow-helpers";
 
 const { H } = cy;
 
-const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > table-editing", () => {
   beforeEach(() => {
@@ -403,35 +403,51 @@ describe("scenarios > table-editing", () => {
     beforeEach(() => {
       resetSnowplow();
 
-      cy.intercept("GET", `/api/table/${ORDERS_ID}/query_metadata`).as(
-        "getOrdersTable",
-      );
+      H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "scoreboard_actions" });
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: "scoreboard_actions",
+      });
 
+      H.activateToken("bleeding-edge");
+      setTableEditingEnabledForDB(WRITABLE_DB_ID);
+
+      cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
       cy.intercept("POST", "api/dataset").as("getTableDataQuery");
       cy.intercept("POST", "api/ee/action-v2/execute-bulk").as("executeBulk");
 
-      cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/edit`);
+      H.getTableId({ name: "scoreboard_actions" }).then((tableId) => {
+        cy.visit(`/browse/databases/${WRITABLE_DB_ID}/tables/${tableId}/edit`);
+      });
 
-      cy.wait("@getOrdersTable");
+      cy.wait("@getTableMetadata");
     });
 
     it("should allow to create a row", () => {
       cy.findByTestId("new-record-button").click();
 
-      H.modal().within(() => {
-        cy.findByText("Create a new record").should("be.visible");
-        cy.findByTestId("Tax-field-input").type("50");
-        cy.findByTestId("Total-field-input").type("100");
-        cy.findByTestId("Discount-field-input").type("10");
-        cy.findByTestId("create-row-form-submit-button").click();
-      });
+      H.modal().findByText("Create a new record").should("be.visible");
+
+      cy.findByTestId("Team Name-field-input").click();
+      H.popover().findByRole("textbox").type("New York Bricks");
+      H.popover()
+        .findByText(/Add option/)
+        .click();
+      cy.findByTestId("Score-field-input").type("987");
+      cy.findByTestId("Status-field-input").click();
+      H.popover().findByText("active").click();
+
+      cy.findByTestId("create-row-form-submit-button").click();
 
       cy.wait("@executeBulk").then(({ response, request }) => {
         expect(request.body.action).to.equal("data-grid.row/create");
         expect(response?.body.outputs[0].op).to.equal("created");
-        expect(response?.body.outputs[0].row.TAX).to.equal(50);
-        expect(response?.body.outputs[0].row.TOTAL).to.equal(100);
-        expect(response?.body.outputs[0].row.DISCOUNT).to.equal(10);
+        expect(response?.body.outputs[0].row.score).to.equal(987);
+        expect(response?.body.outputs[0].row.status).to.equal("active");
+        expect(response?.body.outputs[0].row.team_name).to.equal(
+          "New York Bricks",
+        );
       });
 
       H.undoToast().within(() => {
@@ -439,18 +455,25 @@ describe("scenarios > table-editing", () => {
         cy.findByLabelText("close icon").click();
       });
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "edit_data_record_modified",
-        event_detail: "create",
-        target_id: ORDERS_ID,
-        triggered_from: "modal",
-        result: "success",
+      cy.findByTestId("table-root").within(() => {
+        cy.findByText("New York Bricks").should("be.visible");
+        cy.findByText("987").should("be.visible");
+      });
+
+      H.getTableId({ name: "scoreboard_actions" }).then((tableId) => {
+        H.expectUnstructuredSnowplowEvent({
+          event: "edit_data_record_modified",
+          event_detail: "create",
+          target_id: tableId,
+          triggered_from: "modal",
+          result: "success",
+        });
       });
     });
 
     it("should allow to delete multiple rows (bulk)", () => {
-      cy.findAllByTestId("row-select-checkbox").eq(15).click();
-      cy.findAllByTestId("row-select-checkbox").eq(16).click();
+      cy.findAllByTestId("row-select-checkbox").eq(1).click();
+      cy.findAllByTestId("row-select-checkbox").eq(2).click();
 
       cy.log("should not show edit icon when rows are selected");
       cy.findByTestId("row-edit-icon").should("not.exist");
@@ -474,6 +497,66 @@ describe("scenarios > table-editing", () => {
 
       cy.log("should show edit icon when no rows are selected");
       cy.findAllByTestId("row-edit-icon").should("exist");
+    });
+  });
+
+  describe("table editing bugs", () => {
+    it("WRK-907: should not allow to create new values for FK fields", () => {
+      cy.intercept("GET", `/api/table/${ORDERS_ID}/query_metadata`).as(
+        "getOrdersTable",
+      );
+      const NON_EXISTING_ID = "999999";
+      cy.intercept(
+        "GET",
+        `/api/field/${ORDERS.USER_ID}/search/${ORDERS.USER_ID}?value=${NON_EXISTING_ID}&limit=20`,
+      ).as("getFieldValues");
+      cy.intercept(
+        "GET",
+        `/api/field/${PRODUCTS.CATEGORY}/search/${PRODUCTS.CATEGORY}?value=${NON_EXISTING_ID}&limit=20`,
+      ).as("getCategoryValues");
+
+      cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/edit`);
+
+      cy.wait("@getOrdersTable");
+
+      cy.findByTestId("new-record-button").click();
+
+      H.modal().within(() => {
+        cy.findByTestId("User ID-field-input").click();
+        cy.realType(NON_EXISTING_ID);
+      });
+
+      cy.wait("@getFieldValues");
+
+      H.popover().within(() => {
+        cy.findByText("Nothing found").should("be.visible");
+        cy.findByText(`Add option: ${NON_EXISTING_ID}`).should("not.exist");
+      });
+
+      H.modal().findByText("Cancel").click();
+
+      cy.intercept("GET", `/api/table/${PRODUCTS_ID}/query_metadata`).as(
+        "getProductsTable",
+      );
+
+      // navigate via breadcrumbs to avoid calling expensive `cy.visit`
+      cy.findByTestId("head-crumbs-container")
+        .findByText("Sample Database")
+        .click();
+      openTableEdit("Products");
+
+      cy.wait("@getProductsTable");
+
+      cy.findByTestId("new-record-button").click();
+
+      H.modal().within(() => {
+        cy.findByTestId("Category-field-input").click();
+        cy.realType(NON_EXISTING_ID);
+      });
+
+      H.popover()
+        .findByRole("option", { name: `Add option: ${NON_EXISTING_ID}` })
+        .should("be.visible");
     });
   });
 });

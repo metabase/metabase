@@ -4,10 +4,15 @@ import { t } from "ttag";
 import { ColorPillPicker } from "metabase/common/components/ColorPicker";
 import { useSetting } from "metabase/common/hooks";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
-import { colors as defaultMetabaseColors } from "metabase/lib/colors";
+import { originalColors, staticVizOverrides } from "metabase/lib/colors";
 import { ActionIcon, Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
 
 import { getConfigurableThemeColors } from "../utils/theme-colors";
+
+const defaultMetabaseColorsWithoutAlpha = {
+  ...originalColors,
+  ...staticVizOverrides,
+};
 
 interface ColorCustomizationSectionProps {
   theme?: { colors?: Partial<MetabaseColors> };
@@ -62,7 +67,7 @@ export const ColorCustomizationSection = ({
           // Use the default from appearance settings. If not set, use the default Metabase color.
           const originalColor =
             applicationColors?.[originalColorKey] ??
-            defaultMetabaseColors[originalColorKey];
+            defaultMetabaseColorsWithoutAlpha[originalColorKey];
 
           const previewValue = colorPreviewValues[key] ?? theme?.colors?.[key];
 
@@ -79,6 +84,7 @@ export const ColorCustomizationSection = ({
                 onPreviewChange={(color: string) =>
                   setColorPreviewValues((prev) => ({ ...prev, [key]: color }))
                 }
+                data-testid={`${key}-color-picker`}
               />
             </Stack>
           );

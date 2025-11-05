@@ -47,6 +47,7 @@
     :model/DashboardBookmark
     :model/DataPermissions
     :model/DatabaseRouter
+    :model/Dependency
     :model/DocumentBookmark
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
@@ -78,6 +79,8 @@
     :model/QueryField
     :model/QueryTable
     :model/RecentViews
+    :model/RemoteSyncObject
+    :model/RemoteSyncTask
     :model/Revision
     :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata
