@@ -16,7 +16,7 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
-   (java.io ByteArrayInputStream ByteArrayOutputStream)
+   (java.io ByteArrayOutputStream PipedInputStream PipedOutputStream)
    (metabase.server.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
@@ -27,11 +27,23 @@
             (str/join))
        "d:" (json/encode {:finishReason "stop" :usage usage})))
 
-(defn mock-post! [^String body]
+(defn mock-post! [^String body & [{:keys [delay-ms]
+                                   :or   {delay-ms 0}}]]
   (fn [_url _opts]
-    {:status 200
-     :headers {"content-type" "text/event-stream"}
-     :body (ByteArrayInputStream. (.getBytes body "UTF-8"))}))
+    (let [ret  (PipedInputStream.)
+          pipe (PipedOutputStream. ret)]
+      (future
+        (try
+          (doseq [^String line (str/split body #"\n")]
+            (.write pipe (.getBytes line "UTF-8"))
+            (.write pipe (.getBytes "\n" "UTF-8"))
+            (.flush pipe)
+            (Thread/sleep ^long delay-ms))
+          (finally
+            (.close pipe))))
+      {:status  200
+       :headers {"content-type" "text/event-stream"}
+       :body    ret})))
 
 (defn consume-streaming-response
   "Execute a StreamingResponse and capture its output"
