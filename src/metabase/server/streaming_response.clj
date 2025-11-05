@@ -307,6 +307,7 @@
       (write-something-to-stream! os))
 
   `f` should block until it is completely finished writing to the stream, which will be closed thereafter.
+  NOTE: `canceled-chan` **IS NOT WORKING**; see `metabase.server.streaming-response-test/canceling-response-2`
   `canceled-chan` can be monitored to see if the request is canceled before results are fully written to the stream.
 
   Current options:

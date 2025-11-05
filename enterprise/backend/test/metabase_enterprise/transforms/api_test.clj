@@ -53,15 +53,25 @@
     (mt/with-premium-features #{:transforms}
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "gadget_products"]
-          (let [query  (make-query "Gadget")
-                schema (get-test-schema)]
-            (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                  {:name   "Gadget Products"
-                                   :source {:type  "query"
-                                            :query query}
-                                   :target {:type   "table"
-                                            :schema schema
-                                            :name   table-name}})))))))
+          (let [query (make-query "Gadget")
+                schema (get-test-schema)
+                response (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                               {:name "Gadget Products"
+                                                :source {:type "query"
+                                                         :query query}
+                                                :target {:type "table"
+                                                         :schema schema
+                                                         :name table-name}})
+                transform-id (:id response)
+                crowberto-id (mt/user->id :crowberto)
+                creator-id (t2/select-one-fn :creator_id :model/Transform transform-id)]
+            (testing "Response includes creator_id"
+              (is (= crowberto-id (:creator_id response))))
+            (testing "Database record has creator_id set correctly"
+              (is (= crowberto-id creator-id)))
+            (testing "Response hydrates creator"
+              (is (map? (:creator response)))
+              (is (= crowberto-id (get-in response [:creator :id]))))))))))
 
 (deftest transform-type-detection-test
   (testing "Transform type is automatically detected and set based on source"
@@ -215,16 +225,20 @@
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [table-name "gadget_products"]
-            (let [body      {:name        "Gadget Products"
-                             :description "Desc"
-                             :source      {:type  "query"
-                                           :query (make-query "Gadget")}
-                             :target      {:type   "table"
-                                           :schema (get-test-schema)
-                                           :name   table-name}}
-                  _         (mt/user-http-request :crowberto :post 200 "ee/transform" body)
-                  list-resp (mt/user-http-request :crowberto :get 200 "ee/transform")]
-              (is (seq list-resp)))))))))
+            (let [body         {:name        "Gadget Products"
+                                :description "Desc"
+                                :source      {:type  "query"
+                                              :query (make-query "Gadget")}
+                                :target      {:type   "table"
+                                              :schema (get-test-schema)
+                                              :name   table-name}}
+                  _            (mt/user-http-request :crowberto :post 200 "ee/transform" body)
+                  list-resp    (mt/user-http-request :crowberto :get 200 "ee/transform")
+                  crowberto-id (mt/user->id :crowberto)]
+              (is (seq list-resp))
+              (testing "List response hydrates creator"
+                (is (every? #(map? (:creator %)) list-resp))
+                (is (some #(= crowberto-id (get-in % [:creator :id])) list-resp))))))))))
 
 (deftest filter-transforms-test
   (testing "should be able to filter transforms"
@@ -260,18 +274,21 @@
     (mt/with-premium-features #{:transforms}
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "gadget_products"]
-          (let [body {:name        "Gadget Products"
-                      :description "Desc"
-                      :source      {:type  "query"
-                                    :query (make-query "Gadget")}
-                      :target      {:type   "table"
-                                    :schema (get-test-schema)
-                                    :name   table-name}}
-                resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
+          (let [body         {:name        "Gadget Products"
+                              :description "Desc"
+                              :source      {:type  "query"
+                                            :query (make-query "Gadget")}
+                              :target      {:type   "table"
+                                            :schema (get-test-schema)
+                                            :name   table-name}}
+                resp         (mt/user-http-request :crowberto :post 200 "ee/transform" body)
+                get-resp     (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))
+                crowberto-id (mt/user->id :crowberto)]
             (is (=? (m/dissoc-in body [:source :query :lib/metadata])
-                    (->
-                     (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))
-                     (update-in [:source :query] lib/normalize))))))))))
+                    (update-in get-resp [:source :query] lib/normalize)))
+            (testing "GET response hydrates creator"
+              (is (map? (:creator get-resp)))
+              (is (= crowberto-id (get-in get-resp [:creator :id]))))))))))
 
 (defn- ->transform [transform-name query]
   {:source {:type "query",
@@ -289,40 +306,47 @@
                    :model/Transform child   (-> (->transform "transform2" (mt/mbql-query nil {:source-table table}))
                                                 (assoc-in [:target :name] "orders_3"))]
       (mt/with-premium-features #{:transforms}
-        (is (=? [{:name "transform1"
-                  :source {:type "query", :query {:database (mt/id)
-                                                  :lib/type "mbql/query"
-                                                  :stages [{:source-table (mt/id :orders)}]}}
-                  :id (:id parent)
-                  :entity_id (:entity_id parent)
-                  :target {:schema "public", :name "orders_2", :type "table"}}]
-                (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s/dependencies" (:id child)))))))))
+        (let [deps-resp (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s/dependencies" (:id child)))]
+          (is (=? [{:name      "transform1"
+                    :source    {:type "query"
+                                :query {:database (mt/id)
+                                        :lib/type "mbql/query"
+                                        :stages   [{:source-table (mt/id :orders)}]}}
+                    :id        (:id parent)
+                    :entity_id (:entity_id parent)
+                    :target    {:schema "public", :name "orders_2", :type "table"}}]
+                  deps-resp))
+          (testing "Dependencies response hydrates creator"
+            (is (every? #(map? (:creator %)) deps-resp))))))))
 
 (deftest put-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "gadget_products"]
-          (let [query2    (make-query "None")
-                resp      (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                                {:name   "Gadget Products"
-                                                 :source {:type  "query"
-                                                          :query (make-query "Gadget")}
-                                                 :target {:type   "table"
-                                                          :schema (get-test-schema)
-                                                          :name   table-name}})
-                transform {:name        "Gadget Products 2"
-                           :description "Desc"
-                           :source      {:type  "query"
-                                         :query query2}
-                           :target      {:type   "table"
-                                         :schema (get-test-schema)
-                                         :name   table-name}}]
+          (let [query2       (make-query "None")
+                resp         (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                   {:name   "Gadget Products"
+                                                    :source {:type  "query"
+                                                             :query (make-query "Gadget")}
+                                                    :target {:type   "table"
+                                                             :schema (get-test-schema)
+                                                             :name   table-name}})
+                transform    {:name        "Gadget Products 2"
+                              :description "Desc"
+                              :source      {:type  "query"
+                                            :query query2}
+                              :target      {:type   "table"
+                                            :schema (get-test-schema)
+                                            :name   table-name}}
+                put-resp     (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
+                                                   transform)
+                crowberto-id (mt/user->id :crowberto)]
             (is (=? (m/dissoc-in transform [:source :query :lib/metadata])
-                    (->
-                     (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
-                                           transform)
-                     (update-in [:source :query] lib/normalize))))))))))
+                    (update-in put-resp [:source :query] lib/normalize)))
+            (testing "PUT response hydrates creator"
+              (is (map? (:creator put-resp)))
+              (is (= crowberto-id (get-in put-resp [:creator :id]))))))))))
 
 (deftest change-target-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)

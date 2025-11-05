@@ -5,6 +5,7 @@ import { Api } from "metabase/api";
 import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
+import { tag } from "metabase/api/tags";
 import { timelineApi } from "metabase/api/timeline";
 import { timelineEventApi } from "metabase/api/timeline-event";
 import type {
@@ -31,6 +32,41 @@ export const remoteSyncListenerMiddleware = createListenerMiddleware<State>();
 function invalidateRemoteSyncTags(dispatch: any) {
   dispatch(Api.util.invalidateTags(REMOTE_SYNC_INVALIDATION_TAGS as any));
 }
+
+function isDeactivatingRemoteSync(action: any): boolean {
+  const settings = action.meta?.arg?.originalArgs;
+  return settings?.["remote-sync-url"] === "";
+}
+
+const ALL_INVALIDATION_TAGS = [
+  tag("action"),
+  tag("alert"),
+  tag("bookmark"),
+  tag("card"),
+  tag("channel"),
+  tag("collection"),
+  tag("collection-tree"),
+  tag("content-translation"),
+  tag("dashboard"),
+  tag("dashboard-question-candidates"),
+  tag("document"),
+  tag("embed-card"),
+  tag("embed-dashboard"),
+  tag("indexed-entity"),
+  tag("notification"),
+  tag("parameter-values"),
+  tag("public-action"),
+  tag("public-card"),
+  tag("public-dashboard"),
+  tag("revision"),
+  tag("segment"),
+  tag("session-properties"),
+  tag("snippet"),
+  tag("subscription"),
+  tag("subscription-channel"),
+  tag("timeline"),
+  tag("timeline-event"),
+];
 
 function shouldInvalidateForEntity(
   oldEntity: Card | Dashboard | Document | undefined,
@@ -272,12 +308,18 @@ remoteSyncListenerMiddleware.startListening({
 });
 
 remoteSyncListenerMiddleware.startListening({
-  matcher: isAnyOf(
-    remoteSyncApi.endpoints.importChanges.matchPending,
-    remoteSyncApi.endpoints.updateRemoteSyncSettings.matchPending,
-  ),
+  matcher: remoteSyncApi.endpoints.importChanges.matchPending,
   effect: async (_action, { dispatch }) => {
     dispatch(taskStarted({ taskType: "import" }));
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.updateRemoteSyncSettings.matchPending,
+  effect: async (action, { dispatch }) => {
+    if (!isDeactivatingRemoteSync(action)) {
+      dispatch(taskStarted({ taskType: "import" }));
+    }
   },
 });
 
@@ -318,37 +360,7 @@ remoteSyncListenerMiddleware.startListening({
           }, 500);
 
           if (isImportTask) {
-            dispatch(
-              Api.util.invalidateTags([
-                "action",
-                "alert",
-                "bookmark",
-                "card",
-                "channel",
-                "collection",
-                "collection-tree",
-                "content-translation",
-                "dashboard",
-                "dashboard-question-candidates",
-                "document",
-                "embed-card",
-                "embed-dashboard",
-                "indexed-entity",
-                "notification",
-                "parameter-values",
-                "public-action",
-                "public-card",
-                "public-dashboard",
-                "revision",
-                "segment",
-                "session-properties",
-                "snippet",
-                "subscription",
-                "subscription-channel",
-                "timeline",
-                "timeline-event",
-              ]),
-            );
+            dispatch(Api.util.invalidateTags(ALL_INVALIDATION_TAGS));
           }
         }
 

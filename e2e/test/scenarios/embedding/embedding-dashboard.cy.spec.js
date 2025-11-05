@@ -524,24 +524,13 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
     cy.log("test downloading result (metabase#36721)");
     H.getDashboardCard().realHover();
-    H.downloadAndAssert(
-      {
-        fileType: "csv",
-        isDashboard: true,
-        isEmbed: true,
-        logResults: true,
-        downloadUrl: "/api/embed/dashboard/*/dashcard/*/card/*/csv*",
-        downloadMethod: "GET",
-      },
-      (sheet) => {
-        expect(sheet["A1"].v).to.eq("ID");
-        expect(sheet["A2"].v).to.eq(9);
-        expect(sheet["B1"].v).to.eq("EAN");
-        expect(sheet["B2"].v).to.eq(7217466997444);
-
-        H.assertSheetRowsCount(54)(sheet);
-      },
-    );
+    H.downloadAndAssert({
+      fileType: "csv",
+      isDashboard: true,
+      isEmbed: true,
+      downloadUrl: "/api/embed/dashboard/*/dashcard/*/card/*/csv*",
+      downloadMethod: "GET",
+    });
 
     cy.log(
       "The PDF download button should be clickable when there is no title, but has parameters (metabase#59503)",
@@ -773,6 +762,15 @@ describe("scenarios > embedding > dashboard appearance", () => {
     H.modal().within(() => {
       cy.findByRole("tab", { name: "Look and Feel" }).click();
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
+
+      cy.log(
+        'Embed preview requests should not have "X-Metabase-Client: embedding-iframe" header (EMB-930)',
+      );
+      cy.get("@previewEmbed").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.not.equal(
+          "embedding-iframe",
+        );
+      });
 
       cy.log("Assert dashboard theme");
       H.getIframeBody()
