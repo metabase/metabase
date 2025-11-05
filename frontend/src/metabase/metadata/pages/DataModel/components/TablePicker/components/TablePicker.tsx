@@ -1,15 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useDeferredValue, useEffect, useState } from "react";
-import { Link } from "react-router";
 import { usePrevious } from "react-use";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
-import {
-  useListCollectionsTreeQuery,
-  usePublishModelsMutation,
-} from "metabase/api";
-import { isSyncedCollection } from "metabase/collections/utils";
-import { useToast } from "metabase/common/hooks";
 import {
   Badge,
   Box,
@@ -23,7 +16,6 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
-import type { CollectionId, DatabaseId, TableId } from "metabase-types/api";
 
 import { useSelection } from "../../../contexts/SelectionContext";
 import type { RouteParams } from "../../../types";
@@ -98,55 +90,7 @@ export function TablePicker({
     if (previousDeferredQuery !== "" && deferredQuery === "") {
       resetSelection();
     }
-  }, [deferredQuery, previousDeferredQuery]);
-
-  const { data: collections = [] } = useListCollectionsTreeQuery({
-    "exclude-other-user-collections": true,
-    "exclude-archived": true,
-  });
-
-  const [publishModels] = usePublishModelsMutation();
-  const [sendToast] = useToast();
-  const libraryId = collections.reduce<CollectionId | undefined>(
-    (result, collection) => {
-      if (result) {
-        return result;
-      }
-
-      if (isSyncedCollection(collection) && collection.name === "Library") {
-        return collection.id;
-      }
-
-      return result;
-    },
-    undefined,
-  );
-
-  const handlePublishModels = async () => {
-    const { error } = await publishModels({
-      table_ids: Array.from(selectedTables),
-      schema_ids: Array.from(selectedSchemas),
-      database_ids: Array.from(selectedDatabases),
-      target_collection_id: "library",
-    });
-
-    if (error) {
-      sendToast({
-        message: t`Failed to publish`,
-      });
-    } else {
-      sendToast({
-        message: libraryId ? (
-          <span>
-            {jt`Tables published in ${(<Link key="link" to={`/collection/${libraryId}`} style={{ textDecoration: "underline" }}>{t`the Library`}</Link>)}`}
-          </span>
-        ) : (
-          t`Tables published in the Library`
-        ),
-      });
-      resetSelection();
-    }
-  };
+  }, [deferredQuery, previousDeferredQuery, resetSelection]);
 
   return (
     <Stack
@@ -255,20 +199,6 @@ export function TablePicker({
             >
               {t`Create models`}
             </Menu.Item>
-
-            {/*             <Menu.Item
-              leftSection={<Icon name="model_with_badge" />}
-              rightSection={
-                <Tooltip
-                  label={t`Create a model for each table and publish them in the Library.`}
-                >
-                  <Icon name="info_outline" />
-                </Tooltip>
-              }
-              onClick={handlePublishModels}
-            >
-              {t`Publish models`}
-            </Menu.Item> */}
           </Menu.Dropdown>
         </Menu>
       </Group>

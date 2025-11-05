@@ -12,6 +12,8 @@ interface SelectionContextValue {
   resetSelection: () => void;
   hasSelectedItems: boolean;
   selectedItemsCount: number;
+  hasOnlyOneTableSelected: boolean;
+  hasSelectedMoreThanOneTable: boolean;
 }
 
 const SelectionContext = createContext<SelectionContextValue | null>(null);
@@ -39,6 +41,14 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
   const selectedItemsCount =
     selectedTables.size + selectedSchemas.size + selectedDatabases.size;
 
+  const hasOnlyOneTableSelected =
+    selectedTables.size === 1 &&
+    selectedSchemas.size === 0 &&
+    selectedDatabases.size === 0;
+
+  const hasSelectedMoreThanOneTable =
+    selectedItemsCount > 1 && !hasOnlyOneTableSelected;
+
   return (
     <SelectionContext.Provider
       value={{
@@ -51,6 +61,8 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
         resetSelection,
         hasSelectedItems,
         selectedItemsCount,
+        hasOnlyOneTableSelected,
+        hasSelectedMoreThanOneTable,
       }}
     >
       {children}

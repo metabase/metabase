@@ -51,8 +51,18 @@ export const DataModel = ({ children, location, params }: Props) => {
 };
 
 function DataModelContent({ children, location, params }: Props) {
-  const { hasSelectedItems } = useSelection();
-  const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
+  const {
+    hasSelectedItems,
+    hasOnlyOneTableSelected,
+    selectedTables,
+    hasSelectedMoreThanOneTable,
+  } = useSelection();
+  const {
+    databaseId,
+    fieldId,
+    schemaName,
+    tableId: queryTableId,
+  } = parseRouteParams(params);
   const { data: databasesData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include_editable_data_model: true });
   const databaseExists = databasesData?.data?.some(
@@ -67,6 +77,7 @@ function DataModelContent({ children, location, params }: Props) {
     isFieldValuesModalOpen,
     { close: closeFieldValuesModal, open: openFieldValuesModal },
   ] = useDisclosure();
+  const tableId = Array.from(selectedTables)[0] ?? queryTableId;
   const isEmptyStateShown =
     databaseId == null || tableId == null || fieldId == null;
   const {
@@ -99,7 +110,7 @@ function DataModelContent({ children, location, params }: Props) {
       }
     },
     {
-      // otherwise modals get closed ealier and isModalOpen evaluates to false in the handler
+      // otherwise modals get closed earlier and isModalOpen evaluates to false in the handler
       capture: true,
     },
   );
@@ -149,7 +160,7 @@ function DataModelContent({ children, location, params }: Props) {
               </Stack>
             )}
 
-          {hasSelectedItems && (
+          {hasSelectedItems && !hasOnlyOneTableSelected && (
             <Stack
               className={S.column}
               flex={COLUMN_CONFIG.table.flex}
@@ -161,7 +172,7 @@ function DataModelContent({ children, location, params }: Props) {
               <EditTableMetadata />
             </Stack>
           )}
-          {tableId && !hasSelectedItems && (
+          {tableId && !hasSelectedMoreThanOneTable && (
             <Stack
               className={S.column}
               flex={COLUMN_CONFIG.table.flex}

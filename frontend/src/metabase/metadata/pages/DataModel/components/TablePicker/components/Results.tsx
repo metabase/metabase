@@ -19,6 +19,7 @@ import type { FlatItem, TreePath } from "../types";
 import { hasChildren } from "../utils";
 
 import S from "./Results.module.css";
+import { useSelection } from "../../../contexts/SelectionContext";
 
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32; // items can vary in size because of text wrapping
@@ -45,6 +46,7 @@ export function Results({
 }: Props) {
   const [activeTableId, setActiveTableId] = useState(path.tableId);
   const ref = useRef<HTMLDivElement>(null);
+  const { selectedItemsCount } = useSelection();
 
   const virtual = useVirtualizer({
     count: items.length,
@@ -110,7 +112,10 @@ export function Results({
             parent,
             disabled,
           } = item;
-          const isActive = type === "table" && value?.tableId === activeTableId;
+          const isActive =
+            type === "table" &&
+            value?.tableId === activeTableId &&
+            selectedItemsCount === 0;
           const parentIndex = items.findIndex((item) => item.key === parent);
           const children = items.filter((item) => item.parent === key);
           const hasTableChildren = children.some(
