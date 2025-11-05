@@ -69,7 +69,10 @@
        (when (lib.util/first-stage? query stage-number)
          (when-let [source-card-id (lib.util/source-card-id query)]
            (when-let [source-card (lib.metadata/card query source-card-id)]
-             (u/prog1 (resolve-expression (:dataset-query source-card) expression-name)
+             (u/prog1 (resolve-expression ((#?(:clj requiring-resolve :cljs resolve) 'metabase.lib.query/query)
+                                           (lib.metadata/->metadata-provider query)
+                                           (:dataset-query source-card))
+                                          expression-name)
                (when <>
                  (log/tracef "Found expression %s in source card %d. Next time, use a :field name ref!"
                              (pr-str expression-name) source-card-id))))))

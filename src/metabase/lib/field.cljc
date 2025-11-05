@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
@@ -81,15 +82,13 @@
   [query stage-number]
   (lib.computed/with-cache-ephemeral* query [::clauses-in-stage-by-uuid stage-number]
     (fn []
-      (m/index-by lib.options/uuid
-                  (lib.util.match/match (lib.util/query-stage query stage-number)
-                    (clause :guard (every-pred vector? (comp keyword? first)))
-
-                    (lib.util/query-stage query stage-number)
-                    (fn [clause]
-                      (when-let [lib-uuid (lib.options/uuid clause)]
-                        (vswap! sink assoc! lib-uuid clause))
-                      nil))))))
+      (let [clauses (volatile! (transient {}))]
+        (walk/postwalk (fn [x]
+                         (when-let [the-uuid (and (vector? x) (keyword? (first x)) (lib.options/uuid x))]
+                           (vswap! clauses assoc! the-uuid x))
+                         x)
+                       (lib.util/query-stage query stage-number))
+        (persistent! @clauses)))))
 
 (defn- find-stage-index-and-clause-by-uuid
   "Find the clause in `query` with the given `lib-uuid`. Return a [stage-index clause] pair, if found."
