@@ -113,6 +113,37 @@
                                                                      :aws-iam true
                                                                      :db "metabase"}))))))
 
+(deftest ^:parallel broken-out-details-test-8
+  (testing :aws-iam
+    (testing "MySQL with AWS IAM and ssl-cert=trust"
+      (is (= (->DataSource
+              "jdbc:aws-wrapper:mysql://localhost:3306/metabase"
+              {"user" "root"
+               "wrapperPlugins" "iam"
+               "trustServerCertificate" "true"})
+             (mdb.data-source/broken-out-details->DataSource :mysql {:host "localhost"
+                                                                     :port 3306
+                                                                     :user "root"
+                                                                     :aws-iam true
+                                                                     :ssl-cert "trust"
+                                                                     :db "metabase"}))))))
+
+(deftest ^:parallel broken-out-details-test-9
+  (testing :aws-iam
+    (testing "MySQL with AWS IAM and ssl-cert path"
+      (is (= (->DataSource
+              "jdbc:aws-wrapper:mysql://localhost:3306/metabase"
+              {"user" "root"
+               "wrapperPlugins" "iam"
+               "sslMode" "VERIFY_CA"
+               "serverSslCert" "/path/to/certificate.pem"})
+             (mdb.data-source/broken-out-details->DataSource :mysql {:host "localhost"
+                                                                     :port 3306
+                                                                     :user "root"
+                                                                     :aws-iam true
+                                                                     :ssl-cert "/path/to/certificate.pem"
+                                                                     :db "metabase"}))))))
+
 (deftest ^:parallel connection-string-test
   (let [data-source (mdb.data-source/raw-connection-string->DataSource
                      (format "jdbc:h2:mem:%s" (mt/random-name)))]

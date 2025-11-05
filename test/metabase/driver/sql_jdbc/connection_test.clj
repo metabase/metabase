@@ -389,6 +389,32 @@
               (is (= "iam" (:wrapperPlugins spec)))
               (is (= "VERIFY_CA" (:sslMode spec))))))))))
 
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest ^:parallel test-aws-iam-requires-ssl
+  (testing "AWS IAM authentication requires SSL to be enabled"
+    (testing "Postgres throws error when SSL is disabled"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"You must enable SSL in order to use AWS IAM authentication"
+           (sql-jdbc.conn/connection-details->spec :postgres
+                                                   {:host "localhost"
+                                                    :port 5432
+                                                    :user "cam"
+                                                    :auth-provider :aws-iam
+                                                    :ssl false
+                                                    :db "metabase"}))))
+    (testing "MySQL throws error when SSL is disabled"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"You must enable SSL in order to use AWS IAM authentication"
+           (sql-jdbc.conn/connection-details->spec :mysql
+                                                   {:host "localhost"
+                                                    :port 3306
+                                                    :user "root"
+                                                    :auth-provider :aws-iam
+                                                    :ssl false
+                                                    :db "metabase"}))))))
+
 (defmacro ^:private with-tunnel-details!
   [& body]
   `(let [original-details# (:details (mt/db))
