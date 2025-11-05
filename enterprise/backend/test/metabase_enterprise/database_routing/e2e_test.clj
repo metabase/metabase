@@ -326,7 +326,9 @@
                                                     (some (fn [step] (when (= step-name (first step)) (second step))))))]
                           (is (set/subset? #{"sync-fields" "sync-tables"}
                                            (->> results :metadata-results :steps (map first) set)))
-                          (is (=? {:updated-tables 0 :total-tables 1}
+                          ;; this is usually 1 total tables, but some cloud dbs put multiple databases inside of a
+                          ;; single catalog
+                          (is (=? {:updated-tables 0 :total-tables int?}
                                   (step-with-name "sync-tables"))))))))))))))))
 
 (deftest athena-region-bucket-routing-test
