@@ -1,6 +1,8 @@
 import { t } from "ttag";
 
 import { useListEmbeddingThemesQuery } from "metabase/api/embedding-theme";
+import EmptyState from "metabase/common/components/EmptyState";
+import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { Loader, SimpleGrid, Stack, Text, Title } from "metabase/ui";
 
 import { EmbeddingThemeCard } from "./EmbeddingThemeCard";
@@ -41,9 +43,10 @@ export function EmbeddingThemeListingApp() {
         </SimpleGrid>
       ) : (
         <Stack align="center" justify="center" h={200}>
-          <Text c="text-secondary">
-            {t`No themes yet. Create your first theme to get started.`}
-          </Text>
+          <EmptyState
+            message={t`Create your first theme to get started.`}
+            illustrationElement={<NoObjectError mb="-1.5rem" />}
+          />
         </Stack>
       )}
     </Stack>
