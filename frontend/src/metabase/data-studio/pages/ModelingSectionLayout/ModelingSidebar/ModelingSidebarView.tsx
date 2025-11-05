@@ -1,11 +1,9 @@
 import { useCallback, useState } from "react";
 import { push } from "react-router-redux";
-import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import type { CollectionTreeItem } from "metabase/entities/collections";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Box, Button, Icon, Menu, Stack } from "metabase/ui";
@@ -15,23 +13,21 @@ import { ModelingSidebarTreeNode } from "./ModelingSidebarTreeNode";
 import S from "./ModelingSidebarView.module.css";
 
 interface ModelingSidebarViewProps {
-  collections: CollectionTreeItem[];
+  collections: ITreeNodeItem[];
+  selectedCollectionId: string | number | undefined;
+  isGlossaryActive: boolean;
 }
 
-export function ModelingSidebarView({ collections }: ModelingSidebarViewProps) {
-  const location = useLocation();
+export function ModelingSidebarView({
+  collections,
+  selectedCollectionId,
+  isGlossaryActive,
+}: ModelingSidebarViewProps) {
   const dispatch = useDispatch();
-  const [selectedCollectionId, setSelectedCollectionId] = useState<
-    string | number | undefined
-  >(undefined);
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
-
-  const pathname = location.pathname || "";
-  const isGlossaryActive = pathname.includes("/modeling/glossary");
 
   const handleCollectionSelect = useCallback(
     (item: ITreeNodeItem) => {
-      setSelectedCollectionId(item.id);
       dispatch(push(`/data-studio/modeling/collections/${item.id}`));
     },
     [dispatch],

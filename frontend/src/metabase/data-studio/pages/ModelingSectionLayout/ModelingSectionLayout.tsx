@@ -9,10 +9,14 @@ import { ModelingSidebar } from "./ModelingSidebar";
 
 type ModelingSectionLayoutProps = {
   children?: ReactNode;
+  params?: {
+    collectionId?: string;
+  };
 };
 
 export function ModelingSectionLayout({
   children,
+  params,
 }: ModelingSectionLayoutProps) {
   return (
     <SectionLayout
@@ -24,7 +28,7 @@ export function ModelingSectionLayout({
       }
     >
       <Flex direction="row" w="100%" h="100%">
-        <ModelingSidebar />
+        <ModelingSidebar collectionId={params?.collectionId} />
         <Box flex={1}>{children}</Box>
       </Flex>
     </SectionLayout>

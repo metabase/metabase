@@ -122,12 +122,13 @@ function getCreateRequest(
   query: Lib.Query,
   { name, description }: NewMetricValues,
 ): CreateCardRequest {
+  const { display, settings = {} } = Lib.defaultDisplay(query);
   return {
     name: name,
     description,
     type: "metric",
-    display: Lib.defaultDisplay(query),
+    display,
     dataset_query: Lib.toJsQuery(query),
-    visualization_settings: {},
+    visualization_settings: settings,
   };
 }

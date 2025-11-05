@@ -1566,6 +1566,7 @@ export type IconName =
   | "bar"
   | "bell"
   | "birthday"
+  | "book_open"
   | "bookmark"
   | "bookmark_filled"
   | "bolt"
