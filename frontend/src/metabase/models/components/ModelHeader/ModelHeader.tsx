@@ -14,51 +14,37 @@ import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
-import type { CardId } from "metabase-types/api";
+import type { Card, CardId } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";
 
 type ModelHeaderProps = {
-  id?: CardId;
-  name: string;
+  card: Card;
   actions?: ReactNode;
-  onChangeName?: (name: string) => void;
 };
 
-export function ModelHeader({
-  id,
-  name,
-  actions,
-  onChangeName,
-}: ModelHeaderProps) {
+export function ModelHeader({ card, actions }: ModelHeaderProps) {
   return (
     <PaneHeader
-      title={<ModelNameInput id={id} name={name} onChangeName={onChangeName} />}
-      tabs={id != null && <ModelTabs id={id} />}
+      title={<ModelNameInput card={card} />}
+      tabs={card != null && <ModelTabs card={card} />}
       actions={actions}
     />
   );
 }
 
 type ModelNameInputProps = {
-  id: CardId | undefined;
-  name: string;
+  card: Card;
   onChangeName?: (name: string) => void;
 };
 
-function ModelNameInput({ id, name, onChangeName }: ModelNameInputProps) {
+function ModelNameInput({ card }: ModelNameInputProps) {
   const [updateCard] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const handleChangeName = async (newName: string) => {
-    onChangeName?.(newName);
-
-    if (id == null) {
-      return;
-    }
-
     const { error } = await updateCard({
-      id,
+      id: card.id,
       name: newName,
     });
 
@@ -71,7 +57,7 @@ function ModelNameInput({ id, name, onChangeName }: ModelNameInputProps) {
 
   return (
     <PaneHeaderInput
-      initialValue={name}
+      initialValue={card.name}
       maxLength={NAME_MAX_LENGTH}
       onChange={handleChangeName}
     />
@@ -79,12 +65,12 @@ function ModelNameInput({ id, name, onChangeName }: ModelNameInputProps) {
 }
 
 type ModelTabsProps = {
-  id: CardId;
+  card: Card;
 };
 
-function ModelTabs({ id }: ModelTabsProps) {
+function ModelTabs({ card }: ModelTabsProps) {
   const location = useSelector(getLocation);
-  const tabs = getTabs(id, location);
+  const tabs = getTabs(card.id, location);
   return <PaneHeaderTabs tabs={tabs} />;
 }
 

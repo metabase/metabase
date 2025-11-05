@@ -33,7 +33,7 @@ export function ModelOverviewPage({ params }: ModelOverviewPageProps) {
 
   return (
     <Flex direction="column" h="100%">
-      <ModelHeader id={card.id} name={card.name} />
+      <ModelHeader card={card} />
       <ModelVisualization card={card} />
     </Flex>
   );

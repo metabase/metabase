@@ -38,7 +38,7 @@ export function ModelDependenciesPage({
 
   return (
     <Flex direction="column" h="100%">
-      <ModelHeader id={card.id} name={card.name} />
+      <ModelHeader card={card} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
           baseUrl: Urls.dataStudioModelDependencies(card.id),

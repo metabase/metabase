@@ -10,18 +10,21 @@ import {
 } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PaneHeaderActions } from "metabase/data-studio/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Center } from "metabase/ui";
+import { Center, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
-import { ModelEditor } from "../../components/ModelEditor";
+import { ModelHeader } from "../../components/ModelHeader";
+import { ModelQueryEditor } from "../../components/ModelQueryEditor";
+import { getValidationResult } from "../../utils";
 
 type ModelQueryPageParams = {
   cardId: string;
@@ -80,9 +83,12 @@ function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
     handleCloseConfirmation,
   } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
     onSave: async (question) => {
+      const { display, settings } = Lib.defaultDisplay(question.query());
       const { error } = await updateCard({
         id: card.id,
         dataset_query: question.datasetQuery(),
+        display,
+        visualization_settings: settings,
       });
       if (error) {
         sendErrorToast(t`Failed to update model query`);
@@ -115,18 +121,33 @@ function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
 
   return (
     <>
-      <ModelEditor
-        id={card.id}
-        name={card.name}
-        query={question.query()}
-        uiState={uiState}
-        isDirty={isDirty}
-        isSaving={isSaving || isCheckingDependencies}
-        onChangeQuery={handleChangeQuery}
-        onChangeUiState={setUiState}
-        onSave={handleSave}
-        onCancel={handleCancel}
-      />
+      <Stack
+        pos="relative"
+        w="100%"
+        h="100%"
+        bg="bg-white"
+        data-testid="model-query-editor"
+        gap={0}
+      >
+        <ModelHeader
+          card={card}
+          actions={
+            <PaneHeaderActions
+              validationResult={getValidationResult(question.query())}
+              isDirty={isDirty}
+              isSaving={isSaving || isCheckingDependencies}
+              onSave={handleSave}
+              onCancel={handleCancel}
+            />
+          }
+        />
+        <ModelQueryEditor
+          query={question.query()}
+          uiState={uiState}
+          onChangeQuery={handleChangeQuery}
+          onChangeUiState={setUiState}
+        />
+      </Stack>
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
           checkData={checkData}
