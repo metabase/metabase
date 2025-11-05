@@ -3,13 +3,19 @@ import type { Dispatch, GetState } from "metabase-types/store";
 
 // load a card either by ID or from a base64 serialization.  if both are present then they are merged, which the serialized version taking precedence
 export async function loadCard(
-  cardId: string | number,
+  {
+    cardId,
+    token,
+  }: {
+    cardId: string | number;
+    token?: string | null;
+  },
   { dispatch, getState }: { dispatch: Dispatch; getState: GetState },
 ) {
   try {
     await dispatch(
       Questions.actions.fetch(
-        { id: cardId },
+        { id: token ?? cardId },
         {
           properties: [
             "id",

@@ -13,7 +13,7 @@ import type {
 } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 
-import { trackEmbedWizardOpened } from "../analytics";
+import { getAdjustedSdkIframeEmbedSetting } from "../utils/get-adjusted-sdk-iframe-embed-setting";
 import {
   getDefaultSdkIframeEmbedSettings,
   getExperienceFromSettings,
@@ -23,7 +23,7 @@ import {
 const getSettingsToPersist = (
   settings: Partial<SdkIframeEmbedSetupSettings>,
 ) => {
-  return _.pick(settings, ["theme", "useExistingUserSession"]);
+  return _.pick(settings, ["theme"]);
 };
 
 const usePersistedSettings = () => {
@@ -52,11 +52,13 @@ export const useSdkIframeEmbedSettings = ({
   recentDashboards,
   isRecentsLoading,
   modelCount,
+  isStaticEmbeddingEnabled,
 }: {
   initialState: SdkIframeEmbedSetupModalInitialState | undefined;
   recentDashboards: SdkIframeEmbedSetupRecentItem[];
   isRecentsLoading: boolean;
   modelCount: number;
+  isStaticEmbeddingEnabled: boolean;
 }) => {
   const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
   const [persistedSettings, persistSettings] = usePersistedSettings();
@@ -67,25 +69,31 @@ export const useSdkIframeEmbedSettings = ({
         { resourceType: "dashboard", resourceId: P.nonNullable },
         (initialState) =>
           getDefaultSdkIframeEmbedSettings({
+            initialState,
             experience: "dashboard",
             resourceId: initialState.resourceId,
+            isStaticEmbeddingEnabled,
           }),
       )
       .with(
         { resourceType: "question", resourceId: P.nonNullable },
         (initialState) =>
           getDefaultSdkIframeEmbedSettings({
+            initialState,
             experience: "chart",
             resourceId: initialState.resourceId,
+            isStaticEmbeddingEnabled,
           }),
       )
-      .otherwise(() =>
+      .otherwise((initialState) =>
         getDefaultSdkIframeEmbedSettings({
+          initialState,
           experience: "dashboard",
           resourceId: recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
+          isStaticEmbeddingEnabled,
         }),
       );
-  }, [recentDashboards, initialState]);
+  }, [recentDashboards, initialState, isStaticEmbeddingEnabled]);
 
   const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
 
@@ -118,11 +126,18 @@ export const useSdkIframeEmbedSettings = ({
           ...nextSettings,
         } as SdkIframeEmbedSetupSettings;
 
-        persistSettings(mergedSettings);
+        const adjustedSettings = getAdjustedSdkIframeEmbedSetting({
+          defaultSettings: defaultSettings,
+          prevSettings: prevSettings ?? defaultSettings,
+          settings: mergedSettings,
+          isStaticEmbeddingEnabled,
+        });
 
-        return mergedSettings;
+        persistSettings(adjustedSettings);
+
+        return adjustedSettings;
       }),
-    [defaultSettings, persistSettings],
+    [defaultSettings, persistSettings, isStaticEmbeddingEnabled],
   );
 
   const replaceSettings = useCallback(
@@ -137,20 +152,23 @@ export const useSdkIframeEmbedSettings = ({
   // If they are, set them as the current settings.
   useEffect(() => {
     if (!isEmbedSettingsLoaded && !isRecentsLoading) {
-      setRawSettings({
-        ...settings,
-        ...persistedSettings,
+      setRawSettings((prevSettings) => {
+        const mergedSettings = {
+          ...settings,
+          ...persistedSettings,
+        };
 
-        // Override the persisted settings if `useExistingUserSession` is specified.
-        // This is used for Embedding Hub.
-        ...(initialState?.useExistingUserSession !== undefined && {
-          useExistingUserSession: initialState.useExistingUserSession,
-        }),
+        const adjustedSettings = getAdjustedSdkIframeEmbedSetting({
+          defaultSettings,
+          prevSettings: prevSettings ?? defaultSettings,
+          settings: mergedSettings,
+          isStaticEmbeddingEnabled,
+        });
+
+        return adjustedSettings;
       });
 
       setEmbedSettingsLoaded(true);
-
-      trackEmbedWizardOpened();
     }
   }, [
     persistedSettings,
@@ -158,6 +176,8 @@ export const useSdkIframeEmbedSettings = ({
     settings,
     isRecentsLoading,
     initialState,
+    defaultSettings,
+    isStaticEmbeddingEnabled,
   ]);
 
   return {

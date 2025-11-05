@@ -11,6 +11,10 @@ import { match } from "ts-pattern";
 import { useSetting } from "metabase/common/hooks";
 import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embedding-iframe-sdk/constants";
 import { setupConfigWatcher } from "metabase/embedding/embedding-iframe-sdk/embed";
+import type {
+  SdkIframeDashboardEmbedSettings,
+  SdkIframeQuestionEmbedSettings,
+} from "metabase/embedding/embedding-iframe-sdk/types";
 import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { colors as defaultMetabaseColors } from "metabase/lib/colors";
@@ -23,6 +27,7 @@ import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for
 import { getConfigurableThemeColors } from "../utils/theme-colors";
 
 import { EmbedPreviewLoadingOverlay } from "./EmbedPreviewLoadingOverlay";
+import { getVisibleParameters } from "./ParameterSettings/utils/get-visible-parameters";
 import S from "./SdkIframeEmbedPreview.module.css";
 
 declare global {
@@ -33,9 +38,14 @@ declare global {
   }
 }
 
-export const SdkIframeEmbedPreview = () => {
-  const { settings } = useSdkIframeEmbedSetupContext();
+const SdkIframeEmbedPreviewInner = () => {
+  const {
+    settings,
+    staticEmbeddingSignedTokenForPreview: staticEmbeddingSignedToken,
+  } = useSdkIframeEmbedSetupContext();
   const [isLoading, setIsLoading] = useState(true);
+
+  const isStaticEmbedding = !!settings.isStatic;
 
   const instanceUrl = useSetting("site-url");
   const applicationColors = useSetting("application-colors");
@@ -83,8 +93,9 @@ export const SdkIframeEmbedPreview = () => {
       instanceUrl,
       theme: derivedTheme,
       useExistingUserSession: true,
+      isStatic: settings.isStatic,
     }),
-    [instanceUrl, derivedTheme],
+    [instanceUrl, derivedTheme, settings.isStatic],
   );
 
   // initial configuration, needed so that the element finds the config on first render
@@ -136,26 +147,37 @@ export const SdkIframeEmbedPreview = () => {
           (s) =>
             createElement("metabase-question", {
               "question-id": "new",
-              "is-save-enabled": s.isSaveEnabled,
               "target-collection": s.targetCollection,
               "entity-types": s.entityTypes
                 ? JSON.stringify(s.entityTypes)
                 : undefined,
+              ...(!isStaticEmbedding && {
+                "is-save-enabled": s.isSaveEnabled,
+              }),
             }),
         )
         .with({ componentName: "metabase-question" }, (s) =>
           createElement("metabase-question", {
-            "question-id": s.questionId,
-            drills: s.drills,
+            ...(isStaticEmbedding
+              ? { token: staticEmbeddingSignedToken }
+              : {
+                  "question-id": s.questionId,
+                  "is-save-enabled": s.isSaveEnabled,
+                }),
             "with-title": s.withTitle,
+            drills: s.drills,
             "with-downloads": s.withDownloads,
-            "is-save-enabled": s.isSaveEnabled,
             "target-collection": s.targetCollection,
             "entity-types": s.entityTypes
               ? JSON.stringify(s.entityTypes)
               : undefined,
             "initial-sql-parameters": s.initialSqlParameters
-              ? JSON.stringify(s.initialSqlParameters)
+              ? JSON.stringify(
+                  getVisibleParameters(
+                    s.initialSqlParameters,
+                    s.lockedParameters,
+                  ),
+                )
               : undefined,
             "hidden-parameters": s.hiddenParameters
               ? JSON.stringify(s.hiddenParameters)
@@ -164,12 +186,18 @@ export const SdkIframeEmbedPreview = () => {
         )
         .with({ componentName: "metabase-dashboard" }, (s) =>
           createElement("metabase-dashboard", {
-            "dashboard-id": s.dashboardId,
-            drills: s.drills,
+            ...(isStaticEmbedding
+              ? { token: staticEmbeddingSignedToken }
+              : {
+                  "dashboard-id": s.dashboardId,
+                }),
             "with-title": s.withTitle,
+            drills: s.drills,
             "with-downloads": s.withDownloads,
             "initial-parameters": s.initialParameters
-              ? JSON.stringify(s.initialParameters)
+              ? JSON.stringify(
+                  getVisibleParameters(s.initialParameters, s.lockedParameters),
+                )
               : undefined,
             "hidden-parameters": s.hiddenParameters
               ? JSON.stringify(s.hiddenParameters)
@@ -196,4 +224,30 @@ export const SdkIframeEmbedPreview = () => {
       />
     </Card>
   );
+};
+
+export const SdkIframeEmbedPreview = () => {
+  const { settings } = useSdkIframeEmbedSetupContext();
+
+  const hiddenParams = (
+    settings as SdkIframeDashboardEmbedSettings | SdkIframeQuestionEmbedSettings
+  ).hiddenParameters;
+  const lockedParams = (
+    settings as SdkIframeDashboardEmbedSettings | SdkIframeQuestionEmbedSettings
+  ).lockedParameters;
+
+  const remountKey = useMemo(
+    () =>
+      JSON.stringify({
+        // Hidden and locked params must force re-mount the preview to avoid issues
+        hiddenParams,
+        lockedParams,
+        // We must re-mount preview when `isStatic` setting is changed
+        // to properly work with no-user auth handling inside rendered SDK
+        isStaticEmbedding: settings.isStatic,
+      }),
+    [hiddenParams, lockedParams, settings.isStatic],
+  );
+
+  return <SdkIframeEmbedPreviewInner key={remountKey} />;
 };

@@ -5,6 +5,7 @@ import {
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { withStaticNotAllowedGuard } from "embedding-sdk-bundle/components/private/StaticEmbeddingNotAllowedGuard";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getCollectionIdSlugFromReference } from "embedding-sdk-bundle/store/collections";
@@ -205,6 +206,8 @@ const CollectionBrowserWrapper = ({
 };
 
 export const CollectionBrowser = Object.assign(
-  withPublicComponentWrapper(CollectionBrowserWrapper),
+  withStaticNotAllowedGuard(
+    withPublicComponentWrapper(CollectionBrowserWrapper),
+  ),
   { schema: collectionBrowserPropsSchema },
 );

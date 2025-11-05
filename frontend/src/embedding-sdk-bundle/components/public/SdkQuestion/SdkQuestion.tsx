@@ -115,6 +115,7 @@ export type SdkQuestionComponents = {
 
 export const _SdkQuestion = ({
   questionId,
+  token,
   options,
   deserializedCard,
   plugins,
@@ -145,6 +146,7 @@ export const _SdkQuestion = ({
 }: SdkQuestionProps): JSX.Element | null => (
   <SdkQuestionProvider
     questionId={questionId}
+    token={token}
     options={options}
     deserializedCard={deserializedCard}
     componentPlugins={plugins}

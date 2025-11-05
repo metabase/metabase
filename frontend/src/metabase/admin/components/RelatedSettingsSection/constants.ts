@@ -10,12 +10,11 @@ export interface RelatedSettingItem {
 
 export const getModularEmbeddingRelatedSettingItems =
   (): RelatedSettingItem[] => [
-    // TODO: enable this once we've added the "Security" tab to Embedding Settings.
-    // {
-    //   icon: "shield_outline",
-    //   name: t`Security`,
-    //   to: "/admin/embedding/security",
-    // },
+    {
+      icon: "shield_outline",
+      name: t`Security`,
+      to: "/admin/embedding/security",
+    },
     {
       icon: "lock",
       name: t`Authentication`,
@@ -46,29 +45,9 @@ export const getModularEmbeddingRelatedSettingItems =
 export const getStaticEmbeddingRelatedSettingItems =
   (): RelatedSettingItem[] => [
     {
-      icon: "database",
-      name: t`Databases`,
-      to: "/admin/databases",
-    },
-    {
-      icon: "palette",
-      name: t`Appearance`,
-      to: "/admin/settings/appearance",
-    },
-  ];
-
-export const getInteractiveEmbeddingRelatedSettingItems =
-  (): RelatedSettingItem[] => [
-    // TODO: enable this once we've added the "Security" tab to Embedding Settings.
-    // {
-    //   icon: "shield_outline",
-    //   name: t`Security`,
-    //   to: "/admin/embedding/security",
-    // },
-    {
-      icon: "lock",
-      name: t`Authentication`,
-      to: "/admin/settings/authentication",
+      icon: "shield_outline",
+      name: t`Security`,
+      to: "/admin/embedding/security",
     },
     {
       icon: "database",
@@ -84,11 +63,6 @@ export const getInteractiveEmbeddingRelatedSettingItems =
       icon: "group",
       name: t`Permissions`,
       to: "/admin/permissions",
-    },
-    {
-      icon: "metabot",
-      name: t`Embedded Metabot`,
-      to: "/admin/metabot/2",
     },
     {
       icon: "palette",

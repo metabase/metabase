@@ -1,4 +1,9 @@
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
+import {
+  embedModalEnableEmbedding,
+  getEmbedModalContent,
+  getLegacyStaticEmbeddingButton,
+} from "e2e/support/helpers/e2e-embedding-iframe-sdk-setup-helpers";
 import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 import { openSharingMenu } from "./e2e-sharing-helpers";
@@ -188,49 +193,70 @@ export function getEmbedModalSharingPane() {
 }
 
 /**
- * Open Static Embedding setup modal
+ * Open Legacy Static Embedding setup modal
  * @param {object} params
+ * @param {("question"|"dashboard")} [params.resource] - resource type
+ * @param {(string|number)} [params.resourceId] - resource id
  * @param {("overview"|"parameters"|"lookAndFeel")} [params.activeTab] - modal tab to open
  * @param {("code"|"preview")} [params.previewMode] - preview mode type to activate
- * @param {boolean} [params.acceptTerms] - whether we need to go through the legalese step
+ * @param {boolean} [params.unpublishBeforeOpen] - either unpublish entity before legacy modal is opened or not
  */
-export function openStaticEmbeddingModal({
+export function openLegacyStaticEmbeddingModal({
+  resource,
+  resourceId,
   activeTab,
   previewMode,
-  acceptTerms = true,
-  confirmSave,
+  unpublishBeforeOpen = true,
 } = {}) {
+  const apiPath = resource === "question" ? "card" : "dashboard";
+
+  cy.request("PUT", `/api/${apiPath}/${resourceId}`, {
+    enable_embedding: true,
+    embedding_type: "static-legacy",
+  });
+
   openSharingMenu("Embed");
 
-  if (confirmSave) {
-    cy.findByRole("button", { name: "Save" }).click();
-  }
+  getEmbedModalContent().should("exist");
 
-  cy.findByText("Static embedding").click();
+  cy.get("body").then(($body) => {
+    const isEmbeddingDisabled =
+      $body.find('[data-testid="embedding-control-card"]').length > 0;
 
-  if (acceptTerms) {
-    cy.findByTestId("accept-legalese-terms-button").click();
-  }
-
-  modal().within(() => {
-    if (activeTab) {
-      const tabKeyToNameMap = {
-        overview: "Overview",
-        parameters: "Parameters",
-        lookAndFeel: "Look and Feel",
-      };
-
-      cy.findByRole("tab", { name: tabKeyToNameMap[activeTab] }).click();
+    if (isEmbeddingDisabled) {
+      embedModalEnableEmbedding();
     }
 
-    if (previewMode) {
-      const previewModeToKeyMap = {
-        code: "Code",
-        preview: "Preview",
-      };
+    getEmbedModalContent().within(() => {
+      getLegacyStaticEmbeddingButton().click();
+    });
 
-      cy.findByText(previewModeToKeyMap[previewMode]).click();
-    }
+    modal().within(() => {
+      cy.findByText("Static embedding").should("be.visible");
+
+      if (unpublishBeforeOpen && resource === "dashboard") {
+        unpublishChanges(apiPath);
+      }
+
+      if (activeTab) {
+        const tabKeyToNameMap = {
+          overview: "Overview",
+          parameters: "Parameters",
+          lookAndFeel: "Look and Feel",
+        };
+
+        cy.findByRole("tab", { name: tabKeyToNameMap[activeTab] }).click();
+      }
+
+      if (previewMode) {
+        const previewModeToKeyMap = {
+          code: "Code",
+          preview: "Preview",
+        };
+
+        cy.findByText(previewModeToKeyMap[previewMode]).click();
+      }
+    });
   });
 }
 
@@ -265,7 +291,13 @@ export function publishChanges(apiPath, callback) {
  * @param callback
  */
 export function unpublishChanges(apiPath, callback) {
-  cy.intercept("PUT", `/api/${apiPath}/*`).as("unpublishChanges");
+  cy.intercept("PUT", `/api/${apiPath}/*`, (req) => {
+    const body = req.body;
+
+    if (body?.enable_embedding === false) {
+      req.alias = "unpublishChanges";
+    }
+  });
 
   cy.button("Unpublish").click();
 

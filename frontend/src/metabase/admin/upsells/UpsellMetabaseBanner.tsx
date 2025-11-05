@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { UpsellCard } from "metabase/admin/upsells/components";
+import { UpsellCard } from "metabase/common/components/UpsellCard";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 
 import { UPGRADE_URL } from "./constants";

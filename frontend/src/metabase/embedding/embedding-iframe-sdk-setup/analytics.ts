@@ -5,6 +5,7 @@ import type {
   SdkIframeEmbedSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import { trackSimpleEvent } from "metabase/lib/analytics";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 
 import type {
   SdkIframeEmbedSetupExperience,
@@ -36,6 +37,8 @@ const EMBED_SETTINGS_TO_IGNORE: SdkIframeEmbedSettingKey[] = [
   "dashboardId",
   "questionId",
   "targetCollection",
+  "hiddenParameters",
+  "lockedParameters",
 ];
 
 export const trackEmbedWizardOpened = () =>
@@ -67,14 +70,23 @@ export const trackEmbedWizardResourceSelectionCompleted = (
 const getEmbedSettingsToCompare = (settings: Partial<SdkIframeEmbedSettings>) =>
   _.omit(_.omit(settings, ...EMBED_SETTINGS_TO_IGNORE), _.isUndefined);
 
-export const trackEmbedWizardOptionsCompleted = (
-  settings: Partial<SdkIframeEmbedSettings>,
-  experience: SdkIframeEmbedSetupExperience,
-) => {
+export const trackEmbedWizardOptionsCompleted = ({
+  initialState,
+  settings,
+  experience,
+  isStaticEmbeddingEnabled,
+}: {
+  initialState: SdkIframeEmbedSetupModalInitialState | undefined;
+  settings: Partial<SdkIframeEmbedSettings>;
+  experience: SdkIframeEmbedSetupExperience;
+  isStaticEmbeddingEnabled: boolean;
+}) => {
   // Get defaults for this experience type (with a dummy resource ID)
   const defaultSettings = getDefaultSdkIframeEmbedSettings({
+    initialState,
     experience,
     resourceId: 0,
+    isStaticEmbeddingEnabled,
   });
 
   // Does the embed settings diverge from the experience defaults?
@@ -93,7 +105,7 @@ export const trackEmbedWizardOptionsCompleted = (
     options = [
       ...options,
       `theme=${hasCustomTheme ? "custom" : "default"}`,
-      `auth=${settings.useExistingUserSession ? "user_session" : "sso"}`,
+      `auth=${settings.isStatic ? "unauthorized" : settings.useExistingUserSession ? "user_session" : "sso"}`,
     ];
 
     for (const _optionKey in settings) {

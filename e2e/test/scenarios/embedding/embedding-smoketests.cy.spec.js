@@ -318,13 +318,21 @@ function ensureEmbeddingIsDisabled() {
 function visitAndEnableSharing(object, acceptTerms = true) {
   if (object === "question") {
     H.visitQuestion(ORDERS_QUESTION_ID);
+    H.openLegacyStaticEmbeddingModal({
+      resource: "question",
+      resourceId: ORDERS_QUESTION_ID,
+      acceptTerms,
+    });
   }
 
   if (object === "dashboard") {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.openLegacyStaticEmbeddingModal({
+      resource: "dashboard",
+      resourceId: ORDERS_DASHBOARD_ID,
+      acceptTerms,
+    });
   }
-
-  H.openStaticEmbeddingModal({ acceptTerms });
 }
 
 function mainPage() {

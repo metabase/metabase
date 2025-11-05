@@ -4,7 +4,11 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
+import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
+import { getSdkIframeEmbedSettingsForEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-sdk-iframe-embed-settings-for-embedding-parameters";
 import { ParameterWidget } from "metabase/parameters/components/ParameterWidget";
+import { ParametersSettings } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings";
+import { getLockedPreviewParameters } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-locked-preview-parameters";
 import { Group, Stack, Text } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -22,6 +26,7 @@ export const ParameterSettings = () => {
     updateSettings,
     availableParameters,
     parametersValuesById,
+    embeddingParameters,
     isLoading,
   } = useSdkIframeEmbedSetupContext();
 
@@ -30,6 +35,7 @@ export const ParameterSettings = () => {
     updateSettings,
   });
 
+  const isStaticEmbedding = !!settings.isStatic;
   const isQuestionOrDashboardEmbed =
     !!settings.questionId || !!settings.dashboardId;
 
@@ -56,6 +62,24 @@ export const ParameterSettings = () => {
     ),
     SET_INITIAL_PARAMETER_DEBOUNCE_MS,
   );
+  const removeInitialParameterValue = useCallback(
+    (slug: string) => {
+      if (settings.dashboardId) {
+        const nextInitialParameters = { ...settings.initialParameters };
+        delete nextInitialParameters[slug];
+        updateSettings({
+          initialParameters: nextInitialParameters,
+        });
+      } else if (settings.questionId) {
+        const nextInitialSqlParameters = { ...settings.initialSqlParameters };
+        delete nextInitialSqlParameters[slug];
+        updateSettings({
+          initialSqlParameters: nextInitialSqlParameters,
+        });
+      }
+    },
+    [settings, updateSettings],
+  );
 
   const uiParameters = useMemo(
     () =>
@@ -77,6 +101,40 @@ export const ParameterSettings = () => {
       <Text size="sm" c="text-medium">
         {t`Loading parameters...`}
       </Text>
+    );
+  }
+
+  if (isStaticEmbedding) {
+    const lockedParameters = getLockedPreviewParameters(
+      availableParameters,
+      embeddingParameters,
+    );
+    const resourceType = getResourceTypeFromExperience(experience);
+
+    if (!resourceType) {
+      return null;
+    }
+
+    return (
+      <ParametersSettings
+        resourceType={resourceType}
+        resourceParameters={availableParameters}
+        embeddingParams={embeddingParameters}
+        lockedParameters={lockedParameters}
+        parameterValues={parametersValuesById}
+        withInitialValues
+        onChangeEmbeddingParameters={(embeddingParameters) => {
+          updateSettings(
+            getSdkIframeEmbedSettingsForEmbeddingParameters(
+              embeddingParameters,
+            ),
+          );
+        }}
+        onChangeParameterValue={({ slug, value }) =>
+          updateInitialParameterValue(slug, value)
+        }
+        onRemoveParameterValue={({ slug }) => removeInitialParameterValue(slug)}
+      />
     );
   }
 

@@ -650,6 +650,8 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         H.visitQuestion(card_id);
+
+        cy.wrap(card_id).as("questionId");
       });
     });
 
@@ -689,9 +691,13 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
             });
           }
 
-          H.openStaticEmbeddingModal({
-            activeTab: "parameters",
-            confirmSave: test.confirmSave,
+          cy.get("@questionId").then((questionId) => {
+            H.openLegacyStaticEmbeddingModal({
+              resource: "question",
+              resourceId: questionId,
+              activeTab: "parameters",
+              confirmSave: test.confirmSave,
+            });
           });
 
           // visit the iframe src directly to ensure it's not sing preview endpoints

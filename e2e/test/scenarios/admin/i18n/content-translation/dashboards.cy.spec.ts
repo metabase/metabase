@@ -85,8 +85,9 @@ describe("scenarios > content translation > static embedding > dashboards", () =
 
         H.saveDashboard();
 
-        H.openStaticEmbeddingModal({
-          acceptTerms: false,
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboardId,
         });
         H.publishChanges("dashboard", () => {});
 
@@ -167,8 +168,9 @@ describe("scenarios > content translation > static embedding > dashboards", () =
         H.sidebar().findByText(PRODUCTS_COUNT_BY_CATEGORY_PIE.name).click();
         H.saveDashboard();
 
-        H.openStaticEmbeddingModal({
-          acceptTerms: false,
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboardId,
         });
         H.publishChanges("dashboard", () => {});
 
@@ -263,8 +265,9 @@ describe("scenarios > content translation > static embedding > dashboards", () =
         H.sidebar().findByText(PRODUCTS_COUNT_BY_CATEGORY_PIE.name).click();
         H.saveDashboard();
 
-        H.openStaticEmbeddingModal({
-          acceptTerms: false,
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboardId,
         });
         H.publishChanges("dashboard", () => {});
 
@@ -327,8 +330,9 @@ describe("scenarios > content translation > static embedding > dashboards", () =
       H.saveDashcardVisualizerModal({ mode: "create" });
       H.saveDashboard();
 
-      H.openStaticEmbeddingModal({
-        acceptTerms: false,
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: ORDERS_DASHBOARD_ID,
       });
       H.publishChanges("dashboard", () => {});
 

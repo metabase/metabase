@@ -19,6 +19,7 @@ export type ParametersListProps = {
 
     cardId?: CardId;
     dashboardId?: DashboardId;
+    token?: string | null;
     editingParameter: Parameter | null | undefined;
     linkedFilterParameters: Parameter[];
 

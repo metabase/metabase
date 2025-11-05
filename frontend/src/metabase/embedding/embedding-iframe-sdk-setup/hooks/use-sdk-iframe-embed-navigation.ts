@@ -10,8 +10,15 @@ import { EMBED_STEPS } from "../constants";
 import { useSdkIframeEmbedSetupContext } from "../context";
 
 export function useSdkIframeEmbedNavigation() {
-  const { experience, currentStep, setCurrentStep, settings, defaultSettings } =
-    useSdkIframeEmbedSetupContext();
+  const {
+    isStaticEmbeddingEnabled,
+    initialState,
+    experience,
+    currentStep,
+    setCurrentStep,
+    settings,
+    defaultSettings,
+  } = useSdkIframeEmbedSetupContext();
 
   const availableSteps = useMemo(() => {
     // Exclude non-applicable steps for the current embed type
@@ -39,7 +46,12 @@ export function useSdkIframeEmbedNavigation() {
         );
       })
       .with("select-embed-options", () => {
-        trackEmbedWizardOptionsCompleted(settings, experience);
+        trackEmbedWizardOptionsCompleted({
+          initialState,
+          settings,
+          experience,
+          isStaticEmbeddingEnabled,
+        });
       });
 
     if (nextStep) {
