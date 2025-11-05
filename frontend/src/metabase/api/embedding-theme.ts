@@ -1,7 +1,6 @@
 import type {
   CreateEmbeddingThemeRequest,
   EmbeddingTheme,
-  EmbeddingThemeId,
   UpdateEmbeddingThemeRequest,
 } from "metabase-types/api";
 
@@ -23,7 +22,7 @@ export const embeddingThemeApi = Api.injectEndpoints({
             ]
           : [listTag("embed-theme")],
     }),
-    getEmbeddingTheme: builder.query<EmbeddingTheme, EmbeddingThemeId>({
+    getEmbeddingTheme: builder.query<EmbeddingTheme, number>({
       query: (id) => `/api/embed-theme/${id}`,
       providesTags: (_, __, id) => [idTag("embed-theme", id)],
     }),
@@ -54,7 +53,7 @@ export const embeddingThemeApi = Api.injectEndpoints({
           idTag("embed-theme", id),
         ]),
     }),
-    deleteEmbeddingTheme: builder.mutation<void, EmbeddingThemeId>({
+    deleteEmbeddingTheme: builder.mutation<void, number>({
       query: (id) => ({ method: "DELETE", url: `/api/embed-theme/${id}` }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [
