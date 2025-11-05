@@ -20,6 +20,7 @@ export interface ColorPillProps extends ColorPillAttributes {
   onSelect?: (newColor: string) => void;
   pillSize?: PillSize;
   "data-testid"?: string;
+  className?: string;
 }
 
 export const ColorPill = ({
@@ -31,6 +32,7 @@ export const ColorPill = ({
   onClick,
   onSelect,
   "data-testid": dataTestId,
+  className,
 }: ColorPillProps) => {
   const handleClick = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
@@ -46,12 +48,18 @@ export const ColorPill = ({
       aria-label={ariaLabel}
       role="button"
       onClick={handleClick}
-      className={cx(ColorPillS.ColorPill, CS.flexNoShrink, {
-        [ColorPillS.Small]: pillSize === "small",
-        [ColorPillS.Medium]: pillSize === "medium",
-        [ColorPillS.Selected]: isSelected,
-        [ColorPillS.Auto]: isAuto,
-      })}
+      className={cx(
+        ColorPillS.ColorPill,
+        CS.flexNoShrink,
+        {
+          [ColorPillS.Small]: pillSize === "small",
+          [ColorPillS.Medium]: pillSize === "medium",
+          [ColorPillS.Large]: pillSize === "large",
+          [ColorPillS.Selected]: isSelected,
+          [ColorPillS.Auto]: isAuto,
+        },
+        className,
+      )}
     >
       <Box bg={color} w="100%" h="100%" style={{ borderRadius: "50%" }}></Box>
     </Center>

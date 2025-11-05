@@ -10,7 +10,7 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/ui/utils/colors";
-import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
+import { ChartSettingGaugeSegments } from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
   getDefaultSize,
@@ -118,10 +118,7 @@ export default class Gauge extends Component {
     },
     "gauge.segments": {
       get section() {
-        return t`Display`;
-      },
-      get title() {
-        return t`Gauge ranges`;
+        return t`Ranges`;
       },
       getDefault(series) {
         let value = 100;
@@ -136,6 +133,7 @@ export default class Gauge extends Component {
       },
       widget: ChartSettingGaugeSegments,
       persistDefault: true,
+      noPadding: true,
     },
   };
 
