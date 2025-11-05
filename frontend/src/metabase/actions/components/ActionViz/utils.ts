@@ -9,6 +9,7 @@ import type {
   ActionParametersMapping,
   ParameterId,
   ParameterValueOrArray,
+  ParameterValuesMap,
   ParametersForActionExecution,
   WritebackAction,
   WritebackParameter,
@@ -17,13 +18,13 @@ import type {
 type ActionParameterTuple = [ParameterId, ActionParameterValue];
 
 function formatParameterValue(value: ParameterValueOrArray) {
-  return Array.isArray(value) ? value[0] : value;
+  return Array.isArray(value) ? value.filter(isNotNull)[0] : value;
 }
 
 function prepareParameter(
   mapping: ActionParametersMapping,
   action: WritebackAction,
-  parameterValues: { [id: string]: ParameterValueOrArray },
+  parameterValues: ParameterValuesMap,
 ): ActionParameterTuple | undefined {
   if (!action?.parameters?.length) {
     return;
@@ -32,7 +33,7 @@ function prepareParameter(
     mapping;
 
   const parameterValue = parameterValues[sourceParameterId];
-  const actionParameter = action.parameters.find(parameter =>
+  const actionParameter = action.parameters.find((parameter) =>
     _.isEqual(parameter.target, actionParameterTarget),
   );
 
@@ -46,7 +47,7 @@ function prepareParameter(
 
 export function getDashcardParamValues(
   dashcard: ActionDashboardCard,
-  parameterValues: { [id: string]: ParameterValueOrArray },
+  parameterValues: ParameterValuesMap,
 ): ParametersForActionExecution {
   if (
     !dashcard.action ||
@@ -59,7 +60,7 @@ export function getDashcardParamValues(
 
   return Object.fromEntries(
     parameter_mappings
-      ?.map(mapping => prepareParameter(mapping, action, parameterValues))
+      ?.map((mapping) => prepareParameter(mapping, action, parameterValues))
       ?.filter(isNotNull),
   );
 }
@@ -76,7 +77,7 @@ export function getNotProvidedActionParameters(
   dashboardParamValues: ParametersForActionExecution,
 ) {
   // return any action parameters that don't have mapped values
-  return (action.parameters ?? []).filter(parameter => {
+  return (action.parameters ?? []).filter((parameter) => {
     if ("default" in parameter) {
       return false;
     }
@@ -89,7 +90,7 @@ export function getMappedActionParameters(
   dashboardParamValues: ParametersForActionExecution,
 ) {
   const parameters = action.parameters ?? [];
-  return parameters.filter(parameter => {
+  return parameters.filter((parameter) => {
     return isMappedParameter(parameter, dashboardParamValues);
   });
 }

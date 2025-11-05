@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button/Button";
+import Button from "metabase/common/components/Button/Button";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 
@@ -34,7 +34,7 @@ const MoveEventModal = ({
   onCancel,
   onClose,
 }: MoveEventModalProps): JSX.Element => {
-  const oldTimeline = timelines.find(t => t.id === event.timeline_id);
+  const oldTimeline = timelines.find((t) => t.id === event.timeline_id);
   const [newTimeline, setNewTimeline] = useState(oldTimeline);
   const isEnabled = newTimeline?.id !== oldTimeline?.id;
 

@@ -1,11 +1,11 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { t } from "ttag";
 
 import {
   useGetPersistedInfoByCardQuery,
   useRefreshModelCacheMutation,
 } from "metabase/api";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { Box, Button, Flex, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -26,7 +26,7 @@ function getStatusMessage(job: ModelCacheRefreshStatus) {
   if (job.state === "refreshing") {
     return t`Refreshing model cache`;
   }
-  const lastRefreshTime = moment(job.refresh_end).fromNow();
+  const lastRefreshTime = dayjs(job.refresh_end).fromNow();
   return t`Model last cached ${lastRefreshTime}`;
 }
 
@@ -48,7 +48,7 @@ export function ModelCacheManagementSection({ model }: Props) {
     persistedModel.state !== "deletable";
 
   const isError = persistedModel?.state === "error";
-  const lastRefreshTime = moment(persistedModel?.refresh_end).fromNow();
+  const lastRefreshTime = dayjs(persistedModel?.refresh_end).fromNow();
 
   const canRefreshCache =
     persistedModel && checkCanRefreshModelCache(persistedModel);

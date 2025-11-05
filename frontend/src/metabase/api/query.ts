@@ -17,7 +17,7 @@ const isAllowedHTTPMethod = (method: any): method is AllowedHTTPMethods => {
 export const apiQuery: BaseQueryFn = async (args, ctx) => {
   const method = typeof args === "string" ? "GET" : (args?.method ?? "GET");
   const url = typeof args === "string" ? args : args.url;
-  const { bodyParamName, noEvent } = args;
+  const { bodyParamName, noEvent, formData, fetch } = args;
 
   if (!isAllowedHTTPMethod(method)) {
     return { error: "Invalid HTTP method" };
@@ -25,8 +25,16 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
 
   try {
     const response = await api[method](url)(
+      // this will transform arrays to objects with numeric keys
+      // we shouldn't be using top level-arrays in the API
       { ...args?.body, ...args?.params },
-      { signal: ctx.signal, bodyParamName, noEvent },
+      {
+        signal: ctx.signal,
+        bodyParamName,
+        noEvent,
+        formData,
+        fetch,
+      },
     );
     return { data: response };
   } catch (error) {

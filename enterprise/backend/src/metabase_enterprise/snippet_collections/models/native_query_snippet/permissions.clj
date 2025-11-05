@@ -2,11 +2,9 @@
   "EE implementation of NativeQuerySnippet permissions."
   (:require
    [metabase.models.interface :as mi]
-   [metabase.models.native-query-snippet.permissions :as snippet.perms]
-   [metabase.models.permissions :as perms]
-   [metabase.public-settings.premium-features
-    :as premium-features
-    :refer [defenterprise]]
+   [metabase.native-query-snippets.core :as snippets]
+   [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -21,8 +19,8 @@
   :feature :snippet-collections
   ([snippet]
    (and
-    (not (premium-features/sandboxed-user?))
-    (snippet.perms/has-any-native-permissions?)
+    (not (perms/sandboxed-user?))
+    (snippets/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :read)))
   ([model id]
    (can-read? (t2/select-one [model :collection_id] :id id))))
@@ -32,8 +30,8 @@
   :feature :snippet-collections
   ([snippet]
    (and
-    (not (premium-features/sandboxed-user?))
-    (snippet.perms/has-any-native-permissions?)
+    (not (perms/sandboxed-user?))
+    (snippets/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :write)))
   ([model id]
    (can-write? (t2/select-one [model :collection_id] :id id))))
@@ -43,8 +41,8 @@
   :feature :snippet-collections
   [_model m]
   (and
-   (not (premium-features/sandboxed-user?))
-   (snippet.perms/has-any-native-permissions?)
+   (not (perms/sandboxed-user?))
+   (snippets/has-any-native-permissions?)
    (has-parent-collection-perms? m :write)))
 
 (defenterprise can-update?
@@ -52,8 +50,8 @@
   :feature :snippet-collections
   [snippet changes]
   (and
-   (not (premium-features/sandboxed-user?))
-   (snippet.perms/has-any-native-permissions?)
+   (not (perms/sandboxed-user?))
+   (snippets/has-any-native-permissions?)
    (has-parent-collection-perms? snippet :write)
    (or (not (contains? changes :collection_id))
        (has-parent-collection-perms? changes :write))))

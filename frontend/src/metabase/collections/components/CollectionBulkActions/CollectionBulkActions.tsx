@@ -4,9 +4,10 @@ import _ from "underscore";
 
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 import { isTrashedCollection } from "metabase/collections/utils";
-import { BulkActionBar } from "metabase/components/BulkActionBar";
-import Modal from "metabase/components/Modal";
-import { BulkMoveModal } from "metabase/containers/MoveModal";
+import { BulkActionBar } from "metabase/common/components/BulkActionBar";
+import Modal from "metabase/common/components/Modal";
+import { BulkMoveModal } from "metabase/common/components/MoveModal";
+import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";
@@ -53,6 +54,12 @@ export const CollectionBulkActions = memo(
       clearSelected();
     };
 
+    const handleCancelModal = () => {
+      setSelectedItems(null);
+      setSelectedAction(null);
+      setRememberedDestination(null);
+    };
+
     const tryOrClear = (promise: Promise<any>) =>
       promise.finally(() => clearSelected());
 
@@ -67,7 +74,7 @@ export const CollectionBulkActions = memo(
       if (selectedItems) {
         await tryOrClear(
           Promise.all(
-            selectedItems.map(item => item.setCollection?.(destination)),
+            selectedItems.map((item) => item.setCollection?.(destination)),
           ),
         );
       }
@@ -84,14 +91,14 @@ export const CollectionBulkActions = memo(
         // otherwise, destination is a dashboard
         else if (destination.model === "dashboard") {
           // ensure that all selected items are cards. This should be enforced by the picker
-          if (!selectedItems.every(item => item.model === "card")) {
+          if (!selectedItems.every((item) => item.model === "card")) {
             throw new Error("can't move non-cards into dashboards");
           }
           //determine if we need to display a confirmation modal
 
           //Check how many items are cards that appear in a dashboard
           const potentialConfirmCards = selectedItems.filter(
-            item => item.dashboard_count && item.dashboard_count > 0,
+            (item) => item.dashboard_count && item.dashboard_count > 0,
           );
 
           //If there are none, then do the move
@@ -113,6 +120,11 @@ export const CollectionBulkActions = memo(
       `${selected.length} items selected`,
       selected.length,
     );
+
+    // This is a little cheeky, but by virtue of the screens we show the BulkMoveModal, all
+    // selected items should have the same collection id. yatta!
+    const recentAndSearchFilter = (item: CollectionPickerItem) =>
+      item.model === "collection" && item.id === collection.id;
 
     return (
       <>
@@ -151,11 +163,12 @@ export const CollectionBulkActions = memo(
         {selectedItems && hasSelectedItems && selectedAction === "move" && (
           <BulkMoveModal
             selectedItems={selectedItems}
-            onClose={handleCloseModal}
+            onClose={handleCancelModal}
             onMove={handleBulkMove}
             initialCollectionId={
               isTrashedCollection(collection) ? "root" : collection.id
             }
+            recentAndSearchFilter={recentAndSearchFilter}
           />
         )}
 

@@ -1,3 +1,4 @@
+import type { DefinedClauseName } from "metabase/querying/expressions";
 import type {
   CardId,
   DatabaseId,
@@ -17,65 +18,70 @@ import type { ColumnExtractionTag } from "./extractions";
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
  * and in other files it gets treated like `unknown` so it can't be examined, manipulated or a new one created.
  */
-declare const Query: unique symbol;
-export type Query = unknown & { _opaque: typeof Query };
+declare const QuerySymbol: unique symbol;
+export type Query = unknown & { _opaque: typeof QuerySymbol };
 
-declare const MetadataProvider: unique symbol;
-export type MetadataProvider = unknown & { _opaque: typeof MetadataProvider };
-
-declare const TableMetadata: unique symbol;
-export type TableMetadata = unknown & { _opaque: typeof TableMetadata };
-
-declare const CardMetadata: unique symbol;
-export type CardMetadata = unknown & { _opaque: typeof CardMetadata };
-
-declare const SegmentMetadata: unique symbol;
-export type SegmentMetadata = unknown & { _opaque: typeof SegmentMetadata };
-
-declare const MetricMetadata: unique symbol;
-export type MetricMetadata = unknown & {
-  _opaque: typeof MetricMetadata;
+declare const MetadataProviderSymbol: unique symbol;
+export type MetadataProvider = unknown & {
+  _opaque: typeof MetadataProviderSymbol;
 };
 
-declare const AggregationClause: unique symbol;
-export type AggregationClause = unknown & { _opaque: typeof AggregationClause };
+declare const TableMetadataSymbol: unique symbol;
+export type TableMetadata = unknown & { _opaque: typeof TableMetadataSymbol };
+
+declare const CardMetadataSymbol: unique symbol;
+export type CardMetadata = unknown & { _opaque: typeof CardMetadataSymbol };
+
+declare const SegmentMetadataSymbol: unique symbol;
+export type SegmentMetadata = unknown & {
+  _opaque: typeof SegmentMetadataSymbol;
+};
+
+declare const MetricMetadataSymbol: unique symbol;
+export type MetricMetadata = unknown & {
+  _opaque: typeof MetricMetadataSymbol;
+};
+
+declare const AggregationClauseSymbol: unique symbol;
+export type AggregationClause = unknown & {
+  _opaque: typeof AggregationClauseSymbol;
+};
 
 export type Aggregable = AggregationClause | MetricMetadata | ExpressionClause;
 
-declare const AggregationOperator: unique symbol;
+declare const AggregationOperatorSymbol: unique symbol;
 export type AggregationOperator = unknown & {
-  _opaque: typeof AggregationOperator;
+  _opaque: typeof AggregationOperatorSymbol;
 };
 
-declare const BreakoutClause: unique symbol;
-export type BreakoutClause = unknown & { _opaque: typeof BreakoutClause };
+declare const BreakoutClauseSymbol: unique symbol;
+export type BreakoutClause = unknown & { _opaque: typeof BreakoutClauseSymbol };
 
-declare const ExpressionClause: unique symbol;
-export type ExpressionClause = unknown & { _opaque: typeof ExpressionClause };
+declare const ExpressionClauseSymbol: unique symbol;
+export type ExpressionClause = unknown & {
+  _opaque: typeof ExpressionClauseSymbol;
+};
 
-declare const OrderByClause: unique symbol;
-export type OrderByClause = unknown & { _opaque: typeof OrderByClause };
+declare const OrderByClauseSymbol: unique symbol;
+export type OrderByClause = unknown & { _opaque: typeof OrderByClauseSymbol };
 
 export type OrderByDirection = "asc" | "desc";
 
-declare const FilterClause: unique symbol;
-export type FilterClause = unknown & { _opaque: typeof FilterClause };
+declare const FilterClauseSymbol: unique symbol;
+export type FilterClause = unknown & { _opaque: typeof FilterClauseSymbol };
 
 export type Filterable = FilterClause | ExpressionClause | SegmentMetadata;
 
-declare const Join: unique symbol;
-export type Join = unknown & { _opaque: typeof Join };
+declare const JoinSymbol: unique symbol;
+export type Join = unknown & { _opaque: typeof JoinSymbol };
 
-declare const JoinStrategy: unique symbol;
-export type JoinStrategy = unknown & { _opaque: typeof JoinStrategy };
+declare const JoinStrategySymbol: unique symbol;
+export type JoinStrategy = unknown & { _opaque: typeof JoinStrategySymbol };
 
-declare const JoinCondition: unique symbol;
-export type JoinCondition = unknown & { _opaque: typeof JoinCondition };
+declare const JoinConditionSymbol: unique symbol;
+export type JoinCondition = unknown & { _opaque: typeof JoinConditionSymbol };
 
-declare const JoinConditionOperator: unique symbol;
-export type JoinConditionOperator = unknown & {
-  _opaque: typeof JoinConditionOperator;
-};
+export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
 
 export type Clause =
   | AggregationClause
@@ -95,16 +101,24 @@ export type ClauseType =
   | "order-by"
   | "limit";
 
+export type Expressionable =
+  | ExpressionClause
+  | FilterClause
+  | AggregationClause;
+
 export type Limit = number | null;
 
-declare const ColumnMetadata: unique symbol;
-export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
+declare const ColumnMetadataSymbol: unique symbol;
+export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadataSymbol };
 
-declare const ColumnGroup: unique symbol;
-export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
+declare const ColumnTypeInfoSymbol: unique symbol;
+export type ColumnTypeInfo = unknown & { _opaque: typeof ColumnTypeInfoSymbol };
 
-declare const Bucket: unique symbol;
-export type Bucket = unknown & { _opaque: typeof Bucket };
+declare const ColumnGroupSymbol: unique symbol;
+export type ColumnGroup = unknown & { _opaque: typeof ColumnGroupSymbol };
+
+declare const BucketSymbol: unique symbol;
+export type Bucket = unknown & { _opaque: typeof BucketSymbol };
 
 export type BucketDisplayInfo = {
   shortName: TemporalUnit;
@@ -117,7 +131,8 @@ export type BucketDisplayInfo = {
 export type TableDisplayInfo = {
   name: string;
   displayName: string;
-  isSourceTable: boolean;
+  isSourceTable?: boolean;
+  isSourceCard?: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
   schema: SchemaId;
@@ -245,40 +260,19 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-export type ExpressionOperatorName =
-  | "+"
-  | "-"
-  | "*"
-  | "/"
-  | "="
-  | "!="
-  | ">"
-  | "<"
-  | ">="
-  | "<="
-  | "between"
-  | "contains"
-  | "does-not-contain"
-  | "is-null"
-  | "not-null"
-  | "is-empty"
-  | "not-empty"
-  | "starts-with"
-  | "ends-with"
-  | "concat"
-  | "interval"
-  | "time-interval"
-  | "relative-time-interval"
-  | "relative-datetime"
-  | "datetime-add"
-  | "inside"
-  | "segment"
-  | "offset";
+export type ExpressionOperator = DefinedClauseName | "value";
 
-export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
+export type ExpressionArg =
+  | boolean
+  | number
+  | bigint
+  | string
+  | ColumnMetadata
+  | SegmentMetadata
+  | MetricMetadata;
 
 export type ExpressionParts = {
-  operator: ExpressionOperatorName;
+  operator: ExpressionOperator;
   args: (ExpressionArg | ExpressionParts)[];
   options: ExpressionOptions;
 };
@@ -286,10 +280,13 @@ export type ExpressionParts = {
 export type ExpressionOptions = {
   "case-sensitive"?: boolean;
   "include-current"?: boolean;
+  "base-type"?: string;
+  "effective-type"?: string;
+  mode?: DatetimeMode;
 };
 
-declare const FilterOperator: unique symbol;
-export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
+declare const FilterOperatorSymbol: unique symbol;
+export type FilterOperator = unknown & { _opaque: typeof FilterOperatorSymbol };
 
 export type FilterOperatorName =
   | StringFilterOperator
@@ -355,6 +352,16 @@ export type ExcludeDateFilterUnit =
   | "month-of-year"
   | "quarter-of-year";
 
+export type DatetimeMode =
+  | "iso"
+  | "simple"
+  | "iso-bytes"
+  | "simple-bytes"
+  | "unix-seconds"
+  | "unix-milliseconds"
+  | "unix-microseconds"
+  | "unix-nanoseconds";
+
 export type FilterOperatorDisplayInfo = {
   shortName: FilterOperatorName;
   displayName: string;
@@ -384,17 +391,19 @@ export type StringFilterOptions = {
   caseSensitive?: boolean;
 };
 
+export type NumberFilterValue = number | bigint;
+
 export type NumberFilterParts = {
   operator: NumberFilterOperator;
   column: ColumnMetadata;
-  values: number[];
+  values: NumberFilterValue[];
 };
 
 export type CoordinateFilterParts = {
   operator: CoordinateFilterOperator;
   column: ColumnMetadata;
   longitudeColumn: ColumnMetadata | null;
-  values: number[];
+  values: NumberFilterValue[];
 };
 
 export type BooleanFilterParts = {
@@ -413,7 +422,7 @@ export type SpecificDateFilterParts = {
 export type RelativeDateFilterParts = {
   column: ColumnMetadata;
   unit: RelativeDateFilterUnit;
-  value: number | "current";
+  value: number;
   offsetUnit: RelativeDateFilterUnit | null;
   offsetValue: number | null;
   options: RelativeDateFilterOptions;
@@ -448,16 +457,10 @@ export type DefaultFilterParts = {
   column: ColumnMetadata;
 };
 
-export type JoinConditionOperatorDisplayInfo = {
-  displayName: string;
-  shortName: string;
-  default?: boolean;
-};
-
 export type JoinConditionParts = {
   operator: JoinConditionOperator;
-  lhsColumn: ColumnMetadata;
-  rhsColumn: ColumnMetadata;
+  lhsExpression: ExpressionClause;
+  rhsExpression: ExpressionClause;
 };
 
 export type JoinStrategyDisplayInfo = {
@@ -466,15 +469,14 @@ export type JoinStrategyDisplayInfo = {
   shortName: string;
 };
 
-declare const DrillThru: unique symbol;
-export type DrillThru = unknown & { _opaque: typeof DrillThru };
+declare const DrillThruSymbol: unique symbol;
+export type DrillThru = unknown & { _opaque: typeof DrillThruSymbol };
 
 export type DrillThruType =
   | "drill-thru/automatic-insights"
   | "drill-thru/column-extract"
   | "drill-thru/column-filter"
   | "drill-thru/combine-columns"
-  | "drill-thru/compare-aggregations"
   | "drill-thru/distribution"
   | "drill-thru/fk-details"
   | "drill-thru/fk-filter"
@@ -492,9 +494,9 @@ export type DrillThruType =
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
-declare const ColumnExtraction: unique symbol;
+declare const ColumnExtractionSymbol: unique symbol;
 export type ColumnExtraction = unknown & {
-  _opaque: typeof ColumnExtraction;
+  _opaque: typeof ColumnExtractionSymbol;
 };
 
 export type ColumnExtractionInfo = {
@@ -507,9 +509,6 @@ export type ColumnExtractDrillThruInfo =
     displayName: string;
     extractions: ColumnExtractionInfo[];
   };
-
-export type CompareAggregationsDrillThruInfo =
-  BaseDrillThruInfo<"drill-thru/compare-aggregations">;
 
 export type CombineColumnsDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/combine-columns">;
@@ -577,10 +576,14 @@ export type ZoomTimeseriesDrillThruInfo =
     displayName?: string;
   };
 
+export type ZoomGeographicDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/zoom-in.geographic"> & {
+    displayName: string;
+  };
+
 export type DrillThruDisplayInfo =
   | ColumnExtractDrillThruInfo
   | CombineColumnsDrillThruInfo
-  | CompareAggregationsDrillThruInfo
   | QuickFilterDrillThruInfo
   | PKDrillThruInfo
   | ZoomDrillThruInfo
@@ -593,7 +596,8 @@ export type DrillThruDisplayInfo =
   | SummarizeColumnByTimeDrillThruInfo
   | ColumnFilterDrillThruInfo
   | UnderlyingRecordsDrillThruInfo
-  | ZoomTimeseriesDrillThruInfo;
+  | ZoomTimeseriesDrillThruInfo
+  | ZoomGeographicDrillThruInfo;
 
 export type FilterDrillDetails = {
   query: Query;
@@ -601,17 +605,12 @@ export type FilterDrillDetails = {
   column: ColumnMetadata;
 };
 
-export type CombineColumnsDrillDetails = {
-  query: Query;
-  stageIndex: number;
-  column: ColumnMetadata;
-};
-
-export type AggregationDrillDetails = {
-  aggregation: AggregationClause;
-};
-
 export type PivotType = "category" | "location" | "time";
+
+export type PivotDrillDetails = {
+  pivotTypes: PivotType[];
+  stageIndex: number;
+};
 
 export interface ClickObjectDimension {
   value: RowValue;
@@ -634,7 +633,7 @@ export interface ClickObject {
   settings?: Record<string, unknown>;
   columnShortcuts?: boolean;
   origin?: {
-    row: RowValue;
+    row: RowValue[];
     cols: DatasetColumn[];
   };
   extraData?: Record<string, unknown>;
@@ -643,6 +642,7 @@ export interface ClickObject {
 
 export interface FieldValuesSearchInfo {
   fieldId: FieldId | null;
+  searchField: ColumnMetadata | null;
   searchFieldId: FieldId | null;
   hasFieldValues: FieldValuesType;
 }

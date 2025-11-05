@@ -1,17 +1,14 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-import { assoc, assocIn, chain, getIn, updateIn } from "icepick";
 import slugg from "slugg";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import ValidationError from "metabase-lib/v1/ValidationError";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
-import AtomicQuery from "metabase-lib/v1/queries/AtomicQuery";
 import TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type Variable from "metabase-lib/v1/variables/Variable";
 import type {
@@ -19,18 +16,18 @@ import type {
   DatabaseId,
   DatasetQuery,
   NativeDatasetQuery,
+  NativeQuerySnippet,
   ParameterValuesConfig,
   TemplateTag,
   TemplateTags,
 } from "metabase-types/api";
 
-import type Dimension from "../Dimension";
 import { TemplateTagDimension } from "../Dimension";
 import DimensionOptions from "../DimensionOptions";
 
 import { getNativeQueryTable } from "./utils/native-query-table";
 
-type DimensionFilter = (dimension: Dimension) => boolean;
+type DimensionFilter = (dimension: TemplateTagDimension) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
 export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
   database: null,
@@ -44,9 +41,6 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
 ///////////////////////////
 // QUERY TEXT TAG UTILS
 
-export const CARD_TAG_REGEX: RegExp =
-  /\{\{\s*(#([0-9]*)(-[a-z0-9-]*)?)\s*\}\}/g;
-
 function tagRegex(tagName: string): RegExp {
   return new RegExp(`{{\\s*${tagName}\\s*}}`, "g");
 }
@@ -56,10 +50,12 @@ function replaceTagName(
   oldTagName: string,
   newTagName: string,
 ): NativeQuery {
-  const queryText = query
-    .queryText()
-    .replace(tagRegex(oldTagName), `{{${newTagName}}}`);
-  return query.setQueryText(queryText);
+  const queryText = query.queryText();
+  const newQueryText = queryText.replace(
+    tagRegex(oldTagName),
+    `{{${newTagName}}}`,
+  );
+  return newQueryText !== queryText ? query.setQueryText(newQueryText) : query;
 }
 
 export function updateCardTemplateTagNames(
@@ -70,12 +66,12 @@ export function updateCardTemplateTagNames(
   const tags = query
     .templateTags()
     // only tags for cards
-    .filter(tag => tag.type === "card")
+    .filter((tag) => tag.type === "card")
     // only tags for given cards
-    .filter(tag => cardById[tag["card-id"]]);
+    .filter((tag) => tag["card-id"] != null && cardById[tag["card-id"]]);
   // reduce over each tag, updating query text with the new tag name
   return tags.reduce((query, tag) => {
-    const card = cardById[tag["card-id"]];
+    const card = cardById[Number(tag["card-id"])];
     const newTagName = `#${card.id}-${slugg(card.name)}`;
     return replaceTagName(query, tag.name, newTagName);
   }, query);
@@ -85,26 +81,50 @@ export function updateCardTemplateTagNames(
 ///////////////////////////
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class NativeQuery extends AtomicQuery {
-  _nativeDatasetQuery: NativeDatasetQuery;
+export default class NativeQuery {
+  _question: Question;
+  _datasetQuery: DatasetQuery;
 
   constructor(
     question: Question,
     datasetQuery: DatasetQuery = NATIVE_QUERY_TEMPLATE,
   ) {
-    super(question, datasetQuery);
-    this._nativeDatasetQuery = datasetQuery as NativeDatasetQuery;
+    this._question = question;
+    this._datasetQuery = datasetQuery;
   }
 
-  static isDatasetQueryType(datasetQuery: DatasetQuery) {
-    return datasetQuery?.type === NATIVE_QUERY_TEMPLATE.type;
+  private _query(): Lib.Query {
+    return this.question().query();
+  }
+
+  private _setQuery(query: Lib.Query): NativeQuery {
+    return checkNotNull(this.question().setQuery(query).legacyNativeQuery());
+  }
+
+  /**
+   * Returns a question updated with the current dataset query.
+   * Can only be applied to query that is a direct child of the question.
+   */
+  question = _.once((): Question => {
+    return this._question.setLegacyQuery(this);
+  });
+
+  /**
+   * Convenience method for accessing the global metadata
+   */
+  metadata() {
+    return this._question.metadata();
+  }
+
+  /**
+   * Returns the dataset_query object underlying this Query
+   */
+  datasetQuery(): DatasetQuery {
+    return this._datasetQuery;
   }
 
   /* Query superclass methods */
 
-  /**
-   * @deprecated use MLv2
-   */
   hasData() {
     return (
       this._databaseId() != null && (!this.requiresTable() || this.collection())
@@ -123,42 +143,38 @@ export default class NativeQuery extends AtomicQuery {
     return this._databaseId() == null || this.queryText().length === 0;
   }
 
-  /* AtomicQuery superclass methods */
   tables(): Table[] | null | undefined {
     const database = this._database();
     return (database && database.tables) || null;
   }
 
-  /**
-   * @deprecated Use MLv2
-   */
   _databaseId(): DatabaseId | null | undefined {
-    // same for both structured and native
-    return this._nativeDatasetQuery.database;
+    return Lib.databaseID(this._query());
   }
 
-  /**
-   * @deprecated Use MLv2
-   */
   _database(): Database | null | undefined {
     const databaseId = this._databaseId();
-    return databaseId != null ? this._metadata.database(databaseId) : null;
+    return databaseId != null ? this.metadata().database(databaseId) : null;
   }
 
   engine(): string | null | undefined {
-    const database = this._database();
-    return database && database.engine;
+    return Lib.engine(this._query());
   }
 
   /* Methods unique to this query type */
 
   setDatabaseId(databaseId: DatabaseId): NativeQuery {
     if (databaseId !== this._databaseId()) {
-      // TODO: this should reset the rest of the query?
-      return new NativeQuery(
-        this._originalQuestion,
-        assoc(this.datasetQuery(), "database", databaseId),
+      const metadataProvider = Lib.metadataProvider(
+        databaseId,
+        this.metadata(),
       );
+      const newQuery = Lib.withDifferentDatabase(
+        this._query(),
+        databaseId,
+        metadataProvider,
+      );
+      return this._setQuery(newQuery);
     } else {
       return this;
     }
@@ -184,7 +200,9 @@ export default class NativeQuery extends AtomicQuery {
   supportsNativeParameters() {
     const database = this._database();
     return (
-      database != null && _.contains(database.features, "native-parameters")
+      database != null &&
+      database.features != null &&
+      _.contains(database.features, "native-parameters")
     );
   }
 
@@ -193,51 +211,40 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   queryText(): string {
-    return getIn(this.datasetQuery(), ["native", "query"]) || "";
+    return Lib.rawNativeQuery(this._query()) ?? "";
   }
 
   setQueryText(newQueryText: string): NativeQuery {
-    return new NativeQuery(
-      this._originalQuestion,
-      chain(this._datasetQuery)
-        .assocIn(["native", "query"], newQueryText)
-        .assocIn(
-          ["native", "template-tags"],
-          this._getUpdatedTemplateTags(newQueryText),
-        )
-        .value(),
-    );
+    const newQuery = Lib.withNativeQuery(this._query(), newQueryText);
+    return this._setQuery(newQuery);
   }
 
   collection(): string | null | undefined {
-    return getIn(this.datasetQuery(), ["native", "collection"]);
+    const extras = Lib.nativeExtras(this._query());
+    return extras?.collection;
   }
 
   setCollectionName(newCollection: string) {
-    return new NativeQuery(
-      this._originalQuestion,
-      assocIn(this._datasetQuery, ["native", "collection"], newCollection),
-    );
+    const newQuery = Lib.withNativeExtras(this._query(), {
+      collection: newCollection,
+    });
+    return this._setQuery(newQuery);
   }
 
   setParameterIndex(id: string, newIndex: number) {
     // NOTE: currently all NativeQuery parameters are implicitly generated from
     // template tags, and the order is determined by the key order
-    return new NativeQuery(
-      this._originalQuestion,
-      updateIn(
-        this._datasetQuery,
-        ["native", "template-tags"],
-        templateTags => {
-          const entries = Array.from(Object.entries(templateTags));
+    const query = this._query();
+    const tags = this.templateTags();
+    const oldIndex = tags.findIndex((tag) => tag.id === id);
 
-          const oldIndex = _.findIndex(entries, entry => entry[1].id === id);
-
-          entries.splice(newIndex, 0, entries.splice(oldIndex, 1)[0]);
-          return _.object(entries);
-        },
-      ),
+    const newTags = [...tags];
+    newTags.splice(newIndex, 0, newTags.splice(oldIndex, 1)[0]);
+    const newTagsMap = Object.fromEntries(
+      newTags.map((tag) => [tag.name, tag]),
     );
+
+    return this._setQuery(Lib.withTemplateTags(query, newTagsMap));
   }
 
   lineCount(): number {
@@ -253,7 +260,7 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   templateTagsMap(): TemplateTags {
-    return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
+    return Lib.templateTags(this._query());
   }
 
   templateTags(): TemplateTag[] {
@@ -261,8 +268,15 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   variableTemplateTags(): TemplateTag[] {
-    return this.templateTags().filter(t =>
-      ["dimension", "text", "number", "date"].includes(t.type),
+    return this.templateTags().filter((t) =>
+      [
+        "dimension",
+        "text",
+        "number",
+        "date",
+        "boolean",
+        "temporal-unit",
+      ].includes(t.type),
     );
   }
 
@@ -271,18 +285,19 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   hasSnippets() {
-    return this.templateTags().some(t => t.type === "snippet");
+    return this.templateTags().some((t) => t.type === "snippet");
   }
 
   referencedQuestionIds(): number[] {
     return this.templateTags()
-      .filter(tag => tag.type === "card")
-      .map(tag => tag["card-id"]);
+      .filter((tag) => tag.type === "card")
+      .map((tag) => tag["card-id"])
+      .filter((cardId): cardId is number => cardId != null);
   }
 
   private _validateTemplateTags() {
     return this.templateTags()
-      .map(tag => {
+      .map((tag) => {
         if (!tag["display-name"]) {
           return new ValidationError(t`Missing widget label: ${tag.name}`);
         }
@@ -308,36 +323,45 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   setTemplateTag(name: string, tag: TemplateTag): NativeQuery {
-    return this.setDatasetQuery(
-      updateIn(this.datasetQuery(), ["native", "template-tags"], tags => ({
-        ...tags,
-        [name]: tag,
-      })),
-    );
+    const query = this._query();
+    const tags = Lib.templateTags(query);
+    const newQuery = Lib.withTemplateTags(query, { ...tags, [name]: tag });
+    return this._setQuery(newQuery);
   }
 
   setTemplateTagConfig(
     tag: TemplateTag,
     config: ParameterValuesConfig,
   ): NativeQuery {
-    const newParameter = getTemplateTagParameter(tag, config);
-    return this.question().setParameter(tag.id, newParameter).legacyQuery();
+    const oldParameter = this.question()
+      .parameters()
+      .find((parameter) => parameter.id === tag.id);
+    const newParameter = getTemplateTagParameter(tag, {
+      ...oldParameter,
+      ...config,
+    });
+    return checkNotNull(
+      this.question().setParameter(tag.id, newParameter).legacyNativeQuery(),
+    );
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
-    return new NativeQuery(this._originalQuestion, datasetQuery);
+    return checkNotNull(
+      this.question().setDatasetQuery(datasetQuery).legacyNativeQuery(),
+    );
   }
 
   dimensionOptions(
-    dimensionFilter: DimensionFilter = _.identity,
-    operatorFilter = _.identity,
+    dimensionFilter: DimensionFilter = _.constant(true),
   ): DimensionOptions {
     const dimensions = this.templateTags()
-      .filter(tag => tag.type === "dimension" && operatorFilter(tag))
-      .map(tag => new TemplateTagDimension(tag.name, this.metadata(), this))
-      .filter(dimension => dimensionFilter(dimension));
+      .filter((tag) => tag.type === "dimension")
+      .map((tag) => new TemplateTagDimension(tag.name, this.metadata(), this))
+      .filter((dimension) => dimensionFilter(dimension));
+
     return new DimensionOptions({
       dimensions: dimensions,
+      fks: [],
       count: dimensions.length,
     });
   }
@@ -346,40 +370,32 @@ export default class NativeQuery extends AtomicQuery {
     variableFilter: VariableFilter = () => true,
   ): TemplateTagVariable[] {
     return this.templateTags()
-      .filter(tag => tag.type !== "dimension")
-      .map(tag => new TemplateTagVariable([tag.name], this.metadata(), this))
+      .filter((tag) => tag.type !== "dimension")
+      .map((tag) => new TemplateTagVariable([tag.name], this.metadata(), this))
       .filter(variableFilter);
   }
 
-  updateSnippetsWithIds(snippets): NativeQuery {
-    const tagsBySnippetName = _.chain(this.templateTags())
-      .filter(tag => tag.type === "snippet" && tag["snippet-id"] == null)
-      .groupBy(tag => tag["snippet-name"])
-      .value();
+  updateSnippet(
+    oldSnippet: NativeQuerySnippet,
+    newSnippet: NativeQuerySnippet,
+  ) {
+    // if the snippet name has changed, we need to update it in the query
+    const newQuery =
+      newSnippet.name !== oldSnippet.name
+        ? this.updateSnippetNames([newSnippet])
+        : this;
 
-    if (Object.keys(tagsBySnippetName).length === 0) {
-      // no need to check if there are no tags
-      return this;
-    }
-
-    let query = this;
-
-    for (const snippet of snippets) {
-      for (const tag of tagsBySnippetName[snippet.name] || []) {
-        query = query.setTemplateTag(tag.name, {
-          ...tag,
-          "snippet-id": snippet.id,
-        });
-      }
-    }
-
-    return query;
+    // if the query has changed, it was already parsed; otherwise do the parsing
+    // to expand snippet tags into the query tags
+    return newQuery === this
+      ? newQuery.setQueryText(newQuery.queryText())
+      : newQuery;
   }
 
-  updateSnippetNames(snippets): NativeQuery {
+  updateSnippetNames(snippets: NativeQuerySnippet[]): NativeQuery {
     const tagsBySnippetId = _.chain(this.templateTags())
-      .filter(tag => tag.type === "snippet")
-      .groupBy(tag => tag["snippet-id"])
+      .filter((tag) => tag.type === "snippet" && tag["snippet-id"] != null)
+      .groupBy((tag) => Number(tag["snippet-id"]))
       .value();
 
     if (Object.keys(tagsBySnippetId).length === 0) {
@@ -401,18 +417,9 @@ export default class NativeQuery extends AtomicQuery {
     }
 
     if (queryText !== this.queryText()) {
-      return this.setQueryText(queryText).updateSnippetsWithIds(snippets);
+      return this.setQueryText(queryText);
     }
 
     return this;
-  }
-
-  /**
-   * special handling for NATIVE cards to automatically detect parameters ... {{varname}}
-   */
-  private _getUpdatedTemplateTags(queryText: string): TemplateTags {
-    return queryText && this.supportsNativeParameters()
-      ? Lib.extractTemplateTags(queryText, this.templateTagsMap())
-      : {};
   }
 }

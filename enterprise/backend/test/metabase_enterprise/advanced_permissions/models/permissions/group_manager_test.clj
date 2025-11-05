@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.models.permissions.group-manager :as gm]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]))
 
 (defn- user-group-memberships
@@ -93,3 +93,27 @@
                    {:id               (:id group)
                     :is_group_manager false}}
                  (user-group-memberships user))))))))
+
+(deftest complete-membership-info-test
+  (testing "Group membership info is correctly added if not there"
+    (let [new-info [{:id 1}
+                    {:id 2}
+                    {:id 3}]
+          old-info {1 {:is_group_manager false}
+                    2 {:is_group_manager true}
+                    4 {:is_group_manager true}}]
+      (is (= [{:id               1
+               :is_group_manager false}
+              {:id               2
+               :is_group_manager true}
+              {:id               3
+               :is_group_manager false}]
+             (#'gm/complete-membership-info new-info old-info)))))
+  (testing "Group membership info doesn't change if set"
+    (let [new-info [{:id 1 :is_group_manager true}
+                    {:id 2 :is_group_manager false}]
+          old-info {1 {:is_group_manager false}
+                    2 {:is_group_manager true}}]
+      (is (= [{:id 1 :is_group_manager true}
+              {:id 2 :is_group_manager false}]
+             (#'gm/complete-membership-info new-info old-info))))))

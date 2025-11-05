@@ -1,9 +1,9 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { isElementOfType } from "react-dom/test-utils";
 
 import { mockSettings } from "__support__/settings";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Link from "metabase/core/components/Link";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Link from "metabase/common/components/Link";
 import {
   capitalize,
   formatDateTimeWithUnit,
@@ -104,22 +104,59 @@ describe("formatting", () => {
 
       it("shouldn't display small numbers as 0", () => {
         expect(formatNumber(0.1, { compact: true })).toEqual("0.1");
-        expect(formatNumber(-0.1, { compact: true })).toEqual("−0.1");
+        expect(formatNumber(-0.1, { compact: true })).toEqual("-0.1");
         expect(formatNumber(0.01, { compact: true })).toEqual("0.01");
-        expect(formatNumber(-0.01, { compact: true })).toEqual("−0.01");
+        expect(formatNumber(-0.01, { compact: true })).toEqual("-0.01");
       });
 
       it("should round up and down", () => {
         expect(formatNumber(1.01, { compact: true })).toEqual("1.01");
-        expect(formatNumber(-1.01, { compact: true })).toEqual("−1.01");
+        expect(formatNumber(-1.01, { compact: true })).toEqual("-1.01");
         expect(formatNumber(1.9, { compact: true })).toEqual("1.9");
-        expect(formatNumber(-1.9, { compact: true })).toEqual("−1.9");
+        expect(formatNumber(-1.9, { compact: true })).toEqual("-1.9");
       });
 
       it("should format large numbers with metric units", () => {
         expect(formatNumber(1, { compact: true })).toEqual("1");
         expect(formatNumber(1000, { compact: true })).toEqual("1.0k");
         expect(formatNumber(1111, { compact: true })).toEqual("1.1k");
+      });
+
+      it("should format large numbers correctly with non-default number separator", () => {
+        const options = { compact: true, number_separators: ",." };
+        expect(formatNumber(10.1, options)).toEqual("10,1");
+        expect(formatNumber(99999999.9, options)).toEqual("100,0M");
+        expect(formatNumber(-10.1, options)).toEqual("-10,1");
+        expect(formatNumber(-99999999.9, options)).toEqual("-100,0M");
+      });
+
+      it("should format big integers", () => {
+        expect(formatNumber(9223372036854775807n, {})).toEqual(
+          "9,223,372,036,854,775,807",
+        );
+      });
+
+      it("should format big integers correctly with non-default number separators", () => {
+        const options = { number_separators: ",." };
+        expect(formatNumber(1000n, options)).toEqual("1.000");
+      });
+
+      it("should format big integers with scale options", () => {
+        const options = { scale: 10 };
+        expect(formatNumber(1000n, options)).toEqual("10,000");
+      });
+
+      it("should resepect 'decimals' setting", () => {
+        expect(formatNumber(500000, { compact: true, decimals: 0 })).toBe(
+          "500k",
+        );
+        expect(formatNumber(500000, { compact: true })).toBe("500.0k");
+        expect(formatNumber(10.1, { compact: true })).toBe("10.1");
+        expect(formatNumber(10.1, { compact: true, decimals: 0 })).toBe("10");
+        expect(formatNumber(99999999.9, { compact: true })).toBe("100.0M");
+        expect(formatNumber(99999999.9, { compact: true, decimals: 0 })).toBe(
+          "100M",
+        );
       });
 
       it("should format percentages", () => {
@@ -139,7 +176,7 @@ describe("formatting", () => {
         expect(formatNumber(0.019, options)).toEqual("1.9%");
         expect(formatNumber(0.021, options)).toEqual("2.1%");
         expect(formatNumber(11.11, options)).toEqual("1.1k%");
-        expect(formatNumber(-0.22, options)).toEqual("−22%");
+        expect(formatNumber(-0.22, options)).toEqual("-22%");
       });
 
       it("should format scientific notation", () => {
@@ -264,6 +301,19 @@ describe("formatting", () => {
           column: { base_type: TYPE.Number, semantic_type: TYPE.Number },
         }),
       ).toEqual("12,345");
+    });
+
+    it("should format big integers", () => {
+      const options = {
+        column: { base_type: TYPE.Number, semantic_type: TYPE.Number },
+      };
+
+      expect(formatValue(9223372036854775807n, options)).toEqual(
+        "9,223,372,036,854,775,807",
+      );
+      expect(formatValue("9223372036854775807", options)).toEqual(
+        "9,223,372,036,854,775,807",
+      );
     });
 
     it("should format zip codes without commas", () => {
@@ -610,18 +660,15 @@ describe("formatting", () => {
     });
 
     it("should always format week ranges according to returned data", () => {
-      try {
-        // globally set locale to es
-        moment.locale("es");
-        expect(
-          formatDateTimeWithUnit("2019-07-07T00:00:00.000Z", "week", {
-            type: "cell",
-          }),
-        ).toEqual("julio 7, 2019 – julio 13, 2019");
-      } finally {
-        // globally reset locale
-        moment.locale("en");
-      }
+      setSpanishLocale();
+
+      expect(
+        formatDateTimeWithUnit("2019-07-07T00:00:00.000Z", "week", {
+          type: "cell",
+        }),
+      ).toEqual("julio 7, 2019 – julio 13, 2019");
+
+      resetLocale();
     });
 
     it("should format days of week with default options", () => {
@@ -681,6 +728,68 @@ describe("formatting", () => {
         ).toEqual(formatted);
       },
     );
+
+    describe("day-of-year formatting", () => {
+      it("should format day-of-year as plain number", () => {
+        expect(formatDateTimeWithUnit(1, "day-of-year")).toEqual(1);
+        expect(formatDateTimeWithUnit(100, "day-of-year")).toEqual(100);
+        expect(formatDateTimeWithUnit(365, "day-of-year")).toEqual(365);
+      });
+
+      it("should format day-of-year from date strings", () => {
+        // January 1st = day 1
+        expect(formatDateTimeWithUnit("2023-01-01", "day-of-year")).toEqual(1);
+        // February 1st = day 32 (31 days in January + 1)
+        expect(formatDateTimeWithUnit("2023-02-01", "day-of-year")).toEqual(32);
+        // December 31st = day 365 (non-leap year)
+        expect(formatDateTimeWithUnit("2023-12-31", "day-of-year")).toEqual(
+          365,
+        );
+      });
+
+      it("should handle leap year correctly", () => {
+        // December 31st in a leap year = day 366
+        expect(formatDateTimeWithUnit("2020-12-31", "day-of-year")).toEqual(
+          366,
+        );
+        // February 29th in a leap year = day 60
+        expect(formatDateTimeWithUnit("2020-02-29", "day-of-year")).toEqual(60);
+      });
+    });
+
+    describe("week-of-year formatting", () => {
+      it("should format week numbers with ordinal suffixes", () => {
+        expect(formatDateTimeWithUnit(1, "week-of-year")).toEqual("1st");
+        expect(formatDateTimeWithUnit(2, "week-of-year")).toEqual("2nd");
+        expect(formatDateTimeWithUnit(3, "week-of-year")).toEqual("3rd");
+        expect(formatDateTimeWithUnit(4, "week-of-year")).toEqual("4th");
+        expect(formatDateTimeWithUnit(21, "week-of-year")).toEqual("21st");
+        expect(formatDateTimeWithUnit(22, "week-of-year")).toEqual("22nd");
+        expect(formatDateTimeWithUnit(23, "week-of-year")).toEqual("23rd");
+        expect(formatDateTimeWithUnit(24, "week-of-year")).toEqual("24th");
+        expect(formatDateTimeWithUnit(53, "week-of-year")).toEqual("53rd");
+      });
+
+      it("should handle edge cases for ordinal suffixes", () => {
+        expect(formatDateTimeWithUnit(11, "week-of-year")).toEqual("11th");
+        expect(formatDateTimeWithUnit(12, "week-of-year")).toEqual("12th");
+        expect(formatDateTimeWithUnit(13, "week-of-year")).toEqual("13th");
+      });
+
+      it("should format week-of-year from date strings", () => {
+        // January 1st, 2023 (Sunday) is in week 52 of 2022 (ISO week)
+        const week1 = formatDateTimeWithUnit("2023-01-02", "week-of-year"); // Monday Jan 2 is week 1
+        expect(week1).toMatch(/^1[a-z]+$/);
+
+        // Mid-year dates
+        const midYear = formatDateTimeWithUnit("2023-06-15", "week-of-year");
+        expect(midYear).toMatch(/^2[0-9][a-z]+$/);
+
+        // End of year
+        const endYear = formatDateTimeWithUnit("2023-12-25", "week-of-year");
+        expect(endYear).toMatch(/^5[0-3][a-z]+$/);
+      });
+    });
   });
 
   describe("formatTime", () => {
@@ -799,3 +908,14 @@ describe("formatting", () => {
     });
   });
 });
+
+function setSpanishLocale() {
+  // globally set locale to es
+  require("dayjs/locale/es");
+  dayjs.locale("es");
+  dayjs.updateLocale(dayjs.locale(), { weekStart: 0 });
+}
+
+function resetLocale() {
+  dayjs.locale("en");
+}

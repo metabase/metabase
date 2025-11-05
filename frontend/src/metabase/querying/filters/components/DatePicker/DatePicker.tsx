@@ -1,42 +1,48 @@
-import type { ReactNode } from "react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
-import { DateShortcutPicker } from "./DateShortcutPicker";
-import { ExcludeDatePicker } from "./ExcludeDatePicker";
-import { RelativeDatePicker } from "./RelativeDatePicker";
-import { SpecificDatePicker } from "./SpecificDatePicker";
 import {
+  DATE_PICKER_DIRECTIONS,
   DATE_PICKER_OPERATORS,
   DATE_PICKER_SHORTCUTS,
   DATE_PICKER_UNITS,
-} from "./constants";
+} from "metabase/querying/filters/constants";
 import type {
   DatePickerOperator,
   DatePickerShortcut,
   DatePickerUnit,
   DatePickerValue,
-} from "./types";
+  RelativeIntervalDirection,
+} from "metabase/querying/filters/types";
 
-interface DatePickerProps {
+import { DateShortcutPicker } from "./DateShortcutPicker";
+import { ExcludeDatePicker } from "./ExcludeDatePicker";
+import { RelativeDatePicker } from "./RelativeDatePicker";
+import { SpecificDatePicker } from "./SpecificDatePicker";
+import type { DatePickerSubmitButtonProps } from "./types";
+import { renderDefaultSubmitButton } from "./utils";
+
+type DatePickerProps = {
   value?: DatePickerValue;
-  availableOperators?: ReadonlyArray<DatePickerOperator>;
-  availableShortcuts?: ReadonlyArray<DatePickerShortcut>;
-  availableUnits?: ReadonlyArray<DatePickerUnit>;
-  canUseRelativeOffsets?: boolean;
-  backButton?: ReactNode;
-  isNew?: boolean;
+  availableOperators?: DatePickerOperator[];
+  availableShortcuts?: DatePickerShortcut[];
+  availableUnits?: DatePickerUnit[];
+  availableDirections?: RelativeIntervalDirection[];
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
+  renderBackButton?: () => ReactNode;
   onChange: (value: DatePickerValue) => void;
-}
+  readOnly?: boolean;
+};
 
 export function DatePicker({
   value,
   availableOperators = DATE_PICKER_OPERATORS,
   availableShortcuts = DATE_PICKER_SHORTCUTS,
   availableUnits = DATE_PICKER_UNITS,
-  canUseRelativeOffsets = false,
-  isNew = value == null,
-  backButton,
+  availableDirections = DATE_PICKER_DIRECTIONS,
+  renderSubmitButton = renderDefaultSubmitButton,
+  renderBackButton,
   onChange,
+  readOnly,
 }: DatePickerProps) {
   const [type, setType] = useState(value?.type);
 
@@ -51,9 +57,10 @@ export function DatePicker({
           value={value?.type === type ? value : undefined}
           availableOperators={availableOperators}
           availableUnits={availableUnits}
-          isNew={isNew}
+          renderSubmitButton={renderSubmitButton}
           onChange={onChange}
           onBack={handleBack}
+          readOnly={readOnly}
         />
       );
     case "relative":
@@ -61,10 +68,11 @@ export function DatePicker({
         <RelativeDatePicker
           value={value?.type === type ? value : undefined}
           availableUnits={availableUnits}
-          canUseRelativeOffsets={canUseRelativeOffsets}
-          isNew={isNew}
+          availableDirections={availableDirections}
+          renderSubmitButton={renderSubmitButton}
           onChange={onChange}
           onBack={handleBack}
+          readOnly={readOnly}
         />
       );
     case "exclude":
@@ -73,9 +81,10 @@ export function DatePicker({
           value={value?.type === type ? value : undefined}
           availableOperators={availableOperators}
           availableUnits={availableUnits}
-          isNew={isNew}
+          renderSubmitButton={renderSubmitButton}
           onChange={onChange}
           onBack={handleBack}
+          readOnly={readOnly}
         />
       );
     default:
@@ -83,7 +92,8 @@ export function DatePicker({
         <DateShortcutPicker
           availableOperators={availableOperators}
           availableShortcuts={availableShortcuts}
-          backButton={backButton}
+          availableDirections={availableDirections}
+          renderBackButton={renderBackButton}
           onChange={onChange}
           onSelectType={setType}
         />

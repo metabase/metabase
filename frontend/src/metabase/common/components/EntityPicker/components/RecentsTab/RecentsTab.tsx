@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import EmptyState from "metabase/components/EmptyState";
-import { NoObjectError } from "metabase/components/errors/NoObjectError";
+import EmptyState from "metabase/common/components/EmptyState";
+import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResults";
 import { Flex, Stack } from "metabase/ui";
 import type { RecentItem } from "metabase-types/api";
@@ -31,12 +31,12 @@ export const RecentsTab = <
   }
 
   return (
-    <Stack h="100%" bg="bg-light">
+    <Stack h="100%" bg="var(--mb-color-bg-light)">
       {recentItems.length > 0 ? (
         <GroupedRecentsList
           items={recentItems}
-          onItemSelect={item => onItemSelect(item as unknown as Item)}
-          isSelectedItem={item =>
+          onItemSelect={(item) => onItemSelect(item as unknown as Item)}
+          isSelectedItem={(item) =>
             isSelectedItem(item as unknown as Item, selectedItem)
           }
         />

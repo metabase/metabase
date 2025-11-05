@@ -1,7 +1,9 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
+import Link from "metabase/common/components/Link";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
-import Link from "metabase/core/components/Link";
+import { darken } from "metabase/lib/colors";
 import { breakpointMaxLarge } from "metabase/styled-components/theme";
 
 interface AdminNavLinkProps {
@@ -15,17 +17,26 @@ export const AdminNavLink = styled(
   doNotForwardProps("isSelected", "isInMobileNav"),
 )<AdminNavLinkProps>`
   white-space: nowrap;
-  ${props => (props.isInMobileNav ? "" : "overflow: hidden;")}
+  ${(props) => (props.isInMobileNav ? "" : "overflow: hidden;")}
   text-overflow: ellipsis;
   padding: 0.5rem 1rem;
   ${breakpointMaxLarge} {
     padding-inline: 0.85rem;
   }
 
-  color: ${props =>
+  transition: all 200ms;
+  border-radius: 4px;
+  color: ${(props) =>
     props.isSelected
       ? "var(--mb-color-text-white)"
-      : "color-mix(in srgb, var(--mb-color-text-white), transparent 37%)"};
+      : "color-mix(in srgb, var(--mb-color-text-white), transparent 35%)"};
+  background-color: ${(props) =>
+    props.isSelected ? darken("admin-navbar") : "transparent"};
+
+  &:hover {
+    color: var(--mb-color-text-white);
+    background-color: ${() => darken("admin-navbar")};
+  }
 `;
 
 export const AdminNavListItem = styled(
@@ -36,6 +47,6 @@ export const AdminNavListItem = styled(
   flex-shrink: 1;
   white-space: nowrap;
   justify-content: center;
-  min-width: ${props =>
+  min-width: ${(props) =>
     props.currentPath.startsWith(props.path) ? "fit-content" : "0px"};
 `;

@@ -3,9 +3,9 @@
 
   Drill-thrus are not part of MBQL; they are a set of actions one can take to transform a query.
   For example, adding a filter like `created_at < 2022-01-01`, or following a foreign key."
+  (:refer-clojure :exclude [some])
   (:require
    [metabase.lib.schema :as-alias lib.schema]
-   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -17,7 +17,8 @@
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some]]))
 
 (mr/def ::pivot-types
   [:enum :category :location :time])
@@ -127,7 +128,8 @@
    ::drill-thru.common
    [:map
     [:type   [:= :drill-thru/pivot]]
-    [:pivots [:map-of ::pivot-types [:sequential [:ref ::lib.schema.metadata/column]]]]]])
+    [:pivots [:map-of ::pivot-types [:sequential [:ref ::lib.schema.metadata/column]]]]
+    [:stage-number number?]]])
 
 (mr/def ::drill-thru.sort
   [:merge
@@ -179,13 +181,6 @@
    [:map
     [:type         [:= :drill-thru/combine-columns]]]])
 
-(mr/def ::drill-thru.compare-aggregations
-  [:merge
-   ::drill-thru.common
-   [:map
-    [:type         [:= :drill-thru/compare-aggregations]]
-    [:aggregation  [:ref ::lib.schema.aggregation/aggregation]]]])
-
 ;;; TODO FIXME -- it seems like underlying records drills also include `:dimensions` and `:column-ref`...
 ;;; see [[metabase.lib.drill-thru.underlying-records/underlying-records-drill]]... this should be part of the schema
 (mr/def ::drill-thru.underlying-records
@@ -200,8 +195,8 @@
   [:merge
    ::drill-thru.common
    [:map
-    [:type     [:= :drill-thru/automatic-insights]]
-    [:lib/type [:= :metabase.lib.drill-thru/drill-thru]]
+    [:type       [:= :drill-thru/automatic-insights]]
+    [:lib/type   [:= :metabase.lib.drill-thru/drill-thru]]
     [:column-ref [:maybe [:ref ::lib.schema.ref/ref]]]
     [:dimensions [:ref ::context.row]]]])
 
@@ -317,7 +312,6 @@
     [:drill-thru/column-filter            ::drill-thru.column-filter]
     [:drill-thru/column-extract           ::drill-thru.column-extract]
     [:drill-thru/combine-columns          ::drill-thru.combine-columns]
-    [:drill-thru/compare-aggregations     ::drill-thru.compare-aggregations]
     [:drill-thru/underlying-records       ::drill-thru.underlying-records]
     [:drill-thru/automatic-insights       ::drill-thru.automatic-insights]
     [:drill-thru/zoom-in.timeseries       ::drill-thru.zoom-in.timeseries]
@@ -339,6 +333,19 @@
 ;;;    | "Aggregated" Cell   | ✔      | ✔     | ✔   | ✔          |
 ;;;    | Pivot Cell          |        | ✔     | ✔   | ✔          |
 ;;;    | Legend Item         |        |       |     | ✔          |
+;;;
+;;; Testing shows that the above table is still mostly correct, with the exception of Pivot Cell clicks, which instead
+;;; have the following shapes, where `Pivot "Dim" Cell` means one of the Row/Column cells of the pivoted table,
+;;; corresponding to the breakout dimensions of the query, and `Pivot "Agg" Cell` means one of the
+;;; aggregated "measure" cells of the pivoted table.
+;;;
+;;; TODO: are these differences a bug in the pivot table implementation, or is the above table just out of date?
+;;;
+;;;
+;;;    | Drill Context Shape | column | value | row | dimensions |
+;;;    |---------------------|--------|-------|-----|------------|
+;;;    | Pivot "Dim" Cell    | ✔      | ✔     | ✔   |            |
+;;;    | Pivot "Agg" Cell    |        |       | ✔   | ✔          |
 
 (mr/def ::context.row.value
   [:map

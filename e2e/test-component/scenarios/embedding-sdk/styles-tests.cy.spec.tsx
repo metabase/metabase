@@ -1,20 +1,42 @@
 import {
   CreateDashboardModal,
+  EditableDashboard,
+  InteractiveDashboard,
   InteractiveQuestion,
   MetabaseProvider,
+  type MetabaseTheme,
   StaticQuestion,
+  defineMetabaseTheme,
 } from "@metabase/embedding-sdk-react";
+import { useState } from "react";
 
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { describeEE, modal, updateSetting } from "e2e/support/helpers";
+import * as H from "e2e/support/helpers";
+import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
-  mockAuthProviderAndJwtSignIn,
-  signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/support/helpers/component-testing-sdk";
-import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+  mountSdkContent,
+} from "e2e/support/helpers/embedding-sdk-component-testing";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+import type { ConcreteFieldReference, Parameter } from "metabase-types/api";
 
-describeEE("scenarios > embedding-sdk > styles", () => {
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+
+const DATE_FILTER: Parameter = {
+  id: "2",
+  name: "Date filter",
+  slug: "filter-date",
+  type: "date/all-options",
+};
+const CREATED_AT_FIELD_REF: ConcreteFieldReference = [
+  "field",
+  ORDERS.CREATED_AT,
+  { "base-type": "type/DateTime" },
+];
+
+describe("scenarios > embedding-sdk > styles", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
@@ -23,6 +45,131 @@ describeEE("scenarios > embedding-sdk > styles", () => {
     mockAuthProviderAndJwtSignIn();
 
     cy.intercept("GET", "/api/user/current").as("getUser");
+  });
+
+  describe("common", () => {
+    it('PublicComponentStylesWrapper should have the `dir="ltr"` attribute (#54082)', () => {
+      cy.mount(
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <StaticQuestion questionId={ORDERS_QUESTION_ID} />
+        </MetabaseProvider>,
+      );
+
+      cy.wait("@getUser").then(({ response }) => {
+        expect(response?.statusCode).to.equal(200);
+      });
+
+      getSdkRoot().get(".mb-wrapper").should("have.attr", "dir", "ltr");
+    });
+  });
+
+  describe("theming", () => {
+    const theme = defineMetabaseTheme({
+      colors: {
+        brand: "#FF0000",
+      },
+    });
+
+    it("should use the brand color from the theme", () => {
+      cy.mount(
+        <MetabaseProvider
+          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+          theme={theme}
+        >
+          <InteractiveQuestion questionId="new" />
+        </MetabaseProvider>,
+      );
+
+      getSdkRoot()
+        .findByText("Pick your starting data")
+        .invoke("css", "color")
+        .should("equal", "rgb(255, 0, 0)");
+    });
+
+    it("should use the brand color from the app settings as fallback if they're present", () => {
+      cy.signInAsAdmin();
+      H.updateSetting(
+        // @ts-expect-error -- that function doesn't understand enterprise settings _yet_
+        "application-colors",
+        {
+          brand: "#00FF00",
+        },
+      );
+      cy.signOut();
+
+      cy.mount(
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <InteractiveQuestion questionId="new" />
+        </MetabaseProvider>,
+      );
+
+      getSdkRoot()
+        .findByText("Pick your starting data")
+        .invoke("css", "color")
+        .should("equal", "rgb(0, 255, 0)");
+    });
+
+    it("but should prioritize the theme colors over the app settings", () => {
+      cy.signInAsAdmin();
+      H.updateSetting(
+        // @ts-expect-error -- that function doesn't understand enterprise settings _yet_
+        "application-colors",
+        {
+          brand: "#00FF00",
+        },
+      );
+      cy.signOut();
+
+      cy.mount(
+        <MetabaseProvider
+          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+          theme={theme}
+        >
+          <InteractiveQuestion questionId="new" />
+        </MetabaseProvider>,
+      );
+
+      getSdkRoot()
+        .findByText("Pick your starting data")
+        .invoke("css", "color")
+        .should("equal", "rgb(255, 0, 0)");
+    });
+
+    it('should be able to reset theme colors by setting it to "undefined" (EMB-696)', () => {
+      const THEME = defineMetabaseTheme({
+        colors: {
+          "text-primary": "#0000ff",
+        },
+      });
+      function TestComponent() {
+        const [theme, setTheme] = useState<MetabaseTheme | undefined>(
+          undefined,
+        );
+        return (
+          <MetabaseProvider
+            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+            theme={theme}
+          >
+            <button onClick={() => setTheme(THEME)}>Set theme</button>
+            <button onClick={() => setTheme(undefined)}>Remove theme</button>
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          </MetabaseProvider>
+        );
+      }
+      cy.mount(<TestComponent />);
+
+      getSdkRoot().within(() => {
+        cy.findByRole("button", { name: "Set theme" }).click();
+        cy.findByText("Orders")
+          .invoke("css", "color")
+          .should("equal", "rgb(0, 0, 255)");
+        cy.findByRole("button", { name: "Remove theme" }).click();
+        cy.findByText("Orders")
+          .invoke("css", "color")
+          // --mb-color-text-primary
+          .should("equal", "rgba(7, 23, 34, 0.84)");
+      });
+    });
   });
 
   describe("style leaking", () => {
@@ -50,7 +197,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
         expect(response?.statusCode).to.equal(200);
       });
 
-      cy.get("@defaultBrowserFontFamily").then(defaultBrowserFontFamily => {
+      cy.get("@defaultBrowserFontFamily").then((defaultBrowserFontFamily) => {
         cy.findByText("This is outside of the provider").should(
           "have.css",
           "font-family",
@@ -92,7 +239,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
 
       cy.wait("@getUser");
 
-      cy.get("@defaultBrowserFontFamily").then(defaultBrowserFontFamily => {
+      cy.get("@defaultBrowserFontFamily").then((defaultBrowserFontFamily) => {
         cy.findByText("This is outside of the provider").should(
           "have.css",
           "font-family",
@@ -136,7 +283,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
 
     it("should fallback to the font from the instance if no fontFamily is set on the theme", () => {
       cy.signInAsAdmin();
-      updateSetting("application-font", "Roboto Mono");
+      H.updateSetting("application-font", "Roboto Mono");
       cy.signOut();
 
       cy.intercept("GET", "/api/user/current").as("getUser");
@@ -174,7 +321,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
         Cypress.config().baseUrl +
         "/app/fonts/Open_Sans/OpenSans-Regular.woff2";
       // setting `application-font-files` will make getFont return "Custom"
-      updateSetting("application-font-files", [
+      H.updateSetting("application-font-files", [
         {
           src: fontUrl,
           fontWeight: 400,
@@ -219,7 +366,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
     });
   });
 
-  describe("modals and tooltips", () => {
+  describe("modals, popovers and tooltips", () => {
     it("legacy WindowModal modals should render with our styles", () => {
       // this test renders a create dashboard modal that, at this time, is using the legacy WindowModal
       cy.mount(
@@ -228,7 +375,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
         </MetabaseProvider>,
       );
 
-      modal()
+      H.modal()
         .findByText("New dashboard")
         .should("exist")
         .and("have.css", "font-family", "Lato");
@@ -236,7 +383,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
       // TODO: good place for a visual regression test
     });
 
-    it.skip("mantine modals should render with our styles", () => {
+    it("mantine modals should render with our styles", () => {
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
@@ -264,6 +411,195 @@ describeEE("scenarios > embedding-sdk > styles", () => {
 
       // TODO: good place for a visual regression test
     });
+
+    it("mantine modals should render with proper position", () => {
+      cy.mount(
+        <div style={{ paddingLeft: "9999px" }}>
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          </MetabaseProvider>
+        </div>,
+      );
+
+      getSdkRoot().within(() => {
+        cy.findByText("Summarize").click();
+        cy.findByText("Count of rows").click();
+        cy.findByText("Save").click();
+
+        cy.findByText("Save question").should("be.visible");
+      });
+    });
+
+    describe("popover/tooltips/overlays styles", () => {
+      beforeEach(() => {
+        signInAsAdminAndEnableEmbeddingSdk();
+
+        H.createQuestion({
+          name: "Tooltip test",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+            ],
+          },
+          display: "bar",
+        })
+          .then(({ body: { id: ordersQuestionId } }) =>
+            H.createDashboard({
+              dashcards: [
+                {
+                  id: 1,
+                  size_x: 10,
+                  size_y: 20,
+                  row: 0,
+                  col: 0,
+                  card_id: ordersQuestionId,
+                  parameter_mappings: [
+                    {
+                      parameter_id: DATE_FILTER.id,
+                      card_id: ORDERS_QUESTION_ID,
+                      target: ["dimension", CREATED_AT_FIELD_REF],
+                    },
+                  ],
+                },
+              ],
+              parameters: [DATE_FILTER],
+            }),
+          )
+          .then((dashboard) => {
+            cy.wrap(dashboard.body.id).as("dashboardId");
+          });
+        cy.signOut();
+
+        cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+        cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+          "dashcardQuery",
+        );
+      });
+
+      it("should render legacy Popover with our styles", () => {
+        cy.get("@dashboardId").then((dashboardId) => {
+          mountSdkContent(<EditableDashboard dashboardId={dashboardId} />, {
+            sdkProviderProps: {
+              theme: {
+                fontFamily: "Impact",
+              },
+            },
+          });
+
+          H.editDashboard();
+          H.clickBehaviorSidebar().within(() => {
+            cy.findByText("Update a dashboard filter").click();
+            cy.findAllByTestId("click-target-column").first().click();
+          });
+
+          H.popover()
+            .findByText("Columns")
+            .should("have.css", "font-family", "Impact");
+        });
+      });
+
+      it("should render Mantine tooltip with our styles", () => {
+        cy.get("@dashboardId").then((dashboardId) => {
+          mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />, {
+            sdkProviderProps: {
+              theme: {
+                fontFamily: "Impact",
+              },
+            },
+          });
+        });
+
+        getSdkRoot().findByText("Tooltip test").click();
+        getSdkRoot().findByLabelText("Back to Test Dashboard").realHover();
+
+        H.tooltip()
+          .findByText("Back to Test Dashboard")
+          .should("have.css", "font-family", "Impact");
+      });
+
+      it("should render echarts tooltip with our styles", () => {
+        cy.get("@dashboardId").then((dashboardId) => {
+          mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />, {
+            sdkProviderProps: {
+              theme: {
+                fontFamily: "Impact",
+              },
+            },
+          });
+        });
+
+        H.getDashboardCard(0).within(() => {
+          H.chartPathWithFillColor("#509EE3").eq(0).realHover();
+        });
+
+        cy.findAllByTestId("echarts-tooltip")
+          .eq(0)
+          .should("exist")
+          .get(".echarts-tooltip-container")
+          .should("have.css", "font-family", "Impact");
+      });
+
+      it("should render DragOverlay of SortableList with our styles", () => {
+        mountSdkContent(
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
+          {
+            sdkProviderProps: {
+              theme: {
+                fontFamily: "Impact",
+              },
+            },
+          },
+        );
+
+        H.openVizSettingsSidebar();
+
+        H.moveDnDKitListElement("draggable-item-", {
+          startIndex: 0,
+          dropIndex: 1,
+          onBeforeDragEnd: () => {
+            cy.get(".drag-overlay").within(() => {
+              cy.findByTestId("draggable-item-ID").should(
+                "have.css",
+                "font-family",
+                "Impact",
+              );
+            });
+          },
+        });
+      });
+    });
+  });
+
+  describe("Portal root element position and size", () => {
+    it("should properly render full-page portal root element", () => {
+      mountSdkContent(
+        <>
+          <div
+            style={{
+              padding: "30%",
+            }}
+          >
+            <div style={{ overflow: "hidden", position: "relative" }}>
+              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+            </div>
+          </div>
+
+          <div data-testid="second-question">
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          </div>
+        </>,
+      );
+
+      cy.findByTestId("second-question").within(() => {
+        cy.findByText("Summarize").click();
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Count of rows").should("be.visible");
+      });
+    });
   });
 
   describe("styles should not leak outside of the provider", () => {
@@ -282,7 +618,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
       { tag: "textarea", jsx: <textarea>textarea tag text</textarea> },
     ];
 
-    it(`no css rule should match ${elements.map(e => e.tag).join(", ")} outside of the provider`, () => {
+    it(`no css rule should match ${elements.map((e) => e.tag).join(", ")} outside of the provider`, () => {
       cy.mount(
         <div>
           {elements.map(({ jsx }) => jsx)}
@@ -303,7 +639,7 @@ describeEE("scenarios > embedding-sdk > styles", () => {
 });
 
 const expectElementToHaveNoAppliedCssRules = (selector: string) => {
-  cy.get(selector).then($el => {
+  cy.get(selector).then(($el) => {
     const rules = getCssRulesThatApplyToElement($el);
     if (rules.length > 0) {
       console.warn("rules matching", selector, rules);
@@ -316,12 +652,12 @@ const getCssRulesThatApplyToElement = ($element: JQuery<HTMLElement>) => {
   const element = $element[0];
   const rulesThatMatch: CSSStyleRule[] = Array.from(
     document.styleSheets,
-  ).flatMap(sheet => {
+  ).flatMap((sheet) => {
     const cssRules = Array.from(sheet.cssRules).filter(
-      rule => rule instanceof CSSStyleRule,
+      (rule) => rule instanceof CSSStyleRule,
     ) as CSSStyleRule[];
 
-    return cssRules.filter(rule => element.matches(rule.selectorText));
+    return cssRules.filter((rule) => element.matches(rule.selectorText));
   });
 
   return rulesThatMatch;
@@ -330,7 +666,7 @@ const getCssRulesThatApplyToElement = ($element: JQuery<HTMLElement>) => {
 function wrapBrowserDefaultFont() {
   cy.mount(<p>paragraph with default browser font</p>);
 
-  cy.findByText("paragraph with default browser font").then($element => {
+  cy.findByText("paragraph with default browser font").then(($element) => {
     const fontFamily = $element.css("font-family");
     cy.wrap(fontFamily).as("defaultBrowserFontFamily");
   });

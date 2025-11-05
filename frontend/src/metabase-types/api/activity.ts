@@ -11,6 +11,7 @@ export const ACTIVITY_MODELS = [
   "metric",
   "dashboard",
   "collection",
+  "document",
 ] as const;
 
 export type ActivityModel = (typeof ACTIVITY_MODELS)[number];
@@ -33,19 +34,27 @@ export type BaseRecentItem = {
   timestamp: string;
 };
 
+export type RecentTableDatabaseInfo = {
+  id: number;
+  name: string;
+  initial_sync_status: InitialSyncStatus;
+};
+
 export type RecentTableItem = BaseRecentItem & {
   model: "table";
   display_name: string;
   table_schema: string;
-  database: {
-    id: number;
-    name: string;
-    initial_sync_status: InitialSyncStatus;
-  };
+  database: RecentTableDatabaseInfo;
 };
 
 export type RecentCollectionItem = BaseRecentItem & {
-  model: "collection" | "dashboard" | "card" | "dataset" | "metric";
+  model:
+    | "collection"
+    | "dashboard"
+    | "card"
+    | "dataset"
+    | "metric"
+    | "document";
   can_write: boolean;
   database_id?: DatabaseId; // for models and questions
   parent_collection: {
@@ -80,7 +89,8 @@ export interface RecentItemsResponse {
 export type RecentContexts = "selections" | "views";
 
 export interface RecentsRequest {
-  context: RecentContexts[];
+  context?: RecentContexts[];
+  include_metadata?: boolean;
 }
 
 export interface RecentsResponse {

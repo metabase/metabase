@@ -1,29 +1,27 @@
 (ns metabase.driver.sql-jdbc.metadata
   "SQL JDBC implementation of [[metabase.driver/query-result-metadata]]."
+  (:refer-clojure :exclude [mapv])
   (:require
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.setup :as qp.setup]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv]]))
 
 (set! *warn-on-reflection* true)
 
-(mu/defn query-result-metadata :- [:sequential ::lib.schema.metadata/column]
+(mu/defn query-result-metadata :- [:sequential driver-api/schema.metadata.column]
   "Default implementation of [[metabase.driver/query-result-metadata]] for JDBC-based drivers. Gets metadata without
   actually running a query."
   ([driver :- :keyword
     query  :- :map]
-   (qp.setup/with-qp-setup [query query]
-     (let [database               (lib.metadata/database (qp.store/metadata-provider))
-           {:keys [query params]} (qp.compile/compile query)]
+   (driver-api/with-qp-setup [query query]
+     (let [database               (driver-api/database (driver-api/metadata-provider))
+           {:keys [query params]} (driver-api/compile query)]
        (query-result-metadata driver database query params))))
 
   ([driver      :- :keyword
-    database    :- ::lib.schema.metadata/database
+    database    :- driver-api/schema.metadata.database
     ^String sql :- :string
     params      :- [:maybe [:sequential :any]]]
    (sql-jdbc.execute/do-with-connection-with-options
@@ -38,5 +36,6 @@
                     {:lib/type      :metadata/column
                      :name          (.getColumnLabel rsmeta i)
                      :database-type database-type
-                     :base-type     (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))}))
+                     :base-type     (or (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))
+                                        :type/*)}))
                 (range 1 (inc (.getColumnCount rsmeta))))))))))

@@ -34,7 +34,12 @@ export function getPermissionWarning(
 
 export const canManageSubscriptions = createSelector(
   (state: ApplicationPermissionsState) => state.currentUser,
-  user => user?.permissions?.can_access_subscription ?? false,
+  (user) => user?.permissions?.can_access_subscription ?? false,
+);
+
+export const canAccessSettings = createSelector(
+  (state: ApplicationPermissionsState) => state.currentUser,
+  (user) => user?.permissions?.can_access_setting ?? false,
 );
 
 const getApplicationPermission = (
@@ -91,7 +96,7 @@ export const getApplicationPermissionEditor = createSelector(
       return null;
     }
 
-    const entities = groups.flat().map(group => {
+    const entities = groups.flat().map((group) => {
       const isAdmin = isAdminGroup(group);
 
       return {
@@ -130,7 +135,7 @@ export const getApplicationPermissionEditor = createSelector(
         { name: t`Settings access` },
         {
           name: t`Monitoring access`,
-          hint: t`This grants access to Tools, Audit, and Troubleshooting`,
+          hint: t`This grants access to Tools`,
         },
         { name: t`Subscriptions and Alerts` },
       ],

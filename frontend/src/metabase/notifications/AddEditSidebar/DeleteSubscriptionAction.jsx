@@ -2,8 +2,8 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { jt, msgid, ngettext, t } from "ttag";
 
-import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import DeleteModalWithConfirm from "metabase/common/components/DeleteModalWithConfirm";
+import ModalWithTrigger from "metabase/common/components/ModalWithTrigger";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 
@@ -13,7 +13,7 @@ function getConfirmItems(pulse) {
       <span key={index}>
         {jt`This dashboard will no longer be emailed to ${(
           <strong key="msg">
-            {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
+            {((n) => ngettext(msgid`${n} address`, `${n} addresses`, n))(
               c.recipients.length,
             )}
           </strong>

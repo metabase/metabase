@@ -11,19 +11,19 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   isShowingTemplateTagsEditor: false,
   isShowingNewbModal: false,
   isRunning: false,
-  isQueryComplete: false,
   isShowingSummarySidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingQuestionInfoSidebar: false,
   isShowingTimelineSidebar: false,
+  isShowingAIQuestionAnalysisSidebar: false,
   isNativeEditorOpen: false,
   initialChartSetting: {},
   isShowingRawTable: false, // table/viz toggle
-  queryBuilderMode: false, // "view" | "notebook" | "dataset"
+  queryBuilderMode: "view", // "view" | "notebook" | "dataset"
   previousQueryBuilderMode: false,
   snippetCollectionId: null,
-  datasetEditorTab: "query", // "query" / "metadata"
+  datasetEditorTab: "query",
   isShowingQuestionDetailsSidebar: false,
   isShowingSnippetSidebar: false,
   isShowingNotebookNativePreview: false,
@@ -31,6 +31,8 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   showSidebarTitle: false,
   modal: null,
   modalContext: null,
+  highlightedNativeQueryLineNumbers: [],
+  isShowingListViewConfiguration: false,
 };
 
 export const DEFAULT_LOADING_CONTROLS: QueryBuilderLoadingControls = {
@@ -39,8 +41,10 @@ export const DEFAULT_LOADING_CONTROLS: QueryBuilderLoadingControls = {
   timeoutId: "",
 };
 
-export const DEFAULT_DASHBOARD_STATE = {
-  dashboardId: null,
+export const DEFAULT_PARENT_ENTITY_STATE = {
+  id: null,
+  model: null,
+  name: null,
   isEditing: false,
 };
 
@@ -50,8 +54,10 @@ export const UI_CONTROLS_SIDEBAR_DEFAULTS: Partial<QueryBuilderUIControls> = {
   isShowingSummarySidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
+  isShowingAIQuestionAnalysisSidebar: false,
   isShowingTimelineSidebar: false,
   isShowingQuestionInfoSidebar: false,
+  isShowingDataReference: false,
 };
 
 // this is used to close other sidebar when one is updated

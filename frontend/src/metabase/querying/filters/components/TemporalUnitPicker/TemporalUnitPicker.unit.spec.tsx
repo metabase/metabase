@@ -10,7 +10,7 @@ import {
 } from "./TemporalUnitPicker";
 
 const DEFAULT_ITEMS: TemporalUnitItem[] = Lib.availableTemporalUnits().map(
-  unit => ({
+  (unit) => ({
     value: unit,
     label: Lib.describeTemporalUnit(unit),
   }),

@@ -1,3 +1,5 @@
+import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
+import type { MutableRefObject } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -5,8 +7,8 @@ import { ActionFormFieldWidget } from "metabase/actions/components/ActionFormFie
 import { getFieldTypes, getInputTypes } from "metabase/actions/constants";
 import type { ActionFormFieldProps } from "metabase/actions/types";
 import { inputTypeHasOptions } from "metabase/actions/utils";
-import CheckBox from "metabase/core/components/CheckBox";
-import Radio from "metabase/core/components/Radio";
+import CheckBox from "metabase/common/components/CheckBox";
+import Radio from "metabase/common/components/Radio";
 import { isNotNull } from "metabase/lib/types";
 import type {
   FieldSettings,
@@ -16,9 +18,9 @@ import type {
 
 import { FieldSettingsButtons } from "../FieldSettingsButtons";
 
+import { DragHandle } from "./DragHandle";
 import {
   Column,
-  DragHandle,
   EditorContainer,
   FormFieldContainer,
   Header,
@@ -33,6 +35,8 @@ export interface FormFieldEditorProps {
   fieldSettings: FieldSettings;
   isEditable: boolean;
   onChange: (settings: FieldSettings) => void;
+  dragHandleRef?: MutableRefObject<HTMLElement | null>;
+  dragHandleListeners?: SyntheticListenerMap | undefined;
 }
 
 function cleanFieldValue(
@@ -53,7 +57,7 @@ function cleanFieldValue(
 
 function cleanOptionValues(values: FieldValueOptions, fieldType: FieldType) {
   return values
-    .map(value => cleanFieldValue(value, fieldType))
+    .map((value) => cleanFieldValue(value, fieldType))
     .filter(isNotNull);
 }
 
@@ -62,6 +66,8 @@ function FormFieldEditor({
   fieldSettings,
   isEditable,
   onChange,
+  dragHandleRef,
+  dragHandleListeners,
 }: FormFieldEditorProps) {
   const fieldTypeOptions = useMemo(getFieldTypes, []);
   const inputTypeOptions = useMemo(getInputTypes, []);
@@ -71,7 +77,7 @@ function FormFieldEditor({
     const { inputType, valueOptions } = fieldSettings;
 
     const inputTypesForNextFieldType = inputTypeOptions[nextFieldType].map(
-      option => option.value,
+      (option) => option.value,
     );
 
     // Allows to preserve dropdown/radio input types across number/string field types
@@ -100,7 +106,14 @@ function FormFieldEditor({
   return (
     <FormFieldContainer data-testid="form-field-container">
       <EditorContainer>
-        <Column>{isEditable && <DragHandle name="grabber" />}</Column>
+        <Column>
+          {isEditable && (
+            <DragHandle
+              ref={dragHandleRef}
+              dragHandleListeners={dragHandleListeners}
+            />
+          )}
+        </Column>
         <Column full>
           <Header>
             <Title>{field.title}</Title>

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
@@ -35,6 +35,7 @@ describe("scenarios > dashboard > filters > date", () => {
     // Go through each of the filters and make sure they work individually
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
 
         dateFilterSelector({
@@ -61,7 +62,7 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.findByText("Default value").next().click();
 
     DateFilter.setMonthAndYear({
-      month: "November",
+      month: "Nov",
       year: "2022",
     });
 
@@ -79,7 +80,7 @@ describe("scenarios > dashboard > filters > date", () => {
     // Make sure we can override the default value
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("November 2022").click();
-    H.popover().contains("June").click();
+    H.popover().contains("Jun").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("33.9");
   });
@@ -106,7 +107,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
     H.sidebar().findByText("Default value").next().click();
     DateFilter.setMonthAndYear({
-      month: "November",
+      month: "Nov",
       year: "2023",
     });
 
@@ -115,7 +116,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
     // Updates the filter value
     H.filterWidget().should("contain.text", "November 2023").click();
-    H.popover().findByText("December").click();
+    H.popover().findByText("Dec").click();
     H.filterWidget().findByText("December 2023");
     H.ensureDashboardCardHasText("76.83");
 
@@ -133,9 +134,9 @@ describe("scenarios > dashboard > filters > date", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No default").click();
-    // click on Relative dates..., to open the relative date filter type tabs
+    // click on Relative date range…, to open the relative date filter type tabs
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative dates...").click();
+    cy.findByText("Relative date range…").click();
     // choose Next, under which the new options should be available
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Next").click();
@@ -149,7 +150,6 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.findByText("minutes").click();
     // also check the "Include this minute" checkbox
     // which is actually "Include" followed by "this minute" wrapped in <strong>, so has to be clicked this way
-    H.popover().icon("ellipsis").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Include this minute").click();
   });
@@ -160,9 +160,11 @@ describe("scenarios > dashboard > filters > date", () => {
     });
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
-    // we can't use helpers as they use english words
-    cy.icon("pencil").click();
-    cy.icon("filter").click();
+    H.dashboardHeader().within(() => {
+      // we can't use helpers as they use english words
+      cy.icon("pencil").click();
+      cy.icon("filter").click();
+    });
 
     H.popover().icon("calendar").click(); // "Time" -> "All Options"
 
@@ -176,21 +178,18 @@ describe("scenarios > dashboard > filters > date", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Toutes les options").click(); // "All Options"
+    cy.findByText("Date").click(); // "Date" - it's the same word in English and in French
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Exclure...").click(); // "Exclude..."
+    cy.findByText("Exclure...").click(); // "Exclude…"
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Mois de l'année...").click(); // "Months of the year..."
+    cy.findByText("Mois de l'année...").click(); // "Months of the year…"
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("janvier").click(); // "January"
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Ajouter un filtre").click(); // "Add filter"
 
-    cy.url().should(
-      "match",
-      /\/dashboard\/\d+\?toutes_les_options=exclude-months-Jan/,
-    );
+    cy.url().should("match", /\/dashboard\/\d+\?date=exclude-months-Jan/);
   });
 });
 
@@ -206,7 +205,7 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
 
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
-      DateFilter.setTime({ hours: 11, minutes: 0 });
+      DateFilter.setTime({ hours: 9, minutes: 27 });
       cy.findByText("Add filter").click();
       break;
 

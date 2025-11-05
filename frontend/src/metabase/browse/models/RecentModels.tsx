@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
-import { Box, Text } from "metabase/ui";
-import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
+import { Box, Repeat, Text } from "metabase/ui";
 import type { RecentCollectionItem } from "metabase-types/api";
 
 import { RecentModelsGrid } from "./RecentModels.styled";
@@ -31,7 +30,7 @@ export function RecentModels({
       <Text
         id={skeleton ? undefined : headingId}
         fw="bold"
-        size={16}
+        fz={16}
         color="text-dark"
         mb="lg"
         style={{ visibility: skeleton ? "hidden" : undefined }}
@@ -42,7 +41,7 @@ export function RecentModels({
             <PinnedItemCard skeleton iconForSkeleton="model" />
           </Repeat>
         ) : (
-          models.map(model => (
+          models.map((model) => (
             <PinnedItemCard
               key={`model-${model.id}`}
               item={model}

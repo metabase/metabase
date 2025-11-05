@@ -21,8 +21,8 @@
    [metabase.analyze.classifiers.name :as classifiers.name]
    [metabase.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
    [metabase.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]
-   [metabase.analyze.fingerprint.schema :as fingerprint.schema]
    [metabase.analyze.schema :as analyze.schema]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.sync.util :as sync-util]
    [metabase.util.malli :as mu]))
 
@@ -38,7 +38,7 @@
   A classifier may see the original field (before any classifiers were run) in the metadata of the field at
   `:sync.classify/original`."
   [#'classifiers.name/infer-and-assoc-semantic-type-by-name
-   #'classifiers.category/infer-is-category-or-list
+   #'classifiers.category/infer-is-category
    #'classifiers.no-preview-display/infer-no-preview-display
    #'classifiers.text-fingerprint/infer-semantic-type])
 
@@ -47,7 +47,7 @@
   changes decided upon by the classifiers. The original field can be accessed in the metadata at
   `:sync.classify/original`."
   [field       :- analyze.schema/Field
-   fingerprint :- [:maybe fingerprint.schema/Fingerprint]]
+   fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
   (reduce (fn [field classifier]
             (or (sync-util/with-error-handling (format "Error running classifier on %s"
                                                        (sync-util/name-for-logging field))

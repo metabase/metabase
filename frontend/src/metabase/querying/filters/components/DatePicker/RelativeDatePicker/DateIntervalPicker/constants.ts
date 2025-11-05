@@ -1,4 +1,4 @@
-import type { DatePickerTruncationUnit } from "../../types";
+import type { DatePickerTruncationUnit } from "metabase/querying/filters/types";
 
 export const DEFAULT_OFFSETS: Record<DatePickerTruncationUnit, number> = {
   minute: 60,

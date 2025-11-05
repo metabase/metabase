@@ -1,6 +1,9 @@
+import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type {
   Card,
   CardQueryMetadata,
+  ColumnRangeFormattingSetting,
+  ColumnSingleFormattingSetting,
   ModerationReview,
   NativeDatasetQuery,
   PublicCard,
@@ -25,7 +28,7 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",
   name: "Question",
-  description: null,
+  description: "",
   display: "table",
   public_uuid: null,
   dataset_query: createMockStructuredDatasetQuery(),
@@ -131,5 +134,43 @@ export const createMockTableColumnOrderSetting = (
 ): TableColumnOrderSetting => ({
   name: "Column",
   enabled: true,
+  ...opts,
+});
+
+export const createMockColumnSingleFormattingSetting = (
+  opts?: Partial<ColumnSingleFormattingSetting>,
+): ColumnSingleFormattingSetting => ({
+  type: "single",
+  columns: [],
+  operator: "=",
+  color: "red",
+  highlight_row: false,
+  value: 0,
+  ...opts,
+});
+
+export const createMockColumnRangeFormattingSetting = (
+  opts?: Partial<ColumnRangeFormattingSetting>,
+): ColumnRangeFormattingSetting => ({
+  type: "range",
+  columns: [],
+  colors: ["red", "green"],
+  min_type: "all",
+  max_type: "all",
+  min_value: 0,
+  max_value: 1,
+  ...opts,
+});
+
+export const createMockPieRow = (opts?: Partial<PieRow>): PieRow => ({
+  // eslint-disable-next-line no-color-literals
+  color: "#7172AD",
+  defaultColor: false,
+  enabled: true,
+  hidden: false,
+  isOther: false,
+  key: "Doohickey",
+  name: "Doohickey",
+  originalName: "Doohickey",
   ...opts,
 });

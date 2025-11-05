@@ -20,7 +20,7 @@ export const getValidationSchema = (
   isAdvanced: boolean,
 ) => {
   const fields = getDefinedFields(engine, isAdvanced).filter(isDetailField);
-  const entries = fields.map(field => [field.name, getFieldSchema(field)]);
+  const entries = fields.map((field) => [field.name, getFieldSchema(field)]);
 
   return Yup.object({
     id: Yup.number(),
@@ -37,6 +37,8 @@ export const getValidationSchema = (
     is_sample: Yup.boolean().default(false),
     is_full_sync: Yup.boolean().default(true),
     is_on_demand: Yup.boolean().default(false),
+    "connection-string": Yup.string().default(""),
+    provider_name: Yup.string().nullable().default(null),
   });
 };
 
@@ -46,7 +48,7 @@ export const getVisibleFields = (
   isAdvanced: boolean,
 ) => {
   const fields = getDefinedFields(engine, isAdvanced);
-  return fields.filter(field => isFieldVisible(field, values.details));
+  return fields.filter((field) => isFieldVisible(field, values.details));
 };
 
 export const getDefinedFields = (
@@ -57,22 +59,27 @@ export const getDefinedFields = (
 
   return isAdvanced
     ? fields
-    : fields.filter(field => !ADVANCED_FIELDS.includes(field.name));
+    : fields.filter((field) => !ADVANCED_FIELDS.includes(field.name));
 };
 
 export const getSubmitValues = (
   engine: Engine | undefined,
   values: DatabaseData,
   isAdvanced: boolean,
-) => {
+): DatabaseData => {
   const fields = getVisibleFields(engine, values, isAdvanced);
   const entries = fields
-    .filter(field => isDetailField(field))
-    .filter(field => isFieldVisible(field, values.details))
-    .map(field => [field.name, values.details?.[field.name]]);
+    .filter((field) => isDetailField(field))
+    .filter((field) => isFieldVisible(field, values.details))
+    .map((field) => [field.name, values.details?.[field.name]]);
+
+  // "connection-string" is a FE only field. It's used to prefill the database form and we're not sending it to or storing it in the BE.
+  const submitValues = Object.entries(values).filter(
+    ([key]) => key !== "connection-string",
+  );
 
   return {
-    ...values,
+    ...(Object.fromEntries(submitValues) as DatabaseData),
     details: Object.fromEntries(entries),
   };
 };
@@ -84,6 +91,7 @@ const getFieldSchema = (field: EngineField) => {
         .nullable()
         .default(null)
         .test((value, context) => isFieldValid(field, value, context));
+    case "hidden":
     case "boolean":
     case "section":
       return Yup.boolean()
@@ -135,3 +143,17 @@ const isFieldVisible = (
       : value === details?.[name],
   );
 };
+
+export function setDatabaseFormValues(
+  previousValues: DatabaseData,
+  newValues: DatabaseData,
+) {
+  return {
+    ...previousValues,
+    ...newValues,
+    details: {
+      ...previousValues.details,
+      ...newValues.details,
+    },
+  };
+}

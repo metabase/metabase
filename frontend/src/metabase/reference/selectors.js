@@ -10,7 +10,7 @@ import {
   getShallowTables as getTables,
 } from "metabase/selectors/metadata";
 
-import { databaseToForeignKeys, idsToObjectMap } from "./utils";
+import { idsToObjectMap } from "./utils";
 
 // import { getDatabases, getTables, getFields, getSegments } from "metabase/selectors/metadata";
 
@@ -97,33 +97,9 @@ export const getSegmentRevisions = createSelector(
 export const getTableQuestions = createSelector(
   [getTable, getQuestions],
   (table, questions) =>
-    Object.values(questions).filter(question => question.table_id === table.id),
-);
-
-const getDatabaseBySegment = createSelector(
-  [getSegment, getTables, getDatabases],
-  (segment, tables, databases) =>
-    (segment &&
-      segment.table_id &&
-      tables[segment.table_id] &&
-      databases[tables[segment.table_id].db_id]) ||
-    {},
-);
-
-const getForeignKeysBySegment = createSelector(
-  [getDatabaseBySegment],
-  databaseToForeignKeys,
-);
-
-const getForeignKeysByDatabase = createSelector(
-  [getDatabase],
-  databaseToForeignKeys,
-);
-
-export const getForeignKeys = createSelector(
-  [getSegmentId, getForeignKeysBySegment, getForeignKeysByDatabase],
-  (segmentId, foreignKeysBySegment, foreignKeysByDatabase) =>
-    segmentId ? foreignKeysBySegment : foreignKeysByDatabase,
+    Object.values(questions).filter(
+      (question) => question.table_id === table.id,
+    ),
 );
 
 export const getLoading = (state, props) => state.reference.isLoading;
@@ -132,7 +108,7 @@ export const getError = (state, props) => state.reference.error;
 
 export const getHasSingleSchema = createSelector(
   [getTablesByDatabase],
-  tables =>
+  (tables) =>
     tables && Object.keys(tables).length > 0
       ? Object.values(tables).every(
           (table, index, tables) => table.schema_name === tables[0].schema,

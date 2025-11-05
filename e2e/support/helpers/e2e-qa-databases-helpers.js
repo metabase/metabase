@@ -8,75 +8,118 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 
+import { createQuestion } from "./api";
+
 /*****************************************
  **            QA DATABASES             **
  ******************************************/
 
-export function addMongoDatabase(name = "QA Mongo") {
+const SYNC_RETRY_DELAY_MS = 500;
+
+export function addMongoDatabase(displayName = "QA Mongo") {
+  const { host, user, password, database: dbName } = QA_DB_CREDENTIALS;
+  const port = QA_MONGO_PORT;
+
   // https://hub.docker.com/layers/metabase/qa-databases/mongo-sample-4.4/images/sha256-8cdeaacf28c6f0a6f9fde42ce004fcc90200d706ac6afa996bdd40db78ec0305
-  addQADatabase("mongo", name, QA_MONGO_PORT);
+  return addQADatabase({
+    engine: "mongo",
+    displayName,
+    details: {
+      "advanced-options": false,
+      "use-conn-uri": true,
+      "conn-uri": `mongodb://${user}:${password}@${host}:${port}/${dbName}?authSource=admin`,
+      "tunnel-enabled": false,
+    },
+  });
 }
 
-export function addPostgresDatabase(name = "QA Postgres12", writable = false) {
+export function addPostgresDatabase(
+  displayName = "QA Postgres12",
+  writable = false,
+  dbName,
+  idAlias,
+) {
   // https://hub.docker.com/layers/metabase/qa-databases/postgres-sample-12/images/sha256-80bbef27dc52552d6dc64b52796ba356d7541e7bba172740336d7b8a64859cf8
-  addQADatabase("postgres", name, QA_POSTGRES_PORT, writable);
+  return addQADatabase({
+    engine: "postgres",
+    displayName,
+    dbName,
+    port: QA_POSTGRES_PORT,
+    enable_actions: writable,
+    idAlias,
+  });
 }
 
-export function addMySQLDatabase(name = "QA MySQL8", writable = false) {
+export function addMySQLDatabase({
+  displayName = "QA MySQL8",
+  writable = false,
+}) {
   // https://hub.docker.com/layers/metabase/qa-databases/mysql-sample-8/images/sha256-df67db50379ec59ac3a437b5205871f85ab519ce8d2cdc526e9313354d00f9d4
-  addQADatabase("mysql", name, QA_MYSQL_PORT, writable);
+  return addQADatabase({
+    engine: "mysql",
+    displayName: displayName,
+    port: QA_MYSQL_PORT,
+    enable_actions: writable,
+  });
 }
 
-function addQADatabase(engine, db_display_name, port, enable_actions = false) {
-  const PASS_KEY = engine === "mongo" ? "pass" : "password";
-  const AUTH_DB = engine === "mongo" ? "admin" : null;
+function addQADatabase({
+  engine,
+  displayName,
+  dbName,
+  port,
+  enable_actions = false,
+  idAlias,
+  details,
+}) {
   const OPTIONS = engine === "mysql" ? "allowPublicKeyRetrieval=true" : null;
 
-  const db_name = enable_actions
-    ? WRITABLE_DB_CONFIG[engine].connection.database
-    : QA_DB_CREDENTIALS.database;
+  const db_name =
+    dbName ??
+    (enable_actions
+      ? WRITABLE_DB_CONFIG[engine].connection.database
+      : QA_DB_CREDENTIALS.database);
 
   const credentials = enable_actions
     ? WRITABLE_DB_CONFIG[engine].connection
     : QA_DB_CREDENTIALS;
 
   cy.log(`**-- Adding ${engine.toUpperCase()} DB --**`);
-  cy.request("POST", "/api/database", {
-    engine: engine,
-    name: db_display_name,
-    details: {
-      dbname: db_name,
-      host: credentials.host,
-      port: port,
-      user: credentials.user,
-      [PASS_KEY]: QA_DB_CREDENTIALS.password, // NOTE: we're inconsistent in where we use `pass` vs `password` as a key
-      authdb: AUTH_DB,
-      "additional-options": OPTIONS,
-      "use-srv": false,
-      "tunnel-enabled": false,
-    },
-    auto_run_queries: true,
-    is_full_sync: true,
-    schedules: {
-      cache_field_values: {
-        schedule_day: null,
-        schedule_frame: null,
-        schedule_hour: 0,
-        schedule_type: "daily",
+  return cy
+    .request("POST", "/api/database", {
+      engine: engine,
+      name: displayName,
+      details: details ?? {
+        dbname: db_name,
+        host: credentials.host,
+        port: port,
+        user: credentials.user,
+        password: QA_DB_CREDENTIALS.password,
+        "additional-options": OPTIONS,
+        "tunnel-enabled": false,
       },
-      metadata_sync: {
-        schedule_day: null,
-        schedule_frame: null,
-        schedule_hour: null,
-        schedule_type: "hourly",
+      auto_run_queries: true,
+      is_full_sync: true,
+      schedules: {
+        cache_field_values: {
+          schedule_day: null,
+          schedule_frame: null,
+          schedule_hour: 0,
+          schedule_type: "daily",
+        },
+        metadata_sync: {
+          schedule_day: null,
+          schedule_frame: null,
+          schedule_hour: null,
+          schedule_type: "hourly",
+        },
       },
-    },
-  })
+    })
     .then(({ status, body }) => {
       expect(status).to.equal(200);
-      cy.wrap(body.id).as(`${engine}ID`);
+      cy.wrap(body.id).as(idAlias ?? `${engine}ID`);
     })
-    .then(dbId => {
+    .then((dbId) => {
       // Make sure we have all the metadata because we'll need to use it in tests
       assertOnDatabaseMetadata(engine);
 
@@ -94,7 +137,7 @@ function addQADatabase(engine, db_display_name, port, enable_actions = false) {
 
 function assertOnDatabaseMetadata(engine) {
   cy.request("GET", "/api/database").then(({ body }) => {
-    const { id } = body.data.find(db => {
+    const { id } = body.data.find((db) => {
       return db.engine === engine;
     });
 
@@ -104,7 +147,7 @@ function assertOnDatabaseMetadata(engine) {
 
 function recursiveCheck(id, i = 0) {
   // Let's not wait more than 20s for the sync to finish
-  if (i === 20) {
+  if (i === 40) {
     cy.task(
       "log",
       "The DB sync isn't complete yet, but let's be optimistic about it",
@@ -112,7 +155,7 @@ function recursiveCheck(id, i = 0) {
     return;
   }
 
-  cy.wait(1000);
+  cy.wait(SYNC_RETRY_DELAY_MS);
 
   cy.request("GET", `/api/database/${id}`).then(({ body: database }) => {
     cy.task("log", {
@@ -129,12 +172,12 @@ function recursiveCheck(id, i = 0) {
 
 function recursiveCheckFields(id, i = 0) {
   // Let's not wait more than 10s for the sync to finish
-  if (i === 10) {
+  if (i === 20) {
     cy.task("log", "The field sync isn't complete");
     return;
   }
 
-  cy.wait(1000);
+  cy.wait(SYNC_RETRY_DELAY_MS);
 
   cy.request("GET", `/api/database/${id}/schemas`).then(({ body: schemas }) => {
     const [schema] = schemas;
@@ -143,11 +186,11 @@ function recursiveCheckFields(id, i = 0) {
         .then(({ body: schema }) => {
           return schema[0].id;
         })
-        .then(tableId => {
+        .then((tableId) => {
           cy.request("GET", `/api/table/${tableId}/query_metadata`).then(
             ({ body: table }) => {
               const field = table.fields.find(
-                field => field.semantic_type !== "type/PK",
+                (field) => field.semantic_type !== "type/PK",
               );
               if (!field.last_analyzed) {
                 recursiveCheckFields(id, ++i);
@@ -189,7 +232,7 @@ export const setupWritableDB = (type = "postgres") => {
   cy.task("connectAndQueryDB", {
     connectionConfig: connectionConfig[type],
     query: dbCheckQuery[type],
-  }).then(results => {
+  }).then((results) => {
     if (!results.rows.length) {
       cy.log(`**-- Adding ${type} DB for actions --**`);
       cy.task("connectAndQueryDB", {
@@ -207,6 +250,12 @@ export function queryQADB(query, type = "postgres") {
   });
 }
 
+/**
+ * Executes a query against a writable database
+ * @param {string} query - The SQL query to execute
+ * @param {("postgres"|"mysql")} [type="postgres"] - Database type to connect to
+ * @returns {Cypress.Chainable<{rows: any[]}>} - Cypress chainable that resolves to query results
+ */
 export function queryWritableDB(query, type = "postgres") {
   return cy.task("connectAndQueryDB", {
     connectionConfig: WRITABLE_DB_CONFIG[type],
@@ -214,6 +263,14 @@ export function queryWritableDB(query, type = "postgres") {
   });
 }
 
+export function resetWritableDb({ type = "postgres" }) {
+  cy.log(`Resetting ${type} writable DB`);
+  cy.task("resetWritableDb", { type });
+}
+
+/**
+ * Note: this function MUST come after the restore() function in the file, or it will get wiped out
+ */
 export function resetTestTable({ type, table }) {
   cy.task("resetTable", { type, table });
 }
@@ -223,12 +280,36 @@ export function createTestRoles({ type, isWritable }) {
 }
 
 // will this work for multiple schemas?
+/**
+ * @param {Object} obj
+ * @param {number} [obj.databaseId] - Defaults to WRITABLE_DB_ID
+ * @param {string} obj.name - The table's real name, not its display name
+ */
 export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
+  return cy.request("GET", "/api/table").then(({ body: tables }) => {
+    const table = tables.find(
+      (table) => table.db_id === databaseId && table.name === name,
+    );
+    if (!table) {
+      throw new TypeError(`Table with name ${name} cannot be found`);
+    }
+    return table.id;
+  });
+}
+
+export function getFieldId({ tableId, name }) {
   return cy
-    .request("GET", `/api/database/${databaseId}/metadata`)
-    .then(({ body }) => {
-      const table = body?.tables?.find(table => table.name === name);
-      return table ? table.id : null;
+    .request("GET", `/api/table/${tableId}/query_metadata`)
+    .then(({ body: table }) => {
+      const fields = table.fields ?? [];
+      const field = fields.find((field) => field.name === name);
+      if (!field) {
+        throw new TypeError(`Field with name ${name} cannot be found`);
+      }
+      if (typeof field.id !== "number") {
+        throw new TypeError("Unexpected non-integer field id.");
+      }
+      return field.id;
     });
 }
 
@@ -236,7 +317,7 @@ export function getTable({ databaseId = WRITABLE_DB_ID, name }) {
   return cy
     .request("GET", `/api/database/${databaseId}/metadata`)
     .then(({ body }) => {
-      const table = body?.tables?.find(table => table.name === name);
+      const table = body?.tables?.find((table) => table.name === name);
       return table || null;
     });
 }
@@ -246,8 +327,8 @@ export const createModelFromTableName = ({
   modelName = "Test Action Model",
   idAlias = "modelId",
 }) => {
-  getTableId({ name: tableName }).then(tableId => {
-    cy.createQuestion(
+  getTableId({ name: tableName }).then((tableId) => {
+    createQuestion(
       {
         database: WRITABLE_DB_ID,
         name: modelName,
@@ -275,7 +356,7 @@ export function waitForSyncToFinish({
     throw new Error("The sync is taking too long. Something is wrong.");
   }
 
-  cy.wait(500);
+  cy.wait(SYNC_RETRY_DELAY_MS);
 
   cy.request("GET", `/api/database/${dbId}/metadata`).then(({ body }) => {
     if (!body.tables.length) {
@@ -287,7 +368,7 @@ export function waitForSyncToFinish({
       });
     } else if (tableName) {
       const table = body.tables.find(
-        table =>
+        (table) =>
           table.name === tableName && table.initial_sync_status === "complete",
       );
 
@@ -318,4 +399,12 @@ export function resyncDatabase({
   cy.request("POST", `/api/database/${dbId}/sync_schema`);
   cy.request("POST", `/api/database/${dbId}/rescan_values`);
   waitForSyncToFinish({ iteration: 0, dbId, tableName, tableAlias });
+}
+
+export function addSqliteDatabase(displayName = "sqlite") {
+  return addQADatabase({
+    engine: "sqlite",
+    displayName,
+    details: { db: "./resources/sqlite-fixture.db" },
+  });
 }

@@ -40,7 +40,6 @@ import {
   parameterValues,
   sidebar,
   slowCards,
-  theme,
 } from "./reducers-typed";
 import { calculateDashCardRowAfterUndo } from "./utils";
 
@@ -88,7 +87,7 @@ const dashcards = handleActions(
             updateIn(
               merge({ column_settings: {} }, value),
               ["column_settings", column],
-              columnSettings => ({
+              (columnSettings) => ({
                 ...columnSettings,
                 ...settings,
               }),
@@ -137,13 +136,13 @@ const dashcards = handleActions(
       [dashcardId]: { ...state[dashcardId], justAdded: false },
     }),
     [Questions.actionTypes.UPDATE]: (state, { payload: { object: card } }) =>
-      _.mapObject(state, dashcard =>
+      _.mapObject(state, (dashcard) =>
         dashcard.card?.id === card?.id
           ? assocIn(dashcard, ["card"], card)
           : dashcard,
       ),
     [Actions.actionTypes.UPDATE]: (state, { payload: { object: action } }) =>
-      _.mapObject(state, dashcard =>
+      _.mapObject(state, (dashcard) =>
         dashcard.action?.id === action?.id
           ? {
               ...dashcard,
@@ -204,7 +203,6 @@ export const dashboardReducers = reduceReducers(
     dashboardId,
     missingActionParameters,
     autoApplyFilters,
-    theme,
     slowCards,
     isNavigatingBackToDashboard,
     isAddParameterPopoverOpen,

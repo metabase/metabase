@@ -1,15 +1,10 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { color } from "metabase/lib/colors";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import { Icon } from "metabase/ui";
-
-export const HeaderRoot = styled.div`
-  display: flex;
-  align-items: center;
-  padding: 2rem 2rem 0;
-`;
+import { color } from "metabase/ui/utils/colors";
 
 export const HeaderLink = styled.div`
   display: flex;
@@ -17,14 +12,14 @@ export const HeaderLink = styled.div`
   min-width: 0;
   margin-right: auto;
   color: var(--mb-color-text-dark);
-  cursor: ${props => props.onClick && "pointer"};
+  cursor: ${(props) => props.onClick && "pointer"};
 
   &:hover {
-    color: ${props => props.onClick && color("brand")};
+    color: ${(props) => props.onClick && color("brand")};
   }
 `;
 
-export interface HeaderTitleProps {
+interface HeaderTitleProps {
   tooltipMaxWidth?: string;
 }
 
@@ -42,7 +37,14 @@ export const HeaderMenu = styled.div`
   margin-right: 1rem;
 `;
 
+/**
+ * Both the `height` and the `width` need to be in sync with `EntityMenuIconButton`
+ * in order to prevent the header from visually jumping.
+ * See: https://linear.app/metabase/issue/CLO-3660
+ */
 export const HeaderCloseButton = styled(IconButtonWrapper)`
+  height: 36px;
+  width: 36px;
   flex: 0 0 auto;
   color: var(--mb-color-text-light);
 `;

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 
-import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
-import Modal from "metabase/components/Modal";
-import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
+import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -29,99 +29,121 @@ type MetricEditorProps = {
   onCancelQuery: () => void;
 };
 
-export function MetricEditor({
-  question,
-  result,
-  rawSeries,
-  reportTimezone,
-  isDirty,
-  isRunning,
-  isResultDirty,
-  onChange,
-  onCreate,
-  onSave,
-  onCancel,
-  onRunQuery,
-  onCancelQuery,
-}: MetricEditorProps) {
-  const [modalType, setModalType] = useState<MetricModalType>();
-  const isRunnable = Lib.canRun(question.query(), "metric");
+export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
+  function MetricEditor(
+    {
+      question,
+      result,
+      rawSeries,
+      reportTimezone,
+      isDirty,
+      isRunning,
+      isResultDirty,
+      onChange,
+      onCreate,
+      onSave,
+      onCancel,
+      onRunQuery,
+      onCancelQuery,
+    },
+    ref,
+  ) {
+    const [modalType, setModalType] = useState<MetricModalType>();
+    const isRunnable = Lib.canRun(question.query(), "metric");
+    const {
+      checkData,
+      isConfirmationShown,
+      handleInitialSave,
+      handleSaveAfterConfirmation,
+      handleCloseConfirmation,
+    } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
+      onSave,
+    });
 
-  const handleCreate = (question: Question) => {
-    return onCreate(question.setDefaultDisplay());
-  };
+    const handleCreate = (question: Question) => {
+      return onCreate(question.setDefaultDisplay());
+    };
 
-  const handleCreateStart = async () => {
-    setModalType("create");
-  };
+    const handleCreateStart = async () => {
+      setModalType("create");
+    };
 
-  const handleSave = async (question: Question) => {
-    await onSave(question.setDefaultDisplay());
-  };
+    const handleSave = async (question: Question) => {
+      await handleInitialSave(question.setDefaultDisplay());
+    };
 
-  const handleCancel = () => {
-    onCancel(question);
-  };
+    const handleConfirmCancel = () => {
+      onCancel(question);
+    };
 
-  const handleCancelStart = () => {
-    if (question.isSaved() && isDirty) {
-      setModalType("leave");
-    } else {
-      handleCancel();
-    }
-  };
+    const handleCancelStart = () => {
+      if (question.isSaved() && isDirty) {
+        setModalType("leave");
+      } else {
+        handleConfirmCancel();
+      }
+    };
 
-  const handleModalClose = () => {
-    setModalType(undefined);
-  };
+    const handleModalClose = () => {
+      setModalType(undefined);
+    };
 
-  return (
-    <Flex h="100%" direction="column" bg="white">
-      <MetricEditorHeader
-        question={question}
-        isDirty={isDirty}
-        isRunnable={isRunnable}
-        onCreate={handleCreateStart}
-        onSave={handleSave}
-        onCancel={handleCancelStart}
-      />
-      <MetricEditorBody
-        question={question}
-        reportTimezone={reportTimezone}
-        isDirty={isDirty}
-        isResultDirty={isResultDirty}
-        isRunnable={isRunnable}
-        onChange={onChange}
-        onRunQuery={onRunQuery}
-      />
-      <MetricEditorFooter
-        question={question}
-        result={result}
-        rawSeries={rawSeries}
-        isRunnable={isRunnable}
-        isRunning={isRunning}
-        isResultDirty={isResultDirty}
-        onRunQuery={onRunQuery}
-        onCancelQuery={onCancelQuery}
-      />
-      {modalType === "create" && (
-        <SaveQuestionModal
+    return (
+      <Flex h="100%" direction="column" bg="bg-white" ref={ref}>
+        <MetricEditorHeader
           question={question}
-          originalQuestion={null}
-          opened
-          onCreate={handleCreate}
-          onSave={onSave}
-          onClose={handleModalClose}
+          isDirty={isDirty}
+          isRunnable={isRunnable}
+          isConfirmationShown={isConfirmationShown}
+          onCreate={handleCreateStart}
+          onSave={handleSave}
+          onCancel={handleCancelStart}
         />
-      )}
-      {modalType === "leave" && (
-        <Modal isOpen>
-          <LeaveConfirmationModalContent
-            onAction={handleCancel}
+        <MetricEditorBody
+          question={question}
+          reportTimezone={reportTimezone}
+          isDirty={isDirty}
+          isResultDirty={isResultDirty}
+          isRunnable={isRunnable}
+          onChange={onChange}
+          onRunQuery={onRunQuery}
+        />
+        <MetricEditorFooter
+          question={question}
+          result={result}
+          rawSeries={rawSeries}
+          isRunnable={isRunnable}
+          isRunning={isRunning}
+          isResultDirty={isResultDirty}
+          onRunQuery={onRunQuery}
+          onCancelQuery={onCancelQuery}
+        />
+        {modalType === "create" && (
+          <SaveQuestionModal
+            question={question}
+            originalQuestion={null}
+            opened
+            onCreate={handleCreate}
+            onSave={onSave}
             onClose={handleModalClose}
           />
-        </Modal>
-      )}
-    </Flex>
-  );
-}
+        )}
+        {modalType === "leave" && (
+          <LeaveConfirmModal
+            opened
+            onConfirm={handleConfirmCancel}
+            onClose={handleModalClose}
+          />
+        )}
+        {isConfirmationShown && checkData != null && (
+          <PLUGIN_DEPENDENCIES.CheckDependenciesModal
+            checkData={checkData}
+            opened
+            onSave={handleSaveAfterConfirmation}
+            onClose={handleCloseConfirmation}
+          />
+        )}
+      </Flex>
+    );
+  },
+);

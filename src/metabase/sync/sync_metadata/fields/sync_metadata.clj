@@ -4,20 +4,31 @@
   Fields that were not newly created; newly created Fields are given appropriate metadata when first synced."
   (:require
    [clojure.string :as str]
-   [metabase.models.field :refer [Field]]
    [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.fields.common :as common]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
    [toucan2.core :as t2]))
+
+(defn- compute-new-visibility-type [db field-metadata]
+  (if (crufty/name? (:name field-metadata)
+                    (some-> db :settings :auto-cruft-columns))
+    :details-only
+    ;; n.b. if it was auto-crufted in the past, removing it from auto-cruft will NOT make it visible because old
+    ;; visibility-type will be :details-only. This only changes things to be hidden. If you want to make it visible
+    ;; again, you need to change the visibility-type to :normal via the fields :put api.
+    (:visibility-type field-metadata)))
 
 (mu/defn- update-field-metadata-if-needed! :- [:enum 0 1]
   "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed. Syncs
   base type, database type, semantic type, and comments/remarks; returns `1` if the Field was updated; `0` otherwise."
-  [table          :- i/TableInstance
+  [database       :- i/DatabaseInstance
+   table          :- i/TableInstance
    field-metadata :- i/TableMetadataField
    metabase-field :- common/TableMetadataFieldWithID]
   (let [{old-database-type              :database-type
@@ -26,18 +37,28 @@
          old-semantic-type              :semantic-type
          old-database-position          :database-position
          old-position                   :position
+         old-pk                         :pk?
          old-database-name              :name
+         old-database-default           :database-default
          old-database-is-auto-increment :database-is-auto-increment
+         old-database-is-generated      :database-is-generated
+         old-database-is-nullable       :database-is-nullable
          old-db-partitioned             :database-partitioned
-         old-db-required                :database-required} metabase-field
+         old-db-required                :database-required
+         old-visibility-type            :visibility-type} metabase-field
         {new-database-type              :database-type
          new-base-type                  :base-type
          new-field-comment              :field-comment
          new-database-position          :database-position
          new-database-name              :name
+         new-pk                         :pk?
+         new-database-default           :database-default
          new-database-is-auto-increment :database-is-auto-increment
+         new-database-is-generated      :database-is-generated
+         new-database-is-nullable       :database-is-nullable
          new-db-partitioned             :database-partitioned
          new-db-required                :database-required} field-metadata
+        new-visibility-type             (compute-new-visibility-type database field-metadata)
         new-database-is-auto-increment  (boolean new-database-is-auto-increment)
         new-db-required                 (boolean new-db-required)
         new-database-type               (or new-database-type "NULL")
@@ -65,9 +86,14 @@
         ;; different they have the same canonical representation (lower-casing at the moment).
         new-name? (not= old-database-name new-database-name)
 
+        new-pk?                  (not= old-pk new-pk)
+        new-db-default?          (not= old-database-default new-database-default)
         new-db-auto-incremented? (not= old-database-is-auto-increment new-database-is-auto-increment)
+        new-db-generated?        (not= old-database-is-generated new-database-is-generated)
+        new-db-nullable?         (not= old-database-is-nullable new-database-is-nullable)
         new-db-partitioned?      (not= new-db-partitioned old-db-partitioned)
         new-db-required?         (not= old-db-required new-db-required)
+        new-visibility-type?     (not= old-visibility-type new-visibility-type)
 
         ;; calculate combined updates
         updates
@@ -83,14 +109,17 @@
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-base-type
                       new-base-type)
-           {:base_type           new-base-type
-            :effective_type      new-base-type
-            :coercion_strategy   nil
-            ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
-            :fingerprint_version 0
-            :fingerprint         nil
-            ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
-            :semantic_type       nil})
+           (doto
+            {:base_type           new-base-type
+             :effective_type      new-base-type
+             :coercion_strategy   nil
+                ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
+             :fingerprint_version 0
+             :fingerprint         nil
+                ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
+             :semantic_type       nil}
+             ;; we must override user-set values
+             (->> (schema.field-user-settings/upsert-user-settings metabase-field))))
          (when new-semantic-type?
            (log/infof "Semantic type of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
@@ -120,12 +149,41 @@
                       old-database-name
                       new-database-name)
            {:name new-database-name})
+         (when new-pk?
+           ;; this guard avoids spamming logs with pk changes when people first upgrade to support database_is_pk
+           (when (or ;; if we have any value for the old database_is_pk we have upgraded already, and can log regardless
+                  (some? old-pk)
+                     ;; otherwise, log only if logical pk status has changed
+                  (not= new-pk (= old-semantic-type :type/PK)))
+             (log/infof "Database pk of %s has changed from '%s' to '%s'"
+                        (common/field-metadata-name-for-logging table metabase-field)
+                        old-pk
+                        new-pk))
+           {:database_is_pk new-pk})
          (when new-db-auto-incremented?
            (log/infof "Database auto incremented of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-database-is-auto-increment
                       new-database-is-auto-increment)
            {:database_is_auto_increment new-database-is-auto-increment})
+         (when new-db-generated?
+           (log/infof "Database generated of %s has changed from '%s' to '%s'."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-database-is-generated
+                      new-database-is-generated)
+           {:database_is_generated new-database-is-generated})
+         (when new-db-nullable?
+           (log/infof "Database nullable of %s has changed from '%s' to '%s'."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-database-is-nullable
+                      new-database-is-nullable)
+           {:database_is_nullable new-database-is-nullable})
+         (when new-db-default?
+           (log/infof "Database default of %s has changed from '%s' to '%s'."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-database-default
+                      new-database-default)
+           {:database_default new-database-default})
          (when new-db-partitioned?
            (log/infof "Database partitioned of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
@@ -137,10 +195,12 @@
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-db-required
                       new-db-required)
-           {:database_required new-db-required}))]
+           {:database_required new-db-required})
+         (when new-visibility-type?
+           {:visibility_type new-visibility-type}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
-             (pos? (t2/update! Field (u/the-id metabase-field) updates)))
+             (pos? (t2/update! :model/Field (u/the-id metabase-field) updates)))
       1
       0)))
 
@@ -148,24 +208,26 @@
 
 (mu/defn- update-nested-fields-metadata! :- ms/IntGreaterThanOrEqualToZero
   "Recursively call `update-metadata!` for all the nested Fields in a `metabase-field`."
-  [table          :- i/TableInstance
+  [database       :- i/DatabaseInstance
+   table          :- i/TableInstance
    field-metadata :- i/TableMetadataField
    metabase-field :- common/TableMetadataFieldWithID]
   (let [nested-fields-metadata (:nested-fields field-metadata)
         metabase-nested-fields (:nested-fields metabase-field)]
     (if (seq metabase-nested-fields)
-      (update-metadata! table (set nested-fields-metadata) (set metabase-nested-fields))
+      (update-metadata! database table (set nested-fields-metadata) (set metabase-nested-fields))
       0)))
 
 (mu/defn update-metadata! :- ms/IntGreaterThanOrEqualToZero
   "Make sure things like PK status and base-type are in sync with what has come back from the DB. Recursively updates
   nested Fields. Returns total number of Fields updated."
-  [table        :- i/TableInstance
+  [database     :- i/DatabaseInstance
+   table        :- i/TableInstance
    db-metadata  :- [:set i/TableMetadataField]
    our-metadata :- [:set common/TableMetadataFieldWithID]]
   (sync-util/sum-for [metabase-field our-metadata]
     ;; only update metadata for 'existing' Fields that are present in our Metadata (i.e., present in the application
     ;; database) and that are still considered active (i.e., present in DB metadata)
     (when-let [field-metadata (common/matching-field-metadata metabase-field db-metadata)]
-      (+ (update-field-metadata-if-needed! table field-metadata metabase-field)
-         (update-nested-fields-metadata! table field-metadata metabase-field)))))
+      (+ (update-field-metadata-if-needed! database table field-metadata metabase-field)
+         (update-nested-fields-metadata! database table field-metadata metabase-field)))))

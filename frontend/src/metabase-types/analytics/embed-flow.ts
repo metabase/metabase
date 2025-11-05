@@ -1,3 +1,5 @@
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
+
 type EmbedFlowParams = {
   locked?: number;
   enabled?: number;
@@ -11,7 +13,7 @@ type EmbedFlowAppearance = {
   theme?: string;
   font?: string;
   downloads?: boolean | null;
-  hide_download_button?: boolean | null;
+  enabled_download_types?: EmbedResourceDownloadOptions | null;
 };
 
 type EmbedFlowEventSchema = {
@@ -36,7 +38,7 @@ type ValidateEvent<
     Record<Exclude<keyof T, keyof EmbedFlowEventSchema>, never>,
 > = T;
 
-type EmbedFlowArtifact = "dashboard" | "question";
+type EmbedFlowArtifact = "dashboard" | "question" | "document";
 
 export type StaticEmbedDiscardedEvent = ValidateEvent<{
   event: "static_embed_discarded";

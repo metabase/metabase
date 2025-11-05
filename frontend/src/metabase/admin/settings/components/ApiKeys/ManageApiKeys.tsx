@@ -1,18 +1,19 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import { useListApiKeysQuery } from "metabase/api";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { ClientSortableTable } from "metabase/common/components/Table";
-import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import { Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey } from "metabase-types/api";
-
-import { AuthTabs } from "../AuthTabs";
 
 import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
@@ -30,28 +31,19 @@ function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
       mt="xl"
       align="center"
       justify="center"
-      spacing="sm"
+      gap="sm"
       data-testid="empty-table-warning"
     >
-      <Title>{t`No API keys here yet`}</Title>
-      <Text color="text.1" mb="md">
-        {t`You can create an API key to make API calls programatically.`}
+      <Title order={2}>{t`No API keys here yet`}</Title>
+      <Text mb="md">
+        {t`You can create an API key to make API calls programmatically.`}
       </Text>
       <Button key="create-key-button" variant="filled" onClick={onCreate}>
-        {t`Create API Key`}
+        {t`Create API key`}
       </Button>
     </Stack>
   );
 }
-
-const columns = [
-  { key: "name", name: t`Key name` },
-  { key: "group_name", name: t`Group` },
-  { key: "masked_key", name: t`Key` },
-  { key: "updated_by_name", name: t`Last modified by` },
-  { key: "updated_at", name: t`Last modified on` },
-  { key: "actions", name: "", sortable: false },
-];
 
 function ApiKeysTable({
   apiKeys,
@@ -67,7 +59,6 @@ function ApiKeysTable({
   error?: unknown;
 }) {
   const flatApiKeys = useMemo(() => apiKeys?.map(flattenApiKey), [apiKeys]);
-  const locale = useLocale();
 
   if (loading || error) {
     return <DelayedLoadingAndErrorWrapper loading={loading} error={error} />;
@@ -77,13 +68,21 @@ function ApiKeysTable({
     return <EmptyTableWarning onCreate={() => setModal("create")} />;
   }
 
+  const columns = [
+    { key: "name", name: t`Key name` },
+    { key: "group_name", name: t`Group` },
+    { key: "masked_key", name: t`Key` },
+    { key: "updated_by_name", name: t`Last modified by` },
+    { key: "updated_at", name: t`Last modified on` },
+    { key: "actions", name: "", sortable: false },
+  ];
+
   return (
     <ClientSortableTable
       data-testid="api-keys-table"
       columns={columns}
       rows={flatApiKeys}
-      locale={locale}
-      rowRenderer={row => (
+      rowRenderer={(row) => (
         <ApiKeyRow
           apiKey={row}
           setActiveApiKey={setActiveApiKey}
@@ -116,7 +115,7 @@ const ApiKeyRow = ({
     <td>{apiKey.updated_by.common_name}</td>
     <td>{formatDateTimeWithUnit(apiKey.updated_at, "minute")}</td>
     <td>
-      <Group spacing="md" py="md">
+      <Group gap="md" py="md">
         <Icon
           name="pencil"
           className={CS.cursorPointer}
@@ -153,42 +152,38 @@ export const ManageApiKeys = () => {
 
   const handleClose = () => setModal(null);
 
-  const tableIsEmpty = !isLoading && !error && apiKeys?.length === 0;
-
   return (
-    <>
-      <ApiKeyModals
-        onClose={handleClose}
-        modal={modal}
-        activeApiKey={activeApiKey}
-      />
-      <AuthTabs activeKey="api-keys" />
-      <Stack pl="md" spacing="lg">
-        <Group
-          align="start"
-          position="apart"
-          data-testid="api-keys-settings-header"
-        >
-          <Stack>
-            <Title>{t`Manage API Keys`}</Title>
-            {!tableIsEmpty && (
-              <Text color="text-medium">{t`Allow users to use the API keys to authenticate their API calls.`}</Text>
-            )}
-          </Stack>
-          <Button
-            variant="filled"
-            onClick={() => setModal("create")}
-          >{t`Create API Key`}</Button>
-        </Group>
-        <ApiKeysTable
-          loading={isLoading}
-          error={error}
-          apiKeys={sortedApiKeys}
-          setActiveApiKey={setActiveApiKey}
-          setModal={setModal}
+    <SettingsPageWrapper title={t`API keys`}>
+      <SettingsSection>
+        <ApiKeyModals
+          onClose={handleClose}
+          modal={modal}
+          activeApiKey={activeApiKey}
         />
-      </Stack>
-    </>
+        <Stack gap="lg">
+          <Group
+            justify="space-between"
+            align="center"
+            data-testid="api-keys-settings-header"
+          >
+            <Text c="text-medium">
+              {t`Allow users to use API keys to authenticate their API calls.`}
+            </Text>
+            <Button
+              variant="filled"
+              onClick={() => setModal("create")}
+            >{t`Create API key`}</Button>
+          </Group>
+          <ApiKeysTable
+            loading={isLoading}
+            error={error}
+            apiKeys={sortedApiKeys}
+            setActiveApiKey={setActiveApiKey}
+            setModal={setModal}
+          />
+        </Stack>
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 };
 

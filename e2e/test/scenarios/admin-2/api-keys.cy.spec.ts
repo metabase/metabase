@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -56,9 +56,7 @@ describe("scenarios > admin > settings > API keys", () => {
     H.createApiKey("Test API Key Two", NOSQL_GROUP_ID);
     H.createApiKey("Test API Key Three", READONLY_GROUP_ID);
 
-    cy.visit("/admin/settings/authentication/api-keys");
-    cy.wait("@getKeys");
-    cy.findByTestId("api-keys-settings-header").findByText("Manage API Keys");
+    visitApiKeySettings();
 
     cy.findByTestId("api-keys-table").within(() => {
       cy.findByText("Test API Key One");
@@ -76,24 +74,10 @@ describe("scenarios > admin > settings > API keys", () => {
   });
 
   it("should allow creating an API key", () => {
-    cy.visit("/admin/settings/authentication/api-keys");
-    cy.wait("@getKeys");
-    cy.findByTestId("api-keys-settings-header")
-      .button("Create API Key")
-      .click();
-
-    cy.wait("@getGroups");
-
-    cy.findByTestId("create-api-key-modal").within(() => {
-      cy.findByLabelText(/Key name/).type("New key");
-      cy.findByLabelText(/group/).click();
-    });
-
-    cy.findByRole("listbox").findByText("Administrators").click();
-
-    cy.findByLabelText("Create a new API Key").button("Create").click();
-
-    cy.wait("@createKey");
+    const name = "New key";
+    const group = "Administrators";
+    visitApiKeySettings();
+    H.tryToCreateApiKeyViaModal({ name, group });
     cy.wait("@getKeys");
 
     cy.findByLabelText("Copy and save the API key").findByLabelText(
@@ -101,20 +85,34 @@ describe("scenarios > admin > settings > API keys", () => {
     );
 
     cy.button("Done").click();
-    cy.findByTestId("api-keys-table").findByText("New key");
+    cy.findByTestId("api-keys-table").findByText(name);
+  });
+
+  it("should show an error when a previously used key name is submitted", () => {
+    const name = "New key";
+    const group = "Administrators";
+    visitApiKeySettings();
+    H.tryToCreateApiKeyViaModal({ name, group });
+    cy.button("Done").click();
+    H.tryToCreateApiKeyViaModal({ name, group }).then(({ response }) => {
+      expect(response?.statusCode).to.equal(400);
+    });
+
+    cy.findByTestId("create-api-key-modal")
+      .findAllByRole("alert")
+      .contains("An API key with this name already exists.");
   });
 
   it("should allow deleting an API key", () => {
     H.createApiKey("Test API Key One", ALL_USERS_GROUP_ID);
-    cy.visit("/admin/settings/authentication/api-keys");
-    cy.wait("@getKeys");
+    visitApiKeySettings();
 
     cy.findByTestId("api-keys-table")
       .contains("Test API Key One")
       .closest("tr")
       .icon("trash")
       .click();
-    cy.findByLabelText("Delete API Key").button("Delete API Key").click();
+    H.modal().button("Delete API key").click();
 
     cy.wait("@deleteKey");
     cy.wait("@getKeys");
@@ -124,8 +122,7 @@ describe("scenarios > admin > settings > API keys", () => {
 
   it("should allow editing an API key", () => {
     H.createApiKey("Development API Key", ALL_USERS_GROUP_ID);
-    cy.visit("/admin/settings/authentication/api-keys");
-    cy.wait("@getKeys");
+    visitApiKeySettings();
 
     cy.findByTestId("api-keys-table")
       .should("include.text", "Development API Key")
@@ -154,18 +151,13 @@ describe("scenarios > admin > settings > API keys", () => {
   it("should allow regenerating an API key", () => {
     H.createApiKey("Personal API Key", ALL_USERS_GROUP_ID);
 
-    cy.visit("/admin/settings/authentication/api-keys");
-    cy.wait("@getKeys").then(({ response }) => {
-      const { created_at, updated_at } = response?.body[0];
-      // on creation, created_at and updated_at should be the same
-      expect(created_at).to.equal(updated_at);
-    });
+    visitApiKeySettings();
     cy.findByTestId("api-keys-table")
       .contains("Personal API Key")
       .closest("tr")
       .icon("pencil")
       .click();
-    cy.button("Regenerate API Key").click();
+    cy.button("Regenerate API key").click();
     cy.button("Regenerate").click();
     cy.wait("@regenerateKey");
     cy.findByLabelText("The API key").should("include.value", "mb_");
@@ -264,6 +256,12 @@ describe("scenarios > admin > settings > API keys", () => {
     });
   });
 });
+
+export const visitApiKeySettings = () => {
+  cy.visit("/admin/settings/authentication/api-keys");
+  cy.wait("@getKeys");
+  cy.findByTestId("api-keys-settings-header");
+};
 
 const createQuestionForApiKey = (apiKey: string) => {
   cy.signOut();

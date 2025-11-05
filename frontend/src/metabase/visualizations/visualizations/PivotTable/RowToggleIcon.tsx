@@ -53,7 +53,7 @@ export function RowToggleIcon({
     isColumn && !isCollapsed // click on open column
       ? (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
           settingValue
-            .filter(v => {
+            .filter((v) => {
               const parsed = JSON.parse(v);
               return !(Array.isArray(parsed) && parsed.length === value);
             }) // remove any already collapsed items in this column
@@ -61,23 +61,23 @@ export function RowToggleIcon({
       : !isColumn && isColumnCollapsed // single row in collapsed column
         ? (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
             settingValue
-              .filter(v => v !== columnRef) // remove column from list
+              .filter((v) => v !== columnRef) // remove column from list
               .concat(
                 // add other rows in this columns so they stay closed
                 rowIndex
                   .filter(
-                    item =>
+                    (item) =>
                       // equal length means they're in the same column
                       item.length === value.length &&
                       // but not exactly this item
                       !_.isEqual(item, value),
                   )
                   // serialize those paths
-                  .map(item => JSON.stringify(item)),
+                  .map((item) => JSON.stringify(item)),
               )
         : isCollapsed // closed row or column
           ? (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
-              settingValue.filter(v => v !== ref)
+              settingValue.filter((v) => v !== ref)
           : // open row or column
             (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
               settingValue.concat(ref);
@@ -85,7 +85,7 @@ export function RowToggleIcon({
   return (
     <RowToggleIconRoot
       data-testid={testId}
-      onClick={e => {
+      onClick={(e) => {
         e.stopPropagation();
         updateSettings({
           [COLLAPSED_ROWS_SETTING]: updateIn(setting, ["value"], toggle),

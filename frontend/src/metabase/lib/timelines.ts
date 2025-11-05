@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
+import type { IconName } from "metabase/ui";
 import type { Collection, Timeline, TimelineIcon } from "metabase-types/api";
 
 export const getTimelineName = (timeline: Timeline) => {
@@ -10,14 +11,14 @@ export const getTimelineName = (timeline: Timeline) => {
     : timeline.name;
 };
 
-export const getTimelineIcons = () => {
+export const getTimelineIcons = (): { label: string; value: IconName }[] => {
   return [
-    { name: t`Star`, value: "star", icon: "star" },
-    { name: t`Cake`, value: "cake", icon: "cake" },
-    { name: t`Mail`, value: "mail", icon: "mail" },
-    { name: t`Warning`, value: "warning", icon: "warning" },
-    { name: t`Bell`, value: "bell", icon: "bell" },
-    { name: t`Cloud`, value: "cloud", icon: "cloud" },
+    { label: t`Star`, value: "star" },
+    { label: t`Cake`, value: "cake" },
+    { label: t`Mail`, value: "mail" },
+    { label: t`Warning`, value: "warning" },
+    { label: t`Bell`, value: "bell" },
+    { label: t`Cloud`, value: "cloud" },
   ];
 };
 
@@ -45,13 +46,13 @@ export const getSortedTimelines = (
   collection?: Collection,
 ) => {
   return _.chain(timelines)
-    .sortBy(timeline => getTimelineName(timeline).toLowerCase())
-    .sortBy(timeline => timeline.collection?.personal_owner_id != null) // personal collections last
-    .sortBy(timeline => !timeline.default) // default timelines first
-    .sortBy(timeline => timeline.collection?.id !== collection?.id) // timelines within the collection first
+    .sortBy((timeline) => getTimelineName(timeline).toLowerCase())
+    .sortBy((timeline) => timeline.collection?.personal_owner_id != null) // personal collections last
+    .sortBy((timeline) => !timeline.default) // default timelines first
+    .sortBy((timeline) => timeline.collection?.id !== collection?.id) // timelines within the collection first
     .value();
 };
 
 export const getEventCount = ({ events = [], archived }: Timeline) => {
-  return events.filter(e => e.archived === archived).length;
+  return events.filter((e) => e.archived === archived).length;
 };

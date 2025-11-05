@@ -1,7 +1,7 @@
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { isFitViewportMode } from "metabase/hoc/FitViewPort";
+import CS from "metabase/css/core/index.css";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/lib/dom";
 import { setInitialUrlOptions } from "metabase/redux/embed";
 
@@ -21,7 +21,7 @@ export function initializeEmbedding(store) {
         sendMessage({
           type: "location",
           // extract just the string properties from window.location
-          location: _.pick(location, v => typeof v === "string"),
+          location: _.pick(location, (v) => typeof v === "string"),
         });
         currentHref = location.href;
       }
@@ -34,7 +34,7 @@ export function initializeEmbedding(store) {
         currentFrame = frame;
       }
     }, 100);
-    window.addEventListener("message", e => {
+    window.addEventListener("message", (e) => {
       if (e.source === window.parent && e.data.metabase) {
         if (e.data.metabase.type === "location") {
           store.dispatch(push(e.data.metabase.location));
@@ -55,6 +55,18 @@ function sendMessage(message) {
   //      - the data we sent is not sensitive data (frame size, current URL)
   //      - we are already using frame ancestor policy to limit domains that can embed metabase
   window.parent.postMessage({ metabase: message }, "*");
+}
+
+function isFitViewportMode() {
+  const root = document.getElementById("root");
+
+  // get the first div, which may be preceded by style nodes
+  const firstChild = root?.querySelector("div");
+
+  if (firstChild) {
+    return firstChild.classList.contains(CS.spread);
+  }
+  return false;
 }
 
 function getFrameSpec() {

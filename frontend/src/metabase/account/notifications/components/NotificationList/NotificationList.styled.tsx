@@ -1,7 +1,7 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { TextButton } from "metabase/components/Button.styled";
-import Label from "metabase/components/type/Label";
+import Label from "metabase/common/components/type/Label";
 import { Icon } from "metabase/ui";
 
 export const NotificationHeader = styled.div`
@@ -14,12 +14,6 @@ export const NotificationLabel = styled(Label)`
   flex: 1 1 auto;
   margin: 0;
 `;
-
-export const NotificationButton = styled(TextButton)``;
-
-NotificationButton.defaultProps = {
-  size: "small",
-};
 
 export const NotificationSection = styled.div`
   display: flex;

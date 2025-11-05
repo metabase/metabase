@@ -1,4 +1,4 @@
-import type { FilterOperatorOption } from "metabase/querying/filters/utils/operators";
+import type { FilterOperatorOption } from "metabase/querying/filters/types";
 import type * as Lib from "metabase-lib";
 
 export interface OperatorOption
@@ -7,4 +7,4 @@ export interface OperatorOption
   hasMultipleValues?: boolean;
 }
 
-export type NumberValue = number | "";
+export type NumberOrEmptyValue = Lib.NumberFilterValue | null;

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { TemplateTag } from "metabase-types/api";
 
@@ -145,10 +145,10 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       defaultValueFormatted: "January 1, 2024",
       otherValue: "01/01/2020",
       otherValueFormatted: "January 1, 2020",
-      setValue: value => {
+      setValue: (value) => {
         addDateFilter(value);
       },
-      updateValue: value => {
+      updateValue: (value) => {
         updateDateFilter(value);
       },
     });
@@ -189,7 +189,6 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
         dimension: ["field", PRODUCTS.CATEGORY, null],
         "widget-type": "string/contains",
         options: { "case-sensitive": false },
-        // @ts-expect-error - TODO: https://github.com/metabase/metabase/issues/46263
         default: ["Gizmo"],
       },
       default_required: {
@@ -201,7 +200,6 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
         "widget-type": "string/contains",
         options: { "case-sensitive": false },
         required: true,
-        // @ts-expect-error - TODO: https://github.com/metabase/metabase/issues/46263
         default: ["Gizmo"],
       },
     });
@@ -210,12 +208,12 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       defaultValueFormatted: "Gizmo",
       otherValue: "{backspace}Gadget",
       otherValueFormatted: "Gadget",
-      setValue: value => {
-        H.popover().findByRole("searchbox").clear().type(value).blur();
+      setValue: (value) => {
+        H.popover().findByRole("combobox").clear().type(value).blur();
         H.popover().button("Add filter").click();
       },
-      updateValue: value => {
-        H.popover().findByRole("searchbox").clear().type(value).blur();
+      updateValue: (value) => {
+        H.popover().findByRole("combobox").clear().type(value).blur();
         H.popover().button("Update filter").click();
       },
     });
@@ -224,12 +222,12 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       defaultValueFormatted: "Gizmo",
       otherValue: "{backspace}Gadget",
       otherValueFormatted: "Gadget",
-      setValue: value => {
-        H.popover().findByRole("searchbox").clear().type(value).blur();
+      setValue: (value) => {
+        H.popover().findByRole("combobox").clear().type(value).blur();
         H.popover().button("Add filter").click();
       },
-      updateValue: value => {
-        H.popover().findByRole("searchbox").clear().type(value).blur();
+      updateValue: (value) => {
+        H.popover().findByRole("combobox").clear().type(value).blur();
         H.popover().button("Update filter").click();
       },
     });
@@ -367,7 +365,8 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     cy.log("no default value, non-required, has current value");
     filter(NO_DEFAULT_NON_REQUIRED).click();
     setValue(otherValue);
-    filter(NO_DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
+
+    filter(NO_DEFAULT_NON_REQUIRED).should("contain.text", otherValueFormatted);
     checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "clear");
     clearButton(NO_DEFAULT_NON_REQUIRED).click();
     filter(NO_DEFAULT_NON_REQUIRED).should(
@@ -382,19 +381,18 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     cy.log("no default value, required, has current value");
     filter(NO_DEFAULT_REQUIRED).click();
     updateValue(otherValue);
-    filter(NO_DEFAULT_REQUIRED).should("have.text", otherValueFormatted);
-    // checkStatusIcon(NO_DEFAULT_REQUIRED, "clear");
+    filter(NO_DEFAULT_REQUIRED).should("contain.text", otherValueFormatted);
 
     cy.log("has default value, non-required, current value same as default");
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
-    filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+    filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
     clearButton(DEFAULT_NON_REQUIRED).click();
     filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
 
     cy.log("has default value, non-required, no current value");
     checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
     resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+    filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
 
     cy.log(
@@ -402,10 +400,10 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     );
     filter(DEFAULT_NON_REQUIRED).click();
     updateValue(otherValue);
-    filter(DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
+    filter(DEFAULT_NON_REQUIRED).should("contain.text", otherValueFormatted);
     checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
     resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+    filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
 
     cy.log("has default value, required, value same as default");
@@ -414,10 +412,10 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     cy.log("has default value, required, current value different than default");
     filter(DEFAULT_REQUIRED).click();
     updateValue(otherValue);
-    filter(DEFAULT_REQUIRED).should("have.text", otherValueFormatted);
+    filter(DEFAULT_REQUIRED).should("contain.text", otherValueFormatted);
     checkStatusIcon(DEFAULT_REQUIRED, "reset");
     resetButton(DEFAULT_REQUIRED).click();
-    filter(DEFAULT_REQUIRED).should("have.text", defaultValueFormatted);
+    filter(DEFAULT_REQUIRED).should("contain.text", defaultValueFormatted);
     checkStatusIcon(DEFAULT_REQUIRED, "none");
   }
 
@@ -578,7 +576,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     });
 
     H.popover().findByRole("textbox").clear().type(otherValue).blur();
-    H.popover().button("Update filter").click();
+    H.popover().button("Add filter").click();
 
     filterSection("no_default_required").within(() => {
       filter("Default filter widget value").should(
@@ -639,7 +637,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     });
 
     H.popover().findByRole("textbox").clear().type(otherValue).blur();
-    H.popover().button("Update filter").click();
+    H.popover().button("Add filter").click();
 
     filterSection("default_required").within(() => {
       filter("Default filter widget value").should(
@@ -818,6 +816,8 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
 
   function updateDateFilter(value: string) {
     H.popover().findByRole("textbox").clear().type(value).blur();
-    H.popover().button("Update filter").click();
+    H.popover()
+      .button(/(Add|Update) filter/)
+      .click();
   }
 });

@@ -7,7 +7,8 @@ import {
   isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
-import { Tree } from "metabase/components/tree";
+import { Tree } from "metabase/common/components/tree";
+import { findCollectionById } from "metabase/common/utils/collections";
 import CS from "metabase/css/core/index.css";
 import Collections, {
   PERSONAL_COLLECTIONS,
@@ -19,7 +20,6 @@ import { Box, Icon } from "metabase/ui";
 import SavedEntityList from "./SavedEntityList";
 import SavedEntityPickerS from "./SavedEntityPicker.module.css";
 import { CARD_INFO } from "./constants";
-import { findCollectionById } from "./utils";
 
 const propTypes = {
   type: PropTypes.string,
@@ -33,7 +33,7 @@ const propTypes = {
   rootCollection: PropTypes.object,
 };
 
-const getOurAnalyticsCollection = collectionEntity => {
+const getOurAnalyticsCollection = (collectionEntity) => {
   return {
     ...collectionEntity,
     schemaName: "Everything else",
@@ -57,7 +57,7 @@ function SavedEntityPicker({
   rootCollection,
 }) {
   const collectionTree = useMemo(() => {
-    const modelFilter = model => CARD_INFO[type].model === model;
+    const modelFilter = (model) => CARD_INFO[type].model === model;
 
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
@@ -73,7 +73,7 @@ function SavedEntityPicker({
 
     if (currentUser.is_superuser) {
       const otherPersonalCollections = collections.filter(
-        collection =>
+        (collection) =>
           isRootPersonalCollection(collection) &&
           collection.personal_owner_id !== currentUser.id,
       );
@@ -101,7 +101,7 @@ function SavedEntityPicker({
   const [selectedCollection, setSelectedCollection] =
     useState(initialCollection);
 
-  const handleSelect = useCallback(collection => {
+  const handleSelect = useCallback((collection) => {
     if (collection.id === PERSONAL_COLLECTIONS.id) {
       return;
     }

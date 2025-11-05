@@ -32,12 +32,11 @@ export class LatitudeLongitudeError extends Error {
   }
 }
 
-export class NoBreakoutError extends Error {
-  constructor(message) {
-    super(message || t`This visualization requires you to group by a field.`);
-  }
-}
-
+/**
+ * These errors are usually thrown from within the `checkRenderable` visualization utility.
+ * We rely on this type of error (in conjuction with the `hasEmptyState` and a few other properties)
+ * to determine whether or not to display the empty visuzalization state.
+ */
 export class ChartSettingsError extends Error {
   initial;
   buttonText;

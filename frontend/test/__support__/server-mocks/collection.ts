@@ -12,6 +12,7 @@ import type {
   Collection,
   CollectionItem,
   Dashboard,
+  DashboardQuestionCandidate,
 } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
@@ -33,28 +34,26 @@ export function setupCollectionsEndpoints({
   rootCollection = createMockCollection(ROOT_COLLECTION),
   trashCollection = mockTrashCollection,
 }: CollectionEndpoints) {
-  fetchMock.get("path:/api/collection/root", rootCollection);
-  fetchMock.get(`path:/api/collection/trash`, trashCollection);
-  fetchMock.get(`path:/api/collection/${trashCollection.id}`, trashCollection);
+  fetchMock.get("path:/api/collection/root", rootCollection, {
+    name: "collection-root",
+  });
+  fetchMock.get(`path:/api/collection/trash`, trashCollection, {
+    name: "collection-trash",
+  });
+  fetchMock.get(`path:/api/collection/${trashCollection.id}`, trashCollection, {
+    name: `collection-${trashCollection.id}`,
+  });
   fetchMock.get(
-    {
-      url: "path:/api/collection/tree",
-      query: { "exclude-archived": true },
-      overwriteRoutes: false,
-    },
-    collections.filter(collection => !collection.archived),
+    "path:/api/collection/tree",
+    collections.filter((collection) => !collection.archived),
+    { name: "collection-tree-exclude-archived" },
   );
-  fetchMock.get(
-    {
-      url: "path:/api/collection/tree",
-      overwriteRoutes: false,
-    },
-    collections,
-  );
-  fetchMock.get(
-    { url: "path:/api/collection", overwriteRoutes: false },
-    collections,
-  );
+  fetchMock.get("path:/api/collection/tree", collections, {
+    name: "collection-tree",
+  });
+  fetchMock.get("path:/api/collection", collections, {
+    name: "collection-list",
+  });
 }
 
 function getCollectionVirtualSchemaURLs(collection: Collection) {
@@ -74,14 +73,21 @@ export function setupCollectionVirtualSchemaEndpoints(
 ) {
   const urls = getCollectionVirtualSchemaURLs(collection);
 
-  const [models, questions] = _.partition(cards, card => card.type === "model");
+  const [models, questions] = _.partition(
+    cards,
+    (card) => card.type === "model",
+  );
   const modelVirtualTables = models.map(convertSavedQuestionToVirtualTable);
   const questionVirtualTables = questions.map(
     convertSavedQuestionToVirtualTable,
   );
 
-  fetchMock.get(urls.questions, questionVirtualTables);
-  fetchMock.get(urls.models, modelVirtualTables);
+  fetchMock.get(urls.questions, questionVirtualTables, {
+    name: "collection-questions-virtual-tables",
+  });
+  fetchMock.get(urls.models, modelVirtualTables, {
+    name: "collection-models-virtual-tables",
+  });
 }
 
 export function setupCollectionItemsEndpoint({
@@ -89,28 +95,33 @@ export function setupCollectionItemsEndpoint({
   collectionItems = [],
   models: modelsParam,
 }: {
-  collection: Collection;
+  collection: Pick<Collection, "id">;
   collectionItems: CollectionItem[];
   models?: string[];
 }) {
-  fetchMock.get(`path:/api/collection/${collection.id}/items`, uri => {
-    const url = new URL(uri);
-    const models = modelsParam ?? url.searchParams.getAll("models");
-    const matchedItems = collectionItems.filter(({ model }) =>
-      models.includes(model),
-    );
+  fetchMock.get(
+    `path:/api/collection/${collection.id}/items`,
+    (call) => {
+      const url = new URL(call.url);
+      const models = modelsParam ?? url.searchParams.getAll("models");
+      const matchedItems = collectionItems.filter(({ model }) =>
+        models.includes(model),
+      );
 
-    const limit = Number(url.searchParams.get("limit")) || matchedItems.length;
-    const offset = Number(url.searchParams.get("offset")) || 0;
+      const limit =
+        Number(url.searchParams.get("limit")) || matchedItems.length;
+      const offset = Number(url.searchParams.get("offset")) || 0;
 
-    return {
-      data: matchedItems.slice(offset, offset + limit),
-      total: matchedItems.length,
-      models,
-      limit,
-      offset,
-    };
-  });
+      return {
+        data: matchedItems.slice(offset, offset + limit),
+        total: matchedItems.length,
+        models,
+        limit,
+        offset,
+      };
+    },
+    { name: `collection-${collection.id}-items` },
+  );
 }
 
 export function setupDashboardItemsEndpoint({
@@ -122,8 +133,8 @@ export function setupDashboardItemsEndpoint({
   dashboardItems: CollectionItem[];
   models?: string[];
 }) {
-  fetchMock.get(`path:/api/dashboard/${dashboard.id}/items`, uri => {
-    const url = new URL(uri);
+  fetchMock.get(`path:/api/dashboard/${dashboard.id}/items`, (call) => {
+    const url = new URL(call.url);
     const models = modelsParam ?? url.searchParams.getAll("models") ?? ["card"];
     const limit =
       Number(url.searchParams.get("limit")) || dashboardItems.length;
@@ -181,15 +192,18 @@ export function setupCollectionByIdEndpoint({
     return;
   }
 
-  fetchMock.get(/api\/collection\/\d+$/, url => {
-    const collectionIdParam = url.split("/")[5];
-    const collectionId = Number(collectionIdParam);
+  fetchMock.get(/api\/collection\/(\d+|root)$/, (call) => {
+    const urlString = call.url;
+    const parts = urlString.split("/");
+    const collectionIdParam = parts[parts.length - 1];
+    const collectionId =
+      collectionIdParam === "root" ? "root" : Number(collectionIdParam);
 
     const collection = collections.find(
-      collection => collection.id === collectionId,
+      (collection) => collection.id === collectionId,
     );
 
-    return collection;
+    return collection || { status: 404, body: "Collection not found" };
   });
 }
 
@@ -207,18 +221,35 @@ function setupCollectionWithErrorById({
 }
 
 export function setupDashboardCollectionItemsEndpoint(dashboards: Dashboard[]) {
-  fetchMock.get(/api\/collection\/(\d+|root)\/items/, url => {
-    const collectionIdParam = url.split("/")[5];
+  fetchMock.get(/api\/collection\/(\d+|root)\/items/, (call) => {
+    const urlString = call.url;
+    const parts = urlString.split("/");
+    const collectionIdParam = parts[parts.indexOf("collection") + 1];
     const collectionId =
       collectionIdParam !== "root" ? Number(collectionIdParam) : null;
 
     const dashboardsOfCollection = dashboards.filter(
-      dashboard => dashboard.collection_id === collectionId,
+      (dashboard) => dashboard.collection_id === collectionId,
     );
 
     return {
       total: dashboardsOfCollection.length,
       data: dashboardsOfCollection,
     };
+  });
+}
+
+export function setupDashboardQuestionCandidatesEndpoint(
+  dashboardQuestionCandidates: DashboardQuestionCandidate[],
+) {
+  fetchMock.get("express:/api/collection/:id/dashboard-question-candidates", {
+    total: dashboardQuestionCandidates.length,
+    data: dashboardQuestionCandidates,
+  });
+}
+
+export function setupStaleItemsEndpoint(total: number) {
+  fetchMock.get("express:/api/ee/stale/:id", {
+    total,
   });
 }

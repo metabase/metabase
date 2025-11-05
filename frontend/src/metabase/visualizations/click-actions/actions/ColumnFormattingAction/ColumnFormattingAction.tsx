@@ -35,6 +35,10 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
     onUpdateVisualizationSettings,
   }: ClickActionPopoverProps) => {
     const handleChangeSettings = (settings: VisualizationSettings) => {
+      if (!series) {
+        return;
+      }
+
       onUpdateVisualizationSettings(
         updateSettings(series[0].card.visualization_settings, settings),
       );
@@ -47,7 +51,7 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
     );
 
     const columnSettingsWidget = widgets.find(
-      widget => widget.id === "column_settings",
+      (widget) => widget.id === "column_settings",
     );
 
     const extraProps = {

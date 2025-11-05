@@ -1,0 +1,8 @@
+.PopoverTrigger {
+  cursor: pointer;
+  color: var(--mb-color-text-medium);
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}

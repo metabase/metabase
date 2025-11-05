@@ -3,12 +3,10 @@ import type { HTMLAttributes } from "react";
 
 export { Button } from "@mantine/core";
 export type { ButtonGroupProps } from "@mantine/core";
-export { getButtonOverrides } from "./Button.styled";
+export { buttonOverrides } from "./Button.config";
 
-export type ExtraButtonProps = {
+export type ButtonProps = MantineButtonProps & {
   animate?: boolean;
   highlightOnHover?: boolean;
-};
-export type ButtonProps = MantineButtonProps &
-  ExtraButtonProps &
-  HTMLAttributes<HTMLButtonElement>;
+  type?: "button" | "submit";
+} & HTMLAttributes<HTMLButtonElement>;

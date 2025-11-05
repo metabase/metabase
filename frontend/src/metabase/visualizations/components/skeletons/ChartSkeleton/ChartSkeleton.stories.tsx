@@ -3,11 +3,11 @@ import type { StoryFn } from "@storybook/react";
 import ChartSkeleton, { type ChartSkeletonProps } from "./ChartSkeleton";
 
 export default {
-  title: "Visualizations/ChartSkeleton",
+  title: "Viz/Components/ChartSkeleton",
   component: ChartSkeleton,
 };
 
-const Template: StoryFn<ChartSkeletonProps> = args => {
+const Template: StoryFn<ChartSkeletonProps> = (args) => {
   return (
     <div style={{ padding: 8, height: 250, backgroundColor: "white" }}>
       <ChartSkeleton {...args} />

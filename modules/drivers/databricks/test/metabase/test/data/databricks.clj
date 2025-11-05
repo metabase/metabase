@@ -2,7 +2,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -52,17 +51,24 @@
 
 (defmethod tx/dbdef->connection-details :databricks
   [_driver _connection-type {:keys [database-name] :as _dbdef}]
-  (merge
-   {:host      (tx/db-test-env-var-or-throw :databricks :host)
-    :token     (tx/db-test-env-var-or-throw :databricks :token)
-    :http-path (tx/db-test-env-var-or-throw :databricks :http-path)
-    :catalog   (tx/db-test-env-var-or-throw :databricks :catalog)}
-   ;; Databricks' namespace model: catalog, schema, table. With current implementation user can add all schemas
-   ;; in catalog on one Metabase database connection. Following expression generates schema filters so only one schema
-   ;; is treated as a Metabase database, for compatibility with existing tests.
-   (when (string? (not-empty database-name))
-     {:schema-filters-type "inclusion"
-      :schema-filters-patterns database-name})))
+  (let [catalog (tx/db-test-env-var-or-throw :databricks :catalog)
+        multi-level? (tx/db-test-env-var :databricks :multi-level-schema)
+        ;; Databricks' namespace model: catalog, schema, table. With current implementation user can add all schemas
+        ;; in catalog or all catalogs on one Metabase database connection. Following expression generates schema
+        ;; filters so only one schema is treated as a Metabase database, for compatibility with existing tests.
+        schema-filters (when (or (string? (not-empty database-name))
+                                 multi-level?)
+                         {:schema-filters-type "inclusion"
+                          :schema-filters-patterns (str
+                                                    (when multi-level? (str catalog "."))
+                                                    (if database-name database-name "*"))})]
+    (merge
+     {:host (tx/db-test-env-var-or-throw :databricks :host)
+      :token (tx/db-test-env-var-or-throw :databricks :token)
+      :http-path (tx/db-test-env-var-or-throw :databricks :http-path)
+      :catalog catalog
+      :multi-level-schema multi-level?}
+     schema-filters)))
 
 (defn- existing-databases
   "Set of databases that already exist. Used to avoid creating those"
@@ -92,7 +98,7 @@
 ;; Dataset can be destroyed using `tx/destroy-db` to remove the data from Databricks instance.
 ;; [[*allow-database-deletion*]] must be bound to true. Then `t2/delete!` can be used to remove the reference from
 ;; application database.
-(def ^:private ^:dynamic *allow-database-creation*
+(def ^:dynamic *allow-database-creation*
   "Same approach is used in Databricks driver as in Athena. Dataset creation is disabled by default. Datasets are
   preloaded in Databricks instance that tests run against. If you need to create new database on the instance,
   run your test with this var bound to true."
@@ -159,15 +165,23 @@
         (catch Throwable e
           (throw (ex-info (format "INSERT FAILED: %s" (ex-message e))
                           {:driver   driver
-                           :sql-args (into [(str/split-lines (mdb.query/format-sql (first sql-args)))]
+                           :sql-args (into [(str/split-lines (driver/prettify-native-form driver (first sql-args)))]
                                            (rest sql-args))}
                           e)))))))
 
-;; With jdbc driver version 2.6.40 test data load fails due to ~statment using more parameters than driver's able to
-;; handle. `chunk-size` 25 works with 2.6.40, but dataset loading is really slow.
+;; 2.6.40 jdbc driver version statement param limit 256. Following implementation ensures test dataset loading won't
+;; exceed that. Orders table takes ~20 minutes to load.
+;; Example:
+;; orders table has 12 columns in field def, id and a buffer is added
+;; 256 / (12 + 2) = 18
+;; so we can insert 18 rows at a time while staying under the param limit.
 (defmethod load-data/chunk-size :databricks
-  [_driver _dbdef _tabledef]
-  200)
+  [_driver _dbdef tabledef]
+  (let [databricks-jdbc-param-limit-per-statement 256
+        reserve 2 ; eg. for id and one more col
+        col-count (-> tabledef :field-definitions count)]
+    (quot databricks-jdbc-param-limit-per-statement
+          (+ reserve col-count))))
 
 (defmethod load-data/row-xform :databricks
   [_driver _dbdef tabledef]

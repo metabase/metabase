@@ -7,6 +7,7 @@ import {
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
@@ -27,12 +28,6 @@ import {
 
 import { StringFilterPicker } from "./StringFilterPicker";
 
-type SetupOpts = {
-  query?: Lib.Query;
-  column?: Lib.ColumnMetadata;
-  filter?: Lib.FilterClause;
-};
-
 const EXPECTED_OPERATORS = [
   "Is",
   "Is not",
@@ -44,10 +39,18 @@ const EXPECTED_OPERATORS = [
   "Not empty",
 ];
 
+type SetupOpts = {
+  query?: Lib.Query;
+  column?: Lib.ColumnMetadata;
+  filter?: Lib.FilterClause;
+  withAddButton?: boolean;
+};
+
 function setup({
   query = createQuery(),
   column = findStringColumn(query),
   filter,
+  withAddButton = false,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -56,33 +59,42 @@ function setup({
 
   renderWithProviders(
     <StringFilterPicker
+      autoFocus
       query={query}
       stageIndex={0}
       column={column}
       filter={filter}
       isNew={!filter}
+      withAddButton={withAddButton}
+      withSubmitButton
       onChange={onChange}
       onBack={onBack}
     />,
     { storeInitialState },
   );
 
-  function getNextFilterParts() {
+  const getNextFilterParts = () => {
     const [filter] = onChange.mock.lastCall;
     return Lib.stringFilterParts(query, 0, filter);
-  }
+  };
 
-  function getNextFilterColumnName() {
+  const getNextFilterColumnName = () => {
     const parts = getNextFilterParts();
     const column = checkNotNull(parts?.column);
     return Lib.displayInfo(query, 0, column).longDisplayName;
-  }
+  };
+
+  const getNextFilterChangeOpts = () => {
+    const [_filter, opts] = onChange.mock.lastCall;
+    return opts;
+  };
 
   return {
     query,
     column,
     getNextFilterParts,
     getNextFilterColumnName,
+    getNextFilterChangeOpts,
     onChange,
     onBack,
   };
@@ -114,7 +126,7 @@ describe("StringFilterPicker", () => {
       const menuItems = within(menu).getAllByRole("menuitem");
 
       expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
-      EXPECTED_OPERATORS.forEach(operatorName =>
+      EXPECTED_OPERATORS.forEach((operatorName) =>
         expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
       );
     });
@@ -307,7 +319,11 @@ describe("StringFilterPicker", () => {
       await userEvent.type(input, "Ga");
       await userEvent.clear(input);
 
-      expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: "Add filter" }),
+        ).toBeDisabled(),
+      );
     });
 
     it("should handle options when changing an operator", async () => {
@@ -337,6 +353,21 @@ describe("StringFilterPicker", () => {
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
     });
+
+    it.each([
+      { label: "Apply filter", run: true },
+      { label: "Add another filter", run: false },
+    ])(
+      'should add a filter via the "$label" button when the add button is enabled',
+      async ({ label, run }) => {
+        const { getNextFilterChangeOpts } = setup({ withAddButton: true });
+        await setOperator("Contains");
+        const input = screen.getByPlaceholderText("Enter some text");
+        await userEvent.type(input, "abc");
+        await userEvent.click(screen.getByRole("button", { name: label }));
+        expect(getNextFilterChangeOpts()).toMatchObject({ run });
+      },
+    );
   });
 
   describe("existing filter", () => {
@@ -362,7 +393,7 @@ describe("StringFilterPicker", () => {
       it("should update a filter", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(opts);
 
-        const input = screen.getByLabelText("Filter value");
+        const input = screen.getByRole("combobox", { name: "Filter value" });
         expect(screen.getByDisplayValue("abc")).toBeInTheDocument();
         await userEvent.type(input, "{backspace}");
         expect(screen.queryByDisplayValue("abc")).not.toBeInTheDocument();
@@ -464,7 +495,7 @@ describe("StringFilterPicker", () => {
       const menuItems = within(menu).getAllByRole("menuitem");
 
       expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
-      EXPECTED_OPERATORS.forEach(operatorName =>
+      EXPECTED_OPERATORS.forEach((operatorName) =>
         expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
       );
     });

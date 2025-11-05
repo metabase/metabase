@@ -1,27 +1,28 @@
-import { useField } from "formik";
+import { useField, useFormikContext } from "formik";
 import type { HTMLAttributes } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { useGetCollectionQuery, useLazyGetDashboardQuery } from "metabase/api";
 import {
   canonicalCollectionId,
   isTrashedCollection,
   isValidCollectionId,
 } from "metabase/collections/utils";
+import CollectionName from "metabase/common/components/CollectionName";
+import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
+import FormField from "metabase/common/components/FormField";
 import {
   type CollectionPickerItem,
   CollectionPickerModal,
   type CollectionPickerModalProps,
   type CollectionPickerOptions,
-} from "metabase/common/components/CollectionPicker";
-import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
-import CollectionName from "metabase/containers/CollectionName";
-import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
-import FormField from "metabase/core/components/FormField";
+} from "metabase/common/components/Pickers/CollectionPicker";
+import SnippetCollectionName from "metabase/common/components/SnippetCollectionName";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import Collections from "metabase/entities/collections";
+import { getCollectionIcon } from "metabase/entities/collections/utils";
 import Dashboard from "metabase/entities/dashboards";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
-import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Flex, Icon } from "metabase/ui";
 import type { CollectionId, DashboardId } from "metabase-types/api";
@@ -35,18 +36,27 @@ function ItemName({
   dashboardId: DashboardId;
   type?: "collections" | "snippet-collections";
 }) {
+  const { data: collection } = useGetCollectionQuery(
+    { id: collectionId },
+    { skip: !collectionId || dashboardId != null },
+  );
+
   if (dashboardId) {
     return (
       <Flex align="center" gap="sm">
-        <Icon name="dashboard" color={color("brand")} />
+        <Icon name="dashboard" c="brand" />
         <Dashboard.Name id={dashboardId} />
       </Flex>
     );
   }
 
+  const collectionIcon = collection
+    ? getCollectionIcon(collection)
+    : { name: "collection" as const };
+
   return (
     <Flex align="center" gap="sm">
-      <Icon name="collection" color={color("brand")} />
+      <Icon name={collectionIcon.name} c="brand" />
       {type === "snippet-collections" ? (
         <SnippetCollectionName id={collectionId} />
       ) : (
@@ -59,6 +69,7 @@ function ItemName({
 interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   collectionIdFieldName: string;
   dashboardIdFieldName: string;
+  dashboardTabIdFieldName?: string;
   title?: string;
   placeholder?: string;
   type?: "collections" | "snippet-collections";
@@ -73,22 +84,29 @@ export function FormCollectionAndDashboardPicker({
   className,
   style,
   title,
-  placeholder = t`Select a collection or dashboard`,
+  placeholder,
   type = "collections",
   filterPersonalCollections,
   collectionPickerModalProps,
   collectionIdFieldName,
   dashboardIdFieldName,
+  dashboardTabIdFieldName,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
 
-  const collectionField = useField(collectionIdFieldName);
+  const { setFieldValue } = useFormikContext();
 
+  const collectionField = useField(collectionIdFieldName);
   const [collectionIdInput, collectionIdMeta, collectionIdHelpers] =
     collectionField;
+
   const dashboardField = useField(dashboardIdFieldName);
   const [dashboardIdInput, dashboardIdMeta, dashboardIdHelpers] =
     dashboardField;
+
+  const pickerTitle = collectionPickerModalProps?.models?.includes("dashboard")
+    ? t`Select a collection or dashboard`
+    : t`Select a collection`;
 
   const pickerValue = dashboardIdInput.value
     ? ({ id: dashboardIdInput.value, model: "dashboard" } as const)
@@ -98,14 +116,15 @@ export function FormCollectionAndDashboardPicker({
   const error = dashboardIdMeta.error || collectionIdMeta.error;
 
   const formFieldRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  const openCollection = useSelector(state =>
+  const openCollection = useSelector((state) =>
     Collections.selectors.getObject(state, { entityId: "root" }),
   );
 
   const selectedItem = useSelector(
-    state =>
+    (state) =>
       Dashboard.selectors.getObject(state, {
         entityId: dashboardIdInput.value,
       }) ||
@@ -142,7 +161,7 @@ export function FormCollectionAndDashboardPicker({
       namespace: type === "snippet-collections" ? "snippets" : undefined,
       allowCreateNew: showCreateNewCollectionOption,
       hasRecents: type !== "snippet-collections",
-      confirmButtonText: item =>
+      confirmButtonText: (item) =>
         item === "dashboard"
           ? t`Select this dashboard`
           : t`Select this collection`,
@@ -150,17 +169,50 @@ export function FormCollectionAndDashboardPicker({
     [filterPersonalCollections, type, showCreateNewCollectionOption],
   );
 
+  const [fetchDashboard] = useLazyGetDashboardQuery();
+
   const handleChange = useCallback(
-    (item: CollectionPickerItem) => {
+    async (item: CollectionPickerItem) => {
       const { id, collection_id, model } = item;
       collectionIdHelpers.setValue(
         canonicalCollectionId(model === "dashboard" ? collection_id : id),
       );
-      dashboardIdHelpers.setValue(model === "dashboard" ? id : undefined);
+      const dashboardId = model === "dashboard" ? id : undefined;
+      dashboardIdHelpers.setValue(dashboardId);
+
+      // preload dashboard tabs before the picker closes for better UX, but only if tab field is tracked
+      if (dashboardTabIdFieldName) {
+        try {
+          const dashboard = dashboardId
+            ? await fetchDashboard({ id: dashboardId }).then((res) => res.data)
+            : undefined;
+          const defaultTabId = dashboard?.tabs?.length
+            ? String(dashboard.tabs[0].id)
+            : undefined;
+          setFieldValue(dashboardTabIdFieldName, defaultTabId);
+        } catch (err) {
+          console.error(err);
+          setFieldValue(dashboardTabIdFieldName, undefined);
+        }
+      }
+
       setIsPickerOpen(false);
     },
-    [collectionIdHelpers, dashboardIdHelpers],
+    [
+      collectionIdHelpers,
+      dashboardIdHelpers,
+      dashboardTabIdFieldName,
+      setFieldValue,
+      fetchDashboard,
+    ],
   );
+
+  const handleModalClose = () => {
+    setIsPickerOpen(false);
+    // restore focus to form element so if Esc key is pressed multiple times,
+    // nested modals close in sequence
+    buttonRef.current?.focus();
+  };
 
   return (
     <>
@@ -174,10 +226,11 @@ export function FormCollectionAndDashboardPicker({
       >
         <Button
           data-testid="dashboard-and-collection-picker-button"
+          ref={buttonRef}
           id={id}
           onClick={() => setIsPickerOpen(true)}
           fullWidth
-          rightIcon={<Icon name="ellipsis" />}
+          rightSection={<Icon name="ellipsis" />}
           styles={{
             inner: {
               justifyContent: "space-between",
@@ -193,16 +246,16 @@ export function FormCollectionAndDashboardPicker({
               type={type}
             />
           ) : (
-            placeholder
+            (placeholder ?? pickerTitle)
           )}
         </Button>
       </FormField>
       {isPickerOpen && (
         <CollectionPickerModal
-          title={t`Select a collection or dashboard`}
+          title={pickerTitle}
           value={pickerValue}
           onChange={handleChange}
-          onClose={() => setIsPickerOpen(false)}
+          onClose={handleModalClose}
           options={options}
           {...collectionPickerModalProps}
         />

@@ -38,10 +38,12 @@
   There is a separate function `filterDrillDetails` which returns `query` and `column` used for the `FilterPicker`. It
   should automatically append a query stage and find the corresponding _filterable_ column in this stage. It is used
   for `contains` and `does-not-contain` operators."
+  (:refer-clojure :exclude [select-keys mapv #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -50,8 +52,18 @@
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.util.malli :as mu]))
+   [metabase.lib.underlying :as lib.underlying]
+   [metabase.util.malli :as mu]
+   [metabase.util.number :as u.number]
+   [metabase.util.performance :refer [select-keys mapv #?(:clj for)]]))
+
+(defn- maybe-bigint->value-clause
+  [value]
+  (if-let [number (when (string? value) (u.number/parse-bigint value))]
+    (lib.expression/value number)
+    value))
 
 (defn- operator [op & args]
   (lib.options/ensure-uuid (into [op {}] args)))
@@ -59,7 +71,9 @@
 (mu/defn- operators-for :- [:sequential ::lib.schema.drill-thru/drill-thru.quick-filter.operator]
   [column :- ::lib.schema.metadata/column
    value]
-  (let [field-ref (lib.ref/ref column)]
+  (let [field-ref (cond-> (lib.ref/ref column)
+                    (:temporal-unit column)
+                    (lib.temporal-bucket/with-temporal-bucket (:temporal-unit column)))]
     (cond
       (lib.types.isa/structured? column)
       []
@@ -80,7 +94,8 @@
             :when (or (not (#{:< :>} op))
                       (lib.schema.expression/comparable-expressions? field-ref value))]
         {:name   label
-         :filter (operator op field-ref value)})
+         :filter (operator op field-ref (cond-> value
+                                          (lib.types.isa/numeric? column) maybe-bigint->value-clause))})
 
       (and (lib.types.isa/string? column)
            (or (lib.types.isa/comment? column)
@@ -113,20 +128,23 @@
              column
              (some? value) ; Deliberately allows value :null, only a missing value should fail this test.
              ;; If this is an aggregation, there must be breakouts (dimensions).
-             (or (not= (:lib/source column) :source/aggregations)
+             (or (not (lib.underlying/aggregation-sourced? query column))
                  (seq dimensions))
              (not (lib.types.isa/structured?  column))
-             (not (lib.types.isa/primary-key? column))
-             (not (lib.types.isa/foreign-key? column)))
+             (not (lib.drill-thru.common/primary-key? query stage-number column))
+             (not (lib.drill-thru.common/foreign-key? query stage-number column)))
     ;; For aggregate columns, we want to introduce a new stage when applying the drill-thru.
     ;; [[lib.drill-thru.column-filter/prepare-query-for-drill-addition]] handles this. (#34346)
     (when-let [drill-details (lib.drill-thru.column-filter/prepare-query-for-drill-addition
                               query stage-number column column-ref :filter)]
-      (merge drill-details
-             {:lib/type   :metabase.lib.drill-thru/drill-thru
-              :type       :drill-thru/quick-filter
-              :operators  (operators-for (:column drill-details) value)
-              :value      value}))))
+      (let [temporal-unit (lib.temporal-bucket/temporal-bucket column-ref)
+            column (cond-> (:column drill-details)
+                     temporal-unit (assoc :temporal-unit temporal-unit))]
+        (merge drill-details
+               {:lib/type   :metabase.lib.drill-thru/drill-thru
+                :type       :drill-thru/quick-filter
+                :operators  (operators-for column value)
+                :value      value})))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/quick-filter
   [_query _stage-number drill-thru]

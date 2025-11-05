@@ -23,6 +23,6 @@ export function updateDashboardCards({
 }): Cypress.Chainable<Cypress.Response<Dashboard>> {
   let id = -1;
   return cy.request<Dashboard>("PUT", `/api/dashboard/${dashboard_id}`, {
-    dashcards: cards.map(card => ({ ...DEFAULT_CARD, id: id--, ...card })),
+    dashcards: cards.map((card) => ({ ...DEFAULT_CARD, id: id--, ...card })),
   });
 }

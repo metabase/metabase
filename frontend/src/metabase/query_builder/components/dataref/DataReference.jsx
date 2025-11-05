@@ -5,9 +5,9 @@ import { useCallback } from "react";
 import DatabasePane from "./DatabasePane";
 import FieldPane from "./FieldPane";
 import MainPane from "./MainPane";
-import QuestionPane from "./QuestionPane";
+import { QuestionPane } from "./QuestionPane";
 import SchemaPane from "./SchemaPane";
-import TablePane from "./TablePane";
+import { TablePane } from "./TablePane";
 
 const PANES = {
   database: DatabasePane, // lists schemas, tables and models of a database
@@ -21,7 +21,8 @@ const DataReferencePropTypes = {
   dataReferenceStack: PropTypes.array.isRequired,
   popDataReferenceStack: PropTypes.func.isRequired,
   pushDataReferenceStack: PropTypes.func.isRequired,
-  onClose: PropTypes.func.isRequired,
+  onClose: PropTypes.func,
+  onBack: PropTypes.func,
 };
 
 const DataReference = ({
@@ -29,6 +30,7 @@ const DataReference = ({
   popDataReferenceStack,
   pushDataReferenceStack,
   onClose,
+  onBack,
 }) => {
   const onItemClick = useCallback(
     (type, item) => pushDataReferenceStack({ type, item }),
@@ -47,7 +49,9 @@ const DataReference = ({
       />
     );
   } else {
-    return <MainPane onItemClick={onItemClick} onClose={onClose} />;
+    return (
+      <MainPane onItemClick={onItemClick} onClose={onClose} onBack={onBack} />
+    );
   }
 };
 

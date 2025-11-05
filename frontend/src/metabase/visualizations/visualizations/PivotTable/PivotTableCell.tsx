@@ -1,10 +1,11 @@
 import cx from "classnames";
-import type * as React from "react";
+import * as React from "react";
 import type { ControlPosition, DraggableBounds } from "react-draggable";
 import Draggable from "react-draggable";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { PivotTableCell, ResizeHandle } from "./PivotTable.styled";
@@ -20,7 +21,6 @@ interface CellProps {
   isBody?: boolean;
   isBold?: boolean;
   isEmphasized?: boolean;
-  isNightMode?: boolean;
   isBorderedHeader?: boolean;
   isTransparent?: boolean;
   hasTopBorder?: boolean;
@@ -36,7 +36,6 @@ interface CellProps {
   isBody?: boolean;
   isBold?: boolean;
   isEmphasized?: boolean;
-  isNightMode?: boolean;
   isBorderedHeader?: boolean;
   isTransparent?: boolean;
   hasTopBorder?: boolean;
@@ -53,7 +52,6 @@ export function Cell({
   isBody = false,
   isBold,
   isEmphasized,
-  isNightMode,
   isBorderedHeader,
   isTransparent,
   hasTopBorder,
@@ -61,11 +59,12 @@ export function Cell({
   onResize,
   showTooltip = true,
 }: CellProps) {
+  const resizeHandleRef = React.useRef<HTMLDivElement | null>(null);
+
   return (
     <PivotTableCell
       data-allow-page-break-after
       data-testid="pivot-table-cell"
-      isNightMode={isNightMode}
       isBold={isBold}
       isEmphasized={isEmphasized}
       isBorderedHeader={isBorderedHeader}
@@ -104,8 +103,12 @@ export function Cell({
             onStop={(e, { x }) => {
               onResize(x);
             }}
+            nodeRef={resizeHandleRef}
           >
-            <ResizeHandle data-testid="pivot-table-resize-handle" />
+            <ResizeHandle
+              data-testid="pivot-table-resize-handle"
+              ref={resizeHandleRef}
+            />
           </Draggable>
         )}
       </>
@@ -120,7 +123,6 @@ type CellClickHandler = (
 interface TopHeaderCellProps {
   item: HeaderItem;
   style: React.CSSProperties;
-  isNightMode: boolean;
   getCellClickHandler: CellClickHandler;
   onResize?: (newWidth: number) => void;
 }
@@ -128,19 +130,19 @@ interface TopHeaderCellProps {
 export const TopHeaderCell = ({
   item,
   style,
-  isNightMode,
   getCellClickHandler,
   onResize,
 }: TopHeaderCellProps) => {
   const { value, hasChildren, clicked, isSubtotal, maxDepthBelow, span } = item;
+
+  const tc = useTranslateContent();
 
   return (
     <Cell
       style={{
         ...style,
       }}
-      value={value}
-      isNightMode={isNightMode}
+      value={tc(value)}
       isBorderedHeader={maxDepthBelow === 0}
       isEmphasized={hasChildren}
       isBold={isSubtotal}
@@ -159,7 +161,6 @@ type LeftHeaderCellProps = TopHeaderCellProps & {
 export const LeftHeaderCell = ({
   item,
   style,
-  isNightMode,
   getCellClickHandler,
   rowIndex,
   settings,
@@ -174,7 +175,6 @@ export const LeftHeaderCell = ({
         ...style,
         ...(depth === 0 ? { paddingLeft: LEFT_HEADER_LEFT_SPACING } : {}),
       }}
-      isNightMode={isNightMode}
       value={value}
       isEmphasized={isSubtotal}
       isBold={isSubtotal}
@@ -199,7 +199,6 @@ export const LeftHeaderCell = ({
 interface BodyCellProps {
   style: React.CSSProperties;
   rowSection: BodyItem[];
-  isNightMode: boolean;
   getCellClickHandler: CellClickHandler;
   cellWidths: number[];
   showTooltip?: boolean;
@@ -208,7 +207,6 @@ interface BodyCellProps {
 export const BodyCell = ({
   style,
   rowSection,
-  isNightMode,
   getCellClickHandler,
   cellWidths,
   showTooltip = true,
@@ -216,22 +214,23 @@ export const BodyCell = ({
   return (
     <div style={style} className={CS.flex}>
       {rowSection.map(
-        ({ value, isSubtotal, clicked, backgroundColor }, index) => (
-          <Cell
-            isNightMode={isNightMode}
-            key={index}
-            style={{
-              flexBasis: cellWidths[index],
-            }}
-            value={value}
-            isEmphasized={isSubtotal}
-            isBold={isSubtotal}
-            showTooltip={showTooltip}
-            isBody
-            onClick={getCellClickHandler(clicked)}
-            backgroundColor={backgroundColor}
-          />
-        ),
+        ({ value, isSubtotal, clicked, backgroundColor }, index) => {
+          return (
+            <Cell
+              key={index}
+              style={{
+                flexBasis: cellWidths[index],
+              }}
+              value={value}
+              isEmphasized={isSubtotal}
+              isBold={isSubtotal}
+              showTooltip={showTooltip}
+              isBody
+              onClick={getCellClickHandler(clicked)}
+              backgroundColor={backgroundColor}
+            />
+          );
+        },
       )}
     </div>
   );

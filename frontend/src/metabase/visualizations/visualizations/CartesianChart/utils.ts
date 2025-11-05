@@ -67,7 +67,7 @@ export const validateChartModel = (chartModel: BaseCartesianChartModel) => {
 
 export const getHoveredSeriesDataKey = (
   seriesModels: SeriesModel[],
-  hovered: HoveredObject | undefined,
+  hovered: HoveredObject | null | undefined,
 ): DataKey | null => {
   const seriesIndex = hovered?.index;
   if (seriesIndex == null) {
@@ -80,7 +80,7 @@ export const getHoveredSeriesDataKey = (
 export const getHoveredEChartsSeriesDataKeyAndIndex = (
   seriesModels: SeriesModel[],
   option: EChartsCoreOption,
-  hovered: HoveredObject | undefined,
+  hovered: HoveredObject | null | undefined,
 ) => {
   const hoveredSeriesDataKey = getHoveredSeriesDataKey(seriesModels, hovered);
 
@@ -91,7 +91,7 @@ export const getHoveredEChartsSeriesDataKeyAndIndex = (
   // ECharts series contain goal line, trend lines, and timeline events so the series index
   // is different from one in chartModel.seriesModels
   const hoveredEChartsSeriesIndex = seriesOptions.findIndex(
-    series => series.id === hoveredSeriesDataKey,
+    (series) => series.id === hoveredSeriesDataKey,
   );
 
   return { hoveredSeriesDataKey, hoveredEChartsSeriesIndex };

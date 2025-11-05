@@ -9,14 +9,13 @@ describe("[OSS] resource downloads plugin", () => {
 
   describe("areDownloadsEnabled - should always return true on OSS", () => {
     it.each(downloadsEnabledTestData)(
-      `with { downloads:$downloads, hide_download_button:$hide_download_button } it should return true`,
-      ({ hide_download_button, downloads }) => {
+      `with { downloads:$downloads } it should return true`,
+      ({ downloads }) => {
         expect(
           PLUGIN_RESOURCE_DOWNLOADS.areDownloadsEnabled({
-            hide_download_button,
             downloads,
           }),
-        ).toBe(true);
+        ).toStrictEqual({ pdf: true, results: true });
       },
     );
   });

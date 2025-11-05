@@ -1,20 +1,10 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { t } from "ttag";
 
-import {
-  createNewTab,
-  deleteTab as deleteTabAction,
-  duplicateTab as duplicateTabAction,
-  moveTab as moveTabAction,
-  renameTab,
-  selectTab,
-  undoDeleteTab,
-} from "metabase/dashboard/actions";
 import { trackTabDuplicated } from "metabase/dashboard/analytics";
-import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDashboardContext } from "metabase/dashboard/context";
+import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
-import type { DashboardId } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 
 let tabDeletionId = 1;
@@ -23,22 +13,31 @@ function isTabIdType(id: unknown): id is SelectedTabId {
   return typeof id === "number" || id === null;
 }
 
-export function useDashboardTabs({
-  dashboardId,
-}: {
-  dashboardId: DashboardId;
-}) {
+export function useDashboardTabs() {
+  const {
+    dashboardId,
+    tabs,
+    selectedTabId,
+    duplicateTab: duplicateTabAction,
+    deleteTab: deleteTabAction,
+    undoDeleteTab,
+    moveTab: moveTabAction,
+    selectTab,
+    renameTab,
+    createNewTab,
+  } = useDashboardContext();
+
   const dispatch = useDispatch();
-  const tabs = useSelector(getTabs);
-  const selectedTabId = useSelector(getSelectedTabId);
 
   const duplicateTab = (tabId: UniqueIdentifier | null) => {
     if (!isTabIdType(tabId)) {
       throw Error("duplicateTab was called but tab id is invalid");
     }
 
-    dispatch(duplicateTabAction(tabId));
-    trackTabDuplicated(dashboardId);
+    duplicateTabAction(tabId);
+    if (dashboardId) {
+      trackTabDuplicated(dashboardId);
+    }
   };
 
   const deleteTab = (tabId: UniqueIdentifier | null) => {
@@ -52,35 +51,31 @@ export function useDashboardTabs({
     }
     const id = tabDeletionId++;
 
-    dispatch(deleteTabAction({ tabId, tabDeletionId: id }));
+    deleteTabAction({ tabId, tabDeletionId: id });
     dispatch(
       addUndo({
         message: t`Deleted "${tabName}"`,
         undo: true,
-        action: () => dispatch(undoDeleteTab({ tabDeletionId: id })),
+        action: () => undoDeleteTab({ tabDeletionId: id }),
       }),
     );
   };
 
   const moveTab = (activeId: UniqueIdentifier, overId: UniqueIdentifier) =>
-    dispatch(
-      moveTabAction({
-        sourceTabId:
-          typeof activeId === "number" ? activeId : parseInt(activeId),
-        destinationTabId:
-          typeof overId === "number" ? overId : parseInt(overId),
-      }),
-    );
+    moveTabAction({
+      sourceTabId: typeof activeId === "number" ? activeId : parseInt(activeId),
+      destinationTabId: typeof overId === "number" ? overId : parseInt(overId),
+    });
 
   return {
     tabs,
     selectedTabId,
-    createNewTab: () => dispatch(createNewTab()),
+    createNewTab,
     duplicateTab,
     deleteTab,
     renameTab: (tabId: SelectedTabId, name: string) =>
-      dispatch(renameTab({ tabId, name })),
-    selectTab: (tabId: SelectedTabId) => dispatch(selectTab({ tabId })),
+      renameTab({ tabId, name }),
+    selectTab: (tabId: SelectedTabId) => selectTab({ tabId }),
     moveTab,
   };
 }

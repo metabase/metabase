@@ -21,13 +21,14 @@ driver:
         - host
         - visible-if:
             use-conn-uri: false
+          required: true
     - merge:
         - dbname
         - visible-if:
             use-conn-uri: false
     - merge:
         - port
-        - default: 27017
+        - placeholder: 27017
           visible-if:
             use-conn-uri: false
     - merge:
@@ -80,6 +81,7 @@ driver:
           placeholder: 'retryWrites=true&w=majority&authSource=admin&readPreference=nearest&replicaSet=test'
           visible-if:
             use-conn-uri: false
+            advanced-options: true
     - name: use-srv
       type: boolean
       default: false

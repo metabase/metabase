@@ -1,11 +1,10 @@
 /* eslint-disable react/prop-types */
-/* eslint-disable react/no-string-refs */
 import cx from "classnames";
 import { Component, createRef } from "react";
-import ReactDOM from "react-dom";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { Popover } from "metabase/ui";
 
 import LegendS from "./Legend.module.css";
@@ -20,12 +19,21 @@ export default class LegendVertical extends Component {
     size: null,
   };
 
-  listRef = createRef();
+  constructor(props) {
+    super(props);
+    this.listContainerRef = createRef();
+
+    /** @type {Record<number, HTMLLIElement | null>} */
+    this.itemRefs = {};
+
+    /** @type {Record<number, LegendItem | null>} */
+    this.legendItemRefs = {};
+  }
 
   componentDidUpdate(prevProps, prevState) {
     // Get the bounding rectangle of the chart widget to determine if
     // legend items will overflow the widget area
-    const size = ReactDOM.findDOMNode(this).getBoundingClientRect();
+    const size = this.listContainerRef.current?.getBoundingClientRect();
 
     // check the height, width may flucatuate depending on the browser causing an infinite loop
     // check overflowCount, because after setting overflowCount the height changes and it causing an infinite loop too
@@ -38,9 +46,7 @@ export default class LegendVertical extends Component {
     } else if (this.state.overflowCount === 0) {
       let overflowCount = 0;
       for (let i = 0; i < this.props.titles.length; i++) {
-        const itemSize = ReactDOM.findDOMNode(
-          this.refs["item" + i],
-        ).getBoundingClientRect();
+        const itemSize = this.itemRefs[i]?.getBoundingClientRect();
         if (size.top > itemSize.top || size.bottom < itemSize.bottom) {
           overflowCount++;
         }
@@ -57,6 +63,7 @@ export default class LegendVertical extends Component {
       titles,
       colors,
       hovered,
+      dotSize,
       hiddenIndices = [],
       onHoverChange,
       onToggleSeriesVisibility,
@@ -75,7 +82,7 @@ export default class LegendVertical extends Component {
     return (
       <ol
         className={cx(className, LegendS.Legend, LegendS.vertical)}
-        ref={this.listRef}
+        ref={this.listContainerRef}
       >
         {items.map((title, index) => {
           const isMuted =
@@ -86,7 +93,7 @@ export default class LegendVertical extends Component {
           const handleMouseEnter = () => {
             onHoverChange?.({
               index,
-              element: ReactDOM.findDOMNode(this.refs["legendItem" + index]),
+              element: this.legendItemRefs[index]?.getRootElement(),
             });
           };
 
@@ -97,9 +104,11 @@ export default class LegendVertical extends Component {
           return (
             <li
               key={index}
-              ref={"item" + index}
+              ref={(element) => {
+                this.itemRefs[index] = element;
+              }}
               className={cx(CS.flex, CS.flexNoShrink)}
-              onMouseEnter={e => {
+              onMouseEnter={(e) => {
                 if (isVisible) {
                   handleMouseEnter();
                 }
@@ -109,13 +118,16 @@ export default class LegendVertical extends Component {
               {...(hovered && { "aria-current": !isMuted })}
             >
               <LegendItem
-                ref={"legendItem" + index}
+                ref={(legendItem) => {
+                  this.legendItemRefs[index] = legendItem;
+                }}
                 title={legendItemTitle}
                 color={colors[index % colors.length]}
+                dotSize={dotSize}
                 isMuted={isMuted}
                 isVisible={isVisible}
                 showTooltip={false}
-                onToggleSeriesVisibility={event => {
+                onToggleSeriesVisibility={(event) => {
                   if (isVisible) {
                     handleMouseLeave();
                   } else {
@@ -128,6 +140,7 @@ export default class LegendVertical extends Component {
                 <span
                   className={cx(
                     LegendS.LegendItem,
+                    DashboardS.DashboardChartLegend,
                     CS.flex,
                     CS.alignCenter,
                     CS.flexAlignRight,
@@ -148,6 +161,7 @@ export default class LegendVertical extends Component {
                 <LegendItem
                   title={overflowCount + 1 + " " + t`more`}
                   color="gray"
+                  dotSize={dotSize}
                   showTooltip={false}
                 />
               </li>
@@ -156,10 +170,11 @@ export default class LegendVertical extends Component {
               <LegendVertical
                 className={CS.p2}
                 titles={extraItems}
+                dotSize={dotSize}
                 colors={extraColors}
                 hiddenIndices={hiddenIndices
-                  .filter(i => i >= items.length - 1)
-                  .map(i => i - items.length)}
+                  .filter((i) => i >= items.length - 1)
+                  .map((i) => i - items.length)}
                 onToggleSeriesVisibility={(event, sliceIndex) =>
                   onToggleSeriesVisibility(event, sliceIndex + items.length)
                 }

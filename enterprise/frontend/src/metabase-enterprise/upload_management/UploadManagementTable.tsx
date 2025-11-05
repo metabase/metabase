@@ -1,18 +1,17 @@
 import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import SettingHeader from "metabase/admin/settings/components/SettingHeader";
-import { ClientSortableTable } from "metabase/common/components/Table";
-import { useLocale } from "metabase/common/hooks";
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import {
   BulkActionBar,
   BulkActionButton,
-} from "metabase/components/BulkActionBar";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import Link from "metabase/core/components/Link";
-import { useDispatch } from "metabase/lib/redux";
+} from "metabase/common/components/BulkActionBar";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import Link from "metabase/common/components/Link";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { ClientSortableTable } from "metabase/common/components/Table";
+import { useToast } from "metabase/common/hooks";
 import * as Urls from "metabase/lib/urls";
-import { addUndo } from "metabase/redux/undo";
 import { Box, Button, Checkbox, Flex, Icon, Text } from "metabase/ui";
 import {
   useDeleteUploadTableMutation,
@@ -25,8 +24,11 @@ import { getDateDisplay } from "./utils";
 
 const columns = [
   { key: "checkbox", name: "", sortable: false },
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   { key: "name", name: t`Table name` },
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   { key: "created_at", name: t`Created at` },
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   { key: "schema", name: t`Schema` },
   { key: "actions", name: "", sortable: false },
 ];
@@ -35,8 +37,7 @@ export function UploadManagementTable() {
   const [selectedItems, setSelectedItems] = useState<Table[]>([]);
   const [deleteTableRequest] = useDeleteUploadTableMutation();
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
-  const dispatch = useDispatch();
-  const locale = useLocale();
+  const [sendToast] = useToast();
 
   // TODO: once we have uploads running through RTK Query, we can remove the force update
   // because we can properly invalidate the tables tag
@@ -59,7 +60,7 @@ export function UploadManagementTable() {
   );
 
   const selectedItemIds = useMemo(
-    () => new Set(selectedItems.map(item => item.id)),
+    () => new Set(selectedItems.map((item) => item.id)),
     [selectedItems],
   );
 
@@ -68,15 +69,15 @@ export function UploadManagementTable() {
       <UploadTableRow
         item={row}
         isSelected={selectedItemIds.has(row.id)}
-        onSelect={newItem =>
-          setSelectedItems(prevItems => [...prevItems, newItem])
+        onSelect={(newItem) =>
+          setSelectedItems((prevItems) => [...prevItems, newItem])
         }
-        onDeselect={newItem =>
-          setSelectedItems(prevItems =>
-            prevItems.filter(i => i.id !== newItem.id),
+        onDeselect={(newItem) =>
+          setSelectedItems((prevItems) =>
+            prevItems.filter((i) => i.id !== newItem.id),
           )
         }
-        onTrash={item => {
+        onTrash={(item) => {
           setSelectedItems([item]);
           setShowDeleteConfirmModal(true);
         }}
@@ -94,27 +95,25 @@ export function UploadManagementTable() {
   }
 
   return (
-    <Box p="md" pb="xl" my="lg">
+    <Box>
       <DeleteConfirmModal
         opened={showDeleteConfirmModal}
         tables={selectedItems}
-        onConfirm={async sendToTrash => {
+        onConfirm={async (sendToTrash) => {
           const result = await Promise.all(
-            selectedItems.map(table => deleteTable(table, sendToTrash)),
+            selectedItems.map((table) => deleteTable(table, sendToTrash)),
           );
 
           setShowDeleteConfirmModal(false);
 
-          if (result.some(result => "error" in result)) {
+          if (result.some((result) => "error" in result)) {
             const message = ngettext(
               msgid`Error deleting table`,
               `Error deleting tables`,
               selectedItems.length,
             );
 
-            dispatch(
-              addUndo({ message, toastColor: "error", icon: "warning" }),
-            );
+            sendToast({ message, toastColor: "error", icon: "warning" });
           } else if (result.length > 0) {
             const message = ngettext(
               msgid`1 table deleted`,
@@ -122,7 +121,7 @@ export function UploadManagementTable() {
               result.length,
             );
 
-            dispatch(addUndo({ message }));
+            sendToast({ message });
           }
           setSelectedItems([]);
         }}
@@ -142,21 +141,15 @@ export function UploadManagementTable() {
           </BulkActionButton>
         </BulkActionBar>
       )}
-      <SettingHeader
-        id="upload-tables-list"
-        setting={{
-          display_name: t`Manage Uploads`,
-        }}
-      />
-      <Text fw="bold" color="text-medium">
-        {t`Uploaded Tables`}
+      <SettingHeader id="upload-tables-list" title={t`Manage uploads`} />
+      <Text fw="bold" c="text-medium">
+        {t`Uploaded tables`}
       </Text>
       <ClientSortableTable
         data-testid="upload-tables-table"
         columns={columns}
         rows={uploadTables}
-        rowRenderer={row => renderRow(row)}
-        locale={locale}
+        rowRenderer={(row) => renderRow(row)}
       />
     </Box>
   );
@@ -183,10 +176,12 @@ const UploadTableRow = ({
         <Checkbox
           size="xs"
           checked={isSelected}
-          onChange={e => (e.target.checked ? onSelect(item) : onDeselect(item))}
+          onChange={(e) =>
+            e.target.checked ? onSelect(item) : onDeselect(item)
+          }
         />
       </td>
-      <td>
+      <td style={{ maxWidth: 300 }}>
         <Link
           to={
             Urls.modelToUrl({
@@ -198,7 +193,7 @@ const UploadTableRow = ({
           }
           variant="brand"
         >
-          {item.name}
+          <Ellipsified>{item.name}</Ellipsified>
         </Link>
       </td>
       <td>{createdAtString}</td>

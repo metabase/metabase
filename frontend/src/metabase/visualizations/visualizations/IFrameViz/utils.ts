@@ -1,26 +1,36 @@
 import { isSafeUrl } from "metabase/lib/formatting/link";
 
+/**
+ * Reconstructs a URL from its parts while preserving parameter placeholders (e.g. {{param}}).
+ * Unlike URL.toString(), this won't encode special characters in the path.
+ */
+const reconstructUrl = (url: URL, path?: string) => {
+  return url.origin + (path ?? url.pathname) + url.search + url.hash;
+};
+
 const embedLinkTransformers: {
   test: (url: URL) => boolean;
   transform: (url: URL) => string;
 }[] = [
   {
-    test: url => ["loom.com", "www.loom.com"].includes(url.hostname),
-    transform: url => {
-      const newUrl = new URL(url);
-      newUrl.pathname = newUrl.pathname.replace("/share/", "/embed/");
-      return newUrl.toString();
+    test: (url) => ["loom.com", "www.loom.com"].includes(url.hostname),
+    transform: (url) => {
+      const path = decodeURIComponent(url.pathname).replace(
+        "/share/",
+        "/embed/",
+      );
+      return reconstructUrl(url, path);
     },
   },
   {
-    test: url =>
+    test: (url) =>
       ["youtube.com", "www.youtube.com", "youtu.be"].includes(url.hostname),
-    transform: url => {
+    transform: (url) => {
       let videoId: string | null;
       let playlistId: string | null;
 
       if (url.hostname.includes("youtu.be")) {
-        videoId = url.pathname.split("/").pop() ?? null;
+        videoId = decodeURIComponent(url.pathname.split("/").pop() ?? "");
         playlistId = url.searchParams.get("list");
       } else {
         videoId = url.searchParams.get("v");
@@ -36,18 +46,18 @@ const embedLinkTransformers: {
       } else if (playlistId) {
         return `https://www.youtube.com/embed/videoseries?list=${playlistId}`;
       } else {
-        return url.toString();
+        return reconstructUrl(url);
       }
     },
   },
   {
-    test: url =>
+    test: (url) =>
       ["vimeo.com", "www.vimeo.com", "player.vimeo.com"].includes(url.hostname),
-    transform: url => {
-      const videoId = url.pathname.split("/").pop();
+    transform: (url) => {
+      const videoId = decodeURIComponent(url.pathname.split("/").pop() ?? "");
       return videoId
         ? `https://player.vimeo.com/video/${videoId}`
-        : url.toString();
+        : reconstructUrl(url);
     },
   },
 ];
@@ -194,15 +204,15 @@ export const isAllowedIframeUrl = (url: string, allowedIframesSetting = "") => {
 
   try {
     const rawAllowedDomains = allowedIframesSetting
-      .replaceAll(",", "")
-      .split("\n")
-      .map(host => host.trim());
+      .split(/[\r\n,]+/)
+      .map((host) => host.trim())
+      .filter(Boolean);
 
     const parsedUrl = new URL(normalizeUrl(url));
     const hostname = parsedUrl.hostname;
     const port = parsedUrl.port;
 
-    return rawAllowedDomains.some(rawAllowedDomain => {
+    return rawAllowedDomains.some((rawAllowedDomain) => {
       try {
         const [rawAllowedDomainWithoutPort, allowedPort] =
           splitPortAndRest(rawAllowedDomain);

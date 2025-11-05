@@ -33,13 +33,11 @@ function PreviewQuery({ query, stageIndex }: PreviewQueryProps) {
     () => Lib.aggregateByCount(query, stageIndex),
     [query, stageIndex],
   );
-  const { data, isFetching } = useGetAdhocQueryQuery(
-    Lib.toLegacyQuery(countQuery),
-  );
+  const { data, isFetching } = useGetAdhocQueryQuery(Lib.toJsQuery(countQuery));
   const count = data?.data?.rows?.[0]?.[0];
 
   const previewUrl = Urls.newQuestion({
-    dataset_query: Lib.toLegacyQuery(query),
+    dataset_query: Lib.toJsQuery(query),
   });
 
   return (
@@ -48,7 +46,7 @@ function PreviewQuery({ query, stageIndex }: PreviewQueryProps) {
         {match({ isFetching, count })
           .with({ isFetching: true }, () => <Loader />)
           .with({ isFetching: false, count: P.nonNullable }, () => (
-            <Text weight="bold">{t`${count} rows`}</Text>
+            <Text fw="bold">{t`${count} rows`}</Text>
           ))
           .otherwise(() => null)}
         <Button

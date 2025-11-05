@@ -10,7 +10,9 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
+  setupSettingEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
@@ -19,6 +21,7 @@ import {
 } from "__support__/ui";
 import type { ModelResult } from "metabase/browse/models";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
+import * as domUtils from "metabase/lib/dom";
 import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
 import {
   createMockCollection,
@@ -30,7 +33,6 @@ import type { DashboardState } from "metabase-types/store";
 import {
   createMockDashboardState,
   createMockQueryBuilderState,
-  createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
 
@@ -50,6 +52,11 @@ export type SetupOpts = {
   instanceCreationDate?: string;
   hasEnterprisePlugins?: boolean;
   hasDWHAttached?: boolean;
+  isEmbeddingIframe?: boolean;
+  hasWhitelabelToken?: boolean;
+  hasEmbeddingFeature?: boolean;
+  applicationName?: string;
+  activeUsersCount?: number;
 };
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -67,6 +74,7 @@ export async function setup({
   pathname = "/",
   route = pathname,
   user = createMockUser(),
+  activeUsersCount = 2,
   hasDataAccess = true,
   openDashboard,
   openQuestionCard,
@@ -77,7 +85,15 @@ export async function setup({
   instanceCreationDate = dayjs().toISOString(),
   hasEnterprisePlugins = false,
   hasDWHAttached = false,
+  isEmbeddingIframe,
+  hasWhitelabelToken,
+  hasEmbeddingFeature,
+  applicationName = "Metabase",
 }: SetupOpts = {}) {
+  if (isEmbeddingIframe) {
+    jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
+  }
+
   const SAMPLE_DATABASE = createMockDatabase({
     id: 1,
     name: "Sample Database",
@@ -132,6 +148,12 @@ export async function setup({
     collection: createMockCollection(OUR_ANALYTICS),
     collectionItems: [],
   });
+
+  setupSettingEndpoint({
+    settingKey: "version-info",
+    settingValue: {},
+  });
+
   fetchMock.get("path:/api/bookmark", []);
 
   if (openQuestionCard) {
@@ -145,7 +167,7 @@ export async function setup({
     dashboardId = openDashboard.id;
     dashboardsForState[openDashboard.id] = {
       ...openDashboard,
-      dashcards: openDashboard.dashcards.map(c => c.id),
+      dashcards: openDashboard.dashcards.map((c) => c.id),
     };
     dashboardsForEntities.push(openDashboard);
   }
@@ -158,7 +180,8 @@ export async function setup({
     }),
     qb: createMockQueryBuilderState({ card: openQuestionCard }),
     entities: createMockEntitiesState({ dashboards: dashboardsForEntities }),
-    settings: createMockSettingsState({
+    settings: mockSettings({
+      "application-name": applicationName,
       "uploads-settings": {
         db_id: hasDWHAttached || isUploadEnabled ? SAMPLE_DATABASE.id : null,
         schema_name: null,
@@ -167,7 +190,13 @@ export async function setup({
       "instance-creation": instanceCreationDate,
       "token-features": createMockTokenFeatures({
         attached_dwh: hasDWHAttached,
+        hosting: true,
+        upload_management: true,
+        whitelabel: hasWhitelabelToken,
+        embedding: hasEmbeddingFeature,
       }),
+      "show-google-sheets-integration": true,
+      "active-users-count": activeUsersCount,
     }),
   });
 
@@ -178,7 +207,7 @@ export async function setup({
   renderWithProviders(
     <Route
       path={route}
-      component={props => <MainNavbar {...props} isOpen />}
+      component={(props) => <MainNavbar {...props} isOpen />}
     />,
     {
       storeInitialState,

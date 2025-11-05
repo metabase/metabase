@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase-enterprise.audit-app.pages.common-test
+(ns metabase-enterprise.audit-app.pages.common-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.interface :as audit.i]

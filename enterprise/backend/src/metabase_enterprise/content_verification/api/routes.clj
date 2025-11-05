@@ -1,14 +1,18 @@
 (ns metabase-enterprise.content-verification.api.routes
   (:require
-   [compojure.core :as compojure :refer [context]]
    [metabase-enterprise.api.routes.common :as ee.api.common]
-   [metabase-enterprise.content-verification.api.review :as review]
+   [metabase-enterprise.content-verification.api.moderation-review]
+   [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util.i18n :refer [deferred-tru]]))
+
+(comment metabase-enterprise.content-verification.api.moderation-review/keep-me)
 
 (defn- +require-content-verification [handler]
   (ee.api.common/+require-premium-feature :content-verification (deferred-tru "Content verification") handler))
 
-(compojure/defroutes ^{:doc "API routes only available if we have a premium token with the `:content-verification` feature."}
-  routes
-  (context "/moderation-review"  [] (+require-content-verification (+auth review/routes))))
+(def ^{:arglists '([request respond raise])} routes
+  "/api/moderation-review routes. Only available if we have a premium token with the `:content-verification` feature."
+  (-> (api.macros/ns-handler 'metabase-enterprise.content-verification.api.moderation-review)
+      +auth
+      +require-content-verification))

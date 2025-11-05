@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -120,8 +120,8 @@ describe("user > settings", () => {
 
     cy.visit("/account/profile");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Use site default").click();
+    cy.findByTestId("user-locale-select").findByRole("textbox").click();
+
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     H.popover().within(() => cy.findByText("Indonesian").click());
 
@@ -175,7 +175,7 @@ describe("user > settings", () => {
 
   describe("when user is authenticated via ldap", () => {
     beforeEach(() => {
-      stubCurrentUser({ ldap_auth: true });
+      stubCurrentUser({ sso_source: "ldap" });
 
       cy.visit("/account/profile");
       cy.wait("@getUser");
@@ -189,7 +189,7 @@ describe("user > settings", () => {
 
   describe("when user is authenticated via google", () => {
     beforeEach(() => {
-      stubCurrentUser({ google_auth: true });
+      stubCurrentUser({ sso_source: "google" });
 
       cy.visit("/account/profile");
       cy.wait("@getUser");
@@ -245,7 +245,37 @@ describe("user > settings", () => {
       cy.findByLabelText("Email").should("not.exist");
     });
   });
+
+  describe("dark mode", () => {
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+
+    it("should toggle through light and dark mode when clicking on the label or icon", () => {
+      cy.visit("/account/profile");
+
+      cy.findByDisplayValue("Light").click();
+      H.popover().findByText("Dark").click();
+      assertDarkMode();
+
+      cy.findByDisplayValue("Dark").click();
+      H.popover().findByText("Light").click();
+      assertLightMode();
+
+      //Need to take focus off the inpout
+      H.navigationSidebar().findByRole("link", { name: /Home/ }).click();
+      cy.realPress([metaKey, "Shift", "L"]);
+      assertDarkMode();
+    });
+  });
 });
+
+// I wanted to examine the value of a color vairable, but it's hard to inspect hsla colors between local and CI.
+// sometimes the alpha is a decimal value, sometimes it isnt...
+const assertLightMode = () =>
+  cy.get("body").should("have.css", "background-color", "rgb(249, 249, 250)");
+
+const assertDarkMode = () =>
+  cy.get("body").should("have.css", "background-color", "rgb(5, 14, 21)");
 
 /**
  * Stub the current user authentication method

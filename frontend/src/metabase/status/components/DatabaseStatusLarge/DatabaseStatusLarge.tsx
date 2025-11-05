@@ -22,7 +22,7 @@ const DatabaseStatusLarge = ({
 }: DatabaseStatusLargeProps): JSX.Element => {
   const status = {
     title: getTitle(databases),
-    items: databases.map(database => ({
+    items: databases.map((database) => ({
       id: database.id,
       title: database.name,
       icon: "database",

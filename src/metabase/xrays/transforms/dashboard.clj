@@ -2,11 +2,12 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.models.table :refer [Table]]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.populate :as populate]
    [metabase.xrays.transforms.materialize :as tf.materialize]
-   [metabase.xrays.transforms.specs :refer [transform-specs]]
+   [metabase.xrays.transforms.specs :refer [*transform-specs*]]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
@@ -14,9 +15,9 @@
 (def ^:private ^:const ^Long total-width 18)
 (def ^:private ^:const ^Long height 4)
 
-(defn- cards->section
+(mu/defn- cards->section
   "Build a section of cards and format them according to what the automagic dashboards code expects."
-  [group cards]
+  [group :- :string cards]
   (mapcat (fn [{:keys [name description display] :as card}]
             (cond-> [(assoc card
                             :group         group
@@ -34,8 +35,9 @@
                                  :position   0})))
           cards))
 
-(defn- card-for-source-table
-  [table]
+(mu/defn- card-for-source-table
+  [table :- [:map
+             [:db_id ::lib.schema.id/database]]]
   {:pre [(map? table)]}
   {:creator_id             api/*current-user-id*
    :dataset_query          {:type     :query
@@ -51,7 +53,7 @@
                             (map (comp :source-table :query :dataset_query))
                             (filter number?)
                             not-empty)]
-    (let [table-id->table (t2/select-pk->fn t2.realize/realize Table :id [:in (set table-ids)])]
+    (let [table-id->table (t2/select-pk->fn t2.realize/realize :model/Table :id [:in (set table-ids)])]
       (mapv (fn [table-id]
               (let [table (get table-id->table table-id)]
                 (card-for-source-table table)))
@@ -60,10 +62,12 @@
 (defn dashboard
   "Create a (transient) dashboard for transform named `transform-name`."
   [transform-name]
-  (let [transform-spec              (m/find-first (comp #{transform-name} :name) @transform-specs)
+  (let [transform-spec              (or (m/find-first (comp #{transform-name} :name) @*transform-specs*)
+                                        (throw (ex-info (format "Failed to find transform with name %s" (pr-str transform-name))
+                                                        {:status-code 404})))
         {steps false provides true} (->> transform-name
                                          tf.materialize/get-collection
-                                         (t2/select 'Card :collection_id)
+                                         (t2/select :model/Card :collection_id)
                                          (group-by (comp some?
                                                          (-> transform-spec :provides set)
                                                          :name)))

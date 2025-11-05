@@ -11,7 +11,7 @@ export function extractEntityId(slug = "") {
 
 function flattenParam([key, value]: [string, unknown]) {
   if (value instanceof Array) {
-    return value.map(p => [key, p]);
+    return value.map((p) => [key, p]);
   }
   return [[key, value]];
 }
@@ -32,7 +32,11 @@ export function getEncodedUrlSearchParams(query: Record<string, unknown>) {
 }
 
 export function getSubpathSafeUrl(url: string) {
-  return api.basename + url;
+  const basename = api.basename;
+  const normalizedUrl =
+    !basename || !url || url.startsWith("/") ? url : `/${url}`;
+
+  return `${api.basename}${normalizedUrl}`;
 }
 
 /**

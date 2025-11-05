@@ -17,29 +17,19 @@ import {
   getCard,
   getFirstQueryResult,
   getNextRowPKValue,
-  getPKColumnIndex,
   getPreviousRowPKValue,
   getTableForeignKeys,
 } from "../selectors";
 
-import { setCardAndRun } from "./core";
-import { updateUrl } from "./navigation";
-
-export const ZOOM_IN_ROW = "metabase/qb/ZOOM_IN_ROW";
-export const zoomInRow =
-  ({ objectId }: { objectId: ObjectId }) =>
-  (dispatch: Dispatch, getState: GetState) => {
-    dispatch({ type: ZOOM_IN_ROW, payload: { objectId } });
-
-    // don't show object id in url if it is a row index
-    const hasPK = getPKColumnIndex(getState()) !== -1;
-    hasPK && dispatch(updateUrl(null, { objectId, replaceState: false }));
-  };
+import { setCardAndRun } from "./core/core";
+import { updateUrl } from "./url";
+import { zoomInRow } from "./zoom";
 
 export const RESET_ROW_ZOOM = "metabase/qb/RESET_ROW_ZOOM";
 export const resetRowZoom = () => (dispatch: Dispatch) => {
   dispatch({ type: RESET_ROW_ZOOM });
-  dispatch(updateUrl());
+
+  dispatch(updateUrl(null, { preserveParameters: false }));
 };
 
 function filterByFk(
@@ -81,7 +71,6 @@ export const followForeignKey = createThunkAction(
 
       const metadata = getMetadata(getState());
       const databaseId = new Question(card, metadata).databaseId();
-
       if (!databaseId) {
         return;
       }
@@ -89,14 +78,18 @@ export const followForeignKey = createThunkAction(
       const tableId = fk.origin.table.id;
       const metadataProvider = Lib.metadataProvider(databaseId, metadata);
       const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+      if (table == null) {
+        return;
+      }
       const baseQuery = Lib.queryFromTableOrCardMetadata(
         metadataProvider,
         table,
       );
       const query = filterByFk(baseQuery, fk.origin, objectId);
-      const finalCard = Question.create({ databaseId, metadata })
-        .setQuery(query)
-        .card();
+      const finalCard = Question.create({
+        dataset_query: Lib.toJsQuery(query),
+        metadata,
+      }).card();
 
       dispatch(resetRowZoom());
       dispatch(setCardAndRun(finalCard));
@@ -139,15 +132,19 @@ export const loadObjectDetailFKReferences = createThunkAction(
         }
         const metadataProvider = Lib.metadataProvider(databaseId, metadata);
         const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+        if (table == null) {
+          return;
+        }
         const baseQuery = Lib.queryFromTableOrCardMetadata(
           metadataProvider,
           table,
         );
         const aggregatedQuery = Lib.aggregateByCount(baseQuery, -1);
         const query = filterByFk(aggregatedQuery, fk.origin, objectId);
-        const finalCard = Question.create({ databaseId, metadata })
-          .setQuery(query)
-          .datasetQuery();
+        const finalCard = Question.create({
+          dataset_query: Lib.toJsQuery(query),
+          metadata,
+        }).datasetQuery();
 
         const info: FKInfo = {
           status: 0,

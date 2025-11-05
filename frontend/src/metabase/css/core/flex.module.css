@@ -28,6 +28,10 @@
   flex-shrink: 0;
 }
 
+.flexGrow1 {
+  flex-grow: 1;
+}
+
 /* The behavior of how `flex: <flex-grow>` sets flex-basis is inconsistent across
  * browsers. Specifically:
  * - On Chrome and FF it's set to `flex-basis: 0%`. That behaves equally as `height: 0%`.

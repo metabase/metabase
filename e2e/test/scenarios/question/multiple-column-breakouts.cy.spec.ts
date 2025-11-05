@@ -1,9 +1,13 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type {
+  DashboardDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
 
-const questionWith2TemporalBreakoutsDetails: H.StructuredQuestionDetails = {
+const questionWith2TemporalBreakoutsDetails: StructuredQuestionDetails = {
   name: "Test question",
   query: {
     "source-table": ORDERS_ID,
@@ -27,7 +31,7 @@ const questionWith2TemporalBreakoutsDetails: H.StructuredQuestionDetails = {
   },
 };
 
-const multiStageQuestionWith2TemporalBreakoutsDetails: H.StructuredQuestionDetails =
+const multiStageQuestionWith2TemporalBreakoutsDetails: StructuredQuestionDetails =
   {
     name: "Test question",
     query: {
@@ -36,7 +40,7 @@ const multiStageQuestionWith2TemporalBreakoutsDetails: H.StructuredQuestionDetai
     },
   };
 
-const questionWith2NumBinsBreakoutsDetails: H.StructuredQuestionDetails = {
+const questionWith2NumBinsBreakoutsDetails: StructuredQuestionDetails = {
   name: "Test question",
   query: {
     "source-table": ORDERS_ID,
@@ -66,7 +70,7 @@ const questionWith2NumBinsBreakoutsDetails: H.StructuredQuestionDetails = {
   },
 };
 
-const multiStageQuestionWith2NumBinsBreakoutsDetails: H.StructuredQuestionDetails =
+const multiStageQuestionWith2NumBinsBreakoutsDetails: StructuredQuestionDetails =
   {
     name: "Test question",
     query: {
@@ -75,7 +79,7 @@ const multiStageQuestionWith2NumBinsBreakoutsDetails: H.StructuredQuestionDetail
     },
   };
 
-const questionWith2BinWidthBreakoutsDetails: H.StructuredQuestionDetails = {
+const questionWith2BinWidthBreakoutsDetails: StructuredQuestionDetails = {
   name: "Test question",
   query: {
     "source-table": PEOPLE_ID,
@@ -105,7 +109,7 @@ const questionWith2BinWidthBreakoutsDetails: H.StructuredQuestionDetails = {
   },
 };
 
-const multiStageQuestionWith2BinWidthBreakoutsDetails: H.StructuredQuestionDetails =
+const multiStageQuestionWith2BinWidthBreakoutsDetails: StructuredQuestionDetails =
   {
     name: "Test question",
     query: {
@@ -114,7 +118,7 @@ const multiStageQuestionWith2BinWidthBreakoutsDetails: H.StructuredQuestionDetai
     },
   };
 
-const questionWith5TemporalBreakoutsDetails: H.StructuredQuestionDetails = {
+const questionWith5TemporalBreakoutsDetails: StructuredQuestionDetails = {
   name: "Test question",
   query: {
     "source-table": ORDERS_ID,
@@ -154,7 +158,7 @@ const questionWith5TemporalBreakoutsDetails: H.StructuredQuestionDetails = {
   },
 };
 
-const questionWith5NumBinsBreakoutsDetails: H.StructuredQuestionDetails = {
+const questionWith5NumBinsBreakoutsDetails: StructuredQuestionDetails = {
   name: "Test question",
   query: {
     "source-table": ORDERS_ID,
@@ -208,7 +212,7 @@ const questionWith5NumBinsBreakoutsDetails: H.StructuredQuestionDetails = {
   },
 };
 
-const dashboardDetails: H.DashboardDetails = {
+const dashboardDetails: DashboardDetails = {
   parameters: [
     {
       id: "1",
@@ -305,7 +309,9 @@ describe("scenarios > question > multiple column breakouts", () => {
           H.popover()
             .findByLabelText(columnName)
             .findByLabelText(bucketLabel)
+            .realHover()
             .click();
+          // eslint-disable-next-line no-unsafe-element-filtering
           H.popover().last().findByText(bucket1Name).click();
           H.getNotebookStep("summarize")
             .findByTestId("breakout-step")
@@ -315,6 +321,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .findByLabelText(columnName)
             .findByLabelText(bucketLabel)
             .click();
+          // eslint-disable-next-line no-unsafe-element-filtering
           H.popover().last().findByText(bucket2Name).click();
           H.visualize();
           cy.wait("@dataset");
@@ -357,7 +364,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column2Name: string;
         }) {
@@ -427,7 +434,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           bucket1Name,
           bucket2Name,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           columnPattern: RegExp;
           bucketLabel: string;
           bucket1Name: string;
@@ -440,6 +447,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .should("have.length", 2)
             .eq(0)
             .findByLabelText(bucketLabel)
+            .realHover()
             .click();
           H.popover().findByText(bucket1Name).click();
           cy.wait("@dataset");
@@ -448,6 +456,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .should("have.length", 2)
             .eq(1)
             .findByLabelText(bucketLabel)
+            .realHover()
             .click();
           H.popover().findByText(bucket2Name).click();
           cy.wait("@dataset");
@@ -518,6 +527,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           .should("contain.text", "All time")
           .click();
         H.popover().findByDisplayValue("All time").click();
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.popover().last().findByText("On").click();
         H.popover().within(() => {
           cy.findByLabelText("Date").clear().type("August 14, 2023");
@@ -554,7 +564,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column2Name: string;
         }) {
@@ -601,13 +611,13 @@ describe("scenarios > question > multiple column breakouts", () => {
           questionDetails,
           columnNamePattern,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           columnNamePattern: RegExp;
         }) {
           H.createQuestion(questionDetails, { visitQuestion: true });
 
           cy.log("change display and assert the default settings");
-          cy.findByTestId("viz-type-button").click();
+          H.openVizTypeSidebar();
           cy.findByTestId("chart-type-sidebar")
             .findByTestId("Pivot Table-button")
             .click();
@@ -617,15 +627,21 @@ describe("scenarios > question > multiple column breakouts", () => {
             .should("have.length", 3);
 
           cy.log("move a column from rows to columns");
-          cy.findByTestId("viz-settings-button").click();
-          H.dragField(2, 3);
+          H.openVizSettingsSidebar();
+          H.moveDnDKitListElement("drag-handle", {
+            startIndex: 2,
+            dropIndex: 3,
+          });
           cy.wait("@pivotDataset");
           cy.findByTestId("pivot-table")
             .findAllByText(columnNamePattern)
             .should("have.length", 2);
 
           cy.log("move a column from columns to rows");
-          H.dragField(4, 1);
+          H.moveDnDKitListElement("drag-handle", {
+            startIndex: 4,
+            dropIndex: 1,
+          });
           cy.wait("@pivotDataset");
           cy.findByTestId("pivot-table")
             .findAllByText(columnNamePattern)
@@ -643,6 +659,43 @@ describe("scenarios > question > multiple column breakouts", () => {
           questionDetails: questionWith5NumBinsBreakoutsDetails,
           columnNamePattern: /^Total: \d+ bins$/,
         });
+      });
+
+      it("should not be able to move columns items into measures and vice-versa", () => {
+        H.createQuestion(questionWith5TemporalBreakoutsDetails, {
+          visitQuestion: true,
+        });
+
+        const columnNamePattern = /^Created At/;
+
+        cy.log("change display and assert the default settings");
+        H.openVizTypeSidebar();
+        cy.findByTestId("chart-type-sidebar")
+          .findByTestId("Pivot Table-button")
+          .click();
+        cy.wait("@pivotDataset");
+        cy.findByTestId("pivot-table")
+          .findAllByText(columnNamePattern)
+          .should("have.length", 3);
+
+        cy.log("move an item from columns to measures");
+        H.openVizSettingsSidebar();
+        H.moveDnDKitListElement("drag-handle", {
+          startIndex: 2,
+          dropIndex: 5,
+        });
+        cy.findByTestId("pivot-table")
+          .findAllByText(columnNamePattern)
+          .should("have.length", 3);
+
+        cy.log("move an item from measures to columns");
+        H.moveDnDKitListElement("drag-handle", {
+          startIndex: 5,
+          dropIndex: 2,
+        });
+        cy.findByTestId("pivot-table")
+          .findAllByText(columnNamePattern)
+          .should("have.length", 3);
       });
     });
 
@@ -679,10 +732,10 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.editDashboard();
         cy.findByTestId("fixed-width-filters").findByText("Unit1").click();
         H.getDashboardCard().findByText("Select…").click();
-        H.popover().findAllByText("Created At").eq(0).click();
+        H.popover().findByText("Created At: Year").click();
         cy.findByTestId("fixed-width-filters").findByText("Unit2").click();
         H.getDashboardCard().findByText("Select…").click();
-        H.popover().findAllByText("Created At").eq(1).click();
+        H.popover().findByText("Created At: Month").click();
         H.saveDashboard();
         cy.wait("@dashcardQuery");
 
@@ -699,12 +752,12 @@ describe("scenarios > question > multiple column breakouts", () => {
 
         cy.log("set parameters in a public dashboard");
         cy.signInAsAdmin();
-        cy.get("@dashboardId").then(H.visitPublicDashboard);
+        cy.get<number>("@dashboardId").then(H.visitPublicDashboard);
         cy.wait("@publicDashcardQuery");
         setParametersAndAssertResults("@publicDashcardQuery");
 
         cy.log("set parameters in an embedded dashboard");
-        cy.get<number>("@dashboardId").then(dashboardId =>
+        cy.get<number>("@dashboardId").then((dashboardId) =>
           H.visitEmbeddedPage({
             resource: { dashboard: dashboardId },
             params: {},
@@ -724,7 +777,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           expression1,
           expression2,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           expression1: string;
           expression2: string;
         }) {
@@ -736,7 +789,8 @@ describe("scenarios > question > multiple column breakouts", () => {
           H.enterCustomColumnDetails({
             formula: expression1,
             name: "Expression1",
-            blur: true,
+            format: true,
+            allowFastSet: true,
           });
           H.popover().button("Done").click();
 
@@ -746,6 +800,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             formula: expression2,
             name: "Expression2",
             blur: true,
+            allowFastSet: true,
           });
           H.popover().button("Done").click();
 
@@ -794,7 +849,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             "Expression1",
             "Expression2",
           ],
-          firstRows: [["-60", "-50", "1", "40", "140"]],
+          firstRows: [["-60  –  -40", "-50  –  -45", "1", "40", "140"]],
         });
 
         cy.log("'max-bins' breakouts");
@@ -811,7 +866,9 @@ describe("scenarios > question > multiple column breakouts", () => {
             "Expression1",
             "Expression2",
           ],
-          firstRows: [["20.00000000° N", "20.00000000° N", "87", "120", "220"]],
+          firstRows: [
+            ["20° N  –  40° N", "20° N  –  30° N", "87", "120", "220"],
+          ],
         });
       });
 
@@ -827,7 +884,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         }) {
           H.popover().within(() => {
             cy.findByText(columnName).click();
-            cy.findByText("Specific dates…").click();
+            cy.findByText("Fixed date range…").click();
             cy.findByText("Between").click();
             cy.findByLabelText("Start date").clear().type(columnMinValue);
             cy.findByLabelText("End date").clear().type(columnMaxValue);
@@ -844,7 +901,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column1MinValue: string;
           column1MaxValue: string;
@@ -906,7 +963,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column1MinValue: number;
           column1MaxValue: number;
@@ -964,8 +1021,8 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.assertTableData({
           columns: ["Total: 10 bins", "Total: 50 bins", "Count"],
           firstRows: [
-            ["20", "20", "214"],
-            ["20", "25", "396"],
+            ["20  –  40", "20  –  25", "214"],
+            ["20  –  40", "25  –  30", "396"],
           ],
         });
         H.assertQueryBuilderRowCount(7);
@@ -984,8 +1041,8 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.assertTableData({
           columns: ["Latitude: 20°", "Latitude: 10°", "Count"],
           firstRows: [
-            ["20.00000000° N", "20.00000000° N", "87"],
-            ["20.00000000° N", "30.00000000° N", "1,176"],
+            ["20° N  –  40° N", "20° N  –  30° N", "87"],
+            ["20° N  –  40° N", "30° N  –  40° N", "1,176"],
           ],
         });
         H.assertQueryBuilderRowCount(4);
@@ -997,7 +1054,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column2Name: string;
         }) {
@@ -1064,7 +1121,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column2Name: string;
         }) {
@@ -1115,8 +1172,8 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.assertTableData({
           columns: ["Total: 10 bins", "Total: 50 bins", "Count"],
           firstRows: [
-            ["-60", "-50", "1"],
-            ["0", "5", "1"],
+            ["-60  –  -40", "-50  –  -45", "1"],
+            ["0  –  20", "5  –  10", "1"],
           ],
         });
 
@@ -1130,15 +1187,15 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.assertTableData({
           columns: ["Latitude: 20°", "Latitude: 10°", "Count"],
           firstRows: [
-            ["20.00000000° N", "20.00000000° N", "1"],
-            ["20.00000000° N", "30.00000000° N", "1"],
+            ["20° N  –  40° N", "20° N  –  30° N", "1"],
+            ["20° N  –  40° N", "30° N  –  40° N", "1"],
           ],
         });
       });
     });
 
-    describe("filter modal", () => {
-      it("should be able to add post-aggregation filters for each breakout in the filter modal", () => {
+    describe("filter picker", () => {
+      it("should be able to add post-aggregation filters for each breakout in the filter picker", () => {
         function addDateBetweenFilter({
           columnName,
           columnMinValue,
@@ -1148,18 +1205,15 @@ describe("scenarios > question > multiple column breakouts", () => {
           columnMinValue: string;
           columnMaxValue: string;
         }) {
-          H.modal().within(() => {
-            cy.findByText("Summaries").click();
-            cy.findByTestId(`filter-column-${columnName}`)
-              .findByLabelText("More options")
-              .click();
-          });
+          H.filter();
           H.popover().within(() => {
-            cy.findByText("Specific dates…").click();
+            cy.findByText("Summaries").click();
+            cy.findByText(columnName).click();
+            cy.findByText("Fixed date range…").click();
             cy.findByText("Between").click();
             cy.findByLabelText("Start date").clear().type(columnMinValue);
             cy.findByLabelText("End date").clear().type(columnMaxValue);
-            cy.button("Add filter").click();
+            cy.button("Apply filter").click();
           });
         }
 
@@ -1172,7 +1226,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column1MinValue: string;
           column1MaxValue: string;
@@ -1181,7 +1235,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MaxValue: string;
         }) {
           H.createQuestion(questionDetails, { visitQuestion: true });
-          H.filter();
 
           cy.log("add a filter for the first column");
           addDateBetweenFilter({
@@ -1198,7 +1251,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           });
 
           cy.log("assert query results");
-          H.modal().button("Apply filters").click();
           cy.wait("@dataset");
         }
 
@@ -1211,16 +1263,17 @@ describe("scenarios > question > multiple column breakouts", () => {
           columnMinValue: number;
           columnMaxValue: number;
         }) {
-          H.modal().within(() => {
+          H.filter();
+          H.popover().within(() => {
             cy.findByText("Summaries").click();
-            cy.findByTestId(`filter-column-${columnName}`)
-              .findByPlaceholderText("Min")
+            cy.findByText(columnName).click();
+            cy.findByPlaceholderText("Min")
               .clear()
               .type(String(columnMinValue));
-            cy.findByTestId(`filter-column-${columnName}`)
-              .findByPlaceholderText("Max")
+            cy.findByPlaceholderText("Max")
               .clear()
               .type(String(columnMaxValue));
+            cy.button("Apply filter").click();
           });
         }
 
@@ -1233,7 +1286,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column1MinValue: number;
           column1MaxValue: number;
@@ -1242,7 +1295,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MaxValue: number;
         }) {
           H.createQuestion(questionDetails, { visitQuestion: true });
-          H.filter();
 
           cy.log("add a filter for the first column");
           addNumericBetweenFilter({
@@ -1259,7 +1311,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           });
 
           cy.log("assert query results");
-          H.modal().button("Apply filters").click();
           cy.wait("@dataset");
         }
 
@@ -1288,8 +1339,8 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.assertTableData({
           columns: ["Total: 10 bins", "Total: 50 bins", "Count"],
           firstRows: [
-            ["20", "20", "214"],
-            ["20", "25", "396"],
+            ["20  –  40", "20  –  25", "214"],
+            ["20  –  40", "25  –  30", "396"],
           ],
         });
         H.assertQueryBuilderRowCount(7);
@@ -1307,8 +1358,8 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.assertTableData({
           columns: ["Latitude: 20°", "Latitude: 10°", "Count"],
           firstRows: [
-            ["20.00000000° N", "20.00000000° N", "87"],
-            ["20.00000000° N", "30.00000000° N", "1,176"],
+            ["20° N  –  40° N", "20° N  –  30° N", "87"],
+            ["20° N  –  40° N", "30° N  –  40° N", "1,176"],
           ],
         });
         H.assertQueryBuilderRowCount(4);
@@ -1335,7 +1386,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           tableColumn1Name,
           tableColumn2Name,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           queryColumn1Name: string;
           queryColumn2Name: string;
           tableColumn1Name: string;
@@ -1346,7 +1397,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             columns: [tableColumn1Name, tableColumn2Name, "Count"],
           });
 
-          cy.findByTestId("viz-settings-button").click();
+          H.openVizSettingsSidebar();
           cy.findByTestId("chartsettings-sidebar")
             .button("Add or remove columns")
             .click();
@@ -1412,7 +1463,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         }) {
           H.popover().within(() => {
             cy.findAllByText(columnName).click();
-            cy.findByText("Specific dates…").click();
+            cy.findByText("Fixed date range…").click();
             cy.findByText("Between").click();
             cy.findByLabelText("Start date").clear().type(columnMinValue);
             cy.findByLabelText("End date").clear().type(columnMaxValue);
@@ -1429,7 +1480,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column1MinValue: string;
           column1MaxValue: string;
@@ -1495,7 +1546,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column1MinValue: number;
           column1MaxValue: number;
@@ -1588,7 +1639,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column2Name: string;
         }) {
@@ -1658,7 +1709,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column2Name: string;
         }) {
@@ -1750,7 +1801,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           questionDetails,
           columnName,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           columnName: string;
         }) {
           H.createQuestion(questionDetails).then(({ body: card }) => {
@@ -1764,7 +1815,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             columns: [columnNameYear, columnNameMonth, "Count"],
           });
 
-          cy.findByTestId("viz-settings-button").click();
+          H.openVizSettingsSidebar();
           cy.findByTestId("chartsettings-sidebar")
             .button("Add or remove columns")
             .click();
@@ -1800,11 +1851,13 @@ function tableHeaderClick(
   columnName: string,
   { columnIndex = 0 }: { columnIndex?: number } = {},
 ) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.tableInteractive()
     .findAllByText(columnName)
     .eq(columnIndex)
     .trigger("mousedown");
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.tableInteractive()
     .findAllByText(columnName)
     .eq(columnIndex)

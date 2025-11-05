@@ -1,5 +1,4 @@
 import type { LineSeriesOption } from "echarts/charts";
-import _ from "underscore";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
@@ -14,7 +13,7 @@ export function getTrendLinesOption(
   chartModel: BaseCartesianChartModel,
 ): LineSeriesOption[] {
   return (
-    chartModel.trendLinesModel?.seriesModels.map(trendSeries => ({
+    chartModel.trendLinesModel?.seriesModels.map((trendSeries) => ({
       type: "line",
       datasetIndex: 1,
       yAxisIndex: getSeriesYAxisIndex(trendSeries.sourceDataKey, chartModel),

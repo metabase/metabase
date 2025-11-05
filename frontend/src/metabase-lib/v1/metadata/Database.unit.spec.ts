@@ -1,6 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
@@ -140,7 +139,7 @@ describe("Database", () => {
 
     it.each(["left-join", "right-join", "inner-join", "full-join"] as const)(
       "should return true for 'join' for %s",
-      feature => {
+      (feature) => {
         const database = setup({
           database: createMockDatabase({
             features: [feature],
@@ -174,37 +173,12 @@ describe("Database", () => {
     });
   });
 
-  describe("question", () => {
-    it("should create a question using the `metadata` found on the Database instance", () => {
-      const database = setup();
-      const question = database.question();
-
-      expect(question.legacyQuery({ useStructuredQuery: true })).toBeInstanceOf(
-        StructuredQuery,
-      );
-      expect(question.metadata()).toEqual(database.metadata);
-    });
-
-    it("should create a question using the given Database instance's id in the question's query", () => {
-      const table = createMockTable();
-      const database = setup({
-        database: createMockDatabase({ tables: [table] }),
-      });
-      const question = database.question({
-        "source-table": table.id,
-      });
-
-      expect(question.databaseId()).toBe(database.id);
-      expect(question.legacyQueryTableId()).toBe(table.id);
-    });
-  });
-
   describe("nativeQuestion", () => {
     it("should create a native question using the `metadata` found on the Database instance", () => {
       const database = setup();
       const question = database.nativeQuestion();
 
-      expect(question.legacyQuery()).toBeInstanceOf(NativeQuery);
+      expect(question.legacyNativeQuery()).toBeInstanceOf(NativeQuery);
       expect(question.metadata()).toBe(database.metadata);
     });
 
@@ -212,17 +186,8 @@ describe("Database", () => {
       const database = setup();
       const question = database.nativeQuestion({ query: "SELECT 1" });
 
-      const query = question.legacyQuery() as NativeQuery;
+      const query = question.legacyNativeQuery() as NativeQuery;
       expect(query.queryText()).toBe("SELECT 1");
-    });
-  });
-
-  describe("newQuestion", () => {
-    it("should return new question with defaulted query and display", () => {
-      const database = setup();
-      const question = database.newQuestion();
-
-      expect(question.display()).toBe("table");
     });
   });
 

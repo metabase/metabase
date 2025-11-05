@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -18,7 +18,7 @@ describe("scenarios > question > settings", () => {
       cy.viewport(1600, 800);
 
       H.openOrdersTable();
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       // wait for settings sidebar to open
       cy.findByTestId("sidebar-left").invoke("width").should("be.gt", 350);
@@ -52,9 +52,7 @@ describe("scenarios > question > settings", () => {
       cy.findByTestId("visualization-root").contains("8833419218504");
 
       // confirm that the table contains the right columns
-      cy.findByTestId("query-visualization-root")
-        .get(".test-TableInteractive")
-        .as("table");
+      H.tableInteractive().as("table");
       cy.get("@table").contains("Product → Category");
       cy.get("@table").contains("Product → Ean");
       cy.get("@table").contains("Total").should("not.exist");
@@ -85,7 +83,7 @@ describe("scenarios > question > settings", () => {
           type: "query",
         },
       });
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       cy.findByTestId("Subtotal-hide-button").click();
       cy.findByTestId("Tax-hide-button").click();
@@ -101,14 +99,14 @@ describe("scenarios > question > settings", () => {
         .as("title")
         .should("have.text", "Products → Title");
 
-      cy.findByTestId("chartsettings-sidebar").scrollTo("top");
-      cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
+      cy.findByTestId("chartsettings-list-container").scrollTo("top");
+      cy.findByTestId("chartsettings-list-container").should(([$el]) => {
         expect($el.scrollTop).to.eql(0);
       });
 
       H.moveDnDKitElement(cy.get("@title"), { vertical: 15 });
 
-      cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
+      cy.findByTestId("chartsettings-list-container").should(([$el]) => {
         expect($el.scrollTop).to.be.greaterThan(0);
       });
     });
@@ -153,7 +151,7 @@ describe("scenarios > question > settings", () => {
         display: "table",
       });
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       getSidebarColumns()
         .eq("12")
@@ -183,9 +181,7 @@ describe("scenarios > question > settings", () => {
       cy.findByRole("button", { name: "Add or remove columns" }).click();
       cy.findByLabelText("Address").should("not.be.checked").click();
 
-      // The result automatically load when adding new fields but two requests are fired.
-      // Please see: https://github.com/metabase/metabase/pull/21338#discussion_r842816687
-      cy.wait(["@dataset", "@dataset"]);
+      cy.wait("@dataset");
 
       cy.findByRole("button", { name: "Done picking columns" }).click();
 
@@ -201,6 +197,7 @@ describe("scenarios > question > settings", () => {
        */
 
       function findColumnAtIndex(column_name, index) {
+        // eslint-disable-next-line no-unsafe-element-filtering
         return getVisibleSidebarColumns().eq(index).contains(column_name);
       }
     });
@@ -223,7 +220,7 @@ describe("scenarios > question > settings", () => {
         display: "table",
       });
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       cy.findByRole("button", { name: "Add or remove columns" }).click();
       cy.findByLabelText("Name").should("not.be.checked").click();
@@ -251,11 +248,10 @@ describe("scenarios > question > settings", () => {
         },
       });
 
-      cy.findByTestId("viz-settings-button").click(); // open settings sidebar
+      H.openVizSettingsSidebar(); // open settings sidebar
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Conditional Formatting"); // confirm it's open
 
-      // cy.get(".test-TableInteractive").findByText("Subtotal").scrollIntoView();
       H.tableHeaderClick("Subtotal"); // open subtotal column header actions
 
       H.popover().icon("gear").click(); // open subtotal column settings
@@ -299,19 +295,19 @@ describe("scenarios > question > settings", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(newColumnTitle);
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       H.sidebar().findByText(newColumnTitle);
     });
 
     it("should respect symbol settings for all currencies", () => {
       H.openOrdersTable();
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       getSidebarColumns()
         .eq("4")
         .within(() => {
-          cy.icon("ellipsis").click();
+          cy.icon("ellipsis").click({ force: true });
         });
 
       cy.findByDisplayValue("Normal").click();
@@ -331,119 +327,213 @@ describe("scenarios > question > settings", () => {
       cy.findByText("₿ 6.10");
     });
 
-    it.skip("should allow hiding and showing aggregated columns with a post-aggregation custom column (metabase#22563)", () => {
-      // products joined to orders with breakouts on 3 product columns followed by a custom column
-      cy.createQuestion(
+    it("should show all options without text overflowing", () => {
+      const longName =
+        "SuperLongColumnNameSuperLongColumnNameSuperLongColumnNameSuperLongColumnNameSuperLongColumnName";
+      H.createNativeQuestion(
         {
-          name: "repro 22563",
-          query: {
-            "source-query": {
-              "source-table": ORDERS_ID,
-              joins: [
-                {
-                  alias: "Products",
-                  condition: [
-                    "=",
-                    ["field", ORDERS.PRODUCT_ID, null],
-                    [
-                      "field",
-                      PRODUCTS.ID,
-                      {
-                        "join-alias": "Products",
-                      },
-                    ],
-                  ],
-                  "source-table": PRODUCTS_ID,
-                },
-              ],
-              aggregation: [["count"]],
-              breakout: [
-                [
-                  "field",
-                  PRODUCTS.CATEGORY,
-                  {
-                    "base-type": "type/Text",
-                    "join-alias": "Products",
-                  },
-                ],
-                [
-                  "field",
-                  PRODUCTS.TITLE,
-                  {
-                    "base-type": "type/Text",
-                    "join-alias": "Products",
-                  },
-                ],
-                [
-                  "field",
-                  PRODUCTS.VENDOR,
-                  {
-                    "base-type": "type/Text",
-                    "join-alias": "Products",
-                  },
-                ],
-              ],
-            },
-            expressions: {
-              two: ["+", 1, 1],
-            },
+          name: "Orders Model",
+          native: {
+            query: `SELECT total as "${longName}" FROM ORDERS`,
           },
         },
         { visitQuestion: true },
       );
 
-      const columnNames = [
-        "Products → Category",
-        "Products → Title",
-        "Products → Vendor",
-        "Count",
-        "two",
-      ];
+      H.openVizSettingsSidebar();
 
-      cy.findByTestId("TableInteractive-root").within(() => {
-        columnNames.forEach(text => cy.findByText(text).should("be.visible"));
-      });
-
-      cy.findByTestId("viz-settings-button").click();
-
-      cy.findByTestId("chartsettings-sidebar").within(() => {
-        columnNames.forEach(text => cy.findByText(text).should("be.visible"));
-        cy.findByText("More Columns").should("not.exist");
-
-        cy.icon("eye_outline").first().click();
-
-        cy.findByText("More columns").should("be.visible");
-
-        // disable the first column
-        cy.findByTestId("disabled-columns")
-          .findByText("Products → Category")
-          .should("be.visible");
-        cy.findByTestId("visible-columns")
-          .findByText("Products → Category")
-          .should("not.exist");
-      });
-
-      cy.findByTestId("TableInteractive-root").within(() => {
-        // the query should not have changed
-        cy.icon("play").should("not.exist");
-        cy.findByText("Products → Category").should("not.exist");
-      });
-
-      cy.findByTestId("chartsettings-sidebar").within(() => {
-        cy.icon("add").click();
-        // re-enable the first column
-        cy.findByText("More columns").should("not.exist");
-        cy.findByTestId("visible-columns")
-          .findByText("Products → Category")
-          .should("be.visible");
-      });
-
-      cy.findByTestId("TableInteractive-root").within(() => {
-        // the query should not have changed
-        cy.icon("play").should("not.exist");
-        cy.findByText("Products → Category").should("be.visible");
-      });
+      H.sidebar()
+        .findByRole("listitem")
+        .within(() => {
+          cy.findByLabelText("ellipsis icon").should("be.visible");
+          cy.findByLabelText("grabber icon").should("be.visible");
+          cy.findByLabelText("eye_outline icon").should("be.visible");
+          cy.findByText(longName).should("be.visible");
+        });
     });
+
+    it("should show all series settings without text overflowing (metabase#52975)", () => {
+      const regularColumnName = "regular column";
+      const longColumnName1 =
+        "very very very very very very very very very very very long column 1";
+      const longColumnName2 =
+        "very very very very very very very very very very very long column 2";
+
+      H.createNativeQuestion(
+        {
+          name: "52975",
+          native: {
+            query: `select 'foo' x, 10 "${regularColumnName}", 20 "${longColumnName1}", 20 "${longColumnName2}"`,
+          },
+          display: "bar",
+        },
+        { visitQuestion: true },
+      );
+
+      H.openVizSettingsSidebar();
+
+      H.sidebar()
+        .findAllByTestId("chartsettings-field-picker")
+        .eq(3)
+        .within(() => {
+          cy.findByTestId("color-selector-button").should("be.visible");
+          cy.findByLabelText("chevrondown icon").should("not.exist");
+          cy.findByLabelText("ellipsis icon").should("be.visible");
+          cy.findByLabelText("grabber icon").should("be.visible");
+          cy.get("input").should("have.value", longColumnName2);
+          cy.findByLabelText("close icon").should("be.visible");
+
+          cy.findByTestId(`remove-${longColumnName2}`).click();
+        });
+
+      H.sidebar()
+        .findAllByTestId("chartsettings-field-picker")
+        .eq(2)
+        .within(() => {
+          cy.findByTestId("color-selector-button").should("be.visible");
+          cy.findByLabelText("chevrondown icon").should("be.visible");
+          cy.findByLabelText("ellipsis icon").should("be.visible");
+          cy.findByLabelText("grabber icon").should("be.visible");
+          cy.get("input").should("have.value", longColumnName1);
+          cy.findByLabelText("close icon").should("be.visible");
+
+          cy.findByTestId(`remove-${longColumnName1}`).click();
+        });
+
+      H.sidebar()
+        .findAllByTestId("chartsettings-field-picker")
+        .eq(1)
+        .within(() => {
+          cy.findByTestId("color-selector-button").should("be.visible");
+          cy.findByLabelText("chevrondown icon").should("be.visible");
+          cy.findByLabelText("ellipsis icon").should("be.visible");
+          cy.findByLabelText("grabber icon").should("not.exist");
+          cy.get("input").should("have.value", regularColumnName);
+          cy.findByLabelText("close icon").should("not.exist");
+        });
+    });
+
+    it(
+      "should allow hiding and showing aggregated columns with a post-aggregation custom column (metabase#22563)",
+      { tags: "@skip" },
+      () => {
+        // products joined to orders with breakouts on 3 product columns followed by a custom column
+        H.createQuestion(
+          {
+            name: "repro 22563",
+            query: {
+              "source-query": {
+                "source-table": ORDERS_ID,
+                joins: [
+                  {
+                    alias: "Products",
+                    condition: [
+                      "=",
+                      ["field", ORDERS.PRODUCT_ID, null],
+                      [
+                        "field",
+                        PRODUCTS.ID,
+                        {
+                          "join-alias": "Products",
+                        },
+                      ],
+                    ],
+                    "source-table": PRODUCTS_ID,
+                  },
+                ],
+                aggregation: [["count"]],
+                breakout: [
+                  [
+                    "field",
+                    PRODUCTS.CATEGORY,
+                    {
+                      "base-type": "type/Text",
+                      "join-alias": "Products",
+                    },
+                  ],
+                  [
+                    "field",
+                    PRODUCTS.TITLE,
+                    {
+                      "base-type": "type/Text",
+                      "join-alias": "Products",
+                    },
+                  ],
+                  [
+                    "field",
+                    PRODUCTS.VENDOR,
+                    {
+                      "base-type": "type/Text",
+                      "join-alias": "Products",
+                    },
+                  ],
+                ],
+              },
+              expressions: {
+                two: ["+", 1, 1],
+              },
+            },
+          },
+          { visitQuestion: true },
+        );
+
+        const columnNames = [
+          "Products → Category",
+          "Products → Title",
+          "Products → Vendor",
+          "Count",
+          "two",
+        ];
+
+        H.tableInteractive().within(() => {
+          columnNames.forEach((text) =>
+            cy.findByText(text).should("be.visible"),
+          );
+        });
+
+        H.openVizSettingsSidebar();
+
+        cy.findByTestId("chartsettings-sidebar").within(() => {
+          columnNames.forEach((text) =>
+            cy.findByText(text).should("be.visible"),
+          );
+          cy.findByText("More Columns").should("not.exist");
+
+          cy.icon("eye_outline").first().click();
+
+          cy.findByText("More columns").should("be.visible");
+
+          // disable the first column
+          cy.findByTestId("disabled-columns")
+            .findByText("Products → Category")
+            .should("be.visible");
+          cy.findByTestId("visible-columns")
+            .findByText("Products → Category")
+            .should("not.exist");
+        });
+
+        H.tableInteractive().within(() => {
+          // the query should not have changed
+          cy.icon("play").should("not.exist");
+          cy.findByText("Products → Category").should("not.exist");
+        });
+
+        cy.findByTestId("chartsettings-sidebar").within(() => {
+          cy.icon("add").click();
+          // re-enable the first column
+          cy.findByText("More columns").should("not.exist");
+          cy.findByTestId("visible-columns")
+            .findByText("Products → Category")
+            .should("be.visible");
+        });
+
+        H.tableInteractive().within(() => {
+          // the query should not have changed
+          cy.icon("play").should("not.exist");
+          cy.findByText("Products → Category").should("be.visible");
+        });
+      },
+    );
   });
 
   describe("resetting state", () => {
@@ -483,6 +573,7 @@ describe("scenarios > question > settings", () => {
 
 function refreshResultsInHeader() {
   cy.findByTestId("qb-header").button("Refresh").click();
+  cy.wait("@dataset");
 }
 
 function getSidebarColumns() {
@@ -498,9 +589,8 @@ function getVisibleSidebarColumns() {
 }
 
 function hideColumn(name) {
-  getSidebarColumns()
-    .contains(name)
-    .parentsUntil("[role=listitem]")
+  H.sidebar()
+    .findByTestId(`draggable-item-${name}`)
     .icon("eye_outline")
-    .click();
+    .click({ force: true });
 }

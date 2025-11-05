@@ -1,4 +1,5 @@
 import ActionViz from "metabase/actions/components/ActionViz";
+import { ListViz } from "metabase/list-view/components/ListViz";
 import {
   registerVisualization,
   setDefaultVisualization,
@@ -24,7 +25,7 @@ import { SankeyChart } from "./visualizations/SankeyChart";
 import { Scalar } from "./visualizations/Scalar";
 import { ScatterPlot } from "./visualizations/ScatterPlot";
 import { SmartScalar } from "./visualizations/SmartScalar";
-import Table from "./visualizations/Table";
+import Table from "./visualizations/Table/Table";
 import { Text } from "./visualizations/Text";
 import { WaterfallChart } from "./visualizations/WaterfallChart";
 
@@ -54,6 +55,8 @@ export default function () {
   registerVisualization(LinkViz);
   registerVisualization(Text);
   registerVisualization(IFrameViz);
+
+  registerVisualization(ListViz);
 
   setDefaultVisualization(Table);
 }

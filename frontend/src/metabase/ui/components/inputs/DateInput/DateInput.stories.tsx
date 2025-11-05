@@ -61,11 +61,11 @@ const VariantTemplate = (args: DateInputProps) => (
 );
 
 const IconTemplate = (args: DateInputProps) => (
-  <VariantTemplate {...args} icon={<Icon name="calendar" />} />
+  <VariantTemplate {...args} leftSection={<Icon name="calendar" />} />
 );
 
 export default {
-  title: "Inputs/DateInput",
+  title: "Components/Inputs/DateInput",
   component: DateInput,
   args,
   argTypes,

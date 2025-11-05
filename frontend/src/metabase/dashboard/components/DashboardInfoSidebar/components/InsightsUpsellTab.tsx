@@ -1,4 +1,4 @@
-import { UpsellUsageAnalytics } from "metabase/admin/upsells/UpsellUsageAnalytics";
+import { UpsellUsageAnalytics } from "metabase/admin/upsells";
 import { Flex } from "metabase/ui";
 import type { CardType } from "metabase-types/api";
 
@@ -10,7 +10,7 @@ export const InsightsUpsellTab = ({
 }) => {
   return (
     <Flex justify="center">
-      <UpsellUsageAnalytics source={`${model}-sidesheet`} maxWidth={480} />
+      <UpsellUsageAnalytics location={`${model}-sidesheet`} maxWidth={480} />
     </Flex>
   );
 };

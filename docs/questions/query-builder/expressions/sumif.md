@@ -18,7 +18,7 @@ Example: in the table below, `SumIf([Payment], [Plan] = "Basic")` would return 2
 | 200     | Business |
 | 400     | Premium  |
 
-> [Aggregation formulas](../expressions-list.md#aggregations) like `sumif` should be added to the query builder's [**Summarize** menu](../../query-builder/introduction.md#summarizing-and-grouping-by) > **Custom Expression** (scroll down in the menu if needed).
+> [Aggregation formulas](../expressions-list.md#aggregations) like `sumif` should be added to the query builder's [**Summarize** menu](../../query-builder/summarizing-and-grouping.md) > **Custom Expression** (scroll down in the menu if needed).
 
 ## Parameters
 
@@ -74,7 +74,7 @@ Returns 400 on the sample data.
 To get a conditional subtotal for a category or group, such as the total payments per plan, you'll:
 
 1. Write a `sumif` formula with your conditions.
-2. Add a [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) column in the query builder.
+2. Add a [**Group by**](../../query-builder/summarizing-and-grouping.md) column in the query builder.
 
 | Payment | Plan     | Date Received    |
 | ------- | -------- | ---------------- |
@@ -178,7 +178,7 @@ Don't forget to set the **Group by** column to "Date Received: Month".
 
 ### SQL
 
-When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your query builder settings (filters, summaries, etc.) into a SQL query, and run that query against your database to get your results.
+When you run a question using the [query builder](https://www.metabase.com/glossary/query-builder), Metabase will convert your query builder settings (filters, summaries, etc.) into a SQL query, and run that query against your database to get your results.
 
 If our [payment sample data](#sumif) is stored in a PostgreSQL database, the SQL query:
 
@@ -211,7 +211,7 @@ The `SELECT` part of the SQl query matches the Metabase `SumIf` expression:
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
 ```
 
-The `GROUP BY` part of the SQL query maps to a Metabase [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) column set to "Date Received: Month".
+The `GROUP BY` part of the SQL query maps to a Metabase [**Group by**](../../query-builder/summarizing-and-grouping.md) column set to "Date Received: Month".
 
 ### Spreadsheets
 
@@ -265,7 +265,7 @@ import datetime as dt
     df_filtered.groupby('Date Received: Month')['Payment'].sum()
 ```
 
-These steps will produce the same result as the Metabase `SumIf` expression (with the [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) column set to "Date Received: Month").
+These steps will produce the same result as the Metabase `SumIf` expression (with the [**Group by**](../../query-builder/summarizing-and-grouping.md) column set to "Date Received: Month").
 
 ```
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")

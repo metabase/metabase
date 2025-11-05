@@ -1,9 +1,7 @@
 (ns metabase-enterprise.sandbox.models.permissions.delete-sandboxes
   (:require
-   [metabase-enterprise.sandbox.models.group-table-access-policy
-    :refer [GroupTableAccessPolicy]]
-   [metabase.db.query :as mdb.query]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.app-db.core :as app-db]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -17,7 +15,7 @@
                       [condition])]
       (log/debugf "Deleting GTAPs for Group %d with conditions %s" (u/the-id group-or-id) (pr-str conditions))
       (try
-        (if-let [gtap-ids (not-empty (set (map :id (mdb.query/query
+        (if-let [gtap-ids (not-empty (set (map :id (app-db/query
                                                     {:select    [[:sandboxes.id :id]]
                                                      :from      [[:sandboxes]]
                                                      :left-join [[:metabase_table :table]
@@ -25,7 +23,7 @@
                                                      :where     conditions}))))]
           (do
             (log/debugf "Deleting %d matching GTAPs: %s" (count gtap-ids) (pr-str gtap-ids))
-            (t2/delete! GroupTableAccessPolicy :id [:in gtap-ids]))
+            (t2/delete! :model/Sandbox :id [:in gtap-ids]))
           (log/debug "No matching GTAPs need to be deleted."))
         (catch Throwable e
           (throw (ex-info (tru "Error deleting Sandboxes: {0}" (ex-message e))
@@ -77,7 +75,7 @@
        data-perm-changes))))
 
 (defenterprise delete-gtaps-if-needed-after-permissions-change!
-  "For use only inside `metabase.models.permissions`; don't call this elsewhere. Delete GTAPs (sandboxes) that are no
+  "For use only inside `metabase.permissions.models.permissions`; don't call this elsewhere. Delete GTAPs (sandboxes) that are no
   longer needed after the permissions graph is updated. `changes` are the parts of the graph that have changed, i.e.
   the `things-only-in-new` returned by `clojure.data/diff`."
   :feature :sandboxes

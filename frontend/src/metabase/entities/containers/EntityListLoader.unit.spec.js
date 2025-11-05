@@ -1,6 +1,7 @@
-import { renderWithProviders } from "__support__/ui";
 import "mutationobserver-shim";
-import EntityListLoader from "metabase/entities/containers/EntityListLoader";
+
+import { renderWithProviders } from "__support__/ui";
+import { EntityListLoader } from "metabase/entities/containers/rtk-query";
 import { Api } from "metabase/lib/api";
 
 describe("EntityListLoader", () => {
@@ -24,7 +25,7 @@ describe("EntityListLoader", () => {
         />,
       );
       expect(
-        Api.prototype._makeRequest.mock.calls.map(c => c.slice(0, 2)),
+        Api.prototype._makeRequest.mock.calls.map((c) => c.slice(0, 2)),
       ).toEqual([["GET", "/api/collection/foo/items"]]);
     });
 
@@ -37,7 +38,7 @@ describe("EntityListLoader", () => {
         />,
       );
       expect(
-        Api.prototype._makeRequest.mock.calls.map(c => c.slice(0, 2)),
+        Api.prototype._makeRequest.mock.calls.map((c) => c.slice(0, 2)),
       ).toEqual([["GET", "/api/collection/foo/items"]]);
     });
   });

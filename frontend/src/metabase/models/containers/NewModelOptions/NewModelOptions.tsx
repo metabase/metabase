@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
-import { Grid } from "metabase/components/Grid";
+import { Grid } from "metabase/common/components/Grid";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import { useSelector } from "metabase/lib/redux";
@@ -22,7 +22,7 @@ import {
   OptionsRoot,
 } from "./NewModelOptions.styled";
 
-const EDUCATIONAL_LINK = getLearnUrl("data-modeling/models");
+const EDUCATIONAL_LINK = getLearnUrl("metabase-basics/getting-started/models");
 
 interface NewModelOptionsProps {
   location: Location;
@@ -34,7 +34,7 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   const hasDataAccess = getHasDataAccess(databases);
   const hasNativeWrite = getHasNativeWrite(databases);
 
-  const lastUsedDatabaseId = useSelector(state =>
+  const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
   );
 
@@ -88,11 +88,11 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
               description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
               to={Urls.newQuestion({
                 mode: "query",
-                type: "native",
+                DEPRECATED_RAW_MBQL_type: "native",
                 creationType: "native_question",
                 cardType: "model",
                 collectionId,
-                databaseId: lastUsedDatabaseId || undefined,
+                DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
               })}
               width={180}
             />

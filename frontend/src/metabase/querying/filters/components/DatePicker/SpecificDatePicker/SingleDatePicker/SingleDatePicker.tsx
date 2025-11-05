@@ -1,8 +1,8 @@
-import type { FormEvent } from "react";
-import { t } from "ttag";
+import type { FormEvent, ReactNode } from "react";
 
-import { Box, Button, Divider, Group } from "metabase/ui";
+import { Box, Divider, Group } from "metabase/ui";
 
+import { renderDefaultSubmitButton } from "../../utils";
 import { TimeToggle } from "../TimeToggle";
 import { clearTimePart } from "../utils";
 
@@ -11,19 +11,21 @@ import type { SingleDatePickerValue } from "./types";
 
 interface SingleDatePickerProps {
   value: SingleDatePickerValue;
-  isNew: boolean;
   hasTimeToggle: boolean;
+  renderSubmitButton?: () => ReactNode;
   onChange: (value: SingleDatePickerValue) => void;
   onSubmit: () => void;
 }
 
 export function SingleDatePicker({
-  value: { date, hasTime },
-  isNew,
+  value,
   hasTimeToggle,
+  renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onSubmit,
 }: SingleDatePickerProps) {
+  const { date, hasTime } = value;
+
   const handleDateChange = (newDate: Date) => {
     onChange({ date: newDate, hasTime });
   };
@@ -47,13 +49,11 @@ export function SingleDatePicker({
         />
       </Box>
       <Divider />
-      <Group p="sm" position={hasTimeToggle ? "apart" : "right"}>
+      <Group p="sm" justify={hasTimeToggle ? "space-between" : "flex-end"}>
         {hasTimeToggle && (
           <TimeToggle hasTime={hasTime} onClick={handleTimeToggle} />
         )}
-        <Button variant="filled" type="submit">
-          {isNew ? t`Add filter` : t`Update filter`}
-        </Button>
+        {renderSubmitButton()}
       </Group>
     </form>
   );

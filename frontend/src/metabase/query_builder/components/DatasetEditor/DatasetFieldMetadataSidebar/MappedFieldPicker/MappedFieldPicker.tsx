@@ -4,7 +4,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { useGetFieldQuery } from "metabase/api";
-import SelectButton from "metabase/core/components/SelectButton";
+import SelectButton from "metabase/common/components/SelectButton";
 import CS from "metabase/css/core/index.css";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Text } from "metabase/ui";
@@ -66,13 +66,16 @@ function MappedFieldPicker({
 
     return (
       <SelectButton
-        className={cx(
-          MappedFieldPickerS.StyledSelectButton,
-          {
-            [MappedFieldPickerS.hasValue]: fieldObject,
-          },
-          className,
-        )}
+        classNames={{
+          root: cx(
+            MappedFieldPickerS.StyledSelectButton,
+            {
+              [MappedFieldPickerS.hasValue]: fieldObject,
+            },
+            className,
+          ),
+          icon: MappedFieldPickerS.StyledSelectIcon,
+        }}
         hasValue={!!fieldObject}
         tabIndex={tabIndex}
         ref={selectButtonRef as any}
@@ -97,7 +100,7 @@ function MappedFieldPicker({
 
   return (
     <>
-      <Text fw="bold" color="text-medium">
+      <Text fw="bold" c="text-medium">
         {label}
       </Text>
       <SchemaTableAndFieldDataSelector

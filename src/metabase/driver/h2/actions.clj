@@ -3,11 +3,11 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [metabase.actions.core :as actions]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru deferred-trun]]
+   [metabase.util.i18n :refer [deferred-trun tru]]
    [metabase.util.log :as log]))
 
 (defmethod sql-jdbc.actions/base-type->sql-type-map :h2
@@ -63,7 +63,7 @@
       [[] nil nil]
       (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false})))))
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 actions/violate-not-null-constraint]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 driver-api/violate-not-null-constraint]
   [_driver error-type _database _action-type error-message]
   (when-let [[_ column]
              (re-find #"NULL not allowed for column \"([^\"]+)\"" error-message)]
@@ -71,7 +71,7 @@
      :message (tru "{0} must have values." (str/capitalize column))
      :errors  {column (tru "You must provide a value.")}}))
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 actions/violate-unique-constraint]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 driver-api/violate-unique-constraint]
   [_driver error-type database _action-type error-message]
   (when-let [[_match constraint-name table]
              (re-find #"Unique index or primary key violation: \"[^.]+.(.+?) ON [^.]+.\"\"(.+?)\"\"" error-message)]
@@ -83,29 +83,56 @@
                         {}
                         columns)})))
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 actions/violate-foreign-key-constraint]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 driver-api/violate-foreign-key-constraint]
   [_driver error-type _database action-type error-message]
-  (when-let [[_match column]
-             (re-find #"Referential integrity constraint violation: \"[^\:]+: [^\s]+ FOREIGN KEY\(([^\s]+)\)" error-message)]
-    (let  [column (db-identifier->name column)]
+  (when-let [[_match column table]
+             (re-find #"Referential integrity constraint violation: \"[^\:]+: [^\s]+ FOREIGN KEY\(([^\s]+)\) REFERENCES ([^(]+)" error-message)]
+    (let [column (db-identifier->name column)
+          table  (-> table (str/replace #"^PUBLIC\." "") (str/replace "\"\"" "") u/lower-case-en)]
       (merge {:type error-type}
              (case action-type
-               :row/create
+               (:table.row/create :model.row/create)
                {:message (tru "Unable to create a new record.")
-                :errors {column (tru "This {0} does not exist." (str/capitalize column))}}
+                :errors {column (tru "This value does not exist in table \"{0}\"." table)}}
 
-               :row/delete
-               {:message (tru "Other tables rely on this row so it cannot be deleted.")
+               (:table.row/delete :model.row/delete)
+               {:message (tru "Other rows refer to this row so it cannot be deleted.")
                 :errors  {}}
 
-               :row/update
+               (:table.row/update :model.row/update)
                {:message (tru "Unable to update the record.")
-                :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))))
+                :errors  {column (tru "This value does not exist in table \"{0}\"." table)}})))))
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 actions/incorrect-value-type]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 driver-api/incorrect-value-type]
   [_driver error-type _database _action-type error-message]
   (when-let [[_ _expected-type _value]
              (re-find #"Data conversion error converting .*" error-message)]
     {:type    error-type
      :message (tru "Some of your values aren’t of the correct type for the database.")
+     :errors  {}}))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 driver-api/violate-permission-constraint]
+  [_driver error-type _database action-type error-message]
+  (when-let [[_match _table-name]
+             (re-find #"Not enough rights for object \"(.+)\"" error-message)]
+    (merge {:type error-type}
+           (case action-type
+             (:table.row/create :model.row/create)
+             {:message (tru "You don''t have permission to add data to this table.")
+              :errors  {}}
+
+             (:table.row/update :model.row/update)
+             {:message (tru "You don''t have permission to update data in this table.")
+              :errors  {}}
+
+             (:table.row/delete :model.row/delete)
+             {:message (tru "You don''t have permission to delete data from this table.")
+              :errors  {}}))))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 driver-api/violate-check-constraint]
+  [_driver error-type _database _action-type error-message]
+  (when-let [[_match constraint-name]
+             (re-find #"Check constraint violation: \"([^\"]+)\"" error-message)]
+    {:type    error-type
+     :message (tru "Some of your values violate the constraint: {0}" constraint-name)
      :errors  {}}))

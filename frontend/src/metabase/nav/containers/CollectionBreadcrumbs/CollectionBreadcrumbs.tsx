@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { useLocation } from "react-use";
 
 import { useGetCollectionQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
@@ -26,12 +26,15 @@ export const CollectionBreadcrumbs = (props: CollectionBreadcrumbsProps) => {
   const { data: collection } = useGetCollectionQuery({ id: collectionId });
 
   const question = useSelector(getQuestion);
+  const { pathname } = useLocation();
+  const isOnQuestionPage = pathname && /\/question\//.test(pathname);
+  const dashboard = isOnQuestionPage ? question?.dashboard() : undefined;
 
   return (
     <Breadcrumbs
       {...props}
       collection={collection}
-      dashboard={question?.dashboard()}
+      dashboard={dashboard}
       baseCollectionId={props.baseCollectionId ?? null}
     />
   );

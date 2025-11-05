@@ -16,7 +16,7 @@ export function getOptionFromColumn(col) {
 export function metricSetting(id, def = {}) {
   return fieldSetting(id, {
     fieldFilter: isMetric,
-    getDefault: series => getDefaultDimensionAndMetric(series).metric,
+    getDefault: (series) => getDefaultDimensionAndMetric(series).metric,
     ...def,
   });
 }
@@ -24,12 +24,12 @@ export function metricSetting(id, def = {}) {
 export function dimensionSetting(id, def = {}) {
   return fieldSetting(id, {
     fieldFilter: isDimension,
-    getDefault: series => getDefaultDimensionAndMetric(series).dimension,
+    getDefault: (series) => getDefaultDimensionAndMetric(series).dimension,
     ...def,
   });
 }
 
-const DEFAULT_FIELD_FILTER = column => true;
+const DEFAULT_FIELD_FILTER = (column) => true;
 
 export function getDefaultColumn(
   series,
@@ -40,6 +40,16 @@ export function getDefaultColumn(
   return data.cols.find(fieldFilter)?.name;
 }
 
+/**
+ * @typedef {import("metabase/visualizations/types").VisualizationSettingsDefinitions} VisualizationSettingsDefinitions
+ * @typedef {(column: DatasetColumn) => boolean} FieldFilterFn
+ */
+
+/**
+ * @param {string} id
+ * @param {VisualizationSettingsDefinitions[string] & { fieldFilter?: FieldFilterFn }} settings
+ * @returns {VisualizationSettingsDefinitions}
+ */
 export function fieldSetting(
   id,
   {
@@ -65,4 +75,8 @@ export function fieldSetting(
       ...def,
     },
   };
+}
+
+export function getDeduplicatedTableColumnSettings(tableColumnsSettings) {
+  return _.uniq(tableColumnsSettings, false, (item) => item.name);
 }

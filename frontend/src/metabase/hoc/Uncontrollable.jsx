@@ -6,7 +6,7 @@ import { getDisplayName } from "./utils";
 // wraps a component that takes `value` and `onChange` and allows it to be "uncontrolled"
 // i.e. https://reactjs.org/docs/uncontrolled-components.html
 
-const Uncontrollable = () => WrappedComponent =>
+const Uncontrollable = () => (WrappedComponent) =>
   class extends Component {
     static displayName = `Uncontrollable(${getDisplayName(WrappedComponent)})`;
 
@@ -26,7 +26,7 @@ const Uncontrollable = () => WrappedComponent =>
       defaultValue: PropTypes.any,
     };
 
-    handleChange = e => {
+    handleChange = (e) => {
       this.setState({ value: e.target.value });
       this.props.onChange?.(e);
     };

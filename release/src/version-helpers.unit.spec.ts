@@ -1,12 +1,19 @@
 import type { Tag } from "./types";
 import {
+  filterOutNonSupportedPrereleaseIdentifier,
   findNextPatchVersion,
   getBuildRequirements,
+  getDotXs,
   getEnterpriseVersion,
+  getExtraTagsForVersion,
   getGenericVersion,
   getLastReleaseFromTags,
+  getMajorVersion,
+  getMajorVersionFromRef,
   getMajorVersionNumberFromReleaseBranch,
   getMilestoneName,
+  getMinorVersion,
+  getNextSdkVersion,
   getNextVersions,
   getOSSVersion,
   getReleaseBranch,
@@ -40,7 +47,7 @@ describe("version-helpers", () => {
       "v0.11.0-RC7", // legacy RC format
     ];
 
-    validCases.forEach(input => {
+    validCases.forEach((input) => {
       it(`should recognize ${input} as valid`, () => {
         expect(isValidVersionString(input)).toEqual(true);
       });
@@ -69,7 +76,7 @@ describe("version-helpers", () => {
       "v0.11-RC7",
     ];
 
-    invalidCases.forEach(input => {
+    invalidCases.forEach((input) => {
       it(`should recognize ${input} as invalid`, () => {
         expect(isValidVersionString(input)).toEqual(false);
       });
@@ -83,7 +90,7 @@ describe("version-helpers", () => {
         "v0.3.4-alpha",
       ];
 
-      cases.forEach(input => {
+      cases.forEach((input) => {
         expect(isValidVersionString(input)).toEqual(true);
       });
     });
@@ -130,7 +137,7 @@ describe("version-helpers", () => {
     it("should correctly identify non-enterprise version numbers", () => {
       const cases = ["v0.12", "v0.1.0", "v0.1.2.0", "v0.50", "v0.54.2-beta"];
 
-      cases.forEach(input => {
+      cases.forEach((input) => {
         expect(isEnterpriseVersion(input)).toEqual(false);
       });
     });
@@ -143,31 +150,33 @@ describe("version-helpers", () => {
 
   describe("isPreReleaseVersion", () => {
     it("should correctly identify RC version numbers", () => {
-      ["v0.75.0-RC", "v1.75.0-RC", "v0.75.2.9.7-rc"].forEach(input => {
+      ["v0.75.0-RC", "v1.75.0-RC", "v0.75.2.9.7-rc"].forEach((input) => {
         expect(isPreReleaseVersion(input)).toEqual(true);
       });
     });
 
     it("should correctly identify alpha version numbers", () => {
-      ["v0.75.0-alpha", "v1.75.0-alpha", "v0.75.2.9.7-alpha"].forEach(input => {
-        expect(isPreReleaseVersion(input)).toEqual(true);
-      });
+      ["v0.75.0-alpha", "v1.75.0-alpha", "v0.75.2.9.7-alpha"].forEach(
+        (input) => {
+          expect(isPreReleaseVersion(input)).toEqual(true);
+        },
+      );
     });
 
     it("should correctly identify beta version numbers", () => {
-      ["v0.75.0-beta", "v1.75.0-beta", "v0.75.2.9.7-beta"].forEach(input => {
+      ["v0.75.0-beta", "v1.75.0-beta", "v0.75.2.9.7-beta"].forEach((input) => {
         expect(isPreReleaseVersion(input)).toEqual(true);
       });
     });
 
     it("should correctly identify non-RC version numbers", () => {
-      ["v0.75", "v1.2"].forEach(input => {
+      ["v0.75", "v1.2"].forEach((input) => {
         expect(isPreReleaseVersion(input)).toEqual(false);
       });
     });
 
     it("should return false for invalid versions", () => {
-      ["123", "foo", "rc", "parc", "v9.9-rc2"].forEach(input => {
+      ["123", "foo", "rc", "parc", "v9.9-rc2"].forEach((input) => {
         expect(isPreReleaseVersion(input)).toEqual(false);
       });
     });
@@ -212,7 +221,7 @@ describe("version-helpers", () => {
       "v1.75.2.3.4",
     ];
 
-    cases.forEach(input => {
+    cases.forEach((input) => {
       it(`should return release-x.75.x for ${input}`, () => {
         expect(getReleaseBranch(input)).toEqual(`release-x.75.x`);
       });
@@ -247,7 +256,7 @@ describe("version-helpers", () => {
         "release-x.75.x-test",
         "refs/heads/release-x",
       ];
-      cases.forEach(input => {
+      cases.forEach((input) => {
         expect(() => getVersionFromReleaseBranch(input)).toThrow();
       });
     });
@@ -258,6 +267,7 @@ describe("version-helpers", () => {
       expect(getBuildRequirements("v1.47.2.1")).toEqual({
         node: 18,
         java: 11,
+        platforms: "linux/amd64",
       });
     });
 
@@ -265,6 +275,7 @@ describe("version-helpers", () => {
       expect(getBuildRequirements("v0.47.2.1")).toEqual({
         node: 18,
         java: 11,
+        platforms: "linux/amd64",
       });
     });
 
@@ -272,6 +283,7 @@ describe("version-helpers", () => {
       expect(getBuildRequirements("v0.47.0")).toEqual({
         node: 18,
         java: 11,
+        platforms: "linux/amd64",
       });
     });
 
@@ -279,6 +291,7 @@ describe("version-helpers", () => {
       expect(getBuildRequirements("v0.47.0-RC7")).toEqual({
         node: 18,
         java: 11,
+        platforms: "linux/amd64",
       });
     });
 
@@ -289,8 +302,9 @@ describe("version-helpers", () => {
 
     it("should use the latest build requirements for a version that has not been released", () => {
       expect(getBuildRequirements("v0.99.0")).toEqual({
-        node: 18,
-        java: 11,
+        node: 22,
+        java: 21,
+        platforms: "linux/amd64,linux/arm64",
       });
     });
   });
@@ -418,6 +432,7 @@ describe("version-helpers", () => {
           { ref: "refs/tags/v0.12.0" },
           { ref: "refs/tags/v0.12.2" },
           { ref: "refs/tags/v0.12.1" },
+          { ref: "refs/tags/v0.12.x" },
         ] as Tag[],
       });
       expect(latest).toBe("v0.12.2");
@@ -500,6 +515,21 @@ describe("version-helpers", () => {
         ignorePreReleases: true,
       });
       expect(latest).toBe("v0.12.1");
+    });
+
+    it("should ignore .x releases", () => {
+      const latest = getLastReleaseFromTags({
+        tags: [
+          { ref: "refs/tags/v0.11.x" },
+          { ref: "refs/tags/v0.20.x-beta" },
+          { ref: "refs/tags/v0.20.2.3.x" },
+          { ref: "refs/tags/v0.12.0" },
+          { ref: "refs/tags/v0.12.1" },
+          { ref: "refs/tags/v0.12.2" },
+          { ref: "refs/tags/v0.19.x" },
+        ] as Tag[],
+      });
+      expect(latest).toBe("v0.12.2");
     });
   });
 
@@ -650,6 +680,27 @@ describe("version-helpers", () => {
     });
   });
 
+  describe("getMajorVersionFromRef", () => {
+    it("should get major version from a tag", () => {
+      expect(getMajorVersionFromRef("refs/tags/v0.56.x")).toEqual("56");
+
+      expect(getMajorVersionFromRef("refs/tags/v1.56.0")).toEqual("56");
+
+      expect(getMajorVersionFromRef("refs/tags/v0.51.2.x")).toEqual("51");
+
+      expect(getMajorVersionFromRef("refs/tags/v0.51.0-beta")).toEqual("51");
+
+      expect(getMajorVersionFromRef("refs/tags/v0.51.2.3")).toEqual("51");
+
+      expect(getMajorVersionFromRef("refs/tags/v0.51.10")).toEqual("51");
+    });
+
+    it("should get major version from a release branch", () => {
+      expect(getMajorVersionFromRef("refs/heads/release-x.51.x")).toEqual("51");
+      expect(getMajorVersionFromRef("release-x.52.x")).toEqual("52");
+    });
+  });
+
   describe("getSdkVersionFromReleaseTagName", () => {
     it("should resolve sdk package version from assigned release tag", () => {
       expect(getSdkVersionFromReleaseTagName("embedding-sdk-0.51.9")).toEqual(
@@ -660,6 +711,213 @@ describe("version-helpers", () => {
       ).toEqual("0.52.2-nightly");
 
       expect(() => getSdkVersionFromReleaseTagName("v0.51.5.1")).toThrow();
+    });
+  });
+
+  describe("getDotXs", () => {
+    it("should return the correct major dot Xs", () => {
+      expect(getDotXs("v1.75.0", 1)).toEqual("v1.75.x");
+      expect(getDotXs("v1.75.2", 1)).toEqual("v1.75.x");
+      expect(getDotXs("v1.75-beta", 1)).toEqual("v1.75.x");
+
+      expect(getDotXs("v1.75.0-beta", 1)).toEqual("v1.75.x");
+      expect(getDotXs("v1.75.0.1", 1)).toEqual("v1.75.x");
+      expect(getDotXs("v1.75.0.1-beta", 1)).toEqual("v1.75.x");
+
+      expect(getDotXs("v0.75.0", 1)).toEqual("v0.75.x");
+      expect(getDotXs("v0.75.34.1234", 1)).toEqual("v0.75.x");
+    });
+
+    it("should return the correct minor dot Xs", () => {
+      expect(getDotXs("v1.75.2.1", 2)).toEqual("v1.75.2.x");
+      expect(getDotXs("v1.75.2-beta", 2)).toEqual("v1.75.2.x");
+
+      expect(getDotXs("v0.75.2.1", 2)).toEqual("v0.75.2.x");
+      expect(getDotXs("v0.75.2.1-beta", 2)).toEqual("v0.75.2.x");
+    });
+  });
+
+  describe("getExtraTagsForVersion", () => {
+    it("should return the correct extra tags for a major version", () => {
+      expect(getExtraTagsForVersion({ version: "v1.75.0" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+      ]);
+
+      expect(getExtraTagsForVersion({ version: "v0.75.0" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+      ]);
+    });
+
+    it("should return the correct extra tags for a minor version", () => {
+      expect(getExtraTagsForVersion({ version: "v1.75.1" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+        "v0.75.1.x",
+        "v1.75.1.x",
+      ]);
+
+      expect(getExtraTagsForVersion({ version: "v0.75.1" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+        "v0.75.1.x",
+        "v1.75.1.x",
+      ]);
+    });
+
+    it("should return the correct extra tags for a patch version", () => {
+      expect(getExtraTagsForVersion({ version: "v1.75.1.3" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+        "v0.75.1.x",
+        "v1.75.1.x",
+      ]);
+
+      expect(getExtraTagsForVersion({ version: "v0.75.1.3" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+        "v0.75.1.x",
+        "v1.75.1.x",
+      ]);
+    });
+
+    it("should return the correct extra tags for a beta version", () => {
+      expect(getExtraTagsForVersion({ version: "v1.75.0-beta" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+      ]);
+
+      expect(getExtraTagsForVersion({ version: "v1.75.1-beta" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+        "v0.75.1.x",
+        "v1.75.1.x",
+      ]);
+
+      expect(getExtraTagsForVersion({ version: "v0.75.1.2-beta" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+        "v0.75.1.x",
+        "v1.75.1.x",
+      ]);
+    });
+  });
+
+  describe("filterOutNonSupportedPrereleaseIdentifier", () => {
+    function createTags(versions: string[]): Tag[] {
+      return versions.map(
+        (tag) => ({ ref: `refs/tags/embedding-sdk-${tag}` }) as Tag,
+      );
+    }
+
+    it("should ignore prerelease labels that are not `nightly` when passing refs", () => {
+      const filteredTags = createTags([
+        "0.55.0",
+        "0.55.0-nightly",
+        "0.55.0-rc1",
+        "0.55.0-rc2",
+        "0.55.0-beta",
+        "0.55.0-alpha",
+        "0.55.5-metabot",
+      ]).filter(filterOutNonSupportedPrereleaseIdentifier);
+
+      expect(filteredTags).toEqual(createTags(["0.55.0", "0.55.0-nightly"]));
+    });
+  });
+
+  describe("getMajorVersion", () => {
+    it.each([
+      ["v0.52.3", "52"],
+      ["v1.52", "52"],
+      ["v1.43.2.1", "43"],
+    ])("%s -> %s", (input, expected) => {
+      expect(getMajorVersion(input)).toBe(expected);
+    });
+  });
+
+  describe("getMinorVersion", () => {
+    it.each([
+      ["v0.52.3", "3"],
+      ["v1.52", "0"],
+      ["v1.43.2.1", "2"],
+    ])("%s -> %s", (input, expected) => {
+      expect(getMinorVersion(input)).toBe(expected);
+    });
+  });
+
+  describe("getNextSdkVersion", () => {
+    describe("master branch (pre-release versions)", () => {
+      it("should increment pre-release version if suffix exists", () => {
+        const result = getNextSdkVersion("master", "0.57.0-alpha.1");
+        expect(result).toEqual({
+          version: "0.57.0-alpha.2",
+          preReleaseLabel: "alpha",
+          majorVersion: "57",
+        });
+      });
+
+      it("should set next pre-release version to .1 if no numeric part in suffix", () => {
+        const result = getNextSdkVersion("master", "0.57.0-alpha");
+        expect(result).toEqual({
+          version: "0.57.0-alpha.0",
+          preReleaseLabel: "alpha",
+          majorVersion: "57",
+        });
+      });
+
+      it("should throw an error if no suffix is provided on master branch", () => {
+        expect(() => getNextSdkVersion("master", "0.57.0")).toThrow(
+          "Expected pre-release suffix on master branch, got: 0.57.0",
+        );
+      });
+    });
+
+    describe("release/stable branches (non-master)", () => {
+      it("should increment patch version when no suffix", () => {
+        const result = getNextSdkVersion("release-x.57.x", "0.57.0");
+        expect(result).toEqual({
+          version: "0.57.1",
+          preReleaseLabel: "",
+          majorVersion: "57",
+        });
+      });
+
+      it("should set proper initial patch version for a next major release", () => {
+        const result = getNextSdkVersion("release-x.57.x", "0.57.x");
+        expect(result).toEqual({
+          version: "0.57.0",
+          preReleaseLabel: "",
+          majorVersion: "57",
+        });
+      });
+
+      it("should set initial pre-release version when suffix is preset, but pre-release version is not", () => {
+        const result = getNextSdkVersion("release-x.57.x", "0.57.0-beta");
+        expect(result).toEqual({
+          version: "0.57.0-beta.0",
+          preReleaseLabel: "",
+          majorVersion: "57",
+        });
+      });
+
+      it("should set proper initial patch version when pre-release suffix is preset", () => {
+        const result = getNextSdkVersion("release-x.57.x", "0.57.x-beta");
+        expect(result).toEqual({
+          version: "0.57.0-beta.0",
+          preReleaseLabel: "",
+          majorVersion: "57",
+        });
+      });
+
+      it("should increment pre-release version", () => {
+        const result = getNextSdkVersion("release-x.57.x", "0.57.0-beta.0");
+        expect(result).toEqual({
+          version: "0.57.0-beta.1",
+          preReleaseLabel: "",
+          majorVersion: "57",
+        });
+      });
     });
   });
 });

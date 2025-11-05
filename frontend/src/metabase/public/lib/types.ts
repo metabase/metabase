@@ -1,4 +1,9 @@
-import type { Card, Dashboard } from "metabase-types/api";
+import type { CodeLanguage } from "metabase/common/components/CodeEditor";
+import type {
+  Card,
+  Dashboard,
+  ParameterValueOrArray,
+} from "metabase-types/api";
 
 export type DisplayTheme = "light" | "night" | "transparent";
 
@@ -8,7 +13,7 @@ export type EmbedResource = (Card | Dashboard) & {
   embedding_params?: EmbeddingParameters | null;
 };
 
-export type EmbedResourceType = "dashboard" | "question";
+export type EmbedResourceType = "dashboard" | "question" | "document";
 
 export type EmbedResourceParameter = {
   id: string;
@@ -16,14 +21,24 @@ export type EmbedResourceParameter = {
   slug: string;
   type: string;
   required?: boolean;
-  default?: unknown;
+  default?: ParameterValueOrArray | null;
 };
+
+export type EmbedResourceDownloadOptions = {
+  pdf?: boolean;
+  results?: boolean;
+};
+
+export type EmbeddingType = "static-legacy";
 
 export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
 
 export type EmbeddingParameters = Record<string, EmbeddingParameterVisibility>;
 
-export type EmbeddingParametersValues = Record<string, string>;
+export type EmbeddingParametersValues = Record<
+  string,
+  number | string | string[] | null | undefined
+>;
 
 /**
  * This is a type for all the display options in static embedding sharing modal's Look and Feel tab.
@@ -34,9 +49,7 @@ export type EmbeddingDisplayOptions = {
   background: boolean;
   bordered: boolean;
   titled: boolean;
-  /** this is deprecated in favor of `downloads`, but it's still supported */
-  hide_download_button?: boolean | null;
-  downloads: boolean | null;
+  downloads: EmbedResourceDownloadOptions | null;
 };
 
 /**
@@ -49,7 +62,9 @@ export type EmbeddingAdditionalHashOptions = {
   locale?: string;
 };
 
-export type EmbeddingHashOptions = EmbeddingDisplayOptions &
+export type EmbeddingHashOptions = {
+  downloads: string | boolean | null;
+} & Omit<EmbeddingDisplayOptions, "downloads"> &
   EmbeddingAdditionalHashOptions;
 
 export type CodeSampleParameters = {
@@ -58,14 +73,15 @@ export type CodeSampleParameters = {
   resourceType: EmbedResourceType;
   resourceId: EmbedResource["id"];
   params: EmbeddingParametersValues;
-  displayOptions: EmbeddingDisplayOptions;
+  displayOptions?: EmbeddingDisplayOptions;
+  withIframeSnippet: boolean;
 };
 
 export type ClientCodeSampleConfig = {
   id: string;
   name: string;
   source: string;
-  mode: string;
+  language: CodeLanguage;
 };
 
 export type ServerCodeSampleConfig = {
@@ -74,8 +90,8 @@ export type ServerCodeSampleConfig = {
   source: string;
   parametersSource: string;
   getIframeQuerySource: string;
-  mode: string;
   embedOption?: string;
+  language: CodeLanguage;
 };
 
 export type CodeSampleOption = ClientCodeSampleConfig | ServerCodeSampleConfig;

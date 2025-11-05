@@ -1,18 +1,19 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import {
   TableColumn,
   hideResponsively,
-} from "metabase/components/ItemsTable/BaseItemsTable.styled";
-import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
-import Link from "metabase/core/components/Link";
+} from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
+import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
+import Link from "metabase/common/components/Link";
 import { breakpoints } from "metabase/ui/theme";
 
 export const TableRow = styled.tr<{ skeleton?: boolean }>`
   :focus {
     outline: 2px solid var(--mb-color-focus);
   }
-  ${props =>
+  ${(props) =>
     props.skeleton
       ? `
           :hover { background-color: unset ! important; }
@@ -26,7 +27,6 @@ export const Cell = styled.td<ResponsiveProps>`
     padding: 0.25em 0.5rem 0.25em 0.5rem;
   }
 
-  &:focus-within,
   &:focus {
     outline: 2px solid var(--mb-color-focus);
 
@@ -42,11 +42,11 @@ export const Cell = styled.td<ResponsiveProps>`
 export const NameColumn = styled(TableColumn)`
   width: 220px;
 
-  @container ${props => props.containerName} (max-width: ${breakpoints.md}) {
+  @container ${(props) => props.containerName} (max-width: ${breakpoints.md}) {
     width: 220px;
   }
 
-  @container ${props => props.containerName} (max-width: ${breakpoints.sm}) {
+  @container ${(props) => props.containerName} (max-width: ${breakpoints.sm}) {
     width: 160px;
   }
 `;

@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
+import { PublicLinkCopyPanel } from "metabase/embedding/components/PublicLinkPopover/PublicLinkCopyPanel";
 import { trackPublicEmbedCodeCopied } from "metabase/public/lib/analytics";
-import { PublicLinkCopyPanel } from "metabase/sharing/components/PublicLinkPopover/PublicLinkCopyPanel";
 import {
   Button,
   Center,
@@ -30,17 +30,16 @@ export const PublicEmbedCard = ({
   }, [publicEmbedCode, isOpen]);
 
   return (
-    <Group spacing="xs">
+    <Group gap="xs">
       <Text>
         {jt`Use ${(
-          <Text span fw="bold" key="bold">
+          <Text component="span" fw="bold" key="bold">
             {t`public embedding`}
           </Text>
         )} to add a publicly-visible iframe embed to your web page or blog
     post.`}
       </Text>
       <Popover
-        width={200}
         position="bottom"
         withArrow
         shadow="md"
@@ -53,7 +52,7 @@ export const PublicEmbedCard = ({
           <Button
             variant="subtle"
             p={0}
-            onClick={() => setIsOpen(value => !value)}
+            onClick={() => setIsOpen((value) => !value)}
           >{t`Get embedding code`}</Button>
         </Popover.Target>
         <Popover.Dropdown>
@@ -65,7 +64,7 @@ export const PublicEmbedCard = ({
             ) : (
               <PublicLinkCopyPanel
                 url={publicEmbedCode}
-                onRemoveLink={e => {
+                onRemoveLink={(e) => {
                   setIsOpen(false);
                   deletePublicLink(e);
                 }}

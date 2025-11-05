@@ -1,11 +1,13 @@
 /* eslint-disable react/prop-types */
+import { t } from "ttag";
+
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import CS from "metabase/css/core/index.css";
-import { NewQuestionHeader } from "metabase/query_builder/components/view/NewQuestionHeader";
-import { Box, Transition } from "metabase/ui";
+import { Box, Flex, Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ViewTitleHeader } from "../../ViewHeader";
+import ViewSection, { ViewHeading } from "../../ViewSection";
 
 import ViewHeaderContainerS from "./ViewHeaderContainer.module.css";
 
@@ -14,7 +16,7 @@ const fadeIn = {
   out: { opacity: 0 },
   transitionProperty: "opacity",
 };
-export const ViewHeaderContainer = props => {
+export const ViewHeaderContainer = (props) => {
   const { question, onUnarchive, onMove, onDeletePermanently } = props;
   const query = question.query();
   const card = question.card();
@@ -32,7 +34,7 @@ export const ViewHeaderContainer = props => {
           canRestore={card.can_restore}
           canDelete={card.can_delete}
           onUnarchive={() => onUnarchive(question)}
-          onMove={collection => onMove(question, collection)}
+          onMove={(collection) => onMove(question, collection)}
           onDeletePermanently={() => onDeletePermanently(card.id)}
         />
       )}
@@ -47,12 +49,18 @@ export const ViewHeaderContainer = props => {
       />
       {/*This is used so that the New Question Header is unmounted after the animation*/}
       <Transition mounted={isNewQuestion} transition={fadeIn} duration={300}>
-        {style => (
-          <NewQuestionHeader
+        {(style) => (
+          <ViewSection
             className={CS.spread}
-            style={style}
-            saveToDashboardId={card.dashboard_id}
-          />
+            style={{
+              ...style,
+              borderBottom: "1px solid var(--mb-color-border)",
+            }}
+          >
+            <Flex direction="column" gap="xs">
+              <ViewHeading>{t`Pick your starting data`}</ViewHeading>
+            </Flex>
+          </ViewSection>
         )}
       </Transition>
     </Box>

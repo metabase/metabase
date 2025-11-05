@@ -1,6 +1,7 @@
+import Color from "color";
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import { color, staticVizOverrides } from "metabase/lib/colors";
 import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_DATA_SETTINGS,
@@ -23,40 +24,51 @@ import { getCartesianChartDefinition } from "../CartesianChart/chart-definition"
 Object.assign(
   WaterfallChart,
   getCartesianChartDefinition({
-    uiName: t`Waterfall`,
+    getUiName: () => t`Waterfall`,
     identifier: "waterfall",
     iconName: "waterfall",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     noun: t`waterfall chart`,
     minSize: getMinSize("waterfall"),
     defaultSize: getDefaultSize("waterfall"),
     maxMetricsSupported: 1,
     maxDimensionsSupported: 1,
+    supportsVisualizer: false,
     settings: {
       ...GRAPH_AXIS_SETTINGS,
       "waterfall.increase_color": {
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         section: t`Display`,
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         props: { title: t`Increase color` },
         widget: "color",
         getDefault: () => color("accent1"),
       },
       "waterfall.decrease_color": {
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         section: t`Display`,
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         props: { title: t`Decrease color` },
         widget: "color",
         getDefault: () => color("accent3"),
       },
       "waterfall.show_total": {
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         section: t`Display`,
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         title: t`Show total`,
         widget: "toggle",
         default: true,
         inline: true,
       },
       "waterfall.total_color": {
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         section: t`Display`,
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         props: { title: t`Total color` },
         widget: "color",
-        getDefault: () => color("text-dark"),
+        // Unfortunately, to get static viz to look right, we need to avoid using alpha colors here
+        getDefault: () => Color(color("text-dark", staticVizOverrides)).hex(),
         getHidden: (_series: any, vizSettings: ComputedVisualizationSettings) =>
           vizSettings["waterfall.show_total"] !== true,
         readDependencies: ["waterfall.show_total"],

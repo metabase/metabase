@@ -1,5 +1,7 @@
 import { createAction } from "redux-actions";
+import { t } from "ttag";
 
+import { getActionErrorMessage } from "metabase/actions/utils";
 import Pulses from "metabase/entities/pulses";
 import {
   NEW_PULSE_TEMPLATE,
@@ -8,6 +10,7 @@ import {
 } from "metabase/lib/pulse";
 import { createThunkAction } from "metabase/lib/redux";
 import { setErrorPage } from "metabase/redux/app";
+import { addUndo } from "metabase/redux/undo";
 import { PulseApi } from "metabase/services";
 
 import { getEditingPulse, getPulseFormInput } from "./selectors";
@@ -64,14 +67,32 @@ export const saveEditingPulse = createThunkAction(
   function () {
     return async function (dispatch, getState) {
       const editingPulse = getEditingPulse(getState());
-      if (editingPulse.id != null) {
-        return Pulses.HACK_getObjectFromAction(
-          await dispatch(Pulses.actions.update(editingPulse)),
+      const isEdit = editingPulse.id != null;
+
+      try {
+        if (isEdit) {
+          return Pulses.HACK_getObjectFromAction(
+            await dispatch(Pulses.actions.update(editingPulse)),
+          );
+        } else {
+          return Pulses.HACK_getObjectFromAction(
+            await dispatch(Pulses.actions.create(editingPulse)),
+          );
+        }
+      } catch (error) {
+        const errorMessage = getActionErrorMessage(error);
+
+        dispatch(
+          addUndo({
+            icon: "warning",
+            toastColor: "error",
+            message: isEdit
+              ? t`Cannot edit subscription. ${errorMessage} Please contact your administrator.`
+              : t`Cannot create subscription. ${errorMessage} Please contact your administrator.`,
+          }),
         );
-      } else {
-        return Pulses.HACK_getObjectFromAction(
-          await dispatch(Pulses.actions.create(editingPulse)),
-        );
+
+        throw error;
       }
     };
   },

@@ -9,11 +9,13 @@ driver:
   connection-properties:
     - merge:
         - host
-        - default: http://localhost
+        - placeholder: http://localhost
+          required: true
     - merge:
         - port
         - display-name: Broker node port
-          default: 8082
+          placeholder: 8082
+          required: true
     - cloud-ip-address-info
     - ssh-tunnel
     - advanced-options-start

@@ -1,3 +1,4 @@
+import { memoize } from "metabase/common/hooks/use-memoized-callback";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
@@ -20,6 +21,7 @@ import type {
   VizSettingsKey,
   WaterFallChartDataDensity,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import { getHexColor } from "metabase/visualizations/lib/color";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import {
   SERIES_COLORS_SETTING_KEY,
@@ -44,7 +46,6 @@ import {
   POSITIVE_STACK_TOTAL_DATA_KEY,
 } from "../constants/dataset";
 import { CHART_STYLE } from "../constants/style";
-import { cachedFormatter } from "../utils/formatter";
 import { WATERFALL_VALUE_KEY } from "../waterfall/constants";
 
 import { getFormattingOptionsWithoutScaling } from "./util";
@@ -92,7 +93,7 @@ const createLegacySeriesObjectKey = (
 export const getBreakoutDistinctValues = (
   data: DatasetData,
   breakoutIndex: number,
-) => Array.from(new Set<RowValue>(data.rows.map(row => row[breakoutIndex])));
+) => Array.from(new Set<RowValue>(data.rows.map((row) => row[breakoutIndex])));
 
 const getDefaultSeriesName = (
   columnDisplayNameOrFormattedBreakoutValue: string,
@@ -161,58 +162,63 @@ export const getCardSeriesModels = (
 
   // Charts without breakout have one series per selected metric column.
   if (!hasBreakout) {
-    return columns.metrics.map(metric => {
-      const vizSettingsKey = getSeriesVizSettingsKey(
-        metric.column,
-        hasMultipleCards,
-        isFirstCard,
-        columns.metrics.length,
-        null,
-        card.name,
-      );
-      const legacySeriesSettingsObjectKey =
-        createLegacySeriesObjectKey(vizSettingsKey);
-
-      const customName = settings[SERIES_SETTING_KEY]?.[vizSettingsKey]?.title;
-      const tooltipName = customName ?? metric.column.display_name;
-      const name =
-        customName ??
-        getDefaultSeriesName(
-          metric.column.display_name,
+    return columns.metrics
+      .filter((m) => !!m.column)
+      .map((metric) => {
+        const vizSettingsKey = getSeriesVizSettingsKey(
+          metric.column,
           hasMultipleCards,
+          isFirstCard,
           columns.metrics.length,
-          false,
+          null,
           card.name,
         );
+        const legacySeriesSettingsObjectKey =
+          createLegacySeriesObjectKey(vizSettingsKey);
 
-      const color = settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey];
+        const customName =
+          settings[SERIES_SETTING_KEY]?.[vizSettingsKey]?.title;
+        const tooltipName = customName ?? metric.column.display_name;
+        const name =
+          customName ??
+          getDefaultSeriesName(
+            metric.column.display_name,
+            hasMultipleCards,
+            columns.metrics.length,
+            false,
+            card.name,
+          );
 
-      const dataKey = getDatasetKey(metric.column, cardId);
+        const color = getHexColor(
+          settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey],
+        );
 
-      return {
-        name,
-        tooltipName,
-        color,
-        visible: !hiddenSeries.includes(dataKey),
-        cardId,
-        column: metric.column,
-        columnIndex: metric.index,
-        dataKey,
-        vizSettingsKey,
-        legacySeriesSettingsObjectKey,
-        bubbleSizeDataKey:
-          hasBubbleSize && columns.bubbleSize != null
-            ? getDatasetKey(columns.bubbleSize.column, cardId)
-            : undefined,
-      };
-    });
+        const dataKey = getDatasetKey(metric.column, cardId);
+
+        return {
+          name,
+          tooltipName,
+          color,
+          visible: !hiddenSeries.includes(dataKey),
+          cardId,
+          column: metric.column,
+          columnIndex: metric.index,
+          dataKey,
+          vizSettingsKey,
+          legacySeriesSettingsObjectKey,
+          bubbleSizeDataKey:
+            hasBubbleSize && columns.bubbleSize != null
+              ? getDatasetKey(columns.bubbleSize.column, cardId)
+              : undefined,
+        };
+      });
   }
 
   // Charts with breakout have one series per a unique breakout value. They can have only one metric in such cases.
   const { metric, breakout } = columns;
   const breakoutValues = getBreakoutDistinctValues(data, breakout.index);
 
-  return breakoutValues.map(breakoutValue => {
+  return breakoutValues.map((breakoutValue) => {
     // Unfortunately, breakout series include formatted breakout values in the key
     // which can be different based on a user's locale.
     const formattedBreakoutValue =
@@ -247,7 +253,9 @@ export const getCardSeriesModels = (
         card.name,
       );
 
-    const color = settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey];
+    const color = getHexColor(
+      settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey],
+    );
 
     const dataKey = getDatasetKey(metric.column, cardId, breakoutValue);
 
@@ -297,7 +305,7 @@ export function getStackTotalValue(
   signKey: StackTotalDataKey,
 ): number | null {
   let stackValue: number | null = data[signKey] != null ? 0 : null;
-  stackDataKeys.forEach(stackDataKey => {
+  stackDataKeys.forEach((stackDataKey) => {
     const seriesValue = data[stackDataKey];
     if (
       typeof seriesValue === "number" &&
@@ -326,7 +334,7 @@ function shouldRenderCompact(
   }
   // for "auto" we use compact if it shortens avg label length by >3 chars
   const getAvgLength = (compact: boolean) => {
-    const lengths = dataset.map(datum => {
+    const lengths = dataset.map((datum) => {
       const value = getValue(datum);
       return (compact ? compactFormatter(value) : fullFormatter(value)).length;
     });
@@ -367,7 +375,7 @@ export function getWaterfallChartDataDensity(
     size: CHART_STYLE.seriesLabels.size,
   };
 
-  dataset.forEach(datum => {
+  dataset.forEach((datum) => {
     const value = datum[WATERFALL_VALUE_KEY];
 
     if (value == null) {
@@ -413,11 +421,11 @@ export function getComboChartDataDensity(
     stackModels,
     settings,
   );
-  const seriesWithSymbols = seriesModels.filter(seriesModel => {
+  const seriesWithSymbols = seriesModels.filter((seriesModel) => {
     const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
     return ["area", "line"].includes(seriesSettings.display ?? "");
   });
-  const seriesWithLabels = seriesModels.filter(seriesModel => {
+  const seriesWithLabels = seriesModels.filter((seriesModel) => {
     const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
     if (
       ["area", "bar"].includes(seriesSettings.display ?? "") &&
@@ -441,9 +449,9 @@ export function getComboChartDataDensity(
     size: CHART_STYLE.seriesLabels.size,
   };
 
-  dataset.forEach(datum => {
+  dataset.forEach((datum) => {
     totalNumberOfDots += seriesWithSymbols.filter(
-      seriesModel => datum[seriesModel.dataKey] != null,
+      (seriesModel) => datum[seriesModel.dataKey] != null,
     ).length;
 
     // if we will not be displaying any labels, we do not have to calculate the
@@ -456,7 +464,7 @@ export function getComboChartDataDensity(
     }
 
     // series labels count + label width sum
-    seriesWithLabels.forEach(seriesModel => {
+    seriesWithLabels.forEach((seriesModel) => {
       const value = datum[seriesModel.dataKey];
 
       if (value != null) {
@@ -471,7 +479,7 @@ export function getComboChartDataDensity(
 
     // stacked labels count + stacked label width sum
     if (settings["stackable.stack_type"] !== "normalized") {
-      stackModels.forEach(stackModel => {
+      stackModels.forEach((stackModel) => {
         const formatter = stackedLabelsFormatters[stackModel.display];
 
         const positiveStackTotal = getStackTotalValue(
@@ -519,11 +527,11 @@ export function getComboChartDataDensity(
   const seriesDataKeysWithLabels: DataKey[] = [];
   const stackedDisplayWithLabels: StackDisplay[] = [];
   seriesDataKeysWithLabels.push(
-    ...seriesWithLabels.map(series => series.dataKey),
+    ...seriesWithLabels.map((series) => series.dataKey),
   );
   if (settings["stackable.stack_type"] !== "normalized") {
     stackedDisplayWithLabels.push(
-      ...stackModels.map(stackModel => stackModel.display),
+      ...stackModels.map((stackModel) => stackModel.display),
     );
   }
 
@@ -554,7 +562,7 @@ export function getDisplaySeriesSettingsByDataKey(
 
   if (stackModels != null) {
     stackModels.forEach(({ display, seriesKeys }) => {
-      seriesKeys.forEach(seriesKey => {
+      seriesKeys.forEach((seriesKey) => {
         seriesSettingsByKey[seriesKey].display = display;
       });
     });
@@ -579,7 +587,7 @@ const getStackTotalsFormatters = (
   }
 
   return stackModels.map(({ display: stackName, seriesKeys }) => {
-    const seriesModel = seriesModels.find(s => s.dataKey === seriesKeys[0]);
+    const seriesModel = seriesModels.find((s) => s.dataKey === seriesKeys[0]);
     if (!seriesModel) {
       throw new Error(`Missing series model for data key: ${seriesKeys[0]}`);
     }
@@ -602,7 +610,7 @@ const getStackTotalsFormatters = (
       // if either positive or negative need to be compact formatted
       // compact format both
       isCompact = [POSITIVE_STACK_TOTAL_DATA_KEY, NEGATIVE_STACK_TOTAL_DATA_KEY]
-        .map(signKey => {
+        .map((signKey) => {
           const getValue = (datum: Datum) =>
             getStackTotalValue(datum, seriesKeys, signKey);
 
@@ -614,7 +622,7 @@ const getStackTotalsFormatters = (
             settings,
           );
         })
-        .some(isCompact => isCompact);
+        .some((isCompact) => isCompact);
     } else {
       isCompact = settings["graph.label_value_formatting"] === "compact";
     }
@@ -634,7 +642,7 @@ const createSeriesLabelsFormatter = (
   formattingOptions: OptionsType,
   settings: ComputedVisualizationSettings,
 ) =>
-  cachedFormatter((value: RowValue) => {
+  memoize((value) => {
     if (typeof value !== "number") {
       return "";
     }
@@ -655,7 +663,7 @@ const getSeriesLabelsFormattingInfo = (
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
 ) => {
-  return seriesModels.map(seriesModel => {
+  return seriesModels.map((seriesModel) => {
     const getValue = (datum: Datum) => datum[seriesModel.dataKey];
 
     const compactFormatter = createSeriesLabelsFormatter(
@@ -702,7 +710,7 @@ const getSeriesLabelsFormatters = (
     return [];
   }
 
-  const seriesModelsWithLabels = seriesModels.filter(seriesModel => {
+  const seriesModelsWithLabels = seriesModels.filter((seriesModel) => {
     const seriesSettings =
       settings.series(seriesModel.legacySeriesSettingsObjectKey) ?? {};
 
@@ -711,10 +719,10 @@ const getSeriesLabelsFormatters = (
 
   // Non-stacked series formatters
   const stackedSeriesKeys = new Set(
-    stackModels.flatMap(stackModel => stackModel.seriesKeys),
+    stackModels.flatMap((stackModel) => stackModel.seriesKeys),
   );
   const nonStackedSeries = seriesModelsWithLabels.filter(
-    seriesModel => !stackedSeriesKeys.has(seriesModel.dataKey),
+    (seriesModel) => !stackedSeriesKeys.has(seriesModel.dataKey),
   );
 
   const nonStackedSeriesFormattingInfo = getSeriesLabelsFormattingInfo(
@@ -733,10 +741,10 @@ const getSeriesLabelsFormatters = (
   }
 
   const barStackSeriesKeys = new Set(
-    stackModels.find(stackModel => stackModel.display === "bar")?.seriesKeys ??
-      [],
+    stackModels.find((stackModel) => stackModel.display === "bar")
+      ?.seriesKeys ?? [],
   );
-  const barStackSeries = seriesModelsWithLabels.filter(seriesModel =>
+  const barStackSeries = seriesModelsWithLabels.filter((seriesModel) =>
     barStackSeriesKeys.has(seriesModel.dataKey),
   );
   const barSeriesLabelsFormattingInfo = getSeriesLabelsFormattingInfo(

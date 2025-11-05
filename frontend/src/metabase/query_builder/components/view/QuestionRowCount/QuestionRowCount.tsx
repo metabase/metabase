@@ -1,12 +1,17 @@
 import cx from "classnames";
 import { useMemo } from "react";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
+import {
+  type NumberFormatter,
+  useNumberFormatter,
+} from "metabase/common/hooks/use-number-formatter";
+import { formatRowCount } from "metabase/common/utils/format-row-count";
+import { getRowCountMessage } from "metabase/common/utils/get-row-count-message";
 import CS from "metabase/css/core/index.css";
 import Database from "metabase/entities/databases";
-import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import { setLimit } from "metabase/query_builder/actions";
 import LimitPopover from "metabase/query_builder/components/LimitPopover";
@@ -74,14 +79,15 @@ function QuestionRowCount({
   onChangeLimit,
 }: QuestionRowCountProps) {
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
+  const formatNumber = useNumberFormatter();
   const message = useMemo(() => {
     if (isNative) {
-      return isResultDirty ? "" : getRowCountMessage(result);
+      return isResultDirty ? "" : getRowCountMessage(result, formatNumber);
     }
     return isResultDirty
-      ? getLimitMessage(question, result)
-      : getRowCountMessage(result);
-  }, [question, result, isResultDirty, isNative]);
+      ? getLimitMessage(question, result, formatNumber)
+      : getRowCountMessage(result, formatNumber);
+  }, [question, result, isResultDirty, isNative, formatNumber]);
 
   const handleLimitChange = (limit: number) => {
     onChangeLimit(limit > 0 ? limit : null);
@@ -159,18 +165,17 @@ function RowCountLabel({
   );
 }
 
-const formatRowCount = (count: number) => {
-  const countString = formatNumber(count);
-  return ngettext(msgid`${countString} row`, `${countString} rows`, count);
-};
-
-function getLimitMessage(question: Question, result: Dataset): string {
+function getLimitMessage(
+  question: Question,
+  result: Dataset,
+  formatNumber: NumberFormatter,
+): string {
   const limit = Lib.currentLimit(question.query(), -1);
   const isValidLimit =
     typeof limit === "number" && limit > 0 && limit < HARD_ROW_LIMIT;
 
   if (isValidLimit) {
-    return t`Show ${formatRowCount(limit)}`;
+    return t`Show ${formatRowCount(limit, formatNumber)}`;
   }
 
   const hasValidRowCount =
@@ -179,20 +184,10 @@ function getLimitMessage(question: Question, result: Dataset): string {
   if (hasValidRowCount) {
     // The query has been altered but we might still have the old result set,
     // so show that instead of a generic HARD_ROW_LIMIT
-    return t`Showing ${formatRowCount(result.row_count)}`;
+    return t`Showing ${formatRowCount(result.row_count, formatNumber)}`;
   }
 
-  return t`Showing first ${HARD_ROW_LIMIT} rows`;
-}
-
-function getRowCountMessage(result: Dataset): string {
-  if (result.data.rows_truncated > 0) {
-    return t`Showing first ${formatRowCount(result.row_count)}`;
-  }
-  if (result.row_count === HARD_ROW_LIMIT) {
-    return t`Showing first ${HARD_ROW_LIMIT} rows`;
-  }
-  return t`Showing ${formatRowCount(result.row_count)}`;
+  return t`Showing first ${formatRowCount(HARD_ROW_LIMIT, formatNumber)} rows`;
 }
 
 function getDatabaseId(_state: State, { question }: OwnProps & StateProps) {

@@ -1,9 +1,9 @@
 (ns metabase.lib.breakout
+  (:refer-clojure :exclude [mapv not-empty #?(:clj for)])
   (:require
    [clojure.string :as str]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.join :as-alias lib.join]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
@@ -15,7 +15,8 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv not-empty #?(:clj for)]]))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :breakout
   [query stage-number _k]
@@ -33,16 +34,16 @@
     stage-number :- :int]
    (not-empty (:breakout (lib.util/query-stage query stage-number)))))
 
-(mu/defn breakouts-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
+(mu/defn breakouts-metadata :- [:maybe ::lib.metadata.calculation/visible-columns]
   "Get metadata about the breakouts in a given stage of a `query`."
   ([query]
    (breakouts-metadata query -1))
   ([query        :- ::lib.schema/query
     stage-number :- :int]
    (some->> (breakouts query stage-number)
-            (mapv (fn [field-ref]
-                    (-> (lib.metadata.calculation/metadata query stage-number field-ref)
-                        (assoc :lib/source :source/breakouts)))))))
+            (mapv (mu/fn [a-ref :- [:or :mbql.clause/field :mbql.clause/expression]]
+                    (-> (lib.metadata.calculation/metadata query stage-number a-ref)
+                        (assoc :lib/breakout? true)))))))
 
 (mu/defn breakout :- ::lib.schema/query
   "Add a new breakout on an expression, presumably a Field reference. Ignores attempts to add a duplicate breakout."
@@ -52,11 +53,11 @@
     stage-number :- :int
     expr         :- some?]
    (let [expr (if (fn? expr) (expr query stage-number) expr)]
-     (if (lib.schema.util/distinct-refs? (map lib.ref/ref (cons expr (breakouts query stage-number))))
+     (if (lib.schema.util/distinct-mbql-clauses? (map lib.ref/ref (cons expr (breakouts query stage-number))))
        (lib.util/add-summary-clause query stage-number :breakout expr)
        query))))
 
-(mu/defn breakoutable-columns :- [:sequential ::lib.schema.metadata/column]
+(mu/defn breakoutable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get column metadata for all the columns that can be broken out by in
   the stage number `stage-number` of the query `query`
   If `stage-number` is omitted, the last stage is used.
@@ -76,9 +77,8 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [columns (let [stage   (lib.util/query-stage query stage-number)
-                       options {:include-implicitly-joinable-for-source-card? false}]
-                   (lib.metadata.calculation/visible-columns query stage-number stage options))]
+   (let [columns (let [options {:include-implicitly-joinable-for-source-card? false}]
+                   (lib.metadata.calculation/visible-columns query stage-number options))]
      (when (seq columns)
        (let [existing-breakouts         (breakouts query stage-number)
              column->breakout-positions (group-by
@@ -90,7 +90,7 @@
                                                                               {:generous? true}))
                                          (range (count existing-breakouts)))]
          (mapv #(let [positions  (column->breakout-positions %)]
-                  (cond-> (assoc % :lib/hide-bin-bucket? true)
+                  (cond-> %
                     positions (assoc :breakout-positions positions)))
                columns))))))
 
@@ -106,14 +106,12 @@
     {:keys [same-binning-strategy?
             same-temporal-bucket?], :as _options} :- [:maybe
                                                       [:map
-                                                       [:same-binning-strategy? {:optional true} [:maybe :boolean]]
-                                                       [:same-temporal-bucket? {:optional true} [:maybe :boolean]]]]]
+                                                       [:same-binning-strategy? {:optional true, :default false} [:maybe :boolean]]
+                                                       [:same-temporal-bucket? {:optional true, :default false} [:maybe :boolean]]]]]
    (not-empty
     (into []
-          (filter (fn [[_ref {:keys [join-alias source-field]} _id-or-name :as a-breakout]]
-                    (and (lib.equality/find-matching-column query stage-number a-breakout [column] {:generous? true})
-                         (= source-field (:fk-field-id column)) ; Must match, including both being nil/missing.
-                         (= join-alias   (::lib.join/join-alias column))  ; Must match, including both being nil/missing.
+          (filter (fn [a-breakout]
+                    (and (lib.equality/find-matching-column query stage-number a-breakout [column])
                          (or (not same-temporal-bucket?)
                              (= (lib.temporal-bucket/temporal-bucket a-breakout)
                                 (lib.temporal-bucket/temporal-bucket column)))

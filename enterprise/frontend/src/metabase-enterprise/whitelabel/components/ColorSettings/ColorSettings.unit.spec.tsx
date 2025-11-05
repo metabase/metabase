@@ -1,14 +1,19 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import Color from "color";
 
-import { color, colors } from "metabase/lib/colors/palette";
+import { render, screen } from "__support__/ui";
+import { colors, staticVizOverrides } from "metabase/lib/colors/colors";
+import { color } from "metabase/lib/colors/palette";
 
 import { ColorSettings } from "./ColorSettings";
 
 describe("ColorSettings", () => {
+  const textMediumHex = Color(color("text-medium", staticVizOverrides)).hex();
+  const textLightHex = Color(color("text-light", staticVizOverrides)).hex();
+
   const initialColors = {
-    brand: color("success"),
-    accent1: color("text-medium"),
+    brand: color("filter"),
+    accent1: textMediumHex,
   };
 
   it("should update brand colors", async () => {
@@ -22,14 +27,16 @@ describe("ColorSettings", () => {
       />,
     );
 
-    const input = screen.getByPlaceholderText(color("summarize"));
+    const input = screen.getByPlaceholderText(Color(color("summarize")).hex());
     await userEvent.clear(input);
     await userEvent.type(input, color("error"));
 
     expect(onChange).toHaveBeenLastCalledWith({
-      brand: color("success"),
-      summarize: color("error"),
-      accent1: color("text-medium"),
+      brand: color("filter"),
+      /* Needs to convert this to hex because the input is transform to hex,
+       * but we want to use hsla for our new colors, this is to allow better text search. */
+      summarize: Color(color("error")).hex(),
+      accent1: textMediumHex,
     });
   });
 
@@ -44,13 +51,13 @@ describe("ColorSettings", () => {
       />,
     );
 
-    const input = screen.getByDisplayValue(color("text-medium"));
+    const input = screen.getByDisplayValue(textMediumHex);
     await userEvent.clear(input);
-    await userEvent.type(input, color("text-light"));
+    await userEvent.type(input, textLightHex);
 
     expect(onChange).toHaveBeenLastCalledWith({
-      brand: color("success"),
-      accent1: color("text-light"),
+      brand: color("filter"),
+      accent1: textLightHex,
     });
   });
 
@@ -69,7 +76,7 @@ describe("ColorSettings", () => {
     await userEvent.click(screen.getByText("Reset"));
 
     expect(onChange).toHaveBeenLastCalledWith({
-      brand: color("success"),
+      brand: color("filter"),
     });
   });
 
@@ -87,9 +94,9 @@ describe("ColorSettings", () => {
     await userEvent.click(screen.getByText("Generate chart colors"));
 
     expect(onChange).toHaveBeenLastCalledWith({
-      brand: color("success"),
+      brand: color("filter"),
       accent0: expect.any(String),
-      accent1: color("text-medium"),
+      accent1: textMediumHex,
       accent2: expect.any(String),
       accent3: expect.any(String),
       accent4: expect.any(String),

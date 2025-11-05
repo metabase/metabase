@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -195,24 +195,21 @@ describe("scenarios > binning > binning options", () => {
   });
 
   context("via time series footer (metabase#11183)", () => {
-    // TODO: enable again when metabase#35546 is completed
-    it.skip("should render time series binning options correctly", () => {
+    it("should render time series binning options correctly", () => {
       H.openTable({ table: ORDERS_ID });
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created At").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Distribution").click();
-
+      H.tableHeaderClick("Created At");
+      H.popover().findByText("Distribution").click();
       getTitle("Count by Created At: Month");
-
-      // Check all binning options from the footer
-      cy.findAllByTestId("select-button-content").contains("Month").click();
-      getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
+      cy.findByTestId("timeseries-bucket-button").click();
+      H.popover().within(() => {
+        cy.findByText("Month")
+          .parent()
+          .should("have.attr", "aria-selected", "true");
+      });
     });
   });
 
-  context.skip("implicit joins (metabase#16674)", () => {
+  context("implicit joins (metabase#16674)", { tags: "@skip" }, () => {
     it("should work for time series", () => {
       chooseInitialBinningOption({
         table: ORDERS_ID,
@@ -244,7 +241,7 @@ describe("scenarios > binning > binning options", () => {
     });
   });
 
-  context.skip("explicit joins (metabase#16675)", () => {
+  context("explicit joins (metabase#16675)", { tags: "@skip" }, () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
     });
@@ -319,12 +316,13 @@ function getTitle(title) {
 }
 
 function getAllOptions({ options, isSelected, shouldExpandList } = {}) {
-  const selectedOption = options.find(option => option === isSelected);
-  const regularOptions = options.filter(option => option !== isSelected);
+  const selectedOption = options.find((option) => option === isSelected);
+  const regularOptions = options.filter((option) => option !== isSelected);
 
   // Custom question has two popovers open.
   // The binning options are in the latest (last) one.
   // Using `.last()` works even when only one popover is open so it covers both scenarios.
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.popover()
     .last()
     .within(() => {
@@ -332,7 +330,7 @@ function getAllOptions({ options, isSelected, shouldExpandList } = {}) {
         cy.findByText("More…").click();
       }
 
-      regularOptions.forEach(option => {
+      regularOptions.forEach((option) => {
         // Implicit assertion - will fail if string is rendered multiple times
         cy.findByText(option);
       });

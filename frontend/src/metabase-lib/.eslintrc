@@ -1,5 +1,8 @@
 {
   "rules": {
+    // Note: adding this rule to a eslint config file in a subfolder will remove
+    // *not* carry over the restricted imports from parent folders, you will
+    // need to copy them over
     "no-restricted-imports": [
       "error",
       {
@@ -9,6 +12,7 @@
               "metabase/*",
               "!metabase/env",
               "!metabase/lib",
+              "!metabase/querying",
               "!metabase/services"
             ]
           },
@@ -18,7 +22,9 @@
               "!metabase/lib/colors",
               "!metabase/lib/encoding",
               "!metabase/lib/formatting",
+              "!metabase/lib/number",
               "!metabase/lib/time",
+              "!metabase/lib/time-dayjs",
               "!metabase/lib/types",
               "!metabase/lib/urls",
               "!metabase/lib/utils"
@@ -36,6 +42,7 @@
           }
         ]
       }
-    ]
+    ],
+    "ttag/no-module-declaration": 2,
   }
 }

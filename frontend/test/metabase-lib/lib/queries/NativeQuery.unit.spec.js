@@ -1,10 +1,13 @@
-import { assocIn } from "icepick";
-
 import { createMockMetadata } from "__support__/metadata";
+import Question from "metabase-lib/v1/Question";
 import NativeQuery, {
   updateCardTemplateTagNames,
 } from "metabase-lib/v1/queries/NativeQuery";
-import { createMockDatabase } from "metabase-types/api/mocks";
+import {
+  createMockDatabase,
+  createMockNativeQuerySnippet,
+  createMockTemplateTag,
+} from "metabase-types/api/mocks";
 import {
   PRODUCTS,
   SAMPLE_DB_ID,
@@ -12,19 +15,30 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 const MONGO_DB_ID = SAMPLE_DB_ID + 1;
+const SNIPPET_ID = 1;
 
-const metadata = createMockMetadata({
+const METADATA = createMockMetadata({
   databases: [
     createSampleDatabase(),
     createMockDatabase({
       id: MONGO_DB_ID,
       engine: "mongo",
-      features: ["basic-aggregations", "nested-fields", "dynamic-schema"],
+      features: [
+        "basic-aggregations",
+        "nested-fields",
+        "dynamic-schema",
+        "native-requires-specified-collection",
+      ],
+    }),
+  ],
+  snippets: [
+    createMockNativeQuerySnippet({
+      id: SNIPPET_ID,
+      name: "bar",
+      content: "WHERE",
     }),
   ],
 });
-
-const sampleDatabase = metadata.database(SAMPLE_DB_ID);
 
 function makeDatasetQuery(queryText, templateTags, databaseId) {
   return {
@@ -37,16 +51,16 @@ function makeDatasetQuery(queryText, templateTags, databaseId) {
   };
 }
 
-function makeQuery(query, templateTags) {
+function makeQuery(query, templateTags, metadata = METADATA) {
   return new NativeQuery(
-    sampleDatabase.question(),
+    Question.create({ DEPRECATED_RAW_MBQL_type: "native", metadata }),
     makeDatasetQuery(query, templateTags, SAMPLE_DB_ID),
   );
 }
 
-function makeMongoQuery(query, templateTags) {
+function makeMongoQuery(query, templateTags, metadata = METADATA) {
   return new NativeQuery(
-    sampleDatabase.question(),
+    Question.create({ DEPRECATED_RAW_MBQL_type: "native", metadata }),
     makeDatasetQuery(query, templateTags, MONGO_DB_ID),
   );
 }
@@ -128,7 +142,7 @@ describe("NativeQuery", () => {
 
     describe("setCollectionName(newCollection) selects or updates a target table for you mongo native query", () => {
       it("allows you to update mongo collections", () => {
-        const fakeCollectionID = 9999;
+        const fakeCollectionID = "9999";
         const fakeMongoQuery =
           makeMongoQuery("").setCollectionName(fakeCollectionID);
         expect(fakeMongoQuery.collection()).toBe(fakeCollectionID);
@@ -202,47 +216,32 @@ describe("NativeQuery", () => {
       });
 
       it("requires a display name", () => {
-        q = q.setDatasetQuery(
-          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
-            name: "foo",
-            type: "text",
-          }),
-        );
-
+        q = q.setTemplateTag("foo", { name: "foo", type: "text" });
         expect(q.canRun()).toBe(false);
 
-        q = q.setDatasetQuery(
-          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
-            name: "foo",
-            type: "text",
-            "display-name": "Foo",
-          }),
-        );
-
+        q = q.setTemplateTag("foo", {
+          name: "foo",
+          type: "text",
+          "display-name": "Foo",
+        });
         expect(q.canRun()).toBe(true);
       });
 
       it("dimension type without a dimension", () => {
-        q = q.setDatasetQuery(
-          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
-            type: "dimension",
-            "widget-type": "category",
-            "display-name": "bar",
-          }),
-        );
-
+        q = q.setTemplateTag("foo", {
+          type: "dimension",
+          "widget-type": "category",
+          "display-name": "bar",
+        });
         expect(q.canRun()).toBe(false);
 
-        q = q.setDatasetQuery(
-          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
-            name: "foo",
-            type: "dimension",
-            "widget-type": "category",
-            dimension: ["field", 123, null],
-            "display-name": "bar",
-          }),
-        );
-
+        q = q.setTemplateTag("foo", {
+          name: "foo",
+          type: "dimension",
+          "widget-type": "category",
+          dimension: ["field", 123, null],
+          "display-name": "bar",
+        });
         expect(q.canRun()).toBe(true);
       });
     });
@@ -258,19 +257,79 @@ describe("NativeQuery", () => {
         expect(type).toEqual("snippet");
       });
 
+      it.each([
+        { oldName: "snippet1", newName: "snippet1" },
+        { oldName: "snippet1", newName: "snippet2" },
+      ])("should update a snippet with inner tags", ({ oldName, newName }) => {
+        const oldSnippet = createMockNativeQuerySnippet({
+          name: oldName,
+          content: "SELECT",
+        });
+        const oldMetadata = createMockMetadata({
+          snippets: [oldSnippet],
+        });
+        const oldQuery = makeQuery("SELECT", {}, oldMetadata).setQueryText(
+          `{{snippet: ${oldName}}}`,
+        );
+
+        const newSnippet = createMockNativeQuerySnippet({
+          id: oldSnippet.id,
+          name: newName,
+          content: "{{var}}",
+          template_tags: {
+            var: createMockTemplateTag({
+              id: "1",
+              name: "var",
+              type: "text",
+            }),
+          },
+        });
+        const newMetadata = createMockMetadata({
+          snippets: [newSnippet],
+        });
+        const queryWithNewMetadata = makeQuery(
+          oldQuery.queryText(),
+          oldQuery.templateTagsMap(),
+          newMetadata,
+        );
+        const queryWithNewSnippet = queryWithNewMetadata.updateSnippet(
+          oldSnippet,
+          newSnippet,
+        );
+
+        expect(queryWithNewSnippet.templateTags()).toMatchObject([
+          { name: `snippet: ${newName}`, type: "snippet" },
+          { name: "var", type: "text" },
+        ]);
+      });
+
       it("should update query text with new snippet names", () => {
-        const q = makeQuery()
-          .setQueryText("{{ snippet: foo }}")
-          .updateSnippetsWithIds([{ id: 123, name: "foo" }])
-          .updateSnippetNames([{ id: 123, name: "bar" }]);
+        const q = makeQuery("{{ snippet: foo }}", {
+          "snippet: foo": createMockTemplateTag({
+            name: " snippet: foo ",
+            type: "snippet",
+            "snippet-id": SNIPPET_ID,
+            "snippet-name": "foo",
+          }),
+        }).updateSnippetNames([{ id: SNIPPET_ID, name: "bar" }]);
         expect(q.queryText()).toEqual("{{snippet: bar}}");
       });
 
       it("should update snippet names that differ on spacing", () => {
-        const q = makeQuery()
-          .setQueryText("{{ snippet: foo }} {{snippet:  foo  }}")
-          .updateSnippetsWithIds([{ id: 123, name: "foo" }])
-          .updateSnippetNames([{ id: 123, name: "bar" }]);
+        const q = makeQuery("{{ snippet: foo }} {{snippet:  foo  }}", {
+          " snippet: foo ": createMockTemplateTag({
+            name: " snippet: foo ",
+            type: "snippet",
+            "snippet-id": SNIPPET_ID,
+            "snippet-name": "foo",
+          }),
+          "snippet:  foo  ": createMockTemplateTag({
+            name: "snippet:  foo  ",
+            type: "snippet",
+            "snippet-id": SNIPPET_ID,
+            "snippet-name": "foo",
+          }),
+        }).updateSnippetNames([{ id: SNIPPET_ID, name: "bar" }]);
         expect(q.queryText()).toEqual("{{snippet: bar}} {{snippet: bar}}");
       });
     });
@@ -280,7 +339,7 @@ describe("NativeQuery", () => {
         const q = makeQuery().setQueryText(
           "{{#1}} {{ #2 }} {{ #1-a-card-name }} {{ #1-a-card-name }}",
         );
-        expect(q.templateTags().map(v => v["card-id"])).toEqual([1, 2, 1]);
+        expect(q.templateTags().map((v) => v["card-id"])).toEqual([1, 2, 1]);
       });
     });
   });
@@ -332,7 +391,7 @@ describe("NativeQuery", () => {
       );
       const variables = q.variables();
       expect(variables).toHaveLength(1);
-      expect(variables.map(v => v.displayName())).toEqual(["Category"]);
+      expect(variables.map((v) => v.displayName())).toEqual(["Category"]);
     });
 
     it("should not return variable for dimension template tag", () => {
@@ -359,7 +418,7 @@ describe("NativeQuery", () => {
         });
       const dimensions = q.dimensionOptions().dimensions;
       expect(dimensions).toHaveLength(1);
-      expect(dimensions.map(d => d.displayName())).toEqual(["Category"]);
+      expect(dimensions.map((d) => d.displayName())).toEqual(["Category"]);
     });
   });
 

@@ -1,14 +1,14 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { t } from "ttag";
 import _ from "underscore";
 
 import NoResults from "assets/img/no_results.svg";
-import Card from "metabase/components/Card";
-import EmptyState from "metabase/components/EmptyState";
-import Label from "metabase/components/type/Label";
-import Text from "metabase/components/type/Text";
+import Card from "metabase/common/components/Card";
+import EmptyState from "metabase/common/components/EmptyState";
+import Label from "metabase/common/components/type/Label";
+import Text from "metabase/common/components/type/Text";
 import CS from "metabase/css/core/index.css";
 
 import {
@@ -45,28 +45,26 @@ const LoginHistoryGroup = ({ items, date }) => (
   <LoginGroup>
     <Label>{date}</Label>
     <div>
-      {items.map(item => (
+      {items.map((item) => (
         <LoginHistoryItem key={item.timestamp} item={item} />
       ))}
     </div>
   </LoginGroup>
 );
 
-const formatItems = items =>
-  items.map(item => {
-    const parsedTimestamp = moment.parseZone(item.timestamp);
+const formatItems = (items) =>
+  items.map((item) => {
+    const parsedTimestamp = dayjs.parseZone(item.timestamp);
     return {
       ...item,
       date: parsedTimestamp.format("LL"),
-      time: `${parsedTimestamp.format("LT")} (${
-        item.timezone || parsedTimestamp.format("Z")
-      })`,
+      time: `${parsedTimestamp.format("LT")} (${item.timezone || parsedTimestamp.format("Z")})`,
     };
   });
 
 function LoginHistoryList({ loginHistory }) {
   const items = formatItems(loginHistory);
-  const groups = _.groupBy(items, item => item.date);
+  const groups = _.groupBy(items, (item) => item.date);
 
   if (!items || !items.length) {
     return (

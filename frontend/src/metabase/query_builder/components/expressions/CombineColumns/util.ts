@@ -86,11 +86,11 @@ export const getExpressionName = (
     .filter(isNotNull);
 
   const allColumnNames = Lib.returnedColumns(query, stageIndex).map(
-    column => Lib.displayInfo(query, stageIndex, column).displayName,
+    (column) => Lib.displayInfo(query, stageIndex, column).displayName,
   );
 
   const names = columns.map(
-    column => Lib.displayInfo(query, stageIndex, column).displayName,
+    (column) => Lib.displayInfo(query, stageIndex, column).displayName,
   );
 
   return getNextName(allColumnNames, t`Combined ${names.join(", ")}`, 1);
@@ -122,7 +122,7 @@ export const getExample = (
   return flatten(columnsAndSeparators).map(getColumnExample).join("");
 };
 
-const getColumnExample = (
+export const getColumnExample = (
   column: Lib.ColumnMetadata | string | null,
 ): string => {
   if (!column) {
@@ -175,8 +175,8 @@ const getColumnExample = (
   return "text";
 };
 
-export function hasCombinations(query: Lib.Query, stageIndex: number) {
-  return Lib.expressionableColumns(query, stageIndex).length > 0;
+export function hasCombinations(columns: Lib.ColumnMetadata[]) {
+  return columns.length > 0;
 }
 
 export const getNextColumnAndSeparator = (
@@ -187,7 +187,7 @@ export const getNextColumnAndSeparator = (
   const lastSeparator = columnsAndSeparators.at(-1)?.separator;
   const separator = lastSeparator ?? defaultSeparator;
 
-  const nextUnusedColumn = expressionableColumns.find(candidate =>
+  const nextUnusedColumn = expressionableColumns.find((candidate) =>
     columnsAndSeparators.every(({ column }) => candidate !== column),
   );
 

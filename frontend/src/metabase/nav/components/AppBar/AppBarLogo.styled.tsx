@@ -1,8 +1,10 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
+import Link from "metabase/common/components/Link";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
-import Link from "metabase/core/components/Link";
 
 export const LogoLink = styled(Link, doNotForwardProps("isSmallAppBar"))<{
   isSmallAppBar: boolean;
@@ -17,7 +19,7 @@ export const LogoLink = styled(Link, doNotForwardProps("isSmallAppBar"))<{
   max-width: 14rem;
   line-height: 0;
   opacity: 1;
-  ${props =>
+  ${(props) =>
     !props.isSmallAppBar &&
     css`
       margin-inline-end: 2rem;

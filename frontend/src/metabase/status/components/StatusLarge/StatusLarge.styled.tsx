@@ -1,8 +1,9 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import { color } from "metabase/lib/colors";
+import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { color } from "metabase/ui/utils/colors";
 
 export const StatusRoot = styled.div`
   width: 16rem;
@@ -11,6 +12,7 @@ export const StatusRoot = styled.div`
   box-shadow: 0 1px 12px var(--mb-color-shadow);
   overflow: hidden;
   margin-top: 1rem;
+  border: 1px solid var(--mb-color-border);
 `;
 
 export const StatusHeader = styled.div`
@@ -40,7 +42,7 @@ export const StatusBody = styled.div`
 
 export const StatusCardRoot = styled.div<{ hasBody?: boolean }>`
   display: flex;
-  align-items: ${props => (props.hasBody ? "flex-start" : "center")};
+  align-items: ${(props) => (props.hasBody ? "flex-start" : "center")};
   margin: 0.75rem;
 `;
 
@@ -98,6 +100,6 @@ export const StatusCardIconContainer = styled.div<StatusCardIconContainerProps>`
   height: 1.5rem;
   border-radius: 1rem;
   color: var(--mb-color-text-white);
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.isError ? color("error") : color("success")};
 `;

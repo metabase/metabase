@@ -34,20 +34,28 @@
 
      (There are several variations of this macro; see documentation below for more details.)"
   (:require
+   [clojure.set :as set]
    [clojure.test :as t]
    [colorize.core :as colorize]
-   [mb.hawk.init]
-   [metabase.db :as mdb]
-   [metabase.db.schema-migrations-test.impl
-    :as schema-migrations-test.impl]
+   [mb.hawk.init :as hawk.init]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
+   [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.util :as driver.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.test.data.env :as tx.env]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [next.jdbc]))
 
 (set! *warn-on-reflection* true)
 
@@ -151,9 +159,7 @@
    (as-> inner-query <>
      (mbql-query-impl/parse-tokens table-name <>)
      (mbql-query-impl/maybe-add-source-table <> table-name)
-     (mbql-query-impl/wrap-populate-idents <>)
-     (mbql-query-impl/wrap-inner-query <>)
-     (vary-meta <> assoc :type :mbql-query))))
+     (mbql-query-impl/wrap-inner-query <>))))
 
 (defmacro query
   "Like `mbql-query`, but operates on an entire 'outer' query rather than the 'inner' MBQL query. Like `mbql-query`,
@@ -166,20 +172,20 @@
   ([table-name outer-query]
    {:pre [(map? outer-query)]}
    (merge
-    ^{:type :mbql-query}
     {:database `(id)
      :type     :query}
     (cond-> (mbql-query-impl/parse-tokens table-name outer-query)
-      (not (:native outer-query)) (-> (update :query mbql-query-impl/maybe-add-source-table table-name)
-                                      (update :query mbql-query-impl/wrap-populate-idents))))))
+      (not (:native outer-query)) (update :query mbql-query-impl/maybe-add-source-table table-name)))))
 
-(defmacro native-query
+(declare id)
+
+(mu/defn native-query :- ::mbql.s/Query
   "Like `mbql-query`, but for native queries."
-  {:style/indent 0}
-  [inner-native-query]
-  `{:database (id)
-    :type     :native
-    :native   ~inner-native-query})
+  [inner-native-query :- :map]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  {:database (id)
+   :type     :native
+   :native   (mbql.normalize/normalize ::mbql.s/NativeQuery inner-native-query)})
 
 (defn run-mbql-query* [query]
   ;; catch the Exception and rethrow with the query itself so we can have a little extra info for debugging if it fails.
@@ -218,7 +224,7 @@
   "Get the ID of the current database or one of its Tables or Fields. Relies on the dynamic
   variable [[metabase.test.data.impl/*db-fn*]], which can be rebound with [[with-db]]."
   ([]
-   (mb.hawk.init/assert-tests-are-not-initializing "(mt/id ...) or (data/id ...)")
+   (hawk.init/assert-tests-are-not-initializing "(mt/id ...) or (data/id ...)")
    (data.impl/db-id))
 
   ([table-name]
@@ -226,6 +232,11 @@
 
   ([table-name field-name & nested-field-names]
    (apply data.impl/the-field-id (id table-name) (map format-name (cons field-name nested-field-names)))))
+
+(defn metadata-provider
+  "Get a metadata-provider for the current database."
+  []
+  (lib-be/application-database-metadata-provider (id)))
 
 (defmacro dataset
   "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the
@@ -269,19 +280,110 @@
   [& body]
   `(data.impl/do-with-temp-copy-of-db (^:once fn* [] ~@body)))
 
-;;; TODO FIXME -- rename this to `with-empty-h2-app-db`
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
-(defmacro with-empty-h2-app-db
-  "Runs `body` under a new, blank, H2 application database (randomly named), in which all model tables have been
-  created via Liquibase schema migrations. After `body` is finished, the original app DB bindings are restored.
+(def h2-app-db-script
+  "To save time during tests, instead of running all migrations for each new empty H2 app db, we perform the
+  migrations once and dump the schema into a script. Subsequently, this script can be used to instantiate new copies
+  of H2 app db. The result is a dereffable temp file."
+  (delay
+    (schema-migrations-test.impl/with-temp-empty-app-db [conn :h2]
+      ;; since the actual group defs are not dynamic, we need with-redefs to change them here
+      (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-magic-group-type)
+                    perms-group/admin     (#'perms-group/magic-group perms-group/admin-magic-group-type)]
+        (mdb/setup-db! :create-sample-content? false)
+        (let [f (java.io.File/createTempFile "db-export" ".sql")]
+          (next.jdbc/execute! conn ["SCRIPT TO ?" (str f)])
+          f)))))
 
-  Makes use of functionality in the [[metabase.db.schema-migrations-test.impl]] namespace since that already does what
+(defmacro with-empty-h2-app-db!
+  "Runs `body` under a new, blank, H2 application database (randomly named), in which all model tables have been
+  created from `h2-app-db-script`. After `body` is finished, the original app DB bindings are restored.
+
+  Makes use of functionality in the [[metabase.app-db.schema-migrations-test.impl]] namespace since that already does what
   we need."
   {:style/indent 0}
   [& body]
   `(schema-migrations-test.impl/with-temp-empty-app-db [conn# :h2]
-     ;; since the actual group defs are not dynamic, we need with-redefs to change them here
-     (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-group-name)
-                   perms-group/admin     (#'perms-group/magic-group perms-group/admin-group-name)]
-       (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
-       ~@body)))
+     (next.jdbc/execute! conn# ["RUNSCRIPT FROM ?" (str @h2-app-db-script)])
+     (mdb/finish-db-setup!)
+     ~@body))
+
+;; Non-"normal" timeseries drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
+(def timeseries-drivers
+  "Drivers that are so weird that we can't use the standard dataset loading against them."
+  #{:druid :druid-jdbc})
+
+(mr/def ::driver-selector
+  [:map {:closed true}
+   [:+features {:optional true} [:sequential :keyword]]
+   [:-features {:optional true} [:sequential :keyword]]
+   [:+conn-props {:optional true} [:sequential :string]]
+   [:-conn-props {:optional true} [:sequential :string]]
+   [:+parent {:optional true} :keyword]
+   [:+fns {:optional true} [:sequential [:function [:=> [:cat :keyword] :any]]]]
+   [:-fns {:optional true} [:sequential [:function [:=> [:cat :keyword] :any]]]]])
+
+(mu/defn driver-select :- [:set :keyword]
+  "Select drivers to be tested.
+
+   +features - a list of features that the drivers should support.
+   -features - a list of features that drivers should not support.
+
+   +conn-props - a list of connection-property names that drivers should have.
+   -conn-props - a list of connection-property names that drivers should not have.
+
+   +parent - only include drivers whose parent is this.
+   -parent - do not include drivers whose parent is this.
+
+   +fns - only include drivers that returns truthy for each fn `(fn driver)`.
+   -fns - exclude drivers that returns truthy for any fn `(fn driver)`."
+  ([]
+   (driver-select {}))
+  ([{:keys [+features -features -fns +fns +conn-props -conn-props +parent] :as selector} :- ::driver-selector]
+   (hawk.init/assert-tests-are-not-initializing (pr-str (list* 'driver-select selector)))
+   (set
+    (for [driver (tx.env/test-drivers)
+          :let [driver (tx/the-driver-with-test-extensions driver)
+                conn-prop-names (when (or (seq +conn-props) (seq -conn-props))
+                                  (into #{} (map :name (driver/connection-properties driver))))]
+          :when (driver/with-driver driver
+                  (let [the-db (delay (db))]
+                    (cond-> true
+                      +parent
+                      (and (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver +parent)))
+
+                      (seq +fns)
+                      (and (every? (fn [f] (f driver)) +fns))
+
+                      (seq -fns)
+                      (and (not (some (fn [f] (f driver)) -fns)))
+
+                      (seq +conn-props)
+                      (and (set/superset? conn-prop-names (set +conn-props)))
+
+                      (seq -conn-props)
+                      (and (empty? (set/intersection conn-prop-names (set -conn-props))))
+
+                      (seq +features)
+                      (and (every? #(driver.u/supports? driver % @the-db) +features))
+
+                      (seq -features)
+                      (and (not (some #(driver.u/supports? driver % @the-db) -features))))))]
+      driver))))
+
+(mu/defn normal-driver-select :- [:set :keyword]
+  "Select drivers to be tested. Excludes timeseries drivers because they can only be tested with special datasets.
+
+   +features - a list of features that the drivers should support.
+   -features - a list of features that drivers should not support.
+
+   +conn-props - a list of connection-property names that drivers should have.
+   -conn-props - a list of connection-property names that drivers should not have.
+
+   +parent - only include drivers whose parent is this.
+
+   +fns - only include drivers that returns truthy for each fn `(f driver)`.
+   -fns - exclude drivers that returns truthy for any fn `(f driver)`."
+  ([]
+   (normal-driver-select {}))
+  ([selector :- ::driver-selector]
+   (driver-select (update selector :-fns (fnil conj []) #(contains? timeseries-drivers %)))))

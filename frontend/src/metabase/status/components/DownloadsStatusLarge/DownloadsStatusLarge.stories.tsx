@@ -6,11 +6,11 @@ import {
 } from "./DownloadsStatusLarge";
 
 export default {
-  title: "Status/DownloadsStatusLarge",
+  title: "Components/Feedback/DownloadsStatusLarge",
   component: DownloadsStatusLarge,
 };
 
-const Template: StoryFn<DownloadsStatusLargeProps> = args => {
+const Template: StoryFn<DownloadsStatusLargeProps> = (args) => {
   return <DownloadsStatusLarge {...args} />;
 };
 

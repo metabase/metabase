@@ -1,0 +1,149 @@
+.table {
+  position: relative;
+  color: var(--mb-color-text-dark);
+  width: 100%;
+  height: 100%;
+  font-size: 12.5px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tableGrid {
+  display: grid;
+  flex-grow: 1;
+  grid-template-rows: 36px;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.headerContainer {
+  position: sticky;
+  display: grid;
+  top: 0;
+  z-index: 2;
+  border-bottom: 1px solid var(--mb-color-border-subtle);
+  height: 37px;
+}
+
+.bodyContainer {
+  display: grid;
+  position: relative;
+  outline: none;
+}
+
+.selectableBody {
+  user-select: none;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+
+  &.active {
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-brand),
+      transparent 90%
+    );
+  }
+}
+
+.headerCell {
+  position: relative;
+}
+
+.bodyCell {
+  position: relative;
+  cursor: pointer;
+}
+
+.focusedCell {
+  user-select: text;
+  outline: 2px solid var(--mb-color-focus);
+  outline-offset: -2px;
+}
+
+.focusedCell * {
+  pointer-events: auto;
+}
+
+.rowHoverContent {
+  visibility: hidden;
+}
+
+.row:hover .rowHoverContent {
+  visibility: visible;
+}
+
+.resizer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 5px;
+  background: transparent;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.resizer:hover {
+  opacity: 1;
+  background: var(--mb-color-brand);
+}
+
+.resizer:active {
+  opacity: 1;
+  background: var(--mb-color-brand);
+}
+
+.headerWrapper {
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+
+.headerWrapper:hover {
+  cursor: grab;
+}
+
+.rowHoverVisible {
+  display: none;
+}
+
+.row:hover .rowHoverVisible {
+  display: unset;
+}
+
+.rowHoverHidden {
+  display: unset;
+}
+
+.row:hover .rowHoverHidden {
+  display: none;
+}
+
+.row:hover .headerCell {
+  box-shadow: inset -1px 0 0 var(--mb-color-border-subtle);
+}
+
+.cellHoverVisible {
+  visibility: hidden;
+}
+
+.bodyCell:hover .cellHoverVisible {
+  visibility: visible;
+}
+
+/** Used for storybook examples for class Styles Api */
+.__storybookStylesApiBodyCellExample {
+  background-color: #eef6fd;
+
+  &:hover {
+    background-color: aquamarine;
+  }
+}

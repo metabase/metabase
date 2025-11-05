@@ -29,8 +29,8 @@ const EventList = ({
   onUnarchive,
 }: EventListProps): JSX.Element => {
   return (
-    <ListRoot>
-      {events.map(event => (
+    <ListRoot data-testid="event-list">
+      {events.map((event) => (
         <EventCard
           key={event.id}
           event={event}

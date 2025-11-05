@@ -1,12 +1,15 @@
-import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
+import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getIcon,
   queryIcon,
   renderWithProviders,
   screen,
+  waitFor,
+  within,
 } from "__support__/ui";
 import * as modelActions from "metabase/query_builder/actions/models";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -19,7 +22,10 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { QuestionActions } from "./QuestionActions";
 
@@ -29,29 +35,51 @@ const ICON_CASES_CARDS = [
 ];
 
 const ICON_CASES_LABELS = [
-  { label: "bookmark icon", tooltipText: "Bookmark" },
-  { label: "info icon", tooltipText: "More info" },
   {
-    label: "Move, trash, and more…",
-    tooltipText: "Move, trash, and more…",
+    iconLabel: "bookmark icon",
+    buttonLabel: "Bookmark",
+  },
+  {
+    iconLabel: "info icon",
+    buttonLabel: "More info",
+  },
+  {
+    iconLabel: "ellipsis icon",
+    buttonLabel: "Move, trash, and more…",
   },
 ];
 
-const ICON_CASES = ICON_CASES_CARDS.flatMap(card =>
-  ICON_CASES_LABELS.map(labels => ({ ...labels, card })),
+const ICON_CASES = ICON_CASES_CARDS.flatMap((card) =>
+  ICON_CASES_LABELS.map((labels) => ({ ...labels, card })),
 );
 
 interface SetupOpts {
   card: Card;
   hasDataPermissions?: boolean;
+  hasAcknowledgedModelModal?: boolean;
 }
 
-function setup({ card, hasDataPermissions = true }: SetupOpts) {
+function setup({
+  card,
+  hasDataPermissions = true,
+  hasAcknowledgedModelModal = false,
+}: SetupOpts) {
+  setupGetUserKeyValueEndpoint({
+    namespace: "user_acknowledgement",
+    key: "turn_into_model_modal",
+    value: hasAcknowledgedModelModal,
+  });
+
+  setupListNotificationEndpoints({ card_id: card.id }, []);
+
   const state = createMockState({
     entities: createMockEntitiesState({
       databases: hasDataPermissions ? [createSampleDatabase()] : [],
       tables: [createMockTable({ id: `card__${card.id}` })],
       questions: [card],
+    }),
+    qb: createMockQueryBuilderState({
+      card,
     }),
   });
 
@@ -82,18 +110,19 @@ describe("QuestionActions", () => {
   });
 
   it.each(ICON_CASES)(
-    `should display the "$label" icon with the "$tooltipText" tooltip for $card.name questions`,
-    async ({ label, tooltipText, card }) => {
+    `should display the "$iconLabel" icon with the "$buttonLabel" tooltip for $card.name questions`,
+    async ({ iconLabel, buttonLabel, card }) => {
       setup({ card });
 
-      await userEvent.hover(screen.getByRole("button", { name: label }));
-      const tooltip = screen.getByRole("tooltip", { name: tooltipText });
-      expect(tooltip).toHaveAttribute("data-placement", "top");
-      expect(tooltip).toHaveTextContent(tooltipText);
+      const button = await screen.findByRole("button", { name: buttonLabel });
+      expect(within(button).getByLabelText(iconLabel)).toBeInTheDocument();
+      await userEvent.hover(button);
+      const tooltip = await screen.findByRole("tooltip", { name: buttonLabel });
+      expect(tooltip).toHaveTextContent(buttonLabel);
     },
   );
 
-  describe("model query & metadata", () => {
+  describe("model query & columns", () => {
     it("should allow to edit the model with write data & collection permissions", async () => {
       const { onSetQueryBuilderMode } = setup({
         card: createMockCard({
@@ -116,7 +145,7 @@ describe("QuestionActions", () => {
       await userEvent.click(screen.getByText("Edit metadata"));
       await waitFor(() => {
         expect(onSetQueryBuilderMode).toHaveBeenCalledWith("dataset", {
-          datasetEditorTab: "metadata",
+          datasetEditorTab: "columns",
         });
       });
     });
@@ -170,11 +199,33 @@ describe("QuestionActions", () => {
       expect(onOpenModal).toHaveBeenCalledWith(MODAL_TYPES.TURN_INTO_DATASET);
     });
 
+    it("should skip showing model modal if user has acknowledged it previously", async () => {
+      const turnQuestionIntoModelSpy = jest
+        .spyOn(modelActions, "turnQuestionIntoModel")
+        .mockImplementation(() => async () => {});
+
+      const { onOpenModal } = setup({
+        card: createMockCard({
+          type: "question",
+          can_write: true,
+        }),
+        hasAcknowledgedModelModal: true,
+      });
+
+      await openActionsMenu();
+
+      await userEvent.click(screen.getByText("Turn into a model"));
+      expect(onOpenModal).not.toHaveBeenCalled();
+
+      // should still turn into a model
+      expect(turnQuestionIntoModelSpy).toHaveBeenCalled();
+      turnQuestionIntoModelSpy.mockRestore();
+    });
+
     it("should allow to turn into a question with write data & collection permissions", async () => {
-      const turnModelIntoQuestionSpy = jest.spyOn(
-        modelActions,
-        "turnModelIntoQuestion",
-      );
+      const turnModelIntoQuestionSpy = jest
+        .spyOn(modelActions, "turnModelIntoQuestion")
+        .mockImplementation(() => () => Promise.resolve());
       setup({
         card: createMockCard({
           type: "model",
@@ -232,10 +283,9 @@ describe("QuestionActions", () => {
     });
 
     it("should allow to turn into a question without data permissions", async () => {
-      const turnModelIntoQuestionSpy = jest.spyOn(
-        modelActions,
-        "turnModelIntoQuestion",
-      );
+      const turnModelIntoQuestionSpy = jest
+        .spyOn(modelActions, "turnModelIntoQuestion")
+        .mockImplementation(() => () => Promise.resolve());
       setup({
         card: createMockCard({
           type: "model",

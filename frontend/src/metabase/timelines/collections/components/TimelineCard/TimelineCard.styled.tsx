@@ -1,8 +1,10 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Link from "metabase/core/components/Link";
-import Markdown from "metabase/core/components/Markdown";
+import Link from "metabase/common/components/Link";
+import Markdown from "metabase/common/components/Markdown";
 import { Icon } from "metabase/ui";
 
 export const CardIcon = styled(Icon)`
@@ -32,7 +34,7 @@ export const CardDescription = styled(Markdown)`
   word-wrap: break-word;
 `;
 
-export interface CardCountProps {
+interface CardCountProps {
   isTopAligned?: boolean;
 }
 
@@ -40,7 +42,7 @@ export const CardCount = styled.span<CardCountProps>`
   display: block;
   flex: 0 0 auto;
   color: var(--mb-color-text-dark);
-  align-self: ${props => (props.isTopAligned ? "flex-start" : "")};
+  align-self: ${(props) => (props.isTopAligned ? "flex-start" : "")};
 `;
 
 export const CardMenu = styled.span`
@@ -68,7 +70,7 @@ export const CardRoot = styled(Link)`
   align-items: center;
   border: 1px solid var(--mb-color-border);
   border-radius: 6px;
-  cursor: ${props => (props.to ? "pointer" : "default")};
+  cursor: ${(props) => (props.to ? "pointer" : "default")};
 
-  ${props => props.to && cardRootHoverStyles}
+  ${(props) => props.to && cardRootHoverStyles}
 `;

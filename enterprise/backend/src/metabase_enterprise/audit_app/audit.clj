@@ -3,16 +3,18 @@
    [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.audit-app.settings :as audit-app.settings]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
-   [metabase.audit :as audit]
-   [metabase.db :as mdb]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.setting :refer [defsetting]]
-   [metabase.plugins :as plugins]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.app-db.core :as mdb]
+   [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
+   [metabase.plugins.core :as plugins]
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -28,10 +30,10 @@
 
   More info: https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Thread.html"
   []
-  (-> (Thread/currentThread)
-      (.getContextClassLoader)
-      (.getResource "")
-      (str/starts-with? "jar:")))
+  (= "jar" (.. (Thread/currentThread)
+               getContextClassLoader
+               (getResource ".keep-me")
+               getProtocol)))
 
 (defn- get-jar-path
   "Returns the path to the currently running jar file.
@@ -80,52 +82,105 @@
   - This uses a weird ID because some tests were hardcoded to look for database with ID = 2, and inserting an extra db
   throws that off since these IDs are sequential."
   [engine id]
-  (t2/insert! Database {:is_audit         true
-                        :id               id
-                        :name             "Internal Metabase Database"
-                        :description      "Internal Audit DB used to power metabase analytics."
-                        :engine           engine
-                        :is_full_sync     true
-                        :is_on_demand     false
-                        :creator_id       nil
-                        :auto_run_queries true})
+  (t2/insert! :model/Database {:is_audit         true
+                               :id               id
+                               :name             "Internal Metabase Database"
+                               :description      "Internal Audit DB used to power metabase analytics."
+                               :engine           engine
+                               :is_full_sync     true
+                               :is_on_demand     false
+                               :creator_id       nil
+                               :auto_run_queries true})
   ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
   (t2/delete! :model/Permissions {:where [:like :object (str "%/db/" id "/%")]}))
 
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
   ;; We need to move back to a schema that matches the serialized data
-  (when (contains? #{:mysql :h2} (mdb/db-type))
-    (t2/update! :model/Database audit-db-id {:engine "postgres"})
-    (when (= :mysql (mdb/db-type))
-      (t2/update! :model/Table {:db_id audit-db-id} {:schema "public"}))
-    (when (= :h2 (mdb/db-type))
-      (t2/update! :model/Table {:db_id audit-db-id} {:schema [:lower :schema] :name [:lower :name]})
-      (t2/update! :model/Field
-                  {:table_id
-                   [:in
-                    {:select [:id]
-                     :from [(t2/table-name :model/Table)]
-                     :where [:= :db_id audit-db-id]}]}
-                  {:name [:lower :name]}))
-    (log/info "Adjusted Audit DB for loading Analytics Content")))
+  (t2/update! :model/Database audit-db-id {:engine "postgres"})
+  ;; do a separate select and update of table ids that are not downcased
+  ;; we don't want to try to downcase audit db tables that may already have a downcased version
+  ;; some older migrations have both upper and lowercased table names
+  ;; just grab the ids separately since there aren't many and this kind of check in an update
+  ;; has different syntax on different appdbs
+  (let [table-ids-to-update (t2/query {:select [:table.id]
+                                       :from [[(t2/table-name :model/Table) :table]]
+                                       :where [:and [:= :table.db_id audit-db-id]
+                                               [:not [:exists {:select [1]
+                                                               :from [[(t2/table-name :model/Table) :self_table]]
+                                                               :where [:and
+                                                                       [:= :self_table.db_id :table.db_id]
+                                                                       [:or
+                                                                        [:= :self_table.schema [:lower :table.schema]]
+                                                                        [:and
+                                                                         [:= :self_table.schema [:inline "public"]]
+                                                                         [:= :table.schema nil]]]
+                                                                       [:= :self_table.name [:lower :table.name]]]}]]]})]
+    (when (seq table-ids-to-update)
+      (t2/update! :model/Table :id [:in (map :id table-ids-to-update)]
+                  {:schema "public" :name [:lower :name]})))
+  (let [field-ids-to-update (t2/query {:select [:field.id]
+                                       :from [[(t2/table-name :model/Field) :field]]
+                                       :inner-join [[(t2/table-name :model/Table) :table]
+                                                    [:= :table.id :field.table_id]]
+                                       :where [:and [:= :table.db_id audit-db-id]
+                                               [:not [:exists {:select [1]
+                                                               :from [[(t2/table-name :model/Field) :self_field]]
+                                                               :inner-join [[(t2/table-name :model/Table) :self_table]
+                                                                            [:= :self_table.id :self_field.table_id]]
+                                                               :where [:and
+                                                                       [:= :self_table.db_id :table.db_id]
+                                                                       [:or
+                                                                        [:= :self_table.schema [:lower :table.schema]]
+                                                                        [:and
+                                                                         [:= :self_table.schema [:inline "public"]]
+                                                                         [:= :table.schema nil]]]
+                                                                       [:= :self_field.name [:lower :field.name]]]}]]]})]
+    (when (seq field-ids-to-update)
+      (t2/update! :model/Field :id [:in (map :id field-ids-to-update)]
+                  {:name [:lower :name]})))
+  (log/info "Adjusted Audit DB for loading Analytics Content"))
+
+(defn- fix-h2-card-metadata! [audit-db-id]
+  (t2/with-connection [^java.sql.Connection conn]
+    (with-open [stmt (.prepareStatement conn "UPDATE \"REPORT_CARD\" SET \"RESULT_METADATA\" = ? WHERE \"ID\" = ?;")]
+      (reduce
+       (fn [_ card]
+         (when-let [result-metadata (not-empty (some-> (:result_metadata card) (json/decode true)))]
+           (let [fixed-metadata (for [col result-metadata]
+                                  (update col :name u/upper-case-en))
+                 json-metadata  (json/encode fixed-metadata)]
+             (.setString stmt 1 json-metadata)
+             (.setInt stmt 2 (:id card))
+             (.addBatch stmt))))
+       nil
+       (t2/reducible-select [(t2/table-name :model/Card) :id :result_metadata] :database_id audit-db-id))
+      (.executeBatch stmt))))
 
 (defn- adjust-audit-db-to-host!
-  [{audit-db-id :id :keys [engine]}]
-  (when (not= engine (mdb/db-type))
+  [{audit-db-id :id :keys [engine] :as audit-db}]
+  (when-not (= engine (mdb/db-type))
     ;; We need to move the loaded data back to the host db
     (t2/update! :model/Database audit-db-id {:engine (name (mdb/db-type))})
-    (when (= :mysql (mdb/db-type))
-      (t2/update! :model/Table {:db_id audit-db-id} {:schema nil}))
-    (when (= :h2 (mdb/db-type))
-      (t2/update! :model/Table {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
-      (t2/update! :model/Field
-                  {:table_id
-                   [:in
-                    {:select [:id]
-                     :from [(t2/table-name :model/Table)]
-                     :where [:= :db_id audit-db-id]}]}
-                  {:name [:upper :name]}))
+    (case (mdb/db-type)
+      :mysql
+      (t2/update! :model/Table {:db_id audit-db-id} {:schema nil})
+
+      :h2
+      (do
+        (t2/update! :model/Table {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
+        (t2/update! :model/Field
+                    {:table_id
+                     [:in
+                      {:select [:id]
+                       :from   [(t2/table-name :model/Table)]
+                       :where  [:= :db_id audit-db-id]}]}
+                    {:name [:upper :name]})
+        (fix-h2-card-metadata! audit-db-id))
+
+      :postgres
+      ;; in postgresql the data should look just like the source
+      (adjust-audit-db-to-source! audit-db))
     (log/infof "Adjusted Audit DB to match host engine: %s" (name (mdb/db-type)))))
 
 (def ^:private analytics-dir-resource
@@ -160,22 +215,13 @@
                       {:replace-existing true})
         (log/info "Copying complete.")))))
 
-(defsetting load-analytics-content
-  "Whether or not we should load Metabase analytics content on startup. Defaults to true, but can be disabled via environment variable."
-  :type       :boolean
-  :default    true
-  :visibility :internal
-  :setter     :none
-  :audit      :never
-  :doc        "Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.")
-
-(def ^:constant SKIP_CHECKSUM_FLAG
-  "If `last-analytics-checksum` is set to this value, we will skip calculating checksums entirely and *always* reload the
-  analytics data."
+(def ^:private skip-checksum-flag
+  "If `last-analytics-checksum` is set to this value, we will skip calculating checksums entirely and *always* reload
+  the analytics data."
   -1)
 
 (defn- should-skip-checksum? [last-checksum]
-  (= SKIP_CHECKSUM_FLAG last-checksum))
+  (= skip-checksum-flag last-checksum))
 
 (defn analytics-checksum
   "Hashes the contents of all non-dir files in the `analytics-dir-resource`."
@@ -195,20 +241,21 @@
            (not= last-checksum current-checksum))))
 
 (defn- get-last-and-current-checksum
-  "Gets the previous and current checksum for the analytics directory, respecting the `-1` flag for skipping checksums entirely."
+  "Gets the previous and current checksum for the analytics directory, respecting the `-1` flag for skipping checksums
+  entirely."
   []
   (let [last-checksum (audit/last-analytics-checksum)]
     (if (should-skip-checksum? last-checksum)
-      [SKIP_CHECKSUM_FLAG SKIP_CHECKSUM_FLAG]
+      [skip-checksum-flag skip-checksum-flag]
       [last-checksum (analytics-checksum)])))
 
 (defn- maybe-load-analytics-content!
   [audit-db]
   (when analytics-dir-resource
-    (adjust-audit-db-to-source! audit-db)
     (ia-content->plugins (plugins/plugins-dir))
     (let [[last-checksum current-checksum] (get-last-and-current-checksum)]
-      (when (should-load-audit? (load-analytics-content) last-checksum current-checksum)
+      (when (should-load-audit? (audit-app.settings/load-analytics-content) last-checksum current-checksum)
+        (adjust-audit-db-to-source! audit-db)
         (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir (plugins/plugins-dir))))
         ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
         (let [report (log/with-no-logs
@@ -220,14 +267,32 @@
             (log/info (str "Error Loading Analytics Content: " (pr-str report)))
             (do
               (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
-              (audit/last-analytics-checksum! current-checksum))))))
-    (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-      (adjust-audit-db-to-host! audit-db))))
+              (audit/last-analytics-checksum! current-checksum))))
+        (when-let [{:keys [engine] :as audit-db} (t2/select-one :model/Database :is_audit true)]
+          (let [original-engine engine]
+            (adjust-audit-db-to-host! audit-db)
+            ;; Only sync if we actually changed the engine type
+            (when (not= original-engine (mdb/db-type))
+              (when-let [updated-audit-db (t2/select-one :model/Database :is_audit true)]
+                ;; Sync the audit database to update field metadata to match the host database engine
+                ;; This ensures fields with PostgreSQL-specific types (like timestamptz) get updated
+                ;; to the correct types for the host database (e.g., datetime for MySQL)
+                (log/info "Starting Sync of Audit DB fields to update metadata for host engine")
+                (let [sync-future (future
+                                    (log/with-no-logs (sync/sync-database! updated-audit-db {:scan :schema}))
+                                    (log/info "Audit DB field sync complete."))]
+                  (when config/is-test?
+                    ;; Tests need the sync to complete before they run
+                    @sync-future))))))))))
 
-(defn- maybe-install-audit-db
+(defn- maybe-install-audit-db!
   []
   (let [audit-db (t2/select-one :model/Database :is_audit true)]
     (cond
+      (not (audit-app.settings/install-analytics-database))
+      (u/prog1 ::blocked
+        (log/info "Not installing Audit DB - install-analytics-database setting is false"))
+
       (nil? audit-db)
       (u/prog1 ::installed
         (log/info "Installing Audit DB...")
@@ -246,8 +311,8 @@
   content if it is available."
   :feature :none
   []
-  (u/prog1 (maybe-install-audit-db)
-    (let [audit-db (t2/select-one :model/Database :is_audit true)]
+  (u/prog1 (maybe-install-audit-db!)
+    (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
       ;; prevent sync while loading
       ((sync-util/with-duplicate-ops-prevented
         :sync-database audit-db

@@ -5,7 +5,6 @@ import { Panel } from "metabase/admin/performance/components/StrategyEditorForDa
 import { rootId } from "metabase/admin/performance/constants/simple";
 import type { UpdateTargetId } from "metabase/admin/performance/types";
 import { FormProvider } from "metabase/forms";
-import { color } from "metabase/lib/colors";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { CacheConfig } from "metabase-types/api";
 
@@ -35,7 +34,7 @@ export const StrategyFormLauncherPanel = ({
   isStrategyFormDirty: boolean;
   shouldShowResetButton: boolean;
 }) => {
-  const databaseIds = useMemo(() => databases.map(db => db.id), [databases]);
+  const databaseIds = useMemo(() => databases.map((db) => db.id), [databases]);
 
   const {
     handleSubmit: resetAllToDefault,
@@ -48,7 +47,7 @@ export const StrategyFormLauncherPanel = ({
   });
 
   return (
-    <Panel role="group" style={{ backgroundColor: color("bg-light") }}>
+    <Panel role="group" style={{ backgroundColor: "var(--mb-color-bg-light)" }}>
       <StrategyFormLauncherPanelBox>
         <StrategyFormLauncher
           forId={rootId}
@@ -60,7 +59,7 @@ export const StrategyFormLauncherPanel = ({
         />
       </StrategyFormLauncherPanelBox>
       <StrategyFormLauncherPanelStack>
-        {databases?.map(db => (
+        {databases?.map((db) => (
           <StrategyFormLauncher
             forId={db.id}
             title={db.name}

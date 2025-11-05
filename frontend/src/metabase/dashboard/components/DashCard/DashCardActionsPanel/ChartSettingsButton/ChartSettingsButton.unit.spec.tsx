@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { ChartSettingsButton } from "metabase/dashboard/components/DashCard/DashCardActionsPanel/ChartSettingsButton/ChartSettingsButton";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import registerVisualizations from "metabase/visualizations/register";
 import {
   createMockColumn,
@@ -47,11 +48,15 @@ const setup = () => {
   setupDatabaseEndpoints(MOCK_DATABASE);
 
   renderWithProviders(
-    <ChartSettingsButton
-      series={MOCK_SERIES}
+    <MockDashboardContext
+      dashboardId={MOCK_DASHBOARD.id}
       dashboard={MOCK_DASHBOARD}
-      onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
-    />,
+    >
+      <ChartSettingsButton
+        series={MOCK_SERIES}
+        onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
+      />
+    </MockDashboardContext>,
   );
 };
 
@@ -65,11 +70,14 @@ describe("ChartSettingsButton", () => {
     setup();
     await userEvent.click(screen.getByLabelText("palette icon"));
 
-    expect(screen.getByTestId("chartsettings-sidebar")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("chartsettings-sidebar"),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("visualization-root")).toBeInTheDocument();
 
     await userEvent.click(screen.getByDisplayValue("Linear Interpolated"));
 
-    expect(screen.getByTestId("select-dropdown")).toBeInTheDocument();
+    //Select dropdowns render a listbox
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
   });
 });

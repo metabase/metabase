@@ -1,14 +1,17 @@
 import { useClickOutside } from "@mantine/hooks";
 import cx from "classnames";
 import { useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import LogoIcon from "metabase/components/LogoIcon";
+import LogoIcon from "metabase/common/components/LogoIcon";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { getIsPaidPlan } from "metabase/selectors/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Icon } from "metabase/ui";
-import type { User } from "metabase-types/api";
 import type { AdminPath } from "metabase-types/store";
 
 import StoreLink from "../StoreLink";
@@ -17,6 +20,7 @@ import { AdminNavItem } from "./AdminNavItem";
 import { AdminNavLink } from "./AdminNavItem.styled";
 import AdminNavCS from "./AdminNavbar.module.css";
 import {
+  AdminButtons,
   AdminExitLink,
   AdminLogoContainer,
   AdminLogoLink,
@@ -30,7 +34,6 @@ import {
 
 interface AdminNavbarProps {
   path: string;
-  user: User;
   adminPaths: AdminPath[];
 }
 
@@ -39,10 +42,33 @@ export const AdminNavbar = ({
   adminPaths,
 }: AdminNavbarProps) => {
   const isPaidPlan = useSelector(getIsPaidPlan);
+  const isAdmin = useSelector(getUserIsAdmin);
+  const dispatch = useDispatch();
+
+  useRegisterShortcut(
+    [
+      {
+        id: "admin-change-tab",
+        perform: (_, event) => {
+          if (!event?.key) {
+            return;
+          }
+          const key = parseInt(event.key);
+          const path = adminPaths[key - 1]?.path;
+
+          if (path) {
+            dispatch(push(path));
+          }
+        },
+      },
+    ],
+    [adminPaths],
+  );
 
   return (
     <AdminNavbarRoot
       data-element-id="navbar-root"
+      data-testid="admin-navbar"
       aria-label={t`Navigation bar`}
     >
       <AdminLogoLink to="/admin">
@@ -67,11 +93,16 @@ export const AdminNavbar = ({
           ))}
         </AdminNavbarItems>
 
-        {!isPaidPlan && <StoreLink />}
-        <AdminExitLink
-          to="/"
-          data-testid="exit-admin"
-        >{t`Exit admin`}</AdminExitLink>
+        {!isPaidPlan && isAdmin && <StoreLink />}
+
+        <AdminButtons>
+          <PLUGIN_METABOT.MetabotAdminAppBarButton />
+
+          <AdminExitLink
+            to="/"
+            data-testid="exit-admin"
+          >{t`Exit admin`}</AdminExitLink>
+        </AdminButtons>
       </MobileHide>
     </AdminNavbarRoot>
   );
@@ -90,7 +121,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
   return (
     <AdminMobileNavbar ref={ref}>
       <Button
-        onClick={() => setMobileNavOpen(prev => !prev)}
+        onClick={() => setMobileNavOpen((prev) => !prev)}
         variant="subtle"
         p="0.25rem"
       >

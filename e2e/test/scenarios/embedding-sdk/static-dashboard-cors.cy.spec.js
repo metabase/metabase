@@ -1,13 +1,14 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { AUTH_PROVIDER_URL } from "e2e/support/helpers";
 import { visitFullAppEmbeddingUrl } from "e2e/support/helpers/e2e-embedding-helpers";
 import {
   EMBEDDING_SDK_STORY_HOST,
-  getSdkRoot,
+  getStorybookSdkRoot,
 } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   JWT_SHARED_SECRET,
@@ -16,11 +17,11 @@ import {
 
 const STORYBOOK_ID = "embeddingsdk-cypressstaticdashboardwithcors--default";
 
-H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
+describe("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
     H.restore();
-    cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    cy.signIn("admin", { skipCache: true });
+    H.activateToken("pro-self-hosted");
     enableJwtAuth();
 
     const textCard = H.getTextCardDetails({ col: 16, text: "Text text card" });
@@ -36,7 +37,7 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       },
     };
 
-    cy.createDashboard(
+    H.createDashboard(
       {
         name: "Embedding Sdk Test Dashboard",
         dashcards: [questionCard, textCard],
@@ -53,19 +54,13 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
     cy.task("signJwt", {
       payload: {
         email: USERS.normal.email,
-        exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
+        exp: Math.round(Date.now() / 1000) + 10 * 60,
       },
       secret: JWT_SHARED_SECRET,
-    }).then(jwtToken => {
-      const ssoUrl = new URL("/auth/sso", Cypress.config().baseUrl);
-      ssoUrl.searchParams.set("jwt", jwtToken);
-      ssoUrl.searchParams.set("token", "true");
-      cy.request(ssoUrl.toString()).then(({ body }) => {
-        cy.wrap(body).as("metabaseSsoResponse");
+    }).then((jwtToken) => {
+      cy.intercept("GET", `${AUTH_PROVIDER_URL}?response=json`, {
+        jwt: jwtToken,
       });
-    });
-    cy.get("@metabaseSsoResponse").then(ssoResponse => {
-      cy.intercept("GET", "/sso/metabase", ssoResponse);
     });
   });
 
@@ -75,20 +70,20 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
     });
     cy.signOut();
 
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       visitFullAppEmbeddingUrl({
         url: EMBEDDING_SDK_STORY_HOST,
         qs: { id: STORYBOOK_ID, viewMode: "story" },
-        onBeforeLoad: window => {
+        onBeforeLoad: (window) => {
           window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
           window.DASHBOARD_ID = dashboardId;
         },
       });
     });
 
-    getSdkRoot().within(() => {
+    getStorybookSdkRoot().within(() => {
       cy.findByText(
-        "Failed to fetch the user, the session might be invalid.",
+        "Embedding SDK for React is disabled. Enable it in the embedding settings.",
       ).should("be.visible");
     });
   });
@@ -98,11 +93,11 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       "enable-embedding-sdk": true,
     });
     cy.signOut();
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       visitFullAppEmbeddingUrl({
         url: EMBEDDING_SDK_STORY_HOST,
         qs: { id: STORYBOOK_ID, viewMode: "story" },
-        onBeforeLoad: window => {
+        onBeforeLoad: (window) => {
           window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
           window.DASHBOARD_ID = dashboardId;
         },
@@ -117,7 +112,7 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       expect(response?.statusCode).to.equal(200);
     });
 
-    getSdkRoot().within(() => {
+    getStorybookSdkRoot().within(() => {
       cy.findByText("Embedding Sdk Test Dashboard").should("be.visible"); // dashboard title
 
       cy.findByText("Text text card").should("be.visible"); // text card content
@@ -132,23 +127,23 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       "enable-embedding-sdk": true,
     });
     cy.signOut();
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       visitFullAppEmbeddingUrl({
         url: "http://my-site.local:6006/iframe.html",
         qs: {
           id: STORYBOOK_ID,
           viewMode: "story",
         },
-        onBeforeLoad: window => {
+        onBeforeLoad: (window) => {
           window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
           window.DASHBOARD_ID = dashboardId;
         },
       });
     });
 
-    getSdkRoot().within(() => {
+    getStorybookSdkRoot().within(() => {
       cy.findByText(
-        "Failed to fetch the user, the session might be invalid.",
+        "Unable to connect to instance at http://localhost:4000",
       ).should("be.visible");
     });
   });
@@ -159,11 +154,11 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       "embedding-app-origins-sdk": "my-site.local:6006",
     });
     cy.signOut();
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       visitFullAppEmbeddingUrl({
         url: "http://my-site.local:6006/iframe.html",
         qs: { id: STORYBOOK_ID, viewMode: "story" },
-        onBeforeLoad: window => {
+        onBeforeLoad: (window) => {
           window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
           window.DASHBOARD_ID = dashboardId;
         },
@@ -178,7 +173,7 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       expect(response?.statusCode).to.equal(200);
     });
 
-    getSdkRoot().within(() => {
+    getStorybookSdkRoot().within(() => {
       cy.findByText("Embedding Sdk Test Dashboard").should("be.visible"); // dashboard title
 
       cy.findByText("Text text card").should("be.visible"); // text card content

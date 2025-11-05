@@ -7,8 +7,8 @@ import * as Lib from "metabase-lib";
 
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { MIN_WIDTH } from "../constants";
-import type { FilterPickerWidgetProps } from "../types";
+import { WIDTH } from "../constants";
+import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 export function DefaultFilterPicker({
   query,
@@ -16,8 +16,11 @@ export function DefaultFilterPicker({
   column,
   filter,
   isNew,
+  withAddButton,
+  withSubmitButton,
   onBack,
   onChange,
+  readOnly,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, column),
@@ -35,37 +38,45 @@ export function DefaultFilterPicker({
 
   const handleOperatorChange = (operator: string) => {
     const option = availableOptions.find(
-      option => option.operator === operator,
+      (option) => option.operator === operator,
     );
     if (option) {
       setOperator(option.operator);
     }
   };
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-
+  const handleFilterChange = (opts: FilterChangeOpts) => {
     const filter = getFilterClause(operator);
     if (filter) {
-      onChange(filter);
+      onChange(filter, opts);
     }
+  };
+
+  const handleFormSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    handleFilterChange({ run: true });
+  };
+
+  const handleAddButtonClick = () => {
+    handleFilterChange({ run: false });
   };
 
   return (
     <Box
       component="form"
-      miw={MIN_WIDTH}
+      miw={WIDTH}
       data-testid="default-filter-picker"
-      onSubmit={handleSubmit}
+      onSubmit={handleFormSubmit}
     >
       <FilterPickerHeader
         columnName={columnInfo.longDisplayName}
         onBack={onBack}
+        readOnly={readOnly}
       />
       <div>
         <Radio.Group value={operator} onChange={handleOperatorChange}>
-          <Stack p="md" spacing="sm">
-            {availableOptions.map(option => (
+          <Stack p="md" gap="sm">
+            {availableOptions.map((option) => (
               <Radio
                 key={option.operator}
                 value={option.operator}
@@ -76,7 +87,13 @@ export function DefaultFilterPicker({
             ))}
           </Stack>
         </Radio.Group>
-        <FilterPickerFooter isNew={isNew} canSubmit />
+        <FilterPickerFooter
+          isNew={isNew}
+          isValid
+          withAddButton={withAddButton}
+          withSubmitButton={withSubmitButton}
+          onAddButtonClick={handleAddButtonClick}
+        />
       </div>
     </Box>
   );

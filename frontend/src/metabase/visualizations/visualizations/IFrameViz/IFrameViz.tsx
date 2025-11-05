@@ -1,10 +1,9 @@
 import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Link from "metabase/common/components/Link";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { getParameterValues } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
@@ -79,6 +78,7 @@ export function IFrameViz({
         dashboard,
         parameterValues,
         text: allowedIframeAttributes?.src,
+        urlEncode: true,
       }),
     [dashcard, dashboard, parameterValues, allowedIframeAttributes?.src],
   );
@@ -86,18 +86,18 @@ export function IFrameViz({
   if (isEditing && !isEditingParameter && !isPreviewing) {
     return (
       <IFrameEditWrapper>
-        <Stack h="100%" spacing="sm">
-          <Group align="center" noWrap>
+        <Stack h="100%" gap="sm">
+          <Group align="center" wrap="nowrap">
             <Text fw="bold" truncate>
               {t`Paste your snippet here`}
             </Text>{" "}
             <Box ml="auto">
               <Button
-                compact
+                size="compact-md"
                 variant="filled"
                 style={{ pointerEvents: "all" }}
                 onClick={onTogglePreviewing}
-                onMouseDown={e => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
               >{t`Done`}</Button>
             </Box>
           </Group>
@@ -105,7 +105,6 @@ export function IFrameViz({
             <StyledInput
               data-testid="iframe-card-input"
               autoFocus={isNew}
-              size="100%"
               styles={{
                 wrapper: {
                   height: "100%",
@@ -114,8 +113,8 @@ export function IFrameViz({
               h="100%"
               value={iframeOrUrl ?? ""}
               placeholder={`<iframe src="https://example.com" />`}
-              onChange={e => handleIFrameChange(e.target.value)}
-              onMouseDown={e => e.stopPropagation()}
+              onChange={(e) => handleIFrameChange(e.target.value)}
+              onMouseDown={(e) => e.stopPropagation()}
               style={{ pointerEvents: "all" }}
             />
           </Box>
@@ -191,7 +190,7 @@ function ForbiddenDomainError({ url }: { url: string }) {
           </Text>
         )} can not be embedded in iframe cards.`}
       </Text>
-      <InteractiveText color="text-dark" px="lg" mt="md">
+      <InteractiveText c="text-dark" px="lg" mt="md">
         {renderMessage()}
       </InteractiveText>
     </Box>

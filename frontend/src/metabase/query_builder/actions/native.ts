@@ -9,7 +9,7 @@ import type {
   CardId,
   DatabaseId,
   NativeQuerySnippet,
-  Parameter,
+  ParameterValuesConfig,
   TemplateTag,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
@@ -22,7 +22,7 @@ import {
   getSnippetCollectionId,
 } from "../selectors";
 
-import { updateQuestion } from "./core";
+import { updateQuestion } from "./core/updateQuestion";
 import { SET_UI_CONTROLS } from "./ui";
 
 export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
@@ -79,15 +79,6 @@ export const toggleTemplateTagsEditor = createAction(
   TOGGLE_TEMPLATE_TAGS_EDITOR,
 );
 
-export const SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR =
-  "metabase/qb/SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR";
-export const setIsShowingTemplateTagsEditor = (
-  isShowingTemplateTagsEditor: boolean,
-) => ({
-  type: SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
-  isShowingTemplateTagsEditor,
-});
-
 export const TOGGLE_SNIPPET_SIDEBAR = "metabase/qb/TOGGLE_SNIPPET_SIDEBAR";
 export const toggleSnippetSidebar = createAction(TOGGLE_SNIPPET_SIDEBAR);
 
@@ -102,7 +93,7 @@ export const setIsShowingSnippetSidebar = (
 
 export const setIsNativeEditorOpen = (isNativeEditorOpen: boolean) => ({
   type: SET_UI_CONTROLS,
-  payload: { isNativeEditorOpen },
+  payload: { isNativeEditorOpen, isShowingDataReference: isNativeEditorOpen },
 });
 
 export const SET_NATIVE_EDITOR_SELECTED_RANGE =
@@ -137,7 +128,7 @@ export const insertSnippet =
     if (!question) {
       return;
     }
-    const query = question.legacyQuery() as NativeQuery;
+    const query = question.legacyNativeQuery() as NativeQuery;
     const nativeEditorCursorOffset = getNativeEditorCursorOffset(getState());
     const nativeEditorSelectedText = getNativeEditorSelectedText(getState());
     const selectionStart =
@@ -146,10 +137,7 @@ export const insertSnippet =
       query.queryText().slice(0, selectionStart) +
       `{{snippet: ${name}}}` +
       query.queryText().slice(nativeEditorCursorOffset);
-    const datasetQuery = query
-      .setQueryText(newText)
-      .updateSnippetsWithIds([snippet])
-      .datasetQuery();
+    const datasetQuery = query.setQueryText(newText).datasetQuery();
     dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
   };
 
@@ -162,7 +150,7 @@ export const setTemplateTag = createThunkAction(
       if (!question) {
         return;
       }
-      const query = question.legacyQuery() as NativeQuery;
+      const query = question.legacyNativeQuery() as NativeQuery;
       const newQuestion = query.setTemplateTag(tag.name, tag).question();
       dispatch(updateQuestion(newQuestion));
     };
@@ -172,14 +160,16 @@ export const setTemplateTag = createThunkAction(
 export const SET_TEMPLATE_TAG_CONFIG = "metabase/qb/SET_TEMPLATE_TAG_CONFIG";
 export const setTemplateTagConfig = createThunkAction(
   SET_TEMPLATE_TAG_CONFIG,
-  (tag: TemplateTag, parameter: Parameter) => {
+  (tag: TemplateTag, parameterConfig: ParameterValuesConfig) => {
     return (dispatch: Dispatch, getState: GetState) => {
       const question = getQuestion(getState());
       if (!question) {
         return;
       }
-      const query = question.legacyQuery() as NativeQuery;
-      const newQuestion = query.setTemplateTagConfig(tag, parameter).question();
+      const query = question.legacyNativeQuery() as NativeQuery;
+      const newQuestion = query
+        .setTemplateTagConfig(tag, parameterConfig)
+        .question();
       dispatch(updateQuestion(newQuestion));
     };
   },

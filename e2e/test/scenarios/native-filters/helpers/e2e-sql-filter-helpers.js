@@ -1,7 +1,6 @@
 import {
+  NativeEditor,
   filterWidget,
-  focusNativeEditor,
-  nativeEditor,
   selectDropdown,
 } from "e2e/support/helpers";
 
@@ -30,7 +29,7 @@ export function openTypePickerFromDefaultFilterType() {
 /**
  * Sets the SQL filter type.
  *
- * @param {("Text"|"Number"|"Date"|"Field Filter")} filterType
+ * @param {("Text"|"Number"|"Date"|"Boolean"|"Field Filter")} filterType
  *
  * @example
  * chooseType("Date");
@@ -49,7 +48,7 @@ export function chooseType(filterType) {
  * @param {string} value
  */
 export function setWidgetValue(value) {
-  filterWidget().click().type(value);
+  filterWidget().type(value);
 }
 
 /**
@@ -97,17 +96,21 @@ export function runQuery(xhrAlias = "dataset") {
  * @param {string} query
  */
 export function enterParameterizedQuery(query, options = {}) {
-  focusNativeEditor();
-  nativeEditor().type(query, {
-    parseSpecialCharSequences: false,
+  NativeEditor.focus().type(query, {
     ...options,
   });
 }
 
 export function getRunQueryButton() {
-  return cy.findByTestId("native-query-editor-sidebar").button("Get Answer");
+  return cy
+    .findByTestId("native-query-editor-container")
+    .findByTestId("run-button");
 }
 
 export function getSaveQueryButton() {
   return cy.findByRole("button", { name: "Save" });
+}
+
+export function setFieldAlias(alias) {
+  cy.findByTestId("field-alias-input").clear().type(alias).blur();
 }

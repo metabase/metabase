@@ -7,7 +7,7 @@ export const getLegendItems = <TDatum>(
   seriesColors: Record<string, string>,
   settings: VisualizationSettings,
 ): LegendItem[] => {
-  return multipleSeries.map(series => ({
+  return multipleSeries.map((series) => ({
     key: series.seriesKey,
     name:
       settings?.series_settings?.[series.seriesKey]?.title ?? series.seriesName,

@@ -20,20 +20,20 @@ export function getAxisTransforms(
 ): NumericAxisScaleTransforms {
   if (scale === "pow") {
     return {
-      toEChartsAxisValue: value => {
+      toEChartsAxisValue: (value) => {
         if (!isNumber(value)) {
           return null;
         }
         return signedSquareRoot(value);
       },
-      fromEChartsAxisValue: value => {
+      fromEChartsAxisValue: (value) => {
         return Math.pow(value, 2) * getSign(value);
       },
     };
   }
   if (scale === "log") {
     return {
-      toEChartsAxisValue: value => {
+      toEChartsAxisValue: (value) => {
         if (!isNumber(value)) {
           return null;
         }
@@ -44,19 +44,19 @@ export function getAxisTransforms(
 
         return signedLog(value);
       },
-      fromEChartsAxisValue: value => {
+      fromEChartsAxisValue: (value) => {
         return Math.pow(10, Math.abs(value)) * getSign(value);
       },
     };
   }
 
   return {
-    toEChartsAxisValue: value => {
+    toEChartsAxisValue: (value) => {
       if (!isNumber(value)) {
         return null;
       }
       return value;
     },
-    fromEChartsAxisValue: value => value,
+    fromEChartsAxisValue: (value) => value,
   };
 }

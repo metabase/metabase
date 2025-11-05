@@ -77,7 +77,7 @@ async function setup({
   renderWithProviders(
     <Route
       path="/public/action/:uuid"
-      component={props => (
+      component={(props) => (
         <PublicApp {...props}>
           <PublicAction {...props} />
         </PublicApp>
@@ -152,7 +152,9 @@ describe("PublicAction", () => {
 
     await waitFor(() => {
       expect(
-        fetchMock.done(`path:/api/public/action/${TEST_PUBLIC_ID}/execute`),
+        fetchMock.callHistory.done(
+          `path:/api/public/action/${TEST_PUBLIC_ID}/execute`,
+        ),
       ).toBe(true);
     });
   });
@@ -205,7 +207,9 @@ describe("PublicAction", () => {
     );
     await waitFor(() =>
       expect(
-        fetchMock.done(`path:/api/public/action/${TEST_PUBLIC_ID}/execute`),
+        fetchMock.callHistory.done(
+          `path:/api/public/action/${TEST_PUBLIC_ID}/execute`,
+        ),
       ).toBe(true),
     );
   });

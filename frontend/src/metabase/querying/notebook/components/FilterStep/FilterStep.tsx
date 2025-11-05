@@ -80,6 +80,7 @@ export function FilterStep({
             onAddFilter={handleAddFilter}
             onUpdateFilter={handleUpdateFilter}
             onClose={onClose}
+            readOnly={readOnly}
           />
         )}
         onReorder={handleReorderFilter}
@@ -100,6 +101,7 @@ interface FilterPopoverProps {
     nextFilter: Lib.Filterable,
   ) => void;
   onClose?: () => void;
+  readOnly?: boolean;
 }
 
 function FilterPopover({
@@ -110,6 +112,7 @@ function FilterPopover({
   onAddFilter,
   onUpdateFilter,
   onClose,
+  readOnly,
 }: FilterPopoverProps) {
   return (
     <FilterPicker
@@ -117,7 +120,7 @@ function FilterPopover({
       stageIndex={stageIndex}
       filter={filter}
       filterIndex={filterIndex}
-      onSelect={newFilter => {
+      onSelect={(newFilter) => {
         if (filter) {
           onUpdateFilter(filter, newFilter);
         } else {
@@ -125,6 +128,7 @@ function FilterPopover({
         }
       }}
       onClose={onClose}
+      readOnly={readOnly}
     />
   );
 }

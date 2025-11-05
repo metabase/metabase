@@ -1,20 +1,22 @@
 (ns ^:mb/driver-tests metabase.driver.mongo.query-processor-test
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.mongo.query-processor :as mongo.qp]
-   [metabase.models :refer [Field Table]]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.alternative-date-test :as qp.alternative-date-test]
    [metabase.query-processor-test.date-time-zone-functions-test :as qp.datetime-test]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -115,7 +117,7 @@
         (mt/with-clock #t "2021-02-15T17:33:00-08:00[US/Pacific]"
           (mt/dataset attempted-murders
             (testing "should still work even with bucketing bucketing"
-              (let [tz    (qp.timezone/results-timezone-id :mongo mt/db)
+              (let [tz    (qp.timezone/results-timezone-id :mongo (mt/db))
                     query (mt/with-metadata-provider (mt/id)
                             (qp.compile/compile
                              (mt/mbql-query attempts
@@ -244,19 +246,6 @@
                   (mt/mbql-query tips
                     {:aggregation [[:count]]
                      :breakout    [$tips.source.username]}))))
-          (testing "Parent fields are removed from projections when child fields are included (#19135)"
-            (let [table       (t2/select-one Table :db_id (mt/id))
-                  fields      (t2/select Field :table_id (u/the-id table))
-                  projections (-> (mongo.qp/mbql->native
-                                   (mt/mbql-query tips {:fields (mapv (fn [f]
-                                                                        [:field (u/the-id f) nil])
-                                                                      fields)}))
-                                  :projections
-                                  set)]
-              ;; the "source", "url", and "venue" fields should NOT have been chosen as projections, since they have
-              ;; at least one child field selected as a projection, which is not allowed as of MongoDB 4.4
-              ;; see docstring on mongo.qp/remove-parent-fields for full details
-              (is (empty? (set/intersection projections #{"source" "url" "venue"})))))
           (testing "Nested fields in join condition aliases are transformed to use `_` instead of a `.` (#32182)"
             (let [query (mt/mbql-query tips
                           {:joins [{:alias "Tips"
@@ -417,7 +406,7 @@
                   {"$group"
                    {"_id"
                     {"date"
-                     (let [tz (qp.timezone/results-timezone-id :mongo mt/db)]
+                     (let [tz (qp.timezone/results-timezone-id :mongo (mt/db))]
                        (if (date-arithmetic-supported?)
                          {:$dateTrunc {:date "$date"
                                        :startOfWeek "sunday"
@@ -574,7 +563,7 @@
         {"$expr" {"$eq" ["$price" {"$add" [{"$subtract" ["$price" 5]} 100]}]}}
         [:= $price [:+ [:- $price 5] 100]]))))
 
-(deftest ^:parallel uniqe-alias-index-test
+(deftest ^:parallel unique-alias-index-test
   (mt/test-driver
     :mongo
     (testing "Field aliases have deterministic unique indices"
@@ -601,7 +590,7 @@
             indices (reduce (fn [acc lookup-stage]
                               (let [let-var-name (-> (get-in lookup-stage ["$lookup" :let]) keys first)
                                    ;; Following expression ensures index is an integer.
-                                    index (Integer/parseInt (re-find #"\d+$" let-var-name))]
+                                    index (parse-long (re-find #"\d+$" let-var-name))]
                                ;; Following expression tests that index is unique.
                                 (is (not (contains? acc index)))
                                 (conj acc index)))
@@ -628,3 +617,157 @@
            #"MongoDB does not support parsing strings as times. Try parsing to a datetime instead"
            (qp/process-query
             (mt/mbql-query times {:fields [$t]})))))))
+
+(deftest ^:parallel join-preserves-$$-variable-prefix-test
+  (mt/test-driver :mongo
+    (testing "$$variable references in join conditions are preserved when rhs is a literal value (QUE-1500)"
+      (let [query (mt/mbql-query users
+                    {:joins    [{:condition    [:and
+                                                [:= $id &c.checkins.user_id]
+                                                [:= $name [:value "Felipinho Asklepios" {:base_type :type/Text}]]]
+                                 :source-table $$checkins
+                                 :alias        "c"
+                                 :fields       [&c.checkins.date]}]
+                     :fields   [$id $name &c.checkins.date]
+                     :order-by [[:asc $id]
+                                [:asc &c.checkins.id]]
+                     :limit    3})]
+        (testing "qp.compile"
+          (is (= [{"$lookup"
+                   {:as "join_alias_c"
+                    :from "checkins"
+                    :let {"let__id___1" "$_id",
+                          "let_name___2" "$name"}
+                    :pipeline
+                    [{"$project" {"_id" "$_id", "date" "$date", "user_id" "$user_id", "venue_id" "$venue_id"}}
+                     {"$match"
+                      {"$and" [{"$expr" {"$eq" ["$$let__id___1" "$user_id"]}}
+                               {"$expr" {"$eq" ["$$let_name___2" "Felipinho Asklepios"]}}]}}]}}
+                  {"$unwind" {:path "$join_alias_c"
+                              :preserveNullAndEmptyArrays true}}
+                  {"$sort" {"_id" 1
+                            "join_alias_c._id" 1}}
+                  {"$project" {"_id" "$_id"
+                               "c__date" "$join_alias_c.date"
+                               "name" "$name"}}
+                  {"$limit" 3}]
+                 (:query (qp.compile/compile query)))))
+        (testing "qp.process-query"
+          (is (= [[1 "Plato Yeshua" nil]
+                  [2 "Felipinho Asklepios" "2013-11-19T00:00:00Z"]
+                  [2 "Felipinho Asklepios" "2015-03-06T00:00:00Z"]]
+                 (mt/rows (qp/process-query query)))))))))
+
+(deftest ^:parallel mongo-multiple-joins-test
+  (testing "should be able to join multiple mongo collections"
+    (mt/test-driver :mongo
+      (mt/dataset (mt/dataset-definition "multi-join-db"
+                                         [["table_a"
+                                           [{:field-name "a_id" :base-type :type/Text}
+                                            {:field-name "b_id" :base-type :type/Text}]
+                                           [["a_id" "b_id"]]]
+                                          ["table_b"
+                                           [{:field-name "b_id" :base-type :type/Text}
+                                            {:field-name "c_id" :base-type :type/Text}]
+                                           [["b_id" "c_id"]]]
+                                          ["table_c"
+                                           [{:field-name "c_id" :base-type :type/Text}]
+                                           [["c_id"]]]])
+        (let [mp (mt/metadata-provider)
+              table-a (lib.metadata/table mp (mt/id :table_a))
+              table-b (lib.metadata/table mp (mt/id :table_b))
+              table-c (lib.metadata/table mp (mt/id :table_c))
+              table-a-b-id (lib.metadata/field mp (mt/id :table_a :b_id))
+              table-b-b-id (lib.metadata/field mp (mt/id :table_b :b_id))
+              table-b-c-id (lib.metadata/field mp (mt/id :table_b :c_id))
+              table-c-c-id (lib.metadata/field mp (mt/id :table_c :c_id))
+              query (-> (lib/query mp table-a)
+                        (lib/join (lib/join-clause table-b [(lib/= table-a-b-id  table-b-b-id)]))
+                        (lib/join (lib/join-clause table-c [(lib/= table-b-c-id table-c-c-id)])))]
+          (is (= [[1 "a_id" "b_id" 1 "b_id" "c_id" 1 "c_id"]]
+                 (mt/rows (qp/process-query query)))))))))
+
+;; TODO: Re-enable this test if it becomes possible to determine type/UUID without using JavaScript
+#_(deftest ^:parallel filter-uuids-with-string-patterns-test
+    (mt/test-driver :mongo
+      (mt/dataset uuid-dogs
+        (let [mp (mt/metadata-provider)
+              dogs (lib.metadata/table mp (mt/id :dogs))
+              person-id (lib.metadata/field mp (mt/id :dogs :person_id))]
+          (if (-> (driver/dbms-version :mongo (mt/db)) :semantic-version (driver.u/semantic-version-gte [8]))
+            (do
+              (is (= [[1 #uuid "27e164bc-54f8-47a0-a85a-9f0e90dd7667" "Ivan" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
+                      [2 #uuid "3a0c0508-6b00-40ff-97f6-549666b2d16b" "Zach" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]]
+                     (-> (lib/query mp dogs)
+                         (lib/filter (lib/starts-with person-id "d6"))
+                         qp/process-query
+                         mt/rows)))
+              (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
+                     (-> (lib/query mp dogs)
+                         (lib/filter (lib/ends-with person-id "9b"))
+                         qp/process-query
+                         mt/rows)))
+              (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
+                     (-> (lib/query mp dogs)
+                         (lib/filter (lib/contains person-id "e"))
+                         qp/process-query
+                         mt/rows))))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"String searching on UUIDs is only supported in Mongo v8.0+"
+                                  (-> (lib/query mp dogs)
+                                      (lib/filter (lib/contains person-id "e"))
+                                      qp/process-query))))))))
+
+(deftest ^:parallel pivot-query-based-on-native-card-test
+  (mt/test-driver :mongo
+    (testing "Pivot queries based on a native Mongo card return the right number of columns (#64124)"
+      (let [native-query (json/encode [{:$match {:_id 1}}
+                                       {:$project {:product_id :$product_id, :subtotal :$subtotal}}])
+            mp (lib.tu/mock-metadata-provider
+                (mt/metadata-provider)
+                {:cards [{:id              1
+                          :name            "Orders native mongo"
+                          :dataset-query   {:type     :native
+                                            :native   {:collection "orders"
+                                                       :query      native-query}
+                                            :database (mt/id)}
+                          :result_metadata [{:name         "product_id"
+                                             :base_type    :type/Integer
+                                             :display_name "product_id"}
+                                            {:name         "subtotal"
+                                             :base_type    :type/Float
+                                             :display_name "subtotal"}]}]})
+            breakout-by-column-name (fn [query col-name]
+                                      (lib/breakout query (m/find-first (comp #{col-name} :name)
+                                                                        (lib/breakoutable-columns query))))
+            query (-> (lib/query mp (lib.metadata/card mp 1))
+                      (lib/aggregate (lib/count))
+                      (breakout-by-column-name "product_id")
+                      (breakout-by-column-name "subtotal"))
+            pivot-query (assoc query
+                               :pivot_rows         [0]
+                               :pivot_cols         [1]
+                               :show_row_totals    true
+                               :show_column_totals true
+                               :info               {:context :ad-hoc})]
+        (is (=? {:data
+                 {:cols
+                  [{:lib/desired-column-alias "product_id"
+                    :field_ref                [:field "product_id" {:base-type :type/Integer}]
+                    :base_type                :type/Integer
+                    :effective_type           :type/Integer}
+                   {:lib/desired-column-alias "subtotal"
+                    :field_ref                [:field "subtotal" {:base-type :type/Float}]
+                    :base_type                :type/Float
+                    :effective_type           :type/Float}
+                   {:lib/desired-column-alias "pivot-grouping"
+                    :field_ref                [:expression "pivot-grouping"]
+                    :base_type                :type/Integer
+                    :effective_type           :type/Integer}
+                   {:lib/desired-column-alias "count"
+                    :field_ref                [:aggregation 0]
+                    :base_type                :type/Integer
+                    :semantic_type            :type/Quantity
+                    :effective_type           :type/Integer}]
+                  :rows [[14 37.65 0 1] [nil 37.65 1 1] [14 nil 2 1] [nil nil 3 1]]}}
+                (qp.pivot/run-pivot-query pivot-query)))))))

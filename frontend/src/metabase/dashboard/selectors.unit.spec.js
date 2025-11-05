@@ -4,6 +4,7 @@ import { createMockEntitiesState } from "__support__/store";
 import {
   getClickBehaviorSidebarDashcard,
   getDashboardComplete,
+  getDashboardHeaderParameters,
   getEditingParameterId,
   getIsEditingParameter,
   getIsSharing,
@@ -14,6 +15,7 @@ import {
 import Field from "metabase-lib/v1/metadata/Field";
 import {
   createMockCard,
+  createMockDashboard,
   createMockDashboardCard,
   createMockField,
   createMockHeadingDashboardCard,
@@ -60,6 +62,7 @@ const STATE = createMockState({
       }),
       2: createMockHeadingDashboardCard(),
     },
+    editingDashboard: createMockDashboard({ id: 0 }),
     sidebar: {},
   },
   entities: createMockEntitiesState({
@@ -220,6 +223,39 @@ describe("dashboard/selectors", () => {
     });
   });
 
+  describe("getDashboardHeaderParameters", () => {
+    it("should ignore dashcards that don't belong to the current dashboard", () => {
+      const parameterId = "_parameterId_";
+      const state = {
+        ...STATE,
+        dashboard: {
+          ...STATE.dashboard,
+          dashboards: {
+            0: {
+              ...STATE.dashboard.dashboards[0],
+              dashcards: [1],
+              parameters: [{ id: parameterId }],
+            },
+          },
+          dashcards: {
+            0: {
+              ...STATE.dashboard.dashcards[0],
+              inline_parameters: [parameterId],
+              dashboard_id: 1,
+            },
+            1: {
+              ...STATE.dashboard.dashcards[1],
+              dashboard_id: 0,
+            },
+          },
+        },
+      };
+      const headerParameters = getDashboardHeaderParameters(state);
+      expect(headerParameters).toHaveLength(1);
+      expect(headerParameters[0].id).toBe(parameterId);
+    });
+  });
+
   describe("getSidebar", () => {
     it("should return the sidebar property", () => {
       expect(getSidebar(STATE)).toBe(STATE.dashboard.sidebar);
@@ -358,7 +394,7 @@ describe("dashboard/selectors", () => {
       })
       .value();
 
-    const setup = positions => {
+    const setup = (positions) => {
       const newStateChain = chain(multiCardState);
 
       positions.forEach((position, index) => {

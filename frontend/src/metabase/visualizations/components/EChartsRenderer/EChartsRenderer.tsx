@@ -48,6 +48,7 @@ export const EChartsRenderer = forwardRef<HTMLDivElement, EChartsRendererProps>(
       });
 
       chartRef.current?.setOption(option, notMerge);
+
       onInit?.(chartRef.current);
     });
 
@@ -64,7 +65,7 @@ export const EChartsRenderer = forwardRef<HTMLDivElement, EChartsRendererProps>(
     }, [width, height]);
 
     useEffect(() => {
-      eventHandlers?.forEach(h => {
+      eventHandlers?.forEach((h) => {
         if (h.query) {
           chartRef.current?.on(h.eventName, h.query, h.handler);
           return;
@@ -72,21 +73,31 @@ export const EChartsRenderer = forwardRef<HTMLDivElement, EChartsRendererProps>(
         chartRef.current?.on(h.eventName, h.handler);
       });
 
-      return () =>
-        eventHandlers?.forEach(h =>
+      return () => {
+        if (chartRef.current?.isDisposed()) {
+          return;
+        }
+
+        eventHandlers?.forEach((h) =>
           chartRef.current?.off(h.eventName, h.handler),
         );
+      };
     }, [eventHandlers]);
 
     useEffect(() => {
-      zrEventHandlers?.forEach(h => {
+      zrEventHandlers?.forEach((h) => {
         chartRef.current?.getZr().on(h.eventName, h.handler);
       });
 
-      return () =>
-        zrEventHandlers?.forEach(h =>
+      return () => {
+        if (chartRef.current?.isDisposed()) {
+          return;
+        }
+
+        zrEventHandlers?.forEach((h) =>
           chartRef.current?.getZr().off(h.eventName, h.handler),
         );
+      };
     }, [zrEventHandlers]);
 
     return (

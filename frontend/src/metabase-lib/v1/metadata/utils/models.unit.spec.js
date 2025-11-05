@@ -160,7 +160,7 @@ describe("data model utils", () => {
         expect(checkCanBeModel(question)).toBe(true);
       });
 
-      UNSUPPORTED_TEMPLATE_TAG_TYPES.forEach(tagType => {
+      UNSUPPORTED_TEMPLATE_TAG_TYPES.forEach((tagType) => {
         it(`returns false when '${tagType}' variables are used`, () => {
           const card = createSavedNativeCard({
             tags: {
@@ -284,7 +284,7 @@ describe("data model utils", () => {
     };
     const states = Object.keys(testCases);
 
-    states.forEach(state => {
+    states.forEach((state) => {
       const canRefresh = testCases[state];
 
       it(`returns '${canRefresh}' for '${state}' caching state`, () => {

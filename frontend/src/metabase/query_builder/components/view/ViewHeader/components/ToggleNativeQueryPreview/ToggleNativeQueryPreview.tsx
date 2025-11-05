@@ -1,30 +1,36 @@
-import cx from "classnames";
 import { t } from "ttag";
 
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   setNotebookNativePreviewState,
   setUIControls,
 } from "metabase/query_builder/actions";
+import { trackNotebookNativePreviewShown } from "metabase/query_builder/analytics";
+import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
 import { getUiControls } from "metabase/query_builder/selectors";
-import { Icon, Tooltip } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import { Button, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
-import { trackNotebookNativePreviewShown } from "../../../../../analytics";
+import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
+import { canShowNativePreview } from "../../utils";
 
-import ToggleNativeQueryPreviewS from "./ToggleNativeQueryPreview.module.css";
-
-const BUTTON_TOOLTIP = {
-  sql: t`View the SQL`,
-  json: t`View the native query`,
+const BUTTON_TEXT = {
+  get sql() {
+    return t`View SQL`;
+  },
+  get json() {
+    return t`View native query`;
+  },
 };
 
-const BUTTON_TOOLTIP_CLOSE = {
-  sql: t`Hide the SQL`,
-  json: t`Hide the native query`,
+const BUTTON_CLOSE_TEXT = {
+  get sql() {
+    return t`Hide SQL`;
+  },
+  get json() {
+    return t`Hide native query`;
+  },
 };
 
 interface ToggleNativeQueryPreviewProps {
@@ -39,10 +45,12 @@ export const ToggleNativeQueryPreview = ({
     isShowingNotebookNativePreview,
   }: { isShowingNotebookNativePreview: boolean } = useSelector(getUiControls);
 
+  const screenSize = useNotebookScreenSize();
+
   const engineType = getEngineNativeType(question.database()?.engine);
-  const tooltip = isShowingNotebookNativePreview
-    ? BUTTON_TOOLTIP_CLOSE[engineType]
-    : BUTTON_TOOLTIP[engineType];
+  const buttonText = isShowingNotebookNativePreview
+    ? BUTTON_CLOSE_TEXT[engineType]
+    : BUTTON_TEXT[engineType];
 
   const handleClick = () => {
     dispatch(
@@ -51,44 +59,24 @@ export const ToggleNativeQueryPreview = ({
       }),
     );
 
-    dispatch(setNotebookNativePreviewState(!isShowingNotebookNativePreview));
+    // the setting is intentionally remembered only for large screens
+    if (screenSize === "large") {
+      dispatch(setNotebookNativePreviewState(!isShowingNotebookNativePreview));
+    }
 
     trackNotebookNativePreviewShown(question, !isShowingNotebookNativePreview);
   };
 
   return (
-    <Tooltip label={tooltip} position="top">
-      <IconButtonWrapper
-        className={cx(ToggleNativeQueryPreviewS.SqlButton, {
-          [ToggleNativeQueryPreviewS.isSelected]:
-            isShowingNotebookNativePreview,
-        })}
-        onClick={handleClick}
-        aria-label={tooltip}
-      >
-        <Icon size="1rem" name="sql" />
-      </IconButtonWrapper>
-    </Tooltip>
+    <Button
+      className={ViewTitleHeaderS.ToggleNativeQueryButton}
+      leftSection={<Icon name="sql" />}
+      onClick={handleClick}
+      aria-label={buttonText}
+    >
+      {buttonText}
+    </Button>
   );
 };
 
-interface ToggleNativeQueryPreviewOpts {
-  question: Question;
-  queryBuilderMode: string;
-}
-
-ToggleNativeQueryPreview.shouldRender = ({
-  question,
-  queryBuilderMode,
-}: ToggleNativeQueryPreviewOpts) => {
-  const { isNative } = Lib.queryDisplayInfo(question.query());
-  const isMetric = question.type() === "metric";
-
-  return (
-    !isNative &&
-    !isMetric &&
-    question.database()?.native_permissions === "write" &&
-    queryBuilderMode === "notebook" &&
-    !question.isArchived()
-  );
-};
+ToggleNativeQueryPreview.shouldRender = canShowNativePreview;

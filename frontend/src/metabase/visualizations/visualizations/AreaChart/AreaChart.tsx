@@ -18,9 +18,10 @@ import type {
 Object.assign(
   AreaChart,
   getCartesianChartDefinition({
-    uiName: t`Area`,
+    getUiName: () => t`Area`,
     identifier: "area",
     iconName: "area",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     noun: t`area chart`,
     minSize: getMinSize("area"),
     defaultSize: getDefaultSize("area"),

@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { CSSProperties } from "react";
 
-import Button, { type ButtonProps } from "metabase/core/components/Button";
+import Button, { type ButtonProps } from "metabase/common/components/Button";
 import { useMantineTheme } from "metabase/ui";
 
 import S from "./ViewButton.module.css";
@@ -17,7 +17,9 @@ const ViewButton = ({ className, active, color, ...props }: Props) => {
 
   return (
     <Button
-      className={cx(S.ViewButton, { [S.active]: active }, className)}
+      classNames={{
+        root: cx(S.ViewButton, { [S.active]: active }, className),
+      }}
       style={
         {
           "--view-button-color": color ?? theme.fn.themeColor("brand"),

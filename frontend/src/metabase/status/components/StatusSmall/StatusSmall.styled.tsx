@@ -1,8 +1,10 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import { color, lighten } from "metabase/lib/colors";
+import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { lighten } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 import type { InitialSyncStatus } from "metabase-types/api";
 
 interface Props {

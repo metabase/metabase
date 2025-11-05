@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<clickhouse>
+
+  <https_port>8443</https_port>
+  <tcp_port_secure>9440</tcp_port_secure>
+  <listen_host>0.0.0.0</listen_host>
+
+  <users_config>users.xml</users_config>
+  <default_profile>default</default_profile>
+  <default_database>default</default_database>
+
+  <mark_cache_size>5368709120</mark_cache_size>
+
+  <path>/var/lib/clickhouse/</path>
+  <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
+  <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
+  <access_control_path>/var/lib/clickhouse/access/</access_control_path>
+
+  <logger>
+    <level>debug</level>
+    <log>/var/log/clickhouse-server/clickhouse-server.log</log>
+    <errorlog>/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>
+    <size>1000M</size>
+    <count>10</count>
+    <console>1</console>
+  </logger>
+
+  <openSSL>
+    <server>
+      <certificateFile>/etc/clickhouse-server/certs/server.crt</certificateFile>
+      <privateKeyFile>/etc/clickhouse-server/certs/server.key</privateKeyFile>
+      <verificationMode>relaxed</verificationMode>
+      <caConfig>/etc/clickhouse-server/certs/ca.crt</caConfig>
+      <cacheSessions>true</cacheSessions>
+      <disableProtocols>sslv2,sslv3,tlsv1</disableProtocols>
+      <preferServerCiphers>true</preferServerCiphers>
+    </server>
+  </openSSL>
+
+  <query_log>
+    <database>system</database>
+    <table>query_log</table>
+    <partition_by>toYYYYMM(event_date)</partition_by>
+    <flush_interval_milliseconds>1000</flush_interval_milliseconds>
+  </query_log>
+
+  <!-- required after 25.1+ -->
+  <format_schema_path>/var/lib/clickhouse/format_schemas/</format_schema_path>
+  <user_directories>
+    <users_xml>
+      <path>users.xml</path>
+    </users_xml>
+  </user_directories>
+</clickhouse>

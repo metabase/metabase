@@ -1,13 +1,16 @@
 (ns metabase.lib.schema.filter-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
-   [malli.core :as mc]
    [malli.error :as me]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema]
-   [metabase.lib.schema.expression :as expression]))
+   [metabase.lib.schema.expression :as expression]
+   [metabase.util.malli.registry :as mr]))
 
-(comment metabase.lib.schema/keep-me)
+(comment metabase.lib.schema/keep-me
+         #?(:cljs metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (defn- ensure-uuids [filter-expr]
   (walk/postwalk
@@ -83,14 +86,14 @@
         (testing (pr-str filter-clause)
           (is (= :type/Boolean
                  (expression/type-of filter-clause)))
-          (is (not (me/humanize (mc/explain ::expression/boolean filter-clause))))))
+          (is (not (me/humanize (mr/explain ::expression/boolean filter-clause))))))
       ;; now test the entire thing
-      (is (mc/validate ::expression/boolean (ensure-uuids filter-expr))))))
+      (is (mr/validate ::expression/boolean (ensure-uuids filter-expr))))))
 
 (deftest ^:parallel invalid-filter-test
   (binding [expression/*suppress-expression-type-check?* false]
     (testing "invalid filters"
-      (are [clause] (mc/explain
+      (are [clause] (mr/explain
                      ::expression/boolean
                      (ensure-uuids clause))
         ;; xor doesn't exist
@@ -102,12 +105,35 @@
   (testing ":type/MongoBSONID"
     (let [bson-field [:field {:base-type :type/MongoBSONID :effective-type :type/MongoBSONID} 1]]
       (testing "is comparable"
-        (is (mc/validate ::expression/boolean (ensure-uuids [:= {} bson-field "abc"]))))
+        (is (mr/validate ::expression/boolean (ensure-uuids [:= {} bson-field "abc"]))))
       (testing "is empty"
-        (is (mc/validate ::expression/boolean (ensure-uuids [:is-empty {} bson-field]))))
+        (is (mr/validate ::expression/boolean (ensure-uuids [:is-empty {} bson-field]))))
       (testing "not empty"
-        (is (mc/validate ::expression/boolean (ensure-uuids [:not-empty {} bson-field]))))))
+        (is (mr/validate ::expression/boolean (ensure-uuids [:not-empty {} bson-field]))))))
   (testing ":type/Array"
     (let [bson-field [:field {:base-type :type/Array :effective-type :type/Array} 1]]
       (testing "is comparable"
-        (is (mc/validate ::expression/boolean (ensure-uuids [:= {} bson-field "abc"])))))))
+        (is (mr/validate ::expression/boolean (ensure-uuids [:= {} bson-field "abc"])))))))
+
+(deftest ^:parallel normalize-clause-add-options-map-test
+  (is (=? [:=
+           {:lib/uuid string?}
+           [:field {:lib/uuid string?} 2]
+           [:field {:join-alias "Parent", :lib/uuid string?} 1]]
+          (lib/normalize
+           :mbql.clause/=
+           [:=
+            [:field {} 2]
+            [:field {:join-alias "Parent"} 1]]))))
+
+(deftest ^:parallel normalize-clause-add-uuids-test
+  (is (=? [:=
+           {:lib/uuid string?}
+           [:field {:lib/uuid string?, :base-type :type/BigInteger} "ID"]
+           [:value {:lib/uuid string?, :base-type :type/BigInteger, :effective-type :type/BigInteger} 144]]
+          (lib/normalize
+           :mbql.clause/=
+           [:=
+            {}
+            [:field {:base-type :type/BigInteger} "ID"]
+            [:value {:base-type :type/BigInteger} 144]]))))

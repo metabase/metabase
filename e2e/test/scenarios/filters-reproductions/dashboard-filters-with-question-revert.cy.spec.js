@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -56,7 +56,7 @@ describe("issue 35954", () => {
         H.restore();
         cy.signInAsAdmin();
 
-        cy.createQuestionAndDashboard({
+        H.createQuestionAndDashboard({
           questionDetails,
           cardDetails: {
             size_x: 16,
@@ -86,7 +86,7 @@ describe("issue 35954", () => {
 
           cy.log("Drill down to the question from the dashboard");
           cy.findByTestId("legend-caption-title").click();
-          cy.get("@questionId").then(id => {
+          cy.get("@questionId").then((id) => {
             cy.location("pathname").should(
               "eq",
               `/question/${id}-${questionDetails.name}`,
@@ -119,12 +119,12 @@ describe("issue 35954", () => {
 
           cy.findByLabelText(`Back to ${dashboardDetails.name}`).click();
 
-          cy.get("@dashboardId").then(id => {
+          cy.get("@dashboardId").then((id) => {
             cy.location("pathname").should(
               "eq",
               `/dashboard/${id}-${dashboardDetails.name.toLowerCase()}`,
             );
-            cy.location("search").should("eq", "?equal_to=3");
+            cy.location("search").should("eq", "?number=3");
           });
 
           cy.log("Make sure the disconnected filter doesn't break UI");
@@ -140,7 +140,7 @@ describe("issue 35954", () => {
           );
           H.editDashboard();
 
-          cy.findByTestId("fixed-width-filters").icon("gear").click();
+          H.filterWidget({ isEditing: true }).click();
           H.getDashboardCard().should("contain", "Unknown Field");
 
           H.snapshot("35954");
@@ -155,12 +155,13 @@ describe("issue 35954", () => {
       it("should be able to remove the broken connection and connect the filter to the GUI question", function () {
         H.visitDashboard(this.dashboardId);
         H.editDashboard();
-        openFilterSettings();
+
+        H.filterWidget({ isEditing: true }).click();
         H.getDashboardCard().findByLabelText("Disconnect").click();
         connectFilterToColumn("Rating");
         H.saveDashboard();
 
-        cy.location("search").should("eq", "?equal_to=3");
+        cy.location("search").should("eq", "?number=3");
         assertFilterIsApplied();
       });
 
@@ -179,7 +180,7 @@ describe("issue 35954", () => {
         assertFilterIsDisconnected();
 
         H.visitDashboard(this.dashboardId);
-        cy.location("search").should("eq", "?equal_to=3");
+        cy.location("search").should("eq", "?number=3");
         assertFilterIsApplied();
       });
 
@@ -189,7 +190,7 @@ describe("issue 35954", () => {
           `/api/dashboard/${this.dashboardId}/public_link`,
         ).then(({ body: { uuid } }) => {
           // Set the filter through the URL
-          cy.visit(`/public/dashboard/${uuid}?equal_to=3`);
+          cy.visit(`/public/dashboard/${uuid}?number=3`);
         });
         assertFilterIsDisconnected();
       });
@@ -199,7 +200,7 @@ describe("issue 35954", () => {
 
         cy.request("PUT", `/api/dashboard/${id}`, {
           embedding_params: {
-            equal_to: "enabled",
+            number: "enabled",
           },
           enable_embedding: true,
         });
@@ -209,6 +210,7 @@ describe("issue 35954", () => {
 
         H.visitDashboard(id);
         H.openSharingMenu("Embed");
+
         H.modal().findByText("Static embedding").click();
 
         cy.findByTestId("embedding-preview").within(() => {
@@ -239,7 +241,7 @@ describe("issue 35954", () => {
 
         cy.request("PUT", `/api/dashboard/${id}`, {
           embedding_params: {
-            equal_to: "enabled",
+            number: "enabled",
           },
           enable_embedding: true,
         });
@@ -264,14 +266,14 @@ describe("issue 35954", () => {
 
         cy.request("PUT", `/api/dashboard/${id}`, {
           embedding_params: {
-            equal_to: "locked",
+            number: "locked",
           },
           enable_embedding: true,
         });
 
         const payload = {
           resource: { dashboard: id },
-          params: { equal_to: [3] },
+          params: { number: [3] },
         };
 
         H.visitEmbeddedPage(payload);
@@ -288,12 +290,9 @@ function connectFilterToColumn(column, index = 0) {
   });
 
   H.popover().within(() => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByText(column).eq(index).click();
   });
-}
-
-function openFilterSettings() {
-  cy.findByTestId("fixed-width-filters").icon("gear").click();
 }
 
 function assertFilterIsDisconnected() {

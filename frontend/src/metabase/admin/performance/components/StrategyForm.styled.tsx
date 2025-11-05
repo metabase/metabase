@@ -1,8 +1,7 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Form } from "metabase/forms";
-import type { BoxProps } from "metabase/ui";
-import { Box, FixedSizeIcon, Group, Loader } from "metabase/ui";
+import { FixedSizeIcon, Group, Loader } from "metabase/ui";
 
 export const LoaderInButton = styled(Loader)`
   position: relative;
@@ -18,30 +17,6 @@ export const FormWrapper = styled.div`
   height: 100%;
   display: flex;
   flex-direction: column;
-`;
-
-export const StyledForm = styled(Form)`
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-`;
-
-export const FormBox = styled(Box)<
-  BoxProps & {
-    isInSidebar?: boolean;
-  }
->`
-  overflow: auto;
-  flex-grow: 1;
-  padding-bottom: 2.5rem;
-  ${({ isInSidebar }) =>
-    isInSidebar
-      ? `
-      padding-inline: 1rem;
-      `
-      : `
-      padding-inline: 2.5rem;
-  `}
 `;
 
 export const StyledFormButtonsGroup = styled(Group)<{ isInSidebar?: boolean }>`

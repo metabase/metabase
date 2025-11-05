@@ -1,10 +1,10 @@
 import { match } from "ts-pattern";
 
-import { modal, popover } from "e2e/support/helpers";
+import { popover } from "e2e/support/helpers";
 import {
   type ScheduleComponentType,
   getScheduleComponentLabel,
-} from "metabase/components/Schedule/constants";
+} from "metabase/common/components/Schedule/strings";
 import type {
   CacheStrategyType,
   CacheableModel,
@@ -12,7 +12,7 @@ import type {
   InheritStrategy,
 } from "metabase-types/api";
 
-import { databaseCachingPage, log } from "./e2e-performance-helpers";
+import { log } from "./e2e-performance-helpers";
 import type { SelectCacheStrategyOptions, StrategyBearer } from "./types";
 
 /** Save the cache strategy form and wait for a response from the relevant endpoint */
@@ -51,6 +51,29 @@ export const dontCacheResultsRadioButton = () =>
 export const useDefaultRadioButton = () =>
   cacheStrategyRadioButton(/Use default/);
 
+export const preemptiveCachingSwitch = () =>
+  cy.findByTestId("preemptive-caching-switch");
+export const enablePreemptiveCaching = () =>
+  preemptiveCachingSwitch().within(() => {
+    cy.findByRole("switch").should("not.be.checked");
+    cy.findByRole("switch").parent("label").click();
+    cy.findByRole("switch").should("be.checked");
+  });
+export const disablePreemptiveCaching = () =>
+  preemptiveCachingSwitch().within(() => {
+    cy.findByRole("switch").should("be.checked");
+    cy.findByRole("switch").parent("label").click();
+    cy.findByRole("switch").should("not.be.checked");
+  });
+export const checkPreemptiveCachingEnabled = () =>
+  preemptiveCachingSwitch().within(() => {
+    cy.findByRole("switch").should("be.checked");
+  });
+export const checkPreemptiveCachingDisabled = () =>
+  preemptiveCachingSwitch().within(() => {
+    cy.findByRole("switch").should("not.be.checked");
+  });
+
 export const formLauncher = (
   itemName: string,
   preface:
@@ -61,9 +84,10 @@ export const formLauncher = (
 ) => {
   const regExp = new RegExp(`Edit.*${itemName}.*${preface}.*${strategyLabel}`);
   cy.log(`Finding strategy for launcher for regular expression: ${regExp}`);
-  const launcher = databaseCachingPage().findByLabelText(regExp);
-  launcher.should("exist");
-  return launcher;
+  const launcher = () =>
+    cy.findByTestId("admin-layout-content").findByLabelText(regExp);
+  launcher().should("exist");
+  return launcher();
 };
 
 /** Opens the strategy form on 'Database caching' tab */
@@ -73,7 +97,6 @@ export const openStrategyFormForDatabaseOrDefaultPolicy = (
   currentStrategyLabel?: string,
 ) => {
   cy.visit("/admin/performance");
-  cy.findByRole("tablist").get("[aria-selected]").contains("Database caching");
   cy.log(`Open strategy form for ${databaseNameOrDefaultPolicy}`);
   formLauncher(
     databaseNameOrDefaultPolicy,
@@ -117,13 +140,6 @@ export const cacheStrategySidesheet = () =>
 
 export const questionSettingsSidesheet = () =>
   cy.findByRole("dialog", { name: /Question settings/ }).should("be.visible");
-
-export const cancelConfirmationModal = () => {
-  modal().within(() => {
-    cy.findByText("Discard your changes?");
-    cy.button("Cancel").click();
-  });
-};
 
 export const getRadioButtonForStrategyType = (
   strategyType: CacheStrategyType,

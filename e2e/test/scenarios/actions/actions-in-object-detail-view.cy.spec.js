@@ -1,7 +1,8 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 
-import { H } from "e2e/support";
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+
+const { H } = cy;
 
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
 const FIRST_SCORE_ROW_ID = 11;
@@ -27,8 +28,8 @@ describe(
         "prefetchValues",
       );
 
-      H.resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
       H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
       asAdmin(() => {
         cy.updatePermissionsGraph({
           [ALL_USERS_GROUP]: {
@@ -54,10 +55,10 @@ describe(
     describe("in dashboard", () => {
       beforeEach(() => {
         asAdmin(() => {
-          cy.get("@modelId").then(modelId => {
+          cy.get("@modelId").then((modelId) => {
             H.createImplicitActions({ modelId });
 
-            cy.createQuestionAndDashboard({
+            H.createQuestionAndDashboard({
               questionDetails: {
                 name: "Score detail",
                 display: "object",
@@ -103,7 +104,7 @@ describe(
 
         permissionLevels.forEach(({ name, permissionFn }) => {
           it(`should be able to run update and delete actions when enabled for a ${name} user`, () => {
-            cy.get("@modelId").then(modelId => {
+            cy.get("@modelId").then((modelId) => {
               permissionFn(() => {
                 cy.log(
                   `As ${name} user: verify there are no model actions to run`,
@@ -127,10 +128,20 @@ describe(
                   assertActionsDropdownExists();
                 });
 
+                cy.log(
+                  "does not close object detail modal when pressing Esc while action modal is open",
+                );
+                openUpdateObjectModal();
+                cy.wait("@prefetchValues");
+                actionExecuteModal().should("be.visible");
+                cy.realPress("Escape");
+                actionExecuteModal().should("not.exist");
+                objectDetailModal().should("be.visible");
+
                 cy.log(`As ${name} user: verify update form gets prefilled`);
                 openUpdateObjectModal();
                 actionExecuteModal().within(() => {
-                  cy.wait("@prefetchValues").then(request => {
+                  cy.wait("@prefetchValues").then((request) => {
                     const firstScoreRow = request.response.body;
 
                     actionForm().within(() => {
@@ -155,7 +166,7 @@ describe(
                 );
                 openUpdateObjectModal();
                 actionExecuteModal().within(() => {
-                  cy.wait("@prefetchValues").then(request => {
+                  cy.wait("@prefetchValues").then((request) => {
                     const secondScoreRow = request.response.body;
 
                     actionForm().within(() => {
@@ -191,7 +202,7 @@ describe(
 
       cy.signInAsAdmin();
 
-      cy.get("@modelId").then(modelId => {
+      cy.get("@modelId").then((modelId) => {
         H.createImplicitActions({ modelId });
         visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
         openUpdateObjectModal();
@@ -233,11 +244,11 @@ function asNormalUser(callback) {
 function visitObjectDetail(modelId, objectId) {
   H.visitModel(modelId);
   cy.get("main").findByText("Loading...").should("not.exist");
-  cy.findByTestId("TableInteractive-root").findByText(objectId).click();
+  H.tableInteractive().findByText(objectId).click();
 }
 
 function openObjectDetailModal(objectId) {
-  cy.findByTestId("TableInteractive-root").findByText(objectId).click();
+  H.tableInteractive().findByText(objectId).click();
 }
 
 function openUpdateObjectModal() {
@@ -277,7 +288,7 @@ function assertInputValue(labelText, value) {
 }
 
 function assertDateInputValue(labelText, value) {
-  const expectedValue = moment(value)
+  const expectedValue = dayjs(value)
     .format()
     .replace(/-\d\d:\d\d$/, "");
 
@@ -287,20 +298,17 @@ function assertDateInputValue(labelText, value) {
 
 function assertUpdatedScoreInTable() {
   cy.log("updated quantity should be present in the table");
-  cy.findByTestId("TableInteractive-root")
-    .findByText(UPDATED_SCORE_FORMATTED)
-    .should("exist");
+  H.tableInteractive().findByText(UPDATED_SCORE_FORMATTED).should("exist");
 }
 
 function assertUpdatedScoreNotInTable() {
   cy.log("updated quantity should not be present in the table");
-  cy.findByTestId("TableInteractive-root")
-    .findByText(UPDATED_SCORE_FORMATTED)
-    .should("not.exist");
+  H.tableInteractive().findByText(UPDATED_SCORE_FORMATTED).should("not.exist");
 }
 
 function assertSuccessfullUpdateToast() {
   cy.log("it shows a toast informing the update was successful");
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.undoToastList()
     .last()
     .should("be.visible")
@@ -310,6 +318,7 @@ function assertSuccessfullUpdateToast() {
 
 function assertSuccessfullDeleteToast() {
   cy.log("it shows a toast informing the delete was successful");
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.undoToastList()
     .last()
     .should("be.visible")

@@ -28,11 +28,13 @@
   Question transformation:
 
   - Set display \"table\""
+  (:refer-clojure :exclude [mapv empty? not-empty #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
+   [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
@@ -41,11 +43,14 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv empty? not-empty #?(:clj for)]]))
 
 (mu/defn underlying-records-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.underlying-records]
   "When clicking on a particular broken-out group, offer a look at the details of all the rows that went into this
@@ -54,9 +59,9 @@
 
   There is another quite different case: clicking the legend of a chart with multiple bars or lines broken out by
   category. Then `column` is nil!"
-  [query                                                          :- ::lib.schema/query
-   stage-number                                                   :- :int
-   {:keys [column column-ref dimensions row value], :as _context} :- ::lib.schema.drill-thru/context]
+  [query                                                      :- ::lib.schema/query
+   stage-number                                               :- :int
+   {:keys [column column-ref dimensions value], :as _context} :- ::lib.schema.drill-thru/context]
   ;; Clicking on breakouts is weird. Clicking on Count(People) by State: Minnesota yields a FE `clicked` with:
   ;; - column is COUNT
   ;; - row[0] has col: STATE, value: "Minnesota"
@@ -72,8 +77,7 @@
   ;; - (:lib/source column) is NOT :source/aggregations
   ;; - (:lib/source (lib.underlying/top-level-column query column) IS :source/aggregations
   ;; - column-ref is similarly NOT an :aggregation ref
-  ;; - dimensions is nil
-  ;; - rows is not nil and can be used to construct the breakout dimensions
+  ;; - dimensions is constructed from row data in available-drill-thrus
 
   ;; Clicking on a chart legend for eg. COUNT(Orders) by Products.CATEGORY and Orders.CREATED_AT has a context like:
   ;; - column is nil
@@ -84,7 +88,7 @@
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              (lib.underlying/has-aggregation-or-breakout? query)
              ;; Either we clicked the aggregation, or there are dimensions.
-             (or (lib.drill-thru.common/aggregation-sourced? query column)
+             (or (lib.underlying/aggregation-sourced? query column)
                  (not-empty dimensions))
              ;; Either we need both column and value (cell/map/data point click) or neither (chart legend click).
              (or (and column (some? value))
@@ -102,14 +106,11 @@
      :table-name (when-let [table-or-card (or (some->> query lib.util/source-table-id (lib.metadata/table query))
                                               (some->> query lib.util/source-card-id  (lib.metadata/card  query)))]
                    (lib.metadata.calculation/display-name query stage-number table-or-card))
-     ;; If no dimensions were provided but the underlying column comes from an aggregation, then construct the
-     ;; dimensions from the row data.
-     :dimensions (or (not-empty dimensions)
-                     (lib.drill-thru.common/dimensions-from-breakout-columns query column row))
+     :dimensions dimensions
      ;; If the underlying column comes from an aggregation, then the column-ref needs to be updated as well to the
      ;; corresponding aggregation ref so that [[drill-underlying-records]] knows to extract the filter implied by
      ;; aggregations like sum-where.
-     :column-ref (if (lib.drill-thru.common/strictly-underyling-aggregation? query column)
+     :column-ref (if (lib.underlying/strictly-underlying-aggregation? query column)
                    (lib.aggregation/column-metadata->aggregation-ref (lib.underlying/top-level-column query column))
                    column-ref)}))
 
@@ -123,9 +124,13 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    column       :- ::lib.schema.metadata/column
+   column-ref   :- ::lib.schema.ref/ref
    value        :- :any]
-  (let [filter-clauses (or (when (lib.binning/binning column)
-                             (let [unbinned-column (lib.binning/with-binning column nil)]
+  (let [filter-column  (lib.drill-thru.common/breakout->filterable-column query stage-number column-ref column)
+        filter-clauses (or (when (lib.binning/binning column)
+                             (let [unbinned-column (-> filter-column
+                                                       (lib.binning/with-binning nil)
+                                                       (dissoc :lib/original-binning))]
                                (if (some? value)
                                  (when-let [{:keys [min-value max-value]} (lib.binning/resolve-bin-width query column value)]
                                    [(lib.filter/>= unbinned-column min-value)
@@ -139,10 +144,18 @@
                            ;; instead of
                            ;;
                            ;;    month(col) = March 2023
-                           (let [column (if-let [temporal-unit (::lib.underlying/temporal-unit column)]
-                                          (lib.temporal-bucket/with-temporal-bucket column temporal-unit)
-                                          column)]
-                             [(lib.filter/= column value)]))]
+                           (let [bucket (or (::lib.underlying/temporal-unit column)
+                                            (lib.temporal-bucket/temporal-bucket column))
+                                 unit   (cond-> bucket
+                                          (map? bucket) :unit)
+                                 column (if unit
+                                          (lib.temporal-bucket/with-temporal-bucket filter-column unit)
+                                          filter-column)]
+                             (if (nil? value)
+                               [(lib.filter/is-null column)]
+                               [(cond-> (lib.filter/= column value)
+                                  (and unit (lib.schema.temporal-bucketing/datetime-truncation-units unit))
+                                  lib.fe-util/expand-temporal-expression)])))]
     (reduce
      (fn [query filter-clause]
        (lib.filter/filter query stage-number filter-clause))
@@ -160,8 +173,8 @@
         base-query  (lib.util/update-query-stage query -1 dissoc :aggregation :breakout :order-by :limit :fields)
         ;; Turn any non-aggregation dimensions into filters.
         ;; eg. if we drilled into a temporal bucket, add a filter for the [:= breakout-column that-month].
-        filtered    (reduce (fn [q {:keys [column value]}]
-                              (drill-filter q -1 column value))
+        filtered    (reduce (fn [q {:keys [column column-ref value]}]
+                              (drill-filter q -1 column column-ref value))
                             base-query
                             (for [dimension dimensions
                                   :when (-> dimension :column :lib/source (not= :source/aggregations))]

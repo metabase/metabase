@@ -1,5 +1,3 @@
-import { waitFor } from "@testing-library/react";
-
 import { setupEnterpriseTest } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
@@ -10,6 +8,7 @@ import {
   queryIcon,
   renderWithProviders,
   screen,
+  waitFor,
 } from "__support__/ui";
 import { SearchResult } from "metabase/search/components/SearchResult";
 import type { WrappedResult } from "metabase/search/types";

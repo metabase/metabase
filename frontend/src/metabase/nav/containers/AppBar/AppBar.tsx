@@ -4,9 +4,11 @@ import _ from "underscore";
 import { logout } from "metabase/auth/actions";
 import Collections from "metabase/entities/collections";
 import { connect } from "metabase/lib/redux";
+import { PLUGIN_DOCUMENTS, PLUGIN_METABOT } from "metabase/plugins";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import type { RouterProps } from "metabase/selectors/app";
 import {
+  getDetailViewState,
   getIsCollectionPathVisible,
   getIsLogoVisible,
   getIsNavBarEnabled,
@@ -16,7 +18,7 @@ import {
   getIsQuestionLineageVisible,
   getIsSearchVisible,
 } from "metabase/selectors/app";
-import { getIsEmbedded } from "metabase/selectors/embed";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import type { State } from "metabase-types/store";
 
@@ -27,13 +29,17 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   collectionId: Collections.selectors.getInitialCollectionId(state, props),
   isNavBarOpen: getIsNavbarOpen(state),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
+  isMetabotVisible: PLUGIN_METABOT.getMetabotVisible(state),
+  isDocumentSidebarOpen: PLUGIN_DOCUMENTS.getSidebarOpen(state),
+  isCommentSidebarOpen: PLUGIN_DOCUMENTS.getCommentSidebarOpen(state),
   isLogoVisible: getIsLogoVisible(state),
   isSearchVisible: getIsSearchVisible(state),
-  isEmbedded: getIsEmbedded(state),
+  isEmbeddingIframe: getIsEmbeddingIframe(state),
   isNewButtonVisible: getIsNewButtonVisible(state),
   isProfileLinkVisible: getIsProfileLinkVisible(state),
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
   isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),
+  detailView: getDetailViewState(state),
 });
 
 const mapDispatchToProps = {

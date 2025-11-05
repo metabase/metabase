@@ -17,8 +17,8 @@ export const getColumnDescriptors = <TColumn extends DatasetColumn>(
   columnNames: string[],
   columns: TColumn[],
 ): ColumnDescriptor[] => {
-  return columnNames.map(columnName => {
-    const index = columns.findIndex(column => column.name === columnName);
+  return columnNames.map((columnName) => {
+    const index = columns.findIndex((column) => column.name === columnName);
 
     return {
       index,
@@ -32,14 +32,14 @@ export const hasValidColumnsSelected = (
   data: DatasetData,
 ) => {
   const metricColumns = (visualizationSettings["graph.metrics"] ?? [])
-    .map(metricColumnName =>
-      data.cols.find(column => column.name === metricColumnName),
+    .map((metricColumnName) =>
+      data.cols.find((column) => column.name === metricColumnName),
     )
     .filter(isNotNull);
 
   const dimensionColumns = (visualizationSettings["graph.dimensions"] ?? [])
-    .map(dimensionColumnName =>
-      data.cols.find(column => column.name === dimensionColumnName),
+    .map((dimensionColumnName) =>
+      data.cols.find((column) => column.name === dimensionColumnName),
     )
     .filter(isNotNull);
 

@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { Box } from "metabase/ui";
@@ -12,4 +13,4 @@ export const ListBox = styled(Box)<React.PropsWithChildren>`
   &:last-child {
     background-color: var(--mb-color-background);
   }
-`;
+` as unknown as typeof Box;

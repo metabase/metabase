@@ -13,17 +13,21 @@ import { StringFilterValuePicker } from "../../FilterValuePicker";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { WIDTH } from "../constants";
-import type { FilterPickerWidgetProps } from "../types";
+import { COMBOBOX_PROPS, WIDTH } from "../constants";
+import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 export function StringFilterPicker({
+  autoFocus,
   query,
   stageIndex,
   column,
   filter,
   isNew,
+  withAddButton,
+  withSubmitButton,
   onChange,
   onBack,
+  readOnly,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, column),
@@ -54,13 +58,20 @@ export function StringFilterPicker({
     setValues(getDefaultValues(newOperator, values));
   };
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-
+  const handleFilterChange = (opts: FilterChangeOpts) => {
     const filter = getFilterClause(operator, values, options);
     if (filter) {
-      onChange(filter);
+      onChange(filter, opts);
     }
+  };
+
+  const handleFormSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    handleFilterChange({ run: true });
+  };
+
+  const handleAddButtonClick = () => {
+    handleFilterChange({ run: false });
   };
 
   return (
@@ -68,11 +79,12 @@ export function StringFilterPicker({
       component="form"
       w={WIDTH}
       data-testid="string-filter-picker"
-      onSubmit={handleSubmit}
+      onSubmit={handleFormSubmit}
     >
       <FilterPickerHeader
         columnName={columnInfo.longDisplayName}
         onBack={onBack}
+        readOnly={readOnly}
       >
         <FilterOperatorPicker
           value={operator}
@@ -82,6 +94,7 @@ export function StringFilterPicker({
       </FilterPickerHeader>
       <div>
         <StringValueInput
+          autoFocus={autoFocus}
           query={query}
           stageIndex={stageIndex}
           column={column}
@@ -89,11 +102,17 @@ export function StringFilterPicker({
           type={type}
           onChange={setValues}
         />
-        <FilterPickerFooter isNew={isNew} canSubmit={isValid}>
+        <FilterPickerFooter
+          isNew={isNew}
+          isValid={isValid}
+          withAddButton={withAddButton}
+          withSubmitButton={withSubmitButton}
+          onAddButtonClick={handleAddButtonClick}
+        >
           {type === "partial" && (
             <CaseSensitiveOption
               value={options.caseSensitive ?? false}
-              onChange={newValue => setOptions({ caseSensitive: newValue })}
+              onChange={(newValue) => setOptions({ caseSensitive: newValue })}
             />
           )}
         </FilterPickerFooter>
@@ -103,6 +122,7 @@ export function StringFilterPicker({
 }
 
 interface StringValueInputProps {
+  autoFocus: boolean;
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
@@ -112,6 +132,7 @@ interface StringValueInputProps {
 }
 
 function StringValueInput({
+  autoFocus,
   query,
   stageIndex,
   column,
@@ -121,15 +142,17 @@ function StringValueInput({
 }: StringValueInputProps) {
   if (type === "exact") {
     return (
-      <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
+      <Box p="md" pb={0} mah="25vh" style={{ overflow: "auto" }}>
         <StringFilterValuePicker
           query={query}
           stageIndex={stageIndex}
           column={column}
           values={values}
-          autoFocus
+          comboboxProps={COMBOBOX_PROPS}
+          autoFocus={autoFocus}
           onChange={onChange}
         />
+        <Box pt="md" />
       </Box>
     );
   }
@@ -139,10 +162,8 @@ function StringValueInput({
       <Box p="md" pb={0} mah="40vh" style={{ overflow: "auto" }}>
         <MultiAutocomplete
           value={values}
-          data={[]}
           placeholder={t`Enter some text`}
-          autoFocus
-          w="100%"
+          comboboxProps={COMBOBOX_PROPS}
           aria-label={t`Filter value`}
           onChange={onChange}
         />
@@ -166,7 +187,7 @@ function CaseSensitiveOption({ value, onChange }: CaseSensitiveOptionProps) {
         size="xs"
         label={t`Case sensitive`}
         checked={value}
-        onChange={e => onChange(e.target.checked)}
+        onChange={(e) => onChange(e.target.checked)}
       />
     </Flex>
   );

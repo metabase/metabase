@@ -1,11 +1,11 @@
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import Link from "metabase/core/components/Link/Link";
-import Tooltip from "metabase/core/components/Tooltip";
+import Link from "metabase/common/components/Link/Link";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { Collection } from "metabase-types/api";
-
-import { CollectionHeaderButton } from "./CollectionHeader.styled";
 
 interface CollectionPermissionsProps {
   collection: Collection;
@@ -14,13 +14,21 @@ interface CollectionPermissionsProps {
 export const CollectionPermissions = ({
   collection,
 }: CollectionPermissionsProps) => {
+  const dispatch = useDispatch();
   const url = `${Urls.collection(collection)}/permissions`;
 
   return (
-    <Tooltip tooltip={t`Edit permissions`} placement="bottom">
-      <div>
-        <CollectionHeaderButton as={Link} to={url} icon="lock" />
-      </div>
-    </Tooltip>
+    <Link to={url}>
+      <ToolbarButton
+        icon="lock"
+        aria-label={t`Edit permissions`}
+        tooltipLabel={t`Edit permissions`}
+        tooltipPosition="bottom"
+        onClick={() => {
+          // ToolbarButton has "e.preventDefault", so we have to navigate manually
+          dispatch(push(url));
+        }}
+      />
+    </Link>
   );
 };

@@ -14,12 +14,8 @@ import {
 import {
   ORDERS,
   SAMPLE_DB_ID,
-  createOrdersIdField,
-  createOrdersProductIdField,
   createOrdersTable,
   createPeopleTable,
-  createProductsCategoryField,
-  createProductsIdField,
   createProductsTable,
   createReviewsTable,
   createSampleDatabase,
@@ -35,15 +31,6 @@ import { AggregationPicker } from "./AggregationPicker";
 function createQueryWithCountAggregation() {
   return createQueryWithClauses({
     aggregations: [{ operatorName: "count" }],
-  });
-}
-
-function createQueryWithCountAndSumAggregations() {
-  return createQueryWithClauses({
-    aggregations: [
-      { operatorName: "count" },
-      { operatorName: "sum", columnName: "PRICE", tableName: "PRODUCTS" },
-    ],
   });
 }
 
@@ -91,29 +78,6 @@ function createQueryWithInlineExpressionWithOperator() {
   });
 }
 
-function createQueryWithOpaqueBreakoutAndAggregation() {
-  const metadata = createMockMetadata({
-    databases: [
-      createSampleDatabase({
-        tables: [
-          createOrdersTable({
-            fields: [createOrdersIdField(), createOrdersProductIdField()],
-          }),
-          createProductsTable({
-            fields: [createProductsIdField(), createProductsCategoryField()],
-          }),
-        ],
-      }),
-    ],
-  });
-
-  return createQueryWithClauses({
-    query: createQuery({ metadata }),
-    aggregations: [{ operatorName: "count" }],
-    breakouts: [{ tableName: "PRODUCTS", columnName: "CATEGORY" }],
-  });
-}
-
 function createMetadata({
   allowCustomExpressions,
 }: { allowCustomExpressions?: boolean } = {}) {
@@ -139,7 +103,6 @@ type SetupOpts = {
   metadata?: Metadata;
   query?: Lib.Query;
   allowCustomExpressions?: boolean;
-  allowTemporalComparisons?: boolean;
 };
 
 function setup({
@@ -154,7 +117,6 @@ function setup({
   metadata = createMetadata(),
   query = createQuery({ metadata }),
   allowCustomExpressions,
-  allowTemporalComparisons,
 }: SetupOpts = {}) {
   const stageIndex = 0;
   const clause = Lib.aggregations(query, stageIndex)[0];
@@ -173,7 +135,6 @@ function setup({
       stageIndex={stageIndex}
       operators={operators}
       allowCustomExpressions={allowCustomExpressions}
-      allowTemporalComparisons={allowTemporalComparisons}
       onQueryChange={onQueryChange}
     />,
     { storeInitialState: state },
@@ -219,7 +180,7 @@ describe("AggregationPicker", () => {
         "Standard deviation of ...",
         "Minimum of ...",
         "Maximum of ...",
-      ].forEach(name => {
+      ].forEach((name) => {
         expect(screen.getByRole("option", { name })).toBeInTheDocument();
       });
     });
@@ -231,7 +192,7 @@ describe("AggregationPicker", () => {
 
       await userEvent.type(screen.getByPlaceholderText("Find..."), "Count");
 
-      ["Count of rows", "Cumulative count of rows"].forEach(name => {
+      ["Count of rows", "Cumulative count of rows"].forEach((name) => {
         expect(screen.getByRole("option", { name })).toBeInTheDocument();
       });
 
@@ -243,7 +204,7 @@ describe("AggregationPicker", () => {
         "Standard deviation of ...",
         "Minimum of ...",
         "Maximum of ...",
-      ].forEach(name => {
+      ].forEach((name) => {
         expect(screen.queryByRole("option", { name })).not.toBeInTheDocument();
       });
     });
@@ -292,7 +253,7 @@ describe("AggregationPicker", () => {
       ).toHaveAttribute("aria-selected", "true");
       expect(
         screen.getByRole("option", { name: "Sum of ..." }),
-      ).not.toHaveAttribute("aria-selected");
+      ).toHaveAttribute("aria-selected", "false");
     });
 
     it("should highlight selected operator column", () => {
@@ -351,12 +312,18 @@ describe("AggregationPicker", () => {
     it("should allow to enter a custom expression containing an aggregation", async () => {
       const { getRecentClauseInfo } = setup({ allowCustomExpressions: true });
 
-      const expression = "count + 1";
+      const expression = "count() + 1";
       const expressionName = "My expression";
 
       await userEvent.click(screen.getByText("Custom Expression"));
-      await userEvent.type(screen.getByLabelText("Expression"), expression);
-      await userEvent.type(screen.getByLabelText("Name"), expressionName);
+      await userEvent.type(
+        screen.getByTestId("custom-expression-query-editor"),
+        expression,
+      );
+      await userEvent.type(
+        screen.getByTestId("expression-name"),
+        expressionName,
+      );
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
       expect(getRecentClauseInfo()?.displayName).toBe(expressionName);
     });
@@ -411,63 +378,6 @@ describe("AggregationPicker", () => {
 
       expect(screen.getByText("Custom Expression")).toBeInTheDocument();
       expect(screen.getByDisplayValue("Avg Q")).toBeInTheDocument();
-    });
-  });
-
-  // eslint-disable-next-line jest/no-disabled-tests
-  describe.skip("column compare shortcut", () => {
-    it("does not display the shortcut if there are no aggregations", () => {
-      setup({ allowCustomExpressions: true, allowTemporalComparisons: true });
-      expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
-    });
-
-    it("does not display the shortcut if there are no possible breakouts to use", () => {
-      setup({
-        query: createQueryWithOpaqueBreakoutAndAggregation(),
-        allowCustomExpressions: true,
-        allowTemporalComparisons: true,
-      });
-      expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
-    });
-
-    it("does not display the shortcut if `allowTemporalComparisons` is not set", () => {
-      setup({
-        query: createQueryWithCountAggregation(),
-        allowCustomExpressions: true,
-        allowTemporalComparisons: false,
-      });
-      expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
-    });
-
-    it("displays the shortcut with correct label if there is 1 aggregation", () => {
-      setup({
-        query: createQueryWithCountAggregation(),
-        allowCustomExpressions: true,
-        allowTemporalComparisons: true,
-      });
-      expect(screen.getByText("Compare to the past")).toBeInTheDocument();
-    });
-
-    it("displays the shortcut with correct label if there are multiple aggregation", () => {
-      setup({
-        query: createQueryWithCountAndSumAggregations(),
-        allowCustomExpressions: true,
-        allowTemporalComparisons: true,
-      });
-      expect(screen.getByText("Compare to the past")).toBeInTheDocument();
-    });
-
-    it("calls 'onQueryChange' on submit", async () => {
-      const { onQueryChange } = setup({
-        query: createQueryWithCountAggregation(),
-        allowCustomExpressions: true,
-        allowTemporalComparisons: true,
-      });
-
-      await userEvent.click(screen.getByText("Compare to the past"));
-      await userEvent.click(screen.getByText("Done"));
-
-      expect(onQueryChange).toHaveBeenCalled();
     });
   });
 });

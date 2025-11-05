@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -6,6 +6,7 @@ import {
   ORDERS_MODEL_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 
 const { ORDERS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -21,7 +22,6 @@ describe("scenarios > notebook > data source", () => {
       "should display tables from the only existing database by default",
       { tags: "@OSS" },
       () => {
-        H.onlyOnOSS();
         cy.visit("/");
         cy.findByTestId("app-bar").findByText("New").click();
         H.popover().findByTextEnsureVisible("Question").click();
@@ -80,6 +80,34 @@ describe("scenarios > notebook > data source", () => {
         H.shouldDisplayTabs(["Tables", "Collections"]);
       });
     });
+
+    it("should include dashboard questions when computing which tabs to show (metabase#56887)", () => {
+      const QUESTION_NAME = "Find me";
+
+      H.createDashboard({
+        name: "Test Dashboard",
+      }).then((dashboard) => {
+        H.createQuestionAndAddToDashboard(
+          {
+            name: QUESTION_NAME,
+            dashboard_id: dashboard.body.id,
+            query: {
+              "source-table": ORDERS_ID,
+            },
+          },
+          dashboard.body.id,
+        );
+      });
+
+      H.startNewQuestion();
+
+      H.entityPickerModal().should("exist");
+      H.tabsShouldBe("Tables", ["Tables", "Collections"]);
+
+      H.entityPickerModalTab("Collections").click();
+      H.entityPickerModalItem(1, "Test Dashboard").click();
+      H.entityPickerModalItem(2, QUESTION_NAME).should("exist");
+    });
   });
 
   describe("table as a source", () => {
@@ -128,9 +156,9 @@ describe("scenarios > notebook > data source", () => {
         const schemaName = "Wild";
         const tableName = "Animals";
 
+        H.restore(`${dialect}-writable`);
         H.resetTestTable({ type: dialect, table: testTable1 });
         H.resetTestTable({ type: dialect, table: testTable2 });
-        H.restore(`${dialect}-writable`);
 
         cy.signInAsAdmin();
 
@@ -209,7 +237,7 @@ describe("scenarios > notebook > data source", () => {
   });
 
   describe("saved entity as a source (aka the virtual table)", () => {
-    const modelDetails: H.StructuredQuestionDetails = {
+    const modelDetails: StructuredQuestionDetails = {
       name: "GUI Model",
       query: { "source-table": REVIEWS_ID, limit: 1 },
       display: "table",
@@ -336,7 +364,6 @@ describe("scenarios > notebook > data source", () => {
 
 describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    H.onlyOnOSS();
     H.restore("setup");
     cy.signInAsAdmin();
   });
@@ -384,8 +411,8 @@ describe("issue 28106", () => {
   beforeEach(() => {
     const dialect = "postgres";
 
-    H.resetTestTable({ type: dialect, table: "many_schemas" });
     H.restore(`${dialect}-writable`);
+    H.resetTestTable({ type: dialect, table: "many_schemas" });
     cy.signInAsAdmin();
 
     H.resyncDatabase({ dbId: WRITABLE_DB_ID });
@@ -409,10 +436,12 @@ describe("issue 28106", () => {
           .findByTestId("scroll-container")
           .as("schemasList");
 
-        scrollAllTheWayDown();
+        H.entityPickerModalLevel(2).should("contain", "Animals");
+
+        cy.get("@schemasList").scrollTo("bottom");
 
         // assert scrolling worked and the last item is visible
-        H.entityPickerModalItem(1, "Public").should("be.visible");
+        H.entityPickerModalItem(1, "Schema Z").should("be.visible");
 
         // simulate scrolling up using mouse wheel 3 times
         for (let i = 0; i < 3; ++i) {
@@ -421,36 +450,18 @@ describe("issue 28106", () => {
         }
 
         // assert first item does not exist - this means the list has not been scrolled to the top
-        cy.findByText("Domestic").should("not.exist");
+        cy.findByText("Schema A").should("not.exist");
         cy.get("@schemasList").should(([$element]) => {
           expect($element.scrollTop).to.be.greaterThan(0);
         });
       });
     },
   );
-
-  // The list is virtualized and the scrollbar height changes during scrolling (metabase#44966)
-  // that's why we need to scroll and wait multiple times.
-  function scrollAllTheWayDown() {
-    cy.get("@schemasList").realMouseWheel({ deltaY: 100 });
-    cy.wait(100);
-
-    cy.get("@schemasList").then($element => {
-      const list = $element[0];
-      const isScrolledAllTheWayDown =
-        list.scrollHeight - list.scrollTop === list.clientHeight;
-
-      if (!isScrolledAllTheWayDown) {
-        scrollAllTheWayDown();
-      }
-    });
-  }
 });
 
 // Needs to be OSS because EE will always have models due to instance analytics
 describe("issue 32252", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    H.onlyOnOSS();
     H.restore("setup");
     cy.signInAsAdmin();
 

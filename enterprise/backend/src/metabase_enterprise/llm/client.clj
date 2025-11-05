@@ -20,7 +20,7 @@
   "
   (:require
    [metabase-enterprise.llm.settings :as llm-settings]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [wkok.openai-clojure.api :as openai.api]))
@@ -36,10 +36,10 @@
            usage-summary (-> (dissoc response :usage :choices)
                              (merge usage)
                              (select-keys [:id :object :created :model :prompt_tokens :completion_tokens :total_tokens :system_fingerprint]))]
-       (snowplow/track-event! ::snowplow/llm_usage
-                              (assoc
-                               usage-summary
-                               :event :llm-usage))
+       (analytics/track-event! :snowplow/llm_usage
+                               (assoc
+                                usage-summary
+                                :event :llm-usage))
        ;; TODO -- Remove before final PR/merge
        ;(tap> usage-summary)
        response))

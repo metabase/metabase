@@ -17,10 +17,10 @@ const argTypes = {
 
 const SizeTemplate = () => (
   <Grid w="10rem" columns={2} align="center">
-    {argTypes.size.options.map(size => (
+    {argTypes.size.options.map((size) => (
       <Fragment key={size}>
         <Grid.Col span={1}>
-          <Text weight="bold">{size}</Text>
+          <Text fw="bold">{size}</Text>
         </Grid.Col>
         <Grid.Col span={1}>
           <Loader size={size} />
@@ -31,7 +31,7 @@ const SizeTemplate = () => (
 );
 
 export default {
-  title: "Feedback/Loader",
+  title: "Components/Feedback/Loader",
   component: Loader,
   args,
   argTypes,

@@ -4,7 +4,9 @@ export const DEFAULT_COLLECTION_COLOR_ALIAS = "brand";
 
 export const ROOT_COLLECTION = {
   id: "root" as const,
-  name: t`Our analytics`,
+  get name() {
+    return t`Our analytics`;
+  },
   location: "",
   path: [],
   is_personal: false,
@@ -12,7 +14,9 @@ export const ROOT_COLLECTION = {
 
 export const PERSONAL_COLLECTION = {
   id: undefined, // to be filled in by getExpandedCollectionsById
-  name: t`My personal collection`,
+  get name() {
+    return t`My personal collection`;
+  },
   location: "/",
   path: [ROOT_COLLECTION.id],
   can_write: true,
@@ -22,7 +26,9 @@ export const PERSONAL_COLLECTION = {
 // fake collection for admins that contains all other user's collections
 export const PERSONAL_COLLECTIONS = {
   id: "personal" as const, // placeholder id
-  name: t`All personal collections`,
+  get name() {
+    return t`All personal collections`;
+  },
   location: "/",
   path: [ROOT_COLLECTION.id],
   can_write: false,

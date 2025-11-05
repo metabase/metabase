@@ -4,9 +4,9 @@ import { Fragment } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import NumericInput from "metabase/components/NumericInput";
-import Button from "metabase/core/components/Button";
-import { ColorSelector } from "metabase/core/components/ColorSelector";
+import Button from "metabase/common/components/Button";
+import { ColorSelector } from "metabase/common/components/ColorSelector";
+import NumericInput from "metabase/common/components/NumericInput/OldNumericInput";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { getAccentColors } from "metabase/lib/colors/groups";
@@ -38,7 +38,9 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                     className={CS.mr1}
                     value={segment.color}
                     colors={getColorPalette()}
-                    onChange={color => onChangeProperty(index, "color", color)}
+                    onChange={(color) =>
+                      onChangeProperty(index, "color", color)
+                    }
                   />
                 </td>
                 <td>
@@ -46,7 +48,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                     type="number"
                     className={CS.full}
                     value={segment.min}
-                    onChange={value => onChangeProperty(index, "min", value)}
+                    onChange={(value) => onChangeProperty(index, "min", value)}
                     placeholder={t`Min`}
                   />
                 </td>
@@ -55,7 +57,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                     type="number"
                     className={CS.full}
                     value={segment.max}
-                    onChange={value => onChangeProperty(index, "max", value)}
+                    onChange={(value) => onChangeProperty(index, "max", value)}
                     placeholder={t`Max`}
                   />
                 </td>
@@ -77,7 +79,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                     type="text"
                     className={cx(CS.full, CS.input)}
                     value={segment.label}
-                    onChange={e =>
+                    onChange={(e) =>
                       onChangeProperty(index, "label", e.target.value)
                     }
                     placeholder={t`Label for this range (optional)`}
@@ -113,7 +115,7 @@ function newSegment(segments) {
   const palette = getColorPalette();
   const lastSegment = segments[segments.length - 1];
   const lastColorIndex = lastSegment
-    ? _.findIndex(palette, color => color === lastSegment.color)
+    ? _.findIndex(palette, (color) => color === lastSegment.color)
     : -1;
   const nextColor =
     lastColorIndex >= 0

@@ -1,12 +1,12 @@
 import { useState } from "react";
 
 import CS from "metabase/css/core/index.css";
+import { Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 
 import { ChartSettingsFooter } from "../ChartSettingsFooter";
 
 import {
-  ChartSettingsPreview,
   ChartSettingsVisualizationContainer,
   SectionWarnings,
 } from "./ChartSettingsVisualization.styled";
@@ -20,11 +20,12 @@ export const ChartSettingsVisualization = ({
   onReset,
   onUpdateVisualizationSettings,
   rawSeries,
+  ...stackProps
 }: ChartSettingsVisualizationProps) => {
   const [warnings, setWarnings] = useState<string[]>();
 
   return (
-    <ChartSettingsPreview>
+    <Stack pt="md" {...stackProps}>
       <SectionWarnings warnings={warnings} size={20} />
       <ChartSettingsVisualizationContainer>
         <Visualization
@@ -46,6 +47,6 @@ export const ChartSettingsVisualization = ({
         onCancel={onCancel}
         onReset={onReset}
       />
-    </ChartSettingsPreview>
+    </Stack>
   );
 };

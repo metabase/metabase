@@ -1,10 +1,9 @@
 import { createAction } from "@reduxjs/toolkit";
-import type { Query } from "history";
 import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { automagicDashboardsApi, dashboardApi } from "metabase/api";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import {
@@ -26,17 +25,14 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
-import Dashboards from "metabase/entities/dashboards";
+import { entityCompatibleQuery } from "metabase/lib/entities";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
 import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
 import { uuid } from "metabase/lib/uuid";
-import {
-  getDashboardQuestions,
-  getDashboardUiParameters,
-} from "metabase/parameters/utils/dashboards";
-import { addFields, addParamValues } from "metabase/redux/metadata";
+import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   AutoApi,
@@ -47,6 +43,7 @@ import {
   PublicApi,
   maybeUsePivotEndpoint,
 } from "metabase/services";
+import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -58,7 +55,8 @@ import type {
   DashboardCard,
   DashboardId,
   Dataset,
-  DatasetQuery,
+  JsonQuery,
+  ParameterValuesMap,
   QuestionDashboardCard,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
@@ -102,10 +100,26 @@ function isNewDashcard(dashcard: DashboardCard) {
 function isNewAdditionalSeriesCard(
   card: Card,
   dashcard: QuestionDashboardCard,
+  dashcardBeforeEditing?: DashboardCard,
 ) {
+  if (isVisualizerDashboardCard(dashcard)) {
+    if (!dashcardBeforeEditing || !("series" in dashcardBeforeEditing)) {
+      return false;
+    }
+
+    const prevSeries = dashcardBeforeEditing.series ?? [];
+    const newSeries = dashcard.series ?? [];
+
+    return (
+      card.id !== dashcard.card_id &&
+      !prevSeries.some((s) => s.id === card.id) &&
+      newSeries.some((s) => s.id === card.id)
+    );
+  }
+
   return (
     card.id !== dashcard.card_id &&
-    !dashcard.series?.some(s => s.id === card.id)
+    !dashcard.series?.some((s) => s.id === card.id)
   );
 }
 
@@ -114,7 +128,7 @@ export const setDocumentTitle = createAction<string>(SET_DOCUMENT_TITLE);
 
 const updateLoadingTitle = createThunkAction(
   SET_DOCUMENT_TITLE,
-  totalCards => (_dispatch, getState) => {
+  (totalCards) => (_dispatch, getState) => {
     const loadingDashCards = getLoadingDashCards(getState());
     const loadingComplete = totalCards - loadingDashCards.loadingIds.length;
     return `${loadingComplete}/${totalCards} loaded`;
@@ -214,8 +228,13 @@ export const fetchCardDataAction = createAsyncThunk<
 
     const dashboardType = getDashboardType(dashcard.dashboard_id);
 
-    const { dashboardId, dashboards, parameterValues, dashcardData } =
-      getState().dashboard;
+    const {
+      dashboardId,
+      dashboards,
+      editingDashboard,
+      parameterValues,
+      dashcardData,
+    } = getState().dashboard;
 
     if (!dashboardId) {
       return;
@@ -223,10 +242,22 @@ export const fetchCardDataAction = createAsyncThunk<
 
     const dashboard = dashboards[dashboardId];
 
+    // if the dashboard is being edited, ignore parameters that do not exist in
+    // the saved dashboard to avoid query errors
+    const savedParameterIds = new Set(
+      editingDashboard?.parameters?.map((parameter) => parameter.id),
+    );
+    const savedParameters =
+      editingDashboard != null
+        ? dashboard.parameters?.filter((parameter) =>
+            savedParameterIds.has(parameter.id),
+          )
+        : dashboard.parameters;
+
     // if we have a parameter, apply it to the card query before we execute
     const datasetQuery = applyParameters(
       card,
-      dashboard.parameters,
+      savedParameters,
       parameterValues,
       dashcard?.parameter_mappings ?? undefined,
     );
@@ -256,8 +287,8 @@ export const fetchCardDataAction = createAsyncThunk<
     const hasParametersChanged =
       !lastResult ||
       !equals(
-        getDatasetQueryParams(lastResult.json_query).parameters,
-        getDatasetQueryParams(datasetQuery).parameters,
+        getDatasetQueryParams(lastResult.json_query),
+        getDatasetQueryParams(datasetQuery),
       );
 
     if (clearCache || hasParametersChanged) {
@@ -282,6 +313,7 @@ export const fetchCardDataAction = createAsyncThunk<
       cancelled = true;
     });
 
+    const metadata = getMetadata(getState());
     const queryOptions = {
       cancelled: deferred.promise,
     };
@@ -299,7 +331,11 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     } else if (dashboardType === "public") {
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(PublicApi.dashboardCardQuery, card)(
+        maybeUsePivotEndpoint(
+          PublicApi.dashboardCardQuery,
+          card,
+          metadata,
+        )(
           {
             uuid: dashcard.dashboard_id,
             dashcardId: dashcard.id,
@@ -314,7 +350,11 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     } else if (dashboardType === "embed") {
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(EmbedApi.dashboardCardQuery, card)(
+        maybeUsePivotEndpoint(
+          EmbedApi.dashboardCardQuery,
+          card,
+          metadata,
+        )(
           {
             token: dashcard.dashboard_id,
             dashcardId: dashcard.id,
@@ -329,10 +369,11 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     } else if (dashboardType === "transient" || dashboardType === "inline") {
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(MetabaseApi.dataset, card)(
-          { ...datasetQuery, ignore_cache: ignoreCache },
-          queryOptions,
-        ),
+        maybeUsePivotEndpoint(
+          MetabaseApi.dataset,
+          card,
+          metadata,
+        )({ ...datasetQuery, ignore_cache: ignoreCache }, queryOptions),
       );
     } else {
       const dashcardBeforeEditing = getDashCardBeforeEditing(
@@ -347,7 +388,7 @@ export const fetchCardDataAction = createAsyncThunk<
       const shouldUseCardQueryEndpoint =
         isNewDashcard(dashcard) ||
         (isQuestionDashCard(dashcard) &&
-          isNewAdditionalSeriesCard(card, dashcard)) ||
+          isNewAdditionalSeriesCard(card, dashcard, dashcardBeforeEditing)) ||
         hasReplacedCard;
 
       // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
@@ -366,13 +407,19 @@ export const fetchCardDataAction = createAsyncThunk<
             dashboard_id: dashcard.dashboard_id,
             dashboard_load_id: dashboardLoadId,
           };
-
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(endpoint, card)(requestBody, queryOptions),
+        maybeUsePivotEndpoint(
+          endpoint,
+          card,
+          metadata,
+        )(requestBody, queryOptions),
       );
     }
 
-    setFetchCardDataCancel(card.id, dashcard.id, null);
+    // If the request was not previously cancelled, then clear the defer for the card
+    if (!cancelled) {
+      setFetchCardDataCancel(card.id, dashcard.id, null);
+    }
     clearTimeout(slowCardTimer);
 
     return {
@@ -552,34 +599,14 @@ export const clearCardData = createAction(
   (cardId, dashcardId) => ({ payload: { cardId, dashcardId } }),
 );
 
-function getDatasetQueryParams(datasetQuery: Partial<DatasetQuery> = {}) {
-  const parameters =
-    datasetQuery?.parameters
-      ?.map(parameter => ({
-        ...parameter,
-        value: parameter.value ?? null,
-      }))
-      .sort(sortById) ?? [];
-
-  return match(datasetQuery)
-    .with({ type: "native" }, ({ native }) => ({
-      type: "native",
-      query: undefined,
-      native,
-      parameters,
+function getDatasetQueryParams(datasetQuery?: JsonQuery) {
+  const parameters = datasetQuery?.parameters ?? [];
+  return parameters
+    .map((parameter) => ({
+      ...parameter,
+      value: parameter.value ?? null,
     }))
-    .with({ type: "query" }, ({ query }) => ({
-      type: "query",
-      query,
-      native: undefined,
-      parameters,
-    }))
-    .otherwise(() => ({
-      type: undefined,
-      native: undefined,
-      query: undefined,
-      parameters: [],
-    }));
+    .sort(sortById);
 }
 
 function sortById(a: UiParameter, b: UiParameter) {
@@ -603,7 +630,7 @@ export const fetchDashboard = createAsyncThunk(
       options: { preserveParameters = false, clearCache = true } = {},
     }: {
       dashId: DashboardId;
-      queryParams: Query;
+      queryParams: ParameterValuesMap;
       options?: { preserveParameters?: boolean; clearCache?: boolean };
     },
     { getState, dispatch, rejectWithValue },
@@ -625,7 +652,7 @@ export const fetchDashboard = createAsyncThunk(
         entities = {
           dashboard: { [dashId]: loadedDashboard },
           dashcard: Object.fromEntries(
-            loadedDashboard.dashcards.map(id => [
+            loadedDashboard.dashcards.map((id) => [
               id,
               getDashCardById(getState(), id),
             ]),
@@ -666,12 +693,14 @@ export const fetchDashboard = createAsyncThunk(
             { subPath, dashboard_load_id: dashboardLoadId },
             { cancelled: fetchDashboardCancellation.promise },
           ),
-          dispatch(
-            Dashboards.actions.fetchXrayMetadata({
+          entityCompatibleQuery(
+            {
               entity,
               entityId,
               dashboard_load_id: dashboardLoadId,
-            }),
+            },
+            dispatch,
+            automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
           ),
         ]);
         result = {
@@ -697,11 +726,11 @@ export const fetchDashboard = createAsyncThunk(
             { dashId: dashId, dashboard_load_id: dashboardLoadId },
             { cancelled: fetchDashboardCancellation.promise },
           ),
-          dispatch(
-            Dashboards.actions.fetchMetadata({
-              id: dashId,
-              dashboard_load_id: dashboardLoadId,
-            }),
+          entityCompatibleQuery(
+            { id: dashId, dashboard_load_id: dashboardLoadId },
+            dispatch,
+            dashboardApi.endpoints.getDashboardQueryMetadata,
+            { forceRefetch: false },
           ),
         ]);
         result = response;
@@ -722,22 +751,18 @@ export const fetchDashboard = createAsyncThunk(
         });
       }
 
-      if (result.param_values) {
-        await dispatch(addParamValues(result.param_values));
-      }
       if (result.param_fields) {
-        await dispatch(addFields(result.param_fields));
+        await dispatch(addFields(Object.values(result.param_fields).flat()));
       }
 
       const lastUsedParametersValues = result["last_used_param_values"] ?? {};
 
       const metadata = getMetadata(getState());
-      const questions = getDashboardQuestions(result.dashcards, metadata);
-      const parameters = getDashboardUiParameters(
+      const parameters = getSavedDashboardUiParameters(
         result.dashcards,
-        result.parameters ?? [],
+        result.parameters,
+        result.param_fields,
         metadata,
-        questions,
       );
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())

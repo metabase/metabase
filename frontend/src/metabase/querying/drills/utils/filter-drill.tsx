@@ -8,7 +8,7 @@ interface FilterPopoverProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  initialFilter?: Lib.FilterClause;
+  initialFilter?: Lib.Filterable;
 }
 
 export function getFilterPopover({
@@ -28,7 +28,7 @@ export function getFilterPopover({
         stageIndex={stageIndex}
         column={column}
         filter={initialFilter}
-        onChange={filter => {
+        onChange={(filter) => {
           const nextQuery = Lib.filter(query, stageIndex, filter);
           const nextQuestion = question.setQuery(nextQuery);
           const nextCard = nextQuestion.card();

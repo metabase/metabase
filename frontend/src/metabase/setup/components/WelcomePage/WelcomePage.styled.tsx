@@ -1,6 +1,7 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
 
 export const PageRoot = styled.div`
   display: flex;
@@ -9,7 +10,7 @@ export const PageRoot = styled.div`
   min-height: 100vh;
 `;
 
-export const PageMain = styled.main`
+export const PageMain = styled.div`
   display: flex;
   flex: 1 0 auto;
   flex-direction: column;
@@ -22,6 +23,7 @@ export const PageMain = styled.main`
 export const PageTitle = styled.h1`
   color: var(--mb-color-brand);
   font-size: 2.2rem;
+  margin-top: 1.5rem;
 `;
 
 export const PageBody = styled.div`

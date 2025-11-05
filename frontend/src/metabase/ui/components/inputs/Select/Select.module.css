@@ -1,0 +1,168 @@
+.SelectRoot {
+  border-color: var(--mb-color-border);
+  padding: 0;
+
+  & > div {
+    max-height: none !important;
+  }
+}
+
+.SelectWrapper {
+  color: var(--mb-color-text-dark);
+
+  &[data-disabled] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  svg[data-error] {
+    color: var(--mb-color-error);
+  }
+
+  &:has([data-position]) {
+    .SelectInput {
+      padding-right: var(--input-right-section-width);
+    }
+  }
+}
+
+.Select {
+  &:has(.SelectLabel),
+  &:has(.SelectDescription),
+  &:has(.SelectError) {
+    .SelectWrapper {
+      margin-top: var(--mb-spacing-xs);
+    }
+  }
+}
+
+.SelectInput {
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background);
+
+  &[data-disabled] {
+    opacity: 1;
+    color: var(--mb-color-text-light);
+  }
+
+  &::placeholder {
+    color: var(--mb-color-text-light);
+  }
+
+  [data-position="right"] {
+    color: var(--mb-color-text-light);
+  }
+
+  /*
+  metabase#56179
+  Firefox shows a caret in readonly text inputs when focused
+  */
+  &[readonly]:focus {
+    caret-color: transparent;
+  }
+}
+
+.SelectInputSection {
+  color: var(--mb-color-text-primary);
+
+  svg {
+    color: inherit;
+    width: 1rem !important;
+    height: 1rem !important;
+
+    &:not([data-combobox-chevron]) path {
+      d: path(
+        "4.2469 3.2531 a 0.7031 0.7031 90 0 0 -0.9938 0.9938 L 6.5063 7.5 l -3.2531 3.2531 a 0.7031 0.7031 90 1 0 0.9938 0.9938 L 7.5 8.4938 l 3.2531 3.2531 a 0.7031 0.7031 90 1 0 0.9938 -0.9938 L 8.4938 7.5 l 3.2531 -3.2531 a 0.7031 0.7031 90 0 0 -0.9938 -0.9938 L 7.5 6.5063 L 4.2469 3.2531 z"
+      );
+    }
+  }
+
+  [data-disabled] & {
+    opacity: 1;
+    color: var(--mb-color-text-light);
+    background-color: var(--mb-color-bg-medium);
+
+    &::placeholder {
+      color: var(--mb-color-text-light);
+    }
+  }
+}
+
+.SelectItems_Item {
+  --combobox-option-padding: 0;
+
+  color: var(--mb-color-text-primary);
+  font-size: var(--select-item-font-size);
+  line-height: var(--select-item-line-height);
+  margin-top: 1px;
+
+  &:hover {
+    color: var(--mb-color-text-hover);
+    background-color: var(--mb-color-background-hover);
+  }
+
+  &[aria-selected="true"] {
+    color: var(--mb-color-text-selected);
+    background-color: var(--mb-color-background-selected);
+  }
+
+  &[data-combobox-disabled] {
+    cursor: default;
+    color: var(--mb-color-text-light);
+    pointer-events: none;
+    opacity: 0.75;
+  }
+}
+
+.SelectItems_Group {
+  &:not(:first-of-type) {
+    &::before {
+      content: "";
+      display: block;
+      margin-top: calc(var(--mantine-spacing-sm) - 1px);
+      margin-bottom: var(--mantine-spacing-sm);
+      margin-inline: var(--mantine-spacing-sm);
+      border-top: 1px solid var(--mb-color-border);
+    }
+  }
+}
+
+.SelectItems_GroupLabel {
+  color: var(--mb-color-text-primary);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+
+  &::after {
+    display: none;
+  }
+}
+
+.SelectItemsNothingFound {
+  color: var(--mb-color-text-light);
+  padding: var(--mantine-spacing-sm);
+  font-size: var(--select-item-font-size);
+  line-height: var(--select-item-line-height);
+}
+
+.SelectItems_Options {
+  padding: 0.75rem;
+  /*
+    this clobbers bottom padding when the content overflows, but it's less bad than
+    double scrollbars or overflowing the viewport, see #62466, #61889
+  */
+  max-height: rem(500px);
+}
+
+.Dropdown {
+  background-color: var(--mb-color-background);
+  border-color: var(--mb-color-border);
+}
+
+.SelectError {
+  &::first-letter {
+    text-transform: capitalize;
+  }
+}
+
+.SelectClearButton {
+  color: var(--mb-color-text-dark) !important;
+}

@@ -1,9 +1,7 @@
 (ns ^{:added "0.51.0"} metabase.channel.core
   "The Metabase channel system.
 
-  The API is still in development and subject to change."
-  (:require
-   [metabase.util :as u]))
+  The API is still in development and subject to change.")
 
 (set! *warn-on-reflection* true)
 
@@ -27,13 +25,13 @@
     channel-type))
 
 (defmulti render-notification
-  "Given a notification payload, return a sequence of channel-specific messages.
+  "Given a notification payload, return a sequence of handler-specific messages.
 
   The message format is channel-specific, one requirement is that it should be the same format that
   the [[send!]] multimethod expects."
   {:added    "0.51.0"
-   :arglists '([channel-type notification-payload template recipients])}
-  (fn [channel-type notification-payload _template _recipients]
+   :arglists '([channel-type notification-payload handler])}
+  (fn [channel-type notification-payload _handler]
     [channel-type (:payload_type notification-payload)]))
 
 (defmulti send!
@@ -42,9 +40,3 @@
    :arglists '([channel message])}
   (fn [channel _message]
     (:type channel)))
-
-;; ------------------------------------------------------------------------------------------------;;
-;;                                    Load the implementations                                     ;;
-;; ------------------------------------------------------------------------------------------------;;
-(when-not *compile-files*
-  (u/find-and-load-namespaces! "metabase.channel.impl"))

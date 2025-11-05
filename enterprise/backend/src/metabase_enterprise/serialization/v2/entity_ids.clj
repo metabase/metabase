@@ -2,9 +2,9 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.db :as mdb]
-   [metabase.models]
-   [metabase.models.collection :as collection]
+   [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
+   [metabase.models.resolution :as models.resolution]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -13,14 +13,14 @@
 
 (set! *warn-on-reflection* true)
 
-;;; make sure all the models get loaded up so we can resolve them based on their table names.
-;;;
-;;; TODO -- what about enterprise models that have `entity_id`? Don't know of any yet. We'll have to cross that bridge
-;;; when we get there.
-(comment metabase.models/keep-me)
+(def ^:private ignored-entity-id-table-names
+  "Legacy (V1) Metrics are no longer supported, and all their code has been removed. However the Tables are still in the
+  app DB (for now)... ignore them."
+  #{"metric" "METRIC" "metric_important_field" "METRIC_IMPORTANT_FIELD"})
 
 (defn- entity-id-table-names
-  "Return a set of lower-cased names of all application database tables that have an `entity_id` column, excluding views."
+  "Return a set of lower-cased names of all application database tables that have an `entity_id` column, excluding
+  views."
   []
   (with-open [conn (.getConnection (mdb/app-db))]
     (let [dbmeta (.getMetaData conn)]
@@ -30,13 +30,13 @@
                                                              :h2                "ENTITY_ID"
                                                              (:mysql :postgres) "entity_id"))]
             (let [entity-id-tables (into #{} (map (comp u/lower-case-en :table_name)) (resultset-seq rset))]
-              (set/intersection non-view-tables entity-id-tables))))))))
+              (-> (set/intersection non-view-tables entity-id-tables)
+                  (set/difference ignored-entity-id-table-names)))))))))
 
 (defn toucan-models
   "Return a list of all toucan models."
   []
-  (->> (descendants :metabase/model)
-       (filter #(= (namespace %) "model"))))
+  (keys models.resolution/model->namespace))
 
 (defn- make-table-name->model
   "Create a map of (lower-cased) application DB table name -> corresponding Toucan model."

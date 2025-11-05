@@ -1,6 +1,6 @@
 (ns metabase-enterprise.audit-app.interface
   (:require
-   [metabase.plugins.classloader :as classloader]
+   [metabase.classloader.core :as classloader]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]))
 

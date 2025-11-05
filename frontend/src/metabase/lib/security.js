@@ -4,7 +4,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 // generate a password that satisfies `complexity` requirements, by default the ones that come back in the
 // `password-complexity` Setting; must be a map like {total: 6, number: 1}
-export const generatePassword = complexity => {
+export const generatePassword = (complexity) => {
   complexity =
     complexity || MetabaseSettings.passwordComplexityRequirements() || {};
   // generated password must be at least `complexity.total`, but can be longer

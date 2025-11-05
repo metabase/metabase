@@ -1,4 +1,4 @@
-import { CreateQuestion } from "@metabase/embedding-sdk-react";
+import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -6,60 +6,40 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  assertSdkNotebookEditorUsable,
   createQuestion,
-  describeEE,
   entityPickerModal,
   entityPickerModalTab,
   modal,
   popover,
 } from "e2e/support/helpers";
-import {
-  mockAuthProviderAndJwtSignIn,
-  mountSdkContent,
-  signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { Flex } from "metabase/ui";
 
-describeEE("scenarios > embedding-sdk > create-question", () => {
+const { H } = cy;
+
+describe("scenarios > embedding-sdk > interactive-question > creating a question", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
   });
 
-  it("can create a question via the CreateQuestion component", () => {
+  it("can create a question via the InteractiveQuestion component", () => {
     cy.signOut();
     mockAuthProviderAndJwtSignIn();
     cy.intercept("POST", "/api/card").as("createCard");
 
     mountSdkContent(
       <Flex p="xl">
-        <CreateQuestion />
+        <InteractiveQuestion questionId="new" />
       </Flex>,
     );
 
-    // Wait until the entity picker modal is visible
-    getSdkRoot().contains("Pick your starting data");
-
-    popover().within(() => {
-      cy.findByText("Raw Data").click();
-      cy.findByText("Orders").click();
-    });
+    assertSdkNotebookEditorUsable();
 
     getSdkRoot().within(() => {
-      // The question title's header should be "New question" by default.
-      cy.contains("New question");
-
-      cy.findByRole("button", { name: "Visualize" }).click();
-
-      // Should be able to go back to the editor view
-      cy.findByRole("button", { name: "Show editor" }).click();
-
-      // Should be able to visualize the question again
-      cy.findByRole("button", { name: "Visualize" }).click();
-
-      // Should not show a loading indicator again as the question has not changed (metabase#47564)
-      cy.findByTestId("loading-indicator").should("not.exist");
-
       // Should be able to save to a new question right away
       cy.findByRole("button", { name: "Save" }).click();
     });
@@ -91,6 +71,36 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
     getSdkRoot().contains("My Orders");
   });
 
+  it("can create a question without visualizing it first (EMB-584)", () => {
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(
+      <Flex p="xl">
+        <InteractiveQuestion questionId="new" />
+      </Flex>,
+    );
+
+    getSdkRoot().within(() => {
+      cy.button("Save").should("not.exist");
+    });
+
+    popover().findByRole("link", { name: "Orders" }).click();
+
+    getSdkRoot().button("Save").should("be.visible").click();
+
+    const expectedQuestionName = "Orders question";
+    modal().within(() => {
+      cy.findByRole("heading", { name: "Save new question" }).should(
+        "be.visible",
+      );
+      cy.findByLabelText("Name").clear().type(expectedQuestionName);
+      cy.button("Save").click();
+    });
+
+    getSdkRoot().findByText(expectedQuestionName).should("be.visible");
+  });
+
   it("can save a question in a dashboard", () => {
     createQuestion({
       name: "Total Orders",
@@ -108,7 +118,7 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
 
     mountSdkContent(
       <Flex p="xl">
-        <CreateQuestion />
+        <InteractiveQuestion questionId="new" />
       </Flex>,
     );
 
@@ -116,24 +126,19 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
     getSdkRoot().contains("Pick your starting data");
 
     popover().within(() => {
-      cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
 
     getSdkRoot().within(() => {
-      // The question title's header should be "New question" by default.
-      cy.findByText("New question");
-
-      cy.findByRole("button", { name: "Visualize" }).click();
-
-      // Should be able to go back to the editor view
-      cy.findByRole("button", { name: "Show editor" }).click();
-
-      // Should be able to visualize the question again
       cy.findByRole("button", { name: "Visualize" }).click();
 
       // Should not show a loading indicator again as the question has not changed (metabase#47564)
       cy.findByTestId("loading-indicator").should("not.exist");
+
+      // Should show a visualization after clicking "Visualize"
+      // and should not show an error message (metabase#55398)
+      cy.findByText("Question not found").should("not.exist");
+      cy.findByText("110.93").should("be.visible"); // table data
 
       // Should be able to save to a new question right away
       cy.findByRole("button", { name: "Save" }).click();
@@ -164,5 +169,70 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
 
     // The question title's header should be updated.
     getSdkRoot().contains("My Orders");
+  });
+
+  it("should respect `entityTypes` prop", () => {
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+    cy.intercept("POST", "/api/card").as("createCard");
+
+    /**
+     * We have changed the default MB_SEARCH_ENGINE from "in-place" to "appdb", and it affects the results here.
+     * Previously, when the engine was "in-place", we'll get models from the "Usage Analytics" collection as well,
+     * so the number was different.
+     */
+    const MODEL_COUNT = 1;
+    const TABLE_COUNT = 4;
+
+    cy.log('1. `entityTypes` = ["table"]');
+    mountSdkContent(
+      <Flex p="xl">
+        <InteractiveQuestion questionId="new" entityTypes={["table"]} />
+      </Flex>,
+    );
+
+    // Wait until the entity picker modal is visible
+    getSdkRoot().contains("Pick your starting data");
+
+    H.popover().within(() => {
+      cy.findByRole("link", { name: "Orders" }).should("be.visible");
+      cy.findByRole("link", { name: "Orders Model" }).should("not.exist");
+      cy.findAllByRole("link").should("have.length", TABLE_COUNT);
+    });
+
+    cy.log('2. `entityTypes` = ["model"]');
+    mountSdkContent(
+      <Flex p="xl">
+        <InteractiveQuestion questionId="new" entityTypes={["model"]} />
+      </Flex>,
+    );
+
+    // Wait until the entity picker modal is visible
+    getSdkRoot().contains("Pick your starting data");
+
+    H.popover().within(() => {
+      cy.findByRole("link", { name: "Orders" }).should("not.exist");
+      cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
+      cy.findAllByRole("link").should("have.length", MODEL_COUNT);
+    });
+
+    cy.log('3. `entityTypes` = ["model", "table]');
+    mountSdkContent(
+      <Flex p="xl">
+        <InteractiveQuestion
+          questionId="new"
+          entityTypes={["model", "table"]}
+        />
+      </Flex>,
+    );
+
+    // Wait until the entity picker modal is visible
+    getSdkRoot().contains("Pick your starting data");
+
+    H.popover().within(() => {
+      cy.findByRole("link", { name: "Orders" }).should("be.visible");
+      cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
+      cy.findAllByRole("link").should("have.length", MODEL_COUNT + TABLE_COUNT);
+    });
   });
 });

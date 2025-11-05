@@ -92,6 +92,13 @@
   ([temporal-value unit locale]
    (internal/format-unit temporal-value unit locale)))
 
+(defn parse-unit
+  "Parses a string given the unit of time to parse by."
+  ([str unit]
+   (internal/parse-unit str unit))
+  ([str unit locale]
+   (internal/parse-unit str unit locale)))
+
 (defn format-diff
   "Formats a time difference between two temporal values.
    Drops redundant information."

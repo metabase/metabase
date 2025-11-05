@@ -2,11 +2,10 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import FormCheckBox from "metabase/core/components/FormCheckBox";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import FormInput from "metabase/core/components/FormInput";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import { Form, FormProvider } from "metabase/forms";
+import FormErrorMessage from "metabase/common/components/FormErrorMessage";
+import FormInput from "metabase/common/components/FormInput";
+import FormSubmitButton from "metabase/common/components/FormSubmitButton";
+import { Form, FormCheckbox, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 
 import type { LoginData } from "../../types";
@@ -16,7 +15,7 @@ const LOGIN_SCHEMA = Yup.object().shape({
     .required(Errors.required)
     .when("$isLdapEnabled", {
       is: false,
-      then: schema => schema.email(Errors.email),
+      then: (schema) => schema.email(Errors.email),
     }),
   password: Yup.string().required(Errors.required),
   remember: Yup.boolean(),
@@ -73,7 +72,7 @@ export const LoginForm = ({
           placeholder={t`Shhh...`}
         />
         {!hasSessionCookies && (
-          <FormCheckBox name="remember" title={t`Remember me`} />
+          <FormCheckbox name="remember" label={t`Remember me`} mb="1.25rem" />
         )}
         <FormSubmitButton title={t`Sign in`} primary fullWidth />
         <FormErrorMessage />

@@ -1,13 +1,12 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import EntityMenu from "metabase/components/EntityMenu";
-import { color } from "metabase/lib/colors";
+import EntityMenu from "metabase/common/components/EntityMenu";
+import { color } from "metabase/ui/utils/colors";
 
 export const CardRoot = styled.div`
   flex: 1;
   max-width: 52rem;
-  border-bottom: 1px solid var(--mb-color-border);
-  padding-bottom: 2rem;
 `;
 
 export const CardHeader = styled.div`
@@ -36,8 +35,8 @@ interface CardBadgeProps {
 }
 
 export const CardBadge = styled.div<CardBadgeProps>`
-  color: ${props => (props.isEnabled ? color("brand") : color("danger"))};
-  background-color: ${props =>
+  color: ${(props) => (props.isEnabled ? color("brand") : color("danger"))};
+  background-color: ${(props) =>
     props.isEnabled
       ? "var(--mb-color-brand-lighter)"
       : "var(--mb-color-bg-light)"};

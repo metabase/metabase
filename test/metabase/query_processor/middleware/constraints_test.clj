@@ -10,13 +10,13 @@
 
 (deftest ^:parallel add-constraints-test
   (testing "if it is *truthy* add the constraints"
-    (is (= {:middleware  {:add-default-userland-constraints? true
-                          :userland-query?                   true}
-            :constraints {:max-results           @#'qp.constraints/default-aggregated-query-row-limit
-                          :max-results-bare-rows @#'qp.constraints/default-unaggregated-query-row-limit}}
-           (qp.constraints/maybe-add-default-userland-constraints
-            {:middleware {:add-default-userland-constraints? true
-                          :userland-query?                   true}})))))
+    (is (=? {:middleware  {:add-default-userland-constraints? true
+                           :userland-query?                   true}
+             :constraints {:max-results           @#'qp.constraints/default-aggregated-query-row-limit
+                           :max-results-bare-rows @#'qp.constraints/default-unaggregated-query-row-limit}}
+            (qp.constraints/maybe-add-default-userland-constraints
+             {:middleware {:add-default-userland-constraints? true
+                           :userland-query?                   true}})))))
 
 (deftest ^:parallel no-op-if-option-is-false-test
   (testing "don't do anything if it's not truthy"

@@ -1,44 +1,42 @@
 (ns metabase.driver.druid-jdbc
+  (:refer-clojure :exclude [mapv])
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
-   [metabase.lib.field :as lib.field]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.models.secret :as secret]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf :refer [mapv]])
   (:import
    (java.sql ResultSet Types)
-   (java.time LocalDateTime ZonedDateTime)))
+   (java.time LocalDate LocalDateTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! :druid-jdbc :parent :sql-jdbc)
 
 (doseq [[feature supported?] {:set-timezone            true
-                              :expression-aggregations true}]
+                              :expression-aggregations true
+                              :expression-literals     true}]
   (defmethod driver/database-supports? [:druid-jdbc feature] [_driver _feature _db] supported?))
 
 (defmethod sql-jdbc.conn/connection-details->spec :druid-jdbc
-  [_driver {:keys [host port auth-enabled auth-username] :as db-details}]
+  [driver {:keys [host port auth-enabled auth-username] :as db-details}]
   (merge {:classname   "org.apache.calcite.avatica.remote.Driver"
           :subprotocol "avatica:remote"
           :subname     (str "url=" host ":" port "/druid/v2/sql/avatica/;transparent_reconnection=true")}
          (when auth-enabled
            {:user auth-username
-            :password (secret/get-secret-string db-details "auth-password")})
+            :password (driver-api/secret-value-as-string driver db-details "auth-password")})
          (when (some? (driver/report-timezone))
            {:sqlTimeZone (driver/report-timezone)
             :timeZone (driver/report-timezone)})))
@@ -134,6 +132,16 @@
   [_driver t]
   (format "'%s'" (format-datetime t)))
 
+(defn- format-date [d] (t/format "yyyy-MM-dd" d))
+
+(defmethod sql-jdbc.execute/set-parameter [:druid-jdbc LocalDate]
+  [driver ps i d]
+  (sql-jdbc.execute/set-parameter driver ps i (format-date d)))
+
+(defmethod sql.qp/inline-value [:druid-jdbc LocalDate]
+  [_driver d]
+  (format "'%s'" (format-date d)))
+
 (defmethod sql.qp/json-query :druid-jdbc
   [_driver unwrapped-identifier nfc-field]
   (assert (h2x/identifier? unwrapped-identifier)
@@ -149,15 +157,15 @@
 (defmethod sql.qp/->honeysql [:druid-jdbc :field]
   [driver [_ id-or-name opts :as clause]]
   (let [stored-field  (when (integer? id-or-name)
-                        (lib.metadata/field (qp.store/metadata-provider) id-or-name))
+                        (driver-api/field (driver-api/metadata-provider) id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         identifier    (parent-method driver clause)]
-    (if-not (lib.field/json-field? stored-field)
+    (if-not (driver-api/json-field? stored-field)
       identifier
       (if (or (::sql.qp/forced-alias opts)
-              (= ::add/source (::add/source-table opts)))
-        (keyword (::add/source-alias opts))
-        (walk/postwalk #(if (h2x/identifier? %)
+              (= driver-api/qp.add.source (driver-api/qp.add.source-table opts)))
+        (keyword (driver-api/qp.add.source-alias opts))
+        (perf/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :druid-jdbc % stored-field)
                           %)
                        identifier)))))

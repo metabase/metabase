@@ -4,11 +4,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
-import Modal from "metabase/components/Modal";
+import Modal from "metabase/common/components/Modal";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import Actions from "metabase/entities/actions";
 import Search from "metabase/entities/search";
-import { useToggle } from "metabase/hooks/use-toggle";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
@@ -43,7 +43,7 @@ export function ActionPicker({
 
   return (
     <div className={CS.scrollY}>
-      {sortedModels.map(model => (
+      {sortedModels.map((model) => (
         <ModelActionPicker
           key={model.id}
           model={model}
@@ -102,7 +102,7 @@ function ModelActionPicker({
       >
         {actions.length ? (
           <ActionsList>
-            {actions.map(action => (
+            {actions.map((action) => (
               <ActionItem
                 key={action.id}
                 role="button"
@@ -139,7 +139,7 @@ function ModelActionPicker({
         )}
       </ModelCollapseSection>
       {isActionCreatorOpen && (
-        <Modal wide onClose={closeModal} closeOnClickOutside>
+        <Modal wide onClose={closeModal}>
           <ActionCreator
             modelId={model.id}
             databaseId={model.database_id}

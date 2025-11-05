@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type * as React from "react";
 
-import { ColorSelector } from "metabase/core/components/ColorSelector";
+import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import type { SingleSeries, VisualizationSettings } from "metabase-types/api";
@@ -41,20 +41,21 @@ const ChartNestedSettingsSeriesSingle = ({
     >
       <div className={cx(CS.flex, CS.alignCenter, CS.borderBottom, CS.pb2)}>
         <ColorSelector
+          withinPortal={false}
           value={computedSettings.color}
           colors={getAccentColors()}
-          onChange={value => onChangeObjectSettings(object, { color: value })}
+          onChange={(value) => onChangeObjectSettings(object, { color: value })}
         />
         <SeriesNameInput
           className={cx(CS.flexFull, CS.ml1, CS.alignSelfStretch)}
           value={computedSettings.title}
-          aria-label="series-name-input"
-          subtitle={
+          description={
             seriesCardName === computedSettings.title ? "" : seriesCardName
           }
-          onBlurChange={e =>
+          onBlurChange={(e) =>
             onChangeObjectSettings(object, { title: e.target.value })
           }
+          data-testid="series-name-input"
         />
       </div>
       {objectSettingsWidgets && objectSettingsWidgets.length > 0 ? (

@@ -1,9 +1,8 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.sum-where-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
 (deftest ^:parallel basic-test
@@ -84,7 +83,7 @@
 (deftest ^:parallel segment-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:segments [{:id         1
                                                    :name       "Segment 1"
                                                    :table-id   (mt/id :venues)
@@ -100,7 +99,7 @@
 (deftest ^:parallel metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:cards [{:id            1
                                                 :database-id   (mt/id)
                                                 :name          "Metric 1"

@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { t } from "ttag";
 
 import {
@@ -12,15 +13,23 @@ export const fkFilterDrill: Drill<Lib.FKFilterDrillThruInfo> = ({
   drill,
   drillInfo,
   applyDrill,
+  clicked,
 }) => {
   const { tableName, columnName } = drillInfo;
-  const tableTitle = pluralize(tableName);
-  const columnTitle = singularize(stripId(columnName));
+  const locale = dayjs.locale();
+  const tableTitle = locale === "en" ? pluralize(tableName) : tableName;
+  const columnTitle =
+    locale === "en" ? singularize(stripId(columnName)) : stripId(columnName);
+
+  const isNullValue = clicked?.value === null;
+  const title = isNullValue
+    ? t`View ${tableTitle} with no ${columnTitle}`
+    : t`View this ${columnTitle}'s ${tableTitle}`;
 
   return [
     {
       name: "fk-filter",
-      title: t`View this ${columnTitle}'s ${tableTitle}`,
+      title,
       section: "standalone_filter",
       icon: "filter",
       buttonType: "horizontal",

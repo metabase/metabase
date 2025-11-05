@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
-import { subscriptionApi, useGetSubscriptionQuery } from "metabase/api";
+import {
+  subscriptionApi,
+  useGetSubscriptionQuery,
+  useListSubscriptionsQuery,
+} from "metabase/api";
 import { getCollectionType } from "metabase/entities/collections/utils";
 import { color } from "metabase/lib/colors";
 import {
@@ -29,6 +33,7 @@ const Pulses = createEntity({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
+    useListQuery: useListSubscriptionsQuery,
   },
 
   api: {
@@ -72,7 +77,7 @@ const Pulses = createEntity({
 
     unsubscribe:
       ({ id }) =>
-      async dispatch => {
+      async (dispatch) => {
         await entityCompatibleQuery(
           id,
           dispatch,
@@ -85,10 +90,10 @@ const Pulses = createEntity({
   },
 
   objectSelectors: {
-    getName: pulse => pulse && pulse.name,
-    getUrl: pulse => pulse && Urls.pulse(pulse.id),
-    getIcon: pulse => ({ name: "pulse" }),
-    getColor: pulse => color("pulse"),
+    getName: (pulse) => pulse && pulse.name,
+    getUrl: (pulse) => pulse && Urls.pulse(pulse.id),
+    getIcon: (pulse) => ({ name: "pulse" }),
+    getColor: (pulse) => color("pulse"),
   },
 
   getAnalyticsMetadata([object], { action }, getState) {
@@ -97,8 +102,8 @@ const Pulses = createEntity({
   },
 });
 
-const useGetQuery = ({ id }) => {
-  return useGetSubscriptionQuery(id);
+const useGetQuery = ({ id }, options) => {
+  return useGetSubscriptionQuery(id, options);
 };
 
 export default Pulses;

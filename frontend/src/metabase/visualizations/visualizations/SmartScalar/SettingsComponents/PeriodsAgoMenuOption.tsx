@@ -48,12 +48,12 @@ export function PeriodsAgoMenuOption({
 
   const value = editedValue?.value ?? MIN_VALUE;
   const handleInputChange = useCallback(
-    (value: number) => {
+    (value: number | string) => {
       if (message) {
         setMessage(null);
       }
 
-      if (value < 1) {
+      if (typeof value === "string" || value < 1) {
         onChange({ type, value: MIN_VALUE });
         reSelectInput();
         return;
@@ -68,12 +68,6 @@ export function PeriodsAgoMenuOption({
         return;
       }
 
-      if (!Number.isInteger(value)) {
-        onChange({ type, value: Math.floor(value) ?? MIN_VALUE });
-        reSelectInput();
-        return;
-      }
-
       onChange({ type, value });
     },
     [maxValue, message, onChange, reSelectInput, type],
@@ -81,6 +75,9 @@ export function PeriodsAgoMenuOption({
 
   const handleInputEnter = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.nativeEvent.isComposing) {
+        return;
+      }
       if (e.key === "Enter") {
         onChange({ type, value }, true);
       }
@@ -98,11 +95,11 @@ export function PeriodsAgoMenuOption({
   return (
     <MenuItemStyled py="xs" aria-selected={isSelected}>
       <Box px="sm" onClick={() => onChange({ type, value }, true)}>
-        <Group spacing="sm">
+        <Group gap="sm">
           <NumberInputStyled
-            type="number"
+            allowDecimal={false}
             value={value}
-            onChange={(value: number) => handleInputChange(value)}
+            onChange={(value) => handleInputChange(value)}
             onKeyPress={handleInputEnter}
             onClick={handleInputClick}
             size="xs"

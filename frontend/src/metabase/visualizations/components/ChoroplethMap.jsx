@@ -4,16 +4,20 @@ import Color from "color";
 import * as d3 from "d3";
 import { Component } from "react";
 import ss from "simple-statistics";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { getMetabaseInstanceUrl } from "embedding-sdk/store/selectors";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
+// eslint-disable-next-line no-restricted-imports -- deprecated sdk import
+import { getMetabaseInstanceUrl } from "embedding-sdk-bundle/store/selectors";
+import Link from "metabase/common/components/Link";
+import LoadingSpinner from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { formatValue } from "metabase/lib/formatting";
-import { connect } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { Flex, Text } from "metabase/ui";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import {
   computeMinimalBounds,
@@ -30,7 +34,9 @@ import LeafletChoropleth from "./LeafletChoropleth";
 import LegacyChoropleth from "./LegacyChoropleth";
 
 // TODO COLOR
+// eslint-disable-next-line no-color-literals
 const HEAT_MAP_COLORS = ["#C4E4FF", "#81C5FF", "#51AEFF", "#1E96FF", "#0061B5"];
+// eslint-disable-next-line no-color-literals
 const HEAT_MAP_ZERO_COLOR = "#CCC";
 
 export function getColorplethColorScale(
@@ -46,7 +52,7 @@ export function getColorplethColorScale(
     [lightColor.string(), darkColor.string()],
   );
 
-  const colors = d3.range(0, 1.25, 0.25).map(value => scale(value));
+  const colors = d3.range(0, 1.25, 0.25).map((value) => scale(value));
 
   if (darkenLast) {
     colors[colors.length - 1] = Color(color)
@@ -66,7 +72,7 @@ function loadGeoJson(geoJsonPath, callback) {
     return;
   }
 
-  d3.json(geoJsonPath).then(json => {
+  d3.json(geoJsonPath).then((json) => {
     geoJsonCache.set(geoJsonPath, json);
     callback(json);
   });
@@ -94,40 +100,61 @@ const AVERAGE_LENGTH_CUTOFF = 5;
 
 function shouldUseCompactFormatting(groups, formatMetric) {
   const minValues = groups.map(([x]) => x);
-  const maxValues = groups.slice(0, -1).map(group => group[group.length - 1]);
+  const maxValues = groups.slice(0, -1).map((group) => group[group.length - 1]);
   const allValues = minValues.concat(maxValues);
-  const formattedValues = allValues.map(value => formatMetric(value, false));
+  const formattedValues = allValues.map((value) => formatMetric(value, false));
   const averageLength =
     formattedValues.reduce((sum, { length }) => sum + length, 0) /
     formattedValues.length;
   return averageLength > AVERAGE_LENGTH_CUTOFF;
 }
 
-const mapStateToProps = state => ({
-  isSdk: getIsEmbeddingSdk(state),
+const mapStateToProps = (state) => ({
   sdkMetabaseInstanceUrl: getMetabaseInstanceUrl(state),
 });
 
 const connector = connect(mapStateToProps, null);
 
-const ensureTrailingSlash = url => (url.endsWith("/") ? url : url + "/");
+const ensureTrailingSlash = (url) => (url.endsWith("/") ? url : url + "/");
 
 export function getMapUrl(details, props) {
-  if (details.builtin) {
-    if (props?.isSdk && props?.sdkMetabaseInstanceUrl) {
-      const baseUrl = new URL(
-        props.sdkMetabaseInstanceUrl,
-        window.location.origin,
-      ).href;
+  const mapUrl = details.builtin
+    ? details.url
+    : "api/geojson/" + props.settings["map.region"];
 
-      // if the second parameter ends with a slash, it will join them together
-      // new URL("/sub-path", "http://example.org/proxy/") => "http://example.org/proxy/sub-path"
-      return new URL(details.url, ensureTrailingSlash(baseUrl)).href;
-    }
-    return details.url;
+  if (!isEmbeddingSdk() || !props?.sdkMetabaseInstanceUrl) {
+    return mapUrl;
   }
-  return "api/geojson/" + props.settings["map.region"];
+
+  const baseUrl = new URL(props.sdkMetabaseInstanceUrl, window.location.origin)
+    .href;
+
+  // if the second parameter ends with a slash, it will join them together
+  // new URL("/sub-path", "http://example.org/proxy/") => "http://example.org/proxy/sub-path"
+  return new URL(mapUrl, ensureTrailingSlash(baseUrl)).href;
 }
+
+const MapNotFound = () => {
+  const isAdmin = useSelector(getUserIsAdmin);
+  return (
+    <Flex direction="column" m="auto" maw="25rem">
+      <div className={cx(CS.textCentered, CS.mb4, CS.px2)}>
+        <Text component="p">
+          {t`Looks like this custom map is no longer available. Try using a different map to visualize this.`}
+        </Text>
+        {isAdmin && (
+          <Text component="p" className={CS.mt1}>
+            {jt`To add a new map, visit ${(
+              <Link key="link" to="/admin/settings/maps" className={CS.link}>
+                {t`Admin settings > Maps`}
+              </Link>
+            )}.`}
+          </Text>
+        )}
+      </div>
+    </Flex>
+  );
+};
 
 class ChoroplethMapInner extends Component {
   static propTypes = {};
@@ -178,7 +205,7 @@ class ChoroplethMapInner extends Component {
           geoJson: null,
           geoJsonPath: geoJsonPath,
         });
-        loadGeoJson(geoJsonPath, geoJson => {
+        loadGeoJson(geoJsonPath, (geoJson) => {
           this.setState({
             geoJson: geoJson,
             geoJsonPath: geoJsonPath,
@@ -192,7 +219,7 @@ class ChoroplethMapInner extends Component {
   render() {
     const details = this._getDetails(this.props);
     if (!details) {
-      return <div>{t`unknown map`}</div>;
+      return <MapNotFound />;
     }
 
     const {
@@ -244,26 +271,27 @@ class ChoroplethMapInner extends Component {
     ] = series;
     const dimensionIndex = _.findIndex(
       cols,
-      col => col.name === settings["map.dimension"],
+      (col) => col.name === settings["map.dimension"],
     );
     const metricIndex = _.findIndex(
       cols,
-      col => col.name === settings["map.metric"],
+      (col) => col.name === settings["map.metric"],
     );
 
-    const getRowKey = row =>
+    const getRowKey = (row) =>
       getCanonicalRowKey(row[dimensionIndex], settings["map.region"]);
-    const getRowValue = row => row[metricIndex] || 0;
+    const getRowValue = (row) => row[metricIndex] || 0;
 
-    const getFeatureName = feature => String(feature.properties[nameProperty]);
+    const getFeatureName = (feature) =>
+      String(feature.properties[nameProperty]);
     const getFeatureKey = (feature, { lowerCase = true } = {}) => {
       const key = String(feature.properties[keyProperty]);
       return lowerCase ? key.toLowerCase() : key;
     };
 
-    const getFeatureValue = feature => valuesMap[getFeatureKey(feature)];
+    const getFeatureValue = (feature) => valuesMap[getFeatureKey(feature)];
 
-    const rowByFeatureKey = new Map(rows.map(row => [getRowKey(row), row]));
+    const rowByFeatureKey = new Map(rows.map((row) => [getRowKey(row), row]));
 
     const getFeatureClickObject = (row, feature) =>
       row == null
@@ -312,21 +340,21 @@ class ChoroplethMapInner extends Component {
 
     const onClickFeature =
       isClickable &&
-      (click => {
-        if (visualizationIsClickable(getFeatureClickObject(rows[0]))) {
-          const featureKey = getFeatureKey(click.feature);
-          const row = rowByFeatureKey.get(featureKey);
-          if (onVisualizationClick) {
-            onVisualizationClick({
-              ...getFeatureClickObject(row, click.feature),
-              event: click.event,
-            });
-          }
+      ((click) => {
+        const featureKey = getFeatureKey(click.feature);
+        const row = rowByFeatureKey.get(featureKey);
+        const clickData = {
+          ...getFeatureClickObject(row, click.feature),
+          event: click.event,
+        };
+
+        if (onVisualizationClick && visualizationIsClickable(clickData)) {
+          onVisualizationClick(clickData);
         }
       });
     const onHoverFeature =
       onHoverChange &&
-      (hover => {
+      ((hover) => {
         const row = hover && rowByFeatureKey.get(getFeatureKey(hover.feature));
         if (row && onHoverChange) {
           onHoverChange({
@@ -351,14 +379,14 @@ class ChoroplethMapInner extends Component {
     const heatMapColors = _heatMapColors.slice(-domain.length);
 
     const groups = ss.ckmeans(domain, heatMapColors.length);
-    const groupBoundaries = groups.slice(1).map(cluster => cluster[0]);
+    const groupBoundaries = groups.slice(1).map((cluster) => cluster[0]);
 
     const colorScale = d3.scaleThreshold(groupBoundaries, heatMapColors);
 
     const columnSettings = settings.column(cols[metricIndex]);
     const legendTitles = getLegendTitles(groups, columnSettings);
 
-    const getColor = feature => {
+    const getColor = (feature) => {
       const value = getFeatureValue(feature);
       return value == null ? HEAT_MAP_ZERO_COLOR : colorScale(value);
     };
@@ -383,6 +411,7 @@ class ChoroplethMapInner extends Component {
         hovered={hovered}
         onHoverChange={onHoverChange}
         isDashboard={this.props.isDashboard}
+        isDocument={this.props.isDocument}
       >
         {projection ? (
           <LegacyChoropleth

@@ -1,0 +1,41 @@
+.CloseIconContainer {
+  display: flex;
+  align-items: center;
+  border-left: 1px solid color-mix(in srgb, var(--mb-color-brand) 80%, black);
+}
+
+.IconContainer {
+  flex-shrink: 0;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 8px;
+}
+
+.BaseSidebarItemRoot {
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+
+  &.disabled {
+    pointer-events: none;
+    opacity: 0.4;
+  }
+
+  &.padded {
+    padding: 8px 12px;
+  }
+
+  &:hover {
+    border-color: var(--mb-color-brand);
+  }
+}
+
+.SelectableSidebarItemRoot {
+  background-color: transparent;
+  color: inherit;
+
+  &.isSelected {
+    background-color: var(--mb-color-brand);
+    color: var(--mb-color-text-white);
+  }
+}

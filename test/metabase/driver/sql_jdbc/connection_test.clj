@@ -1,21 +1,26 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc.connection-test
+  {:clj-kondo/config '{:linters
+                       ;; allowing this for now since we sorta need to put real DBs in the app DB to test the DB ID
+                       ;; -> connection pool stuff
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.config :as config]
-   [metabase.core :as mbc]
-   [metabase.db :as mdb]
+   [java-time.api :as t]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
+   [metabase.core.core :as mbc]
    [metabase.driver :as driver]
-   [metabase.driver.h2 :as h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel-test :as ssh-test]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Database Secret]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
@@ -23,11 +28,8 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
-   [metabase.util.ssh :as ssh]
-   [metabase.util.ssh-test :as ssh-test]
    [next.jdbc :as next.jdbc]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (org.h2.tools Server)))
 
@@ -41,7 +43,7 @@
 (deftest ^:parallel can-connect-with-details?-test
   (testing "Should not be able to connect without setting h2/*allow-testing-h2-connections*"
     (is (not (driver.u/can-connect-with-details? :h2 (:details (data/db))))))
-  (binding [h2/*allow-testing-h2-connections* true]
+  (binding [driver.settings/*allow-testing-h2-connections* true]
     (is (driver.u/can-connect-with-details? :h2 (:details (data/db))))
     (testing "Lie and say Test DB is Postgres. `can-connect?` should fail"
       (is (not (driver.u/can-connect-with-details? :postgres (:details (data/db))))))
@@ -71,7 +73,7 @@
            (fn [conn]
              (next.jdbc/execute! conn ["CREATE TABLE birds (name varchar)"])
              (next.jdbc/execute! conn ["INSERT INTO birds values ('rasta'),('lucky')"])
-             (t2.with-temp/with-temp [Database database {:engine :h2, :details connection-details}]
+             (mt/with-temp [:model/Database database {:engine :h2, :details connection-details}]
                (testing "database id is not in our connection map initially"
                  ;; deref'ing a var to get the atom. looks weird
                  (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
@@ -90,7 +92,7 @@
                  (is @destroyed?))))))))))
 
 (deftest ^:parallel c3p0-datasource-name-test
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+  (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})
     (testing "The dataSourceName c3p0 property is set properly for a database"
       (let [db         (mt/db)
             props      (sql-jdbc.conn/data-warehouse-connection-pool-properties driver/*driver* db)
@@ -104,7 +106,7 @@
   (testing "Two JDBC specs created with the same details must be considered equal for the connection pool cache to work correctly"
     ;; this is only really a concern for drivers like Spark SQL that create custom DataSources instead of plain details
     ;; maps -- those DataSources need to be considered equal based on the connection string/properties
-    (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+    (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})
       (let [details (:details (mt/db))
             spec-1  (sql-jdbc.conn/connection-details->spec driver/*driver* details)
             spec-2  (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
@@ -121,32 +123,42 @@
               :databricks
               (assoc details :log-level 0)
 
-              (cond-> details
+              (cond
                 ;; swap localhost and 127.0.0.1
                 (and (string? (:host details))
                      (str/includes? (:host details) "localhost"))
-                (update :host str/replace "localhost" "127.0.0.1")
+                (update details :host str/replace "localhost" "127.0.0.1")
 
                 (and (string? (:host details))
                      (str/includes? (:host details) "127.0.0.1"))
-                (update :host str/replace "127.0.0.1" "localhost")
+                (update details :host str/replace "127.0.0.1" "localhost")
 
                 :else
-                (assoc :new-config "something"))))))
+                (assoc details :new-config "something"))))))
 
 (deftest connection-pool-invalidated-on-details-change
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+  (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})
     (testing "db->pooled-connection-spec marks a connection pool invalid if the db details map changes\n"
       (let [db                       (mt/db)
             hash-change-called-times (atom 0)
             hash-change-fn           (fn [db-id]
                                        (is (= (u/the-id db) db-id))
                                        (swap! hash-change-called-times inc)
-                                       nil)]
+                                       nil)
+            ;; HACK: The ClickHouse driver also calls `db->pooled-connection-spec` to answer
+            ;; `driver-supports? :connection-impersonation`. That perturbs the call count, so add a special case
+            ;; to [[driver.u/supports?]].
+            original-supports?       driver.u/supports?
+            supports?-fn             (fn [driver feature database]
+                                       (if (and #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+                                            (= driver :clickhouse)
+                                                (= feature :connection-impersonation))
+                                         true
+                                         (original-supports? driver feature database)))]
         (try
           (sql-jdbc.conn/invalidate-pool-for-db! db)
-          ;; a little bit hacky to redefine the log fn, but it's the most direct way to test
-          (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn]
+          (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn
+                        driver.u/supports?                           supports?-fn]
             (let [pool-spec-1 (sql-jdbc.conn/db->pooled-connection-spec db)
                   db-hash-1   (get @@#'sql-jdbc.conn/database-id->jdbc-spec-hash (u/the-id db))]
               (testing "hash value calculated correctly for new pooled conn"
@@ -158,7 +170,7 @@
                   (testing "The calculated hash should be different"
                     (is (not= (#'sql-jdbc.conn/jdbc-spec-hash db)
                               (#'sql-jdbc.conn/jdbc-spec-hash db-perturbed))))
-                  (t2/update! Database (mt/id) {:details (:details db-perturbed)})
+                  (t2/update! :model/Database (mt/id) {:details (:details db-perturbed)})
                   (let [;; this call should result in the connection pool becoming invalidated, and the new hash value
                         ;; being stored based upon these updated details
                         pool-spec-2  (sql-jdbc.conn/db->pooled-connection-spec db-perturbed)
@@ -183,17 +195,17 @@
                     (is (not= db-hash-1 db-hash-2)))))))
           (finally
             ;; restore the original test DB details, no matter what just happened
-            (t2/update! Database (mt/id) {:details (:details db)})))))))
+            (t2/update! :model/Database (mt/id) {:details (:details db)})))))))
 
 ;;; Postgres-specific, so ok to hardcode driver names below.
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest connection-pool-invalidated-on-details-change-postgres-secrets-are-stable-test
   (testing "postgres secrets are stable (#23034)"
-    (mt/with-temp [Secret secret {:name       "file based secret"
-                                  :kind       :perm-cert
-                                  :source     nil
-                                  :value      (.getBytes "super secret")
-                                  :creator_id (mt/user->id :crowberto)}]
+    (mt/with-temp [:model/Secret secret {:name       "file based secret"
+                                         :kind       :perm-cert
+                                         :source     nil
+                                         :value      (.getBytes "super secret")
+                                         :creator_id (mt/user->id :crowberto)}]
       (let [db {:engine  :postgres
                 :details {:ssl                      true
                           :ssl-mode                 "verify-ca"
@@ -218,9 +230,11 @@
 (deftest connection-pool-does-not-cache-audit-db
   (mt/test-drivers app-db-types
     (when config/ee-available?
-      (t2/delete! 'Database {:where [:= :is_audit true]})
+      ;; TODO (Cam 9/30/25) -- sort of evil to delete databases like this in a test, shouldn't we do this in a
+      ;; transaction or something?
+      (t2/delete! :model/Database {:where [:= :is_audit true]})
       (let [status (mbc/ensure-audit-db-installed!)
-            audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]})
+            audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]})
             _ (is (= :metabase-enterprise.audit-app.audit/installed status))
             _ (is (= 13371337 audit-db-id))
             first-pool (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)
@@ -281,6 +295,32 @@
         server (Server/createTcpServer (into-array args))]
     (doto server (.start))))
 
+(defmethod driver/database-supports? [:sql-jdbc ::regular-connection-pooling]
+  [& _args]
+  true)
+
+(defmethod driver/database-supports? [:hive-like ::regular-connection-pooling]
+  [& _args]
+  false)
+
+(deftest test-bad-connection-detail-acquisition
+  (mt/test-drivers (mt/normal-drivers-with-feature ::regular-connection-pooling)
+    (let [original-details (:details (mt/db))]
+      ;; Only test drivers that use a username to log in
+      (when (and (:password original-details) (:user original-details))
+        (mt/with-temp [:model/Database db {:engine (tx/driver), :details original-details}]
+          (mt/with-db db
+            (sync/sync-database! (mt/db))
+            (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))
+            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+            (let [new-details (assoc original-details :user "baduser")
+                  start (t/instant)]
+              (t2/update! :model/Database :id (mt/id) {:details new-details})
+              (mt/with-db (assoc db :details new-details)
+                (is (thrown-with-msg? Exception #"Connections could not be acquired from the underlying database!" (mt/rows (mt/run-mbql-query venues {:limit 1}))))
+                ;; Should be around 1 second
+                (is (> 10 (.getSeconds (t/duration start (t/instant)))))))))))))
+
 ;;; TODO Not clear why we're only testing Postgres here, do we support Azure Managed Identity for any other app DB type?
 ;;; Needs a comment please.
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
@@ -303,7 +343,7 @@
                                              (swap! connection-creations inc)
                                              {:access_token (:password db-details)
                                               :expires_in @expires-in})]
-            (t2.with-temp/with-temp [Database oauth-db {:engine (tx/driver), :details oauth-db-details}]
+            (mt/with-temp [:model/Database oauth-db {:engine (tx/driver), :details oauth-db-details}]
               (mt/with-db oauth-db
                 (try
                                 ;; since Metabase is running and using the pool of this DB, the sync might fail
@@ -318,63 +358,60 @@
                               ;; we must have created more than one connection
                 (is (> @connection-creations 1))))))))))
 
-(defmethod driver/database-supports? [::driver/driver ::test-ssh-tunnel-connection]
-  [_driver _feature _database]
-  false)
+(defmacro ^:private with-tunnel-details!
+  [& body]
+  `(let [original-details# (:details (mt/db))
+         tunnel-db-details# (assoc original-details#
+                                   :tunnel-enabled true
+                                   :tunnel-host "localhost"
+                                   :tunnel-auth-option "password"
+                                   :tunnel-port ssh-test/ssh-mock-server-with-password-port
+                                   :tunnel-user ssh-test/ssh-username
+                                   :tunnel-pass ssh-test/ssh-password)]
+     (try
+       (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+       (t2/update! :model/Database (mt/id) {:details tunnel-db-details#})
+       (mt/with-db (t2/select-one :model/Database (mt/id))
+         (try
+           ~@body
+           (finally
+             (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))
+       (finally
+         (t2/update! :model/Database (mt/id) {:details original-details#})))))
 
-;;; for now, run against Postgres and mysql, although in theory it could run against many different kinds
-(doseq [driver [:postgres :mysql :snowflake]]
-  (defmethod driver/database-supports? [driver ::test-ssh-tunnel-connection]
-    [_driver _feature _database]
-    true))
+(defn- check-row []
+  (is (= [["Polo Lounge"]]
+         (mt/rows (mt/run-mbql-query venues {:fields [$name] :filter [:= $id 60]})))))
 
-(deftest test-ssh-tunnel-connection
-  ;; TODO: Formerly this test ran against "all JDBC drivers except this big list":
-  ;; (apply disj (sql-jdbc.tu/sql-jdbc-drivers)
-  ;;        :sqlite :h2 :oracle :vertica :presto-jdbc :bigquery-cloud-sdk :redshift :athena
-  ;;        (tqpt/timeseries-drivers))
-  ;; which does not leave very many drivers!
-  ;; That form is not extensible by 3P driver authors who need to exclude their driver as well. Since some drivers
-  ;; (eg. Oracle) do seem to support SSH tunnelling but still fail on this test, it's not clear if this should be
-  ;; controlled by a driver feature, a ^:dynamic override, or something else.
-  ;; For now I'm making this test run against only `#{:postgres :mysql :snowflake}` like the below.
-  (mt/test-drivers (mt/normal-drivers-with-feature ::test-ssh-tunnel-connection)
+(deftest ^:synchronized test-ssh-tunnel-connection
+  (mt/test-drivers (mt/normal-driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
     (testing "ssh tunnel is established"
-      (let [tunnel-db-details (assoc (:details (mt/db))
-                                     :tunnel-enabled true
-                                     :tunnel-host "localhost"
-                                     :tunnel-auth-option "password"
-                                     :tunnel-port ssh-test/ssh-mock-server-with-password-port
-                                     :tunnel-user ssh-test/ssh-username
-                                     :tunnel-pass ssh-test/ssh-password)]
-        (t2.with-temp/with-temp [Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
-          (mt/with-db tunneled-db
-            (sync/sync-database! (mt/db))
-            (is (= [["Polo Lounge"]]
-                   (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]}))))))))))
+      (with-tunnel-details!
+        (is (true? (driver.u/can-connect-with-details? (tx/driver) (:details (mt/db)))))
+        (check-row)))))
 
-(deftest test-ssh-tunnel-reconnection
-  (mt/test-drivers (mt/normal-drivers-with-feature ::test-ssh-tunnel-connection)
+(deftest ^:synchronized test-ssh-server-reconnection
+  (mt/test-drivers (mt/normal-driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
-      (let [tunnel-db-details (assoc (:details (mt/db))
-                                     :tunnel-enabled true
-                                     :tunnel-host "localhost"
-                                     :tunnel-auth-option "password"
-                                     :tunnel-port ssh-test/ssh-mock-server-with-password-port
-                                     :tunnel-user ssh-test/ssh-username
-                                     :tunnel-pass ssh-test/ssh-password)]
-        (t2.with-temp/with-temp [Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
-          (mt/with-db tunneled-db
-            (sync/sync-database! (mt/db))
-            (letfn [(check-row []
-                      (is (= [["Polo Lounge"]]
-                             (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]})))))]
-              ;; check that some data can be queried
-              (check-row)
-              ;; kill the ssh tunnel; fortunately, we have an existing function that can do that
-              (ssh/close-tunnel! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)))
-              ;; check the query again; the tunnel should have been reestablished
-              (check-row))))))))
+      (with-tunnel-details!
+        ;; check that some data can be queried
+        (check-row)
+        ;; restart the ssh server
+        (ssh-test/stop-mock-servers!)
+        (ssh-test/start-mock-servers!)
+        ;; check the query again; the tunnel should have been reestablished
+        (check-row)))))
+
+(deftest ^:synchronized test-ssh-tunnel-reconnection
+  (mt/test-drivers (mt/normal-driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
+    (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
+      (with-tunnel-details!
+        ;; check that some data can be queried
+        (check-row)
+        ;; kill the ssh tunnel; fortunately, we have an existing function that can do that
+        (ssh/close-tunnel! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)))
+        ;; check the query again; the tunnel should have been reestablished
+        (check-row)))))
 
 (deftest test-ssh-tunnel-connection-h2
   (testing (str "We need a customized version of this test for H2, because H2 requires bringing up its TCP server to tunnel into. "
@@ -397,7 +434,7 @@
                        :tunnel-user        ssh-test/ssh-username
                        :tunnel-pass        ssh-test/ssh-password}]
           (try
-            (t2.with-temp/with-temp [Database db {:engine :h2, :details h2-db}]
+            (mt/with-temp [:model/Database db {:engine :h2, :details h2-db}]
               (mt/with-db db
                 (sync/sync-database! db)
                 (is (=? {:cols [{:base_type    :type/Text
@@ -442,7 +479,7 @@
                        :tunnel-user        ssh-test/ssh-username
                        :tunnel-pass        ssh-test/ssh-password}]
           (try
-            (t2.with-temp/with-temp [Database db {:engine :h2, :details h2-db}]
+            (mt/with-temp [:model/Database db {:engine :h2, :details h2-db}]
               (mt/with-db db
                 (sync/sync-database! db)
                 (letfn [(check-data [] (is (=? {:cols [{:base_type    :type/Text

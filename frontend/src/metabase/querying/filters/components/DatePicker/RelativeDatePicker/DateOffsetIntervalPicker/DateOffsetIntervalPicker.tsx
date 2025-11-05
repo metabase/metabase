@@ -1,19 +1,15 @@
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { t } from "ttag";
 
-import {
-  Box,
-  Button,
-  Divider,
-  Group,
-  Icon,
-  NumberInput,
-  Select,
-  Text,
-} from "metabase/ui";
+import type {
+  DatePickerUnit,
+  RelativeDatePickerValue,
+} from "metabase/querying/filters/types";
+import { Box, Button, Divider, Group, Icon, Select, Text } from "metabase/ui";
 
-import type { DatePickerUnit } from "../../types";
-import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
+import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue/NumberInputWithFallbackValue";
+import type { DatePickerSubmitButtonProps } from "../../types";
+import { renderDefaultSubmitButton } from "../../utils";
 import {
   formatDateRange,
   getInterval,
@@ -33,17 +29,17 @@ import {
 } from "./utils";
 
 interface DateOffsetIntervalPickerProps {
-  value: DateOffsetIntervalValue;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
-  isNew: boolean;
-  onChange: (value: DateIntervalValue) => void;
+  value: RelativeDatePickerValue;
+  availableUnits: DatePickerUnit[];
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
+  onChange: (value: RelativeDatePickerValue) => void;
   onSubmit: () => void;
 }
 
 export function DateOffsetIntervalPicker({
   value,
   availableUnits,
-  isNew,
+  renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onSubmit,
 }: DateOffsetIntervalPickerProps) {
@@ -54,8 +50,8 @@ export function DateOffsetIntervalPicker({
   const directionText = getDirectionText(value);
   const dateRangeText = formatDateRange(value);
 
-  const handleIntervalChange = (inputValue: number | "") => {
-    if (inputValue !== "") {
+  const handleIntervalChange = (inputValue: number | string) => {
+    if (typeof inputValue === "number") {
       onChange(setInterval(value, inputValue));
     }
   };
@@ -67,8 +63,8 @@ export function DateOffsetIntervalPicker({
     }
   };
 
-  const handleOffsetIntervalChange = (inputValue: number | "") => {
-    if (inputValue !== "") {
+  const handleOffsetIntervalChange = (inputValue: number | string) => {
+    if (typeof inputValue === "number") {
       onChange(setOffsetInterval(value, inputValue));
     }
   };
@@ -93,49 +89,61 @@ export function DateOffsetIntervalPicker({
     <form onSubmit={handleSubmit}>
       <Box className={S.PickerGrid} p="md">
         <Text>{directionText}</Text>
-        <NumberInput
+        <NumberInputWithFallbackValue
           value={interval}
           aria-label={t`Interval`}
           w="4rem"
           onChange={handleIntervalChange}
         />
         <Select
+          classNames={{
+            wrapper: S.selectWrapper,
+          }}
           data={unitOptions}
           value={value.unit}
           aria-label={t`Unit`}
           onChange={handleUnitChange}
+          comboboxProps={{
+            withinPortal: false,
+            floatingStrategy: "fixed",
+          }}
         />
         <div />
         <Text>{t`Starting from`}</Text>
-        <NumberInput
+        <NumberInputWithFallbackValue
           value={offsetInterval}
           aria-label={t`Starting from interval`}
           w="4rem"
           onChange={handleOffsetIntervalChange}
         />
         <Select
+          classNames={{
+            wrapper: S.selectWrapper,
+          }}
           data={offsetUnitOptions}
           value={value.offsetUnit}
           aria-label={t`Starting from unit`}
           onChange={handleOffsetUnitChange}
+          comboboxProps={{
+            withinPortal: false,
+            floatingStrategy: "fixed",
+          }}
         />
         <Button
           c="text-medium"
           variant="subtle"
-          leftIcon={<Icon name="close" />}
+          leftSection={<Icon name="close" />}
           aria-label={t`Remove offset`}
           onClick={handleOffsetRemove}
         />
       </Box>
       <Divider />
-      <Group px="md" py="sm" spacing="sm" position="apart">
-        <Group c="text-medium" spacing="sm">
+      <Group px="md" py="sm" gap="sm" justify="space-between">
+        <Group c="text-medium" gap="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
-        <Button variant="filled" type="submit">
-          {isNew ? t`Add filter` : t`Update filter`}
-        </Button>
+        {renderSubmitButton({ value })}
       </Group>
     </form>
   );

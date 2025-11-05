@@ -1,7 +1,9 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Button, Text, type TextProps, Textarea } from "metabase/ui";
+import { Text, type TextProps, Textarea } from "metabase/ui";
 
 export const IFrameWrapper = styled.div<{ fade?: boolean }>`
   display: flex;
@@ -33,10 +35,6 @@ export const StyledInput = styled(Textarea)`
   ${interactiveDashcardElementCss}
 `;
 
-export const SaveButton = styled(Button)`
-  ${interactiveDashcardElementCss}
-`;
-
 export const InteractiveText = styled(Text)<TextProps>`
   ${interactiveDashcardElementCss}
-`;
+` as unknown as typeof Text;

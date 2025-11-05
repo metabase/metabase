@@ -275,7 +275,7 @@ describe("IFrameViz", () => {
       const dashcard = createMockIFrameDashboardCard({
         dashboard_id: dashboard.id,
         visualization_settings: { iframe: iframeContent },
-        parameter_mappings: parameters.map(param => ({
+        parameter_mappings: parameters.map((param) => ({
           parameter_id: param.id,
           target: ["text-tag", param.slug],
         })),
@@ -408,6 +408,23 @@ describe("IFrameViz", () => {
       expect(
         screen.getByText("There was a problem rendering this content."),
       ).toBeInTheDocument();
+    });
+
+    it("should URL-encode parameter values", () => {
+      const parameter = createMockParameter({
+        id: "1",
+        name: "Parameter 1",
+        slug: "param1",
+      });
+
+      const iframe = setupParameterTest({
+        parameters: [parameter],
+        iframeContent: "https://example.com/{{param1}}",
+        parameterValues: { param1: "pb&j" },
+      });
+
+      expect(iframe).toBeInTheDocument();
+      expect(iframe).toHaveAttribute("src", "https://example.com/pb%26j");
     });
   });
 });

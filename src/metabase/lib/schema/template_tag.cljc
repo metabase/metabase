@@ -1,32 +1,32 @@
 (ns metabase.lib.schema.template-tag
+  (:refer-clojure :exclude [every?])
   (:require
    [malli.core :as mc]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every?]]))
 
-;; Schema for valid values of `:widget-type` for a [[TemplateTag:FieldFilter]].
 (mr/def ::widget-type
-  (into
-   [:enum
-    ;; this will be a nicer error message than Malli trying to list every single possible allowed type.
-    {:decode/normalize common/normalize-keyword
-     :error/message    "Valid template tag :widget-type"}
-    :none]
-   ;; TODO -- move this stuff into `metabase.lib`
-   (keys lib.schema.parameter/types)))
+  "Schema for valid values of `:widget-type` for a `:metabase.lib.schema.template-tag/field-filter` template tag."
+  [:ref ::lib.schema.parameter/widget-type])
 
-;; Schema for valid values of template tag `:type`.
 (mr/def ::type
+  "Schema for valid values of template tag `:type`."
   [:enum
    {:decode/normalize common/normalize-keyword}
-   :snippet :card :dimension :number :text :date])
+   :snippet :card :dimension :number :text :date :boolean :temporal-unit])
 
 (mr/def ::name
   [:ref
    {:decode/normalize common/normalize-string-key}
    ::common/non-blank-string])
+
+(mr/def ::id
+  [:multi {:dispatch uuid?}
+   [true  :uuid]
+   [false ::common/non-blank-string]])
 
 ;;; Things required by all template tag types.
 (mr/def ::common
@@ -35,9 +35,7 @@
    [:display-name ::common/non-blank-string]
    ;; TODO -- `:id` is actually 100% required but we have a lot of tests that don't specify it because this constraint
    ;; wasn't previously enforced; we need to go in and fix those tests and make this non-optional
-   [:id {:optional true} [:multi {:dispatch uuid?}
-                          [true  :uuid]
-                          [false ::common/non-blank-string]]]])
+   [:id {:optional true} [:ref ::id]]])
 
 ;;; Stuff shared between the Field filter and raw value template tag schemas.
 (mr/def ::value.common
@@ -48,6 +46,25 @@
     [:default {:optional true} any?]
     ;; whether or not a value for this parameter is required in order to run the query
     [:required {:optional true} :boolean]]])
+
+;; Example:
+;;
+;;   {:id "cd35d6dc-285b-4944-8a83-21e4c38d6584",
+;;    :type "temporal-unit",
+;;    :name "unit",
+;;    :display-name "Unit"}
+(mr/def ::temporal-unit
+  [:merge
+   [:ref ::common]
+   [:map
+    [:type [:= :temporal-unit]]
+    ;; an optional alias to use in place of the normal field ref
+    [:alias       {:optional true} :string]
+    [:dimension   {:optional true} [:ref :mbql.clause/field]]]])
+
+(mr/def ::field-filter.options
+  [:map
+   {:decode/normalize common/normalize-map-no-kebab-case}])
 
 ;; Example:
 ;;
@@ -62,18 +79,18 @@
    [:ref ::value.common]
    [:map
     [:type        [:= :dimension]]
-    [:dimension   [:ref :mbql.clause/field]]
+    ;; field filters can have missing dimension before it is set
+    [:dimension   {:optional true} [:ref :mbql.clause/field]]
+    ;; an optional alias to use in place of the normal field ref
+    [:alias       {:optional true} :string]
     ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
     ;; are allowed to be specified for it.
     [:widget-type [:ref ::widget-type]]
     ;; optional map to be appended to filter clause
-    [:options {:optional true} [:maybe :map]]]])
+    [:options {:optional true} [:maybe ::field-filter.options]]]])
 
 (mr/def ::disallow-dimension
-  [:fn
-   {:decode/normalize #(dissoc % :dimension)
-    :error/message    ":dimension is only allowed for :type :dimension template tags"}
-   #(not (contains? % :dimension))])
+  (common/disallowed-keys {:dimension ":dimension is only allowed for :type :dimension template tags"}))
 
 ;; Example:
 ;;
@@ -117,7 +134,7 @@
 
 ;; Valid values of `:type` for raw value template tags.
 (mr/def ::raw-value.type
-  (into [:enum] raw-value-template-tag-types))
+  (into [:enum {:decode/normalize keyword}] raw-value-template-tag-types))
 
 ;; Example:
 ;;
@@ -143,19 +160,30 @@
    [:map
     [:type [:ref ::type]]]
    [:multi {:dispatch #(keyword (:type %))}
-    [:dimension   [:ref ::field-filter]]
-    [:snippet     [:ref ::snippet]]
-    [:card        [:ref ::source-query]]
+    [:temporal-unit [:ref ::temporal-unit]]
+    [:dimension     [:ref ::field-filter]]
+    [:snippet       [:ref ::snippet]]
+    [:card          [:ref ::source-query]]
     ;; :number, :text, :date
     [::mc/default [:ref ::raw-value]]]])
+
+;;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
+(mr/def ::template-tag-map.validate-names
+  [:fn
+   {:error/message "keys in template tag map must match the :name of their values"
+    :decode/normalize (fn [m]
+                        (when (map? m)
+                          (reduce-kv
+                           (fn [m k _v]
+                             (assoc-in m [k :name] k))
+                           m
+                           m)))}
+   (fn [m]
+     (every? (fn [[tag-name tag-definition]]
+               (= tag-name (:name tag-definition)))
+             m))])
 
 (mr/def ::template-tag-map
   [:and
    [:map-of ::name ::template-tag]
-   ;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
-   [:fn
-    {:error/message "keys in template tag map must match the :name of their values"}
-    (fn [m]
-      (every? (fn [[tag-name tag-definition]]
-                (= tag-name (:name tag-definition)))
-              m))]])
+   [:ref ::template-tag-map.validate-names]])

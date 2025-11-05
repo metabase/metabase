@@ -16,7 +16,7 @@
   composes: fieldNameTitle;
 }
 
-.fieldNameTextInput {
+.fieldTextInput {
   composes: input p1 from "style";
   color: var(--title-color);
   width: 100%;
@@ -47,10 +47,11 @@
   letter-spacing: 1px;
 }
 
-.fieldForeignKey {
-  composes: fieldType;
-}
-
 .fieldOther {
   composes: fieldDataType;
+}
+
+.fieldDescription {
+  color: var(--subtitle-color);
+  font-size: 14px;
 }

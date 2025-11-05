@@ -1,22 +1,26 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
 import {
+  goToPerformancePage,
   interceptPerformanceRoutes,
-  visitDashboardAndQuestionCachingTab,
 } from "./helpers/e2e-performance-helpers";
 import {
   adaptiveRadioButton,
   cacheStrategyForm,
-  cancelConfirmationModal,
+  checkPreemptiveCachingDisabled,
+  checkPreemptiveCachingEnabled,
+  disablePreemptiveCaching,
   dontCacheResultsRadioButton,
   durationRadioButton,
+  enablePreemptiveCaching,
   formLauncher,
   openSidebarCacheStrategyForm,
   openStrategyFormForDatabaseOrDefaultPolicy,
+  preemptiveCachingSwitch,
   saveCacheStrategyForm,
   scheduleRadioButton,
 } from "./helpers/e2e-strategy-form-helpers";
@@ -33,29 +37,29 @@ describe("scenarios > admin > performance > strategy form", () => {
     });
 
     it("can enable and disable model persistence", () => {
-      cy.findByRole("tab", { name: "Model persistence" }).click();
-      cy.findByRole("checkbox", { name: "Disabled" }).next("label").click();
+      goToPerformancePage("Model persistence");
+      cy.findByRole("switch", { name: "Disabled" }).click({ force: true });
       cy.wait("@enablePersistence");
       cy.findByTestId("toast-undo").contains("Saved");
       cy.findByTestId("toast-undo")
         .findByRole("img", { name: /close icon/ })
         .click();
 
-      cy.findByRole("checkbox", { name: "Enabled" }).next("label").click();
+      cy.findByRole("switch", { name: "Enabled" }).click({ force: true });
       cy.wait("@disablePersistence");
       cy.findByTestId("toast-undo").contains("Saved");
     });
 
     it("can change when models are refreshed", () => {
-      cy.findByRole("tab", { name: "Model persistence" }).click();
-      cy.findByRole("checkbox", { name: "Disabled" }).next("label").click();
+      goToPerformancePage("Model persistence");
+      cy.findByRole("switch", { name: "Disabled" }).click({ force: true });
       cy.wait("@enablePersistence");
       cy.findByTestId("toast-undo").contains("Saved");
       cy.findByTestId("toast-undo")
         .findByRole("img", { name: /close icon/ })
         .click();
-      cy.findByRole("combobox").click();
-      cy.findByRole("listbox").findByText("2 hours").click();
+      cy.findByRole("textbox").click();
+      H.popover().findByText("2 hours").click();
       cy.findByTestId("toast-undo").contains("Saved");
     });
 
@@ -77,16 +81,13 @@ describe("scenarios > admin > performance > strategy form", () => {
       dontCacheResultsRadioButton().should("be.checked");
     });
 
-    it("has the right tabs", () => {
-      cy.findByRole("main")
-        .findByRole("tablist")
-        .findAllByRole("tab")
-        .should("have.length", 2);
-      cy.findByRole("tab", { name: "Database caching" }).should("be.visible");
-      cy.findByRole("tab", { name: "Model persistence" }).should("be.visible");
-      cy.findByRole("tab", { name: "Dashboard and question caching" }).should(
-        "not.exist",
-      );
+    it("has the correct nav items", () => {
+      cy.findByTestId("admin-layout-sidebar").within(() => {
+        cy.findAllByRole("link").should("have.length", 2);
+        cy.findByText("Database caching").should("be.visible");
+        cy.findByText("Model persistence").should("be.visible");
+        cy.findByText("Dashboard and question caching").should("not.exist");
+      });
     });
 
     describe("adaptive strategy", () => {
@@ -111,26 +112,23 @@ describe("scenarios > admin > performance > strategy form", () => {
     });
   });
 
-  H.describeEE("ee", () => {
+  describe("ee", () => {
     beforeEach(() => {
       H.restore();
       interceptPerformanceRoutes();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
-    it("has the right tabs", () => {
+    it("has the correct nav items", () => {
       cy.visit("/admin");
       cy.findByRole("link", { name: "Performance" }).click();
-      cy.findByRole("main")
-        .findByRole("tablist")
-        .findAllByRole("tab")
-        .should("have.length", 3);
-      cy.findByRole("tab", { name: "Database caching" }).should("be.visible");
-      cy.findByRole("tab", { name: "Dashboard and question caching" }).should(
-        "be.visible",
-      );
-      cy.findByRole("tab", { name: "Model persistence" }).should("be.visible");
+      cy.findByTestId("admin-layout-sidebar").within(() => {
+        cy.findAllByRole("link").should("have.length", 3);
+        cy.findByText("Database caching").should("be.visible");
+        cy.findByText("Dashboard and question caching").should("be.visible");
+        cy.findByText("Model persistence").should("be.visible");
+      });
     });
 
     it("can call cache invalidation endpoint for Sample Database", () => {
@@ -186,7 +184,7 @@ describe("scenarios > admin > performance > strategy form", () => {
       }
     };
 
-    ["default policy", "Sample Database"].forEach(itemName => {
+    ["default policy", "Sample Database"].forEach((itemName) => {
       const model = itemName === "default policy" ? "root" : "database";
       const expectedNumberOfOptions = itemName === "default policy" ? 4 : 5;
 
@@ -281,7 +279,7 @@ describe("scenarios > admin > performance > strategy form", () => {
 
         const selectScheduleType = (type: string) => {
           cy.log(`Set schedule to "${type}"`);
-          cy.findByRole("searchbox").click();
+          cy.findByRole("textbox", { name: "Frequency" }).click();
           cy.findByRole("listbox").findByText(type).click();
         };
 
@@ -292,11 +290,11 @@ describe("scenarios > admin > performance > strategy form", () => {
         });
 
         it(`can save a new daily schedule policy - for ${itemName}`, () => {
-          [12, 1, 11].forEach(time => {
-            ["AM", "PM"].forEach(amPm => {
+          [12, 1, 11].forEach((time) => {
+            ["AM", "PM"].forEach((amPm) => {
               cy.log(`Test daily at ${time} ${amPm}`);
               selectScheduleType("daily");
-              cy.findAllByRole("searchbox").eq(1).click();
+              cy.findAllByRole("textbox").eq(1).click();
               cy.findByRole("listbox").findByText(`${time}:00`).click();
               cy.findByLabelText(amPm).next().click();
               saveCacheStrategyForm({ strategyType: "schedule", model });
@@ -322,18 +320,18 @@ describe("scenarios > admin > performance > strategy form", () => {
           ].forEach(([day, time]) => {
             cy.log(`testing on ${day} at ${time}`);
             selectScheduleType("weekly");
-            cy.findAllByRole("searchbox").eq(1).click();
+            cy.findAllByRole("textbox").eq(1).click();
             cy.findByRole("listbox").findByText(day).click();
-            cy.findAllByRole("searchbox").eq(2).click();
+            cy.findAllByRole("textbox").eq(2).click();
             const [hour, amPm] = time.split(" ");
             cy.findByRole("listbox").findByText(hour).click();
             cy.findByLabelText(amPm).next().click();
             saveCacheStrategyForm({ strategyType: "schedule", model });
             formLauncher(itemName, "currently", "Scheduled: weekly");
-            cy.findAllByRole("searchbox").then(searchBoxes => {
+            cy.findAllByRole("textbox").then((searchBoxes) => {
               const values = Cypress._.map(
                 searchBoxes,
-                box => (box as HTMLInputElement).value,
+                (box) => (box as HTMLInputElement).value,
               );
               expect(values).to.deep.equal(["weekly", day, hour]);
             });
@@ -351,12 +349,8 @@ describe("scenarios > admin > performance > strategy form", () => {
     describe("Dashboard and question caching tab", () => {
       it("can configure Sample Database on the 'Dashboard and question caching' tab", () => {
         interceptPerformanceRoutes();
-        visitDashboardAndQuestionCachingTab();
-        const table = () =>
-          cy.findByRole("table", {
-            name: /Here are the dashboards and questions/,
-          });
-        table()
+        cy.visit("/admin/performance/dashboards-and-questions");
+        cy.findByTestId("cache-config-table")
           .should("be.visible")
           .contains(
             "No dashboards or questions have their own caching policies yet.",
@@ -366,8 +360,8 @@ describe("scenarios > admin > performance > strategy form", () => {
         durationRadioButton().click();
         cy.findByLabelText(/Cache results for this many hours/).type("99");
         saveCacheStrategyForm({ strategyType: "duration", model: "database" });
-        visitDashboardAndQuestionCachingTab();
-        table()
+        cy.visit("/admin/performance/dashboards-and-questions");
+        cy.findByTestId("cache-config-table")
           .contains("Duration: 99h")
           .within(() => {
             cy.findByText("Duration: 99h").click();
@@ -378,12 +372,8 @@ describe("scenarios > admin > performance > strategy form", () => {
 
       it("confirmation modal appears before dirty form is abandoned", () => {
         interceptPerformanceRoutes();
-        visitDashboardAndQuestionCachingTab();
-        const table = () =>
-          cy.findByRole("table", {
-            name: /Here are the dashboards and questions/,
-          });
-        table()
+        cy.visit("/admin/performance/dashboards-and-questions");
+        cy.findByTestId("cache-config-table")
           .should("be.visible")
           .contains(
             "No dashboards or questions have their own caching policies yet.",
@@ -393,8 +383,8 @@ describe("scenarios > admin > performance > strategy form", () => {
         durationRadioButton().click();
         cy.findByLabelText(/Cache results for this many hours/).type("99");
         saveCacheStrategyForm({ strategyType: "duration", model: "database" });
-        visitDashboardAndQuestionCachingTab();
-        table()
+        cy.visit("/admin/performance/dashboards-and-questions");
+        cy.findByTestId("cache-config-table")
           .contains("Duration: 99h")
           .within(() => {
             cy.findByText("Duration: 99h").click();
@@ -407,9 +397,9 @@ describe("scenarios > admin > performance > strategy form", () => {
         durationRadioButton().click();
         cy.findByLabelText(/Cache results for this many hours/).type("24");
         saveCacheStrategyForm({ strategyType: "duration", model: "database" });
-        visitDashboardAndQuestionCachingTab();
-        table().contains("Adaptive");
-        table()
+        cy.visit("/admin/performance/dashboards-and-questions");
+        cy.findByTestId("cache-config-table").contains("Adaptive");
+        cy.findByTestId("cache-config-table")
           .contains("Duration: 24h")
           .within(() => {
             cy.findByText("Duration: 24h").click();
@@ -418,23 +408,105 @@ describe("scenarios > admin > performance > strategy form", () => {
         cy.log("Make form dirty");
         scheduleRadioButton().click();
 
-        cy.log("Modal appears when another row's form launcher is clicked");
-        table()
-          .contains("Adaptive")
+        cy.log("Modal appears when the user tries to close the sidesheet");
+        cy.findByTestId("modal-overlay").click();
+
+        H.modal()
+          .should("have.length", 2) // sidesheet and confirm modal are both modals
+          .last()
+          .findByText("Discard your changes?");
+      });
+    });
+
+    describe("Preemptive caching", () => {
+      it("Preemptive caching can be enabled and disabled for duration-based caches", () => {
+        // Enable preemptive caching in question settings sidebar
+        H.visitQuestion(ORDERS_QUESTION_ID);
+        openSidebarCacheStrategyForm("question");
+        durationRadioButton().click();
+        enablePreemptiveCaching();
+        saveCacheStrategyForm({ strategyType: "duration", model: "database" });
+        cy.findByLabelText("When to get new results").click();
+        checkPreemptiveCachingEnabled();
+
+        // Check that it's also enabled on the "Dashboard and question caching" admin page
+        cy.visit("/admin/performance/dashboards-and-questions");
+        cy.findByTestId("cache-config-table")
+          .contains("Duration: 24h")
           .within(() => {
-            cy.findByText("Adaptive").click();
+            cy.findByText("Duration: 24h").click();
           });
-        cancelConfirmationModal();
+        checkPreemptiveCachingEnabled();
 
-        cy.log("Modal appears when another admin nav item is clicked");
-        cy.findByLabelText("Navigation bar").within(() => {
-          cy.findByText("Settings").click();
-        });
-        cancelConfirmationModal();
+        // Disable preemptive caching on the admin page
+        disablePreemptiveCaching();
+        saveCacheStrategyForm({ strategyType: "duration", model: "database" });
+        checkPreemptiveCachingDisabled();
 
-        cy.log("Modal appears when another Performance tab is clicked");
-        cy.findByRole("tab", { name: "Database caching" }).click();
-        cancelConfirmationModal();
+        // Check that it's also disabled in the question sidebar
+        H.visitQuestion(ORDERS_QUESTION_ID);
+        openSidebarCacheStrategyForm("question");
+        checkPreemptiveCachingDisabled();
+      });
+
+      it("Preemptive caching can be enabled and disabled for schedule-based caches", () => {
+        // Enable preemptive caching in question settings sidebar
+        H.visitQuestion(ORDERS_QUESTION_ID);
+        openSidebarCacheStrategyForm("question");
+        scheduleRadioButton().click();
+        enablePreemptiveCaching();
+        saveCacheStrategyForm({ strategyType: "schedule", model: "database" });
+        cy.findByLabelText("When to get new results").click();
+        checkPreemptiveCachingEnabled();
+
+        // Check that it's also enabled on the "Dashboard and question caching" admin page
+        cy.visit("/admin/performance/dashboards-and-questions");
+        cy.findByTestId("cache-config-table")
+          .contains("Scheduled: hourly")
+          .within(() => {
+            cy.findByText("Scheduled: hourly").click();
+          });
+        checkPreemptiveCachingEnabled();
+
+        // Disable preemptive caching on the admin page
+        disablePreemptiveCaching();
+        saveCacheStrategyForm({ strategyType: "schedule", model: "database" });
+        checkPreemptiveCachingDisabled();
+
+        // Check that it's also disabled in the question sidebar
+        H.visitQuestion(ORDERS_QUESTION_ID);
+        openSidebarCacheStrategyForm("question");
+        checkPreemptiveCachingDisabled();
+      });
+
+      it("Preemptive caching is not available for other caching policies, or for databases", () => {
+        H.visitQuestion(ORDERS_QUESTION_ID);
+        openSidebarCacheStrategyForm("question");
+        preemptiveCachingSwitch().should("not.exist");
+
+        adaptiveRadioButton().click();
+        preemptiveCachingSwitch().should("not.exist");
+
+        dontCacheResultsRadioButton().click();
+        preemptiveCachingSwitch().should("not.exist");
+
+        openStrategyFormForDatabaseOrDefaultPolicy(
+          "default policy",
+          "No caching",
+        );
+        durationRadioButton().click();
+        preemptiveCachingSwitch().should("not.exist");
+        scheduleRadioButton().click();
+        preemptiveCachingSwitch().should("not.exist");
+
+        openStrategyFormForDatabaseOrDefaultPolicy(
+          "Sample Database",
+          "No caching",
+        );
+        durationRadioButton().click();
+        preemptiveCachingSwitch().should("not.exist");
+        scheduleRadioButton().click();
+        preemptiveCachingSwitch().should("not.exist");
       });
     });
   });

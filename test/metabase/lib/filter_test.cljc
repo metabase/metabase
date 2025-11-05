@@ -3,19 +3,16 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.matrix :as matrix]
-   [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]
-   [metabase.util :as u]))
+   [metabase.util.number :as u.number]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -24,12 +21,13 @@
           (apply f args))))
 
 (deftest ^:parallel general-filter-clause-test
-  (let [q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues lib.tu/mock-cards))
+  (let [q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues (lib.tu/mock-cards)))
         venues-category-id-metadata (meta/field-metadata :venues :category-id)
         venues-name-metadata        (meta/field-metadata :venues :name)
         venues-latitude-metadata    (meta/field-metadata :venues :latitude)
         venues-longitude-metadata   (meta/field-metadata :venues :longitude)
-        categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")
+        categories-id-metadata      (m/find-first #(= (:id %) (meta/id :categories :id))
+                                                  (lib/visible-columns q2))
         checkins-date-metadata      (meta/field-metadata :checkins :date)]
     (testing "comparisons"
       (doseq [[op f] [[:=  lib/=]
@@ -42,7 +40,10 @@
          [op
           {:lib/uuid string?}
           [:field {:lib/uuid string?} (meta/id :venues :category-id)]
-          [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]
+          [:field {:base-type    :type/BigInteger
+                   :lib/uuid     string?
+                   :source-field (meta/id :venues :category-id)}
+           (meta/id :categories :id)]]
          f
          venues-category-id-metadata
          categories-id-metadata)))
@@ -53,7 +54,10 @@
         {:lib/uuid string?}
         [:field {:lib/uuid string?} (meta/id :venues :category-id)]
         42
-        [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]
+        [:field {:base-type    :type/BigInteger
+                 :lib/uuid     string?
+                 :source-field (meta/id :venues :category-id)}
+         (meta/id :categories :id)]]
        lib/between
        venues-category-id-metadata
        42
@@ -118,7 +122,7 @@
 
 (deftest ^:parallel filter-test
   (let [q1                          (lib/query meta/metadata-provider (meta/table-metadata :categories))
-        q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues lib.tu/mock-cards))
+        q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues (lib.tu/mock-cards)))
         venues-category-id-metadata (meta/field-metadata :venues :category-id)
         original-filter
         [:between
@@ -214,7 +218,7 @@
   (testing "#29947"
     (is (= "Name ends with t"
            (lib/display-name
-            lib.tu/venues-query
+            (lib.tu/venues-query)
             [:ends-with
              {:lib/uuid "953597df-a96d-4453-a57b-665e845abc69"}
              [:field {:lib/uuid "be28f393-538a-406b-90da-bac5f8ef565e"} (meta/id :venues :name)]
@@ -232,7 +236,9 @@
                                                    (meta/field-metadata :checkins :venue-id)
                                                    (meta/field-metadata :venues :id))])
                                 (lib/with-join-fields :all))))
-        columns (lib/filterable-columns query)
+        columns (into []
+                      (lib.field.util/add-source-and-desired-aliases-xform query)
+                      (lib/filterable-columns query))
         pk-operators [:= :!= :> :< :between :>= :<= :is-null :not-null]
         temporal-operators [:!= := :< :> :between :is-null :not-null]
         coordinate-operators [:= :!= :inside :> :< :between :>= :<=]
@@ -250,8 +256,8 @@
             "Venues__LATITUDE"
             "Venues__LONGITUDE"
             "Venues__PRICE"
-            "CATEGORIES__via__CATEGORY_ID__ID"
-            "CATEGORIES__via__CATEGORY_ID__NAME"]
+            "CATEGORIES__via__CATEGORY_ID__via__Venues__ID"
+            "CATEGORIES__via__CATEGORY_ID__via__Venues__NAME"]
            (map :lib/desired-column-alias columns)))
     (testing "Operators are attached to proper columns"
       (is (=? {"ID" pk-operators,
@@ -283,24 +289,6 @@
                                   "is-null" {:display-name "Is empty", :long-display-name "Is empty"}}}
                 display-info-by-type-and-op))))))
 
-(deftest ^:parallel filterable-columns-excludes-offset-expressions-test
-  (testing "filterable-columns should exclude expressions which contain :offset"
-    (let [query (-> lib.tu/venues-query
-                    (lib/order-by (meta/field-metadata :venues :id) :asc)
-                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
-                    (lib/expression "Nested Offset"
-                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
-      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:id (meta/id :venues :id) :name "ID"}
-                 {:id (meta/id :venues :name) :name "NAME"}
-                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
-                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
-                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
-                 {:id (meta/id :venues :price) :name "PRICE"}
-                 {:id (meta/id :categories :id) :name "ID"}
-                 {:id (meta/id :categories :name) :name "NAME"}]
-                (lib/filterable-columns query)))))))
-
 (deftest ^:parallel filter-clause-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :users))
         [first-col] (lib/filterable-columns query)
@@ -313,7 +301,7 @@
                 (lib/filter new-filter)
                 lib/filters))))
   (testing "standalone clause"
-    (let [query lib.tu/venues-query
+    (let [query (lib.tu/venues-query)
           [id-col] (lib/filterable-columns query)
           [eq-op] (lib/filterable-column-operators id-col)
           filter-clause (lib/filter-clause eq-op id-col 123)]
@@ -347,7 +335,7 @@
                                   :inside (lib/filter-clause op col 12 34 56 78 90)
                                   (:< :>) (lib/filter-clause op col col)
                                   (lib/filter-clause op col 123))]]
-      (testing (str (:short op) " with " (lib.types.isa/field-type col))
+      (testing (str (:short op) " with " (:name col))
         (is (= op
                (lib/filter-operator query filter-clause)))))))
 
@@ -429,68 +417,19 @@
         (is (=? {:stages [{:filters [[:!= {} [:field {} (meta/id :users :id)] 515]]}]}
                 query'))))))
 
-(deftest ^:parallel find-filter-for-legacy-filter-test
-  (testing "existing clauses"
-    (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
-                              (lib/expression "expr" (lib/absolute-datetime "2020" :month)))
-          filterable-cols (lib/filterable-columns query)
-          [first-col]     filterable-cols
-          expr-col        (m/find-first #(= (:name %) "expr") (lib/filterable-columns query))
-          first-filter    (lib/filter-clause
-                           (first (lib/filterable-column-operators first-col))
-                           first-col
-                           515)
-          query           (->  query
-                               (lib/filter first-filter)
-                               (lib/filter (lib/filter-clause
-                                            (first (lib/filterable-column-operators expr-col))
-                                            expr-col
-                                            (meta/field-metadata :users :last-login))))
-          filter-clauses  (lib/filters query)]
-      (testing "existing clauses"
-        (doseq [filter-clause filter-clauses
-                :let          [legacy-clause (lib.convert/->legacy-MBQL filter-clause)]
-                legacy-clause [legacy-clause
-                               (update legacy-clause 0 u/qualified-name)]]
-          (testing (pr-str legacy-clause)
-            (is (= filter-clause
-                   (lib/find-filter-for-legacy-filter query legacy-clause))))))
-      (testing "missing clause"
-        (let [filter-clause (assoc first-filter 2 43)]
-          (is (nil? (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL filter-clause))))))
-      (testing "ambiguous match"
-        ;; don't use lib/filter because it will ignore duplicate filters.
-        (let [query (lib.util/update-query-stage query -1 update :filters conj (lib.util/fresh-uuids first-filter))]
-          (is (thrown-with-msg?
-               #?(:clj Exception :cljs :default) #"Multiple matching filters found"
-               (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL (first filter-clauses))))))))))
-
-(deftest ^:parallel find-filterable-column-for-legacy-ref-test
-  (let [query (lib/filter lib.tu/venues-query (lib/= (meta/field-metadata :venues :name) "BBQ"))]
-    (are [legacy-ref] (=? {:name      "NAME"
-                           :id        (meta/id :venues :name)
-                           :operators seq}
-                          (lib/find-filterable-column-for-legacy-ref query legacy-ref))
-      [:field (meta/id :venues :name) nil]
-      [:field (meta/id :venues :name) {}]
-      ["field" (meta/id :venues :name) nil]
-      #?@(:cljs
-          [#js ["field" (meta/id :venues :name) nil]
-           #js ["field" (meta/id :venues :name) #js {}]]))))
-
 (def ^:private last-online-time
   (assoc (meta/field-metadata :people :birth-date)
          :display-name   "Last Online Time"
          :base-type      :type/Time
          :effective-type :type/Time
-         :semantic-type  :type/Time))
+         :semantic-type  :type/UpdatedTime))
 
 (def ^:private is-active
   (assoc (meta/field-metadata :orders :discount)
          :display-name   "Is Active"
          :base-type      :type/Boolean
          :effective-type :type/Boolean
-         :semantic-type  :type/Boolean))
+         :semantic-type  nil))
 
 (defn- check-display-names [tests]
   (let [metadata-provider (lib/composed-metadata-provider
@@ -502,7 +441,9 @@
       (testing exp
         (is (= exp (lib/display-name
                     query -1
-                    (lib/expression-clause op args options))))))))
+                    (lib/expression-clause op
+                                           (map #(lib/expression-parts query -1 %) args)
+                                           options))))))))
 
 (deftest ^:parallel truncate-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)
@@ -633,6 +574,17 @@
       {:clause [:not-in (lib/get-quarter created-at) 1 2 3]
        :name "Created At excludes 3 quarter of year selections"}
 
+      {:clause [:= (lib/get-year created-at) 2001]
+       :name "Created At is in 2001"}
+      {:clause [:= (lib/get-year created-at) 2001 2002 2003]
+       :name "Created At is one of 3 year of era selections"}
+      {:clause [:!= (lib/get-year created-at) 2001]
+       :name "Created At excludes 2001"}
+      {:clause [:!= (lib/get-year created-at) 2001 2002 2003]
+       :name "Created At excludes 3 year of era selections"}
+      {:clause [:not-in (lib/get-year created-at) 2001 2002 2003]
+       :name "Created At excludes 3 year of era selections"}
+
       {:clause [:is-null created-at]
        :name "Created At is empty"}
       {:clause [:not-null created-at]
@@ -711,14 +663,17 @@
       {:clause [:starts-with nam "ABC"], :name "Name starts with ABC"}
       {:clause [:starts-with nam "ABC" "HJK" "XYZ"], :name "Name starts with 3 selections"}
       {:clause [:ends-with nam "ABC"], :name "Name ends with ABC"}
-      {:clause [:ends-with nam "ABC" "HJK" "XYZ"], :name "Name ends with 3 selections"}])))
+      {:clause [:ends-with nam "ABC" "HJK" "XYZ"], :name "Name ends with 3 selections"}
+      {:clause [:value "ABC"], :options {:effective-type :type/Text}, :name "\"ABC\""}])))
 
 (deftest ^:parallel boolean-frontend-filter-display-names-test
   (check-display-names
    [{:clause [:= is-active true], :name "Is Active is true"}
     {:clause [:= is-active false], :name "Is Active is false"}
     {:clause [:is-null is-active], :name "Is Active is empty"}
-    {:clause [:not-null is-active], :name "Is Active is not empty"}]))
+    {:clause [:not-null is-active], :name "Is Active is not empty"}
+    {:clause [:value false], :options {:effective-type :type/Boolean}, :name "false"}
+    {:clause [:value true], :options {:effective-type :type/Boolean}, :name "true"}]))
 
 (deftest ^:parallel number-frontend-filter-display-names-test
   (let [tax (meta/field-metadata :orders :tax)]
@@ -737,7 +692,27 @@
       {:clause [:>= tax 1], :name "Tax is greater than or equal to 1"}
       {:clause [:<= tax 1], :name "Tax is less than or equal to 1"}
       {:clause [:is-null tax], :name "Tax is empty"}
-      {:clause [:not-null tax], :name "Tax is not empty"}])))
+      {:clause [:not-null tax], :name "Tax is not empty"}
+      {:clause [:value 0], :options {:effective-type :type/Number}, :name "0"}
+      {:clause [:value 10], :options {:effective-type :type/Integer}, :name "10"}
+      {:clause [:value -10.15], :options {:effective-type :type/Float}, :name "-10.15"}])))
+
+(deftest ^:parallel bigint-frontend-filter-display-names-test
+  (let [id        (meta/field-metadata :orders :id)
+        pos-value  (u.number/bigint "9223372036854775808")
+        neg-value  (u.number/bigint "-9223372036854775809")
+        pos-clause (lib.expression/value pos-value)
+        neg-clause (lib.expression/value neg-value)]
+    (check-display-names
+     [{:clause [:= id pos-clause], :name (str "ID is " pos-value)}
+      {:clause [:!= id pos-clause], :name (str "ID is not " pos-value)}
+      {:clause [:> id pos-clause], :name (str "ID is greater than " pos-value)}
+      {:clause [:>= id pos-clause], :name (str "ID is greater than or equal to " pos-value)}
+      {:clause [:< id pos-clause], :name (str "ID is less than " pos-value)}
+      {:clause [:<= id pos-clause], :name (str "ID is less than or equal to " pos-value)}
+      {:clause [:between id 0 pos-clause], :name (str "ID is between 0 and " pos-value)}
+      {:clause [:between id neg-clause 0], :name (str "ID is between " neg-value " and 0")}
+      {:clause [:between id neg-clause pos-clause], :name (str "ID is between " neg-value " and " pos-value)}])))
 
 (deftest ^:parallel relative-datetime-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)]
@@ -770,6 +745,11 @@
       {:clause [:time-interval created-at :current :quarter],
        :name "Created At is this quarter"}
       {:clause [:time-interval created-at :current :year], :name "Created At is this year"}
+      {:clause [:time-interval created-at 0 :day], :name "Created At is today"}
+      {:clause [:time-interval created-at 0 :week], :name "Created At is this week"}
+      {:clause [:time-interval created-at 0 :month], :name "Created At is this month"}
+      {:clause [:time-interval created-at 0 :quarter], :name "Created At is this quarter"}
+      {:clause [:time-interval created-at 0 :year], :name "Created At is this year"}
       {:clause [:time-interval created-at 1 :minute], :name "Created At is in the next minute"}
       {:clause [:time-interval created-at 3 :minute], :name "Created At is in the next 3 minutes"}
       {:clause [:time-interval created-at 1 :hour], :name "Created At is in the next hour"}
@@ -878,7 +858,7 @@
                                     {:column-type :type/Boolean :v true}
                                     {:column-type :type/Coordinate :v 1}}
           [query desired] (matrix/test-queries column-type)]
-    (let [col (matrix/find-first desired (lib/filterable-columns query))
+    (let [col (matrix/find-first query desired (lib/filterable-columns query))
           query' (lib/filter query (lib/= col v))
           parts (lib/expression-parts query' (first (lib/filters query')))]
       (is (=? (lib.filter.operator/filter-operators {:lib/type :metadata/column :name "expected" :base-type column-type})
@@ -941,3 +921,14 @@
                         {:lib/uuid "00000000-0000-0000-0000-000000000004"}
                         [:= {:lib/uuid "00000000-0000-0000-0000-000000000005"} 7 8]
                         [:= {:lib/uuid "00000000-0000-0000-0000-000000000006"} 9 10]]]]}))))
+
+(deftest ^:parallel filter-display-name-for-year-bucketing-test
+  (let [query (lib/native-query meta/metadata-provider "SELECT * FROM ORDERS;")]
+    (is (= "Created At is Jan 1 – Dec 31, 2023"
+           (lib/display-name query [:= {:lib/uuid "79e513f8-af80-4c15-96b6-e72eff7f37cc"}
+                                    [:field {:effective-type :type/Integer
+                                             :base-type      :type/DateTime
+                                             :temporal-unit  :year
+                                             :lib/uuid       "1fe5dc66-54af-4368-9e4a-1e64a1fbe484"}
+                                     "CREATED_AT"]
+                                    "2023-01-01T00:00:00Z"])))))

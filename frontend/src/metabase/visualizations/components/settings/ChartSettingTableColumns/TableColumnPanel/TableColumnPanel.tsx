@@ -1,6 +1,8 @@
 import { useCallback, useMemo } from "react";
 
-import type { DragEndEvent } from "metabase/core/components/Sortable";
+import type { DragEndEvent } from "metabase/common/components/Sortable";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { Box } from "metabase/ui";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -20,6 +22,7 @@ import {
 interface TableColumnPanelProps {
   columns: DatasetColumn[];
   columnSettings: TableColumnOrderSetting[];
+  isShowingDetailsOnlyColumns: boolean;
   getColumnName: (column: DatasetColumn) => string;
   onChange: (value: TableColumnOrderSetting[]) => void;
   onShowWidget: (config: EditWidgetData, targetElement: HTMLElement) => void;
@@ -29,43 +32,52 @@ export const TableColumnPanel = ({
   columns,
   columnSettings,
   getColumnName,
+  isShowingDetailsOnlyColumns,
   onChange,
   onShowWidget,
 }: TableColumnPanelProps) => {
+  const tc = useTranslateContent();
   const columnItems = useMemo(() => {
-    return getColumnItems(columns, columnSettings);
-  }, [columns, columnSettings]);
+    return getColumnItems(
+      columns,
+      columnSettings,
+      tc,
+      isShowingDetailsOnlyColumns,
+    );
+  }, [columns, columnSettings, tc, isShowingDetailsOnlyColumns]);
 
   const getItemName = useCallback(
     (columnItem: ColumnItem) => {
-      return getColumnName(columnItem.column);
+      return tc(getColumnName(columnItem.column));
     },
-    [getColumnName],
+    [getColumnName, tc],
   );
 
   const handleEnableColumn = useCallback(
     (columnItem: ColumnItem) => {
-      onChange(toggleColumnInSettings(columnItem, columnItems, true));
+      onChange(toggleColumnInSettings(columnSettings, columnItem, true));
     },
-    [onChange, columnItems],
+    [columnSettings, onChange],
   );
 
   const handleDisableColumn = useCallback(
     (columnItem: ColumnItem) => {
-      onChange(toggleColumnInSettings(columnItem, columnItems, false));
+      onChange(toggleColumnInSettings(columnSettings, columnItem, false));
     },
-    [onChange, columnItems],
+    [columnSettings, onChange],
   );
 
   const handleDragColumn = useCallback(
     ({ id, newIndex }: DragEndEvent) => {
       const oldIndex = columnItems.findIndex(
-        columnItem => getId(columnItem) === id,
+        (columnItem) => getId(columnItem) === id,
       );
 
-      onChange(moveColumnInSettings(columnItems, oldIndex, newIndex));
+      onChange(
+        moveColumnInSettings(columnSettings, columnItems, oldIndex, newIndex),
+      );
     },
-    [columnItems, onChange],
+    [columnSettings, columnItems, onChange],
   );
 
   const handleEditColumn = useCallback(
@@ -76,9 +88,9 @@ export const TableColumnPanel = ({
   );
 
   return (
-    <div role="list" data-testid="chart-settings-table-columns">
-      {columns.length > 0 && (
-        <div role="group" data-testid="visible-columns">
+    <Box role="list" data-testid="chart-settings-table-columns">
+      {columnItems.length > 0 && (
+        <Box role="group" data-testid="visible-columns">
           <ChartSettingOrderedItems
             getId={getId}
             items={columnItems}
@@ -88,9 +100,9 @@ export const TableColumnPanel = ({
             onEdit={handleEditColumn}
             onSortEnd={handleDragColumn}
           />
-        </div>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 };
 

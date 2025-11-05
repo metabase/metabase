@@ -69,7 +69,7 @@ describe("UserNameDisplay", () => {
 
   it("should display `X users selected` if there are multiple users", async () => {
     await setup({
-      userIdList: TEST_USER_LIST_RESULTS.map(user => user.id),
+      userIdList: TEST_USER_LIST_RESULTS.map((user) => user.id),
     });
     expect(
       screen.getByText(`${TEST_USER_LIST_RESULTS.length} users selected`),

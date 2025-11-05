@@ -61,7 +61,7 @@ export function checkGroupConsistencyAfterDeletingMappings(
   cy.findByText("readonly");
 }
 
-const deleteMappingWithGroups = mappingName => {
+const deleteMappingWithGroups = (mappingName) => {
   cy.findByText(mappingName)
     .closest("tr")
     .within(() => {
@@ -72,7 +72,7 @@ const deleteMappingWithGroups = mappingName => {
   cy.button("Remove mapping and delete groups").click();
 };
 
-const createMapping = name => {
+const createMapping = (name) => {
   cy.button("New mapping").click();
   cy.findByLabelText("new-group-mapping-name-input").type(name);
   cy.button("Add").click();
@@ -85,7 +85,7 @@ const addGroupsToMapping = (mappingName, groups) => {
       cy.findByText("Default").click();
     });
 
-  groups.forEach(group => {
+  groups.forEach((group) => {
     popover().within(() => {
       cy.findByText(group).click();
 
@@ -100,7 +100,7 @@ const addGroupsToMapping = (mappingName, groups) => {
   cy.realPress("{esc}");
 };
 
-const checkThatGroupHasNoMembers = name => {
+const checkThatGroupHasNoMembers = (name) => {
   cy.findByText(name)
     .closest("tr")
     .within(() => cy.findByText("0"));

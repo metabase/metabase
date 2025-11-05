@@ -6,9 +6,17 @@ export function getBreakoutListItem(
   query: Lib.Query,
   stageIndex: number,
   breakout: Lib.BreakoutClause,
-): ListItem {
+): ListItem | undefined {
   const column = Lib.breakoutColumn(query, stageIndex, breakout);
-  const columnInfo = Lib.displayInfo(query, stageIndex, column);
+  if (column == null) {
+    return;
+  }
+
+  const columnWithoutBucketing = Lib.withBinning(
+    Lib.withTemporalBucket(column, null),
+    null,
+  );
+  const columnInfo = Lib.displayInfo(query, stageIndex, columnWithoutBucketing);
   return { ...columnInfo, column, breakout };
 }
 
@@ -24,14 +32,18 @@ function getColumnListItems(
     return [{ ...columnInfo, column }];
   }
 
-  return breakoutPositions.map(index => {
+  return breakoutPositions.reduce((items: ListItem[], index) => {
     const breakout = breakouts[index];
-    return {
-      ...columnInfo,
-      column: Lib.breakoutColumn(query, stageIndex, breakout),
-      breakout,
-    };
-  });
+    const column = Lib.breakoutColumn(query, stageIndex, breakout);
+    if (column != null) {
+      items.push({
+        ...columnInfo,
+        column,
+        breakout,
+      });
+    }
+    return items;
+  }, []);
 }
 
 export function getColumnSections(
@@ -45,16 +57,16 @@ export function getColumnSections(
 
   const filteredColumns =
     formattedSearchQuery.length > 0
-      ? columns.filter(column => {
+      ? columns.filter((column) => {
           const { displayName } = Lib.displayInfo(query, stageIndex, column);
           return displayName.toLowerCase().includes(formattedSearchQuery);
         })
       : columns;
 
-  return Lib.groupColumns(filteredColumns).map(group => {
+  return Lib.groupColumns(filteredColumns).map((group) => {
     const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
-    const items = Lib.getColumnsFromColumnGroup(group).flatMap(column =>
+    const items = Lib.getColumnsFromColumnGroup(group).flatMap((column) =>
       getColumnListItems(query, stageIndex, breakouts, column),
     );
 
@@ -74,6 +86,6 @@ export function isPinnedColumn(
   const { breakoutPositions = [] } = Lib.displayInfo(query, stageIndex, column);
   return (
     breakoutPositions.length > 0 &&
-    breakoutPositions.every(breakoutIndex => breakoutIndex < pinnedItemCount)
+    breakoutPositions.every((breakoutIndex) => breakoutIndex < pinnedItemCount)
   );
 }

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 import {
   guiDashboard,
@@ -17,7 +17,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
   context("SQL question with field filters", () => {
     beforeEach(() => {
-      cy.createNativeQuestionAndDashboard({
+      H.createNativeQuestionAndDashboard({
         questionDetails: nativeQuestionDetails,
         dashboardDetails: nativeDashboardDetails,
       }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -37,7 +37,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
     });
 
     it("works when both filters are enabled and their values are set through UI", () => {
-      cy.get("@dashboardId").then(dashboard_id => {
+      cy.get("@dashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
           params: {},
@@ -79,12 +79,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       openFilterOptions("City");
 
-      searchMultiAutocompleteFilter();
+      searchFieldValuesFilter();
 
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.multiAutocompleteInput().blur();
+          H.fieldValuesTextbox().click();
         });
 
       H.popover().button("Add filter").click();
@@ -100,7 +100,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
     });
 
     it("works when both filters are enabled and their values are set through UI with auto-apply filters disabled", () => {
-      cy.get("@dashboardId").then(dashboard_id => {
+      cy.get("@dashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
           params: {},
@@ -126,13 +126,13 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       openFilterOptions("State");
 
-      cy.button("Apply").should("not.exist");
+      H.applyFilterToast().should("not.exist");
 
       H.popover().findByText("AK").click();
       H.popover().button("Add filter").click();
 
-      cy.button("Apply").should("be.visible").click();
-      cy.button("Apply").should("not.exist");
+      H.applyFilterButton().click();
+      H.applyFilterToast().should("not.exist");
 
       cy.location("search").should("eq", "?city=&state=AK");
 
@@ -151,17 +151,17 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       openFilterOptions("City");
 
-      searchMultiAutocompleteFilter();
+      searchFieldValuesFilter();
 
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.multiAutocompleteInput().blur();
+          H.fieldValuesTextbox().click();
         });
       H.popover().button("Add filter").click();
 
-      cy.button("Apply").should("be.visible").click();
-      cy.button("Apply").should("not.exist");
+      H.applyFilterButton().click();
+      H.applyFilterToast().should("not.exist");
 
       cy.location("search").should("eq", "?city=Anchorage&state=AK");
 
@@ -174,7 +174,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
     });
 
     it("works when main filter's value is set through URL", () => {
-      cy.get("@dashboardId").then(dashboard_id => {
+      cy.get("@dashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
           params: {},
@@ -197,12 +197,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       openFilterOptions("City");
 
-      searchMultiAutocompleteFilter();
+      searchFieldValuesFilter();
 
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.multiAutocompleteInput().blur();
+          H.fieldValuesTextbox().click();
         });
 
       H.popover().button("Add filter").click();
@@ -218,7 +218,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
     });
 
     it("works when main filter's value is set through URL and when it is hidden at the same time", () => {
-      cy.get("@dashboardId").then(dashboard_id => {
+      cy.get("@dashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
           params: {},
@@ -242,12 +242,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       H.filterWidget().should("have.length", 1).and("contain", "City").click();
 
-      searchMultiAutocompleteFilter();
+      searchFieldValuesFilter();
 
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.multiAutocompleteInput().blur();
+          H.fieldValuesTextbox().click();
         });
       H.popover().button("Add filter").click();
 
@@ -262,7 +262,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
     });
 
     it("works when main filter is locked", () => {
-      cy.get("@dashboardId").then(dashboard_id => {
+      cy.get("@dashboardId").then((dashboard_id) => {
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
           embedding_params: {
             city: "enabled",
@@ -280,12 +280,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       H.filterWidget().should("have.length", 1).and("contain", "City").click();
 
-      searchMultiAutocompleteFilter();
+      searchFieldValuesFilter();
 
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.multiAutocompleteInput().blur();
+          H.fieldValuesTextbox().click();
         });
       H.popover().button("Add filter").click();
 
@@ -295,7 +295,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
   context("GUI question in the dashboard", () => {
     beforeEach(() => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: guiQuestion,
         dashboardDetails: guiDashboard,
       }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -314,7 +314,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
     });
 
     it("works when both filters are enabled and their values are set through UI", () => {
-      cy.get("@guiDashboardId").then(dashboard_id => {
+      cy.get("@guiDashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
           params: {},
@@ -339,13 +339,11 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.location("search").should("eq", "?category=Gizmo&id_filter=1");
 
-      cy.findByTestId("table-row")
-        .should("have.length", 1)
-        .and("contain", "Gizmo");
+      cy.findAllByRole("row").should("have.length", 1).and("contain", "Gizmo");
     });
 
     it("works when main filter's value is set through URL", () => {
-      cy.get("@guiDashboardId").then(dashboard_id => {
+      cy.get("@guiDashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
           params: {},
@@ -369,13 +367,13 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
         cy.location("search").should("eq", "?category=Doohickey&id_filter=4");
 
-        cy.findByTestId("table-row")
+        cy.findAllByRole("row")
           .should("have.length", 1)
           .and("contain", "Doohickey");
 
         cy.log("Make sure we can set multiple values");
         cy.window().then(
-          win =>
+          (win) =>
             (win.location.search = "?category=Widget&id_filter=4&id_filter=29"),
         );
 
@@ -384,14 +382,14 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           .and("contain", "2 selections")
           .and("contain", "Widget");
 
-        cy.findByTestId("table-row")
+        cy.findAllByRole("row")
           .should("have.length", 1)
           .and("contain", "Widget")
           .and("contain", "Durable Steel Toucan");
 
         removeValueForFilter("Category");
 
-        cy.findAllByTestId("table-row")
+        cy.findAllByRole("row")
           .should("have.length", 2)
           .and("contain", "Widget")
           .and("contain", "Doohickey")
@@ -400,11 +398,11 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         cy.findByText("2 selections").click();
 
         // Remove one of the previously set filter values
-        H.popover().within(() => H.removeMultiAutocompleteValue(1));
+        H.popover().within(() => H.removeFieldValuesValue(1));
 
         cy.button("Update filter").click();
 
-        cy.findByTestId("table-row")
+        cy.findAllByRole("row")
           .should("have.length", 1)
           .and("contain", "Doohickey");
 
@@ -420,7 +418,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
     });
 
     it("works when the default filter is hidden", () => {
-      cy.get("@guiDashboardId").then(dashboard_id => {
+      cy.get("@guiDashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
           params: {},
@@ -433,9 +431,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         });
       });
 
-      cy.findByTestId("table-row")
-        .should("have.length", 1)
-        .and("contain", "Gizmo");
+      cy.findAllByRole("row").should("have.length", 1).and("contain", "Gizmo");
 
       H.filterWidget()
         .should("have.length", 1)
@@ -451,7 +447,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
     });
 
     it("works when the default filter is locked", () => {
-      cy.get("@guiDashboardId").then(dashboard_id => {
+      cy.get("@guiDashboardId").then((dashboard_id) => {
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
           embedding_params: {
             id_filter: "locked",
@@ -467,9 +463,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         H.visitEmbeddedPage(payload);
       });
 
-      cy.findByTestId("table-row")
-        .should("have.length", 1)
-        .and("contain", "Gizmo");
+      cy.findAllByRole("row").should("have.length", 1).and("contain", "Gizmo");
 
       H.filterWidget()
         .should("have.length", 1)
@@ -496,12 +490,12 @@ function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
   H.echartsContainer().get("text").contains(yLabel);
 }
 
-function searchMultiAutocompleteFilter() {
+function searchFieldValuesFilter() {
   cy.findByTestId("parameter-value-dropdown").within(() => {
-    H.multiAutocompleteInput().type("An");
+    H.fieldValuesTextbox().type("An");
   });
 
-  cy.findByTestId("select-dropdown").within(() => {
+  cy.findByTestId("field-values-widget").within(() => {
     cy.findByText("Kiana");
     cy.findByText("Anacoco").should("not.exist");
     cy.findByText("Anchorage").click();
@@ -509,9 +503,5 @@ function searchMultiAutocompleteFilter() {
 }
 
 function removeValueForFilter(label) {
-  cy.get("legend")
-    .contains(label)
-    .closest("fieldset")
-    .find(".Icon-close")
-    .click();
+  H.filterWidget({ name: label }).icon("close").click();
 }

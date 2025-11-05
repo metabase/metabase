@@ -1,21 +1,23 @@
 import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-
-import { DATE_PICKER_UNITS } from "../../constants";
-import type { DatePickerUnit, RelativeDatePickerValue } from "../../types";
+import { DATE_PICKER_UNITS } from "metabase/querying/filters/constants";
+import type {
+  DatePickerUnit,
+  RelativeDatePickerValue,
+} from "metabase/querying/filters/types";
 
 import { CurrentDatePicker } from "./CurrentDatePicker";
 
 const DEFAULT_VALUE: RelativeDatePickerValue = {
   type: "relative",
-  value: "current",
+  value: 0,
   unit: "hour",
 };
 
 interface SetupOpts {
   value?: RelativeDatePickerValue;
-  availableUnits?: ReadonlyArray<DatePickerUnit>;
+  availableUnits?: DatePickerUnit[];
 }
 
 const userEvent = _userEvent.setup({
@@ -52,7 +54,7 @@ describe("CurrentDatePicker", () => {
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
-      value: "current",
+      value: 0,
       unit: "week",
     });
   });
@@ -63,7 +65,7 @@ describe("CurrentDatePicker", () => {
     await userEvent.hover(screen.getByText("Week"));
 
     expect(
-      screen.getByText("Right now, this is Dec 29, 2019 – Jan 4, 2020"),
+      await screen.findByText("Right now, this is Dec 29, 2019 – Jan 4, 2020"),
     ).toBeInTheDocument();
   });
 });

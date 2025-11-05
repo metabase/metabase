@@ -98,7 +98,7 @@ export function versionToNumericComponents(version: string): number[] | null {
     patch,
     SPECIAL_COMPONENTS[label?.toLowerCase()] ?? 0,
     build,
-  ].map(part => (typeof part === "string" ? parseInt(part, 10) : part));
+  ].map((part) => (typeof part === "string" ? parseInt(part, 10) : part));
 }
 
 /**

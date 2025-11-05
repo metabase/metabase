@@ -1,4 +1,10 @@
-import { H } from "e2e/support";
+import _ from "underscore";
+
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
+const { H } = cy;
+
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > rows", () => {
   beforeEach(() => {
@@ -8,12 +14,12 @@ describe("scenarios > visualizations > rows", () => {
 
   // Until we enable multi-browser support, this repro will be skipped by Cypress in CI
   // Issue was specific to Firefox only - it is still possible to test it locally
-  ["0", "null"].forEach(testValue => {
+  ["0", "null"].forEach((testValue) => {
     it(
       `should not collapse rows when last value is ${testValue} (metabase#14285)`,
       { browser: "firefox" },
       () => {
-        cy.createNativeQuestion(
+        H.createNativeQuestion(
           {
             name: "14285",
             native: {
@@ -36,7 +42,7 @@ describe("scenarios > visualizations > rows", () => {
         );
 
         cy.findByTestId("query-visualization-root").within(() => {
-          ["a", "b", "c", "d", "e", "f"].forEach(letter => {
+          ["a", "b", "c", "d", "e", "f"].forEach((letter) => {
             cy.findByText(letter);
           });
         });
@@ -45,7 +51,7 @@ describe("scenarios > visualizations > rows", () => {
   });
 
   it("should display a row chart", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "14285",
         native: {
@@ -71,10 +77,10 @@ describe("scenarios > visualizations > rows", () => {
     );
 
     cy.findByTestId("query-visualization-root").within(() => {
-      ["a", "b", "c", "d", "e", "f"].forEach(letter => {
+      ["a", "b", "c", "d", "e", "f"].forEach((letter) => {
         cy.findByText(letter);
       });
-      [51, 41, 31, 21, 11, 4].forEach(value => {
+      [51, 41, 31, 21, 11, 4].forEach((value) => {
         cy.findByText(value);
       });
       cy.findByText("COLUMN_TWO");
@@ -84,13 +90,68 @@ describe("scenarios > visualizations > rows", () => {
     cy.findAllByRole("graphics-symbol").eq(0).as("firstBar");
     cy.get("@firstBar")
       .invoke("width")
-      .then(prevWidth => {
+      .then((prevWidth) => {
         cy.get("@firstBar")
           .realHover()
           .invoke("width")
-          .then(newWidth => {
+          .then((newWidth) => {
+            // eslint-disable-next-line no-unsafe-element-filtering
             expect(prevWidth).eq(newWidth);
           });
       });
+  });
+
+  it("should handle very long product titles in row chart", () => {
+    H.createQuestion(
+      {
+        name: "Orders created before June 1st 2022",
+        query: {
+          "source-table": PRODUCTS_ID,
+          expressions: {
+            LongName: [
+              "concat",
+              ..._.times(10, () => {
+                return [
+                  "field",
+                  PRODUCTS.TITLE,
+                  {
+                    "base-type": "type/Text",
+                  },
+                ];
+              }),
+            ],
+          },
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "expression",
+              "LongName",
+              {
+                "base-type": "type/Text",
+              },
+            ],
+          ],
+        },
+        display: "row",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("query-visualization-root").within(() => {
+      // Check that the visualization renders without errors
+      cy.findAllByRole("graphics-symbol").should("have.length.greaterThan", 0);
+
+      // Check chart bars section - it should take 50% of width
+      cy.get(".visx-columns")
+        .should("exist")
+        .invoke("width")
+        .should("be.gt", 500);
+
+      // Check that axis labels are present
+      cy.get(".visx-axis-left")
+        .should("exist")
+        .invoke("width")
+        .should("be.gt", 500);
+    });
   });
 });

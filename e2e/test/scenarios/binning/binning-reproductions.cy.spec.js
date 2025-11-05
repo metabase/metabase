@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -11,7 +11,7 @@ describe("binning related reproductions", () => {
   });
 
   it("shouldn't render double binning options when question is based on the saved native question (metabase#16327)", () => {
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "16327",
       native: { query: "select * from products limit 5" },
     });
@@ -67,7 +67,7 @@ describe("binning related reproductions", () => {
       isSelected: true,
     });
 
-    cy.wait("@dataset").then(xhr => {
+    cy.wait("@dataset").then((xhr) => {
       expect(xhr.response.body.error).not.to.exist;
     });
 
@@ -78,7 +78,7 @@ describe("binning related reproductions", () => {
   });
 
   it("should not remove order-by (sort) when changing the breakout field on an SQL saved question (metabase#17975)", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "17975",
         native: {
@@ -110,14 +110,16 @@ describe("binning related reproductions", () => {
     H.popover()
       .findByRole("option", { name: "CREATED_AT" })
       .findByLabelText("Temporal bucket")
+      .realHover()
       .click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Quarter").click();
 
     H.getNotebookStep("sort").findByText("CREATED_AT: Quarter");
   });
 
   it("should render binning options when joining on the saved native question (metabase#18646)", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "18646",
         native: { query: "select * from products" },
@@ -159,7 +161,7 @@ describe("binning related reproductions", () => {
     });
 
     H.getNotebookStep("summarize").findByText(
-      "18646 - Product → Created At: Month",
+      "18646 - Product → CREATED_AT: Month",
     );
 
     H.visualize();
@@ -167,7 +169,7 @@ describe("binning related reproductions", () => {
   });
 
   it("should display date granularity on Summarize when opened from saved question (metabase#10441, metabase#11439)", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "11439",
       query: { "source-table": ORDERS_ID },
     });
@@ -187,6 +189,7 @@ describe("binning related reproductions", () => {
       cy.findAllByRole("listitem", { name: "Created At" })
         .eq(0)
         .findByLabelText("Temporal bucket")
+        .realHover()
         .click();
     });
 
@@ -208,16 +211,19 @@ describe("binning related reproductions", () => {
 
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     // Open settings through viz type picker to ensure "Table Options" is in the sidebar.
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTestId("Table-button").click();
       cy.findByTextEnsureVisible("Table options");
-      cy.findByText("Created At: Month")
-        .siblings("[data-testid$=hide-button]")
-        .click();
+      cy.findByTestId("draggable-item-Created At: Month")
+        .findByText("Created At: Month")
+        .should("be.visible");
+      cy.findByTestId("draggable-item-Created At: Month")
+        .icon("eye_outline")
+        .click({ force: true });
       cy.button("Done").click();
     });
 
@@ -247,7 +253,7 @@ describe("binning related reproductions", () => {
 
   describe("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
     beforeEach(() => {
-      cy.createQuestion(
+      H.createQuestion(
         {
           name: "16379",
           query: {
@@ -294,7 +300,7 @@ describe("binning related reproductions", () => {
     });
   });
 
-  describe.skip("result metadata issues", () => {
+  describe("result metadata issues", { tags: "@skip" }, () => {
     /**
      * Issues that arise only when we save SQL question without running it first.
      * It doesn't load the necessary metadata, which results in the wrong binning results.
@@ -305,7 +311,7 @@ describe("binning related reproductions", () => {
 
     beforeEach(() => {
       // This query is the equivalent of saving the question without running it first.
-      cy.createNativeQuestion({
+      H.createNativeQuestion({
         name: "SQL Binning",
         native: {
           query:
@@ -350,7 +356,7 @@ describe("binning related reproductions", () => {
         cy.findByText("LONGITUDE").click();
       });
 
-      cy.wait("@dataset").then(xhr => {
+      cy.wait("@dataset").then((xhr) => {
         expect(xhr.response.body.error).not.to.exist;
       });
 

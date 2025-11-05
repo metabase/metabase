@@ -33,8 +33,20 @@ const getCustomAxisRange = (
   axisExtent: Extent,
   customMin: number | null,
   customMax: number | null,
+  isNormalized: boolean | undefined,
 ) => {
   const [extentMin, extentMax] = axisExtent;
+
+  // If this is a normalized range, respect custom min & max
+  // This also accomodates non-normalized custom min & max values
+  // Allows users to supply e.g. 10 for 10% min as opposed to 0.1
+  if (isNormalized) {
+    return {
+      min: customMin != null ? customMin / 100 : undefined,
+      max: customMax != null ? customMax / 100 : undefined,
+    };
+  }
+
   // if min/max are not specified or within series extents return `undefined`
   // so that ECharts compute a rounded range automatically
   const finalMin =
@@ -60,7 +72,12 @@ export const getYAxisRange = (
     yAxisScaleTransforms,
   );
 
-  return getCustomAxisRange(axisModel.extent, customMin, customMax);
+  return getCustomAxisRange(
+    axisModel.extent,
+    customMin,
+    customMax,
+    axisModel.isNormalized,
+  );
 };
 
 export const getAxisNameDefaultOption = (
@@ -74,7 +91,7 @@ export const getAxisNameDefaultOption = (
   nameLocation: "middle",
   nameRotate: rotate,
   nameTextStyle: {
-    color: getColor("text-dark"),
+    color: getColor("text-primary"),
     fontSize: theme.cartesian.label.fontSize,
     fontWeight: CHART_STYLE.axisName.weight,
     fontFamily,
@@ -88,7 +105,7 @@ export const getTicksDefaultOption = ({
 }: RenderingContext) => {
   return {
     hideOverlap: true,
-    color: getColor("text-dark"),
+    color: getColor("text-primary"),
     fontSize: theme.cartesian.label.fontSize,
     fontWeight: CHART_STYLE.axisTicks.weight,
     fontFamily,
@@ -170,6 +187,7 @@ const getCommonDimensionAxisOptions = (
         : undefined,
     ),
     mainType: "xAxis" as const,
+    nameMoveOverlap: false,
     axisTick: {
       show: false,
     },
@@ -368,26 +386,34 @@ export const buildMetricAxis = (
 
   const range = getYAxisRange(axisModel, yAxisScaleTransforms, settings);
 
+  const {
+    type: _omitType,
+    mainType: _omitMainType,
+    ...axisNameOptions
+  } = getAxisNameDefaultOption(
+    renderingContext,
+    nameGap,
+    axisModel.label,
+    shouldFlipAxisName ? -90 : undefined,
+  );
+
   return {
     show: true,
+    nameMoveOverlap: false,
     scale: !!settings["graph.y_axis.unpin_from_zero"],
     type: "value",
+    splitNumber: axisModel.splitNumber,
     ...range,
-    ...getAxisNameDefaultOption(
-      renderingContext,
-      nameGap,
-      axisModel.label,
-      shouldFlipAxisName ? -90 : undefined,
-    ),
-    splitLine:
-      hasSplitLine && !!settings["graph.y_axis.axis_enabled"]
-        ? {
-            lineStyle: {
-              type: 5,
-              color: renderingContext.getColor("border"),
-            },
-          }
-        : undefined,
+    ...axisNameOptions,
+    splitLine: settings["graph.y_axis.axis_enabled"]
+      ? {
+          lineStyle: {
+            type: "solid",
+            opacity: hasSplitLine ? 1 : 0,
+            ...renderingContext.theme.cartesian.splitLine.lineStyle,
+          },
+        }
+      : undefined,
     position,
     axisLine: {
       show: false,
@@ -399,8 +425,7 @@ export const buildMetricAxis = (
       margin: CHART_STYLE.axisTicksMarginY,
       show: !!settings["graph.y_axis.axis_enabled"],
       ...getTicksDefaultOption(renderingContext),
-      // @ts-expect-error TODO: figure out EChart types
-      formatter: rawValue =>
+      formatter: (rawValue) =>
         axisModel.formatter(
           yAxisScaleTransforms.fromEChartsAxisValue(rawValue),
         ),
@@ -474,3 +499,14 @@ export const buildAxes = (
     ),
   };
 };
+
+export const createAxisVisibilityOption = ({
+  show,
+  splitLineVisible,
+}: {
+  show: boolean;
+  splitLineVisible: boolean;
+}) => ({
+  show,
+  splitLine: { lineStyle: { opacity: splitLineVisible ? 1 : 0 } },
+});

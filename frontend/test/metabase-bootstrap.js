@@ -1,4 +1,3 @@
-import "regenerator-runtime/runtime";
 import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
 
@@ -17,7 +16,7 @@ window.MetabaseBootstrap = {
     "America/Costa_Rica",
   ],
   "available-locales": [["en", "English"]],
-  // NOTE: update this when updating types.clj
+  // NOTE: update this when updating types.cljc
   types: {
     "type/DruidHyperUnique": ["type/*"],
     "type/Longitude": ["type/Coordinate"],

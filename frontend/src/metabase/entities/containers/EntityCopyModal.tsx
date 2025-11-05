@@ -2,8 +2,12 @@ import { dissoc } from "icepick";
 import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import ModalContent from "metabase/components/ModalContent";
-import { CopyDashboardFormConnected } from "metabase/dashboard/containers/CopyDashboardForm";
+import ModalContent from "metabase/common/components/ModalContent";
+import {
+  CopyDashboardFormConnected,
+  type CopyDashboardFormProperties,
+} from "metabase/dashboard/containers/CopyDashboardForm";
+import { PLUGIN_DOCUMENTS } from "metabase/plugins";
 import { CopyQuestionForm } from "metabase/questions/components/CopyQuestionForm";
 
 interface EntityCopyModalProps {
@@ -14,7 +18,7 @@ interface EntityCopyModalProps {
   onClose: () => void;
   onSaved: (newEntityObject?: any) => void;
   overwriteOnInitialValuesChange?: boolean;
-  onValuesChange?: (values: Record<string, unknown>) => void;
+  onValuesChange?: (values: CopyDashboardFormProperties) => void;
   form?: any;
 }
 
@@ -56,6 +60,7 @@ const EntityCopyModal = ({
           onSaved={onSaved}
           initialValues={initialValues}
           {...props}
+          originalDashboardId={resolvedObject.id}
         />
       )}
       {entityType === "questions" && (
@@ -64,6 +69,17 @@ const EntityCopyModal = ({
           onCancel={onClose}
           onSaved={onSaved}
           initialValues={initialValues}
+          model={entityObject?.type}
+          {...props}
+        />
+      )}
+      {entityType === "documents" && (
+        <PLUGIN_DOCUMENTS.DocumentCopyForm
+          onSubmit={copy}
+          onCancel={onClose}
+          onSaved={onSaved}
+          initialValues={initialValues}
+          model={entityObject?.type}
           {...props}
         />
       )}

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 const questionDetails = {
   name: "Return input value",
@@ -37,7 +37,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: dashboardCard }) => {
@@ -53,7 +53,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
         ],
       };
 
-      cy.editDashboardCard(dashboardCard, mapFilterToCard);
+      H.editDashboardCard(dashboardCard, mapFilterToCard);
 
       H.visitDashboard(dashboard_id);
     });
@@ -72,9 +72,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     cy.location("search").should("eq", "?text=");
 
     // SQL question defaults
-    cy.findByTestId("dashcard").contains(
-      "There was a problem displaying this chart.",
-    );
+    cy.findByTestId("dashcard").contains("Foo");
 
     // The empty filter widget
     cy.findByPlaceholderText("Text");
@@ -84,9 +82,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     // This part confirms that the issue metabase#13960 has been fixed
     cy.location("search").should("eq", "?text=");
 
-    cy.findByTestId("dashcard").contains(
-      "There was a problem displaying this chart.",
-    );
+    cy.findByTestId("dashcard").contains("Foo");
 
     // Let's make sure the default dashboard filter is respected upon a subsequent visit from the root
     cy.visit("/collection/root");
@@ -98,7 +94,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     // Finally, when we remove dashboard filter's default value, the url should reflect that by removing the placeholder
     H.editDashboard();
 
-    openFilterOptions("Text");
+    H.filterWidget({ isEditing: true, name: "Text" }).click();
 
     H.sidebar().within(() => {
       removeDefaultFilterValue("Bar");
@@ -110,10 +106,6 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     cy.location("search").should("eq", "?text=");
   });
 });
-
-function openFilterOptions(filterDisplayName) {
-  cy.findByText(filterDisplayName).parent().find(".Icon-gear").click();
-}
 
 function removeDefaultFilterValue(value) {
   cy.findByDisplayValue(value).parent().find(".Icon-close").click();

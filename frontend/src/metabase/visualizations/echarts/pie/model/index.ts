@@ -47,10 +47,10 @@ export function getPieColumns(
     },
   ] = rawSeries;
 
-  const metric = findWithIndex(cols, c => c.name === settings["pie.metric"]);
+  const metric = findWithIndex(cols, (c) => c.name === settings["pie.metric"]);
 
   const dimensionColNames = getPieDimensions(settings);
-  const dimension = findWithIndex(cols, c => c.name === dimensionColNames[0]);
+  const dimension = findWithIndex(cols, (c) => c.name === dimensionColNames[0]);
 
   if (!dimension.item || !metric.item) {
     throw new Error(
@@ -72,7 +72,7 @@ export function getPieColumns(
   if (dimensionColNames.length > 1) {
     const middleDimension = findWithIndex(
       cols,
-      c => c.name === dimensionColNames[1],
+      (c) => c.name === dimensionColNames[1],
     );
     if (!middleDimension.item) {
       throw new Error(
@@ -89,7 +89,7 @@ export function getPieColumns(
   if (dimensionColNames.length > 2) {
     const outerDimension = findWithIndex(
       cols,
-      c => c.name === dimensionColNames[2],
+      (c) => c.name === dimensionColNames[2],
     );
     if (!outerDimension.item) {
       throw new Error(
@@ -162,7 +162,7 @@ function calculatePercentageAndIsOther(
   node.isOther =
     relativePercentage < (settings["pie.slice_threshold"] ?? 0) / 100;
 
-  node.children.forEach(child =>
+  node.children.forEach((child) =>
     calculatePercentageAndIsOther(child, node, settings),
   );
 }
@@ -172,12 +172,12 @@ function aggregateChildrenSlices(
   renderingContext: RenderingContext,
 ) {
   const children = getArrayFromMapValues(node.children);
-  const others = children.filter(s => s.isOther);
+  const others = children.filter((s) => s.isOther);
   const otherTotal = others.reduce((currTotal, o) => currTotal + o.value, 0);
 
   if (others.length > 1 && otherTotal > 0) {
     const otherSliceChildren: SliceTree = new Map();
-    others.forEach(otherChildSlice => {
+    others.forEach((otherChildSlice) => {
       otherSliceChildren.set(String(otherChildSlice.key), {
         ...otherChildSlice,
         normalizedPercentage: Math.abs(otherChildSlice.value / otherTotal),
@@ -203,7 +203,7 @@ function aggregateChildrenSlices(
     others[0].isOther = false;
   }
 
-  children.forEach(child => aggregateChildrenSlices(child, renderingContext));
+  children.forEach((child) => aggregateChildrenSlices(child, renderingContext));
 }
 
 function computeSliceAngles(
@@ -217,7 +217,7 @@ function computeSliceAngles(
     .padAngle((Math.PI / 180) * 1)
     .startAngle(startAngle ?? 0)
     .endAngle(endAngle ?? 2 * Math.PI)
-    .value(s => s.value);
+    .value((s) => s.value);
 
   const d3Slices = d3Pie(slices, { startAngle, endAngle });
   d3Slices.forEach((d3Slice, index) => {
@@ -225,7 +225,7 @@ function computeSliceAngles(
     slices[index].endAngle = d3Slice.endAngle;
   });
 
-  slices.forEach(slice =>
+  slices.forEach((slice) =>
     computeSliceAngles(
       getArrayFromMapValues(slice.children),
       slice.startAngle,
@@ -240,7 +240,7 @@ function countNumRings(node: SliceTreeNode, numRings = 0): number {
   }
 
   return Math.max(
-    ...getArrayFromMapValues(node.children).map(node =>
+    ...getArrayFromMapValues(node.children).map((node) =>
       countNumRings(node, numRings + 1),
     ),
     numRings + 1,
@@ -262,7 +262,7 @@ export function getPieChartModel(
   const colDescs = getPieColumns(rawSeries, settings);
 
   const areAllNegative = dataRows.every(
-    row => getNumberOr(row[colDescs.metricDesc.index], 0) < 0,
+    (row) => getNumberOr(row[colDescs.metricDesc.index], 0) < 0,
   );
 
   const rowIndiciesByKey = new Map<string | number, number>();
@@ -284,7 +284,7 @@ export function getPieChartModel(
   );
 
   const rowValuesByKey = new Map<string | number, number>();
-  aggregatedRows.map(row =>
+  aggregatedRows.map((row) =>
     rowValuesByKey.set(
       getKeyFromDimensionValue(row[colDescs.dimensionDesc.index]),
       getNumberOr(row[colDescs.metricDesc.index], 0),
@@ -296,9 +296,9 @@ export function getPieChartModel(
     throw Error("missing `pie.rows` setting");
   }
 
-  const enabledPieRows = pieRows.filter(row => row.enabled && !row.hidden);
+  const enabledPieRows = pieRows.filter((row) => row.enabled && !row.hidden);
 
-  const pieRowsWithValues = enabledPieRows.map(pieRow => {
+  const pieRowsWithValues = enabledPieRows.map((pieRow) => {
     const value = rowValuesByKey.get(pieRow.key);
     if (value === undefined) {
       throw Error(`No row values found for key ${pieRow.key}`);
@@ -309,7 +309,7 @@ export function getPieChartModel(
       value,
     };
   });
-  const visiblePieRows = pieRowsWithValues.filter(row =>
+  const visiblePieRows = pieRowsWithValues.filter((row) =>
     row.isOther
       ? !hiddenSlices.includes(OTHER_SLICE_KEY)
       : !hiddenSlices.includes(row.key),
@@ -343,18 +343,21 @@ export function getPieChartModel(
 
   // Create sliceTree, fill out the innermost slice ring
   const sliceTree: SliceTree = new Map();
+  let i = 0;
   const [sliceTreeNodes, others] = _.chain(pieRowsWithValues)
-    .map(({ value, color, key, name, isOther }, index) => {
+    .map(({ value, color, key, name, isOther }) => {
       const visible = isOther
         ? !hiddenSlices.includes(OTHER_SLICE_KEY)
         : !hiddenSlices.includes(key);
 
-      return {
+      const normalizedPercentage = visible ? value / total : 0; // slice percentage values are normalized to 0-1 scale
+
+      const o = {
         key,
         name,
         value: Math.abs(value),
         rawValue: value,
-        normalizedPercentage: visible ? value / total : 0, // slice percentage values are normalized to 0-1 scale
+        normalizedPercentage,
         color: getColorForRing(
           color,
           "inner",
@@ -364,17 +367,29 @@ export function getPieChartModel(
         children: new Map(),
         column: colDescs.dimensionDesc.column,
         rowIndex: checkNotNull(rowIndiciesByKey.get(key)),
-        legendHoverIndex: index,
+        legendHoverIndex: i,
         isOther,
         includeInLegend: true,
         startAngle: 0, // placeholders
         endAngle: 0,
       };
+
+      // Not using the index directly because it might be stale if:
+      // - pie.slice_threshold was set to something low
+      // - the data was sorted
+      // - pie.slice_threshold was set to something high
+      // - some small slice between others was hidden
+      // see metabase#55684
+      if (!o.isOther) {
+        i++;
+      }
+
+      return o;
     })
     .filter(
-      slice => slice.rawValue !== 0 && (areAllNegative || slice.rawValue > 0),
+      (slice) => slice.rawValue !== 0 && (areAllNegative || slice.rawValue > 0),
     )
-    .partition(slice => slice != null && !slice.isOther)
+    .partition((slice) => slice != null && !slice.isOther)
     .value();
 
   // We don't show the grey other slice if there isn't more than one slice to
@@ -384,7 +399,7 @@ export function getPieChartModel(
     sliceTreeNodes.push(checkNotNull(singleOtherSlice));
   }
 
-  sliceTreeNodes.forEach(node => {
+  sliceTreeNodes.forEach((node) => {
     // Map key needs to be string, because we use it for lookup with values from
     // echarts, and echarts casts numbers to strings
     sliceTree.set(String(node.key), node);
@@ -457,8 +472,8 @@ export function getPieChartModel(
     });
   }
 
-  sliceTree.forEach(node =>
-    node.children.forEach(child =>
+  sliceTree.forEach((node) =>
+    node.children.forEach((child) =>
       calculatePercentageAndIsOther(child, node, settings),
     ),
   );
@@ -467,7 +482,7 @@ export function getPieChartModel(
   const otherTotal = others.reduce((currTotal, o) => currTotal + o.rawValue, 0);
   if (otherTotal !== 0) {
     const children: SliceTree = new Map();
-    others.forEach(otherChildSlice => {
+    others.forEach((otherChildSlice) => {
       children.set(String(otherChildSlice.key), {
         ...otherChildSlice,
         color: "",
@@ -495,13 +510,13 @@ export function getPieChartModel(
   }
 
   // Aggregate slices in middle and outer ring into "other" slices
-  sliceTreeNodes.forEach(node =>
+  sliceTreeNodes.forEach((node) =>
     aggregateChildrenSlices(node, renderingContext),
   );
 
   // We increase the size of small slices, but only for the first ring, because
   // if we do this for the outer rings, it can lead to overlapping slices.
-  sliceTree.forEach(slice => {
+  sliceTree.forEach((slice) => {
     if (slice.normalizedPercentage < OTHER_SLICE_MIN_PERCENTAGE) {
       slice.value = total * OTHER_SLICE_MIN_PERCENTAGE;
     }
@@ -534,7 +549,7 @@ export function getPieChartModel(
   }
 
   const numRings = Math.max(
-    ...getArrayFromMapValues(sliceTree).map(node => countNumRings(node)),
+    ...getArrayFromMapValues(sliceTree).map((node) => countNumRings(node)),
   );
 
   return {

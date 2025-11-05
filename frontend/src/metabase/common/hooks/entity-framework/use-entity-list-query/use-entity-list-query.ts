@@ -46,6 +46,7 @@ export interface UseEntityListQueryProps<TQuery = never> {
 export interface UseEntityListQueryResult<TItem, TMetadata = never> {
   data?: TItem[];
   metadata?: TMetadata;
+  isLoaded: boolean;
   isLoading: boolean;
   error: unknown;
 }
@@ -69,12 +70,12 @@ export const useEntityListQuery = <TItem, TQuery = never, TMetadata = never>(
   }: UseEntityListOwnProps<TItem, TQuery, TMetadata>,
 ): UseEntityListQueryResult<TItem, TMetadata> => {
   const options = { entityQuery };
-  const data = useSelector(state => getList(state, options));
-  const metadata = useSelector(state => getListMetadata(state, options));
-  const error = useSelector(state => getError(state, options));
-  const isLoading = useSelector(state => getLoading(state, options));
+  const data = useSelector((state) => getList(state, options));
+  const metadata = useSelector((state) => getListMetadata(state, options));
+  const error = useSelector((state) => getError(state, options));
+  const isLoading = useSelector((state) => getLoading(state, options));
   const isLoadingOrDefault = isLoading ?? enabled;
-  const isLoaded = useSelector(state => getLoaded(state, options));
+  const isLoaded = useSelector((state) => getLoaded(state, options)) ?? false;
   const isLoadedPreviously = usePrevious(isLoaded);
   const isInvalidated = !isLoaded && isLoadedPreviously;
   const dispatch = useDispatch();
@@ -93,5 +94,5 @@ export const useEntityListQuery = <TItem, TQuery = never, TMetadata = never>(
     }
   }, [dispatch, fetchList, entityQuery, reload, enabled, isInvalidated]);
 
-  return { data, metadata, isLoading: isLoadingOrDefault, error };
+  return { data, metadata, isLoading: isLoadingOrDefault, isLoaded, error };
 };

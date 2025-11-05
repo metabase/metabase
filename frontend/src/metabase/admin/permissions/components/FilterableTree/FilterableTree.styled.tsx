@@ -1,7 +1,8 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Tree } from "metabase/components/tree";
-import { color, lighten } from "metabase/lib/colors";
+import { Tree } from "metabase/common/components/tree";
+import { color } from "metabase/ui/utils/colors";
 
 export const FilterableTreeRoot = styled.div`
   display: flex;
@@ -28,12 +29,15 @@ export const EmptyStateContainer = styled.div`
 `;
 
 export const AdminTreeNode = styled(Tree.Node)`
-  color: ${props =>
-    props.isSelected ? color("text-white") : color("text-medium")};
-  background-color: ${props => (props.isSelected ? color("filter") : "unset")};
+  color: ${(props) =>
+    props.isSelected ? color("text-selected") : color("text-secondary")};
+  background-color: ${(props) =>
+    props.isSelected ? color("admin-navbar") : "unset"};
 
   &:hover {
-    background-color: ${props =>
-      props.isSelected ? color("filter") : lighten(color("filter"), 0.6)};
+    background-color: ${(props) =>
+      props.isSelected
+        ? color("admin-navbar")
+        : color("admin-navbar-secondary")};
   }
 `;

@@ -1,6 +1,6 @@
 import { jt, t } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
@@ -8,7 +8,7 @@ import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { InfoText } from "./Description.styled";
 
 export function Description() {
-  const docsLink = useSelector(state =>
+  const docsLink = useSelector((state) =>
     getDocsUrl(state, { page: "actions/custom" }),
   );
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);

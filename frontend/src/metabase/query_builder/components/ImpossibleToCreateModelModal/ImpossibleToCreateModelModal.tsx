@@ -1,9 +1,9 @@
 import cx from "classnames";
 import { jt, t } from "ttag";
 
-import ModalContent from "metabase/components/ModalContent";
-import Button from "metabase/core/components/Button";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import Button from "metabase/common/components/Button";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import ModalContent from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
@@ -14,14 +14,14 @@ type Props = {
 };
 
 function SQLSnippetsDocLink() {
-  const href = useSelector(state =>
+  const href = useSelector((state) =>
     getDocsUrl(state, { page: "questions/native-editor/sql-snippets" }),
   );
   return <ExternalLink href={href}>{t`SQL snippets`}</ExternalLink>;
 }
 
 function ReferencingQuestionsDocLink() {
-  const href = useSelector(state =>
+  const href = useSelector((state) =>
     getDocsUrl(state, {
       page: "questions/native-editor/referencing-saved-questions-in-queries",
       anchor: "referencing-models-and-saved-questions",

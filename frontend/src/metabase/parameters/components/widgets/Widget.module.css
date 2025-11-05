@@ -1,0 +1,13 @@
+.WidgetLabel {
+  display: block;
+  font-weight: bold;
+  margin: 0.5rem;
+  margin-bottom: 0;
+}
+
+.Footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.5rem;
+  border-top: 1px solid var(--mb-color-border);
+}

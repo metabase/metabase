@@ -12,6 +12,7 @@ import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-beh
 
 import { trackDashboardSaved } from "../analytics";
 import { getDashboardBeforeEditing } from "../selectors";
+import { getInlineParameterTabMap } from "../utils";
 
 import { setEditingDashboard } from "./core";
 import {
@@ -35,7 +36,7 @@ export const updateDashboardAndCards = createThunkAction(
       const dashboard = {
         ...dashboards[dashboardId],
         dashcards: dashboards[dashboardId].dashcards.map(
-          dashcardId => dashcards[dashcardId],
+          (dashcardId) => dashcards[dashcardId],
         ),
       };
 
@@ -77,34 +78,55 @@ export const updateDashboardAndCards = createThunkAction(
       });
 
       // update parameter mappings
-      dashboard.dashcards = dashboard.dashcards.map(dc => ({
+      const inlineParameterTabMap = getInlineParameterTabMap(dashboard);
+      const inlineParameterIds = Object.keys(inlineParameterTabMap);
+      dashboard.dashcards = dashboard.dashcards.map((dc) => ({
         ...dc,
-        parameter_mappings: dc.parameter_mappings.filter(
-          mapping =>
-            // filter out mappings for deleted parameters
-            _.findWhere(dashboard.parameters, {
-              id: mapping.parameter_id,
-            }) &&
-            // filter out mappings for deleted series
-            (!dc.card_id ||
-              dc.action ||
-              dc.card_id === mapping.card_id ||
-              _.findWhere(dc.series, { id: mapping.card_id })),
-        ),
+        parameter_mappings: dc.parameter_mappings.filter((mapping) => {
+          const isRemoved = !(dashboard.parameters ?? []).some(
+            (parameter) => parameter.id === mapping.parameter_id,
+          );
+          if (isRemoved) {
+            return false;
+          }
+
+          const isInlineParameter = inlineParameterIds.includes(
+            mapping.parameter_id,
+          );
+          const isOwnInlineParameter = (dc.inline_parameters ?? []).includes(
+            mapping.parameter_id,
+          );
+          if (
+            isInlineParameter &&
+            !isOwnInlineParameter &&
+            (dashboard.tabs ?? []).length > 1
+          ) {
+            const parameterTabId = inlineParameterTabMap[mapping.parameter_id];
+            return parameterTabId === dc.dashboard_tab_id;
+          }
+
+          // filter out mappings for deleted series
+          return (
+            !dc.card_id ||
+            dc.action ||
+            dc.card_id === mapping.card_id ||
+            _.findWhere(dc.series, { id: mapping.card_id })
+          );
+        }),
       }));
 
       // update modified cards
       await Promise.all(
         dashboard.dashcards
-          .filter(dc => dc.card.isDirty)
-          .map(async dc => CardApi.update(dc.card)),
+          .filter((dc) => dc.card.isDirty)
+          .map(async (dc) => CardApi.update(dc.card)),
       );
 
       trackAddedIFrameDashcards(dashboard);
 
       const dashcardsToUpdate = dashboard.dashcards
-        .filter(dc => !dc.isRemoved)
-        .map(dc => ({
+        .filter((dc) => !dc.isRemoved)
+        .map((dc) => ({
           id: dc.id,
           card_id: dc.card_id,
           dashboard_tab_id: dc.dashboard_tab_id,
@@ -115,10 +137,11 @@ export const updateDashboardAndCards = createThunkAction(
           size_y: dc.size_y,
           series: dc.series,
           visualization_settings: dc.visualization_settings,
+          inline_parameters: dc.inline_parameters,
           parameter_mappings: dc.parameter_mappings,
         }));
       const tabsToUpdate = (dashboard.tabs ?? [])
-        .filter(tab => !tab.isRemoved)
+        .filter((tab) => !tab.isRemoved)
         .map(({ id, name }) => ({
           id,
           name,

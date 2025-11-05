@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -130,7 +130,7 @@ describe("scenarios > visualizations > bar chart", () => {
     beforeEach(() => {
       H.visitQuestionAdhoc(breakoutBarChart);
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
       H.sidebar().findByText("Data").click();
     });
 
@@ -144,7 +144,7 @@ describe("scenarios > visualizations > bar chart", () => {
         .should("contain.text", "Doohickey");
       cy.findAllByTestId("legend-item").eq(3).should("contain.text", "Widget");
 
-      H.getDraggableElements().eq(1).icon("close").click(); // Hide Gizmo
+      H.getDraggableElements().eq(1).icon("close").click({ force: true }); // Hide Gizmo
 
       cy.findByTestId("query-visualization-root")
         .findByText("Gizmo")
@@ -176,22 +176,20 @@ describe("scenarios > visualizations > bar chart", () => {
     it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
       H.moveDnDKitElement(H.getDraggableElements().first(), { vertical: 100 });
 
-      H.getDraggableElements().eq(1).icon("close").click(); // Hide Gizmo
+      H.getDraggableElements().eq(1).icon("close").click({ force: true }); // Hide Gizmo
 
-      H.queryBuilderHeader().button("Filter").click();
-      H.modal().within(() => {
+      H.queryBuilderHeader()
+        .button(/Filter/)
+        .click();
+      H.popover().within(() => {
         cy.findByText("Product").click();
-        cy.findByTestId("filter-column-Category")
-          .findByLabelText("Filter operator")
-          .click();
+        cy.findByText("Category").click();
       });
-      H.popover().findByText("Is not").click();
-      H.modal().within(() => {
-        cy.findByText("Product").click();
-        cy.findByTestId("filter-column-Category").findByText("Gadget").click();
-        cy.button("Apply filters").click();
+      H.selectFilterOperator("Is not");
+      H.popover().within(() => {
+        cy.findByText("Gadget").click();
+        cy.button("Apply filter").click();
       });
-
       H.getDraggableElements().should("have.length", 2);
       H.getDraggableElements().eq(0).should("have.text", "Doohickey");
       H.getDraggableElements().eq(1).should("have.text", "Widget");
@@ -297,35 +295,42 @@ describe("scenarios > visualizations > bar chart", () => {
   });
 
   describe("with stacked bars", () => {
-    it("should drill-through correctly when stacking", () => {
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": PRODUCTS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              ["field", PRODUCTS.CATEGORY],
-              ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
-            ],
+    [false, true].forEach((devMode) => {
+      it(`should drill-through correctly when stacking - development-mode: ${devMode}`, () => {
+        cy.intercept("/api/session/properties", (req) => {
+          req.continue((res) => {
+            res.body["token-features"].development_mode = devMode;
+          });
+        });
+        H.visitQuestionAdhoc({
+          dataset_query: {
+            database: SAMPLE_DB_ID,
+            type: "query",
+            query: {
+              "source-table": PRODUCTS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                ["field", PRODUCTS.CATEGORY],
+                ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
+              ],
+            },
           },
-        },
-        display: "bar",
-        visualization_settings: { "stackable.stack_type": "stacked" },
+          display: "bar",
+          visualization_settings: { "stackable.stack_type": "stacked" },
+        });
+
+        cy.findAllByTestId("legend-item").findByText("Doohickey").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("See these Products").click();
+
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Category is Doohickey").should("be.visible");
       });
-
-      cy.findAllByTestId("legend-item").findByText("Doohickey").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("See these Products").click();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Category is Doohickey").should("be.visible");
     });
   });
 
   it("supports gray series colors", () => {
-    const grayColor = "#F3F3F4";
+    const grayColor = "#F2F2F3";
 
     H.visitQuestionAdhoc({
       ...breakoutBarChart,
@@ -338,7 +343,7 @@ describe("scenarios > visualizations > bar chart", () => {
     // Ensure the gray color did not get assigned to series
     H.chartPathWithFillColor(grayColor).should("not.exist");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     // Open color picker for the first series
     cy.findByLabelText("#88BF4D").click();
@@ -371,7 +376,7 @@ describe("scenarios > visualizations > bar chart", () => {
       },
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.leftSidebar().button("90 more series").click();
     cy.get("[data-testid^=draggable-item]").should("have.length", 100);
 
@@ -489,14 +494,14 @@ describe("scenarios > visualizations > bar chart", () => {
       },
     };
 
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       dashboardName: "Split Test Dashboard",
       questions: [multiMetric],
     }).then(({ dashboard }) => {
-      cy.createQuestion(sumTotalByMonth, { wrapId: true }).then(() => {
-        cy.get("@questionId").then(questionId => {
+      H.createQuestion(sumTotalByMonth, { wrapId: true }).then(() => {
+        cy.get("@questionId").then((questionId) => {
           H.cypressWaitAll([
-            cy.createQuestionAndAddToDashboard(avgTotalByMonth, dashboard.id, {
+            H.createQuestionAndAddToDashboard(avgTotalByMonth, dashboard.id, {
               series: [
                 {
                   id: questionId,
@@ -508,7 +513,7 @@ describe("scenarios > visualizations > bar chart", () => {
                 "card.title": "Multi Series",
               },
             }),
-            cy.createQuestionAndAddToDashboard(breakoutQuestion, dashboard.id, {
+            H.createQuestionAndAddToDashboard(breakoutQuestion, dashboard.id, {
               col: 0,
               row: 9,
               size_x: 20,
@@ -584,9 +589,9 @@ describe("scenarios > visualizations > bar chart", () => {
       "#88BF4D",
       "#98D9D9",
     ]);
-    firstMetric.then($metricOne => {
+    firstMetric.then(($metricOne) => {
       const { height: heightMetricOne } = $metricOne[0].getBoundingClientRect();
-      secondMetric.then($metricTwo => {
+      secondMetric.then(($metricTwo) => {
         const { height: heightMetricTwo } =
           $metricTwo[0].getBoundingClientRect();
 
@@ -660,55 +665,51 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       ],
     });
-    resetHoverState();
+    H.echartsTriggerBlur();
 
     H.chartPathWithFillColor("#A989C5").eq(1).realHover();
     H.assertEChartsTooltip({
       rows: [
-        {
-          color: "#A989C5",
-          name: "blue",
-          value: "-16",
-          secondaryValue: "-200.00 %",
-        },
         {
           color: "#F9D45C",
           name: "yellow",
           value: "8",
           secondaryValue: "100 %",
         },
+        { name: "Total positive", value: "8" },
         {
-          name: "Total",
-          value: "-8",
-          secondaryValue: "-100.00 %",
+          color: "#A989C5",
+          name: "blue",
+          value: "-16",
+          secondaryValue: "-100 %",
         },
+        { name: "Total negative", value: "-16" },
+        { name: "Total", value: "-8" },
       ],
     });
-    resetHoverState();
+    H.echartsTriggerBlur();
 
     H.chartPathWithFillColor("#A989C5").eq(2).realHover();
     H.assertEChartsTooltip({
       rows: [
         {
-          color: "#A989C5",
-          name: "blue",
-          value: "-7",
-          secondaryValue: "-350.00 %",
-        },
-        {
           color: "#F9D45C",
           name: "yellow",
           value: "5",
-          secondaryValue: "250.00 %",
+          secondaryValue: "100 %",
         },
+        { name: "Total positive", value: "5" },
         {
-          name: "Total",
-          value: "-2",
-          secondaryValue: "-100.00 %",
+          color: "#A989C5",
+          name: "blue",
+          value: "-7",
+          secondaryValue: "-100 %",
         },
+        { name: "Total negative", value: "-7" },
+        { name: "Total", value: "-2" },
       ],
     });
-    resetHoverState();
+    H.echartsTriggerBlur();
 
     H.chartPathWithFillColor("#A989C5").eq(3).realHover();
     H.assertEChartsTooltip({
@@ -717,22 +718,20 @@ describe("scenarios > visualizations > bar chart", () => {
           color: "#A989C5",
           name: "blue",
           value: "2",
-          secondaryValue: "Infinity %",
+          secondaryValue: "100 %",
         },
+        { name: "Total positive", value: "2" },
         {
           color: "#F9D45C",
           name: "yellow",
           value: "-2",
-          secondaryValue: "-Infinity %",
+          secondaryValue: "-100 %",
         },
-        {
-          name: "Total",
-          value: "0",
-          secondaryValue: "NaN %",
-        },
+        { name: "Total negative", value: "-2" },
+        { name: "Total", value: "0" },
       ],
     });
-    resetHoverState();
+    H.echartsTriggerBlur();
 
     H.chartPathWithFillColor("#A989C5").eq(4).realHover();
     H.assertEChartsTooltip({
@@ -741,225 +740,306 @@ describe("scenarios > visualizations > bar chart", () => {
           color: "#A989C5",
           name: "blue",
           value: "3",
-          secondaryValue: "300.00 %",
+          secondaryValue: "100 %",
         },
+        { name: "Total positive", value: "3" },
         {
           color: "#F9D45C",
           name: "yellow",
           value: "-2",
-          secondaryValue: "-200.00 %",
+          secondaryValue: "-100 %",
         },
-        {
-          name: "Total",
-          value: "1",
-          secondaryValue: "100 %",
-        },
+        { name: "Total negative", value: "-2" },
+        { name: "Total", value: "1" },
       ],
     });
-    resetHoverState();
+    H.echartsTriggerBlur();
   });
 
-  it.skip("should allow grouping series into a single 'Other' series", () => {
-    const AK_SERIES_COLOR = "#509EE3";
+  it("should correctly show tool-tips when stacked bar charts contain multiple positive and multiple negative segments (#47596)", () => {
+    cy.signInAsAdmin();
 
-    const USER_STATE_FIELD_REF = [
-      "field",
-      PEOPLE.STATE,
-      { "source-field": ORDERS.USER_ID },
-    ];
-    const ORDER_CREATED_AT_FIELD_REF = [
-      "field",
-      ORDERS.CREATED_AT,
-      { "temporal-unit": "month" },
-    ];
-
-    function setMaxCategories(value, { viaBreakoutSettings = false } = {}) {
-      if (viaBreakoutSettings) {
-        H.leftSidebar().findByTestId("settings-STATE").click();
-      } else {
-        H.leftSidebar().findByLabelText("Other series settings").click();
-      }
-      H.popover()
-        .findByTestId("graph-max-categories-input")
-        .type(`{selectAll}${value}`)
-        .blur();
-      cy.wait(500); // wait for viz to re-render
-    }
-
-    function setOtherCategoryAggregationFn(fnName) {
-      H.leftSidebar().findByLabelText("Other series settings").click();
-      H.popover()
-        .findByTestId("graph-other-category-aggregation-fn-picker")
-        .click();
-      H.popover().last().findByText(fnName).click();
-    }
-
-    H.visitQuestionAdhoc({
-      display: "bar",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [USER_STATE_FIELD_REF, ORDER_CREATED_AT_FIELD_REF],
-          filter: [
-            "and",
-            [
-              "between",
-              ORDER_CREATED_AT_FIELD_REF,
-              "2022-09-01T00:00Z",
-              "2023-02-01T00:00Z",
-            ],
-            [
-              "=",
-              USER_STATE_FIELD_REF,
-              "AK",
-              "AL",
-              "AR",
-              "AZ",
-              "CA",
-              "CO",
-              "CT",
-              "DE",
-              "FL",
-              "GA",
-              "IA",
-              "ID",
-              "IL",
-              "KY",
-            ],
-          ],
+    H.createNativeQuestion(
+      {
+        name: "47596",
+        native: {
+          query: `${[
+            "select date '2024-05-21' AS created_at, 'cat1' AS category, 2 as v",
+            "select date '2024-05-21', 'cat2', -1",
+            "select date '2024-05-21', 'cat3', 1",
+            "select date '2024-05-21', 'cat4', -1",
+          ].join(" union all ")} order by created_at`,
         },
+
+        display: "bar",
+        visualization_settings: {
+          "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+          "graph.metrics": ["V"],
+          "stackable.stack_type": "stacked",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.chartPathWithFillColor("#F9D45C").eq(0).realHover();
+    H.assertEChartsTooltip({
+      rows: [
+        {
+          color: "#EF8C8C",
+          name: "cat1",
+          value: "2",
+          secondaryValue: "66.67 %",
+        },
+        {
+          color: "#F2A86F",
+          name: "cat3",
+          value: "1",
+          secondaryValue: "33.33 %",
+        },
+        { name: "Total positive", value: "3" },
+        {
+          color: "#98D9D9",
+          name: "cat4",
+          value: "-1",
+          secondaryValue: "-50.00 %",
+        },
+        {
+          color: "#F9D45C",
+          name: "cat2",
+          value: "-1",
+          secondaryValue: "-50.00 %",
+        },
+        { name: "Total negative", value: "-2" },
+        { name: "Total", value: "1" },
+      ],
+    });
+    H.echartsTriggerBlur();
+  });
+
+  it(
+    "should allow grouping series into a single 'Other' series",
+    { tags: "@skip" },
+    () => {
+      const AK_SERIES_COLOR = "#509EE3";
+
+      const USER_STATE_FIELD_REF = [
+        "field",
+        PEOPLE.STATE,
+        { "source-field": ORDERS.USER_ID },
+      ];
+      const ORDER_CREATED_AT_FIELD_REF = [
+        "field",
+        ORDERS.CREATED_AT,
+        { "temporal-unit": "month" },
+      ];
+
+      function setMaxCategories(value, { viaBreakoutSettings = false } = {}) {
+        if (viaBreakoutSettings) {
+          H.leftSidebar().findByTestId("settings-STATE").click();
+        } else {
+          H.leftSidebar().findByLabelText("Other series settings").click();
+        }
+        H.popover()
+          .findByTestId("graph-max-categories-input")
+          .type(`{selectAll}${value}`)
+          .blur();
+        cy.wait(500); // wait for viz to re-render
+      }
+
+      function setOtherCategoryAggregationFn(fnName) {
+        H.leftSidebar().findByLabelText("Other series settings").click();
+        H.popover()
+          .findByTestId("graph-other-category-aggregation-fn-picker")
+          .click();
+        // eslint-disable-next-line no-unsafe-element-filtering
+        H.popover().last().findByText(fnName).click();
+      }
+
+      H.visitQuestionAdhoc({
+        display: "bar",
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [USER_STATE_FIELD_REF, ORDER_CREATED_AT_FIELD_REF],
+            filter: [
+              "and",
+              [
+                "between",
+                ORDER_CREATED_AT_FIELD_REF,
+                "2022-09-01T00:00Z",
+                "2023-02-01T00:00Z",
+              ],
+              [
+                "=",
+                USER_STATE_FIELD_REF,
+                "AK",
+                "AL",
+                "AR",
+                "AZ",
+                "CA",
+                "CO",
+                "CT",
+                "DE",
+                "FL",
+                "GA",
+                "IA",
+                "ID",
+                "IL",
+                "KY",
+              ],
+            ],
+          },
+        },
+      });
+
+      // Enable 'Other' series
+      H.openVizSettingsSidebar();
+      H.leftSidebar().findByTestId("settings-STATE").click();
+      H.popover().findByLabelText("Enforce maximum number of series").click();
+
+      // Test 'Other' series renders
+      H.otherSeriesChartPaths().should("have.length", 6);
+
+      // Test drill-through is disabled for 'Other' series
+      H.otherSeriesChartPaths().first().click();
+      cy.findByTestId("click-actions-view").should("not.exist");
+
+      // Test drill-through is enabled for regular series
+      H.chartPathWithFillColor(AK_SERIES_COLOR).first().click();
+      cy.findByTestId("click-actions-view").should("exist");
+
+      // Test legend and series visibility toggling
+      H.queryBuilderMain()
+        .findAllByTestId("legend-item")
+        .should("have.length", 9)
+        .last()
+        .as("other-series-legend-item");
+      cy.get("@other-series-legend-item")
+        .findByLabelText("Hide series")
+        .click();
+      H.otherSeriesChartPaths().should("have.length", 0);
+      cy.get("@other-series-legend-item")
+        .findByLabelText("Show series")
+        .click();
+      H.otherSeriesChartPaths().should("have.length", 6);
+
+      // Test tooltips
+      H.chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
+      H.assertEChartsTooltip({ rows: [{ name: "Other", value: "9" }] });
+      H.otherSeriesChartPaths().first().realHover();
+      H.assertEChartsTooltip({
+        header: "September 2022",
+        rows: [
+          { name: "IA", value: "3" },
+          { name: "KY", value: "2" },
+          { name: "FL", value: "1" },
+          { name: "GA", value: "1" },
+          { name: "ID", value: "1" },
+          { name: "IL", value: "1" },
+          { name: "Total", value: "9" },
+        ],
+      });
+
+      // Test "graph.max_categories" change
+      setMaxCategories(4);
+      H.queryBuilderMain().click(); // close popover
+      H.chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
+      H.echartsTooltip().find("tr").should("have.length", 5);
+      H.queryBuilderMain()
+        .findAllByTestId("legend-item")
+        .should("have.length", 5);
+
+      // Test can move series in/out of "Other" series
+      H.moveDnDKitElement(H.getDraggableElements().eq(3), { vertical: 150 }); // Move AZ into "Other"
+      H.moveDnDKitElement(H.getDraggableElements().eq(6), { vertical: -150 }); // Move CT out of "Other"
+
+      H.queryBuilderMain()
+        .findAllByTestId("legend-item")
+        .should("have.length", 5);
+      H.queryBuilderMain()
+        .findAllByTestId("legend-item")
+        .contains("AZ")
+        .should("not.exist");
+      H.queryBuilderMain()
+        .findAllByTestId("legend-item")
+        .contains("CT")
+        .should("exist");
+
+      // Test "graph.max_categories" removes "Other" altogether
+      setMaxCategories(0);
+      H.chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
+      H.echartsTooltip().find("tr").should("have.length", 14);
+      H.queryBuilderMain()
+        .findAllByTestId("legend-item")
+        .should("have.length", 14);
+      H.otherSeriesChartPaths().should("not.exist");
+      setMaxCategories(8, { viaBreakoutSettings: true });
+
+      // Test "graph.other_category_aggregation_fn" for native queries
+      H.openNotebook();
+      H.queryBuilderHeader().button("View SQL").click();
+      cy.findByTestId("native-query-preview-sidebar")
+        .button("Convert this question to SQL")
+        .click();
+      cy.wait("@dataset");
+      H.queryBuilderMain().findByTestId("visibility-toggler").click();
+
+      H.openVizSettingsSidebar();
+      setOtherCategoryAggregationFn("Average");
+
+      H.chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
+      H.assertEChartsTooltip({ rows: [{ name: "Other", value: "1.5" }] });
+
+      H.otherSeriesChartPaths().first().realHover();
+      H.assertEChartsTooltip({
+        header: "September 2022",
+        rows: [
+          { name: "IA", value: "3" },
+          { name: "KY", value: "2" },
+          { name: "FL", value: "1" },
+          { name: "GA", value: "1" },
+          { name: "ID", value: "1" },
+          { name: "IL", value: "1" },
+          { name: "Average", value: "1.5" },
+        ],
+      });
+
+      setOtherCategoryAggregationFn("Min");
+
+      H.chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
+      H.assertEChartsTooltip({ rows: [{ name: "Other", value: "1" }] });
+
+      H.otherSeriesChartPaths().first().realHover();
+      H.assertEChartsTooltip({ rows: [{ name: "Min", value: "1" }] });
+
+      setOtherCategoryAggregationFn("Max");
+
+      H.chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
+      H.assertEChartsTooltip({ rows: [{ name: "Other", value: "3" }] });
+
+      H.otherSeriesChartPaths().first().realHover();
+      H.assertEChartsTooltip({ rows: [{ name: "Max", value: "3" }] });
+    },
+  );
+
+  it("should format goal tooltip value as a percent when the Stacking option is 'Stack - 100%'", () => {
+    H.visitQuestionAdhoc({
+      ...breakoutBarChart,
+      visualization_settings: {
+        "graph.goal_value": 87.5,
+        "graph.show_goal": true,
+        "stackable.stack_type": "normalized",
       },
     });
 
-    // Enable 'Other' series
-    cy.findByTestId("viz-settings-button").click();
-    H.leftSidebar().findByTestId("settings-STATE").click();
-    H.popover().findByLabelText("Enforce maximum number of series").click();
+    H.echartsContainer().findByText("Goal").trigger("mousemove");
 
-    // Test 'Other' series renders
-    H.otherSeriesChartPaths().should("have.length", 6);
-
-    // Test drill-through is disabled for 'Other' series
-    H.otherSeriesChartPaths().first().click();
-    cy.findByTestId("click-actions-view").should("not.exist");
-
-    // Test drill-through is enabled for regular series
-    H.chartPathWithFillColor(AK_SERIES_COLOR).first().click();
-    cy.findByTestId("click-actions-view").should("exist");
-
-    // Test legend and series visibility toggling
-    H.queryBuilderMain()
-      .findAllByTestId("legend-item")
-      .should("have.length", 9)
-      .last()
-      .as("other-series-legend-item");
-    cy.get("@other-series-legend-item").findByLabelText("Hide series").click();
-    H.otherSeriesChartPaths().should("have.length", 0);
-    cy.get("@other-series-legend-item").findByLabelText("Show series").click();
-    H.otherSeriesChartPaths().should("have.length", 6);
-
-    // Test tooltips
-    H.chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
-    H.assertEChartsTooltip({ rows: [{ name: "Other", value: "9" }] });
-    H.otherSeriesChartPaths().first().realHover();
-    H.assertEChartsTooltip({
-      header: "September 2022",
-      rows: [
-        { name: "IA", value: "3" },
-        { name: "KY", value: "2" },
-        { name: "FL", value: "1" },
-        { name: "GA", value: "1" },
-        { name: "ID", value: "1" },
-        { name: "IL", value: "1" },
-        { name: "Total", value: "9" },
-      ],
+    H.popover().within(() => {
+      cy.findByText("Goal:").should("exist");
+      cy.findByText("87.5%").should("exist");
     });
-
-    // Test "graph.max_categories" change
-    setMaxCategories(4);
-    H.queryBuilderMain().click(); // close popover
-    H.chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
-    H.echartsTooltip().find("tr").should("have.length", 5);
-    H.queryBuilderMain()
-      .findAllByTestId("legend-item")
-      .should("have.length", 5);
-
-    // Test can move series in/out of "Other" series
-    H.moveDnDKitElement(H.getDraggableElements().eq(3), { vertical: 150 }); // Move AZ into "Other"
-    H.moveDnDKitElement(H.getDraggableElements().eq(6), { vertical: -150 }); // Move CT out of "Other"
-
-    H.queryBuilderMain()
-      .findAllByTestId("legend-item")
-      .should("have.length", 5);
-    H.queryBuilderMain()
-      .findAllByTestId("legend-item")
-      .contains("AZ")
-      .should("not.exist");
-    H.queryBuilderMain()
-      .findAllByTestId("legend-item")
-      .contains("CT")
-      .should("exist");
-
-    // Test "graph.max_categories" removes "Other" altogether
-    setMaxCategories(0);
-    H.chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
-    H.echartsTooltip().find("tr").should("have.length", 14);
-    H.queryBuilderMain()
-      .findAllByTestId("legend-item")
-      .should("have.length", 14);
-    H.otherSeriesChartPaths().should("not.exist");
-    setMaxCategories(8, { viaBreakoutSettings: true });
-
-    // Test "graph.other_category_aggregation_fn" for native queries
-    H.openNotebook();
-    H.queryBuilderHeader().button("View the SQL").click();
-    cy.findByTestId("native-query-preview-sidebar")
-      .button("Convert this question to SQL")
-      .click();
-    cy.wait("@dataset");
-    H.queryBuilderMain().findByTestId("visibility-toggler").click();
-
-    cy.findByTestId("viz-settings-button").click();
-    setOtherCategoryAggregationFn("Average");
-
-    H.chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
-    H.assertEChartsTooltip({ rows: [{ name: "Other", value: "1.5" }] });
-
-    H.otherSeriesChartPaths().first().realHover();
-    H.assertEChartsTooltip({
-      header: "September 2022",
-      rows: [
-        { name: "IA", value: "3" },
-        { name: "KY", value: "2" },
-        { name: "FL", value: "1" },
-        { name: "GA", value: "1" },
-        { name: "ID", value: "1" },
-        { name: "IL", value: "1" },
-        { name: "Average", value: "1.5" },
-      ],
-    });
-
-    setOtherCategoryAggregationFn("Min");
-
-    H.chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
-    H.assertEChartsTooltip({ rows: [{ name: "Other", value: "1" }] });
-
-    H.otherSeriesChartPaths().first().realHover();
-    H.assertEChartsTooltip({ rows: [{ name: "Min", value: "1" }] });
-
-    setOtherCategoryAggregationFn("Max");
-
-    H.chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
-    H.assertEChartsTooltip({ rows: [{ name: "Other", value: "3" }] });
-
-    H.otherSeriesChartPaths().first().realHover();
-    H.assertEChartsTooltip({ rows: [{ name: "Max", value: "3" }] });
   });
 });
-
-function resetHoverState() {
-  cy.findByTestId("main-logo").realHover();
-}

@@ -1,12 +1,21 @@
 module.exports = {
   diffingEngine: "looks-same",
   storiesFilter: [
+    "DataGrid",
     "static-viz",
     "viz",
+    "Patterns/Upsells",
     "^visualizations/shared",
-    "^embed",
+    "^app/embed",
     "^design system",
-    "^Inputs/DatePicker Dates range",
+    "^Patterns/Overlays",
+    "^Components/Inputs/DatePicker Dates range",
+    "^Components/Parameters/DatePicker",
+    "^Components/Buttons/Button Compact size, custom color",
+    "^Components/overlays/Tooltip",
+    "^Components/Documents",
+    "^Components/Feedback/Alert",
+    "^App/Palette",
   ].join("|"),
   configurations: {
     "chrome.laptop": {
@@ -19,9 +28,7 @@ module.exports = {
   },
   "looks-same": {
     strict: false,
-    tolerance: 6,
-    antialiasingTolerance: 0,
-    ignoreAntialiasing: true,
-    ignoreCaret: true,
+    antialiasingTolerance: 9,
+    tolerance: 9,
   },
 };

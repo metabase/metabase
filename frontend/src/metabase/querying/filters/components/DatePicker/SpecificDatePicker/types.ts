@@ -1,4 +1,4 @@
-import type { SpecificDatePickerOperator } from "../types";
+import type { SpecificDatePickerOperator } from "metabase/querying/filters/types";
 
 export interface Tab {
   label: string;

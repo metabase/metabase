@@ -1,12 +1,14 @@
-/* eslint-disable jest/expect-expect */
-
 import userEvent from "@testing-library/user-event";
-import fetchMock, { type MockResponse } from "fetch-mock";
+import fetchMock, { type UserRouteConfig } from "fetch-mock";
 
-import { setupPropertiesEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  setupBugReportingDetailsEndpoint,
+  setupPropertiesEndpoints,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
-import { createMockSettings } from "metabase-types/api/mocks";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { CloudPanel } from "./CloudPanel";
 
@@ -20,6 +22,11 @@ const setup = () => {
       getPollingInterval={() => POLL_INTERVAL}
       onMigrationStart={mockMigrationStart}
     />,
+    {
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: true }),
+      }),
+    },
   );
 
   const STORE_URL = store.getState().settings.values["store-url"];
@@ -33,13 +40,7 @@ describe("CloudPanel", () => {
     setupPropertiesEndpoints(createMockSettings());
     fetchMock.post(`path:/api/cloud-migration`, INIT_RESPONSE);
     fetchMock.put(`path:/api/cloud-migration/cancel`, 200);
-    fetchMock.get("path:/api/util/bug_report_details", {
-      "metabase-info": { "run-mode": "prod" },
-    });
-  });
-
-  afterEach(() => {
-    fetchMock.reset();
+    setupBugReportingDetailsEndpoint({ "run-mode": "prod" });
   });
 
   it("should be able to successfully go through migration flow", async () => {
@@ -91,12 +92,14 @@ describe("CloudPanel", () => {
     await expectCancelConfirmationModal();
     expect((store.getState() as any).undo).toHaveLength(0);
     await userEvent.click(
-      screen.getByRole("button", { name: /Cancel migration/ }),
+      within(
+        screen.getByRole("dialog", { name: "Cancel migration?" }),
+      ).getByRole("button", { name: /Cancel migration/ }),
     );
 
     await waitFor(() => {
       expect(
-        fetchMock.called(`path:/api/cloud-migration/cancel`, {
+        fetchMock.callHistory.called(`path:/api/cloud-migration/cancel`, {
           method: "PUT",
         }),
       ).toBeTruthy();
@@ -122,12 +125,14 @@ describe("CloudPanel", () => {
   });
 
   it("should be able to start a new migration after a failed migration", async () => {
-    fetchMock.get(`path:/api/cloud-migration`, ERROR_RESPONSE);
+    fetchMock.get(`path:/api/cloud-migration`, ERROR_RESPONSE, {
+      name: "cloud-migration-get",
+    });
     const { mockMigrationStart, metabaseStoreLink } = setup();
 
     await expectErrorState();
     await expectInitState();
-    await userEvent.click(screen.getByRole("button", { name: /Get started/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Try for free" }));
 
     await expectStartConfirmationModal();
     await userEvent.click(screen.getByRole("button", { name: /Migrate now/ }));
@@ -143,7 +148,9 @@ describe("CloudPanel", () => {
   });
 
   it("should be able to start a new migration after a successful migration", async () => {
-    fetchMock.get(`path:/api/cloud-migration`, DONE_RESPONSE);
+    fetchMock.get(`path:/api/cloud-migration`, DONE_RESPONSE, {
+      name: "cloud-migration-get",
+    });
 
     const { mockMigrationStart, metabaseStoreLink } = setup();
 
@@ -225,7 +232,7 @@ const ERROR_RESPONSE: CloudMigration = {
 
 const expectInitState = async () => {
   expect(
-    await screen.findByText(/Migrate this instance to Metabase Cloud/),
+    await screen.findByRole("heading", { name: "Migrate to Metabase Cloud" }),
   ).toBeInTheDocument();
 };
 
@@ -265,12 +272,14 @@ const expectErrorState = async () => {
   ).toBeInTheDocument();
 };
 
-const startMigration = async (migrationResponses: MockResponse[]) => {
+const startMigration = async (
+  migrationResponses: UserRouteConfig["response"][],
+) => {
   fetchMockCloudMigrationGetSequence(migrationResponses);
   const { mockMigrationStart, store, metabaseStoreLink } = setup();
 
   await expectInitState();
-  await userEvent.click(screen.getByRole("button", { name: /Get started/ }));
+  await userEvent.click(screen.getByRole("button", { name: "Try for free" }));
 
   await expectStartConfirmationModal();
   await userEvent.click(screen.getByRole("button", { name: /Migrate now/ }));
@@ -280,17 +289,17 @@ const startMigration = async (migrationResponses: MockResponse[]) => {
   return { store, metabaseStoreLink };
 };
 
-function fetchMockCloudMigrationGetSequence(responses: MockResponse[]) {
+function fetchMockCloudMigrationGetSequence(
+  responses: UserRouteConfig["response"][],
+) {
   let called = 0;
-
+  fetchMock.removeRoute("cloud-migration-get");
   return fetchMock.get(
     `path:/api/cloud-migration`,
     () => {
       // hold the last response
       return responses[Math.min(called++, responses.length - 1)];
     },
-    {
-      overwriteRoutes: true,
-    },
+    { name: "cloud-migration-get" },
   );
 }

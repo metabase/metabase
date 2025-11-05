@@ -31,7 +31,7 @@ const setup = (funnelProps, visualizationSettings = {}) => {
             id: 2,
             name: "bar",
             display_name: "bar",
-            semantic_type: "type/Number",
+            effective_type: "type/Number",
           }),
         ],
         rows: [
@@ -77,7 +77,7 @@ describe("funnel", () => {
   });
 
   describe("funnel bar chart", () => {
-    const setupFunnelBarChart = funnelProps =>
+    const setupFunnelBarChart = (funnelProps) =>
       setup(funnelProps, { "funnel.type": "bar" });
 
     it("should not render the title when showTitle=false", async () => {

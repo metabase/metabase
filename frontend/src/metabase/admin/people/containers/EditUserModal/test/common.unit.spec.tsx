@@ -1,6 +1,7 @@
-import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+
+import { screen } from "__support__/ui";
 
 import { defaultUser, setup } from "./setup";
 
@@ -33,7 +34,9 @@ describe("Edit user modal", () => {
 
     await userEvent.click(submitButton);
 
-    const call = fetchMock.lastCall("path:/api/user/97", { method: "PUT" });
+    const call = fetchMock.callHistory.lastCall("path:/api/user/97", {
+      method: "PUT",
+    });
 
     const req = await call?.request?.json();
 
@@ -64,7 +67,9 @@ describe("Edit user modal", () => {
       await userEvent.type(firstNameField, "Madonna");
       await userEvent.click(submitButton);
 
-      const call = fetchMock.lastCall("path:/api/user/11", { method: "PUT" });
+      const call = fetchMock.callHistory.lastCall("path:/api/user/11", {
+        method: "PUT",
+      });
       const req = await call?.request?.json();
 
       expect(req).toEqual({
@@ -93,7 +98,9 @@ describe("Edit user modal", () => {
       await userEvent.type(emailField, "morpheus@example.com");
       await userEvent.click(submitButton);
 
-      const call = fetchMock.lastCall("path:/api/user/11", { method: "PUT" });
+      const call = fetchMock.callHistory.lastCall("path:/api/user/11", {
+        method: "PUT",
+      });
       const req = await call?.request?.json();
 
       expect(req).toEqual({
@@ -123,7 +130,9 @@ describe("Edit user modal", () => {
       await userEvent.clear(lastNameField);
       await userEvent.click(submitButton);
 
-      const call = fetchMock.lastCall("path:/api/user/11", { method: "PUT" });
+      const call = fetchMock.callHistory.lastCall("path:/api/user/11", {
+        method: "PUT",
+      });
       const req = await call?.request?.json();
 
       expect(req).toEqual({

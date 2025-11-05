@@ -5,7 +5,6 @@
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.util :as driver.u]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
@@ -27,7 +26,8 @@
   "Get basic Metadata about a `database` and its Tables. Doesn't include information about the Fields."
   [database :- i/DatabaseInstance]
   (log-if-error "db-metadata"
-    (driver/describe-database (driver.u/database->driver database) database)))
+    (let [driver (driver.u/database->driver database)]
+      (driver/describe-database driver database))))
 
 (defn include-nested-fields-for-table
   "Add nested-field-columns for table to set of fields."
@@ -35,7 +35,7 @@
   (let [driver (driver.u/database->driver database)]
     (cond-> fields
       (driver.u/supports? driver :nested-field-columns database)
-      (set/union (sql-jdbc.sync/describe-nested-field-columns driver database table)))))
+      (set/union ((requiring-resolve 'metabase.driver.sql-jdbc.sync/describe-nested-field-columns) driver database table)))))
 
 (mu/defn table-fields-metadata :- [:set i/TableMetadataField]
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
@@ -72,10 +72,12 @@
   (log-if-error "fields-metadata"
     (let [driver             (driver.u/database->driver database)
           describe-fields-fn (if (driver.u/supports? driver :describe-fields database)
-                               driver/describe-fields
+                               (do (log/debug "Using `describe-fields` (fast sync) to fetch fields metadata.")
+                                   driver/describe-fields)
                                ;; In a future version we may remove [[driver/describe-table]]
                                ;; and we'll just use [[driver/describe-fields]] here
-                               describe-fields-using-describe-table)]
+                               (do (log/debug "Using `describe-table` (legacy sync) to fetch fields metadata.")
+                                   describe-fields-using-describe-table))]
       (cond->> (describe-fields-fn driver database args)
         ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
         (mu.fn/instrument-ns? *ns*)

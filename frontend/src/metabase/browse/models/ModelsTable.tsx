@@ -3,25 +3,23 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { getCollectionName } from "metabase/collections/utils";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
-import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
-import EntityItem from "metabase/components/EntityItem";
-import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
+import EntityItem from "metabase/common/components/EntityItem";
+import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
   ItemNameCell,
   MaybeItemLink,
   TBody,
   Table,
   TableColumn,
-} from "metabase/components/ItemsTable/BaseItemsTable.styled";
-import { Columns } from "metabase/components/ItemsTable/Columns";
-import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
+} from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
+import { Columns } from "metabase/common/components/ItemsTable/Columns";
+import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
+import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { FixedSizeIcon, Flex, Icon, Skeleton } from "metabase/ui";
-import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
+import { FixedSizeIcon, Flex, Icon, Repeat, Skeleton } from "metabase/ui";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import {
@@ -33,7 +31,7 @@ import {
 } from "../components/BrowseTable.styled";
 
 import { trackModelClick } from "./analytics";
-import type { ModelResult } from "./types";
+import type { ModelResult, SortColumn } from "./types";
 import { getIcon, getModelDescription, sortModels } from "./utils";
 
 export interface ModelsTableProps {
@@ -54,7 +52,7 @@ const collectionProps: ResponsiveProps = {
   containerName: itemsTableContainerName,
 };
 
-const DEFAULT_SORTING_OPTIONS: SortingOptions = {
+const DEFAULT_SORTING_OPTIONS: SortingOptions<SortColumn> = {
   sort_column: "collection",
   sort_direction: SortDirection.Asc,
 };
@@ -63,12 +61,9 @@ export const ModelsTable = ({
   models = [],
   skeleton = false,
 }: ModelsTableProps) => {
-  const [sortingOptions, setSortingOptions] = useState<SortingOptions>(
-    DEFAULT_SORTING_OPTIONS,
-  );
+  const [sortingOptions, setSortingOptions] = useState(DEFAULT_SORTING_OPTIONS);
 
-  const locale = useLocale();
-  const sortedModels = sortModels(models, sortingOptions, locale);
+  const sortedModels = sortModels(models, sortingOptions);
 
   /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
   const collectionWidth = 38.5;
@@ -76,7 +71,7 @@ export const ModelsTable = ({
 
   const handleUpdateSortOptions = skeleton
     ? undefined
-    : (newSortingOptions: SortingOptions) => {
+    : (newSortingOptions: SortingOptions<SortColumn>) => {
         setSortingOptions(newSortingOptions);
       };
 
@@ -172,13 +167,13 @@ const ModelRow = ({ model }: { model?: ModelResult }) => {
 
       // do not trigger click when selecting text
       const selection = document.getSelection();
-      if (selection?.type === "Range") {
+      if (selection?.type === "Range" && selection?.toString().length > 0) {
         event.stopPropagation();
         return;
       }
 
       const { id, name } = model;
-      const url = Urls.model({ id, name });
+      const url = Urls.model({ id, name, type: "model" });
       const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
 
       trackModelClick(model.id);
@@ -211,7 +206,11 @@ function NameCell({ model }: { model?: ModelResult }) {
   return (
     <ItemNameCell data-testid="model-name" aria-labelledby={headingId}>
       <MaybeItemLink
-        to={model ? Urls.model({ id: model.id, name: model.name }) : undefined}
+        to={
+          model
+            ? Urls.model({ id: model.id, name: model.name, type: "model" })
+            : undefined
+        }
         style={{
           // To align the icons with "Name" in the <th>
           paddingInlineStart: "1.4rem",

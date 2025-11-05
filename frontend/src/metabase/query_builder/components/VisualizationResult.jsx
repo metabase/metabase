@@ -4,11 +4,11 @@ import { Component } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { ErrorMessage } from "metabase/components/ErrorMessage";
-import Modal from "metabase/components/Modal";
+import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { CreateAlertModalContent } from "metabase/notifications/AlertModals";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { ALERT_TYPE_ROWS } from "metabase-lib/v1/Alert";
@@ -21,9 +21,10 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "hasMetadataPopovers",
   "tableHeaderHeight",
   "scrollToColumn",
-  "renderTableHeaderWrapper",
+  "renderTableHeader",
   "mode",
   "renderEmptyMessage",
+  "zoomedRowIndex",
 ];
 
 export default class VisualizationResult extends Component {
@@ -39,7 +40,7 @@ export default class VisualizationResult extends Component {
     this.setState({ showCreateAlertModal: false });
   };
 
-  getObjectDetailData = series => {
+  getObjectDetailData = (series) => {
     return [
       {
         ...series[0],
@@ -51,6 +52,7 @@ export default class VisualizationResult extends Component {
   render() {
     const {
       question,
+      token,
       isDirty,
       queryBuilderMode,
       navigateToNewCardInsideQB,
@@ -61,6 +63,8 @@ export default class VisualizationResult extends Component {
       onNavigateBack,
       className,
       isRunning,
+      isShowingSummarySidebar,
+      onEditSummary,
       renderEmptyMessage,
     } = this.props;
     const { showCreateAlertModal } = this.state;
@@ -68,6 +72,9 @@ export default class VisualizationResult extends Component {
     const noResults = datasetContainsNoResults(result.data);
     if (noResults && !isRunning && !renderEmptyMessage) {
       const supportsRowsPresentAlert = question.alertType() === ALERT_TYPE_ROWS;
+
+      const supportsBackToPreviousResult =
+        !isEmbeddingSdk() || !!onNavigateBack;
 
       // successful query but there were 0 rows returned with the result
       return (
@@ -91,24 +98,25 @@ export default class VisualizationResult extends Component {
                     )} when there are some results.`}
                   </p>
                 )}
-                <button
-                  className={ButtonsS.Button}
-                  onClick={() =>
-                    onNavigateBack ? onNavigateBack() : window.history.back()
-                  }
-                >
-                  {t`Back to previous results`}
-                </button>
+
+                {supportsBackToPreviousResult && (
+                  <button
+                    className={ButtonsS.Button}
+                    onClick={() =>
+                      onNavigateBack ? onNavigateBack() : window.history.back()
+                    }
+                  >
+                    {t`Back to previous results`}
+                  </button>
+                )}
               </div>
             }
           />
           {showCreateAlertModal && (
-            <Modal medium onClose={this.onCloseCreateAlertModal}>
-              <CreateAlertModalContent
-                onCancel={this.onCloseCreateAlertModal}
-                onAlertCreated={this.onCloseCreateAlertModal}
-              />
-            </Modal>
+            <CreateOrEditQuestionAlertModal
+              onClose={this.onCloseCreateAlertModal}
+              onAlertCreated={this.onCloseCreateAlertModal}
+            />
           )}
         </div>
       );
@@ -130,11 +138,15 @@ export default class VisualizationResult extends Component {
             isEditing={true}
             isObjectDetail={false}
             isQueryBuilder={true}
+            isShowingSummarySidebar={isShowingSummarySidebar}
+            isRunning={isRunning}
+            onEditSummary={onEditSummary}
             queryBuilderMode={queryBuilderMode}
             showTitle={false}
             canToggleSeriesVisibility
             metadata={question.metadata()}
             timelineEvents={timelineEvents}
+            token={token}
             selectedTimelineEventIds={selectedTimelineEventIds}
             handleVisualizationClick={this.props.handleVisualizationClick}
             onOpenTimelines={this.props.onOpenTimelines}
@@ -143,9 +155,11 @@ export default class VisualizationResult extends Component {
             onOpenChartSettings={this.props.onOpenChartSettings}
             onUpdateQuestion={this.props.onUpdateQuestion}
             onUpdateWarnings={this.props.onUpdateWarnings}
+            onHeaderColumnReorder={this.props.onHeaderColumnReorder}
             onUpdateVisualizationSettings={
               this.props.onUpdateVisualizationSettings
             }
+            onVisualizationRendered={this.props.onVisualizationRendered}
             {...vizSpecificProps}
           />
           {this.props.isObjectDetail && (

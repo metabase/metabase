@@ -1,0 +1,20 @@
+.EditingParameterContainer {
+  transition: all 0.2s ease-in-out;
+  border: 1px solid var(--mb-color-border);
+  background: var(--mb-color-background);
+  border-radius: var(--mantine-radius-sm);
+  cursor: pointer;
+  height: 32px;
+  margin: 0 0.5rem 0 0;
+
+  &:hover:not(.isEditingParameter) {
+    border-color: var(--mb-color-brand);
+    color: var(--mb-color-brand-dark);
+  }
+
+  &.isEditingParameter {
+    border-color: var(--mb-color-brand);
+    color: var(--mb-color-text-white);
+    background-color: var(--mb-color-brand);
+  }
+}

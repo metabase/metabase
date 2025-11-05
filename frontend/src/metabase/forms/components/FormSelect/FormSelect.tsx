@@ -24,7 +24,7 @@ export const FormSelect = forwardRef(function FormSelect(
       } else {
         setValue(newValue);
       }
-      onChange?.(newValue);
+      onChange?.(newValue ?? "");
     },
     [nullable, setValue, onChange],
   );

@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 export const StepRoot = styled.section`
@@ -9,12 +10,6 @@ export const StepRoot = styled.section`
   background-color: var(--mb-color-bg-white);
   gap: 32px;
   margin-bottom: 1.75rem;
-`;
-
-export const StepTitle = styled.div`
-  color: var(--mb-color-text-light);
-  font-size: 2rem;
-  font-weight: 700;
 `;
 
 export const StepBody = styled.div`

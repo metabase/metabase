@@ -1,28 +1,34 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import type { ComponentProps } from "react";
+import { forwardRef } from "react";
 
-import { TreeNode } from "metabase/components/tree/TreeNode";
-import Link from "metabase/core/components/Link";
-import { alpha, color, darken } from "metabase/lib/colors";
+import Link from "metabase/common/components/Link";
+import { TreeNode } from "metabase/common/components/tree/TreeNode";
+import { alpha } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
+import type { IconProps } from "metabase/ui";
 import { Icon, Tooltip } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
-export const SidebarIcon = styled(Icon, {
-  shouldForwardProp: propName => propName !== "isSelected",
-})<{
+export const SidebarIcon = styled(
+  forwardRef<SVGSVGElement, IconProps & { isSelected: boolean }>(
+    function SidebarIcon({ isSelected, ...props }, ref) {
+      return <Icon {...props} size={props.size ?? 16} ref={ref} />;
+    },
+  ),
+)<{
   color?: string | null;
   isSelected: boolean;
 }>`
-  ${props =>
+  ${(props) =>
     !props.color &&
     css`
       color: var(--mb-color-brand);
     `}
 `;
-
-SidebarIcon.defaultProps = {
-  size: 16,
-};
 
 export const ExpandToggleButton = styled(TreeNode.ExpandToggleButton)`
   padding: 4px 0 4px 2px;
@@ -34,20 +40,22 @@ const activeColorCSS = css`
 `;
 
 function getTextColor(isSelected: boolean) {
-  return isSelected ? color("brand") : darken(color("text-medium"), 0.25);
+  return isSelected ? color("brand") : color("text-primary");
 }
 
-export const NodeRoot = styled(TreeNode.Root)<{
+type NodeRootProps = ComponentProps<typeof TreeNode.Root> & {
   hasDefaultIconStyle?: boolean;
-}>`
-  color: ${props => getTextColor(props.isSelected)};
-  background-color: ${props =>
+};
+
+export const NodeRoot = styled(TreeNode.Root)<NodeRootProps>`
+  color: ${(props) => getTextColor(props.isSelected)};
+  background-color: ${(props) =>
     props.isSelected ? alpha("brand", 0.2) : "unset"};
-  padding-left: ${props => props.depth}rem;
+  padding-left: ${(props) => props.depth}rem;
   border-radius: 4px;
 
   ${ExpandToggleButton} {
-    ${props => props.isSelected && activeColorCSS}
+    ${(props) => props.isSelected && activeColorCSS}
   }
 
   &:hover {
@@ -57,24 +65,25 @@ export const NodeRoot = styled(TreeNode.Root)<{
     ${ExpandToggleButton} {
       color: var(--mb-color-brand);
     }
+  }
 
+  &:hover,
+  &:focus,
+  &:focus-within {
     ${SidebarIcon} {
-      ${props => props.hasDefaultIconStyle && activeColorCSS};
+      ${({ hasDefaultIconStyle = true }) =>
+        hasDefaultIconStyle && activeColorCSS};
     }
   }
 `;
 
-NodeRoot.defaultProps = {
-  hasDefaultIconStyle: true,
-};
-
-export const collectionDragAndDropHoverStyle = css`
+const collectionDragAndDropHoverStyle = css`
   color: var(--mb-color-text-white);
   background-color: var(--mb-color-brand);
 `;
 
 export const CollectionNodeRoot = styled(NodeRoot)<{ hovered?: boolean }>`
-  ${props => props.hovered && collectionDragAndDropHoverStyle}
+  ${(props) => props.hovered && collectionDragAndDropHoverStyle}
 `;
 
 const itemContentStyle = css`
@@ -90,7 +99,7 @@ export const FullWidthButton = styled.button<{ isSelected: boolean }>`
   ${itemContentStyle}
   ${TreeNode.NameContainer} {
     font-weight: 700;
-    color: ${props => (props.isSelected ? color("brand") : "inherit")};
+    color: ${(props) => (props.isSelected ? color("brand") : "inherit")};
     text-align: start;
 
     &:hover {

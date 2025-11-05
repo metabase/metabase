@@ -16,7 +16,7 @@ If you're running Metabase on Elastic Beanstalk, we recommend you switch to a di
 
 ### Metabase Cloud
 
-We recommend [Metabase Cloud](https://www.metabase.com/pricing) (obviously).
+We recommend [Metabase Cloud](https://www.metabase.com/pricing/) (obviously).
 
 ### Self-hosted setups
 

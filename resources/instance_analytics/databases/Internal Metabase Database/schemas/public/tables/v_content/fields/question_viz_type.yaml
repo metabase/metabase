@@ -20,9 +20,9 @@ json_unfolding: false
 parent_id: null
 coercion_strategy: null
 preview_display: true
-position: 16
+position: 17
 custom_position: 0
-database_position: 16
+database_position: 17
 has_field_values: list
 settings: null
 caveats: null
@@ -37,5 +37,6 @@ serdes/meta:
   model: Table
 - id: question_viz_type
   model: Field
-database_indexed: null
+database_indexed: false
 database_partitioned: null
+entity_id: N7G720YYByvrzl0fIPigr

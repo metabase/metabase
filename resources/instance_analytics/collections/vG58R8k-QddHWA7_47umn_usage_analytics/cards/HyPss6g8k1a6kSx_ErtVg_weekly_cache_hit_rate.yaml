@@ -64,7 +64,7 @@ result_metadata:
   semantic_type: type/Category
   visibility_type: normal
 - base_type: type/DateTime
-  display_name: Started At
+  display_name: 'Started At: Week'
   effective_type: type/DateTime
   field_ref:
   - field
@@ -111,6 +111,8 @@ serdes/meta:
   label: weekly_cache_hit_rate
   model: Card
 archived_directly: false
+card_schema: 20
+dashboard_id: Glqmoytsnu0n6rfLUjock
 metabase_version: vUNKNOWN (9aa572c)
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

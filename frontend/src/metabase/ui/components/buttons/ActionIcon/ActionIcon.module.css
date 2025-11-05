@@ -1,0 +1,49 @@
+.root {
+  &[data-disabled] {
+    color: var(--mb-color-text-light);
+    pointer-events: all;
+  }
+
+  &[data-variant="subtle"] {
+    color: var(--mb-color-text-tertiary);
+
+    &:hover {
+      color: var(--mb-color-text-secondary);
+      background-color: var(--mb-color-bg-light);
+    }
+  }
+
+  &[data-variant="viewHeader"] {
+    color: var(--mb-color-text-dark);
+    background-color: transparent;
+    border: 1px solid transparent;
+    transition: all 300ms linear;
+
+    &:hover {
+      color: var(--mb-color-brand);
+      background-color: var(--mb-color-bg-medium);
+      border: 1px solid transparent;
+    }
+
+    &:disabled,
+    &[data-disabled] {
+      color: var(--mb-color-text-light);
+      background-color: transparent;
+    }
+  }
+
+  &[data-variant="viewFooter"] {
+    color: var(--mb-color-text-medium);
+    background-color: transparent;
+
+    &:hover {
+      color: var(--mb-color-brand);
+    }
+
+    &:disabled,
+    &[data-disabled] {
+      color: var(--mb-color-text-light);
+      background-color: transparent;
+    }
+  }
+}

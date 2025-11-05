@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -69,11 +69,12 @@ describe("scenarios > metrics > question", () => {
 
   it("should be able to add a filter with an ad-hoc question", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC, { visitQuestion: true });
-    cy.findByTestId("qb-header-action-panel").button("Filter").click();
-    H.modal().within(() => {
+    H.filter();
+    H.popover().within(() => {
       cy.findByText("Product").click();
+      cy.findByText("Category").click();
       cy.findByText("Gadget").click();
-      cy.button("Apply filters").click();
+      cy.button("Apply filter").click();
     });
     cy.findByTestId("scalar-container")
       .findByText("4,939")
@@ -82,21 +83,26 @@ describe("scenarios > metrics > question", () => {
 
   it("should be able to add a custom aggregation expression based on a metric", () => {
     H.createQuestion(ORDERS_TIMESERIES_METRIC, { visitQuestion: true });
-    cy.findByTestId("qb-header-action-panel").button("Summarize").click();
+    cy.findByTestId("qb-header-action-panel")
+      .button(/Summarize/)
+      .click();
     cy.findByTestId("sidebar-content")
       .button(ORDERS_TIMESERIES_METRIC.name)
       .click();
     H.enterCustomColumnDetails({
       formula: `[${ORDERS_TIMESERIES_METRIC.name}] * 2`,
       name: "Expression",
+      format: true,
     });
-    H.popover().button("Update").click();
+    H.popover().button("Update").should("not.be.disabled").click();
     H.echartsContainer().findByText("Expression").should("be.visible");
   });
 
   it("should be able to add a breakout with an ad-hoc question", () => {
     H.createQuestion(ORDERS_TIMESERIES_METRIC, { visitQuestion: true });
-    cy.findByTestId("qb-header-action-panel").button("Summarize").click();
+    cy.findByTestId("qb-header-action-panel")
+      .button(/Summarize/)
+      .click();
     cy.findByTestId("sidebar-content").findByText("Category").click();
     H.echartsContainer().findByText("Product → Category").should("be.visible");
   });
@@ -104,11 +110,14 @@ describe("scenarios > metrics > question", () => {
   it("should be able to change the temporal unit when consuming a timeseries metric", () => {
     H.createQuestion(ORDERS_TIMESERIES_METRIC, { visitQuestion: true });
     H.assertQueryBuilderRowCount(49);
-    cy.findByTestId("qb-header-action-panel").button("Summarize").click();
+    cy.findByTestId("qb-header-action-panel")
+      .button(/Summarize/)
+      .click();
     cy.findByTestId("sidebar-content")
       .findByTestId("pinned-dimensions")
       .findByLabelText("Created At")
       .findByText("by month")
+      .realHover()
       .click();
     H.popover().findByText("Year").click();
     H.assertQueryBuilderRowCount(5);
@@ -136,7 +145,7 @@ describe("scenarios > metrics > question", () => {
     H.popover().findByText("See these Orders").click();
     cy.wait("@dataset");
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is Mar 1–31, 2024")
+      .findByText("Created At: Month is Mar 1–31, 2024")
       .should("be.visible");
     H.assertQueryBuilderRowCount(445);
   });
@@ -150,8 +159,8 @@ describe("scenarios > metrics > question", () => {
       .findByText("18,760")
       .should("be.visible");
     cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.button("Filter").should("not.exist");
-      cy.button("Summarize").should("not.exist");
+      cy.button(/Filter/).should("not.exist");
+      cy.button(/Summarize/).should("not.exist");
     });
   });
 
@@ -164,8 +173,8 @@ describe("scenarios > metrics > question", () => {
       .findByText("18,760")
       .should("be.visible");
     cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.button("Filter").should("not.exist");
-      cy.button("Summarize").should("not.exist");
+      cy.button(/Filter/).should("not.exist");
+      cy.button(/Summarize/).should("not.exist");
     });
   });
 
@@ -188,8 +197,8 @@ describe("scenarios > metrics > question", () => {
       .findByText("18,760")
       .should("be.visible");
     cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.button("Filter").should("not.exist");
-      cy.button("Summarize").should("not.exist");
+      cy.button(/Filter/).should("not.exist");
+      cy.button(/Summarize/).should("not.exist");
     });
   });
 
@@ -202,5 +211,57 @@ describe("scenarios > metrics > question", () => {
 
     H.queryBuilderHeader().button("Save").click();
     H.modal().findByText("Replace or save as new?").should("not.exist");
+  });
+});
+
+H.describeWithSnowplow("metrics", () => {
+  beforeEach(() => {
+    H.resetSnowplow();
+    H.restore();
+    cy.signInAsAdmin();
+    H.enableTracking();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
+  it("should bookmark a metric", () => {
+    H.createQuestion({ ...ORDERS_SCALAR_METRIC, name: "Metric Foo" });
+    H.createQuestion({ ...ORDERS_SCALAR_METRIC, name: "Metric Bar" });
+    H.createQuestion(
+      { ...ORDERS_SCALAR_METRIC, name: "Metric Baz" },
+      { visitQuestion: true },
+    );
+    cy.findByTestId("qb-header").findByLabelText("Bookmark").click();
+    H.expectUnstructuredSnowplowEvent({
+      event: "bookmark_added",
+      event_detail: "metric",
+      triggered_from: "qb_action_panel",
+    });
+
+    H.navigationSidebar().findByText("Our analytics").click();
+    cy.findAllByTestId("collection-entry")
+      .filter(":contains(Metric Bar)")
+      .icon("ellipsis")
+      .click();
+    H.popover().findByText("Bookmark").click();
+    H.expectUnstructuredSnowplowEvent({
+      event: "bookmark_added",
+      event_detail: "metric",
+      triggered_from: "collection_list",
+    });
+
+    H.navigationSidebar().findByText("Metrics").click();
+    cy.findAllByRole("row")
+      .filter(":contains(Metric Foo)")
+      .icon("ellipsis")
+      .click();
+    H.popover().findByText("Bookmark").click();
+    H.expectUnstructuredSnowplowEvent({
+      event: "bookmark_added",
+      event_detail: "metric",
+      triggered_from: "browse_metrics",
+    });
   });
 });

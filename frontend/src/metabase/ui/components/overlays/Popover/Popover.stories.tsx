@@ -37,7 +37,7 @@ const argTypes = {
 const sampleArgs = {
   simple: <Text>Popover!</Text>,
   interactive: (
-    <Stack spacing="sm">
+    <Stack gap="sm">
       <TextInput autoFocus placeholder="First name" />
       <TextInput placeholder="Last name" />
       <Button>Update</Button>
@@ -62,7 +62,7 @@ const DefaultTemplate = ({
 );
 
 export default {
-  title: "Overlays/Popover",
+  title: "Components/Overlays/Popover",
   component: Popover,
   args,
   argTypes,

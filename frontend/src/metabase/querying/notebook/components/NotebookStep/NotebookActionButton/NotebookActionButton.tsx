@@ -1,19 +1,18 @@
 import cx from "classnames";
 import type { CSSProperties } from "react";
 
-import Button from "metabase/core/components/Button";
-import Tooltip from "metabase/core/components/Tooltip";
+import Button from "metabase/common/components/Button";
 import type { IconName } from "metabase/ui";
+import { Tooltip } from "metabase/ui";
 
 import S from "./NotebookActionButton.module.css";
 
 interface NotebookActionButtonProps {
   className?: string;
-
   icon?: IconName;
   title: string;
   color: string;
-  transparent?: boolean;
+  secondary?: boolean;
   large?: boolean;
   onClick: () => void;
 }
@@ -23,7 +22,7 @@ export function NotebookActionButton({
   icon,
   title,
   color,
-  transparent,
+  secondary,
   large,
   onClick,
   ...props
@@ -35,7 +34,7 @@ export function NotebookActionButton({
       className={cx(
         S.ColorButton,
         {
-          [S.transparent]: transparent,
+          [S.secondary]: secondary,
         },
         className,
       )}
@@ -56,5 +55,5 @@ export function NotebookActionButton({
     </Button>
   );
 
-  return large ? button : <Tooltip tooltip={title}>{button}</Tooltip>;
+  return large ? button : <Tooltip label={title}>{button}</Tooltip>;
 }

@@ -1,2 +1,3 @@
+export { Repeat } from "./Repeat";
 export { Skeleton } from "./Skeleton";
-export * from "./Skeleton.styled";
+export * from "./Skeleton.config";

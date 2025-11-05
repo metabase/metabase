@@ -5,20 +5,21 @@ import PropTypes from "prop-types";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import Label from "metabase/components/type/Label";
-import Subhead from "metabase/components/type/Subhead";
-import Tooltip from "metabase/core/components/Tooltip";
+import Label from "metabase/common/components/type/Label";
+import Subhead from "metabase/common/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { getParameters } from "metabase/dashboard/selectors";
 import {
+  conjunct,
   formatDateTimeWithUnit,
   formatTimeWithUnit,
 } from "metabase/lib/formatting";
 import { getActivePulseParameters } from "metabase/lib/pulse";
 import { connect } from "metabase/lib/redux";
-import { formatFrame } from "metabase/lib/time";
-import { Icon } from "metabase/ui";
+import { formatFrame } from "metabase/lib/time-dayjs";
+import { formatDateValue } from "metabase/parameters/utils/date-formatting";
+import { Button, Icon, Tooltip } from "metabase/ui";
 
 import { PulseCard, SidebarActions } from "./PulsesListSidebar.styled";
 
@@ -52,39 +53,28 @@ function _PulsesListSidebar({
         <Subhead>{t`Subscriptions`}</Subhead>
 
         <SidebarActions>
-          <Tooltip tooltip={t`Set up a new schedule`}>
-            <Icon
-              name="add"
-              className={cx(
-                CS.textBrand,
-                CS.bgLightHover,
-                CS.rounded,
-                CS.p1,
-                CS.cursorPointer,
-                CS.mr1,
-              )}
-              size={18}
+          <Tooltip label={t`Set up a new schedule`}>
+            <Button
+              leftSection={<Icon name="add" size={16} />}
+              variant="subtle"
+              mr="1rem"
               onClick={createSubscription}
             />
           </Tooltip>
-          <Tooltip tooltip={t`Close`}>
-            <Icon
-              name="close"
-              className={cx(
-                CS.textLight,
-                CS.bgLightHover,
-                CS.rounded,
-                CS.p1,
-                CS.cursorPointer,
-              )}
-              size={22}
+
+          <Tooltip label={t`Close`}>
+            <Button
+              leftSection={<Icon name="close" size={16} />}
+              variant="subtle"
+              color="text-medium"
+              mr="-1rem"
               onClick={onCancel}
             />
           </Tooltip>
         </SidebarActions>
       </div>
       <div className={cx(CS.my2, CS.mx4)}>
-        {pulses.map(pulse => {
+        {pulses.map((pulse) => {
           const canEdit = canEditPulse(pulse, formInput);
 
           return (
@@ -182,10 +172,32 @@ function buildFilterText(pulse, parameters) {
   }
 
   const [firstParameter, ...otherParameters] = activeParameters;
-  const numValues = [].concat(firstParameter.value).length;
-  const firstFilterText = `${firstParameter.name} is ${
-    numValues > 1 ? t`${numValues} selections` : firstParameter.value
-  }`;
+
+  // Format the first parameter value using the same logic as DefaultParametersSection
+  let formattedValue;
+  if (firstParameter.type && firstParameter.type.startsWith("date/")) {
+    const values = Array.isArray(firstParameter.value)
+      ? firstParameter.value
+      : [firstParameter.value];
+    const formattedValues = values
+      .map((val) => formatDateValue(firstParameter, val))
+      .filter(Boolean);
+    if (formattedValues.length > 0) {
+      formattedValue = conjunct(formattedValues, t`and`);
+    } else {
+      formattedValue = firstParameter.value;
+    }
+  } else {
+    const values = Array.isArray(firstParameter.value)
+      ? firstParameter.value
+      : [firstParameter.value];
+    formattedValue =
+      values.length > 1
+        ? t`${values.length} selections`
+        : conjunct(values, t`and`);
+  }
+
+  const firstFilterText = `${firstParameter.name}: ${formattedValue}`;
 
   return _.isEmpty(otherParameters)
     ? firstFilterText

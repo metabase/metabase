@@ -1,22 +1,19 @@
+import { useDisclosure } from "@mantine/hooks";
 import { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import ColorPicker from "metabase/core/components/ColorPicker";
-import { useCurrentRef } from "metabase/hooks/use-current-ref";
+import ColorPicker from "metabase/common/components/ColorPicker";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { useCurrentRef } from "metabase/common/hooks/use-current-ref";
 import { color } from "metabase/lib/colors";
-import { Button } from "metabase/ui";
-import ColorResetModal from "metabase-enterprise/whitelabel/components/ColorResetModal";
+import { Button, Group } from "metabase/ui";
 
 import {
   TableBody,
   TableBodyCell,
   TableBodyRow,
   TableFooter,
-  TableHeader,
-  TableLink,
-  TableTitle,
 } from "./ChartColorSettings.styled";
 import {
   getAutoChartColors,
@@ -85,10 +82,6 @@ interface ChartColorTableProps {
   onGenerate: () => void;
 }
 
-interface ChartColorModalProps {
-  onClose?: () => void;
-}
-
 const ChartColorTable = ({
   colors,
   colorPalette,
@@ -98,25 +91,19 @@ const ChartColorTable = ({
   onReset,
   onGenerate,
 }: ChartColorTableProps): JSX.Element => {
+  const [showResetModal, { open: openResetModal, close: closeResetModal }] =
+    useDisclosure(false);
+  const handleReset = () => {
+    closeResetModal();
+    onReset();
+  };
+
   return (
     <div>
-      <TableHeader>
-        <TableTitle>{t`Chart colors`}</TableTitle>
-        {hasCustomColors && (
-          <ModalWithTrigger
-            as={TableLink}
-            triggerElement={t`Reset to default colors`}
-          >
-            {({ onClose }: ChartColorModalProps) => (
-              <ColorResetModal onReset={onReset} onClose={onClose} />
-            )}
-          </ModalWithTrigger>
-        )}
-      </TableHeader>
       <TableBody>
         {colorGroups.map((colorGroup, index) => (
           <TableBodyRow key={index}>
-            {colorGroup.map(colorName => (
+            {colorGroup.map((colorName) => (
               <ChartColorCell
                 key={colorName}
                 color={colors[colorName]}
@@ -129,7 +116,23 @@ const ChartColorTable = ({
         ))}
       </TableBody>
       <TableFooter>
-        <Button onClick={onGenerate}>{t`Generate chart colors`}</Button>
+        <Group gap="sm">
+          <Button onClick={onGenerate}>{t`Generate chart colors`}</Button>
+          {hasCustomColors && (
+            <Button variant="subtle" onClick={openResetModal}>
+              {t`Reset to default colors`}
+            </Button>
+          )}
+        </Group>
+        {hasCustomColors && (
+          <ConfirmModal
+            opened={showResetModal}
+            title={t`Are you sure you want to reset to default colors?`}
+            onClose={closeResetModal}
+            onConfirm={handleReset}
+            confirmButtonText={t`Reset`}
+          />
+        )}
       </TableFooter>
     </div>
   );

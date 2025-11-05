@@ -57,8 +57,8 @@ describe("UserStep", () => {
     setup({ step: "user_info", user });
 
     Object.values(user)
-      .filter(v => v.length > 0)
-      .forEach(v => {
+      .filter((v) => v.length > 0)
+      .forEach((v) => {
         expect(screen.getByDisplayValue(v)).toBeInTheDocument();
       });
   });

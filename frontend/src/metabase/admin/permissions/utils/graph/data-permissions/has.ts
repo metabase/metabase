@@ -47,7 +47,7 @@ export function hasPermissionValueInSubgraph(
   );
 
   if (schemasToSearch) {
-    const hasSchemaWithMatchingPermission = schemasToSearch.some(schema => {
+    const hasSchemaWithMatchingPermission = schemasToSearch.some((schema) => {
       const currVal = getTablesPermission(
         permissions,
         groupId,
@@ -62,8 +62,8 @@ export function hasPermissionValueInSubgraph(
     }
   }
 
-  return schemasToSearch.some(schema => {
-    return schema.getTables().some(table => {
+  return schemasToSearch.some((schema) => {
+    return schema.getTables().some((table) => {
       return (
         value ===
         getFieldsPermission(
@@ -128,7 +128,7 @@ export function hasPermissionValueInEntityGraphs(
   permission: DataPermission,
   permissionValue: DataPermissionValue,
 ): boolean {
-  return entityIds.some(entityId => {
+  return entityIds.some((entityId) => {
     // try to get the raw section of the graph so we can crawl it's children if it has them
     const permissionPortion = getRawPermissionsGraphValue(
       permissions,

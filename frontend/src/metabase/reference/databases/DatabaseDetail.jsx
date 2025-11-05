@@ -5,8 +5,7 @@ import PropTypes from "prop-types";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import List from "metabase/components/List";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
@@ -19,7 +18,6 @@ import {
   getDatabase,
   getError,
   getFields,
-  getForeignKeys,
   getIsEditing,
   getIsFormulaExpanded,
   getLoading,
@@ -39,7 +37,6 @@ const mapStateToProps = (state, props) => {
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
     user: getUser(state, props),
-    foreignKeys: getForeignKeys(state, props),
     isEditing: getIsEditing(state, props),
     isFormulaExpanded: getIsFormulaExpanded(state, props),
   };
@@ -69,7 +66,7 @@ const propTypes = {
   onSubmit: PropTypes.func.isRequired,
 };
 
-const DatabaseDetail = props => {
+const DatabaseDetail = (props) => {
   const {
     style,
     entity,
@@ -91,10 +88,11 @@ const DatabaseDetail = props => {
     handleReset,
   } = useFormik({
     initialValues: {},
-    onSubmit: fields => onSubmit(fields, { ...props, resetForm: handleReset }),
+    onSubmit: (fields) =>
+      onSubmit(fields, { ...props, resetForm: handleReset }),
   });
 
-  const getFormField = name => ({
+  const getFormField = (name) => ({
     ...getFieldProps(name),
     ...getFieldMeta(name),
   });
@@ -143,7 +141,7 @@ const DatabaseDetail = props => {
                 CS.bordered,
               )}
             >
-              <List>
+              <ul>
                 <li className={CS.relative}>
                   <Detail
                     id="description"
@@ -174,7 +172,7 @@ const DatabaseDetail = props => {
                     field={getFormField("caveats")}
                   />
                 </li>
-              </List>
+              </ul>
             </div>
           </div>
         )}

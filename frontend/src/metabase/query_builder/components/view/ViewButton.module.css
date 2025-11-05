@@ -30,8 +30,4 @@
       );
     }
   }
-
-  > :global(.Icon) {
-    opacity: 0.6;
-  }
 }

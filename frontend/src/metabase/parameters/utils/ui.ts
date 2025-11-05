@@ -22,6 +22,8 @@ export function getParameterIconName(
       return "number";
     case "temporal-unit":
       return "clock";
+    case "boolean":
+      return "io";
     case "id":
     default:
       return "label";
@@ -44,7 +46,7 @@ export function getVisibleParameters(
     buildHiddenParametersSlugSet(hiddenParameterSlugs);
 
   return parameters.filter(
-    p => !hiddenParametersSlugSet.has(p.slug) && !p.hidden,
+    (p) => !hiddenParametersSlugSet.has(p.slug) && !p.hidden,
   );
 }
 

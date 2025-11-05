@@ -4,18 +4,19 @@ import { isActionDashCard } from "metabase/actions/utils";
 import {
   getDashcardParameterMappingOptions,
   getEditingParameter,
+  getEditingParameterInlineDashcard,
   getParameterTarget,
   getQuestionByCard,
 } from "metabase/dashboard/selectors";
 import { isNativeDashCard, isQuestionDashCard } from "metabase/dashboard/utils";
 import { connect } from "metabase/lib/redux";
-import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
-import { Flex, Icon, Text, Transition } from "metabase/ui";
 import {
-  MOBILE_DEFAULT_CARD_HEIGHT,
-  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
-} from "metabase/visualizations/shared/utils/sizes";
+  type ParameterMappingOption,
+  getMappingOptionByTarget,
+} from "metabase/parameters/utils/mapping-options";
+import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
+import { Box, Flex, Icon, Text, Transition } from "metabase/ui";
+import { getMobileHeight } from "metabase/visualizations/shared/utils/sizes";
 import type Question from "metabase-lib/v1/Question";
 import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { isParameterVariableTarget } from "metabase-lib/v1/parameters/utils/targets";
@@ -27,15 +28,8 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { getMappingOptionByTarget } from "../utils";
-
-import {
-  CardLabel,
-  Container,
-  Warning,
-} from "./DashCardCardParameterMapper.styled";
 import { DashCardCardParameterMapperContent } from "./DashCardCardParameterMapperContent";
-import { useResetParameterMapping } from "./hooks";
+import S from "./DashCardParameterMapper.module.css";
 
 const mapStateToProps = (
   state: State,
@@ -48,6 +42,7 @@ const mapStateToProps = (
     target: getParameterTarget(state, props),
     question: getQuestionByCard(state, props),
     mappingOptions: getDashcardParameterMappingOptions(state, props),
+    editingParameterInlineDashcard: getEditingParameterInlineDashcard(state),
     isRecentlyAutoConnected: getIsRecentlyAutoConnectedDashcard(
       state,
       props,
@@ -66,6 +61,8 @@ interface DashcardCardParameterMapperProps {
   question?: Question;
   mappingOptions: ParameterMappingOption[];
   isRecentlyAutoConnected: boolean;
+  editingParameterInlineDashcard?: DashboardCard;
+  compact?: boolean;
 }
 
 export function DashCardCardParameterMapper({
@@ -77,37 +74,53 @@ export function DashCardCardParameterMapper({
   question,
   mappingOptions,
   isRecentlyAutoConnected,
+  editingParameterInlineDashcard,
+  compact,
 }: DashcardCardParameterMapperProps) {
   const isQuestion = isQuestionDashCard(dashcard);
   const hasSeries = isQuestion && dashcard.series && dashcard.series.length > 0;
-  const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
+  const isAction = isActionDashCard(dashcard);
+  const isDisabled = mappingOptions.length === 0 || isAction;
   const isNative = isQuestion && isNativeDashCard(dashcard);
-
-  useResetParameterMapping({
-    editingParameter,
-    isNative,
-    dashcardId: dashcard.id,
-  });
 
   const selectedMappingOption = getMappingOptionByTarget(
     mappingOptions,
-    dashcard,
     target,
     question,
     editingParameter ?? undefined,
   );
 
   const layoutHeight = isMobile
-    ? MOBILE_HEIGHT_BY_DISPLAY_TYPE[dashcard.card.display] ||
-      MOBILE_DEFAULT_CARD_HEIGHT
+    ? getMobileHeight(dashcard.card.display, dashcard.size_y)
     : dashcard.size_y;
 
   const shouldShowAutoConnectHint =
     isRecentlyAutoConnected && !!selectedMappingOption;
 
+  const additionalActionParametersContent =
+    target && isParameterVariableTarget(target) && isAction
+      ? editingParameter && isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
+        ? t`Action parameters do not support dropdown lists or search box filters, and can't limit values for linked filters.`
+        : t`Action parameters only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`
+      : undefined;
+
+  const shouldShowActionParametersWarningInTooltip =
+    isMobile || dashcard.size_y * dashcard.size_x <= 30 || dashcard.size_x < 4;
+
   return (
-    <Container isSmall={!isMobile && dashcard.size_y < 2}>
-      {hasSeries && <CardLabel>{card.name}</CardLabel>}
+    <Flex
+      direction="column"
+      align="center"
+      w="100%"
+      pos="relative"
+      my={!isMobile && dashcard.size_y < 2 ? "0" : "0.5rem"}
+      py="lg"
+    >
+      {hasSeries && (
+        <Box maw="100px" mb="sm" fz="0.83em" className={S.CardLabel}>
+          {card.name}
+        </Box>
+      )}
       <DashCardCardParameterMapperContent
         isNative={isNative}
         isDisabled={isDisabled}
@@ -117,11 +130,18 @@ export function DashCardCardParameterMapper({
         editingParameter={editingParameter}
         mappingOptions={mappingOptions}
         isQuestion={isQuestion}
+        editingParameterInlineDashcard={editingParameterInlineDashcard}
         card={card}
         selectedMappingOption={selectedMappingOption}
         target={target}
         shouldShowAutoConnectHint={shouldShowAutoConnectHint}
         layoutHeight={layoutHeight}
+        compact={compact}
+        additionalActionParametersContent={
+          (shouldShowActionParametersWarningInTooltip &&
+            additionalActionParametersContent) ||
+          undefined
+        }
       />
       <Transition
         mounted={shouldShowAutoConnectHint && layoutHeight > 3}
@@ -129,21 +149,21 @@ export function DashCardCardParameterMapper({
         duration={400}
         exitDuration={0}
       >
-        {styles => {
+        {(styles) => {
           /* bottom prop is negative as we wanted to keep layout not shifted on hint */
           return (
             <Flex
               mt="sm"
               align="center"
               pos="absolute"
-              bottom={-20}
+              bottom={0}
               style={styles}
             >
               <Icon name="sparkles" size="16" />
               <Text
                 component="span"
                 ml="xs"
-                weight="bold"
+                fw="bold"
                 fz="sm"
                 lh={1}
                 color="text-light"
@@ -152,14 +172,11 @@ export function DashCardCardParameterMapper({
           );
         }}
       </Transition>
-      {target && isParameterVariableTarget(target) && (
-        <Warning>
-          {editingParameter && isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
-            ? t`Native question variables do not support dropdown lists or search box filters, and can't limit values for linked filters.`
-            : t`Native question variables only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
-        </Warning>
-      )}
-    </Container>
+      {additionalActionParametersContent &&
+        !shouldShowActionParametersWarningInTooltip && (
+          <span className={S.Warning}>{additionalActionParametersContent}</span>
+        )}
+    </Flex>
   );
 }
 

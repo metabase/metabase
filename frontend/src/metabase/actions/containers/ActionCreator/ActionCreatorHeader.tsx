@@ -21,7 +21,15 @@ type Props = {
   actionButtons: React.ReactElement[];
 };
 
-const OPTS = [{ value: "query", name: t`Query`, disabled: true }];
+const OPTS = [
+  {
+    value: "query",
+    get name() {
+      return t`Query`;
+    },
+    disabled: true,
+  },
+];
 
 const ActionCreatorHeader = ({
   name = t`New Action`,

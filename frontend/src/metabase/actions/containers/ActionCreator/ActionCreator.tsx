@@ -4,8 +4,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useGetActionQuery } from "metabase/api";
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
-import Modal from "metabase/components/Modal";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import Modal from "metabase/common/components/Modal";
+import useBeforeUnload from "metabase/common/hooks/use-before-unload";
+import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import type {
   CreateActionParams,
   UpdateActionParams,
@@ -13,8 +15,6 @@ import type {
 import Actions from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
-import useBeforeUnload from "metabase/hooks/use-before-unload";
-import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { connect } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
@@ -31,7 +31,6 @@ import type { State } from "metabase-types/store";
 import { isSavedAction } from "../../utils";
 
 import ActionContext, { useActionContext } from "./ActionContext";
-import { ACE_ELEMENT_ID } from "./ActionContext/QueryActionContextProvider";
 import ActionCreatorView from "./ActionCreatorView";
 import type { FormValues as CreateActionFormValues } from "./CreateActionForm";
 import CreateActionForm from "./CreateActionForm";
@@ -149,7 +148,6 @@ function ActionCreator({
   };
 
   const showSaveModal = () => {
-    ensureAceEditorClosed();
     setShowSaveModal(true);
   };
 
@@ -194,19 +192,13 @@ function ActionCreator({
       )}
 
       {route && (
-        <LeaveConfirmationModal
+        <LeaveRouteConfirmModal
           isEnabled={showUnsavedChangesWarning}
           route={route}
         />
       )}
     </>
   );
-}
-
-function ensureAceEditorClosed() {
-  // @ts-expect-error — `ace` isn't typed yet
-  const editor = window.ace?.edit?.(ACE_ELEMENT_ID);
-  editor?.completer?.popup?.hide();
 }
 
 function ActionCreatorWithContext({

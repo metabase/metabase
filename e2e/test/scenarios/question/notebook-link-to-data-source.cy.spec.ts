@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -7,6 +7,10 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type {
+  NativeQuestionDetails,
+  QuestionDetails,
+} from "e2e/support/helpers";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { METAKEY } from "metabase/lib/browser";
 
@@ -33,9 +37,9 @@ describe("scenarios > notebook > link to data source", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.on("window:before:load", win => {
+    cy.on("window:before:load", (win) => {
       // prevent Cypress opening in a new window/tab and spy on this method
-      cy.stub(win, "open").callsFake(url => {
+      cy.stub(win, "open").callsFake((url) => {
         expect(win.open).to.be.calledOnce;
         // replace the current page with the linked data source upon ctrl/meta click
         win.location.assign(url);
@@ -56,7 +60,7 @@ describe("scenarios > notebook > link to data source", () => {
     cy.log("Meta/Ctrl click on the fields picker behaves as a regular click");
     H.getNotebookStep("data").findByTestId("fields-picker").click(clickConfig);
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
     });
     // Regular click on the fields picker again to close the popover
     H.getNotebookStep("data").findByTestId("fields-picker").click();
@@ -172,7 +176,7 @@ describe("scenarios > notebook > link to data source", () => {
         cy.findAllByTestId("header-cell")
           .should("have.length", "1")
           .and("have.text", "FOO");
-        cy.get("#main-data-grid")
+        H.tableInteractiveBody()
           .findByTestId("cell-data")
           .should("have.text", "1");
         cy.findByTestId("question-row-count").should(
@@ -214,7 +218,7 @@ describe("scenarios > notebook > link to data source", () => {
     });
 
     it("should open the source model from a nested question where the source is native model", () => {
-      const source: H.NativeQuestionDetails = {
+      const source: NativeQuestionDetails = {
         name: "Native source",
         native: {
           query: "select 1 as foo",
@@ -305,7 +309,7 @@ describe("scenarios > notebook > link to data source", () => {
     });
 
     it("should open the underlying native model", () => {
-      const model: H.NativeQuestionDetails = {
+      const model: NativeQuestionDetails = {
         name: "Native model",
         native: {
           query: "select 1 as foo",
@@ -350,7 +354,7 @@ describe("scenarios > notebook > link to data source", () => {
         .click(clickConfig);
 
       cy.log("Make sure the source model is rendered in a simple mode");
-      cy.get("@nestedModelId").then(id => {
+      cy.get("@nestedModelId").then((id) => {
         cy.location("pathname").should(
           "eq",
           `/model/${id}-nested-model-based-on-a-question`,
@@ -382,7 +386,7 @@ describe("scenarios > notebook > link to data source", () => {
         .click(clickConfig);
 
       cy.log("Make sure the source model is rendered in a simple mode");
-      cy.get("@nestedModelId").then(id => {
+      cy.get("@nestedModelId").then((id) => {
         cy.location("pathname").should(
           "eq",
           `/model/${id}-nested-model-based-on-a-model`,
@@ -440,12 +444,10 @@ describe("scenarios > notebook > link to data source", () => {
           .should("not.exist");
 
         cy.visit(`/question/${nestedQuestion.id}/notebook`);
-        cy.findByTestId("entity-picker-modal").within(() => {
-          cy.findByText("Pick your starting data").should("be.visible");
-          cy.findByLabelText("Close").click();
-        });
-
-        H.getNotebookStep("data").should("contain", "Pick your starting data");
+        cy.url().should("include", "/unauthorized");
+        H.main()
+          .findByText("Sorry, you don’t have permission to see that.")
+          .should("be.visible");
       });
     });
 
@@ -462,14 +464,14 @@ describe("scenarios > notebook > link to data source", () => {
           .icon("notebook")
           .should("not.exist");
 
-        // TODO update the following once metabase##46398 is fixed
+        // TODO update the following once metabase#46398 is fixed
         // cy.visit(`/question/${nestedQuestion.id}/notebook`);
       });
     });
 
-    H.describeEE("sandboxing", () => {
+    describe("sandboxing", () => {
       beforeEach(() => {
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         cy.updatePermissionsGraph({
           [ALL_USERS_GROUP_ID]: {
@@ -531,14 +533,14 @@ describe("scenarios > notebook > link to data source", () => {
         );
         H.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
-          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
         });
       });
     });
   });
 
   context("joins", () => {
-    const getQuery = (id: number) => {
+    const getQuery = (id: number): QuestionDetails => {
       return {
         dataset_query: {
           database: SAMPLE_DB_ID,

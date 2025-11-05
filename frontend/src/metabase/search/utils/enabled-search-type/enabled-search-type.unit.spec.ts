@@ -17,13 +17,13 @@ const TEST_INVALID_VALUES = [null, undefined, 123, "invalid", [], {}];
 
 describe("isEnabledSearchModelType", () => {
   it("should return true if value is in EnabledSearchModelType", () => {
-    TEST_VALID_VALUES.forEach(value => {
+    TEST_VALID_VALUES.forEach((value) => {
       expect(isEnabledSearchModelType(value)).toBe(true);
     });
   });
 
   it("should return false if value is not in EnabledSearchModelType", () => {
-    TEST_INVALID_VALUES.forEach(value => {
+    TEST_INVALID_VALUES.forEach((value) => {
       expect(isEnabledSearchModelType(value)).toBe(false);
     });
   });

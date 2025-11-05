@@ -2,8 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.public-settings :as public-settings]
+   [metabase.config.core :as config]
    [metabase.server.middleware.misc :as mw.misc]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [ring.mock.request :as ring.mock]))
 
@@ -31,20 +32,42 @@
         (mt/with-temporary-setting-values [site-url nil]
           (maybe-set-site-url request)
           (is (= (or origin-header x-forwarded-host-header host-header)
-                 (public-settings/site-url)))))))
+                 (system/site-url)))))))
   (testing "Site URL should not be inferred from healthcheck requests"
     (mt/with-temporary-setting-values [site-url nil]
       (let [request (mock-request "/api/health" "https://mb1.example.com" nil nil)]
         (maybe-set-site-url request)
-        (is (nil? (public-settings/site-url))))))
+        (is (nil? (system/site-url))))))
   (testing "Site URL should not be inferred if already set in DB"
     (mt/with-temporary-setting-values [site-url "https://mb1.example.com"]
       (let [request (mock-request "/" "https://mb2.example.com" nil nil)]
         (maybe-set-site-url request)
-        (is (= "https://mb1.example.com" (public-settings/site-url))))))
+        (is (= "https://mb1.example.com" (system/site-url))))))
   (testing "Site URL should not be inferred if already set by env variable"
     (mt/with-temporary-setting-values [site-url nil]
       (mt/with-temp-env-var-value! [mb-site-url "https://mb1.example.com"]
         (let [request (mock-request "/" "https://mb2.example.com" nil nil)]
           (maybe-set-site-url request)
-          (is (= "https://mb1.example.com" (public-settings/site-url))))))))
+          (is (= "https://mb1.example.com" (system/site-url))))))))
+
+(deftest add-version-header-test
+  (testing "x-metabase-version is only added on API calls"
+    (with-redefs [config/mb-version-info {:tag "v42"}]
+      (let [dummy-response {:status 200 :headers {} :body "ok"}
+            handler       (mw.misc/add-version (fn [_ respond _] (respond dummy-response)))]
+        (testing "API call"
+          (let [captured (atom nil)]
+            (handler (ring.mock/request :get "/api/foo")
+                     (fn [resp] (reset! captured resp))
+                     (fn [_] (is false "should not go to raise")))
+            (is (= "v42"
+                   (get-in @captured [:headers "x-metabase-version"]))
+                "header should be set for API calls")))
+        (testing "non-API call"
+          (let [captured (atom nil)]
+            (handler (ring.mock/request :get "/not-api")
+                     (fn [resp] (reset! captured resp))
+                     (fn [_] (is false "should not go to raise")))
+            (is (nil?
+                 (get-in @captured [:headers "x-metabase-version"]))
+                "header should not be set for non-API calls")))))))

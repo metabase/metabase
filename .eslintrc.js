@@ -1,13 +1,20 @@
 /* eslint-disable import/no-commonjs */
 /* eslint-disable no-undef */
 
+const path = require("path");
+
 // `postcss-modules` lints css modules class names, but it currently crashes
 // eslint on vscode. If you use webstorm or want to run the lint for the cli, you
 // can use this flag to enable it. This is set to true in CI
 const shouldLintCssModules =
   process.env.LINT_CSS_MODULES === "true" || process.env.CI;
+const plugins = ["react", "no-only-tests", "ttag", "i18next"];
+if (shouldLintCssModules) {
+  plugins.push("postcss-modules");
+}
 
 module.exports = {
+  ignorePatterns: ["!.storybook"],
   rules: {
     strict: [2, "never"],
     "no-undef": 2,
@@ -17,11 +24,14 @@ module.exports = {
       {
         vars: "all",
         args: "none",
-        varsIgnorePattern: "^_",
+        varsIgnorePattern: "^_.+$",
         ignoreRestSiblings: true,
       },
     ],
     "no-empty": [1, { allowEmptyCatch: true }],
+    // Note: adding this rule to a eslint config file in a subfolder will remove
+    // *not* carry over the restricted imports from parent folders, you will
+    // need to copy them over
     "no-restricted-imports": [
       "error",
       {
@@ -39,6 +49,7 @@ module.exports = {
     ],
     curly: [1, "all"],
     eqeqeq: [1, "smart"],
+    "import/no-duplicates": ["warn", { considerQueryString: true }],
     "import/no-default-export": 2,
     "import/no-named-as-default": 0,
     "import/no-commonjs": 1,
@@ -108,11 +119,10 @@ module.exports = {
           "When",
           "Then",
           "describeWithSnowplow",
-          "describeEE",
         ],
       },
     ],
-    complexity: ["error", { max: 54 }],
+    complexity: ["error", { max: 55 }],
     ...(shouldLintCssModules
       ? {
           "postcss-modules/no-undef-class": "error",
@@ -126,13 +136,13 @@ module.exports = {
   },
   env: {
     browser: true,
-    es6: true,
+    es2020: true,
     commonjs: true,
     jest: true,
     "jest/globals": true,
   },
   parser: "babel-eslint",
-  plugins: ["react", "no-only-tests", "postcss-modules"],
+  plugins,
   extends: [
     "eslint:recommended",
     "plugin:react/recommended",
@@ -143,11 +153,13 @@ module.exports = {
     "plugin:import/typescript",
     "plugin:depend/recommended",
     "plugin:storybook/recommended",
+    "plugin:i18next/recommended",
   ],
   settings: {
     "import/internal-regex": "^metabase/|^metabase-lib/",
     "import/resolver": {
       webpack: {
+        config: path.resolve(__dirname, "./rspack.main.config.js"),
         typescript: true,
       },
     },
@@ -168,7 +180,9 @@ module.exports = {
     {
       files: ["*.js", "*.jsx", "*.ts", "*.tsx"],
       rules: {
+        "jtag-missing-key": "error",
         "no-unconditional-metabase-links-render": "error",
+        "no-color-literals": "error",
         "no-literal-metabase-strings": "error",
         "depend/ban-dependencies": [
           "error",
@@ -188,15 +202,39 @@ module.exports = {
         "*.unit.spec.*",
         "frontend/src/metabase/admin/**/*",
         "frontend/src/metabase/setup/**/*",
+        "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
+        "enterprise/frontend/src/metabase-enterprise/embedding/**/*",
         "frontend/lint/**/*",
         "*.stories.*",
+        "**/.storybook/*",
+        "stories-data.*",
         "e2e/**/*",
         "**/tests/*",
         "release/**/*",
+        "rspack.config.js",
+        "rspack.main.config.js",
+        "rspack.embedding-sdk-package.config.js",
+        "rspack.embedding-sdk-bundle.config.js",
       ],
       rules: {
+        "no-color-literals": "off",
         "no-unconditional-metabase-links-render": "off",
         "no-literal-metabase-strings": "off",
+      },
+    },
+    {
+      files: [
+        "*.unit.spec.*",
+        "frontend/lint/**/*",
+        "*.stories.*",
+        "stories-data.*",
+        "e2e/**/*",
+        "**/tests/*",
+        "release/**/*",
+        "rspack.main.config.js",
+      ],
+      rules: {
+        "i18next/no-literal-string": "off",
       },
     },
     {
@@ -220,10 +258,10 @@ module.exports = {
         "@typescript-eslint/no-unused-vars": [
           "error",
           {
-            argsIgnorePattern: "^_",
-            varsIgnorePattern: "^_",
+            argsIgnorePattern: "^_.+$",
+            varsIgnorePattern: "^_.+$",
             ignoreRestSiblings: true,
-            destructuredArrayIgnorePattern: "^_",
+            destructuredArrayIgnorePattern: "^_.+$",
           },
         ],
         // This was introduced in 6.0.0
@@ -246,6 +284,13 @@ module.exports = {
       ],
       rules: {
         "jest/valid-title": ["error", { ignoreTypeOfDescribeName: true }],
+        "jest/expect-expect": [
+          "error",
+          {
+            assertFunctionNames: ["expect*", "assert*"],
+            additionalTestBlockFunctions: [],
+          },
+        ],
       },
     },
     {
@@ -276,12 +321,31 @@ module.exports = {
             message:
               "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
           },
-          {
-            selector:
-              "CallExpression[callee.property.name='legacyQuery'] > ObjectExpression > Property[key.name='useStructuredQuery'][value.value=true]",
-            message: "StructuredQuery usage is forbidden. Use MLv2",
-          },
         ],
+      },
+    },
+    {
+      files: ["frontend/src/metabase/query_builder/**/*"],
+      rules: {
+        "import/no-cycle": "error",
+      },
+    },
+    {
+      files: ["docs/**/snippets/**/*.{ts,tsx,js,jsx}"],
+      rules: {
+        "@typescript-eslint/no-unused-vars": "off",
+        "@typescript-eslint/no-var-requires": "off",
+        "import/no-commonjs": "off",
+        "import/no-default-export": "off",
+        "import/order": "off",
+        "import/no-unresolved": "off",
+        "no-color-literals": "off",
+      },
+    },
+    {
+      files: ["frontend/build/**/*.js"],
+      rules: {
+        "import/no-commonjs": "off",
       },
     },
   ],

@@ -33,6 +33,7 @@ export interface SetupState {
   databaseEngine?: string;
   database?: DatabaseData;
   invite?: InviteInfo;
+  isEmbeddingUseCase: boolean;
   isLocaleLoaded: boolean;
   isTrackingAllowed: boolean;
   licenseToken?: string | null;

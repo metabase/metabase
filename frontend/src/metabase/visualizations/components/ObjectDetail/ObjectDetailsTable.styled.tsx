@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 export const ObjectDetailsTable = styled.div`
@@ -10,17 +11,17 @@ type GridContainerProps = { cols?: number };
 
 export const GridContainer = styled.div<GridContainerProps>`
   display: grid;
-  grid-template-columns: repeat(${props => props.cols || 2}, minmax(0, 1fr));
+  grid-template-columns: repeat(${(props) => props.cols || 2}, minmax(0, 1fr));
   gap: 1rem;
 `;
 
-export interface GridItemProps {
+interface GridItemProps {
   colSpan?: number;
 }
 
 export const GridCell = styled.div<GridItemProps>`
-  grid-column: span ${props => props.colSpan || 1} / span
-    ${props => props.colSpan || 1};
+  grid-column: span ${(props) => props.colSpan || 1} / span
+    ${(props) => props.colSpan || 1};
 `;
 
 export const FitImage = styled.img`

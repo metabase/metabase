@@ -1,12 +1,11 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { Component } from "react";
+import { Component, createRef } from "react";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Icon, Tooltip } from "metabase/ui";
 
 import LegendS from "./Legend.module.css";
@@ -21,6 +20,9 @@ export default class LegendItem extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {};
+
+    /** @type {React.RefObject<HTMLSpanElement>} */
+    this.rootRef = createRef();
   }
 
   static defaultProps = {
@@ -32,11 +34,16 @@ export default class LegendItem extends Component {
     showDotTooltip: true,
   };
 
+  getRootElement() {
+    return this.rootRef.current;
+  }
+
   render() {
     const {
       title,
       color,
       icon,
+      dotSize,
       showDot,
       showTitle,
       isVisible,
@@ -54,6 +61,7 @@ export default class LegendItem extends Component {
 
     return (
       <span
+        ref={this.rootRef}
         data-testid="legend-item"
         className={cx(
           className,
@@ -61,8 +69,7 @@ export default class LegendItem extends Component {
           { [LegendS.LegendItemMuted]: isMuted },
           CS.noDecoration,
           DashboardS.fullscreenNormalText,
-          DashboardS.fullscreenNightText,
-          EmbedFrameS.fullscreenNightText,
+          DashboardS.DashboardChartLegend,
           CS.flex,
           CS.alignCenter,
           {
@@ -92,6 +99,7 @@ export default class LegendItem extends Component {
           >
             <LegendItemDot
               color={color}
+              dotSize={dotSize}
               isVisible={isVisible}
               onClick={onToggleSeriesVisibility}
             />

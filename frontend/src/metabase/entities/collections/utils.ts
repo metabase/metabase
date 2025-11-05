@@ -2,6 +2,7 @@ import {
   isRootCollection,
   isRootPersonalCollection,
   isRootTrashCollection,
+  isSyncedCollection,
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -34,6 +35,10 @@ export function getCollectionIcon(
 
   if (isRootPersonalCollection(collection)) {
     return { name: "person" };
+  }
+
+  if (isSyncedCollection(collection)) {
+    return { name: "synced_collection" };
   }
 
   const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
@@ -70,7 +75,7 @@ export function buildCollectionTree(
   collections: Collection[] = [],
   modelFilter?: (model: CollectionContentModel) => boolean,
 ): CollectionTreeItem[] {
-  return collections.flatMap(collection => {
+  return collections.flatMap((collection) => {
     const isPersonalRoot = collection.id === PERSONAL_COLLECTIONS.id;
 
     const isMatchedByFilter =
@@ -84,7 +89,7 @@ export function buildCollectionTree(
 
     const children = !isRootTrashCollection(collection)
       ? buildCollectionTree(
-          collection.children?.filter(child => !child.archived) || [],
+          collection.children?.filter((child) => !child.archived) || [],
           modelFilter,
         )
       : [];

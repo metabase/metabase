@@ -1,22 +1,17 @@
-import styled from "@emotion/styled";
+import cx from "classnames";
+import { forwardRef } from "react";
 
-import {
-  breakpointMinLarge,
-  breakpointMinSmall,
-} from "metabase/styled-components/theme";
+import { Box, type BoxProps } from "metabase/ui";
 
-export const FullWidthContainer = styled.div`
-  margin: 0 auto;
-  padding: 0 1em;
-  width: 100%;
+import S from "./FullWidthContainer.module.css";
 
-  ${breakpointMinSmall} {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-  }
+export const FullWidthContainer = forwardRef<
+  HTMLDivElement,
+  BoxProps & { children: React.ReactNode }
+>(function FullWidthContainer(props, ref) {
+  const { className, ...rest } = props;
 
-  ${breakpointMinLarge} {
-    padding-left: 2rem;
-    padding-right: 2rem;
-  }
-`;
+  return (
+    <Box className={cx(S.FullWidthContainer, className)} {...rest} ref={ref} />
+  );
+});

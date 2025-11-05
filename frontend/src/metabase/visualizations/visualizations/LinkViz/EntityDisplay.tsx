@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import Markdown from "metabase/common/components/Markdown";
 import { isEmpty } from "metabase/lib/validate";
 import { Icon } from "metabase/ui";
 
@@ -21,14 +21,18 @@ export const EntityDisplay = ({
   return (
     <EntityDisplayContainer>
       <LeftContainer>
-        <Icon color={color("brand")} name={getSearchIconName(entity)} />
+        <Icon color="var(--mb-color-brand)" name={getSearchIconName(entity)} />
         <EllipsifiedEntityContainer>{entity?.name}</EllipsifiedEntityContainer>
       </LeftContainer>
       {showDescription && entity?.description && (
         <Icon
           name="info"
-          color={color("text-light")}
-          tooltip={entity.description}
+          color="var(--mb-color-text-light)"
+          tooltip={
+            <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
+              {entity.description}
+            </Markdown>
+          }
         />
       )}
     </EntityDisplayContainer>
@@ -38,7 +42,7 @@ export const EntityDisplay = ({
 export const RestrictedEntityDisplay = () => (
   <EntityDisplayContainer>
     <LeftContainer>
-      <Icon name="key" color={color("text-light")} />
+      <Icon name="key" color="var(--mb-color-text-light)" />
       <EllipsifiedEntityContainer>{t`Sorry, you don't have permission to see this link.`}</EllipsifiedEntityContainer>
     </LeftContainer>
   </EntityDisplayContainer>
@@ -51,7 +55,7 @@ export const UrlLinkDisplay = ({ url }: { url?: string }) => {
   return (
     <EntityDisplayContainer>
       <LeftContainer>
-        <Icon color={color("brand")} name={urlIcon} />
+        <Icon c={"brand"} name={urlIcon} />
         <EllipsifiedEntityContainer>
           {!isEmpty(url) ? url : t`Choose a link`}
         </EllipsifiedEntityContainer>

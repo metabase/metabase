@@ -42,7 +42,9 @@ const VisualizationMock = ({
     <div>
       <div>
         {rows[0].map((value, i) => (
-          <span key={i}>{value}</span>
+          <span key={i}>
+            {typeof value === "object" ? JSON.stringify(value) : value}
+          </span>
         ))}
       </div>
       <div data-testid="settings">
@@ -77,7 +79,7 @@ export async function setup(
     uuid,
   }: SetupOpts = { questionName: "", uuid: "" },
 ) {
-  mockSettings({
+  const settings = mockSettings({
     "token-features": tokenFeatures,
   });
 
@@ -111,7 +113,7 @@ export async function setup(
   renderWithProviders(
     <Route path="public/question/:uuid" component={PublicOrEmbeddedQuestion} />,
     {
-      storeInitialState: createMockState(),
+      storeInitialState: createMockState({ settings }),
       withRouter: true,
       initialRoute: `public/question/${uuid}${_.isEmpty(hash) ? "" : `#${new URLSearchParams(hash)}`}`,
     },

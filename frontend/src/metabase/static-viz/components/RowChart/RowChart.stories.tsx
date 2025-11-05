@@ -6,15 +6,18 @@ import {
   MULTIPLE_SERIES,
 } from "metabase/static-viz/components/RowChart/stories-data";
 
-import RowChart, { type StaticRowChartProps } from "./RowChart";
+import {
+  type StaticChartProps,
+  StaticVisualization,
+} from "../StaticVisualization";
 
 export default {
-  title: "static-viz/RowChart",
-  component: RowChart,
+  title: "Viz/Static Viz/RowChart",
+  component: StaticVisualization,
 };
 
-const Template: StoryFn<StaticRowChartProps> = args => {
-  return <RowChart {...args} />;
+const Template: StoryFn<StaticChartProps> = (args) => {
+  return <StaticVisualization {...args} />;
 };
 
 export const Default = {
@@ -29,4 +32,9 @@ export const MetricColumnWithScaling = {
     ...METRIC_COLUMN_WITH_SCALING,
     getColor: color,
   },
+};
+
+export const Watermark = {
+  render: Template,
+  args: { ...MULTIPLE_SERIES, getColor: color, hasDevWatermark: true },
 };

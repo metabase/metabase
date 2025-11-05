@@ -1,3 +1,6 @@
+import { useLayoutEffect } from "react";
+
+import { isWithinIframe } from "metabase/lib/dom";
 import { connect } from "metabase/lib/redux";
 import { PublicError } from "metabase/public/components/PublicError";
 import { PublicNotFound } from "metabase/public/components/PublicNotFound";
@@ -22,9 +25,16 @@ function mapStateToProps(state: State) {
 }
 
 function PublicApp({ errorPage, children }: Props) {
+  useLayoutEffect(() => {
+    if (isWithinIframe()) {
+      document.body.style.backgroundColor = "transparent";
+    }
+  }, []);
+
   if (errorPage) {
     return errorPage.status === 404 ? <PublicNotFound /> : <PublicError />;
   }
+
   return (
     <>
       {children}

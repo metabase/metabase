@@ -3,9 +3,11 @@ import dayjs from "dayjs";
 import { createMockSeriesModel } from "__support__/echarts";
 import { checkNumber } from "metabase/lib/types";
 import {
-  ORIGINAL_INDEX_DATA_KEY,
+  ECHARTS_CATEGORY_AXIS_NULL_VALUE,
+  INDEX_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
+  X_AXIS_RAW_VALUE_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
   BreakoutChartColumns,
@@ -60,7 +62,7 @@ describe("dataset transform functions", () => {
     axisType: "category",
     isHistogram: false,
     valuesCount: 3,
-    formatter: value => String(value),
+    formatter: (value) => String(value),
   };
 
   describe("getDatasetKey", () => {
@@ -312,7 +314,9 @@ describe("dataset transform functions", () => {
 
       expect(result).toEqual([
         {
+          [INDEX_KEY]: 0,
           [X_AXIS_DATA_KEY]: "A",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "A",
           [POSITIVE_STACK_TOTAL_DATA_KEY]: Number.MIN_VALUE,
           dimensionKey: "A",
           series1: 100,
@@ -320,7 +324,9 @@ describe("dataset transform functions", () => {
           unusedSeries: 100,
         },
         {
+          [INDEX_KEY]: 1,
           [X_AXIS_DATA_KEY]: "B",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "B",
           [POSITIVE_STACK_TOTAL_DATA_KEY]: Number.MIN_VALUE,
           dimensionKey: "B",
           series1: 300,
@@ -335,7 +341,7 @@ describe("dataset transform functions", () => {
         originalDataset,
         [
           {
-            seriesKeys: seriesModels.map(seriesModel => seriesModel.dataKey),
+            seriesKeys: seriesModels.map((seriesModel) => seriesModel.dataKey),
             display: "bar",
             axis: "left",
           },
@@ -351,14 +357,18 @@ describe("dataset transform functions", () => {
 
       expect(result).toEqual([
         {
+          [INDEX_KEY]: 0,
           [X_AXIS_DATA_KEY]: "A",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "A",
           dimensionKey: "A",
           series1: 1 / 3,
           series2: 2 / 3,
           unusedSeries: 100,
         },
         {
+          [INDEX_KEY]: 1,
           [X_AXIS_DATA_KEY]: "B",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "B",
           dimensionKey: "B",
           series1: 3 / 7,
           series2: 4 / 7,
@@ -394,12 +404,113 @@ describe("dataset transform functions", () => {
 
       expect(result).toEqual([
         {
+          [INDEX_KEY]: 0,
           [X_AXIS_DATA_KEY]: "A",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "A",
           dimensionKey: "A",
           series1: 0,
           series2: 200,
         },
       ]);
+    });
+
+    describe("ordinal series", () => {
+      it("should stringify x values if they're objects (metabase#52684)", () => {
+        const dataset = [
+          {
+            [X_AXIS_DATA_KEY]: null,
+            "null:key5": null,
+            "null:count": 2,
+          },
+          {
+            [X_AXIS_DATA_KEY]: {
+              nestedKey1: "nestedValue13",
+            },
+            "null:key5": {
+              nestedKey1: "nestedValue13",
+            },
+            "null:count": 1,
+          },
+          {
+            [X_AXIS_DATA_KEY]: {
+              nestedKey1: "nestedValue2",
+            },
+            "null:key5": {
+              nestedKey1: "nestedValue2",
+            },
+            "null:count": 1,
+          },
+          {
+            [X_AXIS_DATA_KEY]: {
+              nestedKey1: "nestedValue7",
+              nestedKey2: "nestedValue8",
+            },
+            "null:key5": {
+              nestedKey1: "nestedValue7",
+              nestedKey2: "nestedValue8",
+            },
+            "null:count": 1,
+          },
+          // `dataset` is not valid per se, but we want to test the transformation logic
+          // and this value was taken from a real dataset causing a real bug so ¯\_(ツ)_/¯
+        ] as any;
+
+        const result = applyVisualizationSettingsDataTransformations(
+          dataset,
+          [],
+          xAxisModel,
+          [createMockSeriesModel({ dataKey: "series1" })],
+          [],
+          yAxisScaleTransforms,
+          createMockComputedVisualizationSettings(),
+        );
+
+        expect(result).toEqual([
+          {
+            [INDEX_KEY]: 0,
+            [X_AXIS_DATA_KEY]: ECHARTS_CATEGORY_AXIS_NULL_VALUE,
+            [X_AXIS_RAW_VALUE_DATA_KEY]: ECHARTS_CATEGORY_AXIS_NULL_VALUE,
+            "null:count": 2,
+            "null:key5": null,
+          },
+          {
+            [INDEX_KEY]: 1,
+            [X_AXIS_DATA_KEY]: '{"nestedKey1":"nestedValue13"}',
+            [X_AXIS_RAW_VALUE_DATA_KEY]: {
+              nestedKey1: "nestedValue13",
+            },
+            "null:count": 1,
+            "null:key5": {
+              nestedKey1: "nestedValue13",
+            },
+          },
+          {
+            [INDEX_KEY]: 2,
+            [X_AXIS_DATA_KEY]: '{"nestedKey1":"nestedValue2"}',
+            [X_AXIS_RAW_VALUE_DATA_KEY]: {
+              nestedKey1: "nestedValue2",
+            },
+            "null:count": 1,
+            "null:key5": {
+              nestedKey1: "nestedValue2",
+            },
+          },
+          {
+            [INDEX_KEY]: 3,
+            [X_AXIS_DATA_KEY]:
+              '{"nestedKey1":"nestedValue7","nestedKey2":"nestedValue8"}',
+            [X_AXIS_RAW_VALUE_DATA_KEY]: {
+              nestedKey1: "nestedValue7",
+              nestedKey2: "nestedValue8",
+            },
+            "null:count": 1,
+            "null:key5": {
+              nestedKey1: "nestedValue7",
+              nestedKey2: "nestedValue8",
+            },
+          },
+        ]);
+      });
     });
 
     describe("time series", () => {
@@ -426,9 +537,9 @@ describe("dataset transform functions", () => {
         },
         timezone: "UTC",
         range: [dayjs(), dayjs()],
-        formatter: value => String(value),
+        formatter: (value) => String(value),
         fromEChartsAxisValue: () => dayjs(),
-        toEChartsAxisValue: val => String(val),
+        toEChartsAxisValue: (val) => String(val),
       };
 
       it("should replace missing values with zeros based on the x-axis interval", () => {
@@ -448,15 +559,21 @@ describe("dataset transform functions", () => {
 
         expect(result).toEqual([
           {
-            [ORIGINAL_INDEX_DATA_KEY]: 0,
+            [INDEX_KEY]: 0,
             [X_AXIS_DATA_KEY]: "2020-01-01T00:00:00.000Z",
+            [X_AXIS_RAW_VALUE_DATA_KEY]: "2020-01-01T00:00:00.000Z",
             dimensionKey: "A",
             series1: 10,
           },
-          { [X_AXIS_DATA_KEY]: "2020-02-01T00:00:00.000Z", series1: 0 },
           {
-            [ORIGINAL_INDEX_DATA_KEY]: 1,
+            [X_AXIS_DATA_KEY]: "2020-02-01T00:00:00.000Z",
+            [X_AXIS_RAW_VALUE_DATA_KEY]: "2020-02-01T00:00:00.000Z",
+            series1: 0,
+          },
+          {
+            [INDEX_KEY]: 1,
             [X_AXIS_DATA_KEY]: "2020-03-01T00:00:00.000Z",
+            [X_AXIS_RAW_VALUE_DATA_KEY]: "2020-03-01T00:00:00.000Z",
             dimensionKey: "A",
             series1: 20,
           },
@@ -501,9 +618,9 @@ describe("dataset transform functions", () => {
         interval: { unit: "year", count: 100 },
         timezone: "UTC",
         range: [dayjs(), dayjs()],
-        formatter: value => String(value),
+        formatter: (value) => String(value),
         fromEChartsAxisValue: () => dayjs(),
-        toEChartsAxisValue: val => String(val),
+        toEChartsAxisValue: (val) => String(val),
       };
 
       const seriesModels = [createMockSeriesModel({ dataKey: "count" })];
@@ -524,7 +641,8 @@ describe("dataset transform functions", () => {
         expect(result).toEqual([
           {
             ...validDatum,
-            [ORIGINAL_INDEX_DATA_KEY]: 0,
+            [INDEX_KEY]: 0,
+            [X_AXIS_RAW_VALUE_DATA_KEY]: validDatum[X_AXIS_DATA_KEY],
           },
         ]);
       });
@@ -617,7 +735,7 @@ describe("dataset transform functions", () => {
       expect(result[2][X_AXIS_DATA_KEY]).toBe("2022-03-01");
     });
 
-    it.each(numericScale)("should sort numeric datasets", xAxisScale => {
+    it.each(numericScale)("should sort numeric datasets", (xAxisScale) => {
       const dataset = [
         { [X_AXIS_DATA_KEY]: 1000, [seriesKey]: 10 },
         { [X_AXIS_DATA_KEY]: 1, [seriesKey]: 5 },

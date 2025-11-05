@@ -14,6 +14,7 @@ import type { Dataset } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
+  getAllNativeEditorSelectedText,
   getCard,
   getFirstQueryResult,
   getIsResultDirty,
@@ -25,7 +26,7 @@ import {
   getTimeoutId,
 } from "../selectors";
 
-import { updateUrl } from "./navigation";
+import { updateUrl } from "./url";
 
 export const SET_DOCUMENT_TITLE = "metabase/qb/SET_DOCUMENT_TITLE";
 const setDocumentTitle = createAction(SET_DOCUMENT_TITLE);
@@ -41,8 +42,9 @@ const hideLoadingCompleteFavicon = createAction(
   () => false,
 );
 
-const LOAD_COMPLETE_UI_CONTROLS = "metabase/qb/LOAD_COMPLETE_UI_CONTROLS";
 const LOAD_START_UI_CONTROLS = "metabase/qb/LOAD_START_UI_CONTROLS";
+const LOAD_COMPLETE_UI_CONTROLS = "metabase/qb/LOAD_COMPLETE_UI_CONTROLS";
+const LOAD_ERROR_UI_CONTROLS = "metabase/qb/LOAD_ERROR_UI_CONTROLS";
 export const SET_DOCUMENT_TITLE_TIMEOUT_ID =
   "metabase/qb/SET_DOCUMENT_TITLE_TIMEOUT_ID";
 const setDocumentTitleTimeoutId = createAction(SET_DOCUMENT_TITLE_TIMEOUT_ID);
@@ -74,8 +76,22 @@ const loadCompleteUIControls = createThunkAction(
   },
 );
 
+const loadErrorUIControls = createThunkAction(
+  LOAD_ERROR_UI_CONTROLS,
+  () => (dispatch, getState) => {
+    const timeoutId = getTimeoutId(getState());
+    clearTimeout(timeoutId);
+    dispatch(setDocumentTitle(""));
+  },
+);
+
+type RunDirtyQuestionQueryOpts = {
+  shouldUpdateUrl?: boolean;
+};
+
 export const runDirtyQuestionQuery =
-  () => async (dispatch: Dispatch, getState: GetState) => {
+  ({ shouldUpdateUrl }: RunDirtyQuestionQueryOpts = {}) =>
+  async (dispatch: Dispatch, getState: GetState) => {
     const areResultsDirty = getIsResultDirty(getState());
     const queryResults = getQueryResults(getState());
 
@@ -89,7 +105,7 @@ export const runDirtyQuestionQuery =
       return dispatch(queryCompleted(question, queryResults));
     }
 
-    return dispatch(runQuestionQuery());
+    return dispatch(runQuestionQuery({ shouldUpdateUrl }));
   };
 
 /**
@@ -146,10 +162,8 @@ export const runQuestionQuery = ({
       ignoreCache: ignoreCache,
       isDirty: isQueryDirty,
     })
-      .then(queryResults => {
-        return dispatch(queryCompleted(question, queryResults));
-      })
-      .catch(error => dispatch(queryErrored(startTime, error)));
+      .then((queryResults) => dispatch(queryCompleted(question, queryResults)))
+      .catch((error) => dispatch(queryErrored(startTime, error)));
 
     dispatch({ type: RUN_QUERY, payload: { cancelQueryDeferred } });
   };
@@ -234,10 +248,12 @@ export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const queryErrored = createThunkAction(
   QUERY_ERRORED,
   (startTime, error) => {
-    return async () => {
+    return async (dispatch) => {
       if (error && error.isCancelled) {
         return null;
       } else {
+        dispatch(loadErrorUIControls());
+
         return { error: error, duration: Date.now() - startTime };
       }
     };
@@ -257,3 +273,32 @@ export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
     return { type: CANCEL_QUERY };
   }
 };
+
+export const runOrCancelQuestionOrSelectedQuery =
+  () => (dispatch: Dispatch, getState: GetState) => {
+    const question = getQuestion(getState());
+    if (!question) {
+      return;
+    }
+
+    const isRunning = getIsRunning(getState());
+    if (isRunning) {
+      dispatch(cancelQuery());
+      return;
+    }
+
+    const query = question.query();
+    const queryInfo = Lib.queryDisplayInfo(query);
+    const selectedText = getAllNativeEditorSelectedText(getState());
+    if (queryInfo.isNative && selectedText) {
+      const selectedQuery = Lib.withNativeQuery(query, selectedText);
+      dispatch(
+        runQuestionQuery({
+          overrideWithQuestion: question.setQuery(selectedQuery),
+          shouldUpdateUrl: false,
+        }),
+      );
+    } else {
+      dispatch(runQuestionQuery());
+    }
+  };

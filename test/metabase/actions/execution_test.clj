@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.actions.execution :as actions.execution]
-   [metabase.models.action :as action]
+   [metabase.actions.models :as action]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.test :as mt]))
 
@@ -15,13 +15,14 @@
         (let [dataset-query (mt/mbql-query venues {:fields [$id $name]})
               query (assoc
                      dataset-query
-                     :parameters [{:target [:dimension
+                     :parameters [{:id     "metabase.actions.execution/prefetch-parameters-pk"
+                                   :target [:dimension
                                             (-> dataset-query
                                                 :query
                                                 :fields
                                                 first)]
-                                   :type "id"
-                                   :value [1]}]
+                                   :type   :id
+                                   :value  [1]}]
                      :constraints nil
                      :middleware nil
                      :cache-strategy nil)]

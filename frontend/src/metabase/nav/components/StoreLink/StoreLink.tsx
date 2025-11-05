@@ -1,13 +1,16 @@
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/ui";
 
 import { StoreIcon, StoreIconRoot, StoreIconWrapper } from "./StoreLink.styled";
 
 const StoreLink = () => {
   return (
-    <Tooltip tooltip={t`Explore paid features`}>
-      <StoreIconRoot href="https://metabase.com/upgrade">
+    <Tooltip label={t`Explore paid features`}>
+      <StoreIconRoot
+        href="https://metabase.com/upgrade"
+        data-testid="store-link"
+      >
         <StoreIconWrapper>
           <StoreIcon name="store" size={20} />
         </StoreIconWrapper>

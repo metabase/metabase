@@ -1,4 +1,3 @@
-import { screen } from "@testing-library/react";
 import _ from "underscore";
 
 import {
@@ -7,7 +6,7 @@ import {
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Card } from "metabase-types/api";
@@ -18,10 +17,6 @@ import {
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-
-const { AceEditorInner } = jest.requireActual(
-  "metabase/query_builder/components/NativeQueryEditor/AceEditor/AceEditor.tsx",
-);
 
 const TEST_DB = createSampleDatabase();
 
@@ -63,8 +58,7 @@ const setup = async ({
   });
   const metadata = getMetadata(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
-  // eslint-disable-next-line no-restricted-syntax
-  const query = question.legacyQuery({ useStructuredQuery: true });
+  const query = question.legacyNativeQuery();
   const DatasetQueryEditor = await importDatasetQueryEditor();
   const onSetDatabaseId = jest.fn();
 
@@ -77,6 +71,7 @@ const setup = async ({
       readOnly={readOnly}
       onResizeStop={_.noop}
       onSetDatabaseId={onSetDatabaseId}
+      isNativeEditorOpen
     />,
   );
 
@@ -108,17 +103,13 @@ const importDatasetQueryEditor = async () => {
 describe("DatasetQueryEditor", () => {
   beforeEach(() => {
     jest.unmock("metabase/query_builder/components/NativeQueryEditor");
-
-    jest
-      .spyOn(AceEditorInner.prototype, "loadAceEditor")
-      .mockImplementation(_.noop);
   });
 
   it("renders sidebar when query tab is active", async () => {
     await setup({ isActive: true });
 
     expect(
-      screen.getByTestId("native-query-editor-sidebar"),
+      screen.getByTestId("native-query-editor-action-buttons"),
     ).toBeInTheDocument();
   });
 
@@ -132,7 +123,7 @@ describe("DatasetQueryEditor", () => {
     await setup({ isActive: false });
 
     expect(
-      screen.queryByTestId("native-query-editor-sidebar"),
+      screen.queryByTestId("native-query-editor-action-buttons"),
     ).not.toBeInTheDocument();
   });
 
@@ -145,7 +136,7 @@ describe("DatasetQueryEditor", () => {
     const onSetDatabaseId = jest.fn();
 
     expect(
-      screen.getByTestId("native-query-editor-sidebar"),
+      screen.getByTestId("native-query-editor-action-buttons"),
     ).toBeInTheDocument();
 
     rerender(
@@ -161,7 +152,7 @@ describe("DatasetQueryEditor", () => {
     );
 
     expect(
-      screen.queryByTestId("native-query-editor-sidebar"),
+      screen.queryByTestId("native-query-editor-action-buttons"),
     ).not.toBeInTheDocument();
   });
 });

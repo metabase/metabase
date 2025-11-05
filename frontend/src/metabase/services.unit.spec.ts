@@ -97,7 +97,9 @@ describe("metabase/services > runQuestionQuery", () => {
 
       await setupRunQuestionQuery(question);
 
-      const call = fetchMock.lastCall(`path:/api/card/${question.id()}/query`);
+      const call = fetchMock.callHistory.lastCall(
+        `path:/api/card/${question.id()}/query`,
+      );
       expect(await call?.request?.json()).toEqual({
         collection_preview: false,
         ignore_cache: false,
@@ -114,15 +116,13 @@ describe("metabase/services > runQuestionQuery", () => {
     it("should use the pivot endpoint for pivot tables", async () => {
       const question = createMockSavedQuestion({ display: "pivot" });
       await setupRunQuestionQuery(question);
-      const call = fetchMock.lastCall(
+      const call = fetchMock.callHistory.lastCall(
         `path:/api/card/pivot/${question.id()}/query`,
       );
       expect(await call?.request?.json()).toEqual({
         collection_preview: false,
         ignore_cache: false,
         parameters: [],
-        pivot_cols: [],
-        pivot_rows: [],
       });
     });
 
@@ -133,7 +133,7 @@ describe("metabase/services > runQuestionQuery", () => {
 
       await setupRunQuestionQuery(question);
 
-      const call = fetchMock.lastCall(
+      const call = fetchMock.callHistory.lastCall(
         `path:/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${question.id()}/query`,
       );
       expect(await call?.request?.json()).toEqual({
@@ -154,15 +154,13 @@ describe("metabase/services > runQuestionQuery", () => {
 
       await setupRunQuestionQuery(question);
 
-      const call = fetchMock.lastCall(
+      const call = fetchMock.callHistory.lastCall(
         `path:/api/dashboard/pivot/${dashboardId}/dashcard/${dashcardId}/card/${question.id()}/query`,
       );
       expect(await call?.request?.json()).toEqual({
         collection_preview: false,
         ignore_cache: false,
         parameters: [],
-        pivot_cols: [],
-        pivot_rows: [],
       });
     });
   });
@@ -173,7 +171,7 @@ describe("metabase/services > runQuestionQuery", () => {
 
       await setupRunQuestionQuery(question);
 
-      const call = fetchMock.lastCall("path:/api/dataset");
+      const call = fetchMock.callHistory.lastCall("path:/api/dataset");
       expect(await call?.request?.json()).toEqual({
         ...question.datasetQuery(),
         parameters: [],
@@ -185,12 +183,14 @@ describe("metabase/services > runQuestionQuery", () => {
 
       await setupRunQuestionQuery(question);
 
-      const call = fetchMock.lastCall("path:/api/dataset/pivot");
+      const call = fetchMock.callHistory.lastCall("path:/api/dataset/pivot");
       expect(await call?.request?.json()).toEqual({
         ...question.datasetQuery(),
         parameters: [],
         pivot_cols: [],
         pivot_rows: [],
+        show_column_totals: true,
+        show_row_totals: true,
       });
     });
 

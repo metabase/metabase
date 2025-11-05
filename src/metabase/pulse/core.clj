@@ -1,14 +1,21 @@
-(ns ^:deprecated metabase.pulse.core
+(ns metabase.pulse.core
   "API namespace for the `metabase.pulse` module.
 
   This namespace is deprecated, soon everything will be migrated to notifications."
   (:require
-   [metabase.pulse.send]
+   [metabase.pulse.models.pulse]
+   [metabase.pulse.update-alerts]
    [potemkin :as p]))
 
 (comment
-  metabase.pulse.send/keep-me)
+  metabase.pulse.models.pulse/keep-me
+  metabase.pulse.update-alerts/keep-me)
 
 (p/import-vars
- [metabase.pulse.send
-  send-pulse!])
+ [metabase.pulse.models.pulse
+  card->ref
+  create-pulse!
+  retrieve-alerts-for-cards
+  update-pulse!]
+ [metabase.pulse.update-alerts
+  delete-alerts-if-needed!])

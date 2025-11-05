@@ -6,7 +6,7 @@ import type {
   DatePickerValue,
   SpecificDatePickerOperator,
   SpecificDatePickerValue,
-} from "../types";
+} from "metabase/querying/filters/types";
 
 import { TABS } from "./constants";
 import type { Tab } from "./types";
@@ -17,10 +17,8 @@ export function isSpecificValue(
   return value?.type === "specific";
 }
 
-export function getTabs(
-  availableOperators: ReadonlyArray<DatePickerOperator>,
-): Tab[] {
-  return TABS.filter(tab => availableOperators.includes(tab.operator));
+export function getTabs(availableOperators: DatePickerOperator[]): Tab[] {
+  return TABS.filter((tab) => availableOperators.includes(tab.operator));
 }
 
 export function getDefaultValue() {
@@ -55,7 +53,7 @@ export function getOperatorDefaultValue(
 
 export function canSetTime(
   value: SpecificDatePickerValue,
-  availableUnits: ReadonlyArray<DatePickerUnit>,
+  availableUnits: DatePickerUnit[],
 ) {
   return value.hasTime || availableUnits.includes("minute");
 }
@@ -123,12 +121,10 @@ export function clearTimePart(value: Date) {
   return dayjs(value).startOf("date").toDate();
 }
 
-export function coerceValue({
-  type,
-  operator,
-  values,
-  hasTime,
-}: SpecificDatePickerValue): SpecificDatePickerValue {
+export function coerceValue(
+  value: SpecificDatePickerValue,
+): SpecificDatePickerValue {
+  const { type, operator, values, hasTime } = value;
   if (operator === "between") {
     const [startDate, endDate] = values;
 
@@ -142,5 +138,5 @@ export function coerceValue({
     };
   }
 
-  return { type, operator, values, hasTime };
+  return value;
 }

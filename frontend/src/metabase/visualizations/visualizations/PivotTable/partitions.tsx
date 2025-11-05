@@ -6,7 +6,7 @@ import type { DatasetColumn } from "metabase-types/api";
 
 import { PivotTableSettingLabel } from "./PivotTable.styled";
 
-interface Partition {
+export interface Partition {
   name: "rows" | "columns" | "values";
   columnFilter: (col: DatasetColumn | undefined) => boolean;
   title: React.ReactNode;
@@ -17,6 +17,7 @@ export const partitions: Partition[] = [
     name: "rows",
     columnFilter: isDimension,
     title: (
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Rows`}</PivotTableSettingLabel>
     ),
   },
@@ -24,13 +25,15 @@ export const partitions: Partition[] = [
     name: "columns",
     columnFilter: isDimension,
     title: (
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Columns`}</PivotTableSettingLabel>
     ),
   },
   {
     name: "values",
-    columnFilter: col => !isDimension(col),
+    columnFilter: (col) => !isDimension(col),
     title: (
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Measures`}</PivotTableSettingLabel>
     ),
   },

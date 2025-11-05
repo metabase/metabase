@@ -1,8 +1,9 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
-export interface FormTextAreaRootProps {
+interface FormTextAreaRootProps {
   touched?: boolean;
   error?: string | boolean;
 }
@@ -11,6 +12,6 @@ export const FormTextAreaRoot = styled.textarea<FormTextAreaRootProps>`
   width: 100%;
 
   &:not(:focus) {
-    border-color: ${props => props.touched && props.error && color("error")};
+    border-color: ${(props) => props.touched && props.error && color("error")};
   }
 `;

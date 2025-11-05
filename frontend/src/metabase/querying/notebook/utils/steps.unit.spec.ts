@@ -1,6 +1,8 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+import { createQueryWithClauses } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type { StructuredQuery as StructuredQueryObject } from "metabase-types/api";
 import {
   ORDERS,
@@ -51,12 +53,19 @@ const postAggregationFilterQuery: StructuredQueryObject = {
 };
 
 const getQuestionStepsForMBQLQuery = (query: StructuredQueryObject) => {
-  const question = database.question(query);
+  const question = Question.create({
+    metadata,
+    dataset_query: { database: database.id, type: "query", query },
+  });
   return getQuestionSteps(question, metadata, {});
 };
 
 const getMetricStepsForMBQLQuery = (query: StructuredQueryObject) => {
-  const question = database.question(query).setType("metric");
+  const question = Question.create({
+    metadata,
+    dataset_query: { database: database.id, type: "query", query },
+    cardType: "metric",
+  });
   return getQuestionSteps(question, metadata, {});
 };
 
@@ -68,7 +77,7 @@ describe("raw data query", () => {
     it("should return data step with actions", () => {
       expect(steps.length).toBe(1);
       expect(dataStep.type).toBe("data");
-      expect(dataStep.actions.map(action => action.type)).toEqual([
+      expect(dataStep.actions.map((action) => action.type)).toEqual([
         "join",
         "expression",
         "filter",
@@ -86,7 +95,7 @@ describe("filtered and summarized query", () => {
 
   describe("getQuestionSteps", () => {
     it("`getQuestionSteps()` should return data, filter, and summarize steps", () => {
-      expect(steps.map(s => s.type)).toEqual(["data", "filter", "summarize"]);
+      expect(steps.map((s) => s.type)).toEqual(["data", "filter", "summarize"]);
     });
 
     it("should allow adding a new stage for questions", () => {
@@ -182,7 +191,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
 
   describe("getQuestionSteps", () => {
     it("`getQuestionSteps()` should return [data, filter, summarize] and [filter, summarize] steps", () => {
-      expect(steps.map(s => s.type)).toEqual([
+      expect(steps.map((s) => s.type)).toEqual([
         "data",
         "filter",
         "summarize",
@@ -273,5 +282,26 @@ describe("filtered and summarized query with post-aggregation filter", () => {
       expect(Lib.filters(newQuery, 0)).toHaveLength(1);
       expect(Lib.filters(newQuery, 1)).toHaveLength(0);
     });
+  });
+});
+
+describe("aggregated query without breakout", () => {
+  it("provides 'join data' and 'custom column' actions", () => {
+    const query = createQueryWithClauses({
+      aggregations: [{ operatorName: "count" }],
+    });
+
+    const question = Question.create({
+      dataset_query: Lib.toJsQuery(query),
+      metadata,
+    });
+
+    const steps = getQuestionSteps(question, metadata, {});
+
+    expect(
+      steps
+        .find((step) => step.type === "summarize")
+        ?.actions.map((action) => action.type),
+    ).toEqual(["join", "expression"]);
   });
 });

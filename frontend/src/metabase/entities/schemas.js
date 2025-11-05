@@ -5,6 +5,8 @@ import {
   databaseApi,
   skipToken,
   useListDatabaseSchemaTablesQuery,
+  useListDatabaseSchemasQuery,
+  useListSyncableDatabaseSchemasQuery,
   useListVirtualDatabaseTablesQuery,
 } from "metabase/api";
 import Questions from "metabase/entities/questions";
@@ -35,6 +37,7 @@ export default createEntity({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
+    useListQuery,
   },
 
   api: {
@@ -54,7 +57,7 @@ export default createEntity({
             databaseApi.endpoints.listDatabaseSchemas,
           );
 
-      return schemaNames.map(schemaName => ({
+      return schemaNames.map((schemaName) => ({
         // NOTE: needs unique IDs for entities to work correctly
         id: generateSchemaId(dbId, schemaName),
         name: schemaName,
@@ -109,7 +112,7 @@ export default createEntity({
           return state;
         }
         const virtualQuestionId = getQuestionVirtualTableId(question.id);
-        return updateIn(state, [schema, "tables"], tables =>
+        return updateIn(state, [schema, "tables"], (tables) =>
           addTableAvoidingDuplicates(tables, virtualQuestionId),
         );
       }
@@ -151,13 +154,13 @@ export default createEntity({
         });
       }
 
-      return updateIn(state, [virtualSchemaId, "tables"], tables => {
+      return updateIn(state, [virtualSchemaId, "tables"], (tables) => {
         if (!tables) {
           return tables;
         }
 
         if (card.archived) {
-          return tables.filter(id => id !== virtualQuestionId);
+          return tables.filter((id) => id !== virtualQuestionId);
         }
         return addTableAvoidingDuplicates(tables, virtualQuestionId);
       });
@@ -172,7 +175,7 @@ function getPreviousSchemaContainingTheQuestion(
   schemaId,
   virtualQuestionId,
 ) {
-  return Object.values(state).find(schema => {
+  return Object.values(state).find((schema) => {
     if (schema.id === schemaId) {
       return false;
     }
@@ -182,8 +185,8 @@ function getPreviousSchemaContainingTheQuestion(
 }
 
 function removeVirtualQuestionFromSchema(state, schemaId, virtualQuestionId) {
-  return updateIn(state, [schemaId, "tables"], tables =>
-    tables.filter(tableId => tableId !== virtualQuestionId),
+  return updateIn(state, [schemaId, "tables"], (tables) =>
+    tables.filter((tableId) => tableId !== virtualQuestionId),
   );
 }
 
@@ -194,9 +197,9 @@ function addTableAvoidingDuplicates(tables, tableId) {
   return tables.includes(tableId) ? tables : [...tables, tableId];
 }
 
-const useGetQuery = query => {
+const useGetQuery = (query, options) => {
   const { id, ...args } = query;
-  const [dbId, schemaName, options] = parseSchemaId(id);
+  const [dbId, schemaName, schemaOptions] = parseSchemaId(id);
 
   if (query !== skipToken && (!dbId || schemaName === undefined)) {
     throw new Error("Schemas ID is of the form dbId:schemaName");
@@ -206,14 +209,16 @@ const useGetQuery = query => {
     query === skipToken ? skipToken : { id: dbId, schema: schemaName, ...args };
 
   const virtualDatabaseTables = useListVirtualDatabaseTablesQuery(
-    options?.isDatasets ? finalQuery : skipToken,
+    schemaOptions?.isDatasets ? finalQuery : skipToken,
+    options,
   );
 
   const databaseSchemaTables = useListDatabaseSchemaTablesQuery(
-    options?.isDatasets ? skipToken : finalQuery,
+    schemaOptions?.isDatasets ? skipToken : finalQuery,
+    options,
   );
 
-  const tables = options?.isDatasets
+  const tables = schemaOptions?.isDatasets
     ? virtualDatabaseTables
     : databaseSchemaTables;
 
@@ -234,3 +239,30 @@ const useGetQuery = query => {
 
   return result;
 };
+
+function useListQuery({ dbId, getAll = false, ...args }, options) {
+  const syncableDatabaseSchemas = useListSyncableDatabaseSchemasQuery(
+    getAll ? dbId : skipToken,
+    options,
+  );
+
+  const databaseSchemas = useListDatabaseSchemasQuery(
+    getAll ? skipToken : { id: dbId, ...args },
+    options,
+  );
+
+  const schemas = getAll ? syncableDatabaseSchemas : databaseSchemas;
+
+  const data = useMemo(() => {
+    return schemas.data?.map((schemaName) => ({
+      // NOTE: needs unique IDs for entities to work correctly
+      id: generateSchemaId(dbId, schemaName),
+      name: schemaName,
+      database: { id: dbId },
+    }));
+  }, [dbId, schemas]);
+
+  const result = useMemo(() => ({ ...schemas, data }), [data, schemas]);
+
+  return result;
+}

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 const STRING_CASES = [
   {
@@ -262,33 +262,33 @@ const DATE_SHORTCUT_CASES = [
     expectedDisplayName: "Created At is yesterday",
   },
   {
-    title: "last week",
-    shortcut: "Last week",
+    title: "previous week",
+    shortcut: "Previous week",
     expectedDisplayName: "Created At is in the previous week",
   },
   {
-    title: "last 7 days",
-    shortcut: "Last 7 days",
+    title: "previous 7 days",
+    shortcut: "Previous 7 days",
     expectedDisplayName: "Created At is in the previous 7 days",
   },
   {
-    title: "last 30 days",
-    shortcut: "Last 30 days",
+    title: "previous 30 days",
+    shortcut: "Previous 30 days",
     expectedDisplayName: "Created At is in the previous 30 days",
   },
   {
-    title: "last month",
-    shortcut: "Last month",
+    title: "previous month",
+    shortcut: "Previous month",
     expectedDisplayName: "Created At is in the previous month",
   },
   {
-    title: "last 3 months",
-    shortcut: "Last 3 months",
+    title: "previous 3 months",
+    shortcut: "Previous 3 months",
     expectedDisplayName: "Created At is in the previous 3 months",
   },
   {
-    title: "last 12 months",
-    shortcut: "Last 12 months",
+    title: "previous 12 months",
+    shortcut: "Previous 12 months",
     expectedDisplayName: "Created At is in the previous 12 months",
   },
 ];
@@ -351,14 +351,14 @@ const EXCLUDE_DATE_CASES = [
     expectedRowCount: 183,
   },
   {
-    title: "is empty",
-    label: "Is empty",
+    title: "empty values",
+    label: "Empty values",
     expectedDisplayName: "Created At is not empty",
     expectedRowCount: 200,
   },
   {
-    title: "not empty",
-    label: "Is not empty",
+    title: "not empty values",
+    label: "Not empty values",
     expectedDisplayName: "Created At is empty",
     expectedRowCount: 0,
   },
@@ -371,7 +371,7 @@ const RELATIVE_DATE_CASES = [
     offset: "Previous",
     unit: "day",
     value: 1,
-    expectedDisplayName: "Created At is yesterday",
+    expectedDisplayName: "Created At is today or yesterday",
     includeCurrent: true,
   },
   {
@@ -396,7 +396,7 @@ const RELATIVE_DATE_CASES = [
     offset: "Previous",
     unit: "month",
     value: 1,
-    expectedDisplayName: "Created At is in the previous month",
+    expectedDisplayName: "Created At is in the previous month or this month",
     includeCurrent: true,
   },
   {
@@ -411,7 +411,8 @@ const RELATIVE_DATE_CASES = [
     offset: "Previous",
     unit: "quarters",
     value: 2,
-    expectedDisplayName: "Created At is in the previous 2 quarters",
+    expectedDisplayName:
+      "Created At is in the previous 2 quarters or this quarter",
     includeCurrent: true,
   },
 
@@ -421,7 +422,7 @@ const RELATIVE_DATE_CASES = [
     offset: "Next",
     unit: "hours",
     value: 6,
-    expectedDisplayName: "Created At is in the next 6 hours",
+    expectedDisplayName: "Created At is in the next 6 hours or this hour",
     includeCurrent: true,
   },
   {
@@ -471,16 +472,16 @@ describe("scenarios > filters > filter types", () => {
           H.openProductsTable({ mode: "notebook" });
           H.filter({ mode: "notebook" });
 
-          H.popover().findByText(columnName).click();
+          H.clauseStepPopover().findByText(columnName).click();
           H.selectFilterOperator(operator);
-          H.popover().within(() => {
-            values.forEach(value => {
+          H.clauseStepPopover().within(() => {
+            values.forEach((value) => {
               cy.findByLabelText("Filter value")
                 .focus()
                 .type(`${value},`, { delay: 50 })
                 .blur();
             });
-            options.forEach(option => cy.findByText(option).click());
+            options.forEach((option) => cy.findByText(option).click());
             cy.button("Add filter").click();
           });
 
@@ -506,19 +507,17 @@ describe("scenarios > filters > filter types", () => {
           H.openProductsTable({ mode: "notebook" });
           H.filter({ mode: "notebook" });
 
-          H.popover().findByText(columnName).click();
+          H.clauseStepPopover().findByText(columnName).click();
           H.selectFilterOperator(operator);
-          H.popover()
-            .first()
-            .within(() => {
-              values.forEach(value => {
-                cy.findByLabelText("Filter value")
-                  .focus()
-                  .type(`${value},`, { delay: 50 })
-                  .blur();
-              });
-              cy.button("Add filter").click();
+          H.clauseStepPopover().within(() => {
+            values.forEach((value) => {
+              cy.findByLabelText("Filter value")
+                .focus()
+                .type(`${value},`, { delay: 50 })
+                .blur();
             });
+            cy.button("Add filter").click();
+          });
 
           assertFilterName(expectedDisplayName);
           H.visualize();
@@ -536,7 +535,7 @@ describe("scenarios > filters > filter types", () => {
             H.openProductsTable({ mode: "notebook" });
             H.filter({ mode: "notebook" });
 
-            H.popover().within(() => {
+            H.clauseStepPopover().within(() => {
               cy.findByText("Created At").click();
               cy.findByText(shortcut).click();
             });
@@ -564,24 +563,27 @@ describe("scenarios > filters > filter types", () => {
             H.openProductsTable({ mode: "notebook" });
             H.filter({ mode: "notebook" });
 
-            H.popover().within(() => {
+            H.clauseStepPopover().within(() => {
               cy.findByText("Created At").click();
-              cy.findByText("Relative dates…").click();
+              cy.findByText("Relative date range…").click();
               cy.findByRole("tab", { name: offset }).click();
             });
 
-            H.relativeDatePicker.setValue({ value, unit });
+            H.relativeDatePicker.setValue({ value, unit }, H.clauseStepPopover);
 
             if (includeCurrent) {
-              H.relativeDatePicker.toggleCurrentInterval();
+              H.relativeDatePicker.toggleCurrentInterval(H.clauseStepPopover);
             } else if (offsetUnit && offsetValue) {
-              H.relativeDatePicker.addStartingFrom({
-                value: offsetValue,
-                unit: offsetUnit,
-              });
+              H.relativeDatePicker.addStartingFrom(
+                {
+                  value: offsetValue,
+                  unit: offsetUnit,
+                },
+                H.clauseStepPopover,
+              );
             }
 
-            H.popover().button("Add filter").click();
+            H.clauseStepPopover().button("Add filter").click();
 
             assertFilterName(expectedDisplayName);
             H.visualize();
@@ -598,12 +600,12 @@ describe("scenarios > filters > filter types", () => {
             H.openProductsTable({ mode: "notebook" });
             H.filter({ mode: "notebook" });
 
-            H.popover().within(() => {
+            H.clauseStepPopover().within(() => {
               cy.findByText("Created At").click();
               cy.findByText("Exclude…").click();
               cy.findByText(label).click();
               if (options) {
-                options.forEach(option => cy.findByText(option).click());
+                options.forEach((option) => cy.findByText(option).click());
                 cy.button("Add filter").click();
               }
             });

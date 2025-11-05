@@ -10,11 +10,11 @@ import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChar
 import { RowChart, type RowChartProps } from "./RowChart";
 
 export default {
-  title: "Visualizations/shared/RowChart",
+  title: "Viz/Shared/RowChart",
   component: RowChart,
 };
 
-const Template: StoryFn<RowChartProps<any>> = args => {
+const Template: StoryFn<RowChartProps<any>> = (args) => {
   return (
     <Box h={600} bg="white" p="8px">
       <RowChart {...args} />
@@ -87,7 +87,7 @@ export const Default = {
 };
 
 const ThemedRowChart = () => {
-  const theme = useRowChartTheme("Lato", false, false);
+  const theme = useRowChartTheme("Lato", false);
 
   return (
     <Box h={600} bg="white" p="8px">

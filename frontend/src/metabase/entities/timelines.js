@@ -3,9 +3,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  skipToken,
   timelineApi,
   timelineEventApi,
   useGetTimelineQuery,
+  useListCollectionTimelinesQuery,
+  useListTimelinesQuery,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import {
@@ -31,6 +34,7 @@ const Timelines = createEntity({
     getUseGetQuery: () => ({
       useGetQuery: useGetTimelineQuery,
     }),
+    useListQuery,
   },
 
   api: {
@@ -69,7 +73,7 @@ const Timelines = createEntity({
   },
 
   actions: {
-    createWithEvent: (event, collection) => async dispatch => {
+    createWithEvent: (event, collection) => async (dispatch) => {
       const timeline = await entityCompatibleQuery(
         getDefaultTimeline(collection),
         dispatch,
@@ -120,7 +124,7 @@ const Timelines = createEntity({
     if (action.type === TimelineEvents.actionTypes.UPDATE && !action.error) {
       const event = TimelineEvents.HACK_getObjectFromAction(action);
 
-      return _.mapObject(state, timeline => {
+      return _.mapObject(state, (timeline) => {
         const hasEvent = timeline.events?.includes(event.id);
         const hasTimeline = event.timeline_id === timeline.id;
 
@@ -139,7 +143,7 @@ const Timelines = createEntity({
     if (action.type === TimelineEvents.actionTypes.DELETE && !action.error) {
       const eventId = action.payload.result;
 
-      return _.mapObject(state, timeline => {
+      return _.mapObject(state, (timeline) => {
         return updateIn(timeline, ["events"], (eventIds = []) => {
           return _.without(eventIds, eventId);
         });
@@ -149,5 +153,19 @@ const Timelines = createEntity({
     return state;
   },
 });
+
+function useListQuery({ collectionId, ...params } = {}, options) {
+  const collectionTimelines = useListCollectionTimelinesQuery(
+    collectionId ? { id: collectionId, ...params } : skipToken,
+    options,
+  );
+
+  const timelines = useListTimelinesQuery(
+    collectionId ? skipToken : params,
+    options,
+  );
+
+  return collectionId ? collectionTimelines : timelines;
+}
 
 export default Timelines;

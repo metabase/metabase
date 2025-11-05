@@ -1,32 +1,33 @@
 ---
 title: Notification permissions
+summary: Learn who can create and edit alerts and dashboard subscriptions, and what data recipients can see in their notifications.
 ---
 
 # Notification permissions
 
-Notifications in Metabase include [alerts](../questions/sharing/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md#setting-up-a-dashboard-subscription).
+Notifications in Metabase include [alerts](../questions/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md#setting-up-a-dashboard-subscription).
 
 ## Who can edit dashboard subscriptions and alerts
 
-What you can do with alerts and dashboard subscriptions depends on whether you're in the Administrators group or in a sandboxed group.
+What you can do with alerts and dashboard subscriptions depends on whether you're in the Administrators group or in a group with [row and column security](../permissions/row-and-column-security.md).
 
 - [All Users group](#all-users-group-notification-permissions)
-- [Sandboxed group](#sandboxed-accounts-notification-permissions)
+- [Restricted group](#notification-permissions-for-people-in-groups-with-row-and-column-security)
 - [Administrators group](#administrators-group-notification-permissions)
 
 ### All Users group notification permissions
 
 Everyone's in the All Users group. Which means that everyone can:
 
-- Create [alerts](../questions/sharing/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md#setting-up-a-dashboard-subscription).
-- Add new recipients to dashboard subscriptions that they created. Non-admins can only add themselves to alerts.
+- Create [alerts](../questions/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md#setting-up-a-dashboard-subscription).
+- Add new recipients to dashboard subscriptions and alerts that they created.
 - Unsubscribe from any alert or subscription in their [Account settings](../people-and-groups/account-settings.md).
 
 When a notification creator adds new recipients to an alert or subscription, Metabase will display data to the recipients using the **creator's** [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md).
 
-### Sandboxed accounts notification permissions
+### Notification permissions for people in groups with row and column security
 
-Same as everyone in the All Users group, but with a special case: **people in sandboxed groups will only see themselves in the list of recipients** when creating an alert or subscription.
+Same as everyone in the All Users group, but with a special case: **people in groups with row and column security will only see themselves in the list of recipients** when creating an alert or subscription.
 
 ### Administrators group notification permissions
 
@@ -54,4 +55,4 @@ On [Enterprise](https://www.metabase.com/product/enterprise) and [Pro](https://w
 ## Further reading
 
 - [Dashboard subscriptions](../dashboards/subscriptions.md)
-- [Alerts](../questions/sharing/alerts.md)
+- [Alerts](../questions/alerts.md)

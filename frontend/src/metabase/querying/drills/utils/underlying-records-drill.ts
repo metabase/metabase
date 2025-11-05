@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { msgid, ngettext } from "ttag";
 
 import { inflect } from "metabase/lib/formatting/strings";
@@ -13,9 +14,10 @@ export const underlyingRecordsDrill: Drill<
   Lib.UnderlyingRecordsDrillThruInfo
 > = ({ drill, drillInfo, applyDrill }): QuestionChangeClickAction[] => {
   const { tableName, rowCount } = drillInfo;
+  const locale = dayjs.locale();
 
   const tableTitle =
-    tableName && isShortTableName(tableName)
+    tableName && locale === "en" && isShortTableName(tableName)
       ? inflect(tableName, rowCount)
       : ngettext(msgid`record`, `records`, rowCount);
 
@@ -36,7 +38,9 @@ export const underlyingRecordsDrill: Drill<
       question: () =>
         applyDrill(drill)
           .setDisplay("table")
-          .updateSettings({ "table.pivot": false }),
+          // Sometimes the "graph.dimensions" setting lingers around
+          // from a previous graph visualization, so we reset it here. (see metabase#55484)
+          .updateSettings({ "table.pivot": false, "graph.dimensions": [] }),
     },
   ];
 };

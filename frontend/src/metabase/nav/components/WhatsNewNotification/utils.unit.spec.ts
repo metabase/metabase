@@ -13,7 +13,7 @@ const buildVersionInfo = (versions: VersionInfoRecord[]): VersionInfo => {
 
 // these args make should make the notification to appear
 const DEFAULTS: Parameters<typeof getLatestEligibleReleaseNotes>[0] = {
-  isEmbedded: false,
+  isEmbeddingIframe: false,
   isWhiteLabeling: false,
   lastAcknowledgedVersion: null,
   currentVersion: "v0.48.0",
@@ -41,7 +41,7 @@ describe("getLatestEligibleReleaseNotes", () => {
     expect(
       getLatestEligibleReleaseNotes({
         ...DEFAULTS,
-        isEmbedded: true,
+        isEmbeddingIframe: true,
       }),
     ).toBe(undefined);
   });

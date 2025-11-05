@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.settings :as qp.settings]
    [metabase.test :as mt]
    [metabase.util.malli.schema :as ms]))
 
@@ -24,11 +24,17 @@
 (defn- bad-query-preprocessed-schema []
   [:map
    [:database [:= (mt/id)]]
-   [:type     [:= :query]]
-   [:query    [:map
-               [:source-table [:= (mt/id :venues)]]
-               [:fields       [:= [[:field (mt/id :venues :id) {:temporal-unit :month}]]]]
-               [:limit        [:= qp.i/absolute-max-results]]]]
+   [:lib/type [:= :mbql/query]]
+   [:stages   [:tuple
+               [:map
+                [:source-table [:= (mt/id :venues)]]
+                [:fields       [:tuple
+                                [:tuple
+                                 [:= :field]
+                                 [:map
+                                  [:temporal-unit [:= :month]]]
+                                 [:= (mt/id :venues :id)]]]]
+                [:limit        [:= qp.settings/absolute-max-results]]]]]
    [:driver {:optional true} [:= :h2]]])
 
 (def ^:private bad-query-native-schema

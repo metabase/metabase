@@ -1,26 +1,39 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
-import type { StoryFn } from "@storybook/react";
-import { type ComponentProps, useEffect } from "react";
+import type { StoryContext, StoryFn } from "@storybook/react";
+import { HttpResponse, http } from "msw";
+import { useEffect, useMemo } from "react";
+import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
+import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import LegacyTooltip from "metabase/core/components/Tooltip";
+import { Api } from "metabase/api";
+import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
+import {
+  MockDashboardContext,
+  type MockDashboardContextProps,
+} from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { publicReducers } from "metabase/reducers-public";
 import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
-import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import ObjectDetail from "metabase/visualizations/visualizations/ObjectDetail";
-import type { DashboardCard } from "metabase-types/api";
+import Table from "metabase/visualizations/visualizations/Table/Table";
+import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
+import type {
+  Dashboard,
+  DashboardCard,
+  DashboardTab,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDatabase,
   createMockDataset,
   createMockDatasetData,
   createMockParameter,
@@ -31,54 +44,73 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import {
-  PublicOrEmbeddedDashboardView,
-  type PublicOrEmbeddedDashboardViewProps,
-} from "./PublicOrEmbeddedDashboardView";
+import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
+
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(Table);
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(BarChart);
 
 export default {
-  title: "embed/PublicOrEmbeddedDashboardView",
+  title: "App/Embed/PublicOrEmbeddedDashboardView",
   component: PublicOrEmbeddedDashboardView,
-  decorators: [
-    ReduxDecorator,
-    WaitForResizeToStopDecorator,
-    MockIsEmbeddingDecorator,
-  ],
+  decorators: [ReduxDecorator, createWaitForResizeToStopDecorator()],
   parameters: {
     layout: "fullscreen",
+    msw: {
+      handlers: [
+        http.get("*/api/database", () =>
+          HttpResponse.json(createMockDatabase()),
+        ),
+      ],
+    },
   },
 };
 
-function ReduxDecorator(Story: StoryFn) {
+function ReduxDecorator(Story: StoryFn, context: StoryContext) {
+  const dashboard = (context.args.dashboard as Dashboard) ?? createDashboard();
+  const initialState = createMockState({
+    currentUser: null,
+    settings: createMockSettingsState({
+      "hide-embed-branding?": false,
+    }),
+    dashboard: createMockDashboardState({
+      dashboardId: dashboard.id,
+      dashboards: {
+        [dashboard.id]: {
+          ...dashboard,
+          dashcards: dashboard.dashcards.map((dashcard) => dashcard.id),
+        },
+      },
+      dashcards: _.indexBy(dashboard.dashcards, "id"),
+      dashcardData: {
+        [DASHCARD_BAR_ID]: {
+          [CARD_BAR_ID]: createMockDataset({
+            data: createMockDatasetData({
+              cols: [
+                createMockColumn(StringColumn({ name: "Dimension" })),
+                createMockColumn(NumberColumn({ name: "Count" })),
+              ],
+              rows: [
+                ["foo", 1],
+                ["bar", 2],
+              ],
+            }),
+          }),
+        },
+        [DASHCARD_TABLE_ID]: {
+          // Couldn't really figure out the type here.
+          [CARD_TABLE_ID]: createMockDataset(TABLE_RAW_SERIES[0] as any),
+        },
+      },
+    }),
+  });
+  const store = getStore(publicReducers, initialState, [Api.middleware]);
   return (
     <MetabaseReduxProvider store={store}>
       <Story />
     </MetabaseReduxProvider>
   );
-}
-
-/**
- * This is an arbitrary number, it should be big enough to pass CI tests.
- * This works because we set delays for ExplicitSize to 0 in storybook.
- */
-const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1000;
-function WaitForResizeToStopDecorator(Story: StoryFn) {
-  const asyncCallback = createAsyncCallback();
-  useEffect(() => {
-    setTimeout(asyncCallback, TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING);
-  }, [asyncCallback]);
-
-  return <Story />;
-}
-
-declare global {
-  interface Window {
-    overrideIsWithinIframe?: boolean;
-  }
-}
-function MockIsEmbeddingDecorator(Story: StoryFn) {
-  window.overrideIsWithinIframe = true;
-  return <Story />;
 }
 
 const DASHBOARD_ID = getNextId();
@@ -88,46 +120,23 @@ const CARD_BAR_ID = getNextId();
 const CARD_TABLE_ID = getNextId();
 const TAB_ID = getNextId();
 const PARAMETER_ID = "param-hex";
-const initialState = createMockState({
-  currentUser: null,
-  settings: createMockSettingsState({
-    "hide-embed-branding?": false,
-  }),
-  dashboard: createMockDashboardState({
-    dashcardData: {
-      [DASHCARD_BAR_ID]: {
-        [CARD_BAR_ID]: createMockDataset({
-          data: createMockDatasetData({
-            cols: [
-              createMockColumn(StringColumn({ name: "Dimension" })),
-              createMockColumn(NumberColumn({ name: "Count" })),
-            ],
-            rows: [
-              ["foo", 1],
-              ["bar", 2],
-            ],
-          }),
-        }),
-      },
-      [DASHCARD_TABLE_ID]: {
-        // Couldn't really figure out the type here.
-        [CARD_TABLE_ID]: createMockDataset(TABLE_RAW_SERIES[0] as any),
-      },
-    },
-  }),
-});
-
-const store = getStore(publicReducers, initialState);
 
 interface CreateDashboardOpts {
   hasScroll?: boolean;
   dashcards?: DashboardCard[];
+  tabs?: DashboardTab[];
 }
-function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
+function createDashboard({
+  hasScroll,
+  dashcards,
+  tabs,
+}: CreateDashboardOpts = {}) {
   return createMockDashboard({
     id: DASHBOARD_ID,
     name: "My dashboard",
     width: "full",
+    parameters: [createMockParameter({ id: PARAMETER_ID })],
+    tabs,
     dashcards: dashcards ?? [
       createMockDashboardCard({
         id: DASHCARD_BAR_ID,
@@ -139,7 +148,10 @@ function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
           {
             card_id: CARD_BAR_ID,
             parameter_id: PARAMETER_ID,
-            target: ["variable", ["template-tag", "abc"]],
+            target: [
+              "dimension",
+              ["field", "Dimension", { "base-type": "type/Text" }],
+            ],
           },
         ],
       }),
@@ -159,30 +171,71 @@ function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
-  return <PublicOrEmbeddedDashboardView {...args} />;
-};
-
-const defaultArgs: Partial<
-  ComponentProps<typeof PublicOrEmbeddedDashboardView>
-> = {
+const Template: StoryFn<MockDashboardContextProps> = (
+  args: MockDashboardContextProps,
+) => (
+  <MockDashboardContext
+    {...args}
+    dashboardId={args.dashboardId ?? args.dashboard?.id}
+    dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
+  >
+    <PublicOrEmbeddedDashboardView />
+  </MockDashboardContext>
+);
+const defaultArgs: Partial<MockDashboardContextProps> = {
   dashboard: createDashboard(),
-  downloadsEnabled: true,
+  downloadsEnabled: { pdf: true, results: true },
   titled: true,
   bordered: true,
   background: true,
   slowCards: {},
   selectedTabId: TAB_ID,
-  parameters: [
-    createMockParameter({
-      id: PARAMETER_ID,
+  withFooter: true,
+};
+
+export const NarrowWithManyTabs = {
+  render: Template,
+  args: {
+    ...defaultArgs,
+    titled: false,
+    dashboard: createDashboard({
+      dashcards: [],
+      tabs: [
+        { id: 0, dashboard_id: DASHBOARD_ID, name: "Tab 1" },
+        { id: 1, dashboard_id: DASHBOARD_ID, name: "Tab 2" },
+        { id: 2, dashboard_id: DASHBOARD_ID, name: "Tab 3" },
+        { id: 3, dashboard_id: DASHBOARD_ID, name: "Tab 4" },
+        { id: 4, dashboard_id: DASHBOARD_ID, name: "Tab 5" },
+        { id: 5, dashboard_id: DASHBOARD_ID, name: "Tab 6" },
+        { id: 6, dashboard_id: DASHBOARD_ID, name: "Tab 7" },
+        { id: 7, dashboard_id: DASHBOARD_ID, name: "Tab 8" },
+        { id: 8, dashboard_id: DASHBOARD_ID, name: "Tab 9" },
+        { id: 9, dashboard_id: DASHBOARD_ID, name: "Tab 10" },
+        { id: 10, dashboard_id: DASHBOARD_ID, name: "Tab 11" },
+        { id: 11, dashboard_id: DASHBOARD_ID, name: "Tab 12" },
+        { id: 12, dashboard_id: DASHBOARD_ID, name: "Tab 13" },
+        { id: 13, dashboard_id: DASHBOARD_ID, name: "Tab 14" },
+        { id: 14, dashboard_id: DASHBOARD_ID, name: "Tab 15" },
+        { id: 15, dashboard_id: DASHBOARD_ID, name: "Tab 16" },
+        { id: 16, dashboard_id: DASHBOARD_ID, name: "Tab 17" },
+        { id: 17, dashboard_id: DASHBOARD_ID, name: "Tab 18" },
+      ],
     }),
-  ],
+  },
+  decorators: [NarrowDecorator],
 };
 
 export const LightThemeDefault = {
   render: Template,
   args: defaultArgs,
+};
+
+export const LightThemeNoResults = {
+  render: Template,
+  args: {
+    ...defaultArgs,
+    dashboard: createDashboard({ dashcards: [] }),
+  },
 };
 
 export const LightThemeScroll = {
@@ -331,18 +384,6 @@ export function ComponentCompatibility() {
           Mantine Tooltip
         </Card>
       </Tooltip>
-      <LegacyTooltip
-        tooltip={
-          <Text size="sm" c="var(--mb-color-text-primary)">
-            Label
-          </Text>
-        }
-        isOpen
-      >
-        <Card withBorder display="inline-block">
-          Legacy Tooltip
-        </Card>
-      </LegacyTooltip>
       <Popover withArrow shadow="md" opened>
         <Popover.Target>
           <Card withBorder display="inline-block">
@@ -355,37 +396,6 @@ export function ComponentCompatibility() {
           </Text>
         </Popover.Dropdown>
       </Popover>
-      <TippyPopoverWithTrigger
-        isInitiallyVisible
-        triggerContent={
-          <Card withBorder display="inline-block">
-            Tippy Popover
-          </Card>
-        }
-        popoverContent={
-          <Text size="sm" c="var(--mb-color-text-primary)">
-            Dropdown
-          </Text>
-        }
-      />
-      <PopoverWithTrigger
-        isInitiallyOpen
-        triggerElement={
-          <Card withBorder display="inline-block">
-            Legacy Popover
-          </Card>
-        }
-      >
-        {() =>
-          function Inner({ maxHeight, ...props }: { maxHeight: number }) {
-            return (
-              <Text size="sm" c="var(--mb-color-text-primary)" {...props}>
-                Dropdownnnnn
-              </Text>
-            );
-          }
-        }
-      </PopoverWithTrigger>
     </Box>
   );
 }
@@ -428,7 +438,7 @@ export const CardVisualizationsDarkTheme = {
 };
 
 function ScrollDecorator(Story: StoryFn) {
-  const asyncCallback = createAsyncCallback();
+  const asyncCallback = useMemo(() => createAsyncCallback(), []);
 
   useEffect(() => {
     const scrollContainer = document.querySelector("[data-testid=embed-frame]");
@@ -440,6 +450,10 @@ function ScrollDecorator(Story: StoryFn) {
         asyncCallback();
       }
     }, 100);
+
+    return () => {
+      clearInterval(intervalId);
+    };
   }, [asyncCallback]);
 
   return <Story />;
@@ -456,6 +470,14 @@ function DarkBackgroundDecorator(Story: StoryFn) {
 function LightBackgroundDecorator(Story: StoryFn) {
   return (
     <Box bg="#ddd" mih="100vh">
+      <Story />
+    </Box>
+  );
+}
+
+function NarrowDecorator(Story: StoryFn) {
+  return (
+    <Box w={800} h={600} style={{ position: "relative" }}>
       <Story />
     </Box>
   );

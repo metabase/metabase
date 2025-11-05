@@ -1,9 +1,9 @@
 import {
+  NativeEditor,
   entityPickerModal,
   entityPickerModalTab,
   interceptIfNotPreviouslyDefined,
   modal,
-  nativeEditor,
   openQuestionActions,
   popover,
 } from "e2e/support/helpers";
@@ -27,14 +27,6 @@ export function assertQuestionIsBasedOnModel({
   cy.findByText(table).should("not.exist");
 }
 
-export function assertCreatedNestedQuery(modelId) {
-  cy.wait("@createCard").then(({ request }) => {
-    expect(request.body.dataset_query.query["source-table"]).to.equal(
-      `card__${modelId}`,
-    );
-  });
-}
-
 export function saveQuestionBasedOnModel({ modelId, name }) {
   cy.intercept("POST", "/api/card").as("createCard");
 
@@ -47,8 +39,6 @@ export function saveQuestionBasedOnModel({ modelId, name }) {
     }
     cy.findByText("Save").click();
   });
-
-  assertCreatedNestedQuery(modelId);
 
   modal().findByText("Not now").click();
 }
@@ -74,7 +64,7 @@ export function assertIsModel() {
 
   // For native
   cy.findByText("This question is written in SQL.").should("not.exist");
-  nativeEditor().should("not.exist");
+  NativeEditor.get().should("not.exist");
 }
 
 // Requires question actions to be open
@@ -103,6 +93,7 @@ export function turnIntoModel() {
 }
 
 export function selectFromDropdown(option, clickOpts) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   popover().last().findByText(option).click(clickOpts);
 }
 

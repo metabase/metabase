@@ -35,10 +35,10 @@ const DefaultTemplate = (args: AnchorProps) => (
 
 const SizeTemplate = (args: AnchorProps) => (
   <Grid align="center" maw="18rem">
-    {argTypes.size.options.map(size => (
+    {argTypes.size.options.map((size) => (
       <Fragment key={size}>
         <Grid.Col span={2}>
-          <Text weight="bold">{size}</Text>
+          <Text fw="bold">{size}</Text>
         </Grid.Col>
         <Grid.Col span={10}>
           <Anchor {...args} size={size} href={sampleArgs.href}>
@@ -51,7 +51,7 @@ const SizeTemplate = (args: AnchorProps) => (
 );
 
 export default {
-  title: "Typography/Anchor",
+  title: "Components/Text/Anchor",
   component: Anchor,
   args,
   argTypes,

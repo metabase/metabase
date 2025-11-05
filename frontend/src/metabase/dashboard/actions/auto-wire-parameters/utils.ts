@@ -2,13 +2,14 @@ import _ from "underscore";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
-import { getMappingOptionByTarget } from "metabase/dashboard/components/DashCard/utils";
 import {
+  findDashCardForInlineParameter,
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import {
   type ParameterMappingOption,
+  getMappingOptionByTarget,
   getParameterMappingOptions,
 } from "metabase/parameters/utils/mapping-options";
 import type Question from "metabase-lib/v1/Question";
@@ -54,7 +55,7 @@ export function getAllDashboardCardsWithUnmappedParameters({
       isQuestionDashCard(dashcard) &&
       !excludeDashcardIds.includes(dashcard.id) &&
       !dashcard.parameter_mappings?.some(
-        mapping => mapping.parameter_id === parameterId,
+        (mapping) => mapping.parameter_id === parameterId,
       ),
   );
 }
@@ -64,23 +65,28 @@ export function getMatchingParameterOption(
   targetDashcard: QuestionDashboardCard,
   targetDimension: ParameterTarget,
   questions: Record<CardId, Question>,
+  dashcards: DashboardCard[],
 ): ParameterMappingOption | null | undefined {
   if (!targetDashcard) {
     return null;
   }
 
   const targetQuestion = questions[targetDashcard.card.id];
+  const parameterDashcard = findDashCardForInlineParameter(
+    parameter.id,
+    dashcards,
+  );
 
   const mappingOptions = getParameterMappingOptions(
     targetQuestion,
     parameter,
     targetDashcard.card,
     targetDashcard,
+    parameterDashcard,
   );
 
   const matchedOption = getMappingOptionByTarget(
     mappingOptions,
-    targetDashcard,
     targetDimension,
     targetQuestion,
     parameter,
@@ -93,6 +99,7 @@ export function getAutoWiredMappingsForDashcards(
   targetDashcards: QuestionDashboardCard[],
   target: ParameterTarget,
   questions: Record<CardId, Question>,
+  dashcards: DashboardCard[],
 ): SetMultipleDashCardAttributesOpts {
   if (targetDashcards.length === 0) {
     return [];
@@ -106,6 +113,7 @@ export function getAutoWiredMappingsForDashcards(
       targetDashcard,
       target,
       questions,
+      dashcards,
     );
 
     if (selectedMappingOption && targetDashcard.card_id) {
@@ -127,7 +135,7 @@ export function getAutoWiredMappingsForDashcards(
 export function getParameterMappings<DC extends DashboardCard>(
   dashcard: DC,
   parameter_id: ParameterId,
-  card_id: CardId,
+  card_id: CardId | null,
   target: ParameterTarget | null,
 ): NonNullable<DC["parameter_mappings"]> {
   const isVirtual = isVirtualDashCard(dashcard);
@@ -139,7 +147,7 @@ export function getParameterMappings<DC extends DashboardCard>(
   // allow mapping the same parameter to multiple action targets
   if (!isAction) {
     parameter_mappings = parameter_mappings.filter(
-      m =>
+      (m) =>
         ("card_id" in m && m.card_id !== card_id) ||
         m.parameter_id !== parameter_id,
     );
@@ -150,7 +158,7 @@ export function getParameterMappings<DC extends DashboardCard>(
       // If this is a virtual (text) card, remove any existing mappings for the target, since text card variables
       // can only be mapped to a single parameter.
       parameter_mappings = parameter_mappings.filter(
-        m => !_.isEqual(m.target, target),
+        (m) => !_.isEqual(m.target, target),
       );
     }
 

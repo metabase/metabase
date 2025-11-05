@@ -38,9 +38,9 @@
 
 (defn randomly-once-an-hour
   "Schedule map for once an hour at a random minute of the hour."
-  []
-  ;; prevent zeros and 50s which would appear as non-random choices
-  (let [choices (into [] (remove #{0 50}) (range 60))]
+  [excluded-minute]
+   ;; avoid around near the hour because it's usually when notifications are scheduled.
+  (let [choices (remove #{excluded-minute} (range 5 55))]
     {:schedule_minute (rand-nth choices)
      :schedule_type   "hourly"}))
 
@@ -54,9 +54,11 @@
 (defn default-randomized-schedule
   "Default schedule maps for caching field values and sync. Defaults to `:cache_field_values` randomly once a day and
   `:metadata_sync` randomly once an hour. "
-  []
-  {:cache_field_values (randomly-once-a-day)
-   :metadata_sync      (randomly-once-an-hour)})
+  ([]
+   (default-randomized-schedule {:excluded-minute 50}))
+  ([{:keys [excluded-minute]}]
+   {:cache_field_values (randomly-once-a-day)
+    :metadata_sync      (randomly-once-an-hour excluded-minute)}))
 
 ;; two because application and db each have defaults
 (def default-cache-field-values-schedule-cron-strings
@@ -67,9 +69,6 @@
   "Default `:metadata_sync_schedule`s (two as application and db have different defaults)."
   #{"0 0 * * * ? *" "0 50 * * * ? *"})
 
-(defn scheduling
-  "Adds sync schedule defaults to a map of schedule-maps."
-  [{:keys [cache_field_values metadata_sync] :as _schedules}]
-  {:metadata_sync      (or metadata_sync (randomly-once-an-hour))
-   ;; cache_field_values is nullable
-   :cache_field_values cache_field_values})
+(def old-sample-metadata-sync-schedule-cron-string
+  "Before ADM-943, the default value for this sync string was 43 causing issues with stampedes."
+  "0 43 * * * ? *")

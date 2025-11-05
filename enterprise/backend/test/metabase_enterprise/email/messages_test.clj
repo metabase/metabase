@@ -1,16 +1,16 @@
 (ns metabase-enterprise.email.messages-test
   (:require
    [clojure.test :refer :all]
-   [metabase.email.messages :as messages]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions :as perms]
+   [metabase.channel.email.messages :as messages]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest admin-or-ee-monitoring-details-emails-test
-  (let [db-id (:id (mt/db))]
+  (let [db-id (mt/id)]
     (mt/with-user-in-groups [group {:name "New Group"}
                              user [group]]
       (perms/grant-application-permissions! group :monitoring)

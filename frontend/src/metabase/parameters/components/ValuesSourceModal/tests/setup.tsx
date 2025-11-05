@@ -65,17 +65,21 @@ export const setup = async ({
   setupSearchEndpoints([]);
   setupRecentViewsAndSelectionsEndpoints([]);
   setupCollectionByIdEndpoint({
-    collections: [personalCollection],
+    collections: [personalCollection, rootCollection],
   });
   setupCollectionItemsEndpoint({
     collection: personalCollection,
+    collectionItems: [],
+  });
+  setupCollectionItemsEndpoint({
+    collection: rootCollection,
     collectionItems: [],
   });
 
   if (hasCollectionAccess) {
     setupCollectionsEndpoints({ collections: [rootCollection] });
     setupCardsEndpoints(cards);
-    cards.forEach(card =>
+    cards.forEach((card) =>
       setupTableQueryMetadataEndpoint(
         createMockTable({
           id: `card__${card.id}`,

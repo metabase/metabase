@@ -8,9 +8,9 @@ import { Api } from "./api";
 import { invalidateTags, listTag, provideRevisionListTags } from "./tags";
 
 export const revisionApi = Api.injectEndpoints({
-  endpoints: builder => ({
-    listRevision: builder.query<Revision[], ListRevisionRequest>({
-      query: params => ({
+  endpoints: (builder) => ({
+    listRevisions: builder.query<Revision[], ListRevisionRequest>({
+      query: (params) => ({
         method: "GET",
         url: "/api/revision",
         params,
@@ -18,7 +18,7 @@ export const revisionApi = Api.injectEndpoints({
       providesTags: (revisions = []) => provideRevisionListTags(revisions),
     }),
     revertRevision: builder.mutation<Revision, RevertRevisionRequest>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/revision/revert",
         body,
@@ -29,4 +29,4 @@ export const revisionApi = Api.injectEndpoints({
   }),
 });
 
-export const { useListRevisionQuery, useRevertRevisionMutation } = revisionApi;
+export const { useListRevisionsQuery, useRevertRevisionMutation } = revisionApi;

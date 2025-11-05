@@ -10,9 +10,11 @@ import {
 } from "metabase/api";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
-import Revisions from "metabase/entities/revisions";
 import { handleActions } from "metabase/lib/redux";
-import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
+import {
+  NAVIGATE_BACK_TO_DASHBOARD,
+  REVERT_TO_REVISION,
+} from "metabase/query_builder/actions";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
@@ -20,6 +22,7 @@ import type {
   Dashboard,
   ParameterId,
   ParameterValueOrArray,
+  ParameterValuesMap,
   Revision,
 } from "metabase-types/api";
 import type {
@@ -52,7 +55,6 @@ import {
   markCardAsSlow,
   reset,
   setDashboardAttributes,
-  setDisplayTheme,
   setDocumentTitle,
   setShowLoadingCompleteFavicon,
 } from "./actions";
@@ -61,7 +63,7 @@ import { syncParametersAndEmbeddingParams } from "./utils";
 
 export const dashboardId = createReducer(
   INITIAL_DASHBOARD_STATE.dashboardId,
-  builder => {
+  (builder) => {
     builder.addCase(INITIALIZE, () => null);
     builder.addCase(
       fetchDashboard.fulfilled,
@@ -86,7 +88,7 @@ export const missingActionParameters = handleActions(
 
 export const autoApplyFilters = createReducer(
   INITIAL_DASHBOARD_STATE.autoApplyFilters,
-  builder => {
+  (builder) => {
     builder.addCase<
       string,
       {
@@ -105,13 +107,9 @@ export const autoApplyFilters = createReducer(
   },
 );
 
-export const theme = createReducer(INITIAL_DASHBOARD_STATE.theme, builder => {
-  builder.addCase(setDisplayTheme, (_state, { payload }) => payload || null);
-});
-
 export const slowCards = createReducer(
   INITIAL_DASHBOARD_STATE.slowCards,
-  builder => {
+  (builder) => {
     builder.addCase(markCardAsSlow, (state, { payload: { id, result } }) => ({
       ...state,
       [id]: result,
@@ -141,7 +139,19 @@ export const editingDashboard = handleActions(
   {
     [INITIALIZE]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
     [SET_EDITING_DASHBOARD]: {
-      next: (_state, { payload }) => payload ?? null,
+      next: (state, { payload }) => {
+        // Only update the dashboard in the state if the new dashboard differs from the current one.
+        // This prevents the case where this function is accidentally called with an edited/dirty dashboard,
+        // preventing the diff logic in our save flow from properly detecting that were changes.
+        if (payload !== null && state?.id === payload?.id) {
+          console.warn(
+            "The editingDashboard state should not be set to a newer version of the same dashboard. This can produce subtle bugs for detecting how dashboards have changed over time. Skipping updating state and using old editingDashboard state.",
+          );
+          return state;
+        }
+
+        return payload ?? null;
+      },
     },
     [RESET]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
   },
@@ -150,7 +160,7 @@ export const editingDashboard = handleActions(
 
 export const loadingControls = createReducer(
   INITIAL_DASHBOARD_STATE.loadingControls,
-  builder => {
+  (builder) => {
     builder.addCase(setDocumentTitle, (state, { payload }) => {
       state.documentTitle = payload;
     });
@@ -163,15 +173,15 @@ export const loadingControls = createReducer(
 
     builder.addCase(INITIALIZE, () => INITIAL_DASHBOARD_STATE.loadingControls);
 
-    builder.addCase(fetchDashboard.pending, state => {
+    builder.addCase(fetchDashboard.pending, (state) => {
       state.isLoading = true;
     });
 
-    builder.addCase(fetchDashboard.fulfilled, state => {
+    builder.addCase(fetchDashboard.fulfilled, (state) => {
       state.isLoading = false;
     });
 
-    builder.addCase(fetchDashboard.rejected, state => {
+    builder.addCase(fetchDashboard.rejected, (state) => {
       state.isLoading = false;
     });
   },
@@ -180,7 +190,7 @@ export const loadingControls = createReducer(
 const DEFAULT_SIDEBAR = { props: {} };
 export const sidebar = createReducer(
   INITIAL_DASHBOARD_STATE.sidebar,
-  builder => {
+  (builder) => {
     builder.addCase(INITIALIZE, () => DEFAULT_SIDEBAR);
     builder.addCase(RESET, () => DEFAULT_SIDEBAR);
     builder.addCase(REMOVE_PARAMETER, () => DEFAULT_SIDEBAR);
@@ -208,7 +218,7 @@ export const sidebar = createReducer(
 
 export const parameterValues = createReducer(
   INITIAL_DASHBOARD_STATE.parameterValues,
-  builder => {
+  (builder) => {
     builder.addCase(
       initialize,
       (state, { payload: { clearCache = true } = {} }) => {
@@ -226,7 +236,7 @@ export const parameterValues = createReducer(
         type: string;
         payload: {
           id: ParameterId;
-          value: ParameterValueOrArray;
+          value: ParameterValueOrArray | undefined | null;
           isDraft: boolean;
         };
       }
@@ -240,7 +250,7 @@ export const parameterValues = createReducer(
       string,
       {
         type: string;
-        payload: Record<ParameterId, ParameterValueOrArray>;
+        payload: ParameterValuesMap;
       }
     >(SET_PARAMETER_VALUES, (_state, { payload }) => {
       return payload;
@@ -285,7 +295,7 @@ function newDashboard(
 
 export const dashboards = createReducer(
   INITIAL_DASHBOARD_STATE.dashboards,
-  builder => {
+  (builder) => {
     builder
       .addCase(fetchDashboard.fulfilled, (state, { payload }) => ({
         ...state,
@@ -335,18 +345,18 @@ export const dashboards = createReducer(
       )
       .addMatcher(
         updateDashboardEmbeddingParams.matchFulfilled,
-        (state, { payload }) =>
-          assocIn(
-            state,
-            [payload.id, "embedding_params"],
-            payload.embedding_params,
-          ),
+        (state, { payload }) => {
+          const dashboard = state[payload.id];
+          dashboard.embedding_params = payload.embedding_params;
+          dashboard.embedding_type = payload.embedding_type;
+        },
       )
       .addMatcher(
         updateDashboardEnableEmbedding.matchFulfilled,
         (state, { payload }) => {
           const dashboard = state[payload.id];
           dashboard.enable_embedding = payload.enable_embedding;
+          dashboard.embedding_type = payload.embedding_type;
           dashboard.initially_published_at = payload.initially_published_at;
         },
       );
@@ -355,9 +365,9 @@ export const dashboards = createReducer(
 
 export const loadingDashCards = createReducer(
   INITIAL_DASHBOARD_STATE.loadingDashCards,
-  builder => {
+  (builder) => {
     builder
-      .addCase(initialize, state => ({
+      .addCase(initialize, (state) => ({
         ...state,
         loadingStatus: "idle",
       }))
@@ -366,7 +376,7 @@ export const loadingDashCards = createReducer(
         return {
           ...state,
           loadingIds,
-          loadingStatus: loadingIds.length > 0 ? "running" : "idle",
+          loadingStatus: loadingIds.length > 0 ? "running" : "complete",
           startTime: loadingIds.length > 0 ? currentTime : null,
         };
       })
@@ -383,7 +393,9 @@ export const loadingDashCards = createReducer(
       .addCase(fetchCardDataAction.fulfilled, (state, { payload = {} }) => {
         const { dashcard_id, currentTime } = payload;
         if (dashcard_id) {
-          const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
+          const loadingIds = state.loadingIds.filter(
+            (id) => id !== dashcard_id,
+          );
           return {
             ...state,
             loadingIds,
@@ -395,14 +407,14 @@ export const loadingDashCards = createReducer(
       })
       .addCase(cancelFetchCardData, (state, action) => {
         const { dashcard_id } = action.payload;
-        const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
+        const loadingIds = state.loadingIds.filter((id) => id !== dashcard_id);
         return {
           ...state,
           loadingIds,
           ...(loadingIds.length === 0 ? { startTime: null } : {}),
         };
       })
-      .addCase(reset, state => ({
+      .addCase(reset, (state) => ({
         ...state,
         loadingStatus: "idle",
       }));
@@ -411,7 +423,7 @@ export const loadingDashCards = createReducer(
 
 export const dashcardData = createReducer(
   INITIAL_DASHBOARD_STATE.dashcardData,
-  builder => {
+  (builder) => {
     builder
       .addCase(initialize, (state, action) => {
         const { clearCache = true } = action.payload ?? {};
@@ -427,22 +439,24 @@ export const dashcardData = createReducer(
         const { cardId, dashcardId } = action.payload;
         return dissocIn(state, [dashcardId, cardId]);
       })
-      .addCase<string, { type: string; payload: { object: Card } }>(
+      .addCase<string, { type: string; payload: { object?: Card } }>(
         Questions.actionTypes.UPDATE,
-        (state, action) => {
-          const id = action.payload.object.id;
-          for (const dashcardId in state) {
-            delete state[dashcardId][id];
+        (state, { payload: { object: card } }) => {
+          if (card) {
+            const { id } = card;
+            for (const dashcardId in state) {
+              delete state[dashcardId][id];
+            }
           }
         },
       )
       .addCase<string, { type: string; payload: Revision }>(
-        Revisions.actionTypes.REVERT,
+        REVERT_TO_REVISION,
         (state, action) => {
-          const { model_id } = action.payload;
-          if (model_id) {
+          const { id } = action.payload;
+          if (id != null) {
             for (const dashcardId in state) {
-              delete state[dashcardId][model_id];
+              delete state[dashcardId][id];
             }
           }
         },

@@ -3,11 +3,16 @@ import _ from "underscore";
 
 import { copy } from "metabase/lib/utils";
 import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import { normalizeParameterValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 export function isNative(card) {
-  return card?.dataset_query?.type === "native";
+  if (!card) {
+    return false;
+  }
+  const question = Question.create({ dataset_query: card.dataset_query });
+  return question.isNative();
 }
 
 function cardVisualizationIsEquivalent(cardA, cardB) {
@@ -18,8 +23,8 @@ function cardVisualizationIsEquivalent(cardA, cardB) {
 }
 
 export function cardQueryIsEquivalent(cardA, cardB) {
-  cardA = updateIn(cardA, ["dataset_query", "parameters"], p => p || []);
-  cardB = updateIn(cardB, ["dataset_query", "parameters"], p => p || []);
+  cardA = updateIn(cardA, ["dataset_query", "parameters"], (p) => p || []);
+  cardB = updateIn(cardB, ["dataset_query", "parameters"], (p) => p || []);
   return Lib.areLegacyQueriesEqual(
     _.pick(cardA, "dataset_query"),
     _.pick(cardB, "dataset_query"),
@@ -37,14 +42,6 @@ export function cardIsEquivalent(cardA, cardB) {
   );
 }
 
-export function getQuery(card) {
-  if (card.dataset_query.type === "query") {
-    return card.dataset_query.query;
-  } else {
-    return null;
-  }
-}
-
 // NOTE Atte Keinänen 7/5/17: Still used in dashboards and public questions.
 // Query builder uses `Question.getResults` which contains similar logic.
 export function applyParameters(
@@ -52,6 +49,7 @@ export function applyParameters(
   parameters,
   parameterValues = {},
   parameterMappings = [],
+  { sparse = false } = {},
 ) {
   const datasetQuery = copy(card.dataset_query);
   datasetQuery.parameters = [];
@@ -96,6 +94,12 @@ export function applyParameters(
       // inline target, e.x. on a card
       queryParameter.target = parameter.target;
       datasetQuery.parameters.push(queryParameter);
+    }
+
+    if (sparse) {
+      // These items will be backfilled by the API
+      delete queryParameter.type;
+      delete queryParameter.target;
     }
   }
 

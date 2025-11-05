@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { createMockParameter } from "metabase-types/api/mocks";
@@ -14,6 +14,31 @@ import {
 
 const { ORDERS, PEOPLE, PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
+describe("scenarios > embedding > static embedding dashboard", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      enable_embedding: true,
+    });
+  });
+
+  it("should not call `GET /api/database` (metabase#63310)", () => {
+    cy.intercept("GET", "/api/database").as("getDatabases");
+    const payload = {
+      resource: { dashboard: ORDERS_DASHBOARD_ID },
+      params: {},
+    };
+    H.visitEmbeddedPage(payload);
+
+    cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
+      "be.visible",
+    );
+    cy.log("GET /api/database should not be called");
+    cy.get("@getDatabases.all").should("have.length", 0);
+  });
+});
+
 describe("scenarios > embedding > dashboard parameters", () => {
   beforeEach(() => {
     H.restore();
@@ -25,11 +50,11 @@ describe("scenarios > embedding > dashboard parameters", () => {
       human_readable_field_id: PEOPLE.NAME,
     });
 
-    [ORDERS.USER_ID, PEOPLE.NAME, PEOPLE.ID].forEach(id =>
+    [ORDERS.USER_ID, PEOPLE.NAME, PEOPLE.ID].forEach((id) =>
       cy.request("PUT", `/api/field/${id}`, { has_field_values: "search" }),
     );
 
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -115,7 +140,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       openFilterOptions("Name");
 
       cy.findByPlaceholderText("Search by Name").type("L");
-      H.selectDropdown().findByText("Lina Heaney").click();
+      H.popover().findByText("Lina Heaney").click();
 
       cy.button("Add filter").click();
 
@@ -154,7 +179,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
     });
 
     it("should only display filters mapped to cards on the selected tab", () => {
-      cy.get("@dashboardId").then(dashboardId => {
+      cy.get("@dashboardId").then((dashboardId) => {
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           embedding_params: {
             id: "enabled",
@@ -281,7 +306,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
   context("API", () => {
     beforeEach(() => {
-      cy.get("@dashboardId").then(dashboardId => {
+      cy.get("@dashboardId").then((dashboardId) => {
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           embedding_params: {
             id: "enabled",
@@ -310,32 +335,30 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       openFilterOptions("Id");
       H.popover().within(() => {
-        H.multiAutocompleteInput().type("Aly");
+        H.fieldValuesCombobox().type("Aly");
+        cy.contains("Alycia McCullough");
       });
-
-      H.selectDropdown().contains("Alycia McCullough - 2016");
 
       // close the suggestions popover
       H.popover()
         .first()
         .within(() => {
-          H.multiAutocompleteInput().blur();
+          H.fieldValuesCombobox().blur();
         });
 
       cy.log("should allow searching PEOPLE.NAME by PEOPLE.NAME");
 
       openFilterOptions("Name");
       H.popover().within(() => {
-        H.multiAutocompleteInput().type("{backspace}Aly");
+        H.fieldValuesCombobox().type("{backspace}Aly");
+        cy.findByText("Alycia McCullough").should("be.visible");
       });
-
-      H.selectDropdown().contains("Alycia McCullough");
 
       // close the suggestions popover
       H.popover()
         .first()
         .within(() => {
-          H.multiAutocompleteInput().blur();
+          H.fieldValuesCombobox().blur();
         });
 
       cy.log("should show values for PEOPLE.SOURCE");
@@ -347,21 +370,20 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       openFilterOptions("User");
       H.popover().within(() => {
-        H.multiAutocompleteInput().type("Aly");
+        H.fieldValuesCombobox().type("Aly");
+        cy.contains("Alycia McCullough");
       });
-
-      H.selectDropdown().contains("Alycia McCullough - 2016");
 
       // close the suggestions popover
       H.popover()
         .first()
         .within(() => {
-          H.multiAutocompleteInput().blur();
+          H.fieldValuesCombobox().blur();
         });
 
       cy.log("should accept url parameters");
 
-      cy.location().then(location =>
+      cy.location().then((location) =>
         cy.visit(`${location.origin}${location.pathname}?id=1&id=3`),
       );
 
@@ -370,7 +392,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
   });
 
   it("should render error message when `params` is not an object (metabase#14474)", () => {
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       cy.request("PUT", `/api/dashboard/${dashboardId}`, {
         embedding_params: {
           id: "enabled",
@@ -441,7 +463,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       parameters: [dashboardCategoryParameter, dashboardCreatedAtParameter],
     };
 
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { card_id, dashboard_id } }) => {
@@ -502,30 +524,37 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
     cy.log("test downloading result (metabase#36721)");
     H.getDashboardCard().realHover();
-    H.downloadAndAssert(
-      {
-        fileType: "csv",
-        isDashboard: true,
-        isEmbed: true,
-        logResults: true,
-        downloadUrl: "/api/embed/dashboard/*/dashcard/*/card/*/csv*",
-        downloadMethod: "GET",
-      },
-      sheet => {
-        expect(sheet["A1"].v).to.eq("ID");
-        expect(sheet["A2"].v).to.eq(9);
-        expect(sheet["B1"].v).to.eq("EAN");
-        expect(sheet["B2"].v).to.eq(7217466997444);
+    H.downloadAndAssert({
+      fileType: "csv",
+      isDashboard: true,
+      isEmbed: true,
+      downloadUrl: "/api/embed/dashboard/*/dashcard/*/card/*/csv*",
+      downloadMethod: "GET",
+    });
 
-        H.assertSheetRowsCount(54)(sheet);
-      },
+    cy.log(
+      "The PDF download button should be clickable when there is no title, but has parameters (metabase#59503)",
     );
+    cy.get("@dashboardId2").then((dashboardId) => {
+      const payload = {
+        resource: { dashboard: dashboardId },
+        params: {},
+      };
+      H.visitEmbeddedPage(payload, {
+        pageStyle: {
+          downloads: true,
+          titled: false,
+        },
+      });
+    });
+
+    cy.findByTestId("export-as-pdf-button").should("be.visible").click();
   });
 
   it("should send 'X-Metabase-Client' header for api requests", () => {
     cy.intercept("GET", "api/embed/dashboard/*").as("getEmbeddedDashboard");
 
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       cy.request("PUT", `/api/dashboard/${dashboardId}`, {
         embedding_params: {},
         enable_embedding: true,
@@ -537,7 +566,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       };
 
       H.visitEmbeddedPage(payload, {
-        onBeforeLoad: window => {
+        onBeforeLoad: (window) => {
           window.Cypress = undefined;
         },
       });
@@ -556,7 +585,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails: questionDetailsWithDefaults,
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -581,7 +610,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
       });
     });
 
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       const payload = {
         resource: { dashboard: dashboardId },
         params: { source: [] },
@@ -604,13 +633,13 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
 
   it("locked parameters require a value to be specified in the JWT", () => {
     const nameParameter = dashboardDetails.parameters.find(
-      parameter => parameter.name === "Name",
+      (parameter) => parameter.name === "Name",
     );
     const sourceParameter = dashboardDetails.parameters.find(
-      parameter => parameter.name === "Source",
+      (parameter) => parameter.name === "Source",
     );
 
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       cy.request("PUT", `api/dashboard/${dashboardId}`, {
         enable_embedding: true,
         embedding_params: {
@@ -638,13 +667,13 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
 
   it("locked parameters should still render results in the preview by default (metabase#47570)", () => {
     const nameParameter = dashboardDetails.parameters.find(
-      parameter => parameter.name === "Name",
+      (parameter) => parameter.name === "Name",
     );
     const sourceParameter = dashboardDetails.parameters.find(
-      parameter => parameter.name === "Source",
+      (parameter) => parameter.name === "Source",
     );
 
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       cy.request("PUT", `api/dashboard/${dashboardId}`, {
         enable_embedding: true,
         embedding_params: {
@@ -664,7 +693,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
   });
 });
 
-H.describeEE("scenarios > embedding > dashboard appearance", () => {
+describe("scenarios > embedding > dashboard appearance", () => {
   const originalBaseUrl = Cypress.config("baseUrl");
 
   beforeEach(() => {
@@ -674,7 +703,7 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
 
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should not rerender the static embed preview unnecessarily (metabase#38271)", () => {
@@ -708,7 +737,7 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
         "source-table": ORDERS_ID,
       },
     };
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { dashboard_id } }) => {
@@ -734,11 +763,20 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
       cy.findByRole("tab", { name: "Look and Feel" }).click();
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
 
+      cy.log(
+        'Embed preview requests should not have "X-Metabase-Client: embedding-iframe" header (EMB-930)',
+      );
+      cy.get("@previewEmbed").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.not.equal(
+          "embedding-iframe",
+        );
+      });
+
       cy.log("Assert dashboard theme");
       H.getIframeBody()
         .findByTestId("embed-frame")
         .invoke("attr", "data-embed-theme")
-        .then(embedTheme => {
+        .then((embedTheme) => {
           expect(embedTheme).to.eq("light"); // default value
         });
 
@@ -748,7 +786,7 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
       H.getIframeBody()
         .findByTestId("embed-frame")
         .invoke("attr", "data-embed-theme")
-        .then(embedTheme => {
+        .then((embedTheme) => {
           expect(embedTheme).to.eq("night");
         });
 
@@ -837,7 +875,7 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
           ],
         });
       })
-      .then(dashboard => {
+      .then((dashboard) => {
         H.visitDashboard(dashboard.id);
       });
 
@@ -864,7 +902,7 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
       H.getIframeBody()
         .findByTestId("embed-frame")
         .invoke("attr", "data-embed-theme")
-        .then(embedTheme => {
+        .then((embedTheme) => {
           expect(embedTheme).to.eq("light"); // default value
         });
 
@@ -874,7 +912,7 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
       H.getIframeBody()
         .findByTestId("embed-frame")
         .invoke("attr", "data-embed-theme")
-        .then(embedTheme => {
+        .then((embedTheme) => {
           expect(embedTheme).to.eq("night");
         });
 
@@ -949,13 +987,13 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
           ],
         });
       })
-      .then(dashboard => {
+      .then((dashboard) => {
         return H.getEmbeddedPageUrl({
           resource: { dashboard: dashboard.id },
           params: {},
         });
       })
-      .then(urlOptions => {
+      .then((urlOptions) => {
         const baseUrl = Cypress.config("baseUrl");
         Cypress.config("baseUrl", null);
         cy.visit(
@@ -983,13 +1021,45 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
       // });
     });
 
-    cy.get("#iframe").should($iframe => {
+    cy.get("#iframe").should(($iframe) => {
       const [iframe] = $iframe;
       expect(iframe.clientHeight).to.be.greaterThan(1000);
     });
   });
 
   it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      enable_embedding: true,
+    });
+    cy.signOut();
+
+    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
+    cy.intercept("/app/locales/de.json").as("deLocale");
+
+    H.visitEmbeddedPage(
+      {
+        resource: { dashboard: ORDERS_DASHBOARD_ID },
+        params: {},
+      },
+      {
+        additionalHashOptions: {
+          locale: "de-CH",
+        },
+      },
+    );
+
+    cy.wait("@deLocale");
+
+    H.main().findByText("Februar 11, 2025, 9:40 PM");
+
+    cy.findByRole("button", {
+      name: "Automatische Aktualisierung",
+    }).should("exist");
+
+    cy.url().should("include", "locale=de");
+  });
+
+  it("should allow to set font from the `font` hash parameter", () => {
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       enable_embedding: true,
     });
@@ -1002,16 +1072,162 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
       },
       {
         additionalHashOptions: {
-          locale: "de",
+          font: "Roboto",
         },
       },
     );
 
-    H.main().findByText("Februar 11, 2025, 9:40 PM");
-    // eslint-disable-next-line no-unscoped-text-selectors -- we don't care where the text is
-    cy.findByText("exportieren", { exact: false });
+    H.main().should("have.css", "font-family", "Roboto, sans-serif");
+  });
 
-    cy.url().should("include", "locale=de");
+  it("should disable background via `#background=false` hash parameter when rendered inside an iframe (metabase#62391)", () => {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      enable_embedding: true,
+    });
+    cy.signOut();
+
+    H.visitEmbeddedPage(
+      {
+        resource: { dashboard: ORDERS_DASHBOARD_ID },
+        params: {},
+      },
+      {
+        additionalHashOptions: {
+          background: "false",
+        },
+        onBeforeLoad: (window) => {
+          window.overrideIsWithinIframe = true;
+        },
+      },
+    );
+
+    cy.findByTestId("embed-frame").should("exist");
+
+    cy.get("body.mb-wrapper").should(
+      "have.css",
+      "background-color",
+      "rgba(0, 0, 0, 0)",
+    );
+
+    cy.window().then((win) => {
+      delete win.overrideIsWithinIframe;
+    });
+  });
+
+  it("should not disable background via `#background=false` hash parameter when rendered without an iframe", () => {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      enable_embedding: true,
+    });
+    cy.signOut();
+
+    H.visitEmbeddedPage(
+      {
+        resource: { dashboard: ORDERS_DASHBOARD_ID },
+        params: {},
+      },
+      {
+        additionalHashOptions: {
+          background: "false",
+        },
+      },
+    );
+
+    cy.findByTestId("embed-frame").should("exist");
+
+    cy.get("body.mb-wrapper").should(
+      "not.have.css",
+      "background-color",
+      "rgba(0, 0, 0, 0)",
+    );
+  });
+
+  it("should use transparent pivot table cells in static embedding's dark mode (metabase#61741)", () => {
+    const testQuery = {
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            PEOPLE.SOURCE,
+            { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+          ],
+          [
+            "field",
+            PRODUCTS.CATEGORY,
+            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+          ],
+        ],
+      },
+      database: 1,
+    };
+
+    const pivotQuestionDetails = {
+      name: "Pivot Table Test",
+      query: testQuery.query,
+      display: "pivot",
+    };
+
+    const pivotDashboardDetails = {
+      name: "Pivot Dashboard Test",
+      enable_embedding: true,
+      embedding_params: {},
+    };
+
+    H.createQuestionAndDashboard({
+      questionDetails: pivotQuestionDetails,
+      dashboardDetails: pivotDashboardDetails,
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+
+      H.openStaticEmbeddingModal({
+        activeTab: "parameters",
+        previewMode: "preview",
+        acceptTerms: false,
+      });
+
+      H.modal().within(() => {
+        cy.findByRole("tab", { name: "Look and Feel" }).click();
+
+        cy.log("wait until we are at the night theme");
+        cy.findByLabelText("Dark").click({ force: true });
+        H.getIframeBody()
+          .findByTestId("embed-frame")
+          .invoke("attr", "data-embed-theme")
+          .should((embedTheme) => {
+            expect(embedTheme).to.eq("night");
+          });
+
+        H.getIframeBody().findByTestId("pivot-table").should("be.visible");
+
+        H.getIframeBody().within(() => {
+          cy.findAllByTestId("pivot-table-cell").should(
+            "have.length.greaterThan",
+            0,
+          );
+
+          cy.log("dashcard should have dark background");
+          cy.findByTestId("dashcard").should(
+            "have.css",
+            "background-color",
+            "rgb(7, 23, 34)",
+          );
+
+          cy.log("pivot table cell background should be transparent");
+          cy.findAllByRole("grid")
+            .first()
+            .findAllByTestId("pivot-table-cell")
+            .first()
+            .should("have.css", "background-color", "rgba(48, 61, 70, 0.1)");
+
+          cy.log("pivot table cell color should be white");
+          cy.findByText("Row totals")
+            .should("be.visible")
+            .should("have.css", "color", "rgba(255, 255, 255, 0.95)");
+        });
+      });
+    });
   });
 });
 

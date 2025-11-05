@@ -16,7 +16,7 @@ import {
   NativeCardIcon,
   NativeCardLink,
   NativeCardText,
-} from "./DisabledNativeCardHelpText.styled";
+} from "./DisabledNativeCardHelpTextComponents";
 
 interface DisabledNativeCardHelpTextProps {
   question: Question;
@@ -36,7 +36,9 @@ export function DisabledNativeCardHelpText({
 
 function ModelHelpText() {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-  const learnUrl = getLearnUrl("data-modeling/models#skip-the-sql-variables");
+  const learnUrl = getLearnUrl(
+    "metabase-basics/getting-started/models#skip-the-sql-variables",
+  );
 
   return (
     <NativeCardDefault>
@@ -57,7 +59,7 @@ interface ParameterHelpTextProps {
 
 function ParameterHelpText({ parameter }: ParameterHelpTextProps) {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-  const docsUrl = useSelector(state =>
+  const docsUrl = useSelector((state) =>
     getDocsUrl(state, { page: "questions/native-editor/sql-parameters" }),
   );
 

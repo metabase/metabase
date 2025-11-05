@@ -13,7 +13,6 @@
   width: 34px;
   margin-left: 0.5rem;
   color: var(--mb-color-text-white);
-  transition: none;
 }
 
 .RemoveButton {
@@ -48,6 +47,11 @@
   min-height: 34px;
   position: relative;
 
+  /* to increase specificity */
+  .AddButton {
+    transition: none;
+  }
+
   &.isSelected {
     .Content,
     .ColumnTypeIcon {
@@ -56,6 +60,7 @@
     }
 
     .BucketTriggerButton {
+      visibility: visible;
       opacity: 1;
       color: color-mix(in srgb, var(--mb-color-text-white), transparent 35%);
 
@@ -84,6 +89,7 @@
       }
 
       .BucketTriggerButton {
+        visibility: visible;
         opacity: 1;
         color: var(--mb-color-text-light);
 

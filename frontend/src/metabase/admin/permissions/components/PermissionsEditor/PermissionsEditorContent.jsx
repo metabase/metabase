@@ -2,11 +2,11 @@ import PropTypes from "prop-types";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import EmptyState from "metabase/components/EmptyState";
-import Subhead from "metabase/components/type/Subhead";
-import Text from "metabase/components/type/Text";
-import Input from "metabase/core/components/Input";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import EmptyState from "metabase/common/components/EmptyState";
+import Input from "metabase/common/components/Input";
+import Subhead from "metabase/common/components/type/Subhead";
+import Text from "metabase/common/components/type/Text";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 
 import { PermissionsTable } from "../PermissionsTable";
@@ -58,17 +58,17 @@ export function PermissionsEditorContent({
       return null;
     }
 
-    return entities.filter(entity =>
+    return entities.filter((entity) =>
       entity.name.toLowerCase().includes(trimmedFilter),
     );
   }, [entities, debouncedFilter]);
 
-  const handleFilterChange = e => setFilter(e.target.value);
+  const handleFilterChange = (e) => setFilter(e.target.value);
 
   return (
     <PermissionEditorContentRoot data-testid="permissions-editor">
       <PreHeaderContent />
-      <Subhead>
+      <Subhead data-testid="permissions-editor-breadcrumbs">
         {title}{" "}
         {breadcrumbs && (
           <PermissionsEditorBreadcrumbs
@@ -89,7 +89,7 @@ export function PermissionsEditorContent({
           onChange={handleFilterChange}
           onResetClick={() => setFilter("")}
           value={filter}
-          leftIcon="search"
+          leftSection="search"
         />
       </EditorFilterContainer>
 

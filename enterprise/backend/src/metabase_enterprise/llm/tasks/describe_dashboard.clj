@@ -18,8 +18,7 @@
                                                                    :dashcard/action
                                                                    :dashcard/linkcard-info]
                     :tabs
-                    :param_fields
-                    :param_values)
+                    :param_fields)
         param-id->param (zipmap
                          (map :id parameters)
                          (map (fn [param]

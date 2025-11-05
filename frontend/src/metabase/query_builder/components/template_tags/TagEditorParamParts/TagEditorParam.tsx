@@ -6,24 +6,20 @@ import { Box, type BoxProps } from "metabase/ui";
 
 import S from "./TagEditorParam.module.css";
 
-interface ContainerLabelProps extends BoxProps {
-  paddingTop?: boolean;
+type BoxPropsWithChildren = BoxProps & { children: React.ReactNode };
+interface ContainerLabelProps extends BoxPropsWithChildren {
   id?: string | undefined;
 }
 
-const ContainerLabel = ({
-  paddingTop,
-  children,
-  ...props
-}: ContainerLabelProps) => {
+const ContainerLabel = ({ children, ...props }: ContainerLabelProps) => {
   return (
-    <Box className={S.ContainerLabel} pt={paddingTop ? "sm" : 0} {...props}>
+    <Box className={S.ContainerLabel} {...props}>
       {children}
     </Box>
   );
 };
 
-const InputContainer = ({ children, ...props }: BoxProps) => {
+const InputContainer = ({ children, ...props }: BoxPropsWithChildren) => {
   return (
     <Box display="block" component="label" pb="xl" {...props}>
       {children}
@@ -31,7 +27,7 @@ const InputContainer = ({ children, ...props }: BoxProps) => {
   );
 };
 
-const ErrorSpan = ({ children, ...props }: BoxProps) => {
+const ErrorSpan = ({ children, ...props }: BoxPropsWithChildren) => {
   return (
     <Box component="span" className={S.ErrorSpan} {...props}>
       {children}

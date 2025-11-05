@@ -1,4 +1,10 @@
+import { Route } from "react-router";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupDashboardQuestionCandidatesEndpoint,
+  setupUserKeyValueEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { Collection, TokenFeatures } from "metabase-types/api";
@@ -19,7 +25,6 @@ const getProps = (
   isBookmarked: false,
   canUpload: false,
   uploadsEnabled: true,
-  isPersonalCollectionChild: false,
   onUpdateCollection: jest.fn(),
   onCreateBookmark: jest.fn(),
   saveFile: jest.fn(),
@@ -37,6 +42,23 @@ export const setup = ({
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
 } & Partial<Omit<CollectionHeaderProps, "collection">> = {}) => {
+  setupDashboardQuestionCandidatesEndpoint([]);
+  setupUserKeyValueEndpoints({
+    key: "collection-menu",
+    namespace: "indicator-menu",
+    value: [],
+  });
+  setupUserKeyValueEndpoints({
+    key: "move-to-dashboard",
+    namespace: "user_acknowledgement",
+    value: true,
+  });
+  setupUserKeyValueEndpoints({
+    key: "events-menu",
+    namespace: "user_acknowledgement",
+    value: false,
+  });
+
   const props = getProps({
     collection: createMockCollection(collection),
     ...otherProps,
@@ -51,9 +73,14 @@ export const setup = ({
     setupEnterprisePlugins();
   }
 
-  renderWithProviders(<CollectionHeader {...props} />, {
-    storeInitialState: state,
-  });
+  renderWithProviders(
+    <Route path="/" component={() => <CollectionHeader {...props} />} />,
+    {
+      storeInitialState: state,
+      initialRoute: "/",
+      withRouter: true,
+    },
+  );
 
   return props;
 };

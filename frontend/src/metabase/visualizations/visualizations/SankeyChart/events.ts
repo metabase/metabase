@@ -15,6 +15,7 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
+import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   Card,
@@ -32,7 +33,7 @@ const getSankeyClickData = (
   columnValues: Record<ColumnKey, RowValue>,
   predicate: (col: DatasetColumn, index: number) => boolean = () => true,
 ) => {
-  return cols.filter(predicate).map(col => {
+  return cols.filter(predicate).map((col) => {
     return {
       col,
       value: columnValues[getColumnKey(col)],
@@ -49,14 +50,17 @@ const isSankeyNodeEvent = (
   event: EChartsSeriesMouseEvent<SankeyLink | SankeyNode>,
 ): event is EChartsSeriesMouseEvent<SankeyNode> => event.dataType === "node";
 
-const isNativeQuery = (card: Card) => card.dataset_query?.type === "native";
+const isNativeQuery = (card: Card) => {
+  const question = new Question(card);
+  return question.isNative();
+};
 
 export const createSankeyClickData = (
   event: EChartsSeriesMouseEvent<SankeyLink | SankeyNode>,
   sankeyColumns: SankeyChartColumns,
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
-): ClickObject | undefined => {
+): ClickObject | null => {
   const clickData: ClickObject = {
     event: event.event.event,
     settings,
@@ -76,7 +80,7 @@ export const createSankeyClickData = (
     );
   } else if (isSankeyEdgeEvent(event)) {
     if (isNativeQuery(rawSeries[0].card)) {
-      return;
+      return null;
     }
 
     clickData.data = getSankeyClickData(rawSeries, event.data.columnValues);
@@ -101,7 +105,7 @@ export const useChartEvents = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
   onVisualizationClick: VisualizationProps["onVisualizationClick"],
-  clicked?: ClickObject,
+  clicked?: ClickObject | null,
 ) => {
   const eventHandlers: EChartsEventHandler[] = useMemo(
     () => [

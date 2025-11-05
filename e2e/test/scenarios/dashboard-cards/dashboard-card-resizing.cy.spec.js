@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
@@ -96,16 +96,16 @@ const VISUALIZATION_SIZES = {
   },
 };
 
-const getMinSize = visualizationType =>
+const getMinSize = (visualizationType) =>
   _.get(VISUALIZATION_SIZES, [visualizationType, "min"], undefined);
-const getDefaultSize = visualizationType =>
+const getDefaultSize = (visualizationType) =>
   _.get(VISUALIZATION_SIZES, [visualizationType, "default"], undefined);
 
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
-const getMockQuestionName = vizType => `MOCK_${vizType}_QUESTION`;
+const getMockQuestionName = (vizType) => `MOCK_${vizType}_QUESTION`;
 
-const getCommonQuestionFields = vizType => ({
+const getCommonQuestionFields = (vizType) => ({
   name: getMockQuestionName(vizType),
   query: {
     "source-table": ORDERS_ID,
@@ -116,7 +116,7 @@ const getCommonQuestionFields = vizType => ({
 });
 
 // covers table, bar, line, pie, row, area, combo, pivot, funnel, detail, and waterfall questions
-const createMockChartQuestion = vizType => {
+const createMockChartQuestion = (vizType) => {
   const question = getCommonQuestionFields(vizType);
   return {
     ...question,
@@ -127,7 +127,7 @@ const createMockChartQuestion = vizType => {
     display: vizType,
     visualization_settings: {
       "graph.dimensions": [
-        Object.keys(ORDERS).find(key => ORDERS[key] === ORDERS.CREATED_AT),
+        Object.keys(ORDERS).find((key) => ORDERS[key] === ORDERS.CREATED_AT),
       ],
       "graph.series_order_dimension": null,
       "graph.series_order": null,
@@ -137,7 +137,7 @@ const createMockChartQuestion = vizType => {
 };
 
 // covers scalar, gauge, and progress questions
-const createMockScalarQuestion = vizType => {
+const createMockScalarQuestion = (vizType) => {
   const question = getCommonQuestionFields(vizType);
   return {
     ...question,
@@ -172,8 +172,8 @@ const TEST_QUESTIONS = [
     "object",
     "smartscalar",
     "waterfall",
-  ].map(vizType => createMockChartQuestion(vizType)),
-  ...["scalar", "gauge", "progress"].map(vizType =>
+  ].map((vizType) => createMockChartQuestion(vizType)),
+  ...["scalar", "gauge", "progress"].map((vizType) =>
     createMockScalarQuestion(vizType),
   ),
   createMockMapQuestion(),
@@ -198,7 +198,7 @@ describe(
     });
 
     it("should display all visualization cards with their default sizes", () => {
-      TEST_QUESTIONS.forEach(question => {
+      TEST_QUESTIONS.forEach((question) => {
         H.createQuestion(question);
       });
       H.createDashboard().then(({ body: { id: dashId } }) => {
@@ -225,7 +225,7 @@ describe(
          * because Cypress is too fast.
          */
         cy.intercept("POST", "/api/card/**/query").as("cardQuery");
-        sortedCards.forEach(question => {
+        sortedCards.forEach((question) => {
           cy.findByLabelText(question.name).should("be.visible").click();
           cy.wait("@cardQuery");
         });
@@ -244,7 +244,7 @@ describe(
 
     it("should not allow cards to be resized smaller than min height", () => {
       const cardIds = [];
-      TEST_QUESTIONS.forEach(question => {
+      TEST_QUESTIONS.forEach((question) => {
         H.createQuestion(question).then(({ body: { id } }) => {
           cardIds.push(id);
         });
@@ -286,6 +286,81 @@ describe(
     });
   },
 );
+
+describe("trend charts", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("comparisons that do not fit should only be shown in a tooltip", () => {
+    H.createDashboardWithQuestions({
+      dashboardDetails: {},
+      questions: [
+        {
+          display: "smartscalar",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["count"],
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              [
+                "aggregation-options",
+                ["*", ["count"], 10000],
+                { name: "Mega Count", "display-name": "Mega Count" },
+              ],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          visualization_settings: {
+            "scalar.comparisons": [
+              {
+                id: "fecd2c69-4d43-57d0-6d60-6781a54beceb",
+                type: "previousPeriod",
+              },
+              {
+                id: "e8b8d831-d2a9-9fd7-17a7-db8b4834ac5a",
+                type: "periodsAgo",
+                value: 2,
+              },
+              {
+                id: "9712f309-6849-20ba-7cef-54ae899a0e41",
+                type: "anotherColumn",
+                label: "Sum of Total",
+                column: "sum",
+              },
+            ],
+          },
+        },
+      ],
+    }).then(({ dashboard, questions: cards }) => {
+      const [card] = cards;
+
+      H.updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [{ card_id: card.id, size_x: 4, size_y: 3 }],
+      });
+
+      H.visitDashboard(dashboard.id);
+    });
+
+    H.getDashboardCard().within(() => {
+      cy.findByText("34.72%").should("be.visible");
+      cy.findByText("36.65%").should("not.exist");
+      cy.findByText("98.88%").should("not.exist");
+
+      cy.findByText("34.72%").realHover();
+    });
+
+    H.tooltip().within(() => {
+      cy.findByText("34.72%").should("be.visible");
+      cy.findByText("36.65%").should("be.visible");
+      cy.findByText("98.88%").should("be.visible");
+    });
+  });
+});
 
 describe("issue 31701", () => {
   const entityCard = () => H.getDashboardCard(0);
@@ -363,9 +438,11 @@ describe("issue 31701", () => {
 });
 
 const assertLinkCardOverflow = (link, card) => {
-  link.then(linkElem => {
-    card.then(dashCardElem => {
-      expect(linkElem[0].scrollHeight).to.eq(dashCardElem[0].scrollHeight);
+  link.then((linkElem) => {
+    card.then((dashCardElem) => {
+      expect(linkElem[0].scrollHeight).to.eq(
+        dashCardElem[0].firstChild.scrollHeight,
+      );
     });
   });
 };

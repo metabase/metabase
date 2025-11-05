@@ -1,32 +1,27 @@
+import { formatNativeQuery } from "metabase/lib/engine";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { DatasetQuery } from "metabase-types/api";
+import type { NativeDatasetResponse } from "metabase-types/api";
 
-export function createDatasetQuery(
-  queryText: string,
+export function createNativeQuestion(
   question: Question,
-): DatasetQuery {
-  const query = question.query();
-  const databaseId = Lib.databaseID(query);
-  const tableId = Lib.sourceTableOrCardId(query);
-  const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : undefined;
-  const tableName = table ? Lib.displayInfo(query, -1, table).name : undefined;
-  const extras = tableName ? { collection: tableName } : {};
+  response: NativeDatasetResponse | undefined,
+): Question | undefined {
+  const database = question.database();
+  if (response == null || database == null || database.engine == null) {
+    return;
+  }
 
-  return {
-    type: "native",
-    native: { query: queryText, "template-tags": {}, ...extras },
-    database: databaseId,
-  };
-}
+  const metadataProvider = Lib.metadataProvider(
+    database.id,
+    question.metadata(),
+  );
+  const rawQuery = formatNativeQuery(response.query, database.engine);
+  const newQuery = Lib.nativeQuery(database.id, metadataProvider, rawQuery);
+  const newQueryWithCollection =
+    response.collection != null
+      ? Lib.withNativeExtras(newQuery, { collection: response.collection })
+      : newQuery;
 
-export function createNativeQuery(question: Question, query: string = "") {
-  return new NativeQuery(question, {
-    type: "native",
-    database: question.database()?.id ?? null,
-    native: {
-      query,
-    },
-  });
+  return question.setQuery(newQueryWithCollection);
 }

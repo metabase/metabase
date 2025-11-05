@@ -4,25 +4,30 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [malli.core :as mc]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.sql.query-processor.deprecated]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.models.setting :as setting]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
+   [metabase.lib.test-util.places-cam-likes-metadata-provider :as lib.tu.places-cam-likes-metadata-provider]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli.registry :as mr]))
 
 (comment metabase.driver.sql.query-processor.deprecated/keep-me)
 
@@ -84,6 +89,16 @@
              mbql->native
              sql.qp-test-util/sql->sql-map))))
 
+(deftest ^:parallel false-equals-false-test
+  (is (= '{:select [COUNT (*) AS count]
+           :from   [CHECKINS]
+           :where  [FALSE = FALSE]}
+         (-> (lib.tu.macros/mbql-query checkins
+               {:aggregation [[:count]]
+                :filter      [:= false false]})
+             mbql->native
+             sql.qp-test-util/sql->sql-map))))
+
 (deftest ^:parallel case-test
   (testing "Test that boolean case defaults are kept (#24100)"
     (is (= [[1 1 true]
@@ -106,7 +121,9 @@
                                      VENUES.LONGITUDE   AS LONGITUDE
                                      VENUES.PRICE       AS PRICE]
                           :from     [VENUES]
-                          join-type [CATEGORIES AS c
+                          join-type [{:select [CATEGORIES.ID AS ID
+                                               CATEGORIES.NAME AS NAME]
+                                      :from   [CATEGORIES]} AS c
                                      ON VENUES.CATEGORY_ID = c.ID]
                           :where    [c.NAME = ?]
                           :order-by [VENUES.ID ASC]
@@ -143,7 +160,14 @@
                           :from   [CHECKINS]
                           :where  [CHECKINS.DATE > ?]}
                          AS source]
-             :left-join [VENUES AS v
+             :left-join [{:select
+                          [VENUES.ID          AS ID
+                           VENUES.NAME        AS NAME
+                           VENUES.CATEGORY_ID AS CATEGORY_ID
+                           VENUES.LATITUDE    AS LATITUDE
+                           VENUES.LONGITUDE   AS LONGITUDE
+                           VENUES.PRICE       AS PRICE]
+                          :from [VENUES]} AS v
                          ON source.VENUE_ID = v.ID]
              :where     [(v.NAME LIKE ?) AND (source.USER_ID > 0)]
              :group-by  [v.NAME]
@@ -200,7 +224,7 @@
                 :h2
                 (lib.tu.macros/mbql-query venues
                   {:source-query    {:native "SELECT * FROM some_table WHERE name = ?;", :params ["Cam"]}
-                   :source-metadata [{:name "name", :base_type :type/Integer}]
+                   :source-metadata [{:name "name", :display_name "Name", :base_type :type/Integer}]
                    :filter          [:!= *name/Integer "Lucky Pigeon"]}))))))))
 
 (deftest ^:parallel joins-against-native-queries-test
@@ -246,8 +270,8 @@
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel compile-honeysql-test
   (testing "make sure the generated HoneySQL will compile to the correct SQL"
-    (are [driver expected] (= ["INNER JOIN (SELECT * FROM VENUES) AS \"card\" ON \"PUBLIC\".\"CHECKINS\".\"VENUE_ID\" = \"card\".\"id\""]
-                              (compile-join driver))
+    (are [driver] (= ["INNER JOIN (SELECT * FROM VENUES) AS \"card\" ON \"PUBLIC\".\"CHECKINS\".\"VENUE_ID\" = \"card\".\"id\""]
+                     (compile-join driver))
       :sql :h2 :postgres)))
 
 (deftest adjust-start-of-week-test
@@ -314,8 +338,11 @@
     (testing "when the join is at the same level"
       (is (= {:select    '[c.NAME AS c__NAME]
               :from      '[VENUES]
-              :left-join '[CATEGORIES AS c ON VENUES.CATEGORY_ID = c.ID]
-              :limit     [qp.i/absolute-max-results]}
+              :left-join '[{:select [CATEGORIES.ID AS ID
+                                     CATEGORIES.NAME AS NAME]
+                            :from   [CATEGORIES]} AS c
+                           ON VENUES.CATEGORY_ID = c.ID]
+              :limit     [limit/absolute-max-results]}
              (-> (lib.tu.macros/mbql-query venues
                    {:fields [&c.categories.name]
                     :joins  [{:fields       [&c.categories.name]
@@ -324,14 +351,19 @@
                               :condition    [:= $category-id &c.categories.id]
                               :alias        "c"}]})
                  mbql->native
-                 sql.qp-test-util/sql->sql-map))))
+                 sql.qp-test-util/sql->sql-map))))))
 
+(deftest ^:parallel joined-field-clauses-test-2
+  (testing "Should correctly compile `:field` clauses with `:join-alias`"
     (testing "when the join is NOT at the same level"
       (is (= {:select '[source.c__NAME AS c__NAME]
               :from   '[{:select    [c.NAME AS c__NAME]
                          :from      [VENUES]
-                         :left-join [CATEGORIES AS c ON VENUES.CATEGORY_ID = c.ID]} AS source]
-              :limit  [qp.i/absolute-max-results]}
+                         :left-join [{:select [CATEGORIES.ID AS ID
+                                               CATEGORIES.NAME AS NAME]
+                                      :from   [CATEGORIES]} AS c
+                                     ON VENUES.CATEGORY_ID = c.ID]} AS source]
+              :limit  [limit/absolute-max-results]}
              (-> (lib.tu.macros/mbql-query venues
                    {:fields       [&c.categories.name]
                     :source-query {:source-table $$venues
@@ -352,8 +384,26 @@
                          Products.ID                     AS Products__ID
                          Products.TITLE                  AS Products__TITLE]
              :from      [ORDERS]
-             :left-join [PRODUCTS AS Products                  ON ORDERS.PRODUCT_ID = Products.ID
-                         PRODUCTS AS PRODUCTS__via__PRODUCT_ID ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID]
+             :left-join [{:select [PRODUCTS.ID         AS ID
+                                   PRODUCTS.EAN        AS EAN
+                                   PRODUCTS.TITLE      AS TITLE
+                                   PRODUCTS.CATEGORY   AS CATEGORY
+                                   PRODUCTS.VENDOR     AS VENDOR
+                                   PRODUCTS.PRICE      AS PRICE
+                                   PRODUCTS.RATING     AS RATING
+                                   PRODUCTS.CREATED_AT AS CREATED_AT]
+                          :from [PRODUCTS]} AS Products
+                         ON ORDERS.PRODUCT_ID = Products.ID
+                         {:select [PRODUCTS.ID         AS ID
+                                   PRODUCTS.EAN        AS EAN
+                                   PRODUCTS.TITLE      AS TITLE
+                                   PRODUCTS.CATEGORY   AS CATEGORY
+                                   PRODUCTS.VENDOR     AS VENDOR
+                                   PRODUCTS.PRICE      AS PRICE
+                                   PRODUCTS.RATING     AS RATING
+                                   PRODUCTS.CREATED_AT AS CREATED_AT]
+                          :from [PRODUCTS]} AS PRODUCTS__via__PRODUCT_ID
+                         ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID]
              :order-by  [ORDERS.ID ASC]
              :limit     [2]}
            (-> (lib.tu.macros/mbql-query orders
@@ -406,29 +456,45 @@
 (deftest ^:parallel multiple-joins-with-expressions-test
   (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
     (is (= '{:select   [source.PRODUCTS__via__PRODUCT_ID__CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
-                        source.PEOPLE__via__USER_ID__SOURCE AS PEOPLE__via__USER_ID__SOURCE
-                        DATE_TRUNC ("year" source.CREATED_AT) AS CREATED_AT
-                        source.pivot-grouping AS pivot-grouping
-                        COUNT (*) AS count]
-             :from     [{:select    [ORDERS.USER_ID                     AS USER_ID
-                                     ORDERS.PRODUCT_ID                  AS PRODUCT_ID
-                                     ORDERS.CREATED_AT                  AS CREATED_AT
-                                     ABS (0)                            AS pivot-grouping
-                                     ;; TODO: The order here is not deterministic!
-                                     ;; It's coming from qp.util/nest-source, which walks the query looking for refs
-                                     ;; in an arbitrary order, and returns `m/distinct-by` over that random order.
-                                     ;; Changing the map keys on the inner query can perturb this order; if you cause
-                                     ;; this test to fail based on shuffling the order of these joined fields, just
-                                     ;; edit the expectation to match the new order.
-                                     ;; Tech debt issue: #39396
-                                     PRODUCTS__via__PRODUCT_ID.ID       AS PRODUCTS__via__PRODUCT_ID__ID
-                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID
-                                     PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE
-                                     PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY]
+                        source.PEOPLE__via__USER_ID__SOURCE        AS PEOPLE__via__USER_ID__SOURCE
+                        DATE_TRUNC ("year" source.CREATED_AT)      AS CREATED_AT
+                        source.pivot-grouping                      AS pivot-grouping
+                        COUNT (*)                                  AS count]
+             ;; TODO: The order here is not deterministic! It's coming
+             ;; from [[metabase.query-processor.util.transformations.nest-breakouts]]
+             ;; or [[metabase.query-processor.util.nest-query]], which walks the query looking for refs in an
+             ;; arbitrary order, and returns `m/distinct-by` over that random order. Changing the map keys on the
+             ;; inner query can perturb this order; if you cause this test to fail based on shuffling the order of
+             ;; these joined fields just edit the expectation to match the new order. Tech debt issue: #39396
+             :from     [{:select [PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
+                                  PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE
+                                  ORDERS.CREATED_AT                  AS CREATED_AT
+                                  ABS (0)                            AS pivot-grouping]
                          :from      [ORDERS]
-                         :left-join [PRODUCTS AS PRODUCTS__via__PRODUCT_ID
+                         :left-join [{:select [PRODUCTS.ID         AS ID
+                                               PRODUCTS.EAN        AS EAN
+                                               PRODUCTS.TITLE      AS TITLE
+                                               PRODUCTS.CATEGORY   AS CATEGORY
+                                               PRODUCTS.VENDOR     AS VENDOR
+                                               PRODUCTS.PRICE      AS PRICE
+                                               PRODUCTS.RATING     AS RATING
+                                               PRODUCTS.CREATED_AT AS CREATED_AT]
+                                      :from [PRODUCTS]} AS PRODUCTS__via__PRODUCT_ID
                                      ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID
-                                     PEOPLE AS PEOPLE__via__USER_ID
+                                     {:select [PEOPLE.ID         AS ID
+                                               PEOPLE.ADDRESS    AS ADDRESS
+                                               PEOPLE.EMAIL      AS EMAIL
+                                               PEOPLE.PASSWORD   AS PASSWORD
+                                               PEOPLE.NAME       AS NAME
+                                               PEOPLE.CITY       AS CITY
+                                               PEOPLE.LONGITUDE  AS LONGITUDE
+                                               PEOPLE.STATE      AS STATE
+                                               PEOPLE.SOURCE     AS SOURCE
+                                               PEOPLE.BIRTH_DATE AS BIRTH_DATE
+                                               PEOPLE.ZIP        AS ZIP
+                                               PEOPLE.LATITUDE   AS LATITUDE
+                                               PEOPLE.CREATED_AT AS CREATED_AT]
+                                      :from   [PEOPLE]} AS PEOPLE__via__USER_ID
                                      ON ORDERS.USER_ID = PEOPLE__via__USER_ID.ID]
                          :where     [((PEOPLE__via__USER_ID.SOURCE = ?) OR (PEOPLE__via__USER_ID.SOURCE = ?))
                                      AND
@@ -443,9 +509,9 @@
                         DATE_TRUNC ("year" source.CREATED_AT)
                         source.pivot-grouping]
              :order-by [source.PRODUCTS__via__PRODUCT_ID__CATEGORY ASC
-                        source.PEOPLE__via__USER_ID__SOURCE ASC
-                        DATE_TRUNC ("year" source.CREATED_AT) ASC
-                        source.pivot-grouping ASC]}
+                        source.PEOPLE__via__USER_ID__SOURCE        ASC
+                        DATE_TRUNC ("year" source.CREATED_AT)      ASC
+                        source.pivot-grouping                      ASC]}
            (-> (lib.tu.macros/mbql-query orders
                  {:aggregation [[:aggregation-options [:count] {:name "count"}]]
                   :breakout    [&PRODUCTS__via__PRODUCT_ID.products.category
@@ -493,9 +559,9 @@
                 VENUES.LATITUDE    AS LATITUDE
                 VENUES.LONGITUDE   AS LONGITUDE
                 VENUES.PRICE       AS PRICE
-                CAST (VENUES.PRICE AS float)
+                CAST (VENUES.PRICE AS double)
                 /
-                NULLIF (CategoriesStats.AvgPrice, 0) AS RelativePrice
+                NULLIF (CAST (CategoriesStats.AvgPrice AS double), 0.0) AS RelativePrice
                 CategoriesStats.CATEGORY_ID AS CategoriesStats__CATEGORY_ID
                 CategoriesStats.MaxPrice    AS CategoriesStats__MaxPrice
                 CategoriesStats.AvgPrice    AS CategoriesStats__AvgPrice
@@ -573,7 +639,7 @@
 (deftest ^:parallel expressions-and-coercions-test
   (testing "Don't cast in both inner select and outer select when expression (#12430)"
     (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:fields [{:id                (mt/id :venues :price)
                                                  :coercion-strategy :Coercion/UNIXSeconds->DateTime
                                                  :effective-type    :type/DateTime}]})
@@ -610,7 +676,9 @@
          (-> (lib.tu.macros/mbql-query venues
                {:source-table $$venues
                 :joins        [{:alias        "cat"
-                                :source-query {:source-table $$categories}
+                                :source-query {:source-table $$categories
+                                               ;; this will prevent the nesting from getting collapsed
+                                               ::whatever true}
                                 :condition    [:= $category-id &cat.*categories.id]}]
                 :order-by     [[:asc $name]]
                 :limit        3})
@@ -622,7 +690,16 @@
     (is (= '{:select [source.P1__CATEGORY AS P1__CATEGORY]
              :from   [{:select    [P1.CATEGORY AS P1__CATEGORY]
                        :from      [ORDERS]
-                       :left-join [PRODUCTS AS P1 ON ORDERS.PRODUCT_ID = P1.ID]}
+                       :left-join [{:select [PRODUCTS.ID         AS ID
+                                             PRODUCTS.EAN        AS EAN
+                                             PRODUCTS.TITLE      AS TITLE
+                                             PRODUCTS.CATEGORY   AS CATEGORY
+                                             PRODUCTS.VENDOR     AS VENDOR
+                                             PRODUCTS.PRICE      AS PRICE
+                                             PRODUCTS.RATING     AS RATING
+                                             PRODUCTS.CREATED_AT AS CREATED_AT]
+                                    :from [PRODUCTS]} AS P1
+                                   ON ORDERS.PRODUCT_ID = P1.ID]}
                       AS source]
              :limit  [1]}
            (-> (lib.tu.macros/mbql-query orders
@@ -643,11 +720,29 @@
       (is (= '{:select    [source.P1__CATEGORY AS P1__CATEGORY]
                :from      [{:select    [P1.CATEGORY AS P1__CATEGORY]
                             :from      [ORDERS]
-                            :left-join [PRODUCTS AS P1 ON ORDERS.PRODUCT_ID = P1.ID]}
+                            :left-join [{:select [PRODUCTS.ID         AS ID
+                                                  PRODUCTS.EAN        AS EAN
+                                                  PRODUCTS.TITLE      AS TITLE
+                                                  PRODUCTS.CATEGORY   AS CATEGORY
+                                                  PRODUCTS.VENDOR     AS VENDOR
+                                                  PRODUCTS.PRICE      AS PRICE
+                                                  PRODUCTS.RATING     AS RATING
+                                                  PRODUCTS.CREATED_AT AS CREATED_AT]
+                                         :from [PRODUCTS]} AS P1
+                                        ON ORDERS.PRODUCT_ID = P1.ID]}
                            AS source]
                :left-join [{:select    [P2.CATEGORY AS P2__CATEGORY]
                             :from      [REVIEWS]
-                            :left-join [PRODUCTS AS P2 ON REVIEWS.PRODUCT_ID = P2.ID]}
+                            :left-join [{:select [PRODUCTS.ID         AS ID
+                                                  PRODUCTS.EAN        AS EAN
+                                                  PRODUCTS.TITLE      AS TITLE
+                                                  PRODUCTS.CATEGORY   AS CATEGORY
+                                                  PRODUCTS.VENDOR     AS VENDOR
+                                                  PRODUCTS.PRICE      AS PRICE
+                                                  PRODUCTS.RATING     AS RATING
+                                                  PRODUCTS.CREATED_AT AS CREATED_AT]
+                                         :from [PRODUCTS]} AS P2
+                                        ON REVIEWS.PRODUCT_ID = P2.ID]}
                            AS Q2
                            ON source.P1__CATEGORY = Q2.P2__CATEGORY]
                :limit     [1]}
@@ -676,7 +771,10 @@
   (is (= '{:select    [VENUES.NAME                       AS NAME
                        CATEGORIES__via__CATEGORY_ID.NAME AS CATEGORIES__via__CATEGORY_ID__NAME]
            :from      [VENUES]
-           :left-join [CATEGORIES AS CATEGORIES__via__CATEGORY_ID
+           :left-join [{:select [CATEGORIES.ID AS ID
+                                 CATEGORIES.NAME AS NAME]
+                        :from   [CATEGORIES]}
+                       AS CATEGORIES__via__CATEGORY_ID
                        ON VENUES.CATEGORY_ID = CATEGORIES__via__CATEGORY_ID.ID]
            :order-by  [VENUES.ID ASC]
            :limit     [5]}
@@ -717,14 +815,13 @@
 
 (deftest ^:parallel expression-with-duplicate-column-name-test
   (testing "Can we use expression with same column name as table (#14267)"
-    (is (= '{:select   [source.CATEGORY_2 AS CATEGORY
+    (is (= '{:select   [source.CATEGORY AS CATEGORY
                         COUNT (*)         AS count]
-             :from     [{:select [PRODUCTS.CATEGORY            AS CATEGORY
-                                  CONCAT (PRODUCTS.CATEGORY ?) AS CATEGORY_2]
+             :from     [{:select [CONCAT (PRODUCTS.CATEGORY ?) AS CATEGORY]
                          :from   [PRODUCTS]}
                         AS source]
-             :group-by [source.CATEGORY_2]
-             :order-by [source.CATEGORY_2 ASC]
+             :group-by [source.CATEGORY]
+             :order-by [source.CATEGORY ASC]
              :limit    [1]}
            (-> (lib.tu.macros/mbql-query products
                  {:expressions {:CATEGORY [:concat $category "2"]}
@@ -746,8 +843,31 @@
                                       People.SOURCE AS People__SOURCE
                                       COUNT (*)     AS count]
                           :from      [ORDERS]
-                          :left-join [PRODUCTS AS P1     ON ORDERS.PRODUCT_ID = P1.ID
-                                      PEOPLE   AS People ON ORDERS.USER_ID = People.ID]
+                          :left-join [{:select [PRODUCTS.ID         AS ID
+                                                PRODUCTS.EAN        AS EAN
+                                                PRODUCTS.TITLE      AS TITLE
+                                                PRODUCTS.CATEGORY   AS CATEGORY
+                                                PRODUCTS.VENDOR     AS VENDOR
+                                                PRODUCTS.PRICE      AS PRICE
+                                                PRODUCTS.RATING     AS RATING
+                                                PRODUCTS.CREATED_AT AS CREATED_AT]
+                                       :from   [PRODUCTS]} AS P1
+                                      ON ORDERS.PRODUCT_ID = P1.ID
+                                      {:select [PEOPLE.ID         AS ID
+                                                PEOPLE.ADDRESS    AS ADDRESS
+                                                PEOPLE.EMAIL      AS EMAIL
+                                                PEOPLE.PASSWORD   AS PASSWORD
+                                                PEOPLE.NAME       AS NAME
+                                                PEOPLE.CITY       AS CITY
+                                                PEOPLE.LONGITUDE  AS LONGITUDE
+                                                PEOPLE.STATE      AS STATE
+                                                PEOPLE.SOURCE     AS SOURCE
+                                                PEOPLE.BIRTH_DATE AS BIRTH_DATE
+                                                PEOPLE.ZIP        AS ZIP
+                                                PEOPLE.LATITUDE   AS LATITUDE
+                                                PEOPLE.CREATED_AT AS CREATED_AT]
+                                       :from   [PEOPLE]} AS People
+                                      ON ORDERS.USER_ID = People.ID]
                           :group-by  [P1.CATEGORY
                                       People.SOURCE]
                           :order-by  [P1.CATEGORY ASC People.SOURCE ASC]}
@@ -755,7 +875,16 @@
              :left-join [{:select    [P2.CATEGORY          AS P2__CATEGORY
                                       AVG (REVIEWS.RATING) AS avg]
                           :from      [REVIEWS]
-                          :left-join [PRODUCTS AS P2 ON REVIEWS.PRODUCT_ID = P2.ID]
+                          :left-join [{:select [PRODUCTS.ID         AS ID
+                                                PRODUCTS.EAN        AS EAN
+                                                PRODUCTS.TITLE      AS TITLE
+                                                PRODUCTS.CATEGORY   AS CATEGORY
+                                                PRODUCTS.VENDOR     AS VENDOR
+                                                PRODUCTS.PRICE      AS PRICE
+                                                PRODUCTS.RATING     AS RATING
+                                                PRODUCTS.CREATED_AT AS CREATED_AT]
+                                       :from   [PRODUCTS]} AS P2
+                                      ON REVIEWS.PRODUCT_ID = P2.ID]
                           :group-by  [P2.CATEGORY]
                           :order-by  [P2.CATEGORY ASC]}
                          AS Q2
@@ -797,9 +926,9 @@
 (deftest ^:parallel floating-point-division-test
   (testing "Make sure FLOATING POINT division is done when dividing by expressions/fields"
     (is (= '{:select   [CAST
-                        (VENUES.PRICE AS float)
+                        (VENUES.PRICE AS double)
                         /
-                        NULLIF (VENUES.PRICE + 2, 0) AS my_cool_new_field]
+                        NULLIF (CAST (VENUES.PRICE + 2 AS double), 0.0) AS my_cool_new_field]
              :from     [VENUES]
              :order-by [VENUES.ID ASC]
              :limit    [3]}
@@ -827,8 +956,7 @@
 (deftest ^:parallel duplicate-aggregations-test
   (testing "Make sure multiple aggregations of the same type get unique aliases"
     (qp.store/with-metadata-provider meta/metadata-provider
-      ;; ([[metabase.query-processor.middleware.pre-alias-aggregations]] should actually take care of this, but this test
-      ;; is here to be extra safe anyway.)
+      ;; (`add-alias-info` should actually take care of this, but this test is here to be extra safe anyway.)
       (is (= '{:select [SUM (VENUES.ID)    AS sum
                         SUM (VENUES.PRICE) AS sum_2]
                :from   [VENUES]
@@ -858,7 +986,13 @@
                             :group-by  [PRODUCTS__via__PRODUCT_ID.ID]
                             :order-by  [PRODUCTS__via__PRODUCT_ID.ID ASC]}
                            AS source]
-               :left-join [REVIEWS AS Reviews
+               :left-join [{:select [REVIEWS.ID         AS ID
+                                     REVIEWS.PRODUCT_ID AS PRODUCT_ID
+                                     REVIEWS.REVIEWER   AS REVIEWER
+                                     REVIEWS.RATING     AS RATING
+                                     REVIEWS.BODY       AS BODY
+                                     REVIEWS.CREATED_AT AS CREATED_AT]
+                            :from   [REVIEWS]} AS Reviews
                            ON source.PRODUCTS__via__PRODUCT_ID__ID = Reviews.PRODUCT_ID]
                :limit     [1]}
              (sql.qp-test-util/query->sql-map
@@ -930,8 +1064,31 @@
                                       People.SOURCE AS People__SOURCE
                                       COUNT (*)     AS count]
                           :from      [ORDERS]
-                          :left-join [PRODUCTS AS P1     ON ORDERS.PRODUCT_ID = P1.ID
-                                      PEOPLE   AS People ON ORDERS.USER_ID = People.ID]
+                          :left-join [{:select [PRODUCTS.ID         AS ID
+                                                PRODUCTS.EAN        AS EAN
+                                                PRODUCTS.TITLE      AS TITLE
+                                                PRODUCTS.CATEGORY   AS CATEGORY
+                                                PRODUCTS.VENDOR     AS VENDOR
+                                                PRODUCTS.PRICE      AS PRICE
+                                                PRODUCTS.RATING     AS RATING
+                                                PRODUCTS.CREATED_AT AS CREATED_AT]
+                                       :from   [PRODUCTS]} AS P1
+                                      ON ORDERS.PRODUCT_ID = P1.ID
+                                      {:select [PEOPLE.ID         AS ID
+                                                PEOPLE.ADDRESS    AS ADDRESS
+                                                PEOPLE.EMAIL      AS EMAIL
+                                                PEOPLE.PASSWORD   AS PASSWORD
+                                                PEOPLE.NAME       AS NAME
+                                                PEOPLE.CITY       AS CITY
+                                                PEOPLE.LONGITUDE  AS LONGITUDE
+                                                PEOPLE.STATE      AS STATE
+                                                PEOPLE.SOURCE     AS SOURCE
+                                                PEOPLE.BIRTH_DATE AS BIRTH_DATE
+                                                PEOPLE.ZIP        AS ZIP
+                                                PEOPLE.LATITUDE   AS LATITUDE
+                                                PEOPLE.CREATED_AT AS CREATED_AT]
+                                       :from   [PEOPLE]} AS People
+                                      ON ORDERS.USER_ID = People.ID]
                           :group-by  [P1.CATEGORY
                                       People.SOURCE]
                           :order-by  [P1.CATEGORY   ASC
@@ -940,7 +1097,16 @@
              :left-join [{:select    [P2.CATEGORY          AS P2__CATEGORY
                                       AVG (REVIEWS.RATING) AS avg]
                           :from      [REVIEWS]
-                          :left-join [PRODUCTS AS P2 ON REVIEWS.PRODUCT_ID = P2.ID]
+                          :left-join [{:select [PRODUCTS.ID         AS ID
+                                                PRODUCTS.EAN        AS EAN
+                                                PRODUCTS.TITLE      AS TITLE
+                                                PRODUCTS.CATEGORY   AS CATEGORY
+                                                PRODUCTS.VENDOR     AS VENDOR
+                                                PRODUCTS.PRICE      AS PRICE
+                                                PRODUCTS.RATING     AS RATING
+                                                PRODUCTS.CREATED_AT AS CREATED_AT]
+                                       :from   [PRODUCTS]} AS P2
+                                      ON REVIEWS.PRODUCT_ID = P2.ID]
                           :group-by  [P2.CATEGORY]
                           :order-by  [P2.CATEGORY ASC]}
                          AS Q2
@@ -1021,7 +1187,7 @@
                                vec
                                (update 0 #(str/split-lines (driver/prettify-native-form driver/*driver* %))))]
               (testing "this query should not have any parameters"
-                (is (mc/validate [:cat [:sequential :string]] sql-args))))))))))
+                (is (mr/validate [:cat [:sequential :string]] sql-args))))))))))
 
 (deftest ^:parallel binning-optimize-math-expressions-test
   (testing "Don't include nonsense like `+ 0.0` and `- 0.0` when generating expressions for binning"
@@ -1136,3 +1302,327 @@
     (binding [driver/*compile-with-inline-parameters* true]
       (is (= ["SELECT * FROM \"venues\" WHERE \"venues\".\"name\" = [my-string]"]
              (sql.qp/format-honeysql ::inline-value-test honeysql))))))
+
+(deftest ^:parallel sort-by-cumulative-aggregation-test
+  (testing "Sorting by expression containing cumulative aggregation should work (#57289)"
+    (let [mp (mt/metadata-provider)
+          query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                  (lib/breakout $ (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at))
+                                    :month))
+                  (lib/aggregate $ (lib/+
+                                    (lib/cum-sum (lib.metadata/field mp (mt/id :orders :total)))
+                                    (lib/cum-sum (lib.metadata/field mp (mt/id :orders :tax)))))
+                  (lib/order-by $ (m/find-first (comp #{:source/aggregations} :lib/source) (lib/orderable-columns $)))
+                  (lib/limit $ 1))]
+      (is (= 55.98
+             (->> (qp/process-query query) (mt/formatted-rows [str 2.0]) first second))))))
+
+(deftest ^:parallel literal-float-test
+  (doseq [{:keys [value expected type]} [{:value "1.2" :expected 1.2  :type "TEXT"}
+                                         {:value 10    :expected 10.0 :type "BIGINT"}
+                                         {:value 90.9  :expected 90.9 :type "DOUBLE"}]]
+    (is (= [:inline expected]
+           (h2x/unwrap-typed-honeysql-form
+            (sql.qp/coerce-float :sql value))))
+    (is (= [:inline expected]
+           (h2x/unwrap-typed-honeysql-form
+            (sql.qp/coerce-float :sql
+                                 [:inline value]))))
+    (is (= [:inline expected]
+           (h2x/unwrap-typed-honeysql-form
+            (sql.qp/coerce-float :sql
+                                 (h2x/with-database-type-info [:inline value] type)))))
+    (is (= [:inline expected]
+           (h2x/unwrap-typed-honeysql-form
+            (sql.qp/coerce-float :sql
+                                 (h2x/with-database-type-info value type)))))))
+
+(deftest ^:parallel literal-integer-test
+  (doseq [{:keys [value expected type]} [{:value "1"  :expected 1  :type "TEXT"}
+                                         {:value 10   :expected 10 :type "BIGINT"}
+                                         {:value 10.9 :expected 11 :type "DOUBLE"}
+                                         {:value 10.4 :expected 10 :type "DOUBLE"}]]
+    (testing (str "Coercing " (pr-str value) " to integer.")
+      (is (= [:inline expected]
+             (h2x/unwrap-typed-honeysql-form
+              (sql.qp/coerce-integer :sql value))))
+      (is (= [:inline expected]
+             (h2x/unwrap-typed-honeysql-form
+              (sql.qp/coerce-integer :sql
+                                     [:inline value]))))
+      (is (= [:inline expected]
+             (h2x/unwrap-typed-honeysql-form
+              (sql.qp/coerce-integer :sql
+                                     (h2x/with-database-type-info [:inline value] type)))))
+      (is (= [:inline expected]
+             (h2x/unwrap-typed-honeysql-form
+              (sql.qp/coerce-integer :sql
+                                     (h2x/with-database-type-info value type))))))))
+
+(deftest ^:parallel multiple-counts-test
+  (testing "Count of count grouping works (#15074)"
+    (let [query (lib.tu.macros/mbql-query checkins
+                  {:aggregation  [[:count]]
+                   :breakout     [[:field "count" {:base-type :type/Integer}]]
+                   :source-query {:source-table (meta/id :checkins)
+                                  :aggregation  [[:count]]
+                                  :breakout     [!month.date]}
+                   :limit        2})]
+      (qp.store/with-metadata-provider
+        meta/metadata-provider
+        (is (=? {:query  ["SELECT"
+                          "  \"source\".\"count\" AS \"count\","
+                          "  COUNT(*) AS \"count_2\""
+                          "FROM"
+                          "  ("
+                          "    SELECT"
+                          "      DATE_TRUNC('month', \"PUBLIC\".\"CHECKINS\".\"DATE\") AS \"DATE\","
+                          "      COUNT(*) AS \"count\""
+                          "    FROM"
+                          "      \"PUBLIC\".\"CHECKINS\""
+                          "    GROUP BY"
+                          "      DATE_TRUNC('month', \"PUBLIC\".\"CHECKINS\".\"DATE\")"
+                          "    ORDER BY"
+                          "      DATE_TRUNC('month', \"PUBLIC\".\"CHECKINS\".\"DATE\") ASC"
+                          "  ) AS \"source\""
+                          "GROUP BY"
+                          "  \"source\".\"count\""
+                          "ORDER BY"
+                          "  \"source\".\"count\" ASC"
+                          "LIMIT"
+                          "  2"]
+                 :params nil}
+                (-> (qp.compile/compile query)
+                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
+
+;;; see also [[metabase.query-processor.util.add-alias-info-test/resolve-incorrect-field-ref-for-expression-test]]
+;;; and [[metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test/evil-field-ref-for-an-expression-test]]
+(deftest ^:parallel evil-field-ref-for-an-expression-test
+  (testing "If we accidentally use a :field ref for an :expression, the query should still compile correctly"
+    ;; (this is actually mostly checking that `add-alias-info` or someone else rewrites the `:field` ref as an
+    ;; `:expression` ref, by the time the SQL QP sees the query it should be in a shape that will generate correct
+    ;; output.
+    (let [query {:database (meta/id)
+                 :type     :query
+                 :query    {:source-query {:source-table (meta/id :products)
+                                           :expressions  {"my_numberLiteral" [:value 2 {:base_type :type/Integer}]}
+                                           :fields       [[:field (meta/id :products :id) nil]
+                                                          [:expression "my_numberLiteral"]]
+                                           :filter       [:=
+                                                          ;; EVIL REF
+                                                          [:field "my_numberLiteral" {:base-type :type/Integer}]
+                                                          [:value 1 {:base_type :type/Integer}]]
+                                           :limit        20}
+                            :fields       [[:field (meta/id :products :id) nil]]
+                            :limit        20}}]
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (is (= {:params nil
+                :query  ["SELECT"
+                         "  \"source\".\"ID\" AS \"ID\""
+                         "FROM"
+                         "  ("
+                         "    SELECT"
+                         "      \"PUBLIC\".\"PRODUCTS\".\"ID\" AS \"ID\","
+                         "      2 AS \"my_numberLiteral\""
+                         "    FROM"
+                         "      \"PUBLIC\".\"PRODUCTS\""
+                         "    WHERE"
+                         "      2 = 1"
+                         "    LIMIT"
+                         "      20"
+                         "  ) AS \"source\""
+                         "LIMIT"
+                         "  20"]}
+               (-> (qp.compile/compile query)
+                   (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
+
+(deftest ^:parallel field-name-ref-in-parameters-test
+  (testing "Should generate correct SQL if we use a field name ref in parameters"
+    (let [query {:type       :query
+                 :database   (meta/id)
+                 :query      {:source-table (meta/id :products)}
+                 :parameters [{:type   :id
+                               :value  [144]
+                               :id     "92eb69ea"
+                               :target [:dimension [:field "ID" {:base-type :type/BigInteger}]]}]}]
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (is (= {:query  ["SELECT"
+                         "  \"PUBLIC\".\"PRODUCTS\".\"ID\" AS \"ID\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"EAN\" AS \"EAN\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"TITLE\" AS \"TITLE\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" AS \"CATEGORY\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"VENDOR\" AS \"VENDOR\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"PRICE\" AS \"PRICE\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"RATING\" AS \"RATING\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"CREATED_AT\" AS \"CREATED_AT\""
+                         "FROM"
+                         "  \"PUBLIC\".\"PRODUCTS\""
+                         "WHERE"
+                         "  \"PUBLIC\".\"PRODUCTS\".\"ID\" = 144"
+                         "LIMIT"
+                         "  1048575"]
+                :params nil}
+               (-> (qp.compile/compile query)
+                   (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
+
+(deftest ^:parallel no-double-coercion-when-joining-coerced-fields-test
+  (testing "Should generate correct SQL when joining a field that has coercion applied (#62099)"
+    (let [mp    (lib.tu/merged-mock-metadata-provider
+                 meta/metadata-provider
+                 {:fields [(merge (meta/field-metadata :products :id)
+                                  {:coercion-strategy :Coercion/UNIXSeconds->DateTime})]})
+          query {:type       :query
+                 :database   (meta/id)
+                 :query      {:source-table (meta/id :orders)
+                              :joins        [{:source-table (meta/id :products)
+                                              :fields       :all
+                                              :alias        "Products__CREATED_AT"
+                                              :condition
+                                              [:=
+                                               [:field (meta/id :orders :created-at) {:temporal-unit :month}]
+                                               [:field (meta/id :products :created-at) {:temporal-unit :month}]]}]}}]
+      (qp.store/with-metadata-provider mp
+        (is (= {:query  ["SELECT"
+                         "  \"PUBLIC\".\"ORDERS\".\"ID\" AS \"ID\","
+                         "  \"PUBLIC\".\"ORDERS\".\"USER_ID\" AS \"USER_ID\","
+                         "  \"PUBLIC\".\"ORDERS\".\"PRODUCT_ID\" AS \"PRODUCT_ID\","
+                         "  \"PUBLIC\".\"ORDERS\".\"SUBTOTAL\" AS \"SUBTOTAL\","
+                         "  \"PUBLIC\".\"ORDERS\".\"TAX\" AS \"TAX\","
+                         "  \"PUBLIC\".\"ORDERS\".\"TOTAL\" AS \"TOTAL\","
+                         "  \"PUBLIC\".\"ORDERS\".\"DISCOUNT\" AS \"DISCOUNT\","
+                         "  \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" AS \"CREATED_AT\","
+                         "  \"PUBLIC\".\"ORDERS\".\"QUANTITY\" AS \"QUANTITY\","
+                         "  \"Products__CREATED_AT\".\"ID\" AS \"Products__CREATED_AT__ID\","
+                         "  \"Products__CREATED_AT\".\"EAN\" AS \"Products__CREATED_AT__EAN\","
+                         "  \"Products__CREATED_AT\".\"TITLE\" AS \"Products__CREATED_AT__TITLE\","
+                         "  \"Products__CREATED_AT\".\"CATEGORY\" AS \"Products__CREATED_AT__CATEGORY\","
+                         "  \"Products__CREATED_AT\".\"VENDOR\" AS \"Products__CREATED_AT__VENDOR\","
+                         "  \"Products__CREATED_AT\".\"PRICE\" AS \"Products__CREATED_AT__PRICE\","
+                         "  \"Products__CREATED_AT\".\"RATING\" AS \"Products__CREATED_AT__RATING\","
+                         "  \"Products__CREATED_AT\".\"CREATED_AT\" AS \"Products__CREATED_AT__CREATED_AT\""
+                         "FROM"
+                         "  \"PUBLIC\".\"ORDERS\""
+                         "  LEFT JOIN ("
+                         "    SELECT"
+                         "      TIMESTAMPADD("
+                         "        'second',"
+                         "        \"PUBLIC\".\"PRODUCTS\".\"ID\","
+                         "        timestamp '1970-01-01T00:00:00Z'"
+                         "      ) AS \"ID\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"EAN\" AS \"EAN\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"TITLE\" AS \"TITLE\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" AS \"CATEGORY\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"VENDOR\" AS \"VENDOR\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"PRICE\" AS \"PRICE\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"RATING\" AS \"RATING\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"CREATED_AT\" AS \"CREATED_AT\""
+                         "    FROM"
+                         "      \"PUBLIC\".\"PRODUCTS\""
+                         "  ) AS \"Products__CREATED_AT\" ON DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") = DATE_TRUNC('month', \"Products__CREATED_AT\".\"CREATED_AT\")"
+                         "LIMIT"
+                         "  1048575"]
+                :params nil}
+               (-> (qp.compile/compile query)
+                   (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
+
+;;; see also [[metabase.query-processor-test.order-by-test/order-by-aggregate-fields-test-6]]
+(deftest ^:parallel order-by-aggregation-reference-test
+  (testing "Should order by aggregation references correctly (#62885)"
+    (let [mp    meta/metadata-provider
+          query (-> (lib/query mp (meta/table-metadata :products))
+                    (lib/aggregate (lib/count))
+                    (lib/aggregate (lib/sum (meta/field-metadata :products :price)))
+                    (lib/aggregate (lib/sum (meta/field-metadata :products :rating)))
+                    (lib/breakout (meta/field-metadata :products :category))
+                    (as-> $query (lib/order-by $query (lib.tu.notebook/find-col-with-spec
+                                                       $query
+                                                       (lib/orderable-columns $query)
+                                                       {}
+                                                       {:display-name "Sum of Rating"}))))]
+      (is (= ["SELECT"
+              "  \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" AS \"CATEGORY\","
+              "  COUNT(*) AS \"count\","
+              "  SUM(\"PUBLIC\".\"PRODUCTS\".\"PRICE\") AS \"sum\","
+              "  SUM(\"PUBLIC\".\"PRODUCTS\".\"RATING\") AS \"sum_2\""
+              "FROM"
+              "  \"PUBLIC\".\"PRODUCTS\""
+              "GROUP BY"
+              "  \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\""
+              "ORDER BY"
+              "  \"sum_2\" ASC,"
+              "  \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" ASC"]
+             (-> query
+                 qp.compile/compile
+                 :query
+                 (->> (driver/prettify-native-form :h2))
+                 str/split-lines))))))
+
+(deftest ^:parallel literal-boolean-expressions-and-fields-in-conditions-test
+  (testing "mixing Field ID refs and Field Name refs to the same column should not result in broken queries"
+    (let [true-value  [:value true  {:base_type :type/Boolean}]
+          false-value [:value false {:base_type :type/Boolean}]
+          mp          lib.tu.places-cam-likes-metadata-provider/metadata-provider
+          query       (lib/query
+                       mp
+                       {:database 1
+                        :type     :query
+                        :query    {:expressions  {"T" true-value, "F" false-value}
+                                   :source-query {:source-table 1
+                                                  :fields       [[:field 2 nil]]}
+                                   :aggregation  [[:count-where [:expression "T"]]
+                                                  [:count-where [:expression "F"]]
+                                                  ;; only a psycho would
+                                                  [:count-where [:field "LIKED" {:base-type :type/Boolean}]]
+                                                  [:count-where [:field 2 nil]]]
+                                   :filter       [:or
+                                                  [:field 2 nil]
+                                                  [:field "LIKED" {:base-type :type/Boolean}]
+                                                  [:expression "T"]]}})]
+      (is (= ["SELECT"
+              "  SUM("
+              "    CASE"
+              "      WHEN \"source\".\"T\" THEN 1"
+              "      ELSE 0.0"
+              "    END"
+              "  ) AS \"count_where\","
+              "  SUM("
+              "    CASE"
+              "      WHEN \"source\".\"F\" THEN 1"
+              "      ELSE 0.0"
+              "    END"
+              "  ) AS \"count_where_2\","
+              "  SUM("
+              "    CASE"
+              "      WHEN \"source\".\"LIKED\" THEN 1"
+              "      ELSE 0.0"
+              "    END"
+              "  ) AS \"count_where_3\","
+              "  SUM("
+              "    CASE"
+              "      WHEN \"source\".\"LIKED\" THEN 1"
+              "      ELSE 0.0"
+              "    END"
+              "  ) AS \"count_where_4\""
+              "FROM"
+              "  ("
+              "    SELECT"
+              "      TRUE AS \"T\","
+              "      FALSE AS \"F\","
+              "      \"source\".\"LIKED\" AS \"LIKED\""
+              "    FROM"
+              "      ("
+              "        SELECT"
+              "          \"PUBLIC\".\"PLACES\".\"LIKED\" AS \"LIKED\""
+              "        FROM"
+              "          \"PUBLIC\".\"PLACES\""
+              "      ) AS \"source\""
+              "    WHERE"
+              "      \"source\".\"LIKED\""
+              "      OR \"source\".\"LIKED\""
+              "      OR TRUE"
+              "  ) AS \"source\""]
+             (-> query
+                 qp.compile/compile
+                 :query
+                 (->> (driver/prettify-native-form :h2))
+                 str/split-lines))))))

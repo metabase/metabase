@@ -2,16 +2,35 @@
   "Misc Ring middleware."
   (:require
    [clojure.string :as str]
-   [metabase.async.streaming-response]
-   [metabase.db :as mdb]
-   [metabase.public-settings :as public-settings]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.request.core :as request]
+   [metabase.server.streaming-response]
+   [metabase.system.core :as system]
    [metabase.util.log :as log])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
-   (metabase.async.streaming_response StreamingResponse)))
+   (metabase.server.streaming_response StreamingResponse)))
 
-(comment metabase.async.streaming-response/keep-me)
+(comment metabase.server.streaming-response/keep-me)
+
+(defn- add-version*
+  "Assoc the `x-metabase-version` header onto the response."
+  [response]
+  (assoc-in response
+            [:headers "x-metabase-version"]
+            (:tag config/mb-version-info)))
+
+(defn add-version
+  "Middleware that adds an `x-metabase-version` header (from `:tag mb-version-info`)
+   to all API-call responses. Non-API calls are left untouched."
+  [handler]
+  (fn [request respond raise]
+    (handler request
+             (if-not (request/api-call? request)
+               respond
+               (comp respond add-version*))
+             raise)))
 
 (defn- add-content-type* [{:keys [body], {:strs [Content-Type]} :headers, :as response}]
   (cond-> response
@@ -41,13 +60,13 @@
 ;; the (initial) value of `site-url`
 (defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host host user-agent]} :headers, uri :uri}]
   (when (and (mdb/db-is-set-up?)
-             (not (public-settings/site-url))
+             (not (system/site-url))
              (not= uri "/api/health")
              (or (nil? user-agent) ((complement str/includes?) user-agent "HealthChecker")))
     (when-let [site-url (or origin x-forwarded-host host)]
       (log/infof "Setting Metabase site URL to %s" site-url)
       (try
-        (public-settings/site-url! site-url)
+        (system/site-url! site-url)
         (catch Throwable e
           (log/warn e "Failed to set site-url"))))))
 

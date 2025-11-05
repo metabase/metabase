@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -15,7 +15,7 @@ describe("scenarios > search", () => {
   });
 
   it("should not search on an empty string", () => {
-    cy.intercept("/api/search", req => {
+    cy.intercept("/api/search", (req) => {
       expect("Unexpected call to /api/search").to.be.false;
     });
     H.visitFullAppEmbeddingUrl({
@@ -57,9 +57,9 @@ describe("scenarios > search", () => {
   });
 });
 
-const generateQuestions = count => {
-  _.range(count).map(i =>
-    cy.createQuestion({
+const generateQuestions = (count) => {
+  _.range(count).map((i) =>
+    H.createQuestion({
       name: `generated_question ${i}`,
       query: {
         "source-table": ORDERS_ID,

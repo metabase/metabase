@@ -21,11 +21,11 @@ import {
   getQuestion,
   getRawSeries,
 } from "../../selectors";
-import { setIsShowingTemplateTagsEditor } from "../native";
-import { updateUrl } from "../navigation";
 import { runQuestionQuery } from "../querying";
 import { onCloseQuestionInfo, setQueryBuilderMode, setUIControls } from "../ui";
+import { updateUrl } from "../url";
 
+import { setIsShowingTemplateTagsEditor } from "./native";
 import { computeQuestionPivotTable } from "./pivot-table";
 import { getAdHocQuestionWithVizSettings } from "./utils";
 
@@ -51,10 +51,12 @@ function shouldTemplateTagEditorBeVisible({
   ).isNative;
 
   const previousTags = isCurrentQuestionNative
-    ? (currentQuestion.legacyQuery() as NativeQuery).variableTemplateTags()
+    ? (
+        currentQuestion.legacyNativeQuery() as NativeQuery
+      ).variableTemplateTags()
     : [];
   const nextTags = isNewQuestionNative
-    ? (newQuestion.legacyQuery() as NativeQuery).variableTemplateTags()
+    ? (newQuestion.legacyNativeQuery() as NativeQuery).variableTemplateTags()
     : [];
   if (nextTags.length > previousTags.length) {
     return true;

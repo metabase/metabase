@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
 import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 
 import TimelineEmptyState from "../TimelineEmptyState";
@@ -42,7 +42,7 @@ const TimelinePanel = ({
     <PanelRoot>
       {!isEmpty && canWrite && (
         <PanelToolbar>
-          <Button onClick={onNewEvent}>{t`Add an event`}</Button>
+          <Button onClick={onNewEvent}>{t`Create event`}</Button>
         </PanelToolbar>
       )}
       {!isEmpty ? (

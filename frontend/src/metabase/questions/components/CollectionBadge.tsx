@@ -1,6 +1,6 @@
 import type { ComponentType, PropsWithChildren } from "react";
 
-import { Badge } from "metabase/components/Badge";
+import { Badge } from "metabase/common/components/Badge";
 import Collections from "metabase/entities/collections";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {

@@ -4,8 +4,4 @@
                                   :classpath-cmd ["clojure"
                                                   "-A:dev:ee:ee-dev:drivers:drivers-dev:build:build/all"
                                                   "-Spath"]}]
- :clean {:ns-inner-blocks-indentation :keep}
- :linters {:clojure-lsp/unused-public-var {:level :warning
-                                           :exclude-when-defined-by
-                                           #{metabase.api.common/defendpoint-schema
-                                             metabase.api.common/defendpoint}}}}
+ :clean {:ns-inner-blocks-indentation :keep}}

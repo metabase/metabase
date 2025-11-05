@@ -1,22 +1,24 @@
-import type { ReactNode } from "react";
-import { Fragment, useMemo } from "react";
+import { Fragment, type ReactNode, useMemo } from "react";
 
-import { Box, Button, Divider } from "metabase/ui";
-
-import { MIN_WIDTH } from "../constants";
 import type {
   DatePickerOperator,
   DatePickerShortcut,
   DatePickerValueType,
   RelativeDatePickerValue,
-} from "../types";
+  RelativeIntervalDirection,
+} from "metabase/querying/filters/types";
+import { Box, Button, Divider } from "metabase/ui";
 
+import { MIN_WIDTH } from "../constants";
+
+import Styles from "./DateShortcutPicker.module.css";
 import { getShortcutOptionGroups, getTypeOptions } from "./utils";
 
 interface DateShortcutPickerProps {
-  availableOperators: ReadonlyArray<DatePickerOperator>;
-  availableShortcuts: ReadonlyArray<DatePickerShortcut>;
-  backButton?: ReactNode;
+  availableOperators: DatePickerOperator[];
+  availableShortcuts: DatePickerShortcut[];
+  availableDirections: RelativeIntervalDirection[];
+  renderBackButton?: () => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onSelectType: (type: DatePickerValueType) => void;
 }
@@ -24,13 +26,14 @@ interface DateShortcutPickerProps {
 export function DateShortcutPicker({
   availableOperators,
   availableShortcuts,
-  backButton,
+  availableDirections,
+  renderBackButton,
   onChange,
   onSelectType,
 }: DateShortcutPickerProps) {
   const shortcutGroups = useMemo(() => {
-    return getShortcutOptionGroups(availableShortcuts);
-  }, [availableShortcuts]);
+    return getShortcutOptionGroups(availableShortcuts, availableDirections);
+  }, [availableShortcuts, availableDirections]);
 
   const typeOptions = useMemo(() => {
     return getTypeOptions(availableOperators);
@@ -38,14 +41,16 @@ export function DateShortcutPicker({
 
   return (
     <Box p="sm" miw={MIN_WIDTH}>
-      {backButton}
+      {renderBackButton?.()}
       {shortcutGroups.map((group, groupIndex) => (
         <Fragment key={groupIndex}>
           {groupIndex > 0 && <Divider mx="md" my="sm" />}
           {group.map((option, optionIndex) => (
             <Button
               key={optionIndex}
-              c="text-dark"
+              classNames={{
+                root: Styles.Button,
+              }}
               display="block"
               variant="subtle"
               onClick={() => onChange(option.value)}
@@ -61,7 +66,9 @@ export function DateShortcutPicker({
       {typeOptions.map((option, optionIndex) => (
         <Button
           key={optionIndex}
-          c="text-dark"
+          classNames={{
+            root: Styles.Button,
+          }}
           display="block"
           variant="subtle"
           onClick={() => onSelectType(option.type)}

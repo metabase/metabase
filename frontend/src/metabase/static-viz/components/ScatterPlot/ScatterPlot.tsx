@@ -9,6 +9,7 @@ import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/
 import { getScatterPlotModel } from "metabase/visualizations/echarts/cartesian/scatter/model";
 import { getScatterPlotOption } from "metabase/visualizations/echarts/cartesian/scatter/option";
 
+import Watermark from "../../watermark.svg?component";
 import { Legend } from "../Legend";
 import { calculateLegendRows } from "../Legend/utils";
 
@@ -25,6 +26,7 @@ export function ScatterPlot({
   width = WIDTH,
   height = HEIGHT,
   isStorybook = false,
+  hasDevWatermark = false,
 }: StaticChartProps) {
   const chart = init(null, null, { renderer: "svg", ssr: true, width, height });
 
@@ -77,6 +79,15 @@ export function ScatterPlot({
       <Group top={legendHeight}>
         <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>
       </Group>
+      {hasDevWatermark && (
+        <Watermark
+          x={legendHeight}
+          y="0"
+          height={height}
+          width={width}
+          preserveAspectRatio="xMinYMin slice"
+        />
+      )}
     </svg>
   );
 }

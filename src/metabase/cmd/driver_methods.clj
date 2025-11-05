@@ -3,7 +3,7 @@
    [clojure.java.classpath :as classpath]
    [clojure.string :as str]
    [clojure.tools.namespace.find :as ns.find]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.classloader.core :as classloader]
    [metabase.util :as u]))
 
 (defn- driver-ns-symbs []

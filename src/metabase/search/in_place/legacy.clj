@@ -4,9 +4,9 @@
    [flatland.ordered.map :as ordered-map]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-   [metabase.db :as mdb]
-   [metabase.db.query :as mdb.query]
-   [metabase.models.collection :as collection]
+   [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
+   [metabase.queries.schema :as queries.schema]
    [metabase.search.config
     :as search.config
     :refer [SearchContext SearchableModel]]
@@ -91,6 +91,7 @@
    :moderated_status    :text
    :display             :text
    :dashboard_id        :integer
+   :display_type        :text
    ;; returned for Metric and Segment
    :table_id            :integer
    :table_schema        :text
@@ -129,6 +130,10 @@
       maybe-aliased-col
       (search.config/column-with-model-alias model maybe-aliased-col)
 
+      ;; Return false for items that cannot be bookmarked, rather than nil. This simplifies cross-engine compatibility.
+      (= search-col :bookmark)
+      [[:inline false] search-col]
+
       ;; This entity is missing the column, project a null for that column value. For Postgres and H2, cast it to the
       ;; correct type, e.g.,
       ;;
@@ -156,6 +161,18 @@
     (sql.helpers/where query [:= id :database_id])
     query))
 
+(defn add-table-where-clauses
+  "Add a `WHERE` clause to the query to only return tables the current user has access to"
+  [qry model search-ctx]
+  (sql.helpers/where qry (case model
+                           "table" (search.permissions/permitted-tables-clause search-ctx :table.id)
+                           "search-index" [:or
+                                           [:= :search_index.model nil]
+                                           [:!= :search_index.model [:inline "table"]]
+                                           [:and
+                                            [:= :search_index.model [:inline "table"]]
+                                            (search.permissions/permitted-tables-clause search-ctx :search_index.model_id)]])))
+
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
   so we can return its `:name`."
@@ -164,7 +181,7 @@
    search-ctx     :- SearchContext]
   (let [collection-id-col      (case model
                                  "collection"    :collection.id
-                                 "search-index" :search_index.collection_id
+                                 "search-index"  :search_index.collection_id
                                  :collection_id)
         permitted-clause       (search.permissions/permitted-collections-clause search-ctx collection-id-col)
         personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
@@ -293,6 +310,13 @@
    :display_name
    :description])
 
+(defmethod searchable-columns "transform"
+  [_ search-native-query]
+  (cond-> [:name
+           :description]
+    search-native-query
+    (conj :source)))
+
 (defmethod searchable-columns "indexed-entity"
   [_ _]
   [:name])
@@ -346,7 +370,17 @@
         [:collection.authority_level :collection_authority_level]
         [:dashboard.name :dashboard_name]
         :dashboard_id
-        bookmark-col dashboardcard-count-col))
+        bookmark-col dashboardcard-count-col
+        :result_metadata
+        [:display :display_type]))
+
+(defmethod columns-for-model "document"
+  [_]
+  [:id :name :archived :created_at :updated_at :collection_id :creator_id])
+
+(defmethod columns-for-model "transform"
+  [_]
+  [:id :name :created_at :updated_at])
 
 (defmethod columns-for-model "indexed-entity" [_]
   [[:model-index-value.name     :name]
@@ -406,6 +440,10 @@
    [:table.description :table_description]
    [:metabase_database.name :database_name]])
 
+(defmethod columns-for-model "transform"
+  [_]
+  [:id :name :description :created_at :updated_at])
+
 (mu/defn- select-clause-for-model :- [:sequential HoneySQLColumn]
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
   of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
@@ -435,7 +473,7 @@
       (search.in-place.filter/build-filters model context)))
 
 (mu/defn- shared-card-impl
-  [model :- :metabase.models.card/type
+  [model :- ::queries.schema/card-type
    search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
       (sql.helpers/where [:= :card.type (name model)])
@@ -493,7 +531,25 @@
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
       (add-collection-join-and-where-clauses model search-ctx)))
 
+(defmethod search-query-for-model "document"
+  [model search-ctx]
+  (-> (base-query-for-model "document" search-ctx)
+      (sql.helpers/left-join [:document_bookmark :bookmark]
+                             [:and
+                              [:= :bookmark.document_id :document.id]
+                              [:= :bookmark.user_id (:current-user-id search-ctx)]])
+      (add-collection-join-and-where-clauses model search-ctx)))
+
+(defmethod search-query-for-model "transform"
+  [_model search-ctx]
+  (base-query-for-model "transform" search-ctx))
+
 (defmethod search-query-for-model "database"
+  [model search-ctx]
+  (-> (base-query-for-model model search-ctx)
+      (sql.helpers/where [:= :router_database_id nil])))
+
+(defmethod search-query-for-model "transform"
   [model search-ctx]
   (base-query-for-model model search-ctx))
 
@@ -537,6 +593,7 @@
   (when (seq current-user-perms)
     (-> (base-query-for-model model search-ctx)
         (add-table-db-id-clause table-db-id)
+        (add-table-where-clauses model search-ctx)
         (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))
 
 (defmethod search.engine/model-set :search.engine/in-place
@@ -548,7 +605,7 @@
         query         (when (pos-int? (count model-queries))
                         {:select [:*]
                          :from   [[{:union-all model-queries} :dummy_alias]]})]
-    (into #{} (map :model) (some-> query mdb.query/query))))
+    (into #{} (map :model) (some-> query mdb/query))))
 
 (mu/defn full-search-query
   "Postgres 9 is not happy with the type munging it needs to do to make the union-all degenerate down to a trivial case
@@ -574,14 +631,18 @@
        :limit    search.config/*db-max-results*})))
 
 ;; Return a reducible-query corresponding to searching the entities without an index.
-(defmethod search.engine/results
-  :search.engine/in-place
+(defn- results
   [search-ctx]
   (let [search-query (full-search-query search-ctx)]
     (log/tracef "Searching with query:\n%s\n%s"
                 (u/pprint-to-str search-query)
-                (mdb.query/format-sql (first (mdb.query/compile search-query))))
+                (mdb/format-sql (first (mdb/compile search-query))))
     (t2/reducible-query search-query)))
+
+(defmethod search.engine/results
+  :search.engine/in-place
+  [search-ctx]
+  (results search-ctx))
 
 (defmethod search.engine/score :search.engine/in-place [search-ctx result]
   (scoring/score-and-result result search-ctx))

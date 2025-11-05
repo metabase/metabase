@@ -16,19 +16,21 @@ import {
   BrowseSchemas,
   BrowseTables,
 } from "metabase/browse";
+import { ArchiveCollectionModal } from "metabase/collections/components/ArchiveCollectionModal";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
-import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
-import { Unauthorized } from "metabase/components/ErrorPages";
-import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
-import { UnsubscribePage } from "metabase/containers/Unsubscribe";
-import { UserCollectionList } from "metabase/containers/UserCollectionList";
+import { Unauthorized } from "metabase/common/components/ErrorPages";
+import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/MoveQuestionsIntoDashboardsModal";
+import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
+import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
+import { UserCollectionList } from "metabase/common/components/UserCollectionList";
 import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
 import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
-import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/AutomaticDashboardApp";
-import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
+import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
@@ -36,7 +38,13 @@ import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
-import { PLUGIN_COLLECTIONS, PLUGIN_LANDING_PAGE } from "metabase/plugins";
+import {
+  PLUGIN_COLLECTIONS,
+  PLUGIN_DOCUMENTS,
+  PLUGIN_LANDING_PAGE,
+  PLUGIN_METABOT,
+  PLUGIN_TABLE_EDITING,
+} from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
@@ -46,6 +54,7 @@ import FieldListContainer from "metabase/reference/databases/FieldListContainer"
 import TableDetailContainer from "metabase/reference/databases/TableDetailContainer";
 import TableListContainer from "metabase/reference/databases/TableListContainer";
 import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer";
+import { GlossaryContainer } from "metabase/reference/glossary/GlossaryContainer";
 import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
 import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
 import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
@@ -63,10 +72,11 @@ import {
   IsAuthenticated,
   IsNotAuthenticated,
 } from "./route-guards";
+import { createEntityIdRedirect } from "./routes-stable-id-aware";
 import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
 
-export const getRoutes = store => {
+export const getRoutes = (store) => {
   const applicationName = getApplicationName(store.getState());
   const hasUserSetup = getSetting(store.getState(), "has-user-setup");
 
@@ -85,7 +95,11 @@ export const getRoutes = store => {
         onChange={(prevState, nextState) => {
           trackPageView(nextState.location.pathname);
         }}
+        disableCommandPalette
       />
+
+      {/* For compatibility: use the standard setup for embedding */}
+      <Redirect from="/setup/embedding" to="/setup" />
 
       {/* APP */}
       <Route
@@ -114,15 +128,17 @@ export const getRoutes = store => {
 
         {/* MAIN */}
         <Route component={IsAuthenticated}>
+          {PLUGIN_METABOT.getMetabotRoutes()}
+
           {/* The global all hands routes, things in here are for all the folks */}
           <Route
             path="/"
             component={HomePage}
             onEnter={(nextState, replace) => {
-              const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
+              const page = PLUGIN_LANDING_PAGE.getLandingPage();
               if (page && page !== "/") {
                 replace({
-                  pathname: page[0] === "/" ? page : `/${page}`,
+                  pathname: page.startsWith("/") ? page : `/${page}`,
                   state: { preserveNavbarState: true },
                 });
               }
@@ -139,11 +155,26 @@ export const getRoutes = store => {
 
           <Route path="search" title={t`Search`} component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}
-          <Redirect path="archive" to="trash" replace />
+          <Redirect from="archive" to="trash" replace />
           <Route
             path="trash"
             title={t`Trash`}
             component={TrashCollectionLanding}
+          />
+
+          {PLUGIN_DOCUMENTS.getRoutes()}
+
+          <Route
+            path="collection/entity/:entity_id(**)"
+            component={createEntityIdRedirect({
+              parametersToTranslate: [
+                {
+                  name: "entity_id",
+                  resourceType: "collection",
+                  type: "param",
+                },
+              ],
+            })}
           />
 
           <Route path="collection/users" component={IsAdmin}>
@@ -154,14 +185,36 @@ export const getRoutes = store => {
             <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
             <ModalRoute path="archive" modal={ArchiveCollectionModal} />
             <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
+            <ModalRoute
+              path="move-questions-dashboard"
+              modal={MoveQuestionsIntoDashboardsModal}
+            />
             {PLUGIN_COLLECTIONS.cleanUpRoute}
             {getCollectionTimelineRoutes()}
           </Route>
 
           <Route
+            path="dashboard/entity/:entity_id(**)"
+            component={createEntityIdRedirect({
+              parametersToTranslate: [
+                {
+                  name: "entity_id",
+                  resourceType: "dashboard",
+                  type: "param",
+                },
+                {
+                  name: "tab",
+                  resourceType: "dashboard-tab",
+                  type: "search",
+                },
+              ],
+            })}
+          />
+
+          <Route
             path="dashboard/:slug"
             title={t`Dashboard`}
-            component={DashboardAppConnected}
+            component={DashboardApp}
           >
             <ModalRoute
               path="move"
@@ -173,6 +226,18 @@ export const getRoutes = store => {
           </Route>
 
           <Route path="/question">
+            <Route
+              path="/question/entity/:entity_id(**)"
+              component={createEntityIdRedirect({
+                parametersToTranslate: [
+                  {
+                    name: "entity_id",
+                    resourceType: "card",
+                    type: "param",
+                  },
+                ],
+              })}
+            />
             <IndexRoute component={QueryBuilder} />
             <Route path="notebook" component={QueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />
@@ -194,6 +259,7 @@ export const getRoutes = store => {
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/query" component={QueryBuilder} />
+            <Route path=":slug/columns" component={QueryBuilder} />
             <Route path=":slug/metadata" component={QueryBuilder} />
             <Route path=":slug/metabot" component={QueryBuilder} />
             <Route path=":slug/:objectId" component={QueryBuilder} />
@@ -222,6 +288,8 @@ export const getRoutes = store => {
               component={BrowseTables}
             />
 
+            {PLUGIN_TABLE_EDITING.getRoutes()}
+
             {/* These two Redirects support legacy paths in v48 and earlier */}
             <Redirect from=":dbId-:slug" to="databases/:dbId-:slug" />
             <Redirect
@@ -230,12 +298,13 @@ export const getRoutes = store => {
             />
           </Route>
 
+          <Route path="table">
+            <Route path=":tableId/detail/:rowId" component={TableDetailPage} />
+          </Route>
+
           {/* INDIVIDUAL DASHBOARDS */}
 
-          <Route
-            path="/auto/dashboard/*"
-            component={AutomaticDashboardAppConnected}
-          />
+          <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
 
           {/* REFERENCE */}
           <Route path="/reference" title={t`Data Reference`}>
@@ -286,6 +355,7 @@ export const getRoutes = store => {
               path="databases/:databaseId/tables/:tableId/questions"
               component={TableQuestionsContainer}
             />
+            <Route path="glossary" component={GlossaryContainer} />
           </Route>
 
           {/* ACCOUNT */}

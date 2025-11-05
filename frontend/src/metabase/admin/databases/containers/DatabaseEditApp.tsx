@@ -1,228 +1,149 @@
-import type { Location, LocationDescriptor } from "history";
-import { updateIn } from "icepick";
-import type { ComponentType } from "react";
-import { useState } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
-import { useMount } from "react-use";
+import { type ComponentType, useEffect, useState } from "react";
+import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { GenericError } from "metabase/components/ErrorPages";
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import {
+  useGetDatabaseQuery,
+  useGetDatabaseSettingsAvailableQuery,
+} from "metabase/api";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
+import { GenericError } from "metabase/common/components/ErrorPages";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import title from "metabase/hoc/Title";
-import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
-import { connect } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { connect, useSelector } from "metabase/lib/redux";
+import {
+  PLUGIN_DATABASE_REPLICATION,
+  PLUGIN_DB_ROUTING,
+  PLUGIN_TABLE_EDITING,
+} from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import Database from "metabase-lib/v1/metadata/Database";
+import { Box, Divider, Flex } from "metabase/ui";
 import type {
   DatabaseData,
   DatabaseId,
   Database as DatabaseType,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
-import {
-  deleteDatabase,
-  dismissSyncSpinner,
-  initializeDatabase,
-  reset,
-  saveDatabase,
-  selectEngine,
-  updateDatabase,
-} from "../database";
-import { getEditingDatabase, getInitializeError } from "../selectors";
-
-import {
-  DatabaseEditContent,
-  DatabaseEditForm,
-  DatabaseEditHelp,
-  DatabaseEditMain,
-  DatabaseEditRoot,
-} from "./DatabaseEditApp.styled";
+import { DatabaseConnectionInfoSection } from "../components/DatabaseConnectionInfoSection";
+import { DatabaseDangerZoneSection } from "../components/DatabaseDangerZoneSection";
+import { DatabaseModelFeaturesSection } from "../components/DatabaseModelFeaturesSection";
+import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
+import { deleteDatabase, updateDatabase } from "../database";
 
 interface DatabaseEditAppProps {
-  database?: Database;
-  params: { databaseId: DatabaseId };
-  reset: () => void;
-  initializeDatabase: (databaseId: DatabaseId) => void;
-  dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
-  deleteDatabase: (
-    databaseId: DatabaseId,
-    isDetailView: boolean,
-  ) => Promise<void>;
-  saveDatabase: (database: DatabaseData) => Database;
+  children: React.ReactNode;
+  params: { databaseId: string };
   updateDatabase: (
     database: { id: DatabaseId } & Partial<DatabaseType>,
   ) => Promise<void>;
-  selectEngine: (engine: string) => void;
-  location: Location;
-  isAdmin: boolean;
-  isModelPersistenceEnabled: boolean;
-  initializeError?: DatabaseEditErrorType;
-  route: Route;
-  onChangeLocation: (location: LocationDescriptor) => void;
+  deleteDatabase: (databaseId: DatabaseId) => Promise<void>;
 }
 
-const mapStateToProps = (state: State) => {
-  const database = getEditingDatabase(state);
-
-  return {
-    database: database ? new Database(database) : undefined,
-    initializeError: getInitializeError(state),
-    isAdmin: getUserIsAdmin(state),
-    isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
-  };
-};
-
 const mapDispatchToProps = {
-  reset,
-  initializeDatabase,
-  saveDatabase,
   updateDatabase,
-  dismissSyncSpinner,
   deleteDatabase,
-  selectEngine,
-  onChangeLocation: push,
 };
 
-type DatabaseEditErrorType = {
-  data: {
-    message: string;
-    errors: { [key: string]: string };
-  };
-  statusText: string;
-  message: string;
-};
+function DatabaseEditAppInner({
+  children,
+  params,
+  updateDatabase,
+  deleteDatabase,
+}: DatabaseEditAppProps) {
+  const isAdmin = useSelector(getUserIsAdmin);
+  const isModelPersistenceEnabled = useSetting("persisted-models-enabled");
 
-function DatabaseEditApp(props: DatabaseEditAppProps) {
+  const databaseId = parseInt(params.databaseId, 10);
+
+  const [pollingInterval, setPollingInterval] = useState<number>();
   const {
-    database,
-    deleteDatabase,
-    updateDatabase,
-    initializeError,
-    dismissSyncSpinner,
-    isAdmin,
-    isModelPersistenceEnabled,
-    reset,
-    initializeDatabase,
-    params,
-    saveDatabase,
-    route,
-    onChangeLocation,
-  } = props;
+    currentData: database,
+    isLoading,
+    error,
+  } = useGetDatabaseQuery({ id: databaseId }, { pollingInterval });
 
-  const editingExistingDatabase = database?.id != null;
-  const addingNewDatabase = !editingExistingDatabase;
+  const { data: settingsAvailable } =
+    useGetDatabaseSettingsAvailableQuery(databaseId);
 
-  const [isDirty, setIsDirty] = useState(false);
+  useEffect(
+    function pollDatabaseWhileSyncing() {
+      const isSyncing = database?.initial_sync_status === "incomplete";
+      setPollingInterval(isSyncing ? 2000 : undefined);
+    },
+    [database?.initial_sync_status],
+  );
 
-  /**
-   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
-   * prop has a chance to re-compute on re-render
-   */
-  const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
-
-  useMount(async () => {
-    await reset();
-    await initializeDatabase(params.databaseId);
-  });
-
-  const crumbs = [
+  const crumbs = _.compact([
     [t`Databases`, "/admin/databases"],
-    [addingNewDatabase ? t`Add Database` : database.name],
-  ];
-  const handleSubmit = async (database: DatabaseData) => {
-    try {
-      const savedDB = await saveDatabase(database);
-      if (addingNewDatabase) {
-        scheduleCallback(() => {
-          onChangeLocation(
-            `/admin/databases?created=true&createdDbId=${savedDB.id}`,
-          );
-        });
-      }
-    } catch (error) {
-      throw getSubmitError(error as DatabaseEditErrorType);
-    }
-  };
+    database?.name && [database?.name],
+  ]);
 
-  const autofocusFieldName = window.location.hash.slice(1);
+  PLUGIN_DB_ROUTING.useRedirectDestinationDatabase(database);
 
   return (
-    <DatabaseEditRoot>
-      <Breadcrumbs className={CS.py4} crumbs={crumbs} />
+    <>
+      <ErrorBoundary errorComponent={GenericError as ComponentType}>
+        <Box w="100%" maw="64.25rem" mx="auto" px="2rem">
+          <Breadcrumbs className={CS.py4} crumbs={crumbs} />
 
-      <DatabaseEditMain>
-        <ErrorBoundary errorComponent={GenericError as ComponentType}>
-          <div>
-            <div className={CS.pt0}>
-              <LoadingAndErrorWrapper
-                loading={!database}
-                error={initializeError}
-              >
-                {editingExistingDatabase && database.is_attached_dwh ? (
-                  <div>{t`This database cannot be modified.`}</div>
-                ) : (
-                  <DatabaseEditContent>
-                    <DatabaseEditForm>
-                      <DatabaseForm
-                        initialValues={database}
-                        isAdvanced
-                        onSubmit={handleSubmit}
-                        setIsDirty={setIsDirty}
-                        autofocusFieldName={autofocusFieldName}
-                      />
-                    </DatabaseEditForm>
-                    <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
-                  </DatabaseEditContent>
-                )}
-              </LoadingAndErrorWrapper>
-            </div>
-          </div>
-        </ErrorBoundary>
+          <LoadingAndErrorWrapper loading={isLoading} error={error}>
+            {database && (
+              <>
+                <ExistingDatabaseHeader database={database} />
 
-        {editingExistingDatabase && !database.is_attached_dwh && (
-          <Sidebar
-            database={database}
-            isAdmin={isAdmin}
-            isModelPersistenceEnabled={isModelPersistenceEnabled}
-            updateDatabase={updateDatabase}
-            deleteDatabase={deleteDatabase}
-            dismissSyncSpinner={dismissSyncSpinner}
-          />
-        )}
-      </DatabaseEditMain>
+                <Divider mb={{ base: "1.5rem", sm: "3.25rem" }} />
 
-      <LeaveConfirmationModal
-        isEnabled={isDirty && !isCallbackScheduled}
-        route={route}
-      />
-    </DatabaseEditRoot>
+                <Flex
+                  direction="column"
+                  gap={{ base: "2rem", sm: "5.5rem" }}
+                  mb={{ base: "3rem", sm: "5.5rem" }}
+                >
+                  <DatabaseConnectionInfoSection database={database} />
+
+                  <DatabaseModelFeaturesSection
+                    database={database}
+                    isModelPersistenceEnabled={isModelPersistenceEnabled}
+                    updateDatabase={updateDatabase}
+                  />
+
+                  <PLUGIN_DATABASE_REPLICATION.DatabaseReplicationSection
+                    database={database}
+                  />
+
+                  <PLUGIN_TABLE_EDITING.AdminDatabaseTableEditingSection
+                    database={database}
+                    settingsAvailable={settingsAvailable?.settings}
+                    updateDatabase={updateDatabase}
+                  />
+
+                  <PLUGIN_DB_ROUTING.DatabaseRoutingSection
+                    database={database}
+                  />
+
+                  <DatabaseDangerZoneSection
+                    isAdmin={isAdmin}
+                    database={database}
+                    deleteDatabase={deleteDatabase}
+                  />
+                </Flex>
+              </>
+            )}
+          </LoadingAndErrorWrapper>
+        </Box>
+      </ErrorBoundary>
+      {children}
+    </>
   );
 }
 
-const getSubmitError = (error: DatabaseEditErrorType) => {
-  if (_.isObject(error?.data?.errors)) {
-    return updateIn(error, ["data", "errors"], errors => ({
-      details: errors,
-    }));
-  }
-
-  return error;
-};
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
+export const DatabaseEditApp = _.compose(
+  withRouter,
+  connect(undefined, mapDispatchToProps),
   title(
     ({ database }: { database: DatabaseData }) => database && database.name,
   ),
-)(DatabaseEditApp);
+)(DatabaseEditAppInner);

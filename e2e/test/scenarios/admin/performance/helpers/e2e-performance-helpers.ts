@@ -2,6 +2,7 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import type { NativeQuestionDetails } from "e2e/support/helpers";
 import {
   createNativeQuestion,
+  createNativeQuestionAndDashboard,
   modal,
   visitDashboard,
   visitQuestion,
@@ -35,16 +36,13 @@ export const log = (message: string) => {
   console.log(message);
 };
 
-export const databaseCachingPage = () =>
-  cy.findByRole("tabpanel", { name: "Database caching" });
-
-export const visitDashboardAndQuestionCachingTab = () => {
-  cy.visit("/admin/performance");
-  cy.findByRole("tablist")
-    .get("[aria-selected]")
-    .contains("Database caching")
-    .should("be.visible");
-  cy.findByRole("tab", { name: "Dashboard and question caching" }).click();
+export const goToPerformancePage = (
+  name:
+    | "Database caching"
+    | "Dashboard and question caching"
+    | "Model persistence",
+) => {
+  cy.findByTestId("admin-layout-sidebar").findByText(name).click();
 };
 
 export const setupQuestionTest = (
@@ -113,18 +111,16 @@ export const createNativeQuestionInDashboard = ({
   dashboardDetails: DashboardDetails;
   visitDashboard: boolean;
 }) =>
-  (cy as any)
-    .createNativeQuestionAndDashboard({
-      questionDetails,
-      dashboardDetails,
-    })
-    .then(({ body }: { body: { dashboard_id: number } }) => {
-      const { dashboard_id } = body;
-      cy.wrap(dashboard_id).as("dashboardId");
-      if (shouldVisitDashboard) {
-        visitDashboard(dashboard_id);
-      }
-    });
+  createNativeQuestionAndDashboard({
+    questionDetails,
+    dashboardDetails,
+  }).then(({ body }) => {
+    const { dashboard_id } = body;
+    cy.wrap(dashboard_id).as("dashboardId");
+    if (shouldVisitDashboard) {
+      visitDashboard(dashboard_id);
+    }
+  });
 
 /** Sets the server clock, which then stops advancing automatically */
 export const freezeServerTime = ({
@@ -141,7 +137,7 @@ export const freezeServerTime = ({
       "add-ms": addMilliseconds,
       time,
     })
-    .then(response => {
+    .then((response) => {
       if (wrapServerTimeAs) {
         cy.wrap(response.body.time).as(wrapServerTimeAs);
       }

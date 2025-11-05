@@ -21,7 +21,7 @@
 ;; - [Drivers](#metabase.driver)
 ;; - [Permissions](#metabase.models.permissions)
 ;; - [The Query Processor](#metabase.query-processor)
-;; - [Application Settings](#metabase.models.setting)
+;; - [Application Settings](#metabase.settings.models.setting)
 ;;
 ;; ## Important Libraries
 ;;
@@ -51,33 +51,37 @@
   "Put everything needed for REPL development within easy reach"
   (:require
    [clojure.core.async :as a]
+   [clojure.main]
    [clojure.string :as str]
    [clojure.test]
    [dev.debug-qp :as debug-qp]
    [dev.explain :as dev.explain]
+   [dev.h2 :as dev.h2]
+   [dev.malli :as dev.malli]
+   [dev.memory :as dev.memory]
    [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
    [dev.render-png :as render-png]
-   [hashp.core :as hashp]
+   [hashp.preload :as hashp]
    [honey.sql :as sql]
    [java-time.api :as t]
    [malli.dev :as malli-dev]
    [metabase.api.common :as api]
-   [metabase.config :as config]
-   [metabase.core :as mbc]
-   [metabase.db :as mdb]
-   [metabase.db.env :as mdb.env]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.env :as mdb.env]
+   [metabase.channel.email :as email]
+   [metabase.config.core :as config]
+   [metabase.core.core :as mbc]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.email :as email]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.setting :as setting]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.server.handler :as handler]
-   [metabase.server.instance :as server]
-   [metabase.sync :as sync]
+   [metabase.server.core :as server]
+   [metabase.server.test-handler :as server.test-handler]
+   [metabase.settings.core :as setting]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test-runner]
    [metabase.test.data.impl :as data.impl]
@@ -94,7 +98,10 @@
 
 (comment
   debug-qp/keep-me
-  model-tracking/keep-me)
+  model-tracking/keep-me
+  dev.h2/keep-me)
+
+(apply require clojure.main/repl-requires)
 
 #_:clj-kondo/ignore
 (defn tap>-spy [x]
@@ -105,10 +112,15 @@
   pprint-sql]
  [dev.explain
   explain-query]
+ [dev.malli
+  visualize-schema!]
  [dev.migrate
   migrate!
   rollback!
   migration-sql-by-id]
+ [dev.memory
+  with-memory-logging
+  measuring-thread-allocations]
  [render-png
   open-html
   open-png-bytes
@@ -146,7 +158,7 @@
         in-memory? (fn [db] (some-> db :details :db (str/starts-with? "mem:")))
         can-connect? (fn [db]
                        #_:clj-kondo/ignore
-                       (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
+                       (binding [driver.settings/*allow-testing-h2-connections* true]
                          (try
                            (driver/can-connect? :h2 (:details db))
                            (catch org.h2.jdbc.JdbcSQLNonTransientConnectionException _
@@ -167,7 +179,7 @@
 (defn start!
   "Start Metabase"
   []
-  (server/start-web-server! #'handler/app)
+  (server/start-web-server! (server.test-handler/test-handler))
   (init!)
   (when config/is-dev?
     (prune-deleted-inmem-databases!)
@@ -336,7 +348,9 @@
     (do
       ;; prevent things like dereferencing metabase.api.common/*current-user-permissions-set* from triggering the check
       ;; by calling `next-method` *twice*. To reduce the performance impact, just call it with the first instance.
-      (maybe-realize (next-method model strategy k [(first instances)]))
+      ;; we do this for each model because e.g. we may have one `:RootCollection` and several `:Collection`s.
+      (doseq [[_instance-model instances] (group-by t2/model instances)]
+        (maybe-realize (next-method model strategy k [(first instances)])))
       ;; Now we can actually run the hydration with the full set of instances and make sure no more DB calls happened.
       (t2/with-call-count [call-count]
         (let [res (maybe-realize (next-method model strategy k instances))]
@@ -350,12 +364,12 @@
   "Add the application database as a Database. Currently only works if your app DB uses broken-out details!"
   []
   (binding [t2.connection/*current-connectable* nil]
-    (or (t2/select-one Database :name "Application Database")
+    (or (t2/select-one :model/Database :name "Application Database")
         #_:clj-kondo/ignore
-        (let [details (#'metabase.db.env/broken-out-details
+        (let [details (#'metabase.app-db.env/broken-out-details
                        (mdb/db-type)
-                       @#'metabase.db.env/env)
-              app-db  (first (t2/insert-returning-instances! Database
+                       @#'metabase.app-db.env/env)
+              app-db  (first (t2/insert-returning-instances! :model/Database
                                                              {:name    "Application Database"
                                                               :engine  (mdb/db-type)
                                                               :details details}))]
@@ -398,20 +412,31 @@
 
   When the passed test starts failing, it throws an exception notifying you of the test that caused it to start
   failing. At that point, you can start investigating what pleasant surprises that test is leaving behind in the
-  database."
-  [failing-test-var & {:keys [scope] :or {scope :same-ns}}]
-  (let [failed? (fn []
-                  (not= [0 0] ((juxt :fail :error) (clojure.test/run-test-var failing-test-var))))]
-    (when (failed?)
-      (throw (ex-info "Test is already failing! Better go fix it." {:failed-test failing-test-var})))
-    (let [tests (case scope
-                  :same-ns (tests-in-var-ns failing-test-var)
-                  :full-suite (metabase.test-runner/find-tests))]
-      (doseq [test tests]
-        (clojure.test/run-test-var test)
-        (when (failed?)
-          (throw (ex-info (format "Test failed after running: `%s`" test)
-                          {:test test})))))))
+  database.
+
+  You can also run it with `clojure -X`:
+
+    clojure -X:dev dev/find-root-test-failure!
+     :failing-test-var metabase.users.models.user-parameter-value-test/user-parameter-value-store-test
+     :scope :full-suite
+     :find-tests-options '{:exclude-tags [:mb/driver-tests] :only [\"test\"] :partition/total 2 :partition/index 1}'"
+  ([opts]
+   (find-root-test-failure! (requiring-resolve (:failing-test-var opts)) opts))
+
+  ([failing-test-var & {:keys [scope find-tests-options] :or {scope :same-ns, find-tests-options {}}}]
+   (let [failed? (fn []
+                   (not= [0 0] ((juxt :fail :error) (clojure.test/run-test-var failing-test-var))))]
+     (when (failed?)
+       (throw (ex-info "Test is already failing! Better go fix it." {:failed-test failing-test-var})))
+     (let [tests (case scope
+                   :same-ns (tests-in-var-ns failing-test-var)
+                   :full-suite (metabase.test-runner/find-tests find-tests-options))]
+       (doseq [test tests]
+         (clojure.test/run-test-var test)
+         (when (failed?)
+           (println (u/colorize :red (format "Test failed after running: `%s`" test)))
+           (spit (str "test_failure_" (munge test))
+                 (format "Test failed after running: `%s`" test))))))))
 
 (defn setup-email!
   "Set up email settings for sending emails from Metabase. This is useful for testing email sending in the REPL."
@@ -433,3 +458,12 @@
                                      :sender-name :email-from-name,
                                      :sender      :email-from-address,
                                      :reply-to    :email-reply-to}))))
+
+(defn seed-instance!
+  "Seed an empty instance with test users and test db.
+  This is useful for bootstrapping an instance in the REPL."
+  []
+  ;; seed test users
+  (mt/initialize-if-needed! :test-users)
+  ;; seed test db
+  (mt/id))

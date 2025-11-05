@@ -33,8 +33,8 @@ export function findBreakoutClause(
   stageIndex: number,
 ): Lib.BreakoutClause | undefined {
   const breakouts = Lib.breakouts(query, stageIndex);
-  return breakouts.find(breakout => {
+  return breakouts.find((breakout) => {
     const column = Lib.breakoutColumn(query, stageIndex, breakout);
-    return Lib.isDateOrDateTime(column);
+    return column != null && Lib.isDateOrDateTime(column);
   });
 }

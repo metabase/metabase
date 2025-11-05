@@ -5,12 +5,13 @@ import _ from "underscore";
 import styles from "metabase/css/core/animation.module.css";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
-import { Box, Tooltip } from "metabase/ui";
+import { Tooltip } from "metabase/ui";
 
 import { getHasMetabotLogo } from "../../selectors";
 
 import {
   GreetingLogo,
+  GreetingLogoContainer,
   GreetingMessage,
   GreetingRoot,
 } from "./HomeGreeting.styled";
@@ -44,14 +45,14 @@ const getMessage = (name: string | null | undefined): string => {
   return _.sample(options) ?? "";
 };
 
-const MetabotGreeting = () => {
+export const MetabotGreeting = () => {
   const [buffer, setBuffer] = useState<string[]>([]);
   const [isCooling, setIsCooling] = useState(false);
   const [isCool, setIsCool] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      setBuffer(prevBuffer => {
+      setBuffer((prevBuffer) => {
         const newBuffer = [...prevBuffer, event.key];
         if (newBuffer.length > 10) {
           newBuffer.shift();
@@ -83,14 +84,7 @@ const MetabotGreeting = () => {
       label={t`Don't tell anyone, but you're my favorite.`}
       position="bottom"
     >
-      <Box
-        style={{
-          position: "relative",
-          width: "54px",
-          height: "40px",
-          marginInlineEnd: "0.5rem",
-        }}
-      >
+      <GreetingLogoContainer>
         <GreetingLogo
           isCool={isCool}
           className={`${styles.SpinOut} ${isCooling ? styles.SpinOutActive : ""}`}
@@ -101,7 +95,7 @@ const MetabotGreeting = () => {
           className={`${styles.SpinOut} ${isCooling ? styles.SpinOutActive : ""}`}
           variant="happy"
         />
-      </Box>
+      </GreetingLogoContainer>
     </Tooltip>
   );
 };

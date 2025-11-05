@@ -8,9 +8,8 @@ import {
 } from "metabase/api";
 import { getCollectionName } from "metabase/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
-import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
-import EntityItem from "metabase/components/EntityItem";
-import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
+import EntityItem from "metabase/common/components/EntityItem";
+import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
   ColumnHeader,
   ItemNameCell,
@@ -18,10 +17,10 @@ import {
   TBody,
   Table,
   TableColumn,
-} from "metabase/components/ItemsTable/BaseItemsTable.styled";
-import { Columns } from "metabase/components/ItemsTable/Columns";
-import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
-import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
+} from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
+import { Columns } from "metabase/common/components/ItemsTable/Columns";
+import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
+import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import Bookmarks from "metabase/entities/bookmarks";
 import Questions from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
@@ -33,9 +32,9 @@ import {
   Icon,
   type IconName,
   Menu,
+  Repeat,
   Skeleton,
 } from "metabase/ui";
-import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import {
@@ -46,7 +45,8 @@ import {
   TableRow,
 } from "../components/BrowseTable.styled";
 
-import type { MetricResult } from "./types";
+import { trackMetricBookmarked } from "./analytics";
+import type { MetricResult, SortColumn } from "./types";
 import { getMetricDescription, sortMetrics } from "./utils";
 
 type MetricsTableProps = {
@@ -54,7 +54,7 @@ type MetricsTableProps = {
   skeleton?: boolean;
 };
 
-const DEFAULT_SORTING_OPTIONS: SortingOptions = {
+const DEFAULT_SORTING_OPTIONS: SortingOptions<SortColumn> = {
   sort_column: "name",
   sort_direction: SortDirection.Asc,
 };
@@ -89,12 +89,9 @@ export function MetricsTable({
   skeleton = false,
   metrics = [],
 }: MetricsTableProps) {
-  const [sortingOptions, setSortingOptions] = useState<SortingOptions>(
-    DEFAULT_SORTING_OPTIONS,
-  );
+  const [sortingOptions, setSortingOptions] = useState(DEFAULT_SORTING_OPTIONS);
 
-  const locale = useLocale();
-  const sortedMetrics = sortMetrics(metrics, sortingOptions, locale);
+  const sortedMetrics = sortMetrics(metrics, sortingOptions);
 
   const handleSortingOptionsChange = skeleton ? undefined : setSortingOptions;
 
@@ -192,7 +189,7 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
       }
 
       const { id, name } = metric;
-      const url = Urls.metric({ id, name });
+      const url = Urls.metric({ id, name, type: "metric" });
       const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
 
       // TODO: metabase/metabse#47713
@@ -244,7 +241,9 @@ function NameCell({ metric }: { metric?: MetricResult }) {
     >
       <MaybeItemLink
         to={
-          metric ? Urls.metric({ id: metric.id, name: metric.name }) : undefined
+          metric
+            ? Urls.metric({ id: metric.id, name: metric.name, type: "metric" })
+            : undefined
         }
         style={{
           // To align the icons with "Name" in the <th>
@@ -364,6 +363,8 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             id: metric.id,
             type: "card",
           });
+
+          trackMetricBookmarked();
           dispatch(Bookmarks.actions.invalidateLists());
         },
       });
@@ -408,15 +409,16 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             variant="subtle"
             px="sm"
             aria-label={t`Metric options`}
+            c="text-dark"
           >
             <Icon name="ellipsis" />
           </Button>
         </Menu.Target>
         <Menu.Dropdown>
-          {actions.map(action => (
+          {actions.map((action) => (
             <Menu.Item
               key={action.key}
-              icon={<Icon name={action.icon} />}
+              leftSection={<Icon name={action.icon} />}
               onClick={action.action}
             >
               {action.title}

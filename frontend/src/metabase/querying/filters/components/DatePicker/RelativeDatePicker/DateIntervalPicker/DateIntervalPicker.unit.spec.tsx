@@ -1,35 +1,38 @@
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { DATE_PICKER_UNITS } from "metabase/querying/filters/constants";
+import type {
+  DatePickerUnit,
+  RelativeDatePickerValue,
+  RelativeIntervalDirection,
+} from "metabase/querying/filters/types";
 
-import { DATE_PICKER_UNITS } from "../../constants";
-import type { DatePickerUnit, RelativeIntervalDirection } from "../../types";
-import type { DateIntervalValue } from "../types";
+import type { DatePickerSubmitButtonProps } from "../../types";
 
 import { DateIntervalPicker } from "./DateIntervalPicker";
 
 function getDefaultValue(
   direction: RelativeIntervalDirection,
-): DateIntervalValue {
+): RelativeDatePickerValue {
   return {
     type: "relative",
-    value: direction === "last" ? -30 : 30,
+    value: direction === "past" ? -30 : 30,
     unit: "day",
   };
 }
 
 interface SetupOpts {
-  value: DateIntervalValue;
-  availableUnits?: ReadonlyArray<DatePickerUnit>;
-  isNew?: boolean;
-  canUseRelativeOffsets?: boolean;
+  value: RelativeDatePickerValue;
+  availableUnits?: DatePickerUnit[];
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
 }
 
 function setup({
   value,
   availableUnits = DATE_PICKER_UNITS,
-  isNew = false,
-  canUseRelativeOffsets = false,
+  renderSubmitButton,
 }: SetupOpts) {
   const onChange = jest.fn();
   const onSubmit = jest.fn();
@@ -38,8 +41,7 @@ function setup({
     <DateIntervalPicker
       value={value}
       availableUnits={availableUnits}
-      isNew={isNew}
-      canUseRelativeOffsets={canUseRelativeOffsets}
+      renderSubmitButton={renderSubmitButton}
       onChange={onChange}
       onSubmit={onSubmit}
     />,
@@ -54,9 +56,9 @@ describe("DateIntervalPicker", () => {
     jest.setSystemTime(new Date(2020, 0, 1));
   });
 
-  describe.each<RelativeIntervalDirection>(["last", "next"])(
+  describe.each<RelativeIntervalDirection>(["past", "future"])(
     "%s",
-    direction => {
+    (direction) => {
       const defaultValue = getDefaultValue(direction);
 
       it("should change the interval", async () => {
@@ -70,7 +72,7 @@ describe("DateIntervalPicker", () => {
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
-          value: direction === "last" ? -20 : 20,
+          value: direction === "past" ? -20 : 20,
         });
         expect(onSubmit).not.toHaveBeenCalled();
 
@@ -89,7 +91,7 @@ describe("DateIntervalPicker", () => {
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
-          value: direction === "last" ? -10 : 10,
+          value: direction === "past" ? -10 : 10,
         });
         expect(onSubmit).not.toHaveBeenCalled();
       });
@@ -106,7 +108,7 @@ describe("DateIntervalPicker", () => {
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
-          value: direction === "last" ? -1 : 1,
+          value: direction === "past" ? -1 : 1,
         });
         expect(onSubmit).not.toHaveBeenCalled();
       });
@@ -145,7 +147,7 @@ describe("DateIntervalPicker", () => {
           value: defaultValue,
         });
 
-        await userEvent.click(screen.getByLabelText("Unit"));
+        await userEvent.click(screen.getByRole("textbox", { name: "Unit" }));
         await userEvent.click(screen.getByText("years"));
 
         expect(onChange).toHaveBeenCalledWith({
@@ -160,7 +162,7 @@ describe("DateIntervalPicker", () => {
           value: defaultValue,
           availableUnits: ["day", "month"],
         });
-        await userEvent.click(screen.getByLabelText("Unit"));
+        await userEvent.click(screen.getByRole("textbox", { name: "Unit" }));
         expect(screen.getByText("days")).toBeInTheDocument();
         expect(screen.getByText("months")).toBeInTheDocument();
         expect(screen.queryByText("years")).not.toBeInTheDocument();
@@ -185,7 +187,6 @@ describe("DateIntervalPicker", () => {
       it("should allow to a relative offset", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,
-          canUseRelativeOffsets: true,
         });
 
         await userEvent.click(await screen.findByLabelText("Starting from…"));
@@ -193,7 +194,7 @@ describe("DateIntervalPicker", () => {
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
           offsetUnit: "day",
-          offsetValue: direction === "last" ? -7 : 7,
+          offsetValue: direction === "past" ? -7 : 7,
           options: undefined,
         });
         expect(onSubmit).not.toHaveBeenCalled();
@@ -205,7 +206,7 @@ describe("DateIntervalPicker", () => {
         });
 
         const rangeText =
-          direction === "last" ? "Dec 2–31, 2019" : "Jan 2–31, 2020";
+          direction === "past" ? "Dec 2–31, 2019" : "Jan 2–31, 2020";
         expect(screen.getByText(rangeText)).toBeInTheDocument();
       });
 
@@ -218,8 +219,17 @@ describe("DateIntervalPicker", () => {
         });
 
         const rangeText =
-          direction === "last" ? "Dec 2, 2019 – Jan 1, 2020" : "Jan 1–31, 2020";
+          direction === "past" ? "Dec 2, 2019 – Jan 1, 2020" : "Jan 1–31, 2020";
         expect(screen.getByText(rangeText)).toBeInTheDocument();
+      });
+
+      it("should pass the value to the submit button callback", async () => {
+        const renderSubmitButton = jest.fn().mockReturnValue(null);
+        setup({ value: defaultValue, renderSubmitButton });
+        expect(renderSubmitButton).toHaveBeenCalledWith({
+          value: defaultValue,
+          isDisabled: false,
+        });
       });
     },
   );

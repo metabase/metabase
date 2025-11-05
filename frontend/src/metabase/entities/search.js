@@ -1,4 +1,13 @@
-import { cardApi, collectionApi, searchApi } from "metabase/api";
+import { useMemo } from "react";
+
+import {
+  cardApi,
+  collectionApi,
+  searchApi,
+  skipToken,
+  useListCollectionItemsQuery,
+  useSearchQuery,
+} from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { entityForObject } from "metabase/lib/schema";
@@ -20,6 +29,10 @@ import Snippets from "./snippets";
 export default createEntity({
   name: "search",
   path: "/api/search",
+
+  rtk: {
+    useListQuery,
+  },
 
   api: {
     list: async (query = {}, dispatch) => {
@@ -64,7 +77,7 @@ export default createEntity({
         return {
           ...rest,
           data: data
-            ? data.map(item => ({
+            ? data.map((item) => ({
                 collection_id: canonicalCollectionId(collection),
                 archived: archived || false,
                 ...item,
@@ -81,7 +94,7 @@ export default createEntity({
         return {
           ...rest,
           data: data
-            ? data.map(item => {
+            ? data.map((item) => {
                 const collectionKey = item.collection
                   ? { collection_id: item.collection.id }
                   : {};
@@ -111,7 +124,7 @@ export default createEntity({
 
   objectActions: {
     setArchived: (object, archived) => {
-      return dispatch => {
+      return (dispatch) => {
         const entity = entityForObject(object);
         return entity
           ? dispatch(entity.actions.setArchived(object, archived))
@@ -119,8 +132,8 @@ export default createEntity({
       };
     },
 
-    delete: object => {
-      return dispatch => {
+    delete: (object) => {
+      return (dispatch) => {
         const entity = entityForObject(object);
         return entity
           ? dispatch(entity.actions.delete(object))
@@ -130,7 +143,7 @@ export default createEntity({
   },
 
   objectSelectors: {
-    getCollection: object => {
+    getCollection: (object) => {
       const entity = entityForObject(object);
       return entity
         ? (entity?.objectSelectors?.getCollection?.(object) ??
@@ -139,21 +152,21 @@ export default createEntity({
         : warnEntityAndReturnObject(object);
     },
 
-    getName: object => {
+    getName: (object) => {
       const entity = entityForObject(object);
       return entity
         ? (entity?.objectSelectors?.getName?.(object) ?? object?.name)
         : warnEntityAndReturnObject(object);
     },
 
-    getColor: object => {
+    getColor: (object) => {
       const entity = entityForObject(object);
       return entity
         ? (entity?.objectSelectors?.getColor?.(object) ?? null)
         : warnEntityAndReturnObject(object);
     },
 
-    getIcon: object => {
+    getIcon: (object) => {
       const entity = entityForObject(object);
       return entity
         ? (entity?.objectSelectors?.getIcon?.(object) ?? null)
@@ -180,4 +193,88 @@ export default createEntity({
 function warnEntityAndReturnObject(object) {
   console.warn("Couldn't find entity for object", object);
   return object;
+}
+
+function useListQuery(query = {}, options) {
+  const collectionItemsQuery = useListCollectionItemsQuery(
+    query.collection ? getCollectionItemsQueryPayload(query) : skipToken,
+    options,
+  );
+  const collectionItems = useMemo(() => {
+    return {
+      ...collectionItemsQuery,
+      data: collectionItemsQuery.data
+        ? {
+            ...collectionItemsQuery.data,
+            data: collectionItemsQuery.data.data.map((item) => ({
+              collection_id: canonicalCollectionId(query.collection),
+              archived: query.archived || false,
+              ...item,
+            })),
+          }
+        : undefined,
+    };
+  }, [collectionItemsQuery, query]);
+
+  const searchQuery = useSearchQuery(
+    query.collection ? skipToken : query,
+    options,
+  );
+  const search = useMemo(() => {
+    return {
+      ...searchQuery,
+      data: searchQuery.data
+        ? {
+            ...searchQuery.data,
+            data: searchQuery.data.data.map((item) => {
+              const collectionKey = item.collection
+                ? { collection_id: item.collection.id }
+                : {};
+              return {
+                ...collectionKey,
+                ...item,
+              };
+            }),
+          }
+        : undefined,
+    };
+  }, [searchQuery]);
+
+  return query.collection ? collectionItems : search;
+}
+
+function getCollectionItemsQueryPayload(query) {
+  const {
+    collection,
+    archived,
+    models,
+    namespace,
+    pinned_state,
+    limit,
+    offset,
+    sort_column,
+    sort_direction,
+    show_dashboard_questions,
+    ...unsupported
+  } = query;
+
+  if (Object.keys(unsupported).length > 0) {
+    throw new Error(
+      "search with `collection` filter does not support these filters: " +
+        Object.keys(unsupported).join(", "),
+    );
+  }
+
+  return {
+    id: collection,
+    archived,
+    models,
+    namespace,
+    pinned_state,
+    limit,
+    offset,
+    sort_column,
+    sort_direction,
+    show_dashboard_questions,
+  };
 }

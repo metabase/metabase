@@ -5,7 +5,7 @@
    [metabase.driver :as driver]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.upload-test :as upload-test]))
+   [metabase.upload.impl-test :as upload-test]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,9 +38,9 @@
     (upload-test/with-uploads-enabled!
       (mt/dataset (mt/dataset-definition
                    (mt/random-name)
-                   ["venues"
-                    [{:field-name "name" :base-type :type/Text}]
-                    [["something"]]])
+                   [["venues"
+                     [{:field-name "name" :base-type :type/Text}]
+                     [["something"]]]])
         (mt/with-temp [:model/Collection collection     {}
                        :model/Database   {db-id :id}    {:engine driver/*driver* :details (:details (mt/db))}
                        :model/Table      {table-id :id} {:db_id     db-id

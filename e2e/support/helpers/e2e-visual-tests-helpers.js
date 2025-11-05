@@ -8,16 +8,27 @@ import {
   svgToDataUri,
 } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
 
+import { isFixedPositionElementVisible } from "./e2e-element-visibility-helpers";
+
+export function ensureChartIsActive() {
+  cy.findByTestId("debounced-frame-root").should(
+    "not.have.css",
+    "pointer-events",
+    "none",
+  );
+}
+
 export function echartsContainer() {
   return cy.findByTestId("chart-container");
 }
 
 export function echartsTriggerBlur() {
-  return echartsContainer().realHover({ position: "right" });
+  echartsContainer().realHover({ position: "right" });
+  cy.wait(700); // Waiting until tooltip disappears
 }
 
 export function ensureEchartsContainerHasSvg() {
-  return echartsContainer().should(root => {
+  return echartsContainer().should((root) => {
     // Check if there's an SVG child within the element
     expect(root.find("svg").length, "SVG exists").to.be.equal(1);
   });
@@ -56,6 +67,12 @@ export function echartsIcon(name, isSelected = false) {
   return echartsContainer().find(`image[href="${dataUri}"]`);
 }
 
+export function chartGridLines() {
+  return echartsContainer().find(
+    "path[stroke='var(--mb-color-cartesian-grid-line)'][fill='none']",
+  );
+}
+
 export function chartPathWithFillColor(color) {
   return echartsContainer().find(`path[fill="${color}"]`);
 }
@@ -65,7 +82,7 @@ export function sankeyEdge(color) {
 }
 
 export function chartPathsWithFillColors(colors) {
-  return colors.map(color => chartPathWithFillColor(color));
+  return colors.map((color) => chartPathWithFillColor(color));
 }
 
 const CIRCLE_PATH = "M1 0A1 1 0 1 1 1 -0.0001";
@@ -82,7 +99,7 @@ export function cartesianChartCircleWithColor(color) {
 }
 
 export function cartesianChartCircleWithColors(colors) {
-  return colors.map(color => cartesianChartCircleWithColor(color));
+  return colors.map((color) => cartesianChartCircleWithColor(color));
 }
 
 export function otherSeriesChartPaths() {
@@ -134,11 +151,36 @@ export function pieSliceWithColor(color) {
 
 export function echartsTooltip() {
   // ECharts may keep two dom instances of the tooltip
-  return cy
-    .findAllByTestId("echarts-tooltip")
-    .filter(":visible")
-    .should("have.length", 1)
-    .eq(0);
+  return cy.findAllByTestId("echarts-tooltip").should(($elements) => {
+    // Use a custom function to check if the fixed-position tooltip is visible,
+    // as Cypress's ":visible" or "be.visible" fails to identify a fixed-position tooltip as visible.
+    const visibleTooltips = $elements
+      .toArray()
+      .filter(isFixedPositionElementVisible);
+
+    // Assert we have exactly one visible tooltip
+    expect(visibleTooltips).to.have.length(
+      1,
+      "there must be only one visible echarts tooltip",
+    );
+
+    const visibleTooltip = visibleTooltips[0];
+
+    const tooltipContainerStyle = window.getComputedStyle(
+      visibleTooltip.closest(".echarts-tooltip-container"),
+    );
+
+    // (metabase#51904): tooltip container must render above the fold in the Embedding SDK.
+    // ensures that we are using fixed-positioned tooltips.
+    expect(tooltipContainerStyle.position).to.equal("fixed");
+
+    // (metabase#52732): tooltip container must have the correct z-index (201)
+    // this assertion prevents the tooltip from being rendered below charts or modals.
+    expect(Number(tooltipContainerStyle.zIndex)).to.equal(201);
+
+    // Return the visible tooltip
+    return visibleTooltip;
+  });
 }
 
 export function tooltipHeader() {
@@ -153,6 +195,7 @@ export function assertTooltipRow(
   name,
   { color, value, secondaryValue, index } = {},
 ) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByText(name)
     .eq(index ?? 0)
     .parent("tr")
@@ -189,14 +232,13 @@ function assertTooltipFooter({ name, value, secondaryValue }) {
 }
 
 export function assertEChartsTooltip({ header, rows, footer, blurAfter }) {
-  echartsTooltip().should("be.visible");
   echartsTooltip().within(() => {
     if (header != null) {
       tooltipHeader().should("have.text", header);
     }
 
     if (rows != null) {
-      rows.forEach(row => {
+      rows.forEach((row) => {
         const { name, ...rest } = row;
         assertTooltipRow(name, rest);
       });
@@ -214,7 +256,7 @@ export function assertEChartsTooltip({ header, rows, footer, blurAfter }) {
 
 export function assertEChartsTooltipNotContain(rows) {
   echartsTooltip().within(() => {
-    rows.forEach(row => {
+    rows.forEach((row) => {
       cy.findByText(row).should("not.exist");
     });
   });

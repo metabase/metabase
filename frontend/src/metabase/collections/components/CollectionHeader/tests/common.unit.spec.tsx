@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, screen } from "__support__/ui";
+import { findRequests } from "__support__/server-mocks";
+import { screen, within } from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import { setup } from "./setup";
@@ -140,10 +141,18 @@ describe("CollectionHeader", () => {
   });
 
   describe("collection timelines", () => {
-    it("should have a link to collection timelines", () => {
+    it("should have a link to collection timelines", async () => {
       setup();
+      const button = screen.getByLabelText("calendar icon");
+      expect(button).toBeInTheDocument();
 
-      expect(screen.getByLabelText("calendar icon")).toBeInTheDocument();
+      await userEvent.click(button);
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
+
+      expect(puts[0].url).toContain(
+        "/api/user-key-value/namespace/user_acknowledgement/key/events-menu",
+      );
     });
   });
 
@@ -185,6 +194,27 @@ describe("CollectionHeader", () => {
       await userEvent.click(screen.getByLabelText("ellipsis icon"));
       expect(await screen.findByText("Move")).toBeInTheDocument();
       expect(screen.getByText("Move to trash")).toBeInTheDocument();
+    });
+  });
+
+  describe("new collection button", () => {
+    it("should have a new collection button with the curate permissions", async () => {
+      const collection = { can_write: true };
+      setup({ collection });
+
+      expect(
+        await screen.findByLabelText("Create a new collection"),
+      ).toBeInTheDocument();
+    });
+
+    it("should not have a new collection button without the curate permissions", async () => {
+      const collection = { can_write: false };
+      setup({ collection });
+
+      expect(await screen.findByLabelText("bookmark icon")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Create a new collection"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -244,9 +274,10 @@ describe("CollectionHeader", () => {
       });
       await userEvent.click(screen.getByLabelText("Upload data"));
 
-      expect(await screen.findByRole("dialog")).toBeInTheDocument();
-      expect(screen.getByText("Go to setup")).toBeInTheDocument();
-      expect(screen.getByRole("link")).toBeInTheDocument();
+      const dialog = await screen.findByRole("dialog");
+      expect(dialog).toBeInTheDocument();
+      expect(within(dialog).getByText("Go to setup")).toBeInTheDocument();
+      expect(within(dialog).getByRole("link")).toBeInTheDocument();
     });
 
     it("should show an informational modal without a link for non-admins", async () => {
@@ -272,7 +303,7 @@ describe("CollectionHeader", () => {
       await userEvent.click(screen.getByLabelText("Upload data"));
 
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
-      await userEvent.click(getIcon("close"));
+      await userEvent.click(screen.getByRole("button", { name: "Close" }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
@@ -20,7 +20,7 @@ describe("scenarios > dashboard > title drill", () => {
         },
       };
 
-      cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+      H.createNativeQuestionAndDashboard({ questionDetails }).then(
         ({ body: { dashboard_id }, questionId }) => {
           cy.wrap(questionId).as("questionId");
           H.visitDashboard(dashboard_id);
@@ -30,7 +30,7 @@ describe("scenarios > dashboard > title drill", () => {
 
     describe("as a user with access to underlying data", () => {
       it("should let you click through the title to the query builder (metabase#13042)", () => {
-        cy.get("@questionId").then(questionId => {
+        cy.get("@questionId").then((questionId) => {
           cy.findByTestId("loading-indicator").should("not.exist");
 
           H.getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
@@ -60,7 +60,7 @@ describe("scenarios > dashboard > title drill", () => {
       });
 
       it("should let you click through the title to the query builder (metabase#13042)", () => {
-        cy.get("@questionId").then(questionId => {
+        cy.get("@questionId").then((questionId) => {
           cy.findByTestId("loading-indicator").should("not.exist");
 
           H.getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
@@ -118,7 +118,7 @@ describe("scenarios > dashboard > title drill", () => {
 
       const dashboardDetails = { parameters: [filter] };
 
-      cy.createNativeQuestionAndDashboard({
+      H.createNativeQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
       }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -160,7 +160,7 @@ describe("scenarios > dashboard > title drill", () => {
         checkFilterLabelAndValue("Text contains", "bb");
         checkScalarResult("12");
 
-        // Drill through on the quesiton's title
+        // Drill through on the question's title
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("16181").click();
 
@@ -186,7 +186,7 @@ describe("scenarios > dashboard > title drill", () => {
         checkFilterLabelAndValue("Text contains", "bb");
         checkScalarResult("12");
 
-        // Drill through on the quesiton's title
+        // Drill through on the question's title
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("16181").click();
 
@@ -225,7 +225,7 @@ describe("scenarios > dashboard > title drill", () => {
       H.restore();
       cy.signInAsAdmin();
 
-      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: dashboardCard, questionId }) => {
           const { card_id, dashboard_id } = dashboardCard;
 
@@ -246,7 +246,7 @@ describe("scenarios > dashboard > title drill", () => {
             ],
           };
 
-          cy.editDashboardCard(dashboardCard, mapFiltersToCard);
+          H.editDashboardCard(dashboardCard, mapFiltersToCard);
 
           cy.intercept(
             "POST",
@@ -308,7 +308,7 @@ describe("scenarios > dashboard > title drill", () => {
 
         // make sure the results match
         H.queryBuilderMain().findByText("42").should("be.visible");
-        cy.get("@questionId").then(questionId => {
+        cy.get("@questionId").then((questionId) => {
           cy.location("href").should(
             "include",
             `/question/${questionId}-gui-question?category=Doohickey&id=#`,
@@ -317,8 +317,9 @@ describe("scenarios > dashboard > title drill", () => {
 
         // update the parameter filter to a new value
         H.filterWidget().contains("Doohickey").click();
-        H.popover().within(() => {
-          H.multiAutocompleteInput().type("{backspace}Gadget,");
+        H.dashboardParametersPopover().within(() => {
+          cy.findByText("Doohickey").click();
+          cy.findByText("Gadget").click();
           cy.findByText("Update filter").click();
         });
 
@@ -336,9 +337,10 @@ describe("scenarios > dashboard > title drill", () => {
         H.queryBuilderMain().findByText("53").should("be.visible");
 
         // make sure the unset id parameter works
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget().last().click();
-        H.popover().within(() => {
-          H.multiAutocompleteInput().type("5");
+        H.dashboardParametersPopover().within(() => {
+          H.fieldValuesCombobox().type("5");
           cy.findByText("Add filter").click();
         });
 
@@ -373,25 +375,25 @@ describe("scenarios > dashboard > title drill", () => {
       H.restore();
       cy.signInAsAdmin();
 
-      cy.createQuestion(questionDetails, {
+      H.createQuestion(questionDetails, {
         wrapId: true,
         idAlias: "questionId",
       });
 
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         const nestedQuestionDetails = {
           ...baseNestedQuestionDetails,
           query: {
             "source-table": `card__${questionId}`,
           },
         };
-        cy.createQuestion(nestedQuestionDetails, {
+        H.createQuestion(nestedQuestionDetails, {
           wrapId: true,
           idAlias: "nestedQuestionId",
         });
       });
 
-      cy.createDashboard(dashboardDetails).then(
+      H.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboardId } }) => {
           cy.wrap(dashboardId).as("dashboardId");
         },
@@ -444,7 +446,7 @@ describe("scenarios > dashboard > title drill", () => {
     });
 
     it("titles become actual HTML anchors on focus and on hover", () => {
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardName: "Dashboard with aggregated Q2",
         questions: [
           {
@@ -548,10 +550,103 @@ describe("scenarios > dashboard > title drill", () => {
       cy.get(elementAlias).should("have.attr", "href", href);
     }
   });
+
+  describe("multiple series", () => {
+    const question1Details = {
+      name: "Q1",
+      query: {
+        "source-table": PEOPLE_ID,
+        aggregation: [["count"]],
+        breakout: [["field", PEOPLE.CREATED_AT, { "temporal-unit": "year" }]],
+      },
+      display: "line",
+    };
+
+    const question2Details = {
+      name: "Q2",
+      query: {
+        "source-table": PEOPLE_ID,
+        aggregation: [["count"]],
+        breakout: [["field", PEOPLE.BIRTH_DATE, { "temporal-unit": "year" }]],
+      },
+      display: "line",
+    };
+
+    const dateParameter = {
+      id: "date",
+      name: "Date",
+      slug: "date",
+      type: "date/all-options",
+      default: "1970-01-01~2025-01-01",
+    };
+
+    const dashboardDetails = {
+      parameters: [dateParameter],
+    };
+
+    function createDashboard() {
+      H.createQuestionAndDashboard({
+        questionDetails: question1Details,
+        dashboardDetails,
+      }).then(({ body: { id, card_id, dashboard_id } }) => {
+        H.createQuestion(question2Details).then(
+          ({ body: { id: card_2_id } }) => {
+            cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+              dashcards: [
+                {
+                  id,
+                  card_id,
+                  series: [{ id: card_2_id }],
+                  row: 0,
+                  col: 0,
+                  size_x: 16,
+                  size_y: 8,
+                  parameter_mappings: [
+                    {
+                      parameter_id: dateParameter.id,
+                      card_id,
+                      target: ["dimension", ["field", PEOPLE.CREATED_AT, null]],
+                    },
+                    {
+                      parameter_id: dateParameter.id,
+                      card_id: card_2_id,
+                      target: ["dimension", ["field", PEOPLE.BIRTH_DATE, null]],
+                    },
+                  ],
+                },
+              ],
+            });
+          },
+        );
+        H.visitDashboard(dashboard_id);
+      });
+    }
+
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsNormalUser();
+    });
+
+    it("should use parameters mapped to each card for a multi-series dashcard", () => {
+      createDashboard();
+
+      cy.log("click on a dot in the second series and drill thru");
+      H.cartesianChartCircle().eq(20).click();
+      H.popover().findByText("See these People").click();
+
+      cy.log("make sure the parameter mapping for the second series was used");
+      H.queryBuilderFiltersPanel().within(() => {
+        cy.findByText("Birth Date is Jan 1, 1970 – Jan 1, 2025").should(
+          "be.visible",
+        );
+        cy.findByText(/Created At/).should("not.exist");
+      });
+    });
+  });
 });
 
 function checkFilterLabelAndValue(label, value) {
-  H.filterWidget().find("legend").invoke("text").should("eq", label);
+  H.filterWidget().findByLabelText(label, { exact: false }).should("exist");
   H.filterWidget().contains(value);
 }
 

@@ -42,7 +42,7 @@ export const getAdHocQuestionDescription = ({
           )
         : aggregations
             .map(
-              aggregation =>
+              (aggregation) =>
                 Lib.displayInfo(query, stageIndex, aggregation).longDisplayName,
             )
             .join(t` and `);
@@ -57,7 +57,7 @@ export const getAdHocQuestionDescription = ({
           )
         : breakouts
             .map(
-              breakout =>
+              (breakout) =>
                 Lib.displayInfo(query, stageIndex, breakout).longDisplayName,
             )
             .join(t` and `);

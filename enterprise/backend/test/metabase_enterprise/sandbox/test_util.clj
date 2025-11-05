@@ -3,23 +3,20 @@
   (:require
    [malli.core :as mc]
    [mb.hawk.parallel]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.user :refer [User]]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util :as u]))
 
 (defn do-with-user-attributes! [test-user-name-or-user-id attributes-map thunk]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-user-attributes!")
   (let [user-id (test.users/test-user-name-or-user-id->user-id test-user-name-or-user-id)]
-    (tu/with-temp-vals-in-db User user-id {:login_attributes attributes-map}
+    (tu/with-temp-vals-in-db :model/User user-id {:login_attributes attributes-map}
       (thunk))))
 
 (defmacro with-user-attributes!
@@ -37,15 +34,15 @@
     (f)
     (let [do-with-card (fn [f]
                          (if query
-                           (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query query}]
+                           (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
                              (f card-id))
                            (f nil)))]
       (do-with-card
        (fn [card-id]
-         (t2.with-temp/with-temp [GroupTableAccessPolicy _gtap {:group_id             (u/the-id group)
-                                                                :table_id             (data/id table-kw)
-                                                                :card_id              card-id
-                                                                :attribute_remappings remappings}]
+         (mt/with-temp [:model/Sandbox _gtap {:group_id             (u/the-id group)
+                                              :table_id             (data/id table-kw)
+                                              :card_id              card-id
+                                              :attribute_remappings remappings}]
            (data-perms/set-database-permission! group (data/id) :perms/view-data :unrestricted)
            (data-perms/set-table-permission! group (data/id table-kw) :perms/create-queries :query-builder)
            (do-with-gtap-defs! group more f)))))))
@@ -58,6 +55,26 @@
                                [:query      {:optional true} :map]
                                [:remappings {:optional true} :map]]]]]
    [:attributes {:optional true} :map]])
+
+(defn do-with-gtaps-for-all-users! [args-fn f]
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-gtaps-for-user!")
+  (letfn [(thunk []
+            (mt/with-no-data-perms-for-all-users!
+              (let [{:keys [gtaps]} (mc/assert WithGTAPsArgs (args-fn))]
+                (mt/with-additional-premium-features #{:sandboxes}
+                  (do-with-gtap-defs! (perms/all-users-group) gtaps f)))))]
+    ;; create a temp copy of the current DB if we haven't already created one. If one is already created, keep using
+    ;; that so we can test multiple sandboxed users against the same DB
+    (if data.impl/*db-is-temp-copy?*
+      (thunk)
+      (data/with-temp-copy-of-db
+        (thunk)))))
+
+(defmacro with-gtaps-for-all-users!
+  "Sets up a sandbox for the 'all users' group."
+  {:style/indent :defn}
+  [gtaps-and-attributes-map & body]
+  `(do-with-gtaps-for-all-users! (fn [] ~gtaps-and-attributes-map) (fn [] ~@body)))
 
 (defn do-with-gtaps-for-user! [args-fn test-user-name-or-user-id f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-gtaps-for-user!")
@@ -93,6 +110,7 @@
   [test-user-name-or-user-id gtaps-and-attributes-map & body]
   `(do-with-gtaps-for-user! (fn [] ~gtaps-and-attributes-map) ~test-user-name-or-user-id (fn [~'&group] ~@body)))
 
+;;; TODO (Cam 8/13/25) -- give this a more obvious name like `with-sandboxes!` or something.
 (defmacro with-gtaps!
   "Execute `body` with `gtaps` and optionally user `attributes` in effect, for the :rasta test user. All underlying
   objects and permissions are created automatically.
@@ -100,12 +118,14 @@
   `gtaps-and-attributes-map` is a map containing `:gtaps` and optionally `:attributes`; see the `WithGTAPsArgs` schema
   in this namespace.
 
-  *  `:gtaps` is a map of test ID table name -> gtap def. Both `:query` and `:remappings` are optional.
+  * `:gtaps` is a map of test ID table name -> gtap def. Both `:query` and `:remappings` are optional.
 
-  *  If `:query` is specified, a corresponding Card is created, and the GTAP is saved with that `:card_id`.
-     Otherwise Card ID is nil and the GTAP uses the source table directly.
+    * If `:query` is specified, a corresponding Card is created, and the GTAP is saved with that `:card_id`.
+      Otherwise Card ID is nil and the GTAP uses the source table directly.
 
-  *  `:remappings`, if specified, is saved as the `:attribute_remappings` property of the GTAP.
+    * `:remappings`, if specified, is saved as the `:attribute_remappings` property of the GTAP.
+
+  * `:attributes`, when specified, sets the user `:login_attributes` to the map in question.
 
     (met/with-gtaps! {:gtaps      {:checkins {:query      {:database (data/id), ...}
                                               :remappings {:user_category [\"variable\" ...]}}}

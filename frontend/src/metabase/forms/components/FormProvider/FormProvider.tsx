@@ -29,7 +29,7 @@ export function FormProvider<T extends FormikValues, C = unknown>({
     () => ({
       ...state,
       setStatus: (status: FormStatus) =>
-        setState(state => ({ ...state, status })),
+        setState((state) => ({ ...state, status })),
     }),
     [state, setState],
   );

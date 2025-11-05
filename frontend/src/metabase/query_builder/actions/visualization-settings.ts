@@ -13,15 +13,15 @@ import {
 import { updateQuestion } from "./core";
 
 export const onUpdateVisualizationSettings =
-  (settings: VisualizationSettings) =>
+  (settings: Partial<VisualizationSettings>) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
 
     const previousQueryBuilderMode = getPreviousQueryBuilderMode(getState());
     const queryBuilderMode = getQueryBuilderMode(getState());
     const datasetEditorTab = getDatasetEditorTab(getState());
-    const isEditingDatasetMetadata =
-      queryBuilderMode === "dataset" && datasetEditorTab === "metadata";
+    const isEditingDatasetColumns =
+      queryBuilderMode === "dataset" && datasetEditorTab === "columns";
     const wasJustEditingModel =
       previousQueryBuilderMode === "dataset" && queryBuilderMode !== "dataset";
     const changedSettings = Object.keys(settings);
@@ -32,7 +32,7 @@ export const onUpdateVisualizationSettings =
 
     if (
       !question ||
-      ((isEditingDatasetMetadata || wasJustEditingModel) &&
+      ((isEditingDatasetColumns || wasJustEditingModel) &&
         isColumnWidthResetEvent)
     ) {
       return;

@@ -2,6 +2,7 @@
   "Common test extension functionality for all SQL drivers."
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -10,6 +11,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test.data :as data]
+   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -74,6 +76,27 @@
     (->> (apply qualified-name-components driver names)
          (map (partial ddl.i/format-name driver))
          (apply sql.u/quote-name driver identifier-type))))
+
+(defmulti compile-native-ddl
+  {:arglists '([driver native-ddl])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod compile-native-ddl :sql/test-extensions
+  [driver native-ddl]
+
+  (if (string? native-ddl)
+    [native-ddl]
+    (let [compiled-honeysql (walk/postwalk
+                             (fn [node]
+                               (if (and (vector? node) (= ::table-identifier (first node)))
+                                 (let [{:keys [database-name]} (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db* (tx/default-dataset driver)))]
+                                   (keyword (str/join "." (qualified-name-components driver database-name (name (second node))))))
+                                 node))
+                             native-ddl)]
+      (sql.qp/format-honeysql driver compiled-honeysql))))
+
+(sql/register-clause! :add-constraint :modify-column :modify-column)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Interface (Comments)                                              |
@@ -217,28 +240,70 @@
            (str/join ", " (map #(format-and-quote-field-name driver %) field-names))
            (if condition (str " WHERE " condition) ""))))
 
+(defmulti generated-column-sql
+  "Return the driver-specific equivalent of 'GENERATED ALWAYS AS $expr' (SQL:2003) to be appended to a column definition.
+  The expression should be given as a string.
+
+  Implementor notes:
+  If a driver does not support adding generated columns for tests, return nil."
+  {:arglists '([driver expr])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod generated-column-sql :default
+  [_ expr]
+  (format "GENERATED ALWAYS AS (%s)" expr))
+
+(defmulti generated-column-infers-type?
+  "Some databases (SQL-Server) do not specify the types of generated columns."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod generated-column-infers-type? :default
+  [_]
+  false)
+
+(defmulti default-column-sql
+  "Return the driver-specific equivalent of 'DEFAULT $expr' (SQL:92) to be appended to a column definition.
+  The expression should be given as a string.
+
+  If the driver does not support default columns for tests, return nil."
+  {:arglists '([driver expr])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod default-column-sql :default [_ expr]
+  (format "DEFAULT (%s)" expr))
+
 (defn- field-definition-sql
-  [driver {:keys [field-name base-type field-comment not-null? unique?], :as field-definition}]
-  (let [field-name (format-and-quote-field-name driver field-name)
-        field-type (or (cond
-                         (and (map? base-type) (contains? base-type :native))
-                         (:native base-type)
+  [driver {:keys [field-name base-type field-comment not-null? unique? default-expr generated-expr], :as field-definition}]
+  (let [field-name      (format-and-quote-field-name driver field-name)
+        field-type      (or (cond
+                              (and (map? base-type) (contains? base-type :native))
+                              (:native base-type)
 
-                         (and (map? base-type) (contains? base-type :natives))
-                         (get-in base-type [:natives driver])
+                              (and (map? base-type) (contains? base-type :natives))
+                              (get-in base-type [:natives driver])
 
-                         base-type
-                         (field-base-type->sql-type driver base-type))
-                       (throw (ex-info (format "Missing datatype for field %s for driver: %s"
-                                               field-name driver)
-                                       {:field  field-definition
-                                        :driver driver})))
+                              base-type
+                              (field-base-type->sql-type driver base-type))
+                            (throw (ex-info (format "Missing datatype for field %s for driver: %s"
+                                                    field-name driver)
+                                            {:field  field-definition
+                                             :driver driver})))
         not-null       (when not-null?
                          "NOT NULL")
         unique         (when unique?
                          "UNIQUE")
+        default        (when default-expr
+                         (default-column-sql driver default-expr))
+        generated      (when generated-expr
+                         (generated-column-sql driver generated-expr))
+        infer-type     (and generated-expr (generated-column-infers-type? driver))
+        field-type'    (when-not infer-type field-type)
         inline-comment (inline-column-comment-sql driver field-comment)]
-    (str/join " " (filter some? [field-name field-type not-null unique inline-comment]))))
+    (str/join " " (filter some? [field-name field-type' not-null default generated unique inline-comment]))))
 
 (defn fielddefs->pk-field-names
   "Find the pk field names in fieldefs"
@@ -323,15 +388,42 @@
       {:query query})))
 
 (defmethod tx/count-with-field-filter-query :sql/test-extensions
-  [driver table field]
-  (driver/with-driver driver
-    (let [mbql-query      (data/mbql-query nil
-                            {:source-table (data/id table)
-                             :aggregation  [[:count]]
-                             :filter       [:= [:field-id (data/id table field)] 1]})
-          {:keys [query]} (qp.compile/compile mbql-query)
-          query           (str/replace query (re-pattern #"WHERE .* = .*") (format "WHERE {{%s}}" (name field)))]
-      {:query query})))
+  ([driver table field]
+   (tx/count-with-field-filter-query driver table field 1))
+  ([driver table field sample-value]
+   (driver/with-driver driver
+     (let [mbql-query      (data/mbql-query nil
+                             {:source-table (data/id table)
+                              :aggregation  [[:count]]
+                              :filter       [:= [:field-id (data/id table field)] sample-value]})
+           {:keys [query]} (qp.compile/compile mbql-query)
+           query           (str/replace query (re-pattern #"WHERE .* = .*") (format "WHERE {{%s}}" (name field)))]
+       {:query query}))))
+
+(defmethod tx/arbitrary-select-query :sql/test-extensions
+  ([driver table to-insert]
+   (driver/with-driver driver
+     (let [mbql-query      (data/mbql-query nil
+                             {:source-table (data/id table)
+                              :expressions  {:custom [:value 1337 {:base_type :type/Integer}]}
+                              :fields       [[:expression :custom]]
+                              :order-by     [[:asc [:field (data/id table :id)]]]
+                              :limit        2})
+           {:keys [query]} (qp.compile/compile mbql-query)
+           query           (str/replace query (re-pattern #"(.*)(?:1337)(.*)") (format "$1%s$2" to-insert))]
+       {:query query}))))
+
+(defmethod tx/make-alias :sql/test-extensions
+  ([_driver alias]
+   alias))
+
+(defmethod tx/make-alias :oracle
+  ([_driver alias]
+   (str "\"" alias "\"")))
+
+(defmethod tx/make-alias :snowflake
+  ([_driver alias]
+   (str "\"" alias "\"")))
 
 (defmulti session-schema
   "Return the unquoted schema name for the current test session, if any. This can be used in test code that needs

@@ -192,7 +192,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  source_alias: People - User
   table_id:
   - Internal Metabase Database
   - public
@@ -240,6 +239,8 @@ serdes/meta:
   label: last_activity_on_question
   model: Card
 archived_directly: false
+card_schema: 20
+dashboard_id: jm7KgY6IuS6pQjkBZ7WUI
 metabase_version: vUNKNOWN (13e6090)
 source_card_id: -lNDM3tJmuL5ltGbX0oyT
 type: question

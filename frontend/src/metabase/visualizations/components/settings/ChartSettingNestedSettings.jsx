@@ -12,7 +12,7 @@ import ChartSettingsWidget from "../ChartSettingsWidget";
  */
 const chartSettingNestedSettings =
   ({ getObjectKey, getObjectSettings, getSettingsWidgetsForObject }) =>
-  ComposedComponent =>
+  (ComposedComponent) =>
     class extends Component {
       constructor(props) {
         super(props);
@@ -29,7 +29,7 @@ const chartSettingNestedSettings =
         );
       };
 
-      handleChangeEditingObject = editingObject => {
+      handleChangeEditingObject = (editingObject) => {
         // objectKeyOverride allows child components to set the editing object key to a different value than is derived
         // from the props. For example, this is used by the "More options" button in ChartNestedSettingSeries.
         this.setState({
@@ -41,7 +41,7 @@ const chartSettingNestedSettings =
         }
       };
 
-      handleChangeSettingsForEditingObject = newSettings => {
+      handleChangeSettingsForEditingObject = (newSettings) => {
         const editingObjectKey = this.getEditingObjectKey();
         if (editingObjectKey != null) {
           this.handleChangeSettingsForObjectKey(editingObjectKey, newSettings);
@@ -80,7 +80,7 @@ const chartSettingNestedSettings =
         if (editingObjectKey !== undefined) {
           const editingObject = _.find(
             objects,
-            o => getObjectKey(o) === editingObjectKey,
+            (o) => getObjectKey(o) === editingObjectKey,
           );
           if (editingObject) {
             const objectsSettings = this.props.value || {};
@@ -100,7 +100,7 @@ const chartSettingNestedSettings =
                 onChangeEditingObject={this.handleChangeEditingObject}
                 onChangeObjectSettings={this.handleChangeSettingsForObject}
                 object={editingObject}
-                objectSettingsWidgets={objectSettingsWidgets.map(widget => (
+                objectSettingsWidgets={objectSettingsWidgets.map((widget) => (
                   <ChartSettingsWidget key={widget.id} {...widget} />
                 ))}
               />

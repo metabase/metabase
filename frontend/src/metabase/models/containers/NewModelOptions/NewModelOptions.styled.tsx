@@ -1,7 +1,8 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { GridItem } from "metabase/components/Grid";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import { GridItem } from "metabase/common/components/Grid";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
@@ -39,7 +40,7 @@ export const EducationalButton = styled(ExternalLink)`
   }
 `;
 
-export interface OptionsGridItemProps {
+interface OptionsGridItemProps {
   itemsCount: number;
 }
 
@@ -51,6 +52,6 @@ export const OptionsGridItem = styled(GridItem)<OptionsGridItemProps>`
   }
 
   ${breakpointMinMedium} {
-    width: ${props => getPercentage(1 / props.itemsCount)};
+    width: ${(props) => getPercentage(1 / props.itemsCount)};
   }
 `;

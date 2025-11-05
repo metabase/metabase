@@ -1,4 +1,4 @@
-import type { SdkStoreState } from "embedding-sdk/store/types";
+import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { EnterpriseState } from "metabase-enterprise/settings/types";
 import { createMockUser } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
@@ -8,8 +8,9 @@ import { createMockAppState } from "./app";
 import { createMockAuthState } from "./auth";
 import { createMockDashboardState } from "./dashboard";
 import { createMockEmbedState } from "./embed";
+import { createMockEmbeddingDataPickerState } from "./embedding-data-picker";
 import { createMockNormalizedEntitiesState } from "./entities";
-import { createMockMetabotState } from "./metabot";
+import { createMockModalState } from "./modal";
 import { createMockParametersState } from "./parameters";
 import { createMockQueryBuilderState } from "./qb";
 import { createMockRequestsState } from "./requests";
@@ -17,6 +18,7 @@ import { createMockRoutingState } from "./routing";
 import { createMockSettingsState } from "./settings";
 import { createMockSetupState } from "./setup";
 import { createMockUploadState } from "./upload";
+import { createMockVisualizerState } from "./visualizer";
 
 export function createMockState<S extends Pick<SdkStoreState, "sdk">>(
   opts?: S,
@@ -32,8 +34,8 @@ export function createMockState(opts: any) {
     currentUser: createMockUser(),
     dashboard: createMockDashboardState(),
     embed: createMockEmbedState(),
+    embeddingDataPicker: createMockEmbeddingDataPickerState(),
     entities: createMockNormalizedEntitiesState(),
-    metabot: createMockMetabotState(),
     parameters: createMockParametersState(),
     qb: createMockQueryBuilderState(),
     requests: createMockRequestsState(),
@@ -41,7 +43,12 @@ export function createMockState(opts: any) {
     settings: createMockSettingsState(),
     setup: createMockSetupState(),
     upload: createMockUploadState(),
-    modal: null,
+    visualizer: {
+      past: [],
+      present: createMockVisualizerState(),
+      future: [],
+    },
+    modal: createMockModalState(),
     ...opts,
   };
 }

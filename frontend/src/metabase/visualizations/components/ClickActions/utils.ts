@@ -21,7 +21,6 @@ export const SECTIONS: Record<ClickActionSection, Section> = {
   sum: {},
   combine: {},
   "combine-popover": {},
-  "compare-aggregations": {},
   extract: {},
   "extract-popover": {},
   auto: {},

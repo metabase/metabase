@@ -1,6 +1,5 @@
-import { render, screen } from "@testing-library/react";
-
 import { testDataset } from "__support__/testDataset";
+import { render, screen } from "__support__/ui";
 
 import { ObjectDetailBody } from "./ObjectDetailBody";
 
@@ -8,7 +7,7 @@ describe("ObjectDetailBody", () => {
   it("renders an object detail body", () => {
     render(
       <ObjectDetailBody
-        data={testDataset}
+        columns={testDataset.cols}
         objectName="Large Sandstone Socks"
         zoomedRow={testDataset.rows[2]}
         settings={{

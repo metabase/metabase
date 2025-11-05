@@ -1,21 +1,26 @@
 import _userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-
-import { DATE_PICKER_OPERATORS, DATE_PICKER_UNITS } from "../constants";
+import {
+  DATE_PICKER_OPERATORS,
+  DATE_PICKER_UNITS,
+} from "metabase/querying/filters/constants";
 import type {
   DatePickerOperator,
   DatePickerUnit,
   SpecificDatePickerValue,
-} from "../types";
+} from "metabase/querying/filters/types";
+
+import type { DatePickerSubmitButtonProps } from "../types";
 
 import { SpecificDatePicker } from "./SpecificDatePicker";
 
 interface SetupOpts {
   value?: SpecificDatePickerValue;
-  availableOperators?: ReadonlyArray<DatePickerOperator>;
-  availableUnits?: ReadonlyArray<DatePickerUnit>;
-  isNew?: boolean;
+  availableOperators?: DatePickerOperator[];
+  availableUnits?: DatePickerUnit[];
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
 }
 
 const userEvent = _userEvent.setup({
@@ -26,7 +31,7 @@ function setup({
   value,
   availableOperators = DATE_PICKER_OPERATORS,
   availableUnits = DATE_PICKER_UNITS,
-  isNew = false,
+  renderSubmitButton,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -36,7 +41,7 @@ function setup({
       value={value}
       availableOperators={availableOperators}
       availableUnits={availableUnits}
-      isNew={isNew}
+      renderSubmitButton={renderSubmitButton}
       onChange={onChange}
       onBack={onBack}
     />,
@@ -52,11 +57,11 @@ describe("SpecificDatePicker", () => {
   });
 
   it('should be able to set "on" filter', async () => {
-    const { onChange } = setup({ isNew: true });
+    const { onChange } = setup();
 
     await userEvent.click(screen.getByText("On"));
     await userEvent.click(screen.getByText("15"));
-    await userEvent.click(screen.getByText("Add filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "specific",
@@ -67,11 +72,11 @@ describe("SpecificDatePicker", () => {
   });
 
   it('should be able to set "before" filter', async () => {
-    const { onChange } = setup({ isNew: true });
+    const { onChange } = setup();
 
     await userEvent.click(screen.getByText("Before"));
     await userEvent.click(screen.getByText("15"));
-    await userEvent.click(screen.getByText("Add filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "specific",
@@ -82,12 +87,12 @@ describe("SpecificDatePicker", () => {
   });
 
   it('should be able to set "after" filter', async () => {
-    const { onChange } = setup({ isNew: true });
+    const { onChange } = setup();
 
     await userEvent.click(screen.getByText("After"));
     await userEvent.clear(screen.getByLabelText("Date"));
     await userEvent.type(screen.getByLabelText("Date"), "Feb 15, 2020");
-    await userEvent.click(screen.getByText("Add filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "specific",
@@ -98,12 +103,12 @@ describe("SpecificDatePicker", () => {
   });
 
   it('should be able to set "between" filter', async () => {
-    const { onChange } = setup({ isNew: true });
+    const { onChange } = setup();
 
     const calendars = screen.getAllByRole("table");
     await userEvent.click(within(calendars[0]).getByText("12"));
     await userEvent.click(within(calendars[1]).getByText("5"));
-    await userEvent.click(screen.getByText("Add filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenLastCalledWith({
       type: "specific",
@@ -114,7 +119,7 @@ describe("SpecificDatePicker", () => {
   });
 
   it('should swap values for "between" filter when min > max', async () => {
-    const { onChange } = setup({ isNew: true });
+    const { onChange } = setup();
 
     const startDateInput = screen.getByLabelText("Start date");
     await userEvent.clear(startDateInput);
@@ -123,7 +128,7 @@ describe("SpecificDatePicker", () => {
     const endDateInput = screen.getByLabelText("End date");
     await userEvent.clear(endDateInput);
     await userEvent.type(endDateInput, "Dec 29, 2019");
-    await userEvent.click(screen.getByText("Add filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenLastCalledWith({
       type: "specific",
@@ -151,7 +156,7 @@ describe("SpecificDatePicker", () => {
     });
 
     await userEvent.click(screen.getByText("Remove time"));
-    await userEvent.click(screen.getByText("Update filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "specific",
@@ -160,5 +165,62 @@ describe("SpecificDatePicker", () => {
       hasTime: false,
     });
     expect(screen.queryByText("Add time")).not.toBeInTheDocument();
+  });
+
+  it("should pass the date value to the submit button callback", async () => {
+    const renderSubmitButton = jest.fn().mockReturnValue(null);
+    setup({ renderSubmitButton });
+
+    await userEvent.click(screen.getByText("On"));
+    await userEvent.click(screen.getByText("15"));
+
+    expect(renderSubmitButton).toHaveBeenLastCalledWith({
+      value: {
+        type: "specific",
+        operator: "=",
+        values: [new Date(2020, 0, 15)],
+        hasTime: false,
+      },
+    });
+  });
+
+  it("should pass the date range value to the submit button callback", async () => {
+    const renderSubmitButton = jest.fn().mockReturnValue(null);
+    setup({ renderSubmitButton });
+
+    const calendars = screen.getAllByRole("table");
+    await userEvent.click(within(calendars[0]).getByText("12"));
+    await userEvent.click(within(calendars[1]).getByText("5"));
+
+    expect(renderSubmitButton).toHaveBeenLastCalledWith({
+      value: {
+        type: "specific",
+        operator: "between",
+        values: [new Date(2019, 11, 12), new Date(2020, 0, 5)],
+        hasTime: false,
+      },
+    });
+  });
+
+  it('should swap values for "between" filter when min > max when passing to the submit button callback', async () => {
+    const renderSubmitButton = jest.fn().mockReturnValue(null);
+    setup({ renderSubmitButton });
+
+    const startDateInput = screen.getByLabelText("Start date");
+    await userEvent.clear(startDateInput);
+    await userEvent.type(startDateInput, "Feb 15, 2020");
+
+    const endDateInput = screen.getByLabelText("End date");
+    await userEvent.clear(endDateInput);
+    await userEvent.type(endDateInput, "Dec 29, 2019");
+
+    expect(renderSubmitButton).toHaveBeenLastCalledWith({
+      value: {
+        type: "specific",
+        operator: "between",
+        values: [new Date(2019, 11, 29), new Date(2020, 1, 15)],
+        hasTime: false,
+      },
+    });
   });
 });

@@ -3,10 +3,10 @@ import { useCallback, useState } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import Segments from "metabase/entities/segments";
 import Tables from "metabase/entities/tables";
-import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { connect } from "metabase/lib/redux";
 
 import SegmentForm from "../components/SegmentForm";
@@ -34,7 +34,7 @@ const UpdateSegmentFormInner = ({
   const [isDirty, setIsDirty] = useState(false);
 
   const handleSubmit = useCallback(
-    async segment => {
+    async (segment) => {
       setIsDirty(false);
 
       try {
@@ -55,7 +55,7 @@ const UpdateSegmentFormInner = ({
         onIsDirtyChange={setIsDirty}
         onSubmit={handleSubmit}
       />
-      <LeaveConfirmationModal isEnabled={isDirty} route={route} />
+      <LeaveRouteConfirmModal isEnabled={isDirty} route={route} />
     </>
   );
 };
@@ -86,7 +86,7 @@ const CreateSegmentForm = ({
   const [, scheduleCallback] = useCallbackEffect();
 
   const handleSubmit = useCallback(
-    segment => {
+    (segment) => {
       setIsDirty(false);
 
       scheduleCallback(async () => {
@@ -108,12 +108,12 @@ const CreateSegmentForm = ({
         onIsDirtyChange={setIsDirty}
         onSubmit={handleSubmit}
       />
-      <LeaveConfirmationModal isEnabled={isDirty} route={route} />
+      <LeaveRouteConfirmModal isEnabled={isDirty} route={route} />
     </>
   );
 };
 
-const SegmentApp = props => {
+const SegmentApp = (props) => {
   if (props.params.id) {
     return <UpdateSegmentForm {...props} />;
   }

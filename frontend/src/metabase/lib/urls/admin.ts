@@ -1,7 +1,6 @@
 import type {
   DatabaseId,
-  FieldId,
-  SchemaId,
+  SchemaName,
   TableId,
   UserId,
 } from "metabase-types/api";
@@ -34,53 +33,65 @@ export function newDatabase() {
   return `/admin/databases/create`;
 }
 
-export function editDatabase(databaseId: DatabaseId) {
+export function viewDatabases() {
+  return `/admin/databases`;
+}
+
+export function viewDatabase(databaseId: DatabaseId) {
   return `/admin/databases/${databaseId}`;
+}
+
+export function editDatabase(databaseId: DatabaseId) {
+  return `/admin/databases/${databaseId}/edit`;
 }
 
 export function dataModelDatabase(databaseId: DatabaseId) {
   return `/admin/datamodel/database/${databaseId}`;
 }
 
-export function dataModelSchema(databaseId: DatabaseId, schemaId: SchemaId) {
-  const databaseUrl = dataModelDatabase(databaseId);
-  return `${databaseUrl}/schema/${schemaId}`;
+export function dataModelSchema(
+  databaseId: DatabaseId,
+  schema: SchemaName | null,
+) {
+  return `${dataModelDatabase(databaseId)}/schema/${databaseId}:${encodeURIComponent(schema ?? "")}`;
 }
 
 export function dataModelTable(
   databaseId: DatabaseId,
-  schemaId: SchemaId,
+  schema: SchemaName | null,
   tableId: TableId,
 ) {
-  const schemaUrl = dataModelSchema(databaseId, schemaId);
-  return `${schemaUrl}/table/${tableId}`;
+  return `${dataModelSchema(databaseId, schema)}/table/${tableId}`;
 }
 
-export function dataModelTableSettings(
-  databaseId: DatabaseId,
-  schemaId: SchemaId,
-  tableId: TableId,
-) {
-  const tableUrl = dataModelTable(databaseId, schemaId, tableId);
-  return `${tableUrl}/settings`;
+export function uploadsSettings() {
+  return "/admin/settings/uploads";
 }
 
-export function dataModelField(
-  databaseId: DatabaseId,
-  schemaId: SchemaId,
-  tableId: TableId,
-  fieldId: FieldId,
-) {
-  const tableUrl = dataModelTable(databaseId, schemaId, tableId);
-  return `${tableUrl}/field/${fieldId}/general`;
+export function adminLicense() {
+  return "/admin/settings/license";
 }
 
-export function dataModelFieldFormatting(
-  databaseId: DatabaseId,
-  schemaId: SchemaId,
-  tableId: TableId,
-  fieldId: FieldId,
-) {
-  const tableUrl = dataModelTable(databaseId, schemaId, tableId);
-  return `${tableUrl}/field/${fieldId}/formatting`;
+export function adminToolsHelp() {
+  return "/admin/tools/help";
+}
+
+export function adminToolsTasks() {
+  return "/admin/tools/tasks";
+}
+
+export function adminToolsJobs() {
+  return "/admin/tools/jobs";
+}
+
+export function adminToolsLogs() {
+  return "/admin/tools/logs";
+}
+
+export function adminToolsErrors() {
+  return "/admin/tools/errors";
+}
+
+export function adminToolsModelCaching() {
+  return "/admin/tools/model-caching";
 }

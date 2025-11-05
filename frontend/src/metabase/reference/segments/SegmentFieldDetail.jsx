@@ -4,8 +4,8 @@ import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import List from "metabase/components/List";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import List from "metabase/common/components/List";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
@@ -21,7 +21,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import {
   getError,
   getFieldBySegment,
-  getForeignKeys,
   getIsEditing,
   getIsFormulaExpanded,
   getLoading,
@@ -68,7 +67,6 @@ const mapStateToProps = (state, props) => {
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
     user: getUser(state, props),
-    foreignKeys: getForeignKeys(state, props),
     isEditing: getIsEditing(state, props),
     isFormulaExpanded: getIsFormulaExpanded(state, props),
     metadata: getMetadata(state),
@@ -86,7 +84,6 @@ const propTypes = {
   entity: PropTypes.object.isRequired,
   table: PropTypes.object,
   user: PropTypes.object.isRequired,
-  foreignKeys: PropTypes.object,
   isEditing: PropTypes.bool,
   startEditing: PropTypes.func.isRequired,
   endEditing: PropTypes.func.isRequired,
@@ -100,7 +97,7 @@ const propTypes = {
   onSubmit: PropTypes.func.isRequired,
 };
 
-const SegmentFieldDetail = props => {
+const SegmentFieldDetail = (props) => {
   const {
     style,
     entity,
@@ -109,7 +106,6 @@ const SegmentFieldDetail = props => {
     loadingError,
     loading,
     user,
-    foreignKeys,
     isEditing,
     startEditing,
     endEditing,
@@ -124,10 +120,11 @@ const SegmentFieldDetail = props => {
     handleReset,
   } = useFormik({
     initialValues: {},
-    onSubmit: fields => onSubmit(fields, { ...props, resetForm: handleReset }),
+    onSubmit: (fields) =>
+      onSubmit(fields, { ...props, resetForm: handleReset }),
   });
 
-  const getFormField = name => ({
+  const getFormField = (name) => ({
     ...getFieldProps(name),
     ...getFieldMeta(name),
   });
@@ -139,7 +136,7 @@ const SegmentFieldDetail = props => {
           hasRevisionHistory={false}
           onSubmit={handleSubmit}
           endEditing={endEditing}
-          reinitializeForm={handleReset()}
+          reinitializeForm={handleReset}
           submitting={isSubmitting}
           revisionMessageFormField={getFormField("revision_message")}
         />
@@ -214,16 +211,17 @@ const SegmentFieldDetail = props => {
                     <Detail
                       id="base_type"
                       name={t`Data type`}
-                      description={entity.base_type}
+                      description={entity.database_type}
                     />
                   </li>
                 )}
                 <li className={CS.relative}>
                   <FieldTypeDetail
+                    databaseId={table.db_id}
                     field={entity}
-                    foreignKeys={foreignKeys}
                     fieldTypeFormField={getFormField("semantic_type")}
                     foreignKeyFormField={getFormField("fk_target_field_id")}
+                    fieldSettingsFormField={getFormField("settings")}
                     isEditing={isEditing}
                   />
                 </li>

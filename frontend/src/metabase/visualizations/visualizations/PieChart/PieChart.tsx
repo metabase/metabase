@@ -17,6 +17,7 @@ import {
 } from "metabase/visualizations/echarts/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 
 import { PIE_CHART_DEFINITION } from "./chart-definition";
 import { useChartEvents } from "./use-chart-events";
@@ -30,9 +31,8 @@ export function PieChart(props: VisualizationProps) {
     settings,
     onRender,
     isDashboard,
+    isDocument,
     isFullscreen,
-    isPlaceholder,
-    series: transformedSeries,
   } = props;
   const hoveredIndex = props.hovered?.index;
   const hoveredSliceKeyPath = props.hovered?.pieSliceKeyPath;
@@ -55,14 +55,9 @@ export function PieChart(props: VisualizationProps) {
     isDashboard,
     isFullscreen,
   });
-  const rawSeriesWithRemappings = useMemo(
+  const seriesToRender = useMemo(
     () => extractRemappings(rawSeries),
     [rawSeries],
-  );
-
-  const seriesToRender = useMemo(
-    () => (isPlaceholder ? transformedSeries : rawSeriesWithRemappings),
-    [isPlaceholder, transformedSeries, rawSeriesWithRemappings],
   );
 
   const chartModel = useMemo(
@@ -124,8 +119,8 @@ export function PieChart(props: VisualizationProps) {
   const legendTitles = useMemo(
     () =>
       slices
-        .filter(s => s.includeInLegend)
-        .map(s => {
+        .filter((s) => s.includeInLegend)
+        .map((s) => {
           const label = s.name;
 
           // Hidden slices don't have a percentage
@@ -147,11 +142,13 @@ export function PieChart(props: VisualizationProps) {
   );
 
   const hiddenSlicesLegendIndices = slices
-    .filter(s => s.includeInLegend)
+    .filter((s) => s.includeInLegend)
     .map((s, index) => (hiddenSlices.has(s.key) ? index : null))
     .filter(isNotNull);
 
-  const legendColors = slices.filter(s => s.includeInLegend).map(s => s.color);
+  const legendColors = slices
+    .filter((s) => s.includeInLegend)
+    .map((s) => s.color);
 
   const showLegend = settings["pie.show_legend"];
 
@@ -176,6 +173,7 @@ export function PieChart(props: VisualizationProps) {
   };
 
   useCloseTooltipOnScroll(chartRef);
+  useTooltipMouseLeave(chartRef, onHoverChange, containerRef);
 
   return (
     <ChartWithLegend
@@ -189,6 +187,7 @@ export function PieChart(props: VisualizationProps) {
       hovered={props.hovered}
       isDashboard={isDashboard}
       onToggleSeriesVisibility={handleToggleSeriesVisibility}
+      isDocument={isDocument}
     >
       <ResponsiveEChartsRenderer
         ref={containerRef}

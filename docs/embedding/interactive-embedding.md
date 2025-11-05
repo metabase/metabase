@@ -7,13 +7,13 @@ redirect_from:
 
 # Interactive embedding
 
-{% include plans-blockquote.html feature="Interactive embedding" %}
+{% include plans-blockquote.html feature="Interactive embedding" convert_pro_link_to_embbedding=true %}
 
-{% include shared/in-page-promo.html %}
+{% include shared/in-page-promo-embedding-workshop.html %}
 
-**Interactive embedding** is what you want if you want to offer [multi-tenant, self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
+**Interactive embedding** lets you embed the entire Metabase app in an iframe. Interactive embedding integrates your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](../questions/query-builder/editor.md) and [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) into your data.
 
-Interactive embedding is the only type of embedding that integrates with your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](https://www.metabase.com/glossary/query_builder) and [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) into your data.
+> If you are just starting out with Metabase embedding, consider using [Embedded Analytics JS](./embedded-analytics-js.md) instead of interactive embedding - it's an improved, more customizable option for embedding interactive Metabase elements. Interactive embedding remains fully supported.
 
 ## Interactive embedding demo
 
@@ -23,25 +23,24 @@ To see the query builder in action, click on **Reports** > **+ New** > **Questio
 
 ## Quick start
 
-Check out the [Interactive embedding quick start](https://www.metabase.com/docs/latest/embedding/interactive-embedding-quick-start-guide).
+Check out the [Interactive embedding quick start](./interactive-embedding-quick-start-guide.md).
 
 ## Prerequisites for interactive embedding
 
-1. Make sure you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [Pro or Enterprise plan](https://store.metabase.com/checkout/login-details).
+1. Make sure you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise plan](https://store.metabase.com/checkout/login-details).
 2. Organize people into Metabase [groups](../people-and-groups/start.md).
 3. Set up [permissions](../permissions/introduction.md) for each group.
 4. Set up [SSO](../people-and-groups/start.md#authentication) to automatically apply permissions and show people the right data upon sign-in. In general, **we recommend using [SSO with JWT](../people-and-groups/authenticating-with-jwt.md)**.
 
-If you're dealing with a [multi-tenant](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics) situation, check out our recommendations for [Configuring permissions for different customer schemas](https://www.metabase.com/learn/metabase-basics/administration/permissions/multi-tenant-permissions).
+If you're dealing with a [multi-tenant](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics) situation, check out our recommendations for [Configuring permissions for different customer schemas](../permissions/embedding.md).
 
-If you have your app running locally, and you're using the Pro Cloud version, or hosting Metabase and your app in different domains, you'll need to set your Metabase environment's session cookie samesite option to "none".
+If you have your app running locally, and you're using the Pro Cloud version, or hosting Metabase and your app in different domains, you'll need to set your Metabase environment's session cookie SameSite option to "none".
 
 ## Enabling interactive embedding in Metabase
 
-1. Go to **Settings** > **Admin settings** > **Embedding**.
-2. Click **Enable**.
-3. Click **Interactive embedding**.
-4. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase (such as `https://*.example.com`).
+1. Go to **Admin > Embedding > Interactive**.
+2. Click **Enable interactive embedding**.
+3. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase (such as `https://*.example.com`).
 
 ## Setting up embedding on your website
 
@@ -61,25 +60,45 @@ Once you're ready to roll out your interactive embed, make sure that people **al
 
 ### Pointing an iframe to a Metabase URL
 
-Go to your Metabase instance and find the page that you want to embed.
+Go to your Metabase and find the page that you want to embed.
 
 For example, to embed your Metabase home page, set the `src` attribute to your [site URL](../configuring-metabase/settings.md#site-url), such as:
 
 ```
-http://metabase.yourcompany.com/
+src="https://metabase.yourcompany.com/"
 ```
 
-To embed a specific Metabase dashboard, use the dashboard's URL, such as:
+To embed a specific Metabase dashboard, you'll want to use the dashboard's Entity ID URL `/dashboard/entity/[Entity ID]`.
 
 ```
-http://metabase.yourcompany.com/dashboard/1
+src="https://metabase.yourcompany.com/dashboard/entity/[Entity ID]"
 ```
+
+To get a dashboard's Entity ID, visit the dashboard and click on the **info** button. In the **Overview** tab, copy the **Entity ID**. Then in your iframe's `src` attribute to:
+
+```
+src=https://metabase.yourcompany.com/dashboard/entity/Dc_7X8N7zf4iDK9Ps1M3b
+```
+
+If your dashboard has more than one tab, select the tab you want people to land on and copy the Tab's ID. Add the tab's ID to the URL:
+
+```
+src=https://metabase.yourcompany.com/dashboard/entity/Dc_7X8N7zf4iDK9Ps1M3b?tab=YLNdEYtzuSMA0lqO7u3FD
+```
+
+You _can_ use a dashboard's sequential ID, but you should prefer the Entity ID, as Entity IDs are stable across different Metabase environments (e.g., if you're testing on a staging environment, the Entity IDs will remain the same when [exporting the data and importing it](../installation-and-operation/serialization.md) into a production environment).
+
+If you want to point to a question, collection, or model, visit the item, click on its info, grab the item's Entity ID and follow the url structure: `/[Item type]/entity/[Entity-Id]`. Examples:
+
+- `/collection/entity/[Entity ID]`
+- `/model/entity/[Entity ID]`
+- `/question/entity/[Entity ID]`
 
 ### Pointing an iframe to an authentication endpoint
 
 Use this option if you want to send people directly to your SSO login screen (i.e., skip over the Metabase login screen with an SSO button), and redirect to Metabase automatically upon authentication.
 
-You'll need to set the `src` attribute to your auth endpoint, with a `return_to` parameter pointing to the encoded Metabase URL. For example, to send people to your SSO login page and automatically redirect them to `http://metabase.yourcompany.com/dashboard/1`:
+You'll need to set the `src` attribute to your auth endpoint, with a `return_to` parameter pointing to the encoded Metabase URL. For example, to send people to your SSO login page and automatically redirect them to `https://metabase.yourcompany.com/dashboard/1`:
 
 ```
 https://metabase.example.com/auth/sso?return_to=http%3A%2F%2Fmetabase.yourcompany.com%2Fdashboard%2F1
@@ -109,13 +128,13 @@ Note that your interactive embed must be compatible with Safari to run on _any_ 
 
 If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can tell Metabase to set the session cookie's SameSite value to "none".
 
-You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Interactive embedding** > **SameSite cookie setting**.
+You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Security** > **SameSite cookie setting**.
 
 SameSite values include:
 
-- **Lax** (default): Allows cookies to be sent when someone navigates to the origin site from an external site (like when following a link).
-- **None**: Allows all cross-site requests. Incompatible with most Safari and iOS browsers, such as Chrome on iOS. If you set this environment variable to "None", you must use HTTPS in Metabase to prevent browsers from rejecting the request.
-- **Strict** (not recommended): Never allows cookies to be sent on a cross-site request. Warning: this will prevent users from following external links to Metabase.
+- **Lax** (default): Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain.
+- **None (requires HTTPS)**: Use "None" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers.
+- **Strict** (not recommended): Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding.
 
 You can also set the [`MB_SESSION_COOKIE_SAMESITE` environment variable](../configuring-metabase/environment-variables.md#mb_session_cookie_samesite).
 
@@ -125,7 +144,7 @@ Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web
 
 ## Securing interactive embeds
 
-Metabase uses HTTP cookies to authenticate people and keep them signed into your embedded Metabase, even when someone closes their browser session. If you enjoy diagrammed auth flows, check out [Interactive embedding with SSO](https://www.metabase.com/learn/metabase-basics/embedding/securing-embeds).
+Metabase uses HTTP cookies to authenticate people and keep them signed into your embedded Metabase, even when someone closes their browser session. If you enjoy diagrammed auth flows, check out [Interactive embedding with SSO](./securing-embeds.md).
 
 To limit the amount of time that a person stays logged in, set [`MAX_SESSION_AGE`](../configuring-metabase/environment-variables.md#max_session_age) to a number in minutes. The default value is 20,160 (two weeks).
 
@@ -202,151 +221,28 @@ To change an embedding URL, send a "location" message from your app to Metabase:
 }
 ```
 
-## Group strategies with sandboxing
+## Group strategies for row and column security
 
 If you want multiple people from a single customer account to collaborate on questions and dashboards, you'll need to set up one [group](../people-and-groups/managing.md#groups) per customer account.
 
-You can handle [data sandboxing](../permissions/data-sandboxes.md) with a single, separate group that just sandboxes your data. For example, each person could be part of a customer group that sets up data permissions with sandboxing via a certain attribute that applies to everyone across all your customer accounts.
+You can handle [row and column security](../permissions/row-and-column-security.md) with a single, separate group. For example, each person could be part of a customer group that sets up data permissions with row and column security via a certain attribute that applies to everyone across all your customer accounts.
 
 Additionally, each person within a single customer account could also be a member of a group specific to that customer account. That way they can collaborate on collections with other people in their organization, without seeing stuff created by people from other customers' accounts.
 
 ## Showing or hiding Metabase UI components
 
-To change the interface of your interactive embed, you can add parameters to the end of your embedding URL. If you want to change the colors or fonts in your embed, see [Customizing appearance](../configuring-metabase/appearance.md).
-
-For example, you can disable Metabase's [top nav bar](#top_nav) and [side nav menu](#side_nav) like this:
-
-```
-your_embedding_url?top_nav=false&side_nav=false
-```
-
-![Top nav and side nav disabled](./images/no-top-no-side.png)
-
-Options include:
-
-- [Action buttons](#action_buttons)
-- [Additional info](#additional_info)
-- [Breadcrumbs](#breadcrumbs)
-- [Header](#header)
-- [Locale](#locale)
-- [Logo](#logo)
-- [New button](#new_button)
-- [Search](#search)
-- [Side nav](#side_nav)
-- [Top nav](#top_nav)
-
-### `action_buttons`
-
-Visible by default on question pages when the [header](#header) is enabled.
-
-To hide the action buttons such as **Filter**, **Summarize**, the query builder button, and so on:
-
-```
-header=false&action_buttons=false
-```
-
-![Action buttons](./images/action-buttons.png)
-
-### `additional_info`
-
-Visible by default on question and dashboard pages, when the [header](#header) is enabled.
-
-To hide the gray text "Edited X days ago by FirstName LastName", as well as the breadcrumbs with collection, database, and table names:
-
-`header=false&additional_info=false`
-
-![Additional info](./images/additional-info.png)
-
-### `breadcrumbs`
-
-Shown by default in the top nav bar. Collection breadcrumbs show the path to the item (i.e., the collection(s) the item is in). To hide the breadcrumbs:
-
-```
-breadcrumbs=false
-```
-
-### `header`
-
-Visible by default on question and dashboard pages.
-
-To hide a question or dashboard's title, [additional info](#additional_info), and [action buttons](#action_buttons):
-
-`header=false`
-
-### `locale`
-
-You can change the language of the user interface via a parameter. For example, to set the locale to Spanish:
-
-```
-locale=es
-```
-
-Read more about [localization](../configuring-metabase/localization.md).
-
-### `logo`
-
-Whether to show the logo that opens and closes the sidebar nav. Default is true. How Metabase displays the logo depends on the `side_nav` setting. Here's a rough breakdown of how these two parameters interact:
-
-If `logo=true` and:
-
-- `side_nav=true`: Looks like regular Metabase (with whatever logo you have set).
-- `side_nav=false`: There is no sidebar, so nothing happens when you hover over the logo.
-
-If `logo=false` and:
-
-- `side_nav=true`: Metabase shows the generic sidebar icon, with a gray color in normal state, and a brand color on hover.
-- `side_nav=false`: There is no side nav nor logo, so the breadcrumbs move all the way to the left of the screen.
-
-### `new_button`
-
-Hidden by default. To show the **+ New** button used to create queries or dashboards:
-
-```
-top_nav=true&new_button=true
-```
-
-### `search`
-
-Hidden by default. To show the search box in the top nav:
-
-```
-top_nav=true&search=true
-```
-
-### `side_nav`
-
-The navigation sidebar is shown on `/collection` and home page routes, and hidden everywhere else by default.
-
-To allow people to minimize the sidebar:
-
-```
-top_nav=true&side_nav=true
-```
-
-![Side nav](./images/side-nav.png)
-
-### `top_nav`
-
-Shown by default. To hide the top navigation bar:
-
-```
-top_nav=false
-```
-
-![Top nav bar](./images/top-nav.png)
-
-`search`, `new_button`, and `breadcrumbs` all depend on `top_nav` being set to `true`. If these three children (`search`, `new_button`, and `breadcrumbs`) are all false, Metabase will hide the top nav bar.
+See [interactive UI components](./interactive-ui-components.md)
 
 ## Reference apps
 
 To build a sample interactive embed using SSO with JWT, see our reference apps:
 
-- [Node.js + Express](https://github.com/metabase/metabase-nodejs-express-interactive-embedding-sample) (with [quick start guide](https://www.metabase.com/docs/latest/embedding/interactive-embedding-quick-start-guide))
+- [Node.js + Express](https://github.com/metabase/metabase-nodejs-express-interactive-embedding-sample) (with [quick start guide](./interactive-embedding-quick-start-guide.md))
 - [Node.js + React](https://github.com/metabase/sso-examples/tree/master/app-embed-example)
 
 ## Further reading
 
-- [Interactive embedding quick start](https://www.metabase.com/docs/latest/embedding/interactive-embedding-quick-start-guide)
+- [Interactive embedding quick start](./interactive-embedding-quick-start-guide.md)
 - [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding/overview).
 - [Permissions strategies](https://www.metabase.com/learn/metabase-basics/administration/permissions/strategy).
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md).

@@ -20,7 +20,7 @@ cd "$script_directory/../.."
 source "./bin/check-clojure-cli.sh"
 check_clojure_cli
 
-POT_NAME="locales/metabase.pot"
+POT_NAME="locales/metabase.po"
 POT_BACKEND_NAME="locales/metabase-backend.pot"
 # NOTE: hardcoded in .babelrc
 POT_FRONTEND_NAME="locales/metabase-frontend.pot"

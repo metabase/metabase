@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 import { useState } from "react";
 import { useMount } from "react-use";
 
@@ -31,7 +32,7 @@ export const TestTabbedSidesheet = () => {
             <SidesheetCard>Tab 1 content</SidesheetCard>
           </Tabs.Panel>
           <Tabs.Panel value="two" h="100%">
-            <Stack spacing="lg">
+            <Stack gap="lg">
               <SidesheetCard title="Sidesheets with tabs">
                 Lots of side sheets have tabs, which can be tricky to set up to
                 handle scrolling properly. Fortunately, there are a couple
@@ -107,7 +108,7 @@ export const TestPagedSidesheet = () => {
         <SidesheetButtonWithChevron
           fullWidth
           onClick={() => setPage("sub")}
-          leftIcon={<Icon name="gear" />}
+          leftSection={<Icon name="gear" />}
         >
           More Settings in a full width button
         </SidesheetButtonWithChevron>

@@ -1,3 +1,4 @@
+import { useHotkeys } from "@mantine/hooks";
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConnectedProps } from "react-redux";
@@ -7,16 +8,16 @@ import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import { useFavicon } from "metabase/common/hooks/use-favicon";
+import { useForceUpdate } from "metabase/common/hooks/use-force-update";
+import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
+import { useWebNotification } from "metabase/common/hooks/use-web-notification";
 import Bookmark from "metabase/entities/bookmarks";
 import Timelines from "metabase/entities/timelines";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
-import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
-import { useFavicon } from "metabase/hooks/use-favicon";
-import { useForceUpdate } from "metabase/hooks/use-force-update";
-import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
-import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { connect, useSelector } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
@@ -31,17 +32,18 @@ import type {
   BookmarkId,
   Bookmark as BookmarkType,
   Card,
+  Series,
   Timeline,
 } from "metabase-types/api";
 import type { QueryBuilderUIControls, State } from "metabase-types/store";
 
 import * as actions from "../actions";
+import { trackCardBookmarkAdded } from "../analytics";
 import { View } from "../components/view/View";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
   getCard,
   getDataReferenceStack,
-  getDatabaseFields,
   getDatabasesList,
   getDocumentTitle,
   getEmbeddedParameterVisibility,
@@ -56,14 +58,11 @@ import {
   getIsLiveResizable,
   getIsLoadingComplete,
   getIsNativeEditorOpen,
-  getIsObjectDetail,
   getIsResultDirty,
   getIsRunnable,
   getIsTimeseries,
-  getIsVisualized,
   getLastRunCard,
   getModalSnippet,
-  getMode,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getOriginalCard,
@@ -74,7 +73,6 @@ import {
   getQueryResults,
   getQueryStartTime,
   getQuestion,
-  getQuestionAlerts,
   getRawSeries,
   getSampleDatabaseId,
   getSelectedTimelineEventIds,
@@ -82,17 +80,19 @@ import {
   getSnippetCollectionId,
   getTableForeignKeyReferences,
   getTableForeignKeys,
-  getTables,
   getTimeseriesXDomain,
   getUiControls,
   getVisibleTimelineEventIds,
   getVisibleTimelineEvents,
   getVisualizationSettings,
+  getZoomedObjectRowIndex,
   isResultsMetadataDirty,
 } from "../selectors";
+import { getIsObjectDetail, getMode } from "../selectors/mode";
 import { isNavigationAllowed } from "../utils";
 
 import { useCreateQuestion } from "./use-create-question";
+import { useRegisterQueryBuilderMetabotContext } from "./use-register-query-builder-metabot-context";
 import { useSaveQuestion } from "./use-save-question";
 
 const timelineProps = {
@@ -139,7 +139,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     card: getCard(state),
     originalCard: getOriginalCard(state),
     databases: getDatabasesList(state),
-    tables: getTables(state),
 
     metadata: getMetadata(state),
 
@@ -163,7 +162,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     isObjectDetail: getIsObjectDetail(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
     isNavBarOpen: getIsNavbarOpen(state),
-    isVisualized: getIsVisualized(state),
     isLiveResizable: getIsLiveResizable(state),
     isTimeseries: getIsTimeseries(state),
     isHeaderVisible: getIsHeaderVisible(state),
@@ -171,14 +169,12 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
 
     parameters: getParameters(state),
-    databaseFields: getDatabaseFields(state),
     sampleDatabaseId: getSampleDatabaseId(state),
 
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),
     isMetadataDirty: isResultsMetadataDirty(state),
 
-    questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
 
     queryStartTime: getQueryStartTime(state),
@@ -190,7 +186,13 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
 
+    zoomedRowIndex: getZoomedObjectRowIndex(state),
+
     reportTimezone: getSetting(state, "report-timezone-long"),
+    didFirstNonTableChartGenerated: getSetting(
+      state,
+      "non-table-chart-generated",
+    ),
 
     getEmbeddedParameterVisibility: (slug: string) =>
       getEmbeddedParameterVisibility(state, slug),
@@ -231,6 +233,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     initializeQB,
     locationChanged,
     setUIControls,
+    runOrCancelQuestionOrSelectedQuery,
     cancelQuery,
     isBookmarked,
     createBookmark,
@@ -238,10 +241,38 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     allLoaded,
     showTimelinesForCollection,
     card,
+    isAdmin,
     isLoadingComplete,
     closeQB,
     route,
+    queryBuilderMode,
+    didFirstNonTableChartGenerated,
+    setDidFirstNonTableChartRender,
   } = props;
+
+  const didTrackFirstNonTableChartGeneratedRef = useRef(
+    didFirstNonTableChartGenerated,
+  );
+  const handleVisualizationRendered = useCallback(
+    (series: Series) => {
+      const isNonTable = series[0].card.display !== "table";
+      if (
+        isAdmin &&
+        !didFirstNonTableChartGenerated &&
+        !didTrackFirstNonTableChartGeneratedRef.current &&
+        isNonTable
+      ) {
+        setDidFirstNonTableChartRender(card);
+        didTrackFirstNonTableChartGeneratedRef.current = true;
+      }
+    },
+    [
+      isAdmin,
+      card,
+      didFirstNonTableChartGenerated,
+      setDidFirstNonTableChartRender,
+    ],
+  );
 
   const forceUpdate = useForceUpdate();
   const forceUpdateDebounced = useMemo(
@@ -271,17 +302,19 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   );
 
   const onClickBookmark = () => {
-    const {
-      card: { id },
-    } = props;
+    const { card } = props;
 
     const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
 
-    toggleBookmark(id);
+    if (!isBookmarked) {
+      trackCardBookmarkAdded(card);
+    }
+
+    toggleBookmark(card.id);
   };
 
   /**
-   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
+   * Navigation is scheduled so that LeaveRouteConfirmModal's isEnabled
    * prop has a chance to re-compute on re-render
    */
   const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
@@ -293,6 +326,8 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   useMount(() => {
     initializeQB(location, params);
   });
+
+  useRegisterQueryBuilderMetabotContext();
 
   useEffect(() => {
     window.addEventListener("resize", forceUpdateDebounced);
@@ -408,6 +443,14 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     [question, isNewQuestion],
   );
 
+  const handleCmdEnter = () => {
+    if (queryBuilderMode !== "notebook") {
+      runOrCancelQuestionOrSelectedQuery();
+    }
+  };
+
+  useHotkeys([["mod+Enter", handleCmdEnter]], []);
+
   return (
     <>
       <View
@@ -423,9 +466,10 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         onDismissToast={onDismissToast}
         onConfirmToast={onConfirmToast}
         isShowingToaster={isShowingToaster}
+        onVisualizationRendered={handleVisualizationRendered}
       />
 
-      <LeaveConfirmationModal
+      <LeaveRouteConfirmModal
         isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
         isLocationAllowed={isLocationAllowed}
         route={route}

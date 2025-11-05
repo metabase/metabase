@@ -16,13 +16,20 @@ import { displayNameForColumn } from "metabase/lib/formatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
+import {
+  getDimensionReferenceWithoutBaseType,
+  isDimensionReferenceWithOptions,
+} from "metabase-lib/v1/references";
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,
   DatasetData,
+  DimensionReference,
   PivotTableColumnSplitSetting,
+  RawSeries,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -71,12 +78,14 @@ export const settings = {
     },
   },
   [COLUMN_SPLIT_SETTING]: {
-    section: t`Columns`,
+    get section() {
+      return t`Columns`;
+    },
     widget: "fieldsPartition",
     persistDefault: true,
     getHidden: ([{ data }]: [{ data: DatasetData }]) =>
       // hide the setting widget if there are invalid columns
-      !data || data.cols.some(col => !isColumnValid(col)),
+      !data || data.cols.some((col) => !isColumnValid(col)),
     getProps: (
       [{ data }]: [{ data: DatasetData }],
       settings: VisualizationSettings,
@@ -101,7 +110,7 @@ export const settings = {
         return undefined;
       }
       const columnsToPartition = data.cols.filter(
-        col => !isPivotGroupColumn(col),
+        (col) => !isPivotGroupColumn(col),
       );
       let setting: PivotTableColumnSplitSetting;
       if (storedValue == null) {
@@ -109,7 +118,7 @@ export const settings = {
           columnsToPartition,
           isDimension,
         );
-        const [first, second, ...rest] = _.sortBy(dimensions, col =>
+        const [first, second, ...rest] = _.sortBy(dimensions, (col) =>
           getIn(col, ["fingerprint", "global", "distinct-count"]),
         );
 
@@ -126,8 +135,8 @@ export const settings = {
           columns = [first, second];
           rows = rest;
         }
-        setting = _.mapObject({ rows, columns, values }, cols =>
-          cols.map(col => col.name),
+        setting = _.mapObject({ rows, columns, values }, (cols) =>
+          cols.map((col) => col.name),
         );
       } else {
         setting = updateValueWithCurrentColumns(
@@ -140,22 +149,56 @@ export const settings = {
     },
   },
   "pivot.show_row_totals": {
-    section: t`Columns`,
-    title: t`Show row totals`,
+    get section() {
+      return t`Columns`;
+    },
+    get title() {
+      return t`Show row totals`;
+    },
     widget: "toggle",
     default: true,
     inline: true,
   },
   "pivot.show_column_totals": {
-    section: t`Columns`,
-    title: t`Show column totals`,
+    get section() {
+      return t`Columns`;
+    },
+    get title() {
+      return t`Show column totals`;
+    },
     widget: "toggle",
     default: true,
     inline: true,
   },
+  "pivot.condense_duplicate_totals": {
+    get section() {
+      return t`Columns`;
+    },
+    get title() {
+      return t`Condense duplicate totals`;
+    },
+    get hint() {
+      return t`Hide additional total elements if the totals are the same`;
+    },
+    widget: "toggle",
+    default: true,
+    inline: true,
+    getHidden: (
+      _series: RawSeries,
+      settings: ComputedVisualizationSettings,
+    ) => {
+      return (
+        !settings["pivot.show_row_totals"] &&
+        !settings["pivot.show_column_totals"]
+      );
+    },
+    readDependencies: ["pivot.show_row_totals", "pivot.show_column_totals"],
+  },
   "pivot_table.column_widths": {},
   [COLUMN_FORMATTING_SETTING]: {
-    section: t`Conditional Formatting`,
+    get section() {
+      return t`Conditional Formatting`;
+    },
     widget: ChartSettingsTableFormatting,
     default: [],
     getDefault: (
@@ -165,11 +208,11 @@ export const settings = {
       const columnFormats = settings[COLUMN_FORMATTING_SETTING] ?? [];
 
       return columnFormats
-        .map(columnFormat => {
+        .map((columnFormat) => {
           const hasOnlyFormattableColumns =
             columnFormat.columns
               .map((columnName: string) =>
-                data.cols.find(column => column.name === columnName),
+                data.cols.find((column) => column.name === columnName),
               )
               .filter(Boolean) ?? [].every(isFormattablePivotColumn);
 
@@ -190,17 +233,21 @@ export const settings = {
     ): boolean => {
       const columnFormats = settings[COLUMN_FORMATTING_SETTING] ?? [];
 
-      return columnFormats.every(columnFormat => {
+      return columnFormats.every((columnFormat) => {
         const hasOnlyFormattableColumns =
           columnFormat.columns
-            .map(columnName =>
+            .map((columnName) =>
               (data.cols as DatasetColumn[]).find(
-                column => column.name === columnName,
+                (column) => column.name === columnName,
               ),
             )
             .filter(Boolean) ?? [].every(isFormattablePivotColumn);
 
-        return hasOnlyFormattableColumns && !columnFormat.highlight_row;
+        return (
+          hasOnlyFormattableColumns &&
+          columnFormat.type === "single" &&
+          !columnFormat.highlight_row
+        );
       });
     },
     getProps: (series: Series) => {
@@ -212,13 +259,15 @@ export const settings = {
       };
     },
     getHidden: ([{ data }]: [{ data: DatasetData }]) =>
-      !data?.cols.some(col => isFormattablePivotColumn(col)),
+      !data?.cols.some((col) => isFormattablePivotColumn(col)),
   },
 };
 
 export const _columnSettings = {
   [COLUMN_SORT_ORDER]: {
-    title: t`Sort order`,
+    get title() {
+      return t`Sort order`;
+    },
     widget: ChartSettingIconRadio,
     inline: true,
     borderBottom: true,
@@ -238,7 +287,9 @@ export const _columnSettings = {
       source === "aggregation",
   },
   [COLUMN_SHOW_TOTALS]: {
-    title: t`Show totals`,
+    get title() {
+      return t`Show totals`;
+    },
     widget: "toggle",
     inline: true,
     getDefault: (
@@ -256,8 +307,14 @@ export const _columnSettings = {
       return rows
         .slice(0, -1)
         .some(
-          row =>
-            _.isEqual(row, column.name) || _.isEqual(row, column.field_ref),
+          (row) =>
+            _.isEqual(row, column.name) ||
+            (Array.isArray(row) &&
+              column.field_ref != null &&
+              _.isEqual(
+                getFieldRefForComparison(row),
+                getFieldRefForComparison(column.field_ref),
+              )),
         );
     },
     getHidden: (
@@ -269,12 +326,25 @@ export const _columnSettings = {
       // to show totals a column needs to be:
       //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
       //  - not the last column
-      return !rows.slice(0, -1).some(row => _.isEqual(row, column.name));
+      return !rows.slice(0, -1).some((row) => _.isEqual(row, column.name));
     },
   },
   column_title: {
-    title: t`Column title`,
+    get title() {
+      return t`Column title`;
+    },
     widget: "input",
     getDefault: displayNameForColumn,
   },
 };
+
+/*
+  When comparing field refs for pivot viz settings, ignore `base-type`.
+  Sometimes it's present, sometimes it's not. New pivot settings use column
+  names only and do not depend on field refs.
+ */
+function getFieldRefForComparison(fieldRef: DimensionReference) {
+  return isDimensionReferenceWithOptions(fieldRef)
+    ? getDimensionReferenceWithoutBaseType(fieldRef)
+    : fieldRef;
+}

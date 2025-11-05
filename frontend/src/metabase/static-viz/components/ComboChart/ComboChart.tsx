@@ -9,6 +9,7 @@ import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesia
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
 
+import Watermark from "../../watermark.svg?component";
 import { Legend } from "../Legend";
 import { calculateLegendRows } from "../Legend/utils";
 
@@ -25,6 +26,7 @@ export const ComboChart = ({
   width = WIDTH,
   height = HEIGHT,
   isStorybook = false,
+  hasDevWatermark = false,
 }: StaticChartProps) => {
   const chart = init(null, null, {
     renderer: "svg",
@@ -85,6 +87,15 @@ export const ComboChart = ({
       <Group top={legendHeight}>
         <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>
       </Group>
+      {hasDevWatermark && (
+        <Watermark
+          x="0"
+          y="0"
+          height={height}
+          width={width}
+          preserveAspectRatio="xMinYMin slice"
+        />
+      )}
     </svg>
   );
 };

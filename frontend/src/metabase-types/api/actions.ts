@@ -115,7 +115,7 @@ export type WritebackAction = WritebackActionBase &
 export type ParameterMappings = Record<ParameterId, ParameterTarget>;
 
 export type ParametersForActionExecution = {
-  [id: ParameterId]: string | number | null;
+  [id: ParameterId]: string | number | boolean | null;
 };
 
 export type ActionFormInitialValues = ParametersForActionExecution;

@@ -155,6 +155,7 @@ export const RowChart = <TDatum,>({
         yLabel,
         hasXAxis,
         hasYAxis,
+        width,
       ),
     [
       seriesData,
@@ -167,6 +168,7 @@ export const RowChart = <TDatum,>({
       yLabel,
       hasXAxis,
       hasYAxis,
+      width,
     ],
   );
 
@@ -202,17 +204,15 @@ export const RowChart = <TDatum,>({
 
   const paddedXScale = useMemo(
     () =>
-      xValueRange
-        ? xScale
-        : addSideSpacingForTicksAndLabels(
-            xScale,
-            measureTextWidth,
-            theme.axis.ticks,
-            xTickFormatter,
-            theme.dataLabels,
-            labelsFormatter,
-            (labelledSeries ?? []).length > 0,
-          ),
+      addSideSpacingForTicksAndLabels(
+        xScale,
+        measureTextWidth,
+        theme.axis.ticks,
+        xTickFormatter,
+        theme.dataLabels,
+        labelsFormatter,
+        (labelledSeries ?? []).length > 0,
+      ),
     [
       labelsFormatter,
       measureTextWidth,
@@ -221,7 +221,6 @@ export const RowChart = <TDatum,>({
       theme.dataLabels,
       xScale,
       xTickFormatter,
-      xValueRange,
     ],
   );
 
@@ -274,6 +273,7 @@ export const RowChart = <TDatum,>({
       xLabel={xLabel}
       hasXAxis={hasXAxis}
       hasYAxis={hasYAxis}
+      measureTextWidth={measureTextWidth}
       onClick={onClick}
       onHover={onHover}
     />

@@ -14,6 +14,7 @@ import {
   INSTANCE_ANALYTICS_COLLECTION,
   OFFICIAL_COLLECTION,
   REGULAR_COLLECTION,
+  REMOTE_SYNC_COLLECTION,
 } from "./constants";
 
 export function isRegularCollection({
@@ -46,10 +47,23 @@ export function isInstanceAnalyticsCollection(
   );
 }
 
+export function isSyncedCollection(
+  collection: Pick<Collection, "type">,
+): boolean {
+  return getCollectionType(collection).type === "remote-synced";
+}
+
 export const getIcon = (item: ObjectWithModel): IconData => {
-  if (getCollectionType({ type: item.type }).type === "instance-analytics") {
+  const collectionType = getCollectionType({ type: item.type }).type;
+  if (collectionType === "instance-analytics") {
     return {
       name: INSTANCE_ANALYTICS_COLLECTION.icon,
+    };
+  }
+
+  if (collectionType === "remote-synced") {
+    return {
+      name: REMOTE_SYNC_COLLECTION.icon,
     };
   }
 
@@ -76,14 +90,14 @@ export const filterOutItemsFromInstanceAnalytics = <
   /** Cache of ids of instance analytics collections */
   const cache = new Set<CollectionId>();
 
-  return items.filter(item => {
+  return items.filter((item) => {
     if (cache.has(item.collection.id)) {
       return false;
     }
     const ancestors = item.collection.effective_ancestors || [];
     const path = [item.collection, ...ancestors];
     if (path.some(isInstanceAnalyticsCollection)) {
-      path.map(c => c.id).forEach(id => cache.add(id));
+      path.map((c) => c.id).forEach((id) => cache.add(id));
       return false;
     }
     return true;

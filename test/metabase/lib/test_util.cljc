@@ -3,9 +3,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is]]
-   [malli.core :as mc]
    [medley.core :as m]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -15,12 +13,15 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.merged-mock :as providers.merged-mock]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.lib.test-util.metadata-providers.remap :as providers.remap]
    [metabase.lib.test-util.metadata-providers.with-cards-for-queries :as providers.cards-for-queries]
    [metabase.lib.util :as lib.util]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.namespaces :as shared.ns]))
 
 (comment providers.cards-for-queries/keep-me
@@ -37,13 +38,14 @@
  [providers.mock              mock-metadata-provider]
  [providers.remap             remap-metadata-provider])
 
-(def venues-query
-  "A mock query against the `VENUES` test data table."
+(defn venues-query
+  "Returns a mock query against the `VENUES` test data table."
+  []
   (lib/query meta/metadata-provider (meta/table-metadata :venues)))
 
 (defn venues-query-with-last-stage [m]
-  (let [query (update-in venues-query [:stages 0] merge m)]
-    (is (mc/validate ::lib.schema/query query))
+  (let [query (update-in (venues-query) [:stages 0] merge m)]
+    (is (mr/validate ::lib.schema/query query))
     query))
 
 (defn field-clause
@@ -59,11 +61,11 @@
 (def ^:private cards
   {:cards [{:name          "My Card"
             :id            1
-            :dataset-query {:database (meta/id)
-                            :type     :query
-                            :query    {:source-table (meta/id :checkins)
-                                       :aggregation  [[:count]]
-                                       :breakout     [[:field (meta/id :checkins :user-id) nil]]}}
+            :entity-id     (u/generate-nano-id)
+            :type          :question
+            :dataset-query (lib.tu.macros/mbql-query checkins
+                             {:aggregation [[:count]]
+                              :breakout    [$user-id]})
             :database-id   (meta/id)}]})
 
 (def metadata-provider-with-card
@@ -86,14 +88,16 @@
    (providers.mock/mock-metadata-provider
     (assoc-in cards [:cards 0 :type] :metric))))
 
-(def query-with-source-card
-  "A query against `:source-card 1`, with a metadata provider that has that Card. Card's name is `My Card`. Card
-  'exports' two columns, `USER_ID` and `count`."
-  {:lib/type     :mbql/query
-   :lib/metadata metadata-provider-with-card
-   :database     (meta/id)
-   :stages       [{:lib/type    :mbql.stage/mbql
-                   :source-card 1}]})
+(defn query-with-source-card
+  "Returns a query against `:source-card 1`, with a metadata provider that has that Card. Card's name is `My Card`.
+  Card 'exports' two columns, `USER_ID` and `count`."
+  []
+  (lib/query metadata-provider-with-card (lib.metadata/card metadata-provider-with-card 1)))
+
+(defn query-with-source-model
+  "Like [[query-with-source-card]], but where the card's type is :model"
+  []
+  (lib/query metadata-provider-with-model (lib.metadata/card metadata-provider-with-model 1)))
 
 (def ^:private metadata-provider-with-card-with-result-metadata
   "[[meta/metadata-provider]], but with a Card with results metadata as ID 1."
@@ -104,11 +108,9 @@
               :id              1
               :database-id     (meta/id)
               ;; THIS IS A LEGACY STYLE QUERY!
-              :dataset-query   {:database (meta/id)
-                                :type     :query
-                                :query    {:source-table (meta/id :checkins)
-                                           :aggregation  [[:count]]
-                                           :breakout     [[:field (meta/id :checkins :user-id) nil]]}}
+              :dataset-query   (lib.tu.macros/mbql-query checkins
+                                 {:aggregation [[:count]]
+                                  :breakout    [$user-id]})
               ;; this is copied directly from a QP response. NOT CONVERTED TO KEBAB-CASE YET, BECAUSE THIS IS HOW IT
               ;; LOOKS IN LEGACY QUERIES!
               :result-metadata [{:description        nil
@@ -136,14 +138,12 @@
                                  :field_ref      [:aggregation 0]
                                  :effective_type :type/BigInteger}]}]})))
 
-(def query-with-source-card-with-result-metadata
-  "A query with a `card__<id>` source Table and a metadata provider that has a Card with `:result_metadata`."
-  {:lib/type     :mbql/query
-   :lib/metadata metadata-provider-with-card-with-result-metadata
-   :type         :pipeline
-   :database     (meta/id)
-   :stages       [{:lib/type    :mbql.stage/mbql
-                   :source-card 1}]})
+(defn query-with-source-card-with-result-metadata
+  "Returns a query with a `card__<id>` source Table and a metadata provider that has a Card with `:result_metadata`."
+  []
+  (lib/query metadata-provider-with-card-with-result-metadata
+             {:lib/type    :mbql.stage/mbql
+              :source-card 1}))
 
 (defn- add-join
   [query join-alias]
@@ -161,14 +161,16 @@
   [query & join-aliases]
   (reduce add-join query join-aliases))
 
-(def query-with-join
-  "A query against `VENUES` with an explicit join against `CATEGORIES`."
-  (add-joins venues-query "Cat"))
+(defn query-with-join
+  "Returns a query against `VENUES` with an explicit join against `CATEGORIES`."
+  []
+  (add-joins (venues-query) "Cat"))
 
-(def query-with-join-with-explicit-fields
+(defn query-with-join-with-explicit-fields
   "A query against `VENUES` with an explicit join against `CATEGORIES`, that includes explicit `:fields` including just
   `CATEGORIES.NAME`."
-  (-> venues-query
+  []
+  (-> (venues-query)
       (lib/join (-> (lib/join-clause (meta/table-metadata :categories))
                     (lib/with-join-conditions [(lib/= (meta/field-metadata :venues :category-id)
                                                       (-> (meta/field-metadata :categories :id)
@@ -177,20 +179,23 @@
                     (lib/with-join-fields [(-> (meta/field-metadata :categories :name)
                                                (lib/with-join-alias "Cat"))])))))
 
-(def query-with-self-join
+(defn query-with-self-join
   "A query against `ORDERS` joined to `ORDERS` by ID."
+  []
   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
       (lib/join (lib/join-clause (meta/table-metadata :orders)
                                  [(lib/= (lib/ref (meta/field-metadata :orders :id))
                                          (lib/ref (meta/field-metadata :orders :id)))]))))
 
-(def query-with-expression
+(defn query-with-expression
   "A query with an expression."
-  (-> venues-query
+  []
+  (-> (venues-query)
       (lib/expression "expr" (lib/absolute-datetime "2020" :month))))
 
-(def native-query
+(defn native-query
   "A sample native query."
+  []
   {:lib/type     :mbql/query
    :lib/metadata meta/metadata-provider
    :database     (meta/id)
@@ -217,24 +222,26 @@
                          {:table table, :table-id table-id :metadata? true,  :native? true,  :card-name (keyword (name table) "native")}
                          {:table table, :table-id table-id :metadata? false, :native? false, :card-name (keyword (name table) "no-metadata")}]))
               (map-indexed (fn [idx {:keys [table table-id metadata? native? card-name]}]
-                             [card-name
-                              (merge
-                               {:lib/type      :metadata/card
-                                :id            (inc idx)
-                                :database-id   (:id (lib.metadata/database metadata-provider))
-                                :name          (str "Mock " (name table) " card")
-                                :dataset-query (if native?
-                                                 {:database (:id (lib.metadata/database metadata-provider))
-                                                  :type     :native
-                                                  :native   {:query (str "SELECT * FROM " (name table))}}
-                                                 {:database (:id (lib.metadata/database metadata-provider))
-                                                  :type     :query
-                                                  :query    {:source-table table-id}})}
-                               (when metadata?
-                                 {:result-metadata
-                                  (->> (lib.metadata/fields metadata-provider table-id)
-                                       (sort-by :id)
-                                       (mapv #(if native? (dissoc % :table-id :id :fk-target-field-id) %)))}))])))
+                             (let [eid (u/generate-nano-id)]
+                               [card-name
+                                (merge
+                                 {:lib/type      :metadata/card
+                                  :id            (inc idx)
+                                  :entity-id     eid
+                                  :database-id   (:id (lib.metadata/database metadata-provider))
+                                  :name          (str "Mock " (name table) " card")
+                                  :dataset-query (if native?
+                                                   {:database (:id (lib.metadata/database metadata-provider))
+                                                    :type     :native
+                                                    :native   {:query (str "SELECT * FROM " (name table))}}
+                                                   {:database (:id (lib.metadata/database metadata-provider))
+                                                    :type     :query
+                                                    :query    {:source-table table-id}})}
+                                 (when metadata?
+                                   {:result-metadata
+                                    (cond->> (lib.metadata/fields metadata-provider table-id)
+                                      true    (sort-by :id)
+                                      native? (mapv #(dissoc % :table-id :id :fk-target-field-id)))}))]))))
         table-key-and-ids))
 
 (defn- make-mock-cards-special-cases
@@ -262,8 +269,8 @@
                                                   {:base-type :type/Integer
                                                    :join-alias "Reviews"}]]}]}}}}))
 
-(def mock-cards
-  "Map of mock MBQL query Card against the test tables. There are three versions of the Card for each table:
+(defn mock-cards
+  "Returns a map of mock MBQL query Card against the test tables. There are three versions of the Card for each table:
 
   * `:venues`, a Card WITH `:result-metadata`
   * `:venues/no-metadata`, a Card WITHOUT `:result-metadata`
@@ -271,6 +278,7 @@
 
   There are also some specialized mock cards used for corner cases:
   * `:model/products-and-reviews`, a model joining products to reviews"
+  []
   (merge (make-mock-cards meta/metadata-provider (map (juxt identity (comp :id meta/table-metadata)) (meta/tables)))
          (make-mock-cards-special-cases meta/metadata-provider)))
 
@@ -299,12 +307,20 @@
                                   (sort-by :id))}
            card-details))))
 
-(def metadata-provider-with-mock-cards
+(defn metadata-provider-with-mock-cards
   "A metadata provider with all of the [[mock-cards]]. Composed with the normal [[meta/metadata-provider]]."
+  []
   (lib/composed-metadata-provider
    meta/metadata-provider
    (providers.mock/mock-metadata-provider
-    {:cards (vals mock-cards)})))
+    {:cards (vals (mock-cards))})))
+
+(defn as-model
+  "Given a mock card, make it a model.
+
+  This sets the `:type` of the card to `:model`."
+  [card]
+  (assoc card :type :model))
 
 (mu/defn field-literal-ref :- ::lib.schema.ref/field.literal
   "Get a `:field` 'literal' ref (a `:field` ref that uses a string column name rather than an integer ID) for a column
@@ -319,9 +335,7 @@
                        (throw (ex-info (str "No column named " (pr-str column-name) "; found: " (pr-str col-names))
                                        {:column column-name
                                         :found  col-names}))))]
-    (lib/ref (cond-> metadata
-               ;; This forces a string column in the presence of force-broken-id-refs
-               (::lib.card/force-broken-id-refs metadata) (dissoc :id)))))
+    (lib/ref metadata)))
 
 (mu/defn query-with-stage-metadata-from-card :- ::lib.schema/query
   "Convenience for creating a query that has `:lib/metadata` stage metadata attached to it from a Card. Note that this
@@ -348,4 +362,4 @@
                                                {:dataset-query   {:database (meta/id)
                                                                   :type     :native
                                                                   :native   {:query "SELECT * FROM VENUES;"}}
-                                                :result-metadata (get-in mock-cards [:venues :result-metadata])}))))
+                                                :result-metadata (get-in (mock-cards) [:venues :result-metadata])}))))

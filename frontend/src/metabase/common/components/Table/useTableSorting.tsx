@@ -11,13 +11,11 @@ export const useTableSorting = <Row extends BaseRow>({
   defaultSortColumn,
   defaultSortDirection = SortDirection.Asc,
   formatValueForSorting,
-  locale,
 }: {
   rows: Row[];
   defaultSortColumn?: string;
   defaultSortDirection?: SortDirection;
   formatValueForSorting: (row: Row, columnName: string) => any;
-  locale: string;
 }) => {
   const [sortColumn, setSortColumn] = useState<string | undefined>(
     defaultSortColumn,
@@ -26,9 +24,8 @@ export const useTableSorting = <Row extends BaseRow>({
     useState<SortDirection>(defaultSortDirection);
 
   const compareStrings = useCallback(
-    (a: string, b: string) =>
-      a.localeCompare(b, locale, { sensitivity: "base" }),
-    [locale],
+    (a: string, b: string) => a.localeCompare(b),
+    [],
   );
 
   const sortedRows = useMemo(() => {

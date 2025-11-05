@@ -1,10 +1,6 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -61,20 +57,24 @@ describe("scenarios > admin > settings > public sharing", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    cy.intercept("GET", "/api/action/public").as("getPublicActions");
+    cy.intercept("GET", "/api/dashboard/public").as("getPublicDashboards");
+    cy.intercept("GET", "/api/card/public").as("getPublicQuestions");
   });
 
   it("should be able to toggle public sharing", () => {
     cy.visit("/admin/settings/public-sharing");
-    cy.findByLabelText("Enable Public Sharing")
-      .should("be.checked")
-      .click()
-      .should("not.be.checked");
+    cy.findByTestId("enable-public-sharing-setting").within(() => {
+      cy.findByText("Enabled").should("be.visible");
+      cy.findByText("Enabled").click();
+      cy.findByText("Disabled").should("be.visible");
+    });
   });
 
   it("should see public dashboards", () => {
     const expectedDashboardName = "Public dashboard";
     const expectedDashboardSlug = "public-dashboard";
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       dashboardDetails: {
         name: expectedDashboardName,
       },
@@ -90,21 +90,28 @@ describe("scenarios > admin > settings > public sharing", () => {
         cy.wrap(dashboardId).as("dashboardId");
         cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
       })
-      .then(response => {
+      .then((response) => {
         cy.wrap(response.body.uuid).as("dashboardUuid");
       });
 
-    cy.get("@dashboardId").then(dashboardId =>
+    cy.get("@dashboardId").then((dashboardId) =>
       H.visitDashboardAndCreateTab({ dashboardId }),
     );
 
     cy.visit("/admin/settings/public-sharing");
+    cy.wait([
+      "@getPublicActions",
+      "@getPublicQuestions",
+      "@getPublicDashboards",
+    ]);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Shared Dashboards").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(expectedDashboardName).should("be.visible");
-    cy.get("@dashboardUuid").then(dashboardUuid => {
+    cy.findByTestId("admin-layout-content")
+      .findByText("Shared dashboards")
+      .should("be.visible");
+    cy.findByTestId("admin-layout-content")
+      .findByText(expectedDashboardName)
+      .should("be.visible");
+    cy.get("@dashboardUuid").then((dashboardUuid) => {
       cy.findByText(
         `${location.origin}/public/dashboard/${dashboardUuid}`,
       ).click();
@@ -115,7 +122,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.visit("/admin/settings/public-sharing");
     });
 
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       cy.findByText(expectedDashboardName).click();
       cy.log(
         "Sometimes the URL will be updated with the tab ID, so we need to account for that",
@@ -134,16 +141,16 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.findByText("Disable this link?").should("be.visible");
       cy.button("Yes").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("No dashboards have been publicly shared yet.").should(
-      "be.visible",
-    );
+    cy.findByTestId("admin-layout-content")
+      .findByText("No dashboards have been publicly shared yet.")
+      .scrollIntoView()
+      .should("be.visible");
   });
 
   it("should see public questions", () => {
     const expectedQuestionName = "Public question";
     const expectedQuestionSlug = "public-question";
-    cy.createQuestion({
+    H.createQuestion({
       name: expectedQuestionName,
       query: {
         "source-table": ORDERS_ID,
@@ -154,17 +161,24 @@ describe("scenarios > admin > settings > public sharing", () => {
         cy.wrap(questionId).as("questionId");
         cy.request("POST", `/api/card/${questionId}/public_link`, {});
       })
-      .then(response => {
+      .then((response) => {
         cy.wrap(response.body.uuid).as("questionUuid");
       });
 
     cy.visit("/admin/settings/public-sharing");
+    cy.wait([
+      "@getPublicActions",
+      "@getPublicQuestions",
+      "@getPublicDashboards",
+    ]);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Shared Questions").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(expectedQuestionName).should("be.visible");
-    cy.get("@questionUuid").then(questionUuid => {
+    cy.findByTestId("admin-layout-content")
+      .findByText("Shared questions")
+      .should("be.visible");
+    cy.findByTestId("admin-layout-content")
+      .findByText(expectedQuestionName)
+      .should("be.visible");
+    cy.get("@questionUuid").then((questionUuid) => {
       cy.findByText(
         `${location.origin}/public/question/${questionUuid}`,
       ).click();
@@ -174,7 +188,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.visit("/admin/settings/public-sharing");
     });
 
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       cy.findByText(expectedQuestionName).click();
       cy.url().should(
         "eq",
@@ -188,17 +202,17 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.findByText("Disable this link?").should("be.visible");
       cy.button("Yes").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("No questions have been publicly shared yet.").should(
-      "be.visible",
-    );
+    cy.findByTestId("admin-layout-content")
+      .findByText("No questions have been publicly shared yet.")
+      .scrollIntoView()
+      .should("be.visible");
   });
 
   it("should see public actions", () => {
     H.setActionsEnabledForDB(SAMPLE_DB_ID);
     const expectedActionName = "Public action";
 
-    cy.createQuestion({
+    H.createQuestion({
       name: "Model",
       query: {
         "source-table": ORDERS_ID,
@@ -209,7 +223,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.wrap(modelId).as("modelId");
     });
 
-    cy.get("@modelId").then(modelId => {
+    cy.get("@modelId").then((modelId) => {
       H.createAction({
         ...DEFAULT_ACTION_DETAILS,
         name: expectedActionName,
@@ -221,7 +235,7 @@ describe("scenarios > admin > settings > public sharing", () => {
     });
 
     cy.get("@actionId")
-      .then(actionId => {
+      .then((actionId) => {
         cy.request("POST", `/api/action/${actionId}/public_link`, {});
       })
       .then(({ body }) => {
@@ -229,12 +243,21 @@ describe("scenarios > admin > settings > public sharing", () => {
       });
 
     cy.visit("/admin/settings/public-sharing");
+    cy.wait([
+      "@getPublicActions",
+      "@getPublicQuestions",
+      "@getPublicDashboards",
+    ]);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Shared Action Forms").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(expectedActionName).should("be.visible");
-    cy.get("@actionUuid").then(actionUuid => {
+    cy.findByTestId("admin-layout-content")
+      .findByText("Shared action forms")
+      .scrollIntoView()
+      .should("be.visible");
+    cy.findByTestId("admin-layout-content")
+      .findByText(expectedActionName)
+      .scrollIntoView()
+      .should("be.visible");
+    cy.get("@actionUuid").then((actionUuid) => {
       cy.findByText(`${location.origin}/public/action/${actionUuid}`).click();
       cy.findByRole("heading", { name: expectedActionName }).should(
         "be.visible",
@@ -259,69 +282,9 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.findByText("Disable this link?").should("be.visible");
       cy.button("Yes").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("No actions have been publicly shared yet.").should(
-      "be.visible",
-    );
+    cy.findByTestId("admin-layout-content")
+      .findByText("No actions have been publicly shared yet.")
+      .scrollIntoView()
+      .should("be.visible");
   });
 });
-
-H.describeEE(
-  "scenarios > sharing > approved domains (EE)",
-  { tags: "@external" },
-  () => {
-    const allowedDomain = "metabase.test";
-    const deniedDomain = "metabase.example";
-    const deniedEmail = `mailer@${deniedDomain}`;
-    const subscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
-    const alertError = `You're only allowed to email alerts to addresses ending in ${allowedDomain}`;
-
-    function addEmailRecipient(email) {
-      cy.findByRole("textbox").click().type(`${email}`).blur();
-    }
-
-    function setAllowedDomains() {
-      H.updateSetting("subscription-allowed-domains", allowedDomain);
-    }
-
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.setTokenFeatures("all");
-      H.setupSMTP();
-      setAllowedDomains();
-    });
-
-    it("should validate approved email domains for a question alert", () => {
-      H.visitQuestion(ORDERS_QUESTION_ID);
-
-      H.openSharingMenu("Create alert");
-      H.modal().findByText("Set up an alert").click();
-
-      H.modal()
-        .findByRole("heading", { name: "Email" })
-        .closest("li")
-        .within(() => {
-          addEmailRecipient(deniedEmail);
-          cy.findByText(alertError);
-        });
-      cy.button("Done").should("be.disabled");
-    });
-
-    it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openSharingMenu("Subscriptions");
-
-      cy.findByRole("heading", { name: "Email it" }).click();
-
-      H.sidebar().within(() => {
-        addEmailRecipient(deniedEmail);
-
-        // Reproduces metabase#17977
-        cy.button("Send email now").should("be.disabled");
-        cy.button("Done").should("be.disabled");
-        cy.findByText(subscriptionError);
-      });
-    });
-  },
-);

@@ -7,11 +7,11 @@
   keep logs externally for longer than this retention period."
   (:require
    [clojure.string :as str]
-   [compojure.core :refer [GET]]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.api.common :as api]
-   [metabase.db :as mdb]
+   [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as mdb]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -32,12 +32,14 @@
                                          (date-part :month month)]})]
     results))
 
-(api/defendpoint GET "/query_execution/:yyyy-mm"
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :get "/query_execution/:yyyy-mm"
   "Fetch rows for the month specified by `:yyyy-mm` from the query_execution logs table.
   Must be a superuser."
-  [yyyy-mm]
-  {yyyy-mm (mu/with-api-error-message [:re #"\d{4}-\d{2}"]
-                                      (deferred-tru "Must be a string like 2020-04 or 2222-11."))}
+  [{:keys [yyyy-mm]} :- [:map
+                         [:yyyy-mm (mu/with-api-error-message [:re #"\d{4}-\d{2}"]
+                                                              (deferred-tru "Must be a string like 2020-04 or 2222-11."))]]]
   (let [[year month] (mc/coerce [:tuple
                                  [:int {:title "year" :min 0 :max 9999}]
                                  [:int {:title "month" :min 0 :max 12}]] ; month 0 ???
@@ -45,5 +47,3 @@
                                 (mtx/string-transformer))]
     (api/check-superuser)
     (query-execution-logs year month)))
-
-(api/define-routes)

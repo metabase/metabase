@@ -1,5 +1,9 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type {
+  DashboardDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
 import type { CardId, DashboardParameterMapping } from "metabase-types/api";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
@@ -18,7 +22,7 @@ describe("scenarios > custom column > boolean functions", () => {
 
   describe("expression editor", () => {
     const stringQuestionColumns = ["Category"];
-    const stringQuestionDetails: H.StructuredQuestionDetails = {
+    const stringQuestionDetails: StructuredQuestionDetails = {
       query: {
         "source-table": PRODUCTS_ID,
         fields: [["field", PRODUCTS.CATEGORY, null]],
@@ -28,7 +32,7 @@ describe("scenarios > custom column > boolean functions", () => {
     };
 
     const numberQuestionColumns = ["Total"];
-    const numberQuestionDetails: H.StructuredQuestionDetails = {
+    const numberQuestionDetails: StructuredQuestionDetails = {
       query: {
         "source-table": ORDERS_ID,
         fields: [["field", ORDERS.TOTAL, null]],
@@ -38,7 +42,7 @@ describe("scenarios > custom column > boolean functions", () => {
     };
 
     const dateQuestionColumns = ["Created At"];
-    const dateQuestionDetails: H.StructuredQuestionDetails = {
+    const dateQuestionDetails: StructuredQuestionDetails = {
       query: {
         "source-table": ORDERS_ID,
         fields: [["field", ORDERS.CREATED_AT, null]],
@@ -55,7 +59,7 @@ describe("scenarios > custom column > boolean functions", () => {
       modifiedExpression,
       modifiedExpressionRows,
     }: {
-      questionDetails: H.StructuredQuestionDetails;
+      questionDetails: StructuredQuestionDetails;
       questionColumns: string[];
       newExpression: string;
       newExpressionRows: string[][];
@@ -70,6 +74,8 @@ describe("scenarios > custom column > boolean functions", () => {
       H.enterCustomColumnDetails({
         formula: newExpression,
         name: expressionName,
+        allowFastSet: true,
+        format: true,
       });
       H.popover().button("Done").click();
       H.visualize();
@@ -85,6 +91,7 @@ describe("scenarios > custom column > boolean functions", () => {
       H.enterCustomColumnDetails({
         formula: modifiedExpression,
         name: expressionName,
+        allowFastSet: true,
       });
       H.popover().button("Update").click();
       H.visualize();
@@ -192,7 +199,7 @@ describe("scenarios > custom column > boolean functions", () => {
 
   describe("query builder", () => {
     describe("same stage", () => {
-      const questionDetails: H.StructuredQuestionDetails = {
+      const questionDetails: StructuredQuestionDetails = {
         query: {
           "source-table": PRODUCTS_ID,
           fields: [
@@ -311,7 +318,7 @@ describe("scenarios > custom column > boolean functions", () => {
     });
 
     describe("previous stage", () => {
-      const questionDetails: H.StructuredQuestionDetails = {
+      const questionDetails: StructuredQuestionDetails = {
         query: {
           "source-table": PRODUCTS_ID,
           expressions: {
@@ -413,7 +420,7 @@ describe("scenarios > custom column > boolean functions", () => {
     });
 
     describe("source card", () => {
-      const questionDetails: H.StructuredQuestionDetails = {
+      const questionDetails: StructuredQuestionDetails = {
         name: "Source",
         query: {
           "source-table": PRODUCTS_ID,
@@ -429,7 +436,7 @@ describe("scenarios > custom column > boolean functions", () => {
 
       function getNestedQuestionDetails(
         cardId: number,
-      ): H.StructuredQuestionDetails {
+      ): StructuredQuestionDetails {
         return {
           name: "Nested",
           query: {
@@ -501,7 +508,7 @@ describe("scenarios > custom column > boolean functions", () => {
         });
       });
 
-      it.skip("should be able to add a breakout and sorting for a boolean column (metabase#49305)", () => {
+      it("should be able to add a breakout and sorting for a boolean column (metabase#49305)", () => {
         H.createQuestion(questionDetails).then(({ body: card }) =>
           H.createQuestion(getNestedQuestionDetails(card.id), {
             visitQuestion: true,
@@ -538,7 +545,7 @@ describe("scenarios > custom column > boolean functions", () => {
   });
 
   describe("dashboards", () => {
-    const questionDetails: H.StructuredQuestionDetails = {
+    const questionDetails: StructuredQuestionDetails = {
       name: "Q1",
       query: {
         "source-table": PEOPLE_ID,
@@ -564,7 +571,7 @@ describe("scenarios > custom column > boolean functions", () => {
       sectionId: "string",
     };
 
-    const dashboardDetails: H.DashboardDetails = {
+    const dashboardDetails: DashboardDetails = {
       name: "D1",
       parameters: [parameterDetails],
     };
@@ -580,7 +587,7 @@ describe("scenarios > custom column > boolean functions", () => {
       };
     }
 
-    function createDashboardWithQuestion(opts?: H.DashboardDetails) {
+    function createDashboardWithQuestion(opts?: DashboardDetails) {
       return H.createDashboard({ ...dashboardDetails, ...opts }).then(
         ({ body: dashboard }) => {
           return H.createQuestion(questionDetails).then(({ body: card }) => {
@@ -606,7 +613,7 @@ describe("scenarios > custom column > boolean functions", () => {
     });
 
     it("should be able setup an 'open question' click behavior", () => {
-      createDashboardWithQuestion().then(dashboard =>
+      createDashboardWithQuestion().then((dashboard) =>
         H.visitDashboard(dashboard.id),
       );
 
@@ -639,7 +646,7 @@ describe("scenarios > custom column > boolean functions", () => {
     });
 
     it("should be able setup an 'open dashboard' click behavior for the same dashboard", () => {
-      createDashboardWithQuestion().then(dashboard =>
+      createDashboardWithQuestion().then((dashboard) =>
         H.visitDashboard(dashboard.id),
       );
 
@@ -677,7 +684,7 @@ describe("scenarios > custom column > boolean functions", () => {
 
     it("should be able setup an 'open dashboard' click behavior for another dashboard", () => {
       createDashboardWithQuestion({ name: "D2" });
-      createDashboardWithQuestion({ name: "D1" }).then(dashboard =>
+      createDashboardWithQuestion({ name: "D1" }).then((dashboard) =>
         H.visitDashboard(dashboard.id),
       );
 

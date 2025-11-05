@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase-enterprise.dashboard-subscription-filters.parameter-test
+(ns metabase-enterprise.dashboard-subscription-filters.parameter-test
   (:require
    [clojure.test :refer :all]
    [metabase.notification.payload.impl.dashboard :as notification.dashboard]

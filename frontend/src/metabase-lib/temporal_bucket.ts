@@ -47,7 +47,7 @@ export function defaultTemporalBucket(
 ): Bucket | null {
   const buckets = availableTemporalBuckets(query, stageIndex, column);
   const defaultBucket = buckets.find(
-    bucket => displayInfo(query, stageIndex, bucket).default,
+    (bucket) => displayInfo(query, stageIndex, bucket).default,
   );
 
   return defaultBucket ?? null;
@@ -58,8 +58,9 @@ type IntervalAmount = number | "current" | "next" | "last";
 export function describeTemporalInterval(
   n: IntervalAmount,
   unit?: TemporalUnit,
+  opts?: { "include-current"?: boolean },
 ): string {
-  return ML.describe_temporal_interval(n, unit);
+  return ML.describe_temporal_interval(n, unit, opts);
 }
 
 export function describeRelativeDatetime(

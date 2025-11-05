@@ -1,11 +1,11 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PEOPLE } = SAMPLE_DATABASE;
 
-describe("scenarios > dashboard > chained filter", () => {
+describe("scenarios > dashboard > chained filter", { tags: "@flaky" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -71,6 +71,9 @@ describe("scenarios > dashboard > chained filter", () => {
       // now test that it worked!
       // Select Alaska as a state. We should see Anchorage as a option but not Anacoco
       H.filterWidget().contains("Location").click();
+
+      cy.findByPlaceholderText(/search the list/i).should("be.visible");
+
       H.popover().within(() => {
         cy.findByText("AK").click();
         cy.findByText("Add filter").click();
@@ -78,9 +81,9 @@ describe("scenarios > dashboard > chained filter", () => {
 
       H.filterWidget().contains("Location 1").click();
 
-      H.popover().within(() => {
+      H.dashboardParametersPopover().within(() => {
         if (has_field_values === "search") {
-          H.multiAutocompleteInput().type("An");
+          H.fieldValuesCombobox().type("An");
         }
         if (has_field_values === "list") {
           cy.findByPlaceholderText("Search the list").type("An");
@@ -93,13 +96,13 @@ describe("scenarios > dashboard > chained filter", () => {
           : cy.findByTestId("field-values-widget");
 
       valuesWidget().within(() => {
-        cy.findByText("Anchorage");
+        cy.findByText("Anchorage").should("exist");
         cy.findByText("Anacoco").should("not.exist");
       });
 
       cy.findByTestId("parameter-value-dropdown").within(() => {
         if (has_field_values === "search") {
-          H.multiAutocompleteInput()
+          H.fieldValuesCombobox()
             .type("{backspace}{backspace}")
             // close the suggestion list
             .blur();
@@ -111,6 +114,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
       H.filterWidget().contains("AK").click();
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.popover()
         .last()
         .within(() => {
@@ -124,7 +128,7 @@ describe("scenarios > dashboard > chained filter", () => {
       H.filterWidget().contains("Location 1").click();
       cy.findByTestId("parameter-value-dropdown").within(() => {
         if (has_field_values === "search") {
-          H.multiAutocompleteInput().type("An");
+          H.fieldValuesCombobox().type("An");
         }
         if (has_field_values === "list") {
           cy.findByPlaceholderText("Search the list").type("An");
@@ -139,11 +143,12 @@ describe("scenarios > dashboard > chained filter", () => {
       if (has_field_values === "search") {
         cy.findByTestId("parameter-value-dropdown").within(() => {
           // close the suggestion list
-          H.multiAutocompleteInput().blur();
+          H.fieldValuesCombobox().blur();
         });
       }
 
       H.filterWidget().contains("GA").click();
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.popover()
         .last()
         .within(() => {
@@ -153,13 +158,12 @@ describe("scenarios > dashboard > chained filter", () => {
 
       // do it again without a state filter to make sure it isn't cached incorrectly
       H.filterWidget().contains("Location 1").click();
-
       cy.findByTestId("parameter-value-dropdown").within(() => {
         if (has_field_values === "search") {
-          H.multiAutocompleteInput().type("An");
+          H.fieldValuesCombobox().type("An");
         }
         if (has_field_values === "list") {
-          cy.findByRole("textbox").type("An");
+          cy.findByRole("combobox").type("An");
         }
       });
 
@@ -179,18 +183,18 @@ describe("scenarios > dashboard > chained filter", () => {
       const dialect = "postgres";
       const TEST_TABLE = "many_data_types";
 
-      H.resetTestTable({ type: dialect, table: TEST_TABLE });
       H.restore(`${dialect}-writable`);
+      H.resetTestTable({ type: dialect, table: TEST_TABLE });
       cy.signInAsAdmin();
       H.resyncDatabase({ tableName: TEST_TABLE, tableAlias: "testTable" });
 
-      cy.get("@testTable").then(testTable => {
+      cy.get("@testTable").then((testTable) => {
         const testTableId = testTable.id;
         const uuidFieldId = testTable.fields.find(
-          field => field.name === "uuid",
+          (field) => field.name === "uuid",
         ).id;
         const idFieldId = testTable.fields.find(
-          field => field.name === "id",
+          (field) => field.name === "id",
         ).id;
 
         cy.wrap(testTableId).as("testTableId");
@@ -212,12 +216,12 @@ describe("scenarios > dashboard > chained filter", () => {
         const TEST_TABLE_ID = this.testTableId;
         const UUID_FIELD_ID = this.uuidFieldId;
 
-        cy.createQuestion({
+        H.createQuestion({
           name: "15170",
           database: WRITABLE_DB_ID,
           query: { "source-table": TEST_TABLE_ID },
         }).then(({ body: { id: QUESTION_ID } }) => {
-          cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+          H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
             // Add filter to the dashboard
             cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
               parameters: [

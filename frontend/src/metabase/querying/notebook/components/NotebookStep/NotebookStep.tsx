@@ -2,15 +2,16 @@ import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import ExpandingContent from "metabase/components/ExpandingContent";
+import ExpandingContent from "metabase/common/components/ExpandingContent";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { useToggle } from "metabase/hooks/use-toggle";
-import { color as c } from "metabase/lib/colors";
 import { Box, Flex } from "metabase/ui";
-import type { Query } from "metabase-lib";
+import { color as c } from "metabase/ui/utils/colors";
+import type * as Lib from "metabase-lib";
 
 import type {
   NotebookStep as INotebookStep,
+  NotebookDataPickerOptions,
   NotebookStepAction,
 } from "../../types";
 
@@ -30,7 +31,8 @@ interface NotebookStepProps {
   reportTimezone: string;
   readOnly?: boolean;
   openStep: (id: string) => void;
-  updateQuery: (query: Query) => Promise<void>;
+  updateQuery: (query: Lib.Query) => Promise<void>;
+  dataPickerOptions?: NotebookDataPickerOptions;
 }
 
 export function NotebookStep({
@@ -41,6 +43,7 @@ export function NotebookStep({
   openStep,
   updateQuery,
   readOnly = false,
+  dataPickerOptions,
 }: NotebookStepProps) {
   const [isPreviewOpen, { turnOn: openPreview, turnOff: closePreview }] =
     useToggle(false);
@@ -51,7 +54,7 @@ export function NotebookStep({
       isLastStep && step.actions.some(hasLargeButton);
 
     actions.push(
-      ...step.actions.map(action => {
+      ...step.actions.map((action) => {
         const stepUi = getStepConfig(action.type);
         const title = stepUi.title;
         return {
@@ -60,8 +63,8 @@ export function NotebookStep({
             <NotebookActionButton
               key={`actionButton_${title}`}
               className={cx({
-                [cx(CS.mr2, CS.mt2)]: isLastStep,
-                [CS.mr1]: !isLastStep,
+                [cx(CS.mr2, CS.mt2)]: isLastStep && hasLargeActionButtons,
+                [CS.mr1]: !isLastStep || (isLastStep && !hasLargeActionButtons),
               })}
               large={hasLargeActionButtons}
               {...stepUi}
@@ -76,7 +79,7 @@ export function NotebookStep({
 
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
-    return actions.map(action => action.button);
+    return actions.map((action) => action.button);
   }, [step.actions, isLastStep, openStep]);
 
   const handleClickRevert = useCallback(() => {
@@ -113,7 +116,7 @@ export function NotebookStep({
         </Box>
 
         <Flex align="center">
-          <Box w={`${(11 / 12) * 100}%`} maw="75rem">
+          <Box flex={`1 1 ${(11 / 12) * 100}%`} maw="75rem">
             <Step
               step={step}
               query={step.query}
@@ -123,10 +126,11 @@ export function NotebookStep({
               isLastOpened={isLastOpened}
               reportTimezone={reportTimezone}
               readOnly={readOnly}
+              dataPickerOptions={dataPickerOptions}
             />
           </Box>
           {!readOnly && (
-            <Box w={`${(1 / 12) * 100}%`}>
+            <Box flex={`1 1 ${(1 / 12) * 100}%`}>
               <Box
                 className={cx(S.PreviewButton, {
                   [S.noPreviewButton]: !hasPreviewButton,
@@ -135,7 +139,6 @@ export function NotebookStep({
                 icon="play"
                 title={t`Preview`}
                 color={c("text-light")}
-                transparent
                 onClick={openPreview}
                 data-testid="step-preview-button"
               />

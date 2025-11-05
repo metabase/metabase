@@ -1,3 +1,4 @@
+import { action } from "@storybook/addon-actions";
 import type { ComponentProps } from "react";
 
 import { ReduxProvider } from "__support__/storybook";
@@ -46,7 +47,7 @@ const NarrowTemplate = (args: UpsellPillProps) => (
 );
 
 export default {
-  title: "Upsells/Pill",
+  title: "Patterns/Upsells/Pill",
   component: _UpsellPill,
   args,
   argTypes,
@@ -54,6 +55,14 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
+};
+
+export const WithOnClick = {
+  render: DefaultTemplate,
+  args: {
+    ...args,
+    onClick: action("clicked"),
+  },
 };
 
 export const Multiline = {

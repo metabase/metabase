@@ -35,6 +35,9 @@ export function SearchResult({
   className,
   index,
   context = "search-app",
+  searchEngine,
+  searchRequestId,
+  searchTerm,
 }: {
   result: WrappedResult;
   compact?: boolean;
@@ -44,6 +47,9 @@ export function SearchResult({
   className?: string;
   index: number;
   context?: SearchContext;
+  searchEngine?: string;
+  searchRequestId?: string;
+  searchTerm?: string;
 }) {
   const { name, model, description, moderated_status }: WrappedResult = result;
 
@@ -84,7 +90,16 @@ export function SearchResult({
       onClick(result);
       return;
     }
-    trackSearchClick("item", index, context);
+    trackSearchClick({
+      itemType: "item",
+      position: index,
+      context,
+      searchEngine: searchEngine || "unknown",
+      requestId: searchRequestId,
+      entityModel: result.model,
+      entityId: typeof result.id === "number" ? result.id : null,
+      searchTerm,
+    });
     onChangeLocation(result.getUrl());
   };
 
@@ -107,8 +122,8 @@ export function SearchResult({
         item={result}
         type={model}
       />
-      <ResultNameSection justify="center" spacing="xs">
-        <Group spacing="xs" align="center" noWrap>
+      <ResultNameSection justify="center" gap="xs">
+        <Group gap="xs" align="center" wrap="nowrap">
           <ResultTitle
             role="heading"
             data-testid="search-result-item-name"
@@ -126,7 +141,7 @@ export function SearchResult({
         <InfoText showLinks={!onClick} result={result} isCompact={compact} />
         {description && showDescription && (
           <DescriptionSection>
-            <Group noWrap spacing="sm" data-testid="result-description">
+            <Group wrap="nowrap" gap="sm" data-testid="result-description">
               <DescriptionDivider
                 size="md"
                 color="focus"
@@ -151,7 +166,10 @@ export function SearchResult({
       )}
       {showXRayButton && (
         <XRaySection>
-          <XRayButton leftIcon={<Icon name="bolt" />} onClick={onXRayClick} />
+          <XRayButton
+            leftSection={<Icon name="bolt" />}
+            onClick={onXRayClick}
+          />
         </XRaySection>
       )}
     </SearchResultContainer>

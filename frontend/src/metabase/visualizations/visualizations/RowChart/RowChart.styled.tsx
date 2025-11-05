@@ -1,6 +1,7 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
+import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
 import { LegendLayout } from "metabase/visualizations/components/legend/LegendLayout";
 import { getChartPadding } from "metabase/visualizations/visualizations/CartesianChart/padding";
 

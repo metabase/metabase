@@ -1,4 +1,5 @@
 import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
+import Color from "color";
 
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
@@ -90,7 +91,7 @@ export function calculateSegmentLabelTextAnchor(angle: number): TextAnchor {
 }
 
 export function calculateChartScale(gaugeLabels: GaugeLabelData[]) {
-  const gaugeLabelDimensions = gaugeLabels.map(gaugeLabel => {
+  const gaugeLabelDimensions = gaugeLabels.map((gaugeLabel) => {
     const labelWidth = measureTextWidth(
       gaugeLabel.value,
       SEGMENT_LABEL_FONT_SIZE,
@@ -157,7 +158,8 @@ export function fixSwappedMinMax(segment: GaugeSegment): GaugeSegment {
 }
 
 export function colorGetter(pieArcDatum: PieArcDatum<GaugeSegment>) {
-  return pieArcDatum.data.color;
+  // Convert to hex due to Apache Batik limitations (SVG renderer for static viz)
+  return Color(pieArcDatum.data.color).hex();
 }
 
 /**

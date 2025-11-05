@@ -29,7 +29,7 @@ export function replaceBreakouts(
 ) {
   let nextQuery = query;
 
-  breakouts(query, stageIndex).forEach(clause => {
+  breakouts(query, stageIndex).forEach((clause) => {
     nextQuery = removeClause(nextQuery, stageIndex, clause);
   });
 
@@ -40,6 +40,6 @@ export function breakoutColumn(
   query: Query,
   stageIndex: number,
   breakout: BreakoutClause,
-): ColumnMetadata {
+): ColumnMetadata | null {
   return ML.breakout_column(query, stageIndex, breakout);
 }

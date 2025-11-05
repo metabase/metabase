@@ -14,14 +14,14 @@ import type { RawSeries } from "metabase-types/api";
 export type TransformSeries = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
+  renderingContext?: RenderingContext,
 ) => RawSeries;
 
 export interface TransformedVisualizationProps {
   transformSeries: TransformSeries;
   originalProps: VisualizationProps;
   VisualizationComponent: React.FC<VisualizationProps>;
-  renderingContext: RenderingContext;
+  renderingContext?: RenderingContext;
 }
 
 export const TransformedVisualization = ({
@@ -43,12 +43,12 @@ export const TransformedVisualization = ({
 
   const handleChangeCardCandRun: OnChangeCardAndRun = useCallback(
     (options: OnChangeCardAndRunOpts) => {
-      const cards = rawSeries.map(series => series.card);
+      const cards = rawSeries.map((series) => series.card);
       const previousCard =
         options.previousCard != null
-          ? cards.find(c => c.id === options.previousCard?.id)
+          ? cards.find((c) => c.id === options.previousCard?.id)
           : undefined;
-      const nextCard = cards.find(c => c.id === options.nextCard.id);
+      const nextCard = cards.find((c) => c.id === options.nextCard.id);
 
       if (!nextCard) {
         throw new Error(
@@ -64,7 +64,7 @@ export const TransformedVisualization = ({
         previousCard,
       };
 
-      onChangeCardAndRun(transformedOptions);
+      onChangeCardAndRun?.(transformedOptions);
     },
     [onChangeCardAndRun, rawSeries],
   );

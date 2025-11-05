@@ -8,6 +8,7 @@
 
 (deftest ^:parallel host-up?-test
   (testing "host-up?"
+    #_{:clj-kondo/ignore [:equals-true]}
     (are [s expected] (= expected
                          (u/host-up? s))
       "localhost"  true
@@ -17,6 +18,7 @@
            (u/host-port-up? "nosuchhost" 8005)))))
 
 (deftest ^:parallel ip-address?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [x expected] (= expected
                        (u/ip-address? x))
     "8.8.8.8"              true
@@ -104,3 +106,19 @@
     "¥200."         200.0M
     "$.05"          0.05M
     "0.05"          0.05M))
+
+(deftest ^:parallel all-ex-messages-test
+  (testing "nil exception"
+    (is (nil? (u/all-ex-messages nil))))
+  (testing "one level exception"
+    (is (= ["test string"] (u/all-ex-messages (RuntimeException. "test string"))))
+    (is (nil? (u/all-ex-messages (Exception. nil nil)))))
+  (testing "chained exceptions"
+    (is (= ["test string 1" "test string 2"]
+           (u/all-ex-messages (RuntimeException. "test string 1" (RuntimeException. "test string 2")))))
+    (is (= ["test string 1" "test string 2"]
+           (u/all-ex-messages (RuntimeException. "test string 1" (RuntimeException. nil (RuntimeException. "test string 2"))))))
+    (is (= ["test string 2"]
+           (u/all-ex-messages (RuntimeException. nil (RuntimeException. "test string 2")))))
+    (is (nil?
+         (u/all-ex-messages (RuntimeException. nil (RuntimeException. nil nil)))))))

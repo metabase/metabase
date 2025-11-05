@@ -1,17 +1,20 @@
 import { noop } from "underscore";
 
-type CancellablePromise<T> = Promise<T> & {
+export type CancellablePromise<T> = Promise<T> & {
   cancel: () => void;
 };
 
-// return a promise wrapping the provided one but with a "cancel" method
+/**
+ * @deprecated - this is stupid don't use it
+ * returns a promise wrapping the provided one but with a "cancel" method
+ */
 export function cancelable<T>(promise: Promise<T>): CancellablePromise<T> {
   let canceled = false;
 
   const wrappedPromise = new Promise<T>((resolve, reject) => {
     promise.then(
-      value => (canceled ? reject({ isCanceled: true }) : resolve(value)),
-      error => (canceled ? reject({ isCanceled: true }) : reject(error)),
+      (value) => (canceled ? reject({ isCanceled: true }) : resolve(value)),
+      (error) => (canceled ? reject({ isCanceled: true }) : reject(error)),
     );
   });
 
@@ -35,7 +38,7 @@ export function timeout(
 
 // returns a promise that resolves after a given duration
 export function delay(duration: number) {
-  return new Promise(resolve => setTimeout(resolve, duration));
+  return new Promise((resolve) => setTimeout(resolve, duration));
 }
 
 export interface Deferred<T = unknown> {

@@ -2,7 +2,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import Radio from "metabase/core/components/Radio";
+import Radio from "metabase/common/components/Radio";
 import CS from "metabase/css/core/index.css";
 import { formatNumber } from "metabase/lib/formatting";
 import LimitInput from "metabase/query_builder/components/LimitInput";
@@ -15,7 +15,10 @@ const CustomRowLimit = ({ limit, onChangeLimit, onClose }) => {
       defaultValue={limit}
       className={cx({ [cx(CS.textBrand, CS.borderBrand)]: limit != null })}
       placeholder={t`Pick a limit`}
-      onKeyPress={e => {
+      onKeyPress={(e) => {
+        if (e.nativeEvent.isComposing) {
+          return;
+        }
         if (e.key === "Enter") {
           const value = parseInt(e.target.value, 10);
           if (value > 0) {
@@ -54,7 +57,7 @@ const LimitPopover = ({ limit, onChangeLimit, onClose, className }) => (
           value: "custom",
         },
       ]}
-      onChange={value =>
+      onChange={(value) =>
         value === "maximum" ? onChangeLimit(null) : onChangeLimit(2000)
       }
     />

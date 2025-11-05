@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 
 import {
   getXValues,
@@ -7,7 +7,7 @@ import {
 
 describe("getXValues", () => {
   function getXValuesForRows(listOfRows, settings = {}) {
-    const series = listOfRows.map(rows => ({ data: { rows, cols: [{}] } }));
+    const series = listOfRows.map((rows) => ({ data: { rows, cols: [{}] } }));
     series._raw = series;
     return getXValues({ settings, series });
   }
@@ -122,7 +122,7 @@ describe("getXValues", () => {
     series._raw = series;
     const settings = { "graph.dimensions": ["date"] };
     const [xVal] = getXValues({ settings, series });
-    expect(moment.isMoment(xVal)).toBe(true);
+    expect(dayjs.isDayjs(xVal)).toBe(true);
   });
 
   it("should sort values according to parsed value", () => {
@@ -133,7 +133,7 @@ describe("getXValues", () => {
           [["2019-08-11"], ["2019-W33"]],
         ],
         { "graph.x_axis.scale": "timeseries" },
-      ).map(x => x.format()),
+      ).map((x) => x.format()),
     ).toEqual([
       "2019-08-11T00:00:00Z",
       "2019-08-12T00:00:00Z",
@@ -161,7 +161,18 @@ describe("getXValues", () => {
         "graph.x_axis.scale": "timeseries",
       },
     );
-    const formattedXValues = xValues.map(v => v.format("YYYY-MM-DD"));
+    const formattedXValues = xValues.map((v) => v.format("YYYY-MM-DD"));
+    expect(formattedXValues).toEqual(["2019-01-02", "2019-01-03"]);
+  });
+
+  it("should exclude values that cannot be parsed according to the column type", () => {
+    const xValues = getXValuesForRows(
+      [[["2019-01-02"], ["abc"], ["2019-01-03"]]],
+      {
+        "graph.x_axis.scale": "timeseries",
+      },
+    );
+    const formattedXValues = xValues.map((v) => v.format("YYYY-MM-DD"));
     expect(formattedXValues).toEqual(["2019-01-02", "2019-01-03"]);
   });
 });
@@ -170,8 +181,8 @@ describe("parseXValue", () => {
   it("should use options as part of the cache key", () => {
     const value1 = parseXValue("2018-08-23", { isTimeseries: true });
     const value2 = parseXValue("2018-08-23", { isTimeseries: false });
-    expect(moment.isMoment(value1)).toBe(true);
-    expect(moment.isMoment(value2)).toBe(false);
+    expect(dayjs.isDayjs(value1)).toBe(true);
+    expect(dayjs.isDayjs(value2)).toBe(false);
   });
 
   it("should warn repeatedly (despite caching)", () => {

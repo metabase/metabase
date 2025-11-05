@@ -1,14 +1,15 @@
+import isPropValid from "@emotion/is-prop-valid";
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
-import type { DisplayTheme } from "metabase/public/lib/types";
+import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/DashboardComponents";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
   breakpointMaxSmall,
   breakpointMinLarge,
   breakpointMinSmall,
-  space,
 } from "metabase/styled-components/theme";
 
 export const Root = styled.div<{
@@ -20,7 +21,7 @@ export const Root = styled.div<{
   flex-direction: column;
   overflow: auto;
 
-  ${props =>
+  ${(props) =>
     props.hasScroll &&
     css`
       position: absolute;
@@ -30,7 +31,7 @@ export const Root = styled.div<{
       bottom: 0;
     `}
 
-  ${props =>
+  ${(props) =>
     props.isBordered &&
     css`
       border: 1px solid var(--mb-color-border);
@@ -38,7 +39,7 @@ export const Root = styled.div<{
       box-shadow: 0 2px 2px var(--mb-color-shadow);
     `}
 
-  ${props =>
+  ${(props) =>
     // Prevents https://github.com/metabase/metabase/issues/40660
     // when printing an embedded dashboard
     props.hasVisibleOverflowWhenPriting &&
@@ -61,27 +62,45 @@ export const Header = styled.header`
   flex-direction: column;
 `;
 
-export const TitleAndDescriptionContainer = styled(FullWidthContainer)`
+export const TitleAndDescriptionContainer = styled(FullWidthContainer, {
+  shouldForwardProp: (prop) => prop !== "hasTitle",
+})<{ hasTitle?: boolean }>`
   margin-top: 0.5rem;
 
-  ${breakpointMinSmall} {
-    margin-top: 1rem;
-  }
+  ${({ hasTitle }) =>
+    hasTitle &&
+    css`
+      ${breakpointMinSmall} {
+        margin-top: 1rem;
+      }
 
-  ${breakpointMinLarge} {
-    margin-top: 1.5rem;
-  }
+      ${breakpointMinLarge} {
+        margin-top: 1.5rem;
+      }
+    `}
 `;
 
-export const DashboardTabsContainer = styled(FullWidthContainer)`
+export const DashboardTabsContainer = styled(FullWidthContainer, {
+  shouldForwardProp: isPropValid,
+})<{
+  narrow?: boolean;
+}>`
   ${breakpointMaxSmall} {
     padding-left: 0;
     padding-right: 0;
   }
+
+  ${({ narrow }) =>
+    narrow &&
+    `
+    [role="tablist"].scrollable {
+      width: calc(100% - 60px);
+    }
+  `}
 `;
 
 export const Separator = styled.div`
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 2px solid var(--mb-color-border);
 `;
 
 export const Body = styled.main`
@@ -114,66 +133,11 @@ const footerVariantStyles = {
   `,
 };
 
-function getParameterPanelBackgroundColor(
-  theme: DisplayTheme | undefined,
-  isSticky: boolean,
-) {
-  if (theme === "night") {
-    return `color-mix(in srgb, var(--mb-color-bg-black), var(--mb-color-bg-dashboard)  ${
-      isSticky ? 15 : 100
-    }%)`;
-  }
-
-  if (theme === "transparent") {
-    return `color-mix(in srgb, var(--mb-color-bg-white), transparent  ${
-      isSticky ? 15 : 100
-    }%)`;
-  }
-
-  return `color-mix(in srgb, var(--mb-color-bg-white), var(--mb-color-bg-dashboard)  ${
-    isSticky ? 15 : 100
-  }%)`;
-}
-
-function getParameterPanelBorderColor(theme?: DisplayTheme) {
-  if (theme === "transparent") {
-    return "transparent";
-  }
-  return "var(--mb-color-border)";
-}
-
-export const ParametersWidgetContainer = styled(FullWidthContainer)<{
-  embedFrameTheme?: DisplayTheme;
-  canSticky: boolean;
-  isSticky: boolean;
-}>`
-  padding-top: ${space(1)};
-  padding-bottom: ${space(1)};
-
-  ${props =>
-    props.canSticky &&
-    css`
-      position: sticky;
-      top: 0;
-      left: 0;
-      width: 100%;
-      z-index: 3;
-      transition: background-color 0.4s;
-      background-color: ${getParameterPanelBackgroundColor(
-        props.embedFrameTheme,
-        props.isSticky,
-      )};
-      border-bottom: ${props.isSticky &&
-      `1px solid
-        ${getParameterPanelBorderColor(props.embedFrameTheme)}`};
-    `}
-`;
-
 export const Footer = styled.footer<{ variant: FooterVariant }>`
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  ${props => footerVariantStyles[props.variant]}
+  ${(props) => footerVariantStyles[props.variant]}
   height: calc(50 / 16 * 1rem);
   padding: 0 1em;
 

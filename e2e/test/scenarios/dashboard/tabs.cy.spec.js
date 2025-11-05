@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -63,13 +63,13 @@ describe("scenarios > dashboard > tabs", () => {
       dashboardId: ORDERS_DASHBOARD_ID,
       save: false,
     });
-    H.dashboardCards().within(() => {
-      cy.findByText("Orders").should("not.exist");
-      cy.findByText("There's nothing here, yet.").should("be.visible");
-    });
+
+    cy.findByRole("heading", {
+      name: "Create a new question or browse your collections for an existing one.",
+    }).should("exist");
+    H.dashboardGrid().should("not.exist");
 
     // Add card to second tab
-    cy.icon("pencil").click();
     H.openQuestionsSidebar();
     H.sidebar().within(() => {
       cy.findByText("Orders, Count").click();
@@ -116,7 +116,7 @@ describe("scenarios > dashboard > tabs", () => {
           ],
         }),
       ],
-    }).then(dashboard => H.visitDashboard(dashboard.id));
+    }).then((dashboard) => H.visitDashboard(dashboard.id));
 
     assertFiltersVisibility({
       visible: [DASHBOARD_DATE_FILTER, DASHBOARD_TEXT_FILTER],
@@ -205,14 +205,14 @@ describe("scenarios > dashboard > tabs", () => {
       cy.log("should stay on the same tab");
       cy.findByRole("tab", { selected: true }).should("have.text", "Tab 1");
 
-      H.getDashboardCard(0).then(element => {
+      H.getDashboardCard(0).then((element) => {
         cy.wrap({
           width: element.outerWidth(),
           height: element.outerHeight(),
         }).as("card1OriginalSize");
       });
 
-      H.getDashboardCard(1).then(element => {
+      H.getDashboardCard(1).then((element) => {
         cy.wrap(element.offset()).as("card2OriginalPosition");
       });
 
@@ -238,8 +238,8 @@ describe("scenarios > dashboard > tabs", () => {
 
       cy.log("size should stay the same");
 
-      H.getDashboardCard(1).then(element => {
-        cy.get("@card1OriginalSize").then(originalSize => {
+      H.getDashboardCard(1).then((element) => {
+        cy.get("@card1OriginalSize").then((originalSize) => {
           expect({
             width: element.outerWidth(),
             height: element.outerHeight(),
@@ -257,8 +257,8 @@ describe("scenarios > dashboard > tabs", () => {
 
       cy.log("second card should be in the original position");
 
-      H.getDashboardCard().then(element => {
-        cy.get("@card2OriginalPosition").then(originalPosition => {
+      H.getDashboardCard().then((element) => {
+        cy.get("@card2OriginalPosition").then((originalPosition) => {
           const position = element.offset();
           // approximately to avoid possibly flakiness, we just want it to be in the same grid cell
           expect(position.left).to.approximately(originalPosition.left, 10);
@@ -288,7 +288,7 @@ describe("scenarios > dashboard > tabs", () => {
         }),
       ];
 
-      cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+      H.createDashboard().then(({ body: { id: dashboard_id } }) => {
         H.updateDashboardCards({ dashboard_id, cards });
 
         H.visitDashboard(dashboard_id);
@@ -327,7 +327,7 @@ describe("scenarios > dashboard > tabs", () => {
       },
       collection_id: ADMIN_PERSONAL_COLLECTION_ID,
     };
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails: {
         collection_id: NORMAL_PERSONAL_COLLECTION_ID,
@@ -397,7 +397,7 @@ describe("scenarios > dashboard > tabs", () => {
       cy.spy().as("firstTabQuerySpy"),
     ).as("firstTabQuery");
 
-    cy.get("@secondTabDashcardId").then(secondTabDashcardId => {
+    cy.get("@secondTabDashcardId").then((secondTabDashcardId) => {
       cy.intercept(
         "POST",
         `/api/dashboard/${ORDERS_DASHBOARD_ID}/dashcard/${secondTabDashcardId}/card/${ORDERS_COUNT_QUESTION_ID}/query`,
@@ -414,10 +414,10 @@ describe("scenarios > dashboard > tabs", () => {
         .its("body");
     };
 
-    firstQuestion().then(r => {
+    firstQuestion().then((r) => {
       cy.wrap(r.view_count).should("equal", 1);
     });
-    secondQuestion().then(r => {
+    secondQuestion().then((r) => {
       cy.wrap(r.view_count).should("equal", 1);
     });
 
@@ -426,12 +426,12 @@ describe("scenarios > dashboard > tabs", () => {
 
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@secondTabQuerySpy").should("not.have.been.called");
-    cy.wait("@firstTabQuery").then(r => {
-      firstQuestion().then(r => {
-        expect(r.view_count).to.equal(3); // 1 (previously) + 1 (firstQuestion) + 1 (firstTabQuery)
+    cy.wait("@firstTabQuery").then((r) => {
+      firstQuestion().then((r) => {
+        expect(r.view_count).to.equal(2); // 1 (previously) + 1 (firstQuestion)
       });
-      secondQuestion().then(r => {
-        expect(r.view_count).to.equal(2); // 1 (previously) + 1 (secondQuestion)
+      secondQuestion().then((r) => {
+        expect(r.view_count).to.equal(1); // 1 (previously)
       });
     });
 
@@ -439,12 +439,12 @@ describe("scenarios > dashboard > tabs", () => {
     H.goToTab("Tab 2");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@secondTabQuery").then(r => {
-      firstQuestion().then(r => {
-        expect(r.view_count).to.equal(4); // 3 (previously) + 1 (firstQuestion)
+    cy.wait("@secondTabQuery").then((r) => {
+      firstQuestion().then((r) => {
+        expect(r.view_count).to.equal(2); // 2 (previously)
       });
-      secondQuestion().then(r => {
-        expect(r.view_count).to.equal(4); // 2 (previously) + 1 (secondQuestion) + 1 (secondTabQuery)
+      secondQuestion().then((r) => {
+        expect(r.view_count).to.equal(2); // 1(previously) + 1 (secondTabQuery)
       });
     });
 
@@ -454,11 +454,11 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
 
-    firstQuestion().then(r => {
-      expect(r.view_count).to.equal(5); // 4 (previously) + 1 (firstQuestion)
+    firstQuestion().then((r) => {
+      expect(r.view_count).to.equal(2); // 2 (previously)
     });
-    secondQuestion().then(r => {
-      expect(r.view_count).to.equal(5); // 4 (previously) + 1 (secondQuestion)
+    secondQuestion().then((r) => {
+      expect(r.view_count).to.equal(2); // 2 (previously)
     });
 
     // Go to public dashboard
@@ -472,7 +472,7 @@ describe("scenarios > dashboard > tabs", () => {
         `/api/public/dashboard/${uuid}/dashcard/${ORDERS_DASHBOARD_DASHCARD_ID}/card/${ORDERS_QUESTION_ID}?parameters=%5B%5D`,
         cy.spy().as("publicFirstTabQuerySpy"),
       ).as("publicFirstTabQuery");
-      cy.get("@secondTabDashcardId").then(secondTabDashcardId => {
+      cy.get("@secondTabDashcardId").then((secondTabDashcardId) => {
         cy.intercept(
           "GET",
           `/api/public/dashboard/${uuid}/dashcard/${secondTabDashcardId}/card/${ORDERS_COUNT_QUESTION_ID}?parameters=%5B%5D`,
@@ -486,12 +486,12 @@ describe("scenarios > dashboard > tabs", () => {
     // Check first tab requests
     cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuerySpy").should("not.have.been.called");
-    cy.wait("@publicFirstTabQuery").then(r => {
-      firstQuestion().then(r => {
-        expect(r.view_count).to.equal(7); // 5 (previously) + 1 (firstQuestion) + 1 (publicFirstTabQuery)
+    cy.wait("@publicFirstTabQuery").then((r) => {
+      firstQuestion().then((r) => {
+        expect(r.view_count).to.equal(3); // 2 (previously) + 1 (publicFirstTabQuery)
       });
-      secondQuestion().then(r => {
-        expect(r.view_count).to.equal(6); // 5 (previously) + 1 (secondQuestion)
+      secondQuestion().then((r) => {
+        expect(r.view_count).to.equal(2); // 2 (previously)
       });
     });
 
@@ -499,27 +499,18 @@ describe("scenarios > dashboard > tabs", () => {
     H.goToTab("Tab 2");
     cy.get("@publicSecondTabQuerySpy").should("have.been.calledOnce");
     cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@publicSecondTabQuery").then(r => {
-      firstQuestion().then(r => {
-        expect(r.view_count).to.equal(8); // 7 (previously) + 1 (firstQuestion)
+    cy.wait("@publicSecondTabQuery").then((r) => {
+      firstQuestion().then((r) => {
+        expect(r.view_count).to.equal(3); // 3 (previously)
       });
-      secondQuestion().then(r => {
-        expect(r.view_count).to.equal(8); // 6 (previously) + 1 (secondQuestion) + 1 (publicSecondTabQuery)
+      secondQuestion().then((r) => {
+        expect(r.view_count).to.equal(3); // 2 (previously) + 1 (publicSecondTabQuery)
       });
     });
 
     H.goToTab("Tab 1");
-    // This is a bug. publicFirstTabQuery should not be called again
-    cy.get("@publicFirstTabQuerySpy").should("have.been.calledTwice");
+    cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@publicFirstTabQuery").then(r => {
-      firstQuestion().then(r => {
-        expect(r.view_count).to.equal(10); // 8 (previously) + 1 (firstQuestion) + 1 (publicFirstTabQuery)
-      });
-      secondQuestion().then(r => {
-        expect(r.view_count).to.equal(9); // 8 (previously) + 1 (secondQuestion)
-      });
-    });
   });
 
   it("should only fetch cards on the current tab of an embedded dashboard", () => {
@@ -552,13 +543,6 @@ describe("scenarios > dashboard > tabs", () => {
         .its("body");
     };
 
-    firstQuestion().then(r => {
-      expect(r.view_count).to.equal(1); // 1 (firstQuestion)
-    });
-    secondQuestion().then(r => {
-      expect(r.view_count).to.equal(1); // 1 (secondQuestion)
-    });
-
     cy.intercept(
       "GET",
       `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_QUESTION_ID}*`,
@@ -582,39 +566,30 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@secondTabQuerySpy").should("not.have.been.called");
 
-    cy.wait("@firstTabQuery").then(r => {
-      firstQuestion().then(r => {
+    cy.wait("@firstTabQuery").then((r) => {
+      firstQuestion().then((r) => {
         expect(r.view_count).to.equal(3); // 1 (previously) + 1 (firstQuestion) + 1 (first tab query)
       });
-      secondQuestion().then(r => {
-        expect(r.view_count).to.equal(2); // 1 (previously) + 1 (secondQuestion)
+      secondQuestion().then((r) => {
+        expect(r.view_count).to.equal(1); // 1 (previously)
       });
     });
 
     H.goToTab("Tab 2");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@secondTabQuery").then(r => {
-      firstQuestion().then(r => {
-        expect(r.view_count).to.equal(4); // 3 (previously) + 1 (firstQuestion)
+    cy.wait("@secondTabQuery").then((r) => {
+      firstQuestion().then((r) => {
+        expect(r.view_count).to.equal(3); // 3 (previously)
       });
-      secondQuestion().then(r => {
-        expect(r.view_count).to.equal(4); // 2 (previously) + 1 (secondQuestion) + 1 (second tab query)
+      secondQuestion().then((r) => {
+        expect(r.view_count).to.equal(2); // 1 (previously) + 1 (second tab query)
       });
     });
 
     H.goToTab("Tab 1");
-    // This is a bug. firstTabQuery should not be called again
-    cy.get("@firstTabQuerySpy").should("have.been.calledTwice");
+    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@firstTabQuery").then(r => {
-      firstQuestion().then(r => {
-        expect(r.view_count).to.equal(6); // 4 (previously) + 1 (firstQuestion) + 1 (first tab query)
-      });
-      secondQuestion().then(r => {
-        expect(r.view_count).to.equal(5); // 4 (previously) + 1 (secondQuestion)
-      });
-    });
   });
 
   it("should apply filter and show loading spinner when changing tabs (#33767)", () => {
@@ -648,7 +623,7 @@ describe("scenarios > dashboard > tabs", () => {
     H.getDashboardCard(0).within(() => {
       cy.findByTestId("loading-indicator").should("exist");
       cy.wait("@saveCard");
-      cy.findAllByTestId("table-row").should("exist");
+      cy.findAllByRole("row").should("exist");
     });
 
     // we do not auto-wire automatically in different tabs anymore, so first tab
@@ -656,7 +631,7 @@ describe("scenarios > dashboard > tabs", () => {
     H.goToTab("Tab 1");
     H.getDashboardCard(0).within(() => {
       cy.findByTestId("loading-indicator").should("not.exist");
-      cy.findAllByTestId("table-row").should("exist");
+      cy.findAllByRole("row").should("exist");
     });
   });
 
@@ -687,14 +662,14 @@ describe("scenarios > dashboard > tabs", () => {
         // DashboardTabs.unit.spec.tsx will fail.
         clientX: 11,
         clientY: 0,
-        force: true,
       })
       .trigger("mousemove", {
         button: 0,
         clientX: 11,
         clientY: 0,
-        force: true,
       })
+      // UI requires time to update, causes flakiness without the delay
+      .wait(100)
       .trigger("mouseup");
 
     // After the long tab is dragged, it is now in the first position. We need
@@ -742,8 +717,6 @@ describe("scenarios > dashboard > tabs", () => {
 });
 
 H.describeWithSnowplow("scenarios > dashboard > tabs", () => {
-  const PAGE_VIEW_EVENT = 1;
-
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -757,19 +730,18 @@ H.describeWithSnowplow("scenarios > dashboard > tabs", () => {
 
   it("should send snowplow events when dashboard tabs are created and deleted", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
 
     H.editDashboard();
     H.createNewTab();
     H.saveDashboard();
-    H.expectGoodSnowplowEvent({ event: "dashboard_saved" }, 1);
-    H.expectGoodSnowplowEvent({ event: "dashboard_tab_created" }, 1);
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" });
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_tab_created" });
 
     H.editDashboard();
     H.deleteTab("Tab 2");
     H.saveDashboard();
-    H.expectGoodSnowplowEvent({ event: "dashboard_saved" }, 2);
-    H.expectGoodSnowplowEvent({ event: "dashboard_tab_deleted" }, 1);
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" }, 2);
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_tab_deleted" });
   });
 
   it("should send snowplow events when cards are moved between tabs", () => {
@@ -777,12 +749,7 @@ H.describeWithSnowplow("scenarios > dashboard > tabs", () => {
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    H.expectGoodSnowplowEvent(
-      {
-        event: cardMovedEventName,
-      },
-      0,
-    );
+    H.assertNoUnstructuredSnowplowEvent({ event: cardMovedEventName });
 
     H.editDashboard();
     H.createNewTab();
@@ -790,12 +757,7 @@ H.describeWithSnowplow("scenarios > dashboard > tabs", () => {
 
     H.moveDashCardToTab({ tabName: "Tab 2" });
 
-    H.expectGoodSnowplowEvent(
-      {
-        event: cardMovedEventName,
-      },
-      1,
-    );
+    H.expectUnstructuredSnowplowEvent({ event: cardMovedEventName });
   });
 });
 
@@ -809,7 +771,7 @@ H.describeWithSnowplow("scenarios > dashboard > tabs", () => {
  */
 function delayResponse(delayMs) {
   return function (req) {
-    req.on("response", res => {
+    req.on("response", (res) => {
       res.setDelay(delayMs);
     });
   };
@@ -858,14 +820,14 @@ const createNumberFilterMapping = ({ card_id }) => {
 
 function assertFiltersVisibility({ visible = [], hidden = [] }) {
   cy.findByTestId("dashboard-parameters-widget-container", () => {
-    visible.forEach(filter => cy.findByText(filter.name).should("exist"));
-    hidden.forEach(filter => cy.findByText(filter.name).should("not.exist"));
+    visible.forEach((filter) => cy.findByText(filter.name).should("exist"));
+    hidden.forEach((filter) => cy.findByText(filter.name).should("not.exist"));
   });
 
   // Ensure all filters are visible in edit mode
   H.editDashboard();
   cy.findByTestId("edit-dashboard-parameters-widget-container", () => {
-    [...visible, ...hidden].forEach(filter =>
+    [...visible, ...hidden].forEach((filter) =>
       cy.findByText(filter.name).should("exist"),
     );
   });

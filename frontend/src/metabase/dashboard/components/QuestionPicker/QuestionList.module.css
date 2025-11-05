@@ -1,0 +1,39 @@
+.QuestionListItemRoot {
+  .QuestionListItem {
+    flex: 1;
+  }
+
+  &:hover {
+    .QuestionListItemIcon {
+      color: var(--mb-color-text-primary);
+    }
+  }
+
+  .QuestionListItemLabel {
+    overflow: hidden;
+  }
+
+  .QuestionListItemIcon {
+    color: var(--mb-color-brand);
+  }
+
+  .QuestionListItemIcon:last-child {
+    justify-self: start;
+  }
+
+  .VisualizerButton {
+    visibility: hidden;
+    background-color: var(--mb-color-brand);
+    color: var(--mb-color-text-white);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--mb-color-text-white);
+      background-color: var(--mb-color-brand);
+    }
+  }
+
+  &:hover .VisualizerButton {
+    visibility: visible;
+  }
+}

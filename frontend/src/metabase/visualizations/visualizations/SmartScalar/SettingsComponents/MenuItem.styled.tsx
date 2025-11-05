@@ -1,17 +1,20 @@
-import { css } from "@emotion/react";
-import styled from "@emotion/styled";
-import type { HTMLAttributes } from "react";
+import cx from "classnames";
 
 import type { MenuItemProps } from "metabase/ui";
 import { Menu } from "metabase/ui";
 
-type MenuItemStyledProps = MenuItemProps & HTMLAttributes<HTMLButtonElement>;
+import S from "./MenuItem.module.css";
 
-export const MenuItemStyled = styled(Menu.Item)<MenuItemStyledProps>`
-  ${({ "aria-selected": isSelected }) =>
-    isSelected &&
-    css`
-      color: var(--mb-color-brand);
-      background-color: var(--mb-color-brand-lighter);
-    `}
-`;
+type MenuItemStyledProps = MenuItemProps &
+  React.HTMLAttributes<HTMLButtonElement>;
+
+export const MenuItemStyled = (props: MenuItemStyledProps) => {
+  const isSelected = props["aria-selected"];
+
+  return (
+    <Menu.Item
+      {...props}
+      className={cx(props.className, { [S.isSelected]: isSelected })}
+    />
+  );
+};

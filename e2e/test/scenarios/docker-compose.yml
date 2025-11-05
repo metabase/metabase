@@ -1,4 +1,7 @@
-version: "3.9"
+name: metabase-e2e
+
+include:
+  - ../../../snowplow/docker-compose.yml
 
 services:
   postgres-sample:
@@ -7,13 +10,55 @@ services:
     image: metabase/qa-databases:postgres-sample-12
     ports:
       - 5404:5432
+
   mongo-sample:
     image: metabase/qa-databases:mongo-sample-5.0
     ports:
       - 27004:27017
+
   mysql-sample:
     environment:
       - TZ=US/Pacific
     image: metabase/qa-databases:mysql-sample-8
     ports:
       - 3304:3306
+
+  webhook-tester:
+    image: tarampampam/webhook-tester:1.1.0
+    ports:
+      - 9080:8080
+    command: serve --create-session 00000000-0000-0000-0000-000000000000
+
+  maildev:
+    image: maildev/maildev:2.2.1
+    ports:
+      - "1080:1080"
+      - "1025:1025"
+
+  maildev-ssl:
+    ## NOTE: Using this requires a root CA certificate to be added to the Java keystore.
+    ## See maildev-keys/README.md for more info.
+    image: maildev/maildev:latest
+    ports:
+      - "1081:1081"
+      - "465:465"
+    environment:
+      NODE_TLS_REJECT_UNAUTHORIZED: 0
+      MAILDEV_WEB_PORT: 1081
+      MAILDEV_SMTP_PORT: 465
+      MAILDEV_INCOMING_SECURE: true
+      MAILDEV_INCOMING_CERT: /keys/cert.pem
+      MAILDEV_INCOMING_KEY: /keys/key.pem
+    volumes:
+      - ./maildev-keys:/keys
+
+  ldap:
+    image: bitnamilegacy/openldap:2.6.4
+    ports:
+      - "389:389"
+    environment:
+      LDAP_ADMIN_PASSWORD: adminpass
+      LDAP_USERS: user01@example.org,user02@example.org
+      LDAP_PASSWORDS: 123456,123465
+      LDAP_ROOT: dc=example,dc=org
+      LDAP_PORT_NUMBER: 389

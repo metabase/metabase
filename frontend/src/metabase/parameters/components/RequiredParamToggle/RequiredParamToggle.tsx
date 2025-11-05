@@ -1,16 +1,15 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { Flex, HoverCard, Icon, Stack, Switch, Text } from "metabase/ui";
 
-import { SettingRequiredLabel } from "./RequiredParamToggle.styled";
+import S from "./RequiredParamToggle.module.css";
 
 interface RequiredParamToggleProps {
   disabled?: boolean;
   uniqueId: string;
   value: boolean;
   onChange: (value: boolean) => void;
-  disabledTooltip: ReactNode;
+  disabledTooltip: React.ReactNode;
 }
 
 export function RequiredParamToggle(props: RequiredParamToggleProps) {
@@ -23,24 +22,24 @@ export function RequiredParamToggle(props: RequiredParamToggleProps) {
         disabled={disabled}
         id={id}
         checked={value}
-        onChange={event => onChange(event.currentTarget.checked)}
+        onChange={(event) => onChange(event.currentTarget.checked)}
       />
       <div>
-        <SettingRequiredLabel htmlFor={id}>
+        <label className={S.SettingRequiredLabel} htmlFor={id}>
           {t`Always require a value`}
           {disabled && (
             <HoverCard position="top-end" shadow="xs">
               <HoverCard.Target>
-                <Icon name="info_filled" />
+                <Icon name="info" />
               </HoverCard.Target>
               <HoverCard.Dropdown w={320}>
-                <Stack p="md" spacing="sm">
+                <Stack p="md" gap="sm">
                   {disabledTooltip}
                 </Stack>
               </HoverCard.Dropdown>
             </HoverCard>
           )}
-        </SettingRequiredLabel>
+        </label>
 
         <Text
           mt="sm"

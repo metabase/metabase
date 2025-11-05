@@ -1,5 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
 import {
@@ -100,6 +101,7 @@ type SetupOpts = {
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
   isNew?: boolean;
+  withAddButton?: boolean;
 };
 
 function setup({
@@ -108,6 +110,7 @@ function setup({
   column,
   filter,
   isNew = false,
+  withAddButton = false,
 }: SetupOpts) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -119,6 +122,8 @@ function setup({
       column={column}
       filter={filter}
       isNew={isNew}
+      withAddButton={withAddButton}
+      withSubmitButton
       onChange={onChange}
       onBack={onBack}
     />,
@@ -129,7 +134,7 @@ function setup({
 
 describe("FilterPickerBody", () => {
   const provider = Lib.metadataProvider(DATABASE.id, METADATA);
-  const table = Lib.tableOrCardMetadata(provider, TABLE.id);
+  const table = checkNotNull(Lib.tableOrCardMetadata(provider, TABLE.id));
   const query = Lib.queryFromTableOrCardMetadata(provider, table);
   const stageIndex = 0;
   const columns = Lib.filterableColumns(query, stageIndex);

@@ -26,19 +26,19 @@ export const DeleteApiKeyModal = ({
   }, [onClose, apiKey.id, deleteApiKey]);
 
   return (
-    <Modal size="30rem" opened onClose={onClose} title={t`Delete API Key`}>
+    <Modal size="30rem" opened onClose={onClose} title={t`Delete API key`}>
       <FormProvider initialValues={{}} onSubmit={handleDelete}>
         <Form>
-          <Stack spacing="lg">
+          <Stack gap="lg">
             <Text>{t`You won't be able to recover a deleted API key. You'll have to create a new key.`}</Text>
             <FormErrorMessage />
-            <Group position="right">
+            <Group justify="flex-end">
               <Button
                 color="error"
                 onClick={onClose}
               >{t`No, don't delete`}</Button>
               <FormSubmitButton
-                label={t`Delete API Key`}
+                label={t`Delete API key`}
                 variant="filled"
                 color="error"
               />

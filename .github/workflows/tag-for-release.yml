@@ -135,6 +135,9 @@ jobs:
     env:
       INTERACTIVE: false
     steps:
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: .github
     - name: Get correct version number
       run: | # bash
         if [ '${{matrix.edition}}' == 'ee' ]; then
@@ -151,54 +154,9 @@ jobs:
         java-version: 21
 
     - name: Retrieve test build uberjar artifact for ${{ matrix.edition }}
-      id: find_release_artifact
-      uses: actions/github-script@v7
+      uses: ./.github/actions/fetch-artifact
       with:
-        result-encoding: string
-        script: | # js
-          const fs = require('fs');
-
-          const artifacts = await github.rest.actions.listArtifactsForRepo({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            name: `metabase-${{ matrix.edition }}-${{ inputs.commit }}-uberjar`,
-            per_page: 1,
-          });
-
-          if (!artifacts.data?.artifacts?.[0]?.id) {
-            console.warn(`No existing artifacts found for ${{ inputs.commit }}, need to build jar`);
-
-            if ("${{matrix.edition}}" === 'oss') {
-              // only trigger the build job on OSS, otherwise we'll get double builds
-              github.rest.actions.createWorkflowDispatch({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: 'build-for-release.yml',
-                ref: 'refs/heads/master',
-                inputs: {
-                  commit: '${{ inputs.commit }}',
-                  version: '${{ inputs.version }}',
-                }
-              });
-            }
-
-            throw new Error('aborting in favor of build script');
-          }
-
-          const artifact_id = artifacts.data.artifacts[0].id;
-
-          const download = await github.rest.actions.downloadArtifact({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            artifact_id: artifact_id,
-            archive_format: 'zip',
-          });
-
-          fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/mb.zip`, Buffer.from(download.data));
-    - name: Unzip Metabase artifact containing an uberjar
-      run: |
-        unzip mb.zip
-        mv target/uberjar/metabase.jar metabase.jar
+        name: metabase-${{ matrix.edition }}-${{ inputs.commit }}-uberjar
 
     - name: Update version.properties in jar
       run: | # sh

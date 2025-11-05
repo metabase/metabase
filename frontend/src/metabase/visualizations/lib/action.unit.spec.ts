@@ -72,7 +72,7 @@ describe("performAction", () => {
   ])(`when site URL is $name`, ({ sitePath }) => {
     it.each(["/", "/question/1", "/question/1/"])(
       `should redirect using router when using a relative URL with leading slash: "%s"`,
-      url => {
+      (url) => {
         MetabaseSettings.set("site-url", sitePath);
         const action: UrlClickAction = {
           buttonType: "horizontal",
@@ -111,7 +111,7 @@ describe("performAction", () => {
 
     it.each(["auto/dashboard/adhoc/123Abc", "auto/dashboard/adhoc/123Abc/"])(
       `should redirect using router when using a relative URL: "%s"`,
-      url => {
+      (url) => {
         MetabaseSettings.set("site-url", sitePath);
         const action: UrlClickAction = {
           buttonType: "horizontal",

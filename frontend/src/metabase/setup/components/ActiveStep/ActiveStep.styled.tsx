@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { breakpointMinSmall } from "metabase/styled-components/theme";
@@ -41,9 +42,4 @@ export const StepLabelText = styled.span`
   color: var(--mb-color-brand);
   font-weight: 700;
   line-height: 1;
-`;
-
-export const StepDescription = styled.div`
-  color: var(--mb-color-text-medium);
-  margin: 0.875rem 0;
 `;

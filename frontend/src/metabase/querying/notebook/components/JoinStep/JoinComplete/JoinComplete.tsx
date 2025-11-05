@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Flex, Text } from "metabase/ui";
+import { Flex, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import {
@@ -101,9 +101,9 @@ export function JoinComplete({
   };
 
   return (
-    <Flex miw="100%" gap="1rem">
+    <Flex direction={{ base: "column", md: "row" }} gap="sm">
       <NotebookCell className={S.JoinConditionCell} color={color}>
-        <Flex direction="row" gap={6}>
+        <Flex gap={6}>
           <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
             {lhsTableName}
           </NotebookCellItem>
@@ -132,10 +132,14 @@ export function JoinComplete({
           />
         </Flex>
       </NotebookCell>
-      <Box mt="1.5rem">
-        <Text color="brand" weight="bold">{t`on`}</Text>
-      </Box>
-      <NotebookCell className={S.JoinConditionCell} color={color}>
+      <Flex className={S.JoinConditionOn}>
+        <Text c="brand" fw="bold">{t`on`}</Text>
+      </Flex>
+      <NotebookCell
+        className={S.JoinConditionCell}
+        color={color}
+        p={rem("10px")}
+      >
         {conditions.map((condition, index) => {
           const testId = `join-condition-${index}`;
           const isLast = index === conditions.length - 1;
@@ -151,7 +155,7 @@ export function JoinComplete({
                 rhsTableName={rhsTableName}
                 isReadOnly={isReadOnly}
                 isRemovable={conditions.length > 1}
-                onChange={newCondition =>
+                onChange={(newCondition) =>
                   handleUpdateCondition(newCondition, index)
                 }
                 onRemove={() => handleRemoveCondition(index)}
@@ -173,6 +177,7 @@ export function JoinComplete({
               query={query}
               stageIndex={stageIndex}
               joinable={join}
+              strategy={strategy}
               lhsTableName={lhsTableName}
               rhsTableName={rhsTableName}
               isReadOnly={isReadOnly}

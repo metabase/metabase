@@ -10,9 +10,8 @@ import type {
   DeleteBookmark,
 } from "metabase/collections/types";
 import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
-import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
+import ItemDragSource from "metabase/common/components/dnd/ItemDragSource";
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
 import { Box, Group, Icon, Stack } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -41,12 +40,13 @@ function PinnedItemOverview({
   onCopy,
   onMove,
 }: Props) {
-  const sortedItems = _.sortBy(items, item => item.collection_position);
+  const sortedItems = _.sortBy(items, (item) => item.collection_position);
   const {
     card: cardItems = [],
     dashboard: dashboardItems = [],
     dataset: modelItems = [],
     metric: metricItems = [],
+    document: documentItems = [],
   } = _.groupBy(sortedItems, "model");
   const cardGroups = _.partition(cardItems, isPreviewShown);
   const metricGroups = _.partition(metricItems, isPreviewShown);
@@ -59,7 +59,7 @@ function PinnedItemOverview({
     <Container data-testid="pinned-items">
       <PinDropZone variant="pin" />
 
-      <Stack spacing="1.5rem">
+      <Stack gap="1.5rem">
         {metricItems.length > 0 && (
           <div>
             <SectionTitle title={t`Metrics`} icon="metric" />
@@ -67,7 +67,7 @@ function PinnedItemOverview({
               (cardGroup, cardGroupIndex) =>
                 cardGroup.length > 0 && (
                   <Grid key={cardGroupIndex}>
-                    {cardGroup.map(item => (
+                    {cardGroup.map((item) => (
                       <div key={item.id} className={CS.relative}>
                         <PinnedItemSortDropTarget
                           isFrontTarget
@@ -110,7 +110,7 @@ function PinnedItemOverview({
               (cardGroup, cardGroupIndex) =>
                 cardGroup.length > 0 && (
                   <Grid key={cardGroupIndex}>
-                    {cardGroup.map(item => (
+                    {cardGroup.map((item) => (
                       <div key={item.id} className={CS.relative}>
                         <PinnedItemSortDropTarget
                           isFrontTarget
@@ -150,7 +150,7 @@ function PinnedItemOverview({
           <div>
             <SectionTitle title={t`Dashboards`} icon="dashboard" />
             <Grid>
-              {dashboardItems.map(item => (
+              {dashboardItems.map((item) => (
                 <div key={item.id} className={CS.relative}>
                   <PinnedItemSortDropTarget
                     isFrontTarget
@@ -184,6 +184,44 @@ function PinnedItemOverview({
           </div>
         )}
 
+        {documentItems.length > 0 && (
+          <div>
+            <SectionTitle title={t`Documents`} icon="document" />
+            <Grid>
+              {documentItems.map((item) => (
+                <div key={item.id} className={CS.relative}>
+                  <PinnedItemSortDropTarget
+                    isFrontTarget
+                    itemModel="document"
+                    pinIndex={item.collection_position}
+                    enableDropTargetBackground={false}
+                  />
+                  <ItemDragSource item={item} collection={collection}>
+                    <div>
+                      <PinnedItemCard
+                        databases={databases}
+                        bookmarks={bookmarks}
+                        createBookmark={createBookmark}
+                        deleteBookmark={deleteBookmark}
+                        item={item}
+                        collection={collection}
+                        onCopy={onCopy}
+                        onMove={onMove}
+                      />
+                    </div>
+                  </ItemDragSource>
+                  <PinnedItemSortDropTarget
+                    isBackTarget
+                    itemModel="document"
+                    pinIndex={item.collection_position}
+                    enableDropTargetBackground={false}
+                  />
+                </div>
+              ))}
+            </Grid>
+          </div>
+        )}
+
         {modelItems.length > 0 && (
           <div>
             <SectionTitle
@@ -196,7 +234,7 @@ function PinnedItemOverview({
               }
             />
             <Grid>
-              {modelItems.map(item => (
+              {modelItems.map((item) => (
                 <div key={item.id} className={CS.relative}>
                   <PinnedItemSortDropTarget
                     isFrontTarget
@@ -242,9 +280,9 @@ interface SectionTitleProps {
 
 function SectionTitle({ title, description, icon }: SectionTitleProps) {
   return (
-    <Stack spacing="sm" pb="md">
-      <Group spacing="sm">
-        {icon && <Icon name={icon} color={color("brand")} />}
+    <Stack gap="sm" pb="md">
+      <Group gap="sm">
+        {icon && <Icon name={icon} c="brand" />}
         <h3>{title}</h3>
       </Group>
       {description && <Box c="text-medium">{description}</Box>}

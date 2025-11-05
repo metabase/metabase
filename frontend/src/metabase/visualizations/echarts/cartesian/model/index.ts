@@ -24,6 +24,7 @@ import { getAreDimensionsAndMetricsValid } from "metabase/visualizations/shared/
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
+  VisualizationGridSize,
 } from "metabase/visualizations/types";
 import type { RawSeries, SingleSeries } from "metabase-types/api";
 
@@ -62,7 +63,7 @@ export const getCardsColumns = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ) => {
-  return rawSeries.map(series => {
+  return rawSeries.map((series) => {
     const { data } = series;
     // When multiple cards are combined on a dashboard card, computed visualization settings contain
     // dimensions and metrics settings of the first card only which is not correct.
@@ -85,6 +86,7 @@ export const getCartesianChartModel = (
   hiddenSeries: string[],
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
+  gridSize?: VisualizationGridSize,
 ): CartesianChartModel => {
   // rawSeries has more than one element when two or more cards are combined on a dashboard
   const hasMultipleCards = rawSeries.length > 1;
@@ -97,6 +99,10 @@ export const getCartesianChartModel = (
     hiddenSeries,
     settings,
   );
+  // Limiting the number of series models to 100 to avoid performance issues
+  // with rendering large number of series in ECharts.
+  // We display an error message if there are more than 100 series models anyway.
+  unsortedSeriesModels.splice(101);
 
   const unsortedDataset = getJoinedCardsDataset(
     rawSeries,
@@ -179,6 +185,7 @@ export const getCartesianChartModel = (
     true,
     stackModels,
     isCompactFormatting,
+    gridSize,
   );
 
   const trendLinesModel = getTrendLines(

@@ -2,18 +2,18 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [malli.core :as mc]
    [malli.error :as me]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Field Table Database]]
    [metabase.query-processor :as qp]
-   [metabase.sync :as sync]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -23,9 +23,9 @@
     :druid-jdbc
     (tqpt/with-flattened-dbdef
       (testing "describe-database"
-        (is (= {:tables #{{:schema "druid", :name "checkins" :description nil}
-                          {:schema "druid", :name "json" :description nil}
-                          {:schema "druid", :name "big_json" :description nil}}}
+        (is (= {:tables #{{:schema "druid", :name "checkins" :description nil, :is_writable nil}
+                          {:schema "druid", :name "json" :description nil, :is_writable nil}
+                          {:schema "druid", :name "big_json" :description nil, :is_writable nil}}}
                (driver/describe-database :druid-jdbc (mt/db)))))
       (testing "describe-table"
         (is (=? {:schema "druid"
@@ -34,6 +34,7 @@
                             :database-type "TIMESTAMP",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable false
                             :base-type :type/DateTime,
                             :database-position 0,
                             :json-unfolding false}
@@ -41,6 +42,7 @@
                             :database-type "BIGINT",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/BigInteger,
                             :database-position 10,
                             :json-unfolding false}
@@ -48,6 +50,7 @@
                             :database-type "BIGINT",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/BigInteger,
                             :database-position 1,
                             :json-unfolding false}
@@ -55,6 +58,7 @@
                             :database-type "COMPLEX<hyperUnique>",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/DruidHyperUnique,
                             :database-position 11,
                             :json-unfolding false}
@@ -62,6 +66,7 @@
                             :database-type "VARCHAR",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/Text,
                             :database-position 2,
                             :json-unfolding false}
@@ -69,6 +74,7 @@
                             :database-type "VARCHAR",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/Text,
                             :database-position 3,
                             :json-unfolding false}
@@ -76,6 +82,7 @@
                             :database-type "VARCHAR",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/Text,
                             :database-position 4,
                             :json-unfolding false}
@@ -83,6 +90,7 @@
                             :database-type "VARCHAR",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/Text,
                             :database-position 5,
                             :json-unfolding false}
@@ -90,6 +98,7 @@
                             :database-type "DOUBLE",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/Float,
                             :database-position 6,
                             :json-unfolding false}
@@ -97,6 +106,7 @@
                             :database-type "DOUBLE",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/Float,
                             :database-position 7,
                             :json-unfolding false}
@@ -104,6 +114,7 @@
                             :database-type "VARCHAR",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/Text,
                             :database-position 8,
                             :json-unfolding false}
@@ -111,6 +122,7 @@
                             :database-type "BIGINT",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-nullable true
                             :base-type :type/BigInteger,
                             :database-position 9,
                             :json-unfolding false}}}
@@ -123,10 +135,10 @@
                        [::failure t]))))))))
 
 (defn- db-dbms-version [db-or-id]
-  (t2/select-one-fn :dbms_version Database :id (u/the-id db-or-id)))
+  (t2/select-one-fn :dbms_version :model/Database :id (u/the-id db-or-id)))
 
 (defn- check-dbms-version [dbms-version]
-  (me/humanize (mc/validate sync-dbms-ver/DBMSVersion dbms-version)))
+  (me/humanize (mr/explain sync-dbms-ver/DBMSVersion dbms-version)))
 
 (deftest dbms-version-test
   (mt/test-driver
@@ -137,8 +149,8 @@
       (tqpt/with-flattened-dbdef
         (let [db                   (mt/db)
               version-on-load      (db-dbms-version db)
-              _                    (t2/update! Database (u/the-id db) {:dbms_version nil})
-              db                   (t2/select-one Database :id (u/the-id db))
+              _                    (t2/update! :model/Database (u/the-id db) {:dbms_version nil})
+              db                   (t2/select-one :model/Database :id (u/the-id db))
               version-after-update (db-dbms-version db)
               _                    (sync-dbms-ver/sync-dbms-version! db)]
           (testing "On startup is the dbms-version specified?"
@@ -454,11 +466,11 @@
                    (some-> (.getCause e) recur)))))))))
 
 (defn- table-rows-sample []
-  (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :checkins))
-                                           [(t2/select-one Field :id (mt/id :checkins :id))
-                                            (t2/select-one Field :id (mt/id :checkins :venue_name))
-                                            (t2/select-one Field :id (mt/id :checkins :__time #_:timestamp))]
-                                           (constantly conj))
+  (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :checkins))
+                                            [(t2/select-one :model/Field :id (mt/id :checkins :id))
+                                             (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
+                                             (t2/select-one :model/Field :id (mt/id :checkins :__time #_:timestamp))]
+                                            (constantly conj))
        (sort-by first)
        (take 5)))
 
@@ -478,3 +490,20 @@
           (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
             (is (= expected
                    (table-rows-sample)))))))))
+
+(deftest ^:parallel druid-jdbc-date-parameter-query
+  (testing "druid jdbc query with a date parameter should work"
+    (mt/test-driver :druid-jdbc
+      (let [query {:database   (mt/id)
+                   :type       :native
+                   :native     {:query         "select count(1) from checkins where __time >= {{dbtime}}"
+                                :template-tags {"dbtime" {:type         :date
+                                                          :name         "dbtime"
+                                                          :display-name "Dbtime"}}}
+                   :parameters [{:type   :date/single
+                                 :target [:variable [:template-tag "dbtime"]]
+                                 :value  "2014-04-07"}]}]
+        (is (= [[650]]
+               (mt/rows (qp/process-query query))))
+        (is (= "select count(1) from checkins where __time >= '2014-04-07'"
+               (:query (qp.compile/compile-with-inline-parameters query))))))))

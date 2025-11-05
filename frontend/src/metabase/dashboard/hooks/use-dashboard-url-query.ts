@@ -24,7 +24,7 @@ export function useDashboardUrlQuery(
   router: InjectedRouter,
   location: Location,
 ) {
-  const dashboardId = useSelector(state => getDashboard(state)?.id);
+  const dashboardId = useSelector((state) => getDashboard(state)?.id);
   const tabs = useSelector(getTabs);
   const selectedTab = useSelector(getSelectedTab);
   const parameters = useSelector(getValuePopulatedParameters);
@@ -57,7 +57,7 @@ export function useDashboardUrlQuery(
      * This causes the iframe to reload when changing the preview hash from appearance
      * settings because now the base URL (including the query string) is different.
      */
-    if (IS_EMBED_PREVIEW) {
+    if (IS_EMBED_PREVIEW || !dashboardId) {
       return;
     }
 
@@ -104,7 +104,7 @@ export function useDashboardUrlQuery(
 
   useEffect(() => {
     // @ts-expect-error missing type declaration
-    const unsubscribe = router.listen(nextLocation => {
+    const unsubscribe = router.listen((nextLocation) => {
       const isSamePath = nextLocation.pathname === location.pathname;
       if (!isSamePath) {
         return;
@@ -122,7 +122,7 @@ export function useDashboardUrlQuery(
   }, [router, location, selectedTab, dispatch]);
 }
 
-const QUERY_PARAMS_ALLOW_LIST = ["objectId", "locale"];
+const QUERY_PARAMS_ALLOW_LIST = ["objectId"];
 
 function parseTabId(location: Location) {
   const slug = location.query?.tab;
@@ -134,5 +134,5 @@ function parseTabId(location: Location) {
 }
 
 function toLocationQuery(object: Record<string, any>) {
-  return _.mapObject(object, value => (value == null ? "" : value));
+  return _.mapObject(object, (value) => (value == null ? "" : value));
 }

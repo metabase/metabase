@@ -3,6 +3,7 @@ import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
+import { MetabaseReduxContext } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 
@@ -24,50 +25,56 @@ const MetabaseIsSetup = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "MetabaseIsSetup",
   redirectPath: "/setup",
   allowRedirectBack: false,
-  authenticatedSelector: state => getSetting(state, "has-user-setup"),
+  authenticatedSelector: (state) => getSetting(state, "has-user-setup"),
   redirectAction: routerActions.replace,
+  context: MetabaseReduxContext,
 });
 
 const UserIsAuthenticated = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserIsAuthenticated",
   redirectPath: "/auth/login",
-  authenticatedSelector: state => !!state.currentUser,
+  authenticatedSelector: (state) => !!state.currentUser,
   redirectAction: routerActions.replace,
+  context: MetabaseReduxContext,
 });
 
 const UserIsAdmin = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserIsAdmin",
   redirectPath: "/unauthorized",
   allowRedirectBack: false,
-  authenticatedSelector: state =>
+  authenticatedSelector: (state) =>
     Boolean(state.currentUser && state.currentUser.is_superuser),
   redirectAction: routerActions.replace,
+  context: MetabaseReduxContext,
 });
 
 const UserIsNotAuthenticated = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserIsNotAuthenticated",
   redirectPath: () => getRedirectUrl(),
   allowRedirectBack: false,
-  authenticatingSelector: state =>
+  authenticatingSelector: (state) =>
     state.auth.loginPending || !state.auth.redirect,
-  authenticatedSelector: state => !state.currentUser,
+  authenticatedSelector: (state) => !state.currentUser,
   redirectAction: routerActions.replace,
+  context: MetabaseReduxContext,
 });
 
 const UserCanAccessSettings = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserCanAccessSettings",
   redirectPath: "/unauthorized",
   allowRedirectBack: false,
-  authenticatedSelector: state => (getAdminPaths(state)?.length ?? 0) > 0,
+  authenticatedSelector: (state) => (getAdminPaths(state)?.length ?? 0) > 0,
   redirectAction: routerActions.replace,
+  context: MetabaseReduxContext,
 });
 
 export const UserCanAccessOnboarding = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserCanAccessOnboarding",
   redirectPath: "/",
   allowRedirectBack: false,
-  authenticatedSelector: state => getCanAccessOnboardingPage(state),
+  authenticatedSelector: (state) => getCanAccessOnboardingPage(state),
   redirectAction: routerActions.replace,
+  context: MetabaseReduxContext,
 });
 
 export const IsAuthenticated = MetabaseIsSetup(

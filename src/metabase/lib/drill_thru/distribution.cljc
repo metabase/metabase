@@ -30,6 +30,7 @@
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -51,7 +52,8 @@
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (nil? value)
-             (not (lib.drill-thru.common/aggregation-sourced? query column))
+             (lib.metadata/database-supports? query :binning)
+             (not (lib.underlying/aggregation-sourced? query column))
              (not (lib.types.isa/primary-key? column))
              (not (lib.types.isa/structured?  column))
              (not (lib.types.isa/comment?     column))

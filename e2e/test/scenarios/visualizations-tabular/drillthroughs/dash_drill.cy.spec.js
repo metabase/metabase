@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -85,7 +85,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       const CARD_NAME = "Multiscalar Question";
 
       beforeEach(() => {
-        cy.createQuestionAndDashboard({
+        H.createQuestionAndDashboard({
           questionDetails: {
             name: CARD_NAME,
             // Create muliscalar card
@@ -132,7 +132,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       it("should respect visualization type when entering a question from a dashboard (metabase#13415)", () => {
         const QUESTION_NAME = "13415";
 
-        cy.createQuestionAndDashboard({
+        H.createQuestionAndDashboard({
           questionDetails: {
             name: QUESTION_NAME,
             query: {
@@ -199,11 +199,11 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
 // This class shows up only when card title is already re-rendered.
 // That's why we don't have to wait for a specific XHR, but this works only for SCALAR questions.
 function clickScalarCardTitle(card_name) {
-  cy.findByTestId("scalar-title").contains(card_name).click();
+  H.dashboardGrid().findByText(card_name).click();
 }
 
 function addCardToNewDashboard(dashboard_name, card_id) {
-  cy.createDashboard({ name: dashboard_name }).then(
+  H.createDashboard({ name: dashboard_name }).then(
     ({ body: { id: dashboard_id } }) => {
       H.addOrUpdateDashboardCard({ card_id, dashboard_id });
       H.visitDashboard(dashboard_id);

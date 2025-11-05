@@ -1,23 +1,14 @@
 (ns metabase.search.config
   (:require
    [metabase.api.common :as api]
-   [metabase.models.setting :refer [defsetting]]
-   [metabase.permissions.util :as perms.u]
-   [metabase.public-settings :as public-settings]
+   [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.permissions.core :as perms]
+   [metabase.search.settings :as search.settings]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
-
-(defsetting search-typeahead-enabled
-  (deferred-tru "Enable typeahead search in the {0} navbar?"
-                (public-settings/application-name-for-setting-descriptions))
-  :type       :boolean
-  :default    true
-  :visibility :authenticated
-  :export?    true
-  :audit      :getter)
 
 (def ^:dynamic *db-max-results*
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
@@ -49,6 +40,12 @@
   "Show this many words of context before/after matches in long search results"
   2)
 
+(def model->db-model
+  "Mapping of model name to :db_model and :alias"
+  (cond-> api/model->db-model
+    config/ee-available? (assoc "document" {:db-model :model/Document :alias :document}
+                                "transform" {:db-model :model/Transform :alias :transform})))
+
 ;; We won't need this once fully migrated to specs, but kept for now in case legacy cod falls out of sync
 (def excluded-models
   "Set of models that should not be included in search results."
@@ -68,7 +65,7 @@
 ;; - We also need to provide an alias (and this must match the API one for legacy)
 (def model-to-db-model
   "Mapping from string model to the Toucan model backing it."
-  (apply dissoc api/model->db-model excluded-models))
+  (apply dissoc model->db-model excluded-models))
 
 (def all-models
   "Set of all valid models to search for. "
@@ -77,7 +74,9 @@
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
-  ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action" "database"])
+  (cond-> ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action"]
+    config/ee-available? (concat ["document" "transform"])
+    :always (conj "database")))
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
@@ -96,7 +95,9 @@
     :text                5
     :mine                1
     :exact               5
-    :prefix              0}
+    :prefix              0
+    ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
+    :rrf                 500}
    :command-palette
    {:prefix               5
     :model/collection     1
@@ -121,7 +122,8 @@
    [:field            {:optional true} :string]
    [:context-key      {:optional true} :keyword]
    [:supported-value? {:optional true} ifn?]
-   [:required-feature {:optional true} :keyword]])
+   [:required-feature {:optional true} :keyword]
+   [:engine           {:optional true} :keyword]])
 
 (def ^:private Filter
   "A normalized representation, for the application to leverage."
@@ -131,16 +133,18 @@
    [:field            :string]
    [:context-key      :keyword]
    [:supported-value? ifn?]
-   [:required-feature [:maybe :keyword]]])
+   [:required-feature [:maybe :keyword]]
+   [:engine           [:maybe :keyword]]])
 
 (mu/defn- build-filter :- Filter
-  [{k :key t :type :keys [context-key field supported-value? required-feature]} :- FilterDef]
+  [{k :key t :type :keys [context-key field supported-value? required-feature engine]} :- FilterDef]
   {:key              k
    :type             (keyword "metabase.search.filter" (name t))
    :field            (or field (u/->snake_case_en (name k)))
    :context-key      (or context-key k)
    :supported-value? (or supported-value? (constantly true))
-   :required-feature required-feature})
+   :required-feature required-feature
+   :engine           (or engine :all)})
 
 (mu/defn- build-filters :- [:map-of :keyword Filter]
   [m]
@@ -150,24 +154,28 @@
 (def filters
   "Specifications for the optional search filters."
   (build-filters
-   {:archived       {:type :single-value, :context-key :archived?}
+   {:archived                {:type :single-value, :context-key :archived?}
     ;; TODO dry this alias up with the index hydration code
-    :created-at     {:type :date-range, :field "model_created_at"}
-    :creator-id     {:type :list, :context-key :created-by}
+    :created-at              {:type :date-range, :field "model_created_at"}
+    :creator-id              {:type :list, :context-key :created-by}
     ;; This actually has nothing to do with tables, as we also filter cards, it would be good to rename the context key.
-    :database-id    {:type :single-value, :context-key :table-db-id}
-    :id             {:type :list, :context-key :ids, :field "model_id"}
-    :last-edited-at {:type :date-range}
-    :last-editor-id {:type :list, :context-key :last-edited-by}
-    :native-query   {:type :native-query, :context-key :search-native-query}
-    :verified       {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}}))
+    :database-id             {:type :single-value, :context-key :table-db-id}
+    :id                      {:type :list, :context-key :ids, :field "model_id"}
+    :last-edited-at          {:type :date-range}
+    :last-editor-id          {:type :list, :context-key :last-edited-by}
+    :native-query            {:type :native-query, :context-key :search-native-query}
+    :verified                {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}
+    :non-temporal-dim-ids    {:type :single-value :engine :appdb}
+    :has-temporal-dim        {:type :single-value :engine :appdb}
+    :display-type            {:type :list, :field "display_type"}}))
 
 (def ^:private filter-defaults-by-context
   {:default         {:archived               false
                      ;; keys will typically those in [[filters]], but this is an atypical filter.
                      ;; we plan to generify it, by precalculating it on the index.
-                     :personal-collection-id "all"}
-   :command-palette {:personal-collection-id "exclude-others"}})
+                     :filter-items-in-personal-collection "all"}
+   :search-app      {:filter-items-in-personal-collection "exclude-others"}
+   :command-palette {:filter-items-in-personal-collection "exclude-others"}})
 
 (defn filter-default
   "Get the default value for the given filter in the given context. Is non-contextual for legacy search."
@@ -182,7 +190,7 @@
   "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
   [context]
   (let [context   (or context :default)
-        overrides (public-settings/experimental-search-weight-overrides)]
+        overrides (search.settings/experimental-search-weight-overrides)]
     (if (= :all context)
       (merge-with merge static-weights overrides)
       (merge (get static-weights :default)
@@ -234,7 +242,7 @@
    [:context               {:optional true} [:maybe :keyword]]
    [:is-impersonated-user? {:optional true} [:maybe :boolean]]
    [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
-   [:current-user-perms [:set perms.u/PathSchema]]
+   [:current-user-perms [:set perms/PathSchema]]
 
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]
@@ -246,20 +254,25 @@
    ;;
    [:created-at                          {:optional true} ms/NonBlankString]
    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:display-type                        {:optional true} [:set {:min 1} ms/NonBlankString]]
    [:filter-items-in-personal-collection {:optional true} [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
    [:last-edited-at                      {:optional true} ms/NonBlankString]
    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:limit-int                           {:optional true} ms/Int]
    [:offset-int                          {:optional true} ms/Int]
-   [:search-native-query                 {:optional true} true?]
+   [:search-native-query                 {:optional true} :boolean]
    [:table-db-id                         {:optional true} ms/PositiveInt]
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
-   [:include-dashboard-questions?        {:optional true} :boolean]])
+   [:include-dashboard-questions?        {:optional true} :boolean]
+   [:include-metadata?                   {:optional true} :boolean]
+   [:non-temporal-dim-ids                {:optional true} ms/NonBlankString]
+   [:has-temporal-dim                    {:optional true} :boolean]])
 
 (defmulti column->string
   "Turn a complex column into a string"
+  {:arglists '([column-value model column-name])}
   (fn [_column-value model column-name]
     [(keyword model) column-name]))
 
@@ -269,7 +282,7 @@
 
 (defmethod column->string [:card :dataset_query]
   [value _ _]
-  (let [query (json/decode+kw value)]
-    (if (= "native" (:type query))
-      (-> query :native :query)
-      "")))
+  (or (when-let [query (not-empty ((lib-be/transform-query :out) value))]
+        (when (lib/native-only-query? query)
+          (lib/raw-native-query query)))
+      ""))

@@ -2,8 +2,11 @@ import type { LocationDescriptor } from "history";
 import type { Action, ActionImpl } from "kbar";
 import type React from "react";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import type { ModerationReviewStatus } from "metabase-types/api";
+
+import type { GROUP_LABELS } from "./constants";
 
 interface PaletteActionExtras {
   extra?: {
@@ -15,7 +18,7 @@ interface PaletteActionExtras {
      */
     href?: LocationDescriptor | null;
     /** iconColor: Color of the icon in the list item*/
-    iconColor?: string;
+    iconColor?: ColorName;
     /** subtext: text to come after the item name */
     subtext?: React.ReactNode;
   };
@@ -33,3 +36,25 @@ export type PaletteActionImpl = ActionImpl &
     subtitle?: Action["subtitle"];
     icon?: IconName;
   };
+
+export type ShortcutGroup = keyof typeof GROUP_LABELS;
+
+export type ShortcutAction = Action & {
+  shortcut: string[];
+  hide?: boolean;
+  shortcutGroup: ShortcutGroup;
+  shortcutContext?: string;
+  shortcutDisplay?: string[];
+  dynamic?: boolean;
+};
+
+export type ShortcutDef = Pick<
+  ShortcutAction,
+  | "id"
+  | "name"
+  | "hide"
+  | "shortcut"
+  | "shortcutGroup"
+  | "shortcutContext"
+  | "shortcutDisplay"
+>;

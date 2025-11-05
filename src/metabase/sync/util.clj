@@ -8,17 +8,19 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.task-history :as task-history]
    [metabase.query-processor.interface :as qp.i]
    [metabase.sync.interface :as i]
+   [metabase.task-history.core :as task-history]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.memory :as u.mem]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
@@ -128,11 +130,12 @@
   {:style/indent [:form]}
   [log-fn message f]
   (let [start-time (System/nanoTime)
-        _          (log-fn (u/format-color 'magenta "STARTING: %s" message))
+        _          (log-fn (u/format-color 'magenta "STARTING: %s (%s)" message (u.mem/pretty-usage-str)))
         result     (f)]
-    (log-fn (u/format-color 'magenta "FINISHED: %s (%s)"
+    (log-fn (u/format-color 'magenta "FINISHED: %s (%s) (%s)"
                             message
-                            (u/format-nanoseconds (- (System/nanoTime) start-time))))
+                            (u/format-nanoseconds (- (System/nanoTime) start-time))
+                            (u.mem/pretty-usage-str)))
     result))
 
 (defn- with-start-and-finish-logging
@@ -181,6 +184,10 @@
   behavior. You can disable this for debugging or test purposes."
   true)
 
+(defn- do-not-retry-exception? [e]
+  (or (isa? (class e) ::exception-class-not-to-retry)
+      (some-> (ex-cause e) recur)))
+
 (defn do-with-error-handling
   "Internal implementation of [[with-error-handling]]; use that instead of calling this directly."
   ([f]
@@ -190,22 +197,39 @@
    (try
      (f)
      (catch Throwable e
-       (if *log-exceptions-and-continue?*
+       (if (and *log-exceptions-and-continue?* (not (do-not-retry-exception? e)))
          (do
            (log/warn e message)
            e)
          (throw e))))))
 
 (defmacro with-error-handling
-  "Execute `body` in a way that catches and logs any Exceptions thrown, and returns `nil` if they do so. Pass a
-  `message` to help provide information about what failed for the log message.
+  "Execute `body` in a way that catches and logs any Exceptions thrown, and returns the exception itself if they do so.
+  Pass a `message` to help provide information about what failed for the log message.
 
   The exception classes deriving from `:metabase.sync.util/exception-class-not-to-retry` are a list of classes tested
   against exceptions thrown. If there is a match found, the sync is aborted as that error is not considered
   recoverable for this sync run."
   {:style/indent 1}
   [message & body]
-  `(do-with-error-handling ~message (fn [] ~@body)))
+  `(do-with-error-handling ~message (^:once fn* [] ~@body)))
+
+(defn do-with-returning-throwable
+  "Internal implementation of [[with-returning-throwable]]; use that instead of calling this directly."
+  [message f]
+  (try (f)
+       (catch Throwable e
+         (if *log-exceptions-and-continue?*
+           (do
+             (log/warn e message)
+             {:throwable e})
+           (throw e)))))
+
+(defmacro with-returning-throwable
+  "Execute `body`, catching any exception and returning it as `{:throwable e}`"
+  {:style/indent 1}
+  [message & body]
+  `(do-with-returning-throwable ~message (^:once fn* [] ~@body)))
 
 (mu/defn do-sync-operation
   "Internal implementation of [[sync-operation]]; use that instead of calling this directly."
@@ -213,15 +237,16 @@
    database  :- (ms/InstanceOf :model/Database)
    message   :- ms/NonBlankString
    f         :- fn?]
-  ((with-duplicate-ops-prevented
-    operation database
-    (with-sync-events
-     operation database
-     (with-start-and-finish-logging
-      message
-      (with-db-logging-disabled
-       (sync-in-context database
-                        (partial do-with-error-handling (format "Error in sync step %s" message) f))))))))
+  (when (database/should-sync? database)
+    ((with-duplicate-ops-prevented
+      operation database
+      (with-sync-events
+       operation database
+       (with-start-and-finish-logging
+        message
+        (with-db-logging-disabled
+         (sync-in-context database
+                          (partial do-with-error-handling (format "Error in sync step %s" message) f)))))))))
 
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things
@@ -310,12 +335,23 @@
   {:active          true
    :visibility_type nil})
 
+(def ^:dynamic *batch-size*
+  "Size of table update partition."
+  20000)
+
 (defn set-initial-table-sync-complete-for-db!
   "Marks initial sync for all tables in `db` as complete so that it becomes usable in the UI, if not already
   set."
   [database-or-id]
-  (t2/update! :model/Table (merge sync-tables-kv-args {:db_id (u/the-id database-or-id)})
-              {:initial_sync_status "complete"}))
+  (let [where-clause {:where (into [:and]
+                                   (map (partial into [:=]))
+                                   (merge sync-tables-kv-args
+                                          {:db_id (u/the-id database-or-id)}))}
+        ids (t2/select-fn-vec :id :model/Table where-clause)]
+    (reduce (fn [acc ids']
+              (+ acc (t2/update! :model/Table :id [:in ids'] {:initial_sync_status "complete"})))
+            0
+            (partition-all *batch-size* ids))))
 
 (defn set-initial-database-sync-complete!
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
@@ -484,21 +520,15 @@
                             step-name
                             (name-for-logging database))
                     (fn [& args]
-                      (try
+                      (with-returning-throwable (format "Error running step ''%s'' for %s" step-name (name-for-logging database))
                         (task-history/with-task-history
-                         {:task            step-name
-                          :db_id           (u/the-id database)
-                          :on-success-info (fn [update-map result]
-                                             (if (instance? Throwable result)
-                                               (throw result)
-                                               (assoc update-map :task_details (dissoc result :start-time :end-time :log-summary-fn))))}
-                          (apply sync-fn database args))
-                        (catch Throwable e
-                          (if *log-exceptions-and-continue?*
-                            (do
-                              (log/warnf e "Error running step ''%s'' for %s" step-name (name-for-logging database))
-                              {:throwable e})
-                            (throw e))))))
+                          {:task            step-name
+                           :db_id           (u/the-id database)
+                           :on-success-info (fn [update-map result]
+                                              (if (instance? Throwable result)
+                                                (throw result)
+                                                (assoc update-map :task_details (dissoc result :start-time :end-time :log-summary-fn))))}
+                          (apply sync-fn database args)))))
         end-time   (t/zoned-date-time)]
     [step-name (assoc results
                       :start-time start-time
@@ -544,10 +574,6 @@
   ;; Note this needs to either stay nested in the `debug` macro call or be guarded by an log/enabled?
   ;; call. Constructing the log below requires some work, no need to incur that cost debug logging isn't enabled
   (log/debug (make-log-sync-summary-str operation database sync-metadata)))
-
-(defn- do-not-retry-exception? [e]
-  (or (isa? (class e) ::exception-class-not-to-retry)
-      (some-> (ex-cause e) recur)))
 
 (defn abandon-sync?
   "Given the results of a sync step, returns truthy if a non-recoverable exception occurred"
@@ -603,3 +629,22 @@
   `(sum-for* (for [~item-binding ~coll
                    ~@more-for-bindings]
                (do ~@body))))
+
+(defn can-be-list?
+  "Can this type be a list?"
+  [base-type semantic-type]
+  (not
+   (or (isa? base-type :type/Temporal)
+       (isa? base-type :type/Collection)
+       (isa? base-type :type/Float)
+        ;; Don't let IDs become list Fields (they already can't become categories, because they already have a semantic
+        ;; type). It just doesn't make sense to cache a sequence of numbers since they aren't inherently meaningful
+       (isa? semantic-type :type/PK)
+       (isa? semantic-type :type/FK))))
+
+(defn can-be-category?
+  "Can this type be a category?"
+  [base-type semantic-type]
+  (and (or (isa? base-type :type/Text)
+           (isa? base-type :type/TextLike))
+       (can-be-list? base-type semantic-type)))

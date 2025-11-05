@@ -7,12 +7,12 @@ interface BugReportResponse {
 }
 
 export const bugReportApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     sendBugReport: builder.mutation<
       BugReportResponse,
       { diagnosticInfo: ErrorPayload }
     >({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/slack/bug-report",
         body,

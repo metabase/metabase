@@ -4,25 +4,22 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ColorSelector } from "metabase/core/components/ColorSelector";
-import type { DragEndEvent } from "metabase/core/components/Sortable";
+import { ColorSelector } from "metabase/common/components/ColorSelector";
+import type { DragEndEvent } from "metabase/common/components/Sortable";
 import { color } from "metabase/lib/colors";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import type { AccentColorOptions } from "metabase/lib/colors/types";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { getEventTarget } from "metabase/lib/dom";
 import { isEmpty } from "metabase/lib/validate";
-import { Button, Flex, Group, Icon, Select, Text } from "metabase/ui";
+import { Box, Button, Flex, Group, Icon, Select, Text } from "metabase/ui";
 import type { Series } from "metabase-types/api";
 
+import { ChartSettingMessage } from "./ChartSettingMessage";
 import {
   ChartSettingOrderedItems,
   type SortableItem as SortableChartSettingOrderedItem,
 } from "./ChartSettingOrderedItems";
-import {
-  ChartSettingMessage,
-  ChartSettingOrderedSimpleRoot,
-} from "./ChartSettingOrderedSimple.styled";
 
 export { SortableChartSettingOrderedItem };
 
@@ -80,8 +77,8 @@ export const ChartSettingSeriesOrder = ({
   const [items, hiddenItems] = useMemo(
     () =>
       _.partition(
-        orderedItems.filter(item => !item.hidden),
-        item => item.enabled,
+        orderedItems.filter((item) => !item.hidden),
+        (item) => item.enabled,
       ),
     [orderedItems],
   );
@@ -112,16 +109,18 @@ export const ChartSettingSeriesOrder = ({
   const toggleDisplay = useCallback(
     (selectedItem: SortableItem) => {
       const index = orderedItems.findIndex(
-        item => item.key === selectedItem.key,
+        (item) => item.key === selectedItem.key,
       );
-      onChange(updateIn(orderedItems, [index, "enabled"], enabled => !enabled));
+      onChange(
+        updateIn(orderedItems, [index, "enabled"], (enabled) => !enabled),
+      );
     },
     [orderedItems, onChange],
   );
 
   const handleSortEnd = useCallback(
     ({ id, newIndex }: DragEndEvent) => {
-      const oldIndex = orderedItems.findIndex(item => item.key === id);
+      const oldIndex = orderedItems.findIndex((item) => item.key === id);
 
       if (onSortEnd != null) {
         onSortEnd(arrayMove(orderedItems, oldIndex, newIndex));
@@ -158,8 +157,8 @@ export const ChartSettingSeriesOrder = ({
   );
 
   const handleAddSeries = useCallback(
-    (seriesKey: string) => {
-      const item = hiddenItems.find(item => item.key === seriesKey);
+    (seriesKey: string | null) => {
+      const item = hiddenItems.find((item) => item.key === seriesKey);
       if (item) {
         toggleDisplay(item);
         setSeriesPickerVisible(false);
@@ -183,7 +182,7 @@ export const ChartSettingSeriesOrder = ({
         afterIndex: groupedAfterIndex,
         renderFn: () => (
           <Flex justify="space-between" px={4}>
-            <Group p={4} spacing="sm">
+            <Group p={4} gap="sm">
               <ColorSelector
                 value={otherColor ?? color("text-light")}
                 colors={getAccentColors()}
@@ -193,10 +192,10 @@ export const ChartSettingSeriesOrder = ({
               <Text truncate fw="bold">{t`Other`}</Text>
             </Group>
             <Button
-              compact
+              size="compact-md"
               color="text-medium"
               variant="subtle"
-              leftIcon={<Icon name="gear" />}
+              leftSection={<Icon name="gear" />}
               aria-label={t`Other series settings`}
               onClick={handleOtherSeriesSettingsClick}
             />
@@ -212,7 +211,7 @@ export const ChartSettingSeriesOrder = ({
   ]);
 
   return (
-    <ChartSettingOrderedSimpleRoot>
+    <Box pl="md" pb="sm">
       {orderedItems.length > 0 ? (
         <>
           <ChartSettingOrderedItems
@@ -249,10 +248,10 @@ export const ChartSettingSeriesOrder = ({
           )}
           {isSeriesPickerVisible && (
             <Select
-              initiallyOpened
+              dropdownOpened
               searchable
               placeholder={searchPickerPlaceholder}
-              data={hiddenItems.map(item => ({
+              data={hiddenItems.map((item) => ({
                 value: item.key,
                 label: getItemTitle(item),
               }))}
@@ -274,6 +273,6 @@ export const ChartSettingSeriesOrder = ({
       ) : (
         <ChartSettingMessage>{t`Nothing to order`}</ChartSettingMessage>
       )}
-    </ChartSettingOrderedSimpleRoot>
+    </Box>
   );
 };

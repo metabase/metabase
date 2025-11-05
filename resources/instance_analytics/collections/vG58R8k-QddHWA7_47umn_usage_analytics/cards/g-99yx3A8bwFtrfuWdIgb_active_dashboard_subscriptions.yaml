@@ -399,11 +399,6 @@ result_metadata:
     - v_subscriptions
     - creator_id
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - active
   id:
   - Internal Metabase Database
   - public
@@ -447,7 +442,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  source_alias: People - Creator
   table_id:
   - Internal Metabase Database
   - public
@@ -479,7 +473,6 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  source_alias: Content - Entity Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -511,7 +504,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  source_alias: Content - Entity Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -534,7 +526,6 @@ visualization_settings:
       - entity_id
     - base-type: type/Integer
       join-alias: Content - Entity Qualified
-    key: '["ref",["field",912,{"base-type":"type/Integer","join-alias":"Content - Entity Qualified"}]]'
     name: entity_id
   - enabled: true
     fieldRef:
@@ -545,7 +536,6 @@ visualization_settings:
       - name
     - base-type: type/Text
       join-alias: Content - Entity Qualified
-    key: '["ref",["field",921,{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
     name: name
   - enabled: true
     fieldRef:
@@ -556,7 +546,6 @@ visualization_settings:
       - full_name
     - base-type: type/Text
       join-alias: People - Creator
-    key: '["ref",["field",1377,{"base-type":"type/Text","join-alias":"People - Creator"}]]'
     name: full_name
   - enabled: true
     fieldRef:
@@ -566,7 +555,6 @@ visualization_settings:
       - v_subscriptions
       - updated_at
     - temporal-unit: default
-    key: '["ref",["field",1008,null]]'
     name: updated_at
   - enabled: true
     fieldRef:
@@ -576,7 +564,6 @@ visualization_settings:
       - v_subscriptions
       - created_at
     - temporal-unit: default
-    key: '["ref",["field",1018,null]]'
     name: created_at
   - enabled: true
     fieldRef:
@@ -586,7 +573,6 @@ visualization_settings:
       - v_subscriptions
       - schedule_type
     - null
-    key: '["ref",["field",1019,null]]'
     name: schedule_type
   - enabled: true
     fieldRef:
@@ -596,7 +582,6 @@ visualization_settings:
       - v_subscriptions
       - schedule_day
     - null
-    key: '["ref",["field",1014,null]]'
     name: schedule_day
   - enabled: true
     fieldRef:
@@ -606,7 +591,6 @@ visualization_settings:
       - v_subscriptions
       - schedule_hour
     - null
-    key: '["ref",["field",1016,null]]'
     name: schedule_hour
   - enabled: true
     fieldRef:
@@ -616,7 +600,6 @@ visualization_settings:
       - v_subscriptions
       - recipient_type
     - null
-    key: '["ref",["field",1012,null]]'
     name: recipient_type
   - enabled: true
     fieldRef:
@@ -626,7 +609,6 @@ visualization_settings:
       - v_subscriptions
       - recipients
     - null
-    key: '["ref",["field",1009,null]]'
     name: recipients
   - enabled: true
     fieldRef:
@@ -636,7 +618,6 @@ visualization_settings:
       - v_subscriptions
       - recipient_external
     - null
-    key: '["ref",["field",1015,null]]'
     name: recipient_external
   - enabled: true
     fieldRef:
@@ -646,7 +627,6 @@ visualization_settings:
       - v_subscriptions
       - parameters
     - null
-    key: '["ref",["field",1020,null]]'
     name: parameters
   - enabled: false
     fieldRef:
@@ -656,7 +636,6 @@ visualization_settings:
       - v_subscriptions
       - creator_id
     - null
-    key: '["ref",["field",1021,null]]'
     name: creator_id
   table.pivot_column: schedule_day
 serdes/meta:
@@ -664,6 +643,8 @@ serdes/meta:
   label: active_dashboard_subscriptions
   model: Card
 archived_directly: false
+card_schema: 20
+dashboard_id: Zf1jknwhPhazxIIJ2X6mX
 metabase_version: vUNKNOWN (5c1ab5e)
 source_card_id: 5ojUtU9iE-DCggHdFPIll
 type: question

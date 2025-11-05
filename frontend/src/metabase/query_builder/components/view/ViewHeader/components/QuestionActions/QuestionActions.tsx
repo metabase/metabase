@@ -1,27 +1,22 @@
 import type { ChangeEvent } from "react";
 import { useRef, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { UploadInput } from "metabase/components/upload";
-import BookmarkToggle from "metabase/core/components/BookmarkToggle";
-import Button from "metabase/core/components/Button";
-import Tooltip from "metabase/core/components/Tooltip";
-import { color } from "metabase/lib/colors";
+import { BookmarkToggle } from "metabase/common/components/BookmarkToggle";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { UploadInput } from "metabase/common/components/upload";
 import { useDispatch } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { QuestionMoreActionsMenu } from "metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
-import { Box, Icon, Menu } from "metabase/ui";
+import { Box, Divider, Icon, Menu } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 import { UploadMode } from "metabase-types/store/upload";
 
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
-
-import QuestionActionsS from "./QuestionActions.module.css";
-
-const HEADER_ICON_SIZE = 16;
 
 interface Props {
   isBookmarked: boolean;
@@ -51,6 +46,20 @@ export const QuestionActions = ({
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.append);
 
   const dispatch = useDispatch();
+
+  useRegisterShortcut(
+    [
+      {
+        id: "query-builder-info-sidebar",
+        perform: onInfoClick,
+      },
+      {
+        id: "query-builder-bookmark",
+        perform: onToggleBookmark,
+      },
+    ],
+    [isShowingQuestionInfoSidebar, isBookmarked],
+  );
 
   const infoButtonColor = isShowingQuestionInfoSidebar
     ? color("brand")
@@ -92,30 +101,27 @@ export const QuestionActions = ({
 
   return (
     <>
-      <Box className={QuestionActionsS.QuestionActionsDivider} />
+      <Divider orientation="vertical" my="xs" />
       {!question.isArchived() && (
         <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
           <BookmarkToggle
-            className={ViewTitleHeaderS.ViewHeaderIconButton}
             onCreateBookmark={onToggleBookmark}
             onDeleteBookmark={onToggleBookmark}
             isBookmarked={isBookmarked}
           />
         </Box>
       )}
-      <Tooltip tooltip={t`More info`}>
-        <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
-          <Button
-            className={ViewTitleHeaderS.ViewHeaderIconButton}
-            onlyIcon
-            icon="info"
-            iconSize={HEADER_ICON_SIZE}
-            onClick={onInfoClick}
-            color={infoButtonColor}
-            data-testid="qb-header-info-button"
-          />
-        </Box>
-      </Tooltip>
+      <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
+        <ToolbarButton
+          className={ViewTitleHeaderS.ViewHeaderIconButton}
+          icon="info"
+          onClick={onInfoClick}
+          color={infoButtonColor}
+          data-testid="qb-header-info-button"
+          tooltipLabel={t`More info`}
+          aria-label={t`More info`}
+        />
+      </Box>
       {canAppend && (
         <>
           <UploadInput
@@ -123,37 +129,35 @@ export const QuestionActions = ({
             ref={fileInputRef}
             onChange={handleFileUpload}
           />
-          <Tooltip tooltip={t`Upload data to this model`}>
-            <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
-              <Menu position="bottom-end">
-                <Menu.Target>
-                  <Button
-                    className={ViewTitleHeaderS.ViewHeaderIconButton}
-                    onlyIcon
-                    icon="upload"
-                    iconSize={HEADER_ICON_SIZE}
-                    color={infoButtonColor}
-                    data-testid="qb-header-append-button"
-                  />
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Item
-                    icon={<Icon name="add" />}
-                    onClick={() => handleUploadClick(UploadMode.append)}
-                  >
-                    {t`Append data to this model`}
-                  </Menu.Item>
+          <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
+            <Menu position="bottom-end">
+              <Menu.Target>
+                <ToolbarButton
+                  className={ViewTitleHeaderS.ViewHeaderIconButton}
+                  icon="upload"
+                  color={infoButtonColor}
+                  data-testid="qb-header-append-button"
+                  tooltipLabel={t`Upload data to this model`}
+                  aria-label={t`Upload data to this model`}
+                />
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  leftSection={<Icon name="add" />}
+                  onClick={() => handleUploadClick(UploadMode.append)}
+                >
+                  {t`Append data to this model`}
+                </Menu.Item>
 
-                  <Menu.Item
-                    icon={<Icon name="refresh" />}
-                    onClick={() => handleUploadClick(UploadMode.replace)}
-                  >
-                    {t`Replace all data in this model`}
-                  </Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
-            </Box>
-          </Tooltip>
+                <Menu.Item
+                  leftSection={<Icon name="refresh" />}
+                  onClick={() => handleUploadClick(UploadMode.replace)}
+                >
+                  {t`Replace all data in this model`}
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Box>
         </>
       )}
       {!question.isArchived() && (

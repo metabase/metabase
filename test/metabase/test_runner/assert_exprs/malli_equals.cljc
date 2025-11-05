@@ -1,16 +1,19 @@
 (ns metabase.test-runner.assert-exprs.malli-equals
   (:require
    [clojure.test :as t]
-   [malli.core :as mc]
    [malli.error :as me]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr])
   #?(:cljs
      (:require-macros [metabase.test-runner.assert-exprs.malli-equals])))
 
 (defn malli=-report [message schema actuals]
   (doseq [actual actuals]
-    (t/testing (str \newline (u/pprint-to-str actual))
-      (let [error (me/humanize (mc/explain schema actual))]
+    (let [error (me/humanize (mr/explain schema actual))]
+      (t/testing (if error
+                   ;; Only serialize the value when there is an error to save time.
+                   (str "\n" (u/pprint-to-str actual))
+                   "\n")
         (t/do-report
          {:type     (if error :fail :pass)
           :message  message

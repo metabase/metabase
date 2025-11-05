@@ -21,7 +21,7 @@ To fix problems with your Metabase [application database](../installation-and-op
    - People are accessing your database more often, or
    - A script or application (other than Metabase) is accessing the database frequently.
 3. If specific tables are being queried a lot, try [Optimizing your table schemas](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#organize-data-to-anticipate-common-questions).
-4. Run a question from Metabase, then [run the same query](../questions/query-builder/introduction.md#viewing-the-sql-that-powers-your-question) directly against your database.
+4. Run a question from Metabase, then [run the same query](../questions/query-builder/editor.md#viewing-the-native-query-that-powers-your-question) directly against your database.
    - If the queries take about the same time, your data or usage might be outgrowing your database. You can give your database more resources, or consider [upgrading your hardware](https://www.metabase.com/learn/grow-your-data-skills/data-landscape/which-data-warehouse).
    - If the query in Metabase takes longer than a direct query against your database, you might need to adjust the deployment of your Metabase app. Check out some options in [Metabase at scale](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-at-scale).
 5. If a script or third-party application is hitting your database with a lot of queries at a time:
@@ -58,7 +58,7 @@ If someone or something creates 100 queries at the same time, this stampede of q
 
 **Explanation**
 
-By default, Metabase makes regular sync and scan queries against your database to keep your tables up to date, get fresh values for filter dropdowns, and make helpful suggestions. If you've got a very large database, you can choose to trigger these queries manually instead of on a schedule.
+By default, Metabase makes regular sync and scan queries against your database to keep your tables up to date, get fresh values for filter dropdowns, and make helpful suggestions. If you've got a large database, you can choose to trigger these queries manually instead of on a schedule.
 
 ## Questions that use number, date, or timestamp columns
 

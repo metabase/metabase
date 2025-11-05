@@ -8,7 +8,7 @@ inputs:
     description: DockerHub password/token
     required: true
   maildev:
-    description: Maildev container
+    description: Maildev containers
     required: true
     default: false
   openldap:
@@ -31,6 +31,10 @@ inputs:
     description: Webhook tester container
     required: false
     default: false
+  snowplow:
+    description: Snowplow micro container
+    required: false
+    default: false
 
 runs:
   using: "composite"
@@ -42,56 +46,68 @@ runs:
         password: ${{ inputs.password }}
 
     - name: Start Containers
-      run: |
+      shell: bash
+      run: | # bash
         Y='\033[33m'
         G='\033[1;32m'
 
+        cd e2e/test/scenarios/
+
+        docker compose up \
+          $([ ${{ inputs.postgres }} = true ] && echo "postgres-sample") \
+          $([ ${{ inputs.mysql }} = true ] && echo "mysql-sample") \
+          $([ ${{ inputs.mongo }} = true ] && echo "mongo-sample") \
+          $([ ${{ inputs.maildev }} = true ] && echo "maildev") \
+          $([ ${{ inputs.maildev }} = true ] && echo "maildev-ssl") \
+          $([ ${{ inputs.openldap }} = true ] && echo "ldap") \
+          $([ ${{ inputs.webhook }} = true ] && echo "webhook-tester") \
+          $([ ${{ inputs.snowplow }} = true ] && echo "snowplow-micro") \
+          -d
+
         if ${{ inputs.maildev }}; then
-          echo -e "${Y}Starting maildev container..." &&
-          docker run -d -p 1080:1080 -p 1025:1025 maildev/maildev:2.0.5 &&
+          echo -e "${Y}checking maildev container..." &&
           while ! nc -z localhost 1080; do sleep 1; done &&
           while ! nc -z localhost 1025; do sleep 1; done &&
           echo -e "${G}Maildev is up and running!"
+
+          echo -e "${Y}checking maildev-ssl container..." &&
+          while ! nc -z localhost 1081; do sleep 1; done &&
+          while ! nc -z localhost 465; do sleep 1; done &&
+          echo -e "${G}Maildev-ssl is up and running!"
         fi
 
         if ${{ inputs.openldap }}; then
-          echo -e "${Y}Starting openldap container..." &&
-          docker run -d -p 389:389 \
-            --env LDAP_ADMIN_PASSWORD=adminpass \
-            --env LDAP_USERS=user01@example.org,user02@example.org \
-            --env LDAP_PASSWORDS=123456,123465 \
-            --env LDAP_ROOT=dc=example,dc=org \
-            --env LDAP_PORT_NUMBER=389 \
-            bitnami/openldap:2.6.4 &&
+          echo -e "${Y}checking openldap container..." &&
           while ! nc -z localhost 389; do sleep 1; done &&
           echo -e "${G}Openldap is up and running!"
         fi
 
         if ${{ inputs.postgres }}; then
-          echo -e "${Y}Starting postgres container..." &&
-          docker run -d -p 5404:5432 -e TZ='US/Pacific' metabase/qa-databases:postgres-sample-12 &&
+          echo -e "${Y}checking postgres container..." &&
           while ! nc -z localhost 5404; do sleep 1; done &&
           echo -e "${G}Postgres is up and running!"
         fi
 
         if ${{ inputs.mysql }}; then
-          echo -e "${Y}Starting mysql container..." &&
-          docker run -d -p 3304:3306 -e TZ='US/Pacific' metabase/qa-databases:mysql-sample-8 &&
+          echo -e "${Y}checking mysql container..." &&
           while ! nc -z localhost 3304; do sleep 1; done &&
           echo -e "${G}MySQL is up and running!"
         fi
 
         if ${{ inputs.mongo }}; then
-          echo -e "${Y}Starting mongo container..." &&
-          docker run -d -p 27004:27017 metabase/qa-databases:mongo-sample-4.4 &&
+          echo -e "${Y}checking mongo container..." &&
           while ! nc -z localhost 27004; do sleep 1; done &&
           echo -e "${G}Mongo is up and running!"
         fi
 
         if ${{ inputs.webhook }}; then
-          echo -e "${Y}Starting webhook test container..." &&
-          docker run -d -p 9080:8080/tcp tarampampam/webhook-tester:1.1.0 serve --create-session 00000000-0000-0000-0000-000000000000 &&
+          echo -e "${Y}checking webhook test container..." &&
           while ! nc -z localhost 9080; do sleep 1; done &&
           echo -e "${G}Webhook tester is up and running!"
         fi
-      shell: bash
+
+        if ${{ inputs.snowplow }}; then
+          echo -e "${Y}checking snowplow micro container..." &&
+          while ! nc -z localhost 9090; do sleep 1; done &&
+          echo -e "${G}Snowplow micro is up and running!"
+        fi

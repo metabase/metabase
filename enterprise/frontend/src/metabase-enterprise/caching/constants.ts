@@ -20,8 +20,10 @@ export const durationUnits = new Set(
 const scheduleStrategyValidationSchema = Yup.object({
   type: Yup.string().equals(["schedule"]),
   schedule: Yup.string()
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     .required(t`A cron expression is required`)
     .default(defaultCron),
+  refresh_automatically: Yup.boolean().nullable().default(false),
 });
 
 const durationStrategyValidationSchema = Yup.object({
@@ -30,20 +32,25 @@ const durationStrategyValidationSchema = Yup.object({
   unit: Yup.string().test(
     "is-duration-unit",
     "${path} is not a valid duration",
-    value => !!value && durationUnits.has(value),
+    (value) => !!value && durationUnits.has(value),
   ),
+  refresh_automatically: Yup.boolean().nullable().default(false),
 });
 
 /** Caching strategies available on EE only */
 export const enterpriseOnlyCachingStrategies: Record<string, StrategyData> = {
   schedule: {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`Schedule: pick when to regularly invalidate the cache`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     shortLabel: t`Scheduled`,
     validationSchema: scheduleStrategyValidationSchema,
   },
   duration: {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`Duration: keep the cache for a number of hours`,
     validationSchema: durationStrategyValidationSchema,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     shortLabel: t`Duration`,
   },
 };

@@ -7,6 +7,7 @@ import {
   updateSetting,
   updateSettings,
 } from "metabase/admin/settings/settings";
+import { userApi } from "metabase/api";
 import { loadLocalization } from "metabase/lib/i18n";
 import { createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
@@ -24,7 +25,7 @@ import {
 } from "./analytics";
 import {
   getAvailableLocales,
-  getInvite,
+  getIsEmbeddingUseCase,
   getLocale,
   getNextStep,
   getSetupToken,
@@ -102,14 +103,12 @@ export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
   "metabase/setup/SUBMIT_USER_INFO",
   async (user: UserInfo, { dispatch, getState, rejectWithValue }) => {
     const token = getSetupToken(getState());
-    const invite = getInvite(getState());
     const locale = getLocale(getState());
 
     try {
       await SetupApi.create({
         token,
         user,
-        invite,
         prefs: {
           site_name: user.site_name,
           site_locale: locale?.code,
@@ -174,8 +173,20 @@ export const skipDatabase = createAsyncThunk(
 export const SUBMIT_USER_INVITE = "metabase/setup/SUBMIT_USER_INVITE";
 export const submitUserInvite = createAsyncThunk(
   SUBMIT_USER_INVITE,
-  (_: InviteInfo, { dispatch }) => {
-    dispatch(goToNextStep());
+  async (inviteInfo: InviteInfo, { dispatch, rejectWithValue }) => {
+    try {
+      await dispatch(
+        userApi.endpoints.createUser.initiate({
+          email: inviteInfo.email,
+          first_name: inviteInfo.first_name || undefined,
+          last_name: inviteInfo.last_name || undefined,
+          source: "setup",
+        }),
+      ).unwrap();
+      dispatch(goToNextStep());
+    } catch (error) {
+      return rejectWithValue(error);
+    }
   },
 );
 
@@ -226,6 +237,7 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
   async (_, { getState, dispatch }) => {
     const usageReason = getUsageReason(getState());
     const tokenFeatures = getSetting(getState(), "token-features");
+    const isEmbeddingUseCase = getIsEmbeddingUseCase(getState());
 
     const interestedInEmbedding =
       usageReason === "embedding" || usageReason === "both";
@@ -233,7 +245,7 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
 
     const settingsToChange: Partial<Settings> = {};
 
-    if (interestedInEmbedding) {
+    if (isEmbeddingUseCase || interestedInEmbedding) {
       settingsToChange["embedding-homepage"] = "visible";
     }
 

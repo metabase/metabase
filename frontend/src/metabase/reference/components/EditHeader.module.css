@@ -6,16 +6,19 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 43px;
+  height: 40px;
   background-color: var(--mb-color-bg-white-alpha-15);
 }
 
 .editHeaderButtons {
+  padding-top: 72px;
+  padding-right: 16px;
   margin-left: auto;
+  display: flex;
+  gap: 16px;
 }
 
 .editHeaderButton {
-  border: none;
   color: var(--mb-color-brand);
 }
 
@@ -25,5 +28,4 @@
 
 .cancelButton {
   composes: editHeaderButton;
-  opacity: 0.5;
 }

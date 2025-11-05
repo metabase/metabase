@@ -1,10 +1,14 @@
+import { updateMetadata } from "metabase/lib/redux/metadata";
+import { FieldSchema } from "metabase/schema";
 import type {
   CreateFieldDimensionRequest,
   Field,
+  FieldDimension,
   FieldId,
   FieldValue,
   GetFieldRequest,
   GetFieldValuesResponse,
+  GetRemappedFieldValueRequest,
   SearchFieldValuesRequest,
   UpdateFieldRequest,
   UpdateFieldValuesRequest,
@@ -17,25 +21,43 @@ import {
   listTag,
   provideFieldTags,
   provideFieldValuesTags,
+  provideRemappedFieldValuesTags,
   tag,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const fieldApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     getField: builder.query<Field, GetFieldRequest>({
       query: ({ id, ...params }) => ({
         method: "GET",
         url: `/api/field/${id}`,
         params,
       }),
-      providesTags: field => (field ? provideFieldTags(field) : []),
+      providesTags: (field) => (field ? provideFieldTags(field) : []),
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, FieldSchema)),
+        ),
     }),
     getFieldValues: builder.query<GetFieldValuesResponse, FieldId>({
-      query: id => ({
+      query: (fieldId) => ({
         method: "GET",
-        url: `/api/field/${id}/values`,
+        url: `/api/field/${fieldId}/values`,
       }),
       providesTags: (_, error, fieldId) => provideFieldValuesTags(fieldId),
+    }),
+    getRemappedFieldValue: builder.query<
+      FieldValue,
+      GetRemappedFieldValueRequest
+    >({
+      query: ({ fieldId, remappedFieldId, ...params }) => ({
+        method: "GET",
+        url: `/api/field/${fieldId}/remapping/${remappedFieldId}`,
+        params,
+      }),
+      providesTags: (_response, _error, { fieldId, remappedFieldId }) =>
+        provideRemappedFieldValuesTags(fieldId, remappedFieldId),
     }),
     searchFieldValues: builder.query<FieldValue[], SearchFieldValuesRequest>({
       query: ({ fieldId, searchFieldId, ...params }) => ({
@@ -43,7 +65,8 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${fieldId}/search/${searchFieldId}`,
         params,
       }),
-      providesTags: (_, error, { fieldId }) => provideFieldValuesTags(fieldId),
+      providesTags: (_response, _error, { fieldId, searchFieldId }) =>
+        provideRemappedFieldValuesTags(fieldId, searchFieldId),
     }),
     updateField: builder.mutation<Field, UpdateFieldRequest>({
       query: ({ id, ...body }) => ({
@@ -56,6 +79,7 @@ export const fieldApi = Api.injectEndpoints({
           listTag("field"),
           idTag("field", id),
           idTag("field-values", id),
+          tag("parameter-values"),
           tag("card"),
         ]),
     }),
@@ -66,40 +90,60 @@ export const fieldApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("field-values", id)]),
+        invalidateTags(error, [
+          idTag("field-values", id),
+          tag("parameter-values"),
+        ]),
     }),
-    createFieldDimension: builder.mutation<void, CreateFieldDimensionRequest>({
+    createFieldDimension: builder.mutation<
+      FieldDimension,
+      CreateFieldDimensionRequest
+    >({
       query: ({ id, ...body }) => ({
         method: "POST",
         url: `/api/field/${id}/dimension`,
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("field", id), idTag("field-values", id)]),
+        invalidateTags(error, [
+          idTag("field", id),
+          idTag("field-values", id),
+          tag("parameter-values"),
+        ]),
     }),
     deleteFieldDimension: builder.mutation<void, FieldId>({
-      query: id => ({
+      query: (id) => ({
         method: "DELETE",
         url: `/api/field/${id}/dimension`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("field", id), idTag("field-values", id)]),
+        invalidateTags(error, [
+          idTag("field", id),
+          idTag("field-values", id),
+          tag("parameter-values"),
+        ]),
     }),
     rescanFieldValues: builder.mutation<void, FieldId>({
-      query: id => ({
+      query: (id) => ({
         method: "POST",
         url: `/api/field/${id}/rescan_values`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("field-values", id)]),
+        invalidateTags(error, [
+          idTag("field-values", id),
+          tag("parameter-values"),
+        ]),
     }),
     discardFieldValues: builder.mutation<void, FieldId>({
-      query: id => ({
+      query: (id) => ({
         method: "POST",
         url: `/api/field/${id}/discard_values`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("field-values", id)]),
+        invalidateTags(error, [
+          idTag("field-values", id),
+          tag("parameter-values"),
+        ]),
     }),
   }),
 });
@@ -107,6 +151,7 @@ export const fieldApi = Api.injectEndpoints({
 export const {
   useGetFieldQuery,
   useGetFieldValuesQuery,
+  useGetRemappedFieldValueQuery,
   useSearchFieldValuesQuery,
   useUpdateFieldMutation,
   useUpdateFieldValuesMutation,

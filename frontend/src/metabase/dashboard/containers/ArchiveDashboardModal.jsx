@@ -6,16 +6,16 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ArchiveModal } from "metabase/components/ArchiveModal";
+import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { setArchivedDashboard } from "metabase/dashboard/actions";
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 
-const mapDispatchToProps = dispatch => ({
+const mapDispatchToProps = (dispatch) => ({
   setDashboardArchived: () => dispatch(setArchivedDashboard(true)),
-  push: path => dispatch(push(path)),
+  push: (path) => dispatch(push(path)),
 });
 
 class ArchiveDashboardModal extends Component {
@@ -39,8 +39,8 @@ class ArchiveDashboardModal extends Component {
     const { dashboard } = this.props;
 
     const hasDashboardQuestions = dashboard.dashcards
-      .filter(dc => dc.card) // card might be null for virtual cards
-      .some(dc => _.isNumber(dc.card.dashboard_id));
+      .filter((dc) => dc.card) // card might be null for virtual cards
+      .some((dc) => _.isNumber(dc.card.dashboard_id));
 
     const message = hasDashboardQuestions
       ? t`This will trash the dashboard and the questions that are saved in it. Are you sure you want to do this?`

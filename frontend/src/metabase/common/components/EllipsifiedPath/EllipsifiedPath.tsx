@@ -1,6 +1,6 @@
 import React from "react";
 
-import { useAreAnyTruncated } from "metabase/hooks/use-is-truncated";
+import { useAreAnyTruncated } from "metabase/common/hooks/use-is-truncated";
 import { Tooltip } from "metabase/ui";
 
 import S from "./EllipsifiedPath.module.css";
@@ -32,7 +32,7 @@ export const EllipsifiedPath = ({ items, tooltip }: EllipsifiedPathProps) => {
           return (
             <React.Fragment key={key}>
               <div
-                ref={el => el && ref.current.set(key, el)}
+                ref={(el) => el && ref.current.set(key, el)}
                 className={S.item}
               >
                 {item}

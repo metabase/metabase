@@ -5,8 +5,7 @@ import PropTypes from "prop-types";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import List from "metabase/components/List";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
@@ -21,7 +20,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import {
   getError,
   getFields,
-  getForeignKeys,
   getHasSingleSchema,
   getIsEditing,
   getIsFormulaExpanded,
@@ -67,7 +65,6 @@ const mapStateToProps = (state, props) => {
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
     user: getUser(state, props),
-    foreignKeys: getForeignKeys(state, props),
     isEditing: getIsEditing(state, props),
     hasSingleSchema: getHasSingleSchema(state, props),
     isFormulaExpanded: getIsFormulaExpanded(state, props),
@@ -103,7 +100,7 @@ const propTypes = {
   onSubmit: PropTypes.func.isRequired,
 };
 
-const TableDetail = props => {
+const TableDetail = (props) => {
   const {
     style,
     entity,
@@ -127,10 +124,11 @@ const TableDetail = props => {
     handleReset,
   } = useFormik({
     initialValues: {},
-    onSubmit: fields => onSubmit(fields, { ...props, resetForm: handleReset }),
+    onSubmit: (fields) =>
+      onSubmit(fields, { ...props, resetForm: handleReset }),
   });
 
-  const getFormField = name => ({
+  const getFormField = (name) => ({
     ...getFieldProps(name),
     ...getFieldMeta(name),
   });
@@ -184,8 +182,8 @@ const TableDetail = props => {
                 CS.bordered,
               )}
             >
-              <List>
-                <li className={CS.relative}>
+              <ul>
+                <li>
                   <Detail
                     id="description"
                     name={t`Description`}
@@ -196,7 +194,7 @@ const TableDetail = props => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className={CS.relative}>
+                  <li>
                     <Detail
                       id="name"
                       name={t`Actual name in database`}
@@ -205,7 +203,7 @@ const TableDetail = props => {
                     />
                   </li>
                 )}
-                <li className={CS.relative}>
+                <li>
                   <Detail
                     id="points_of_interest"
                     name={t`Why this table is interesting`}
@@ -215,7 +213,7 @@ const TableDetail = props => {
                     field={getFormField("points_of_interest")}
                   />
                 </li>
-                <li className={CS.relative}>
+                <li>
                   <Detail
                     id="caveats"
                     name={t`Things to be aware of about this table`}
@@ -226,13 +224,13 @@ const TableDetail = props => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className={CS.relative}>
+                  <li>
                     <UsefulQuestions
                       questions={interestingQuestions(table, metadata)}
                     />
                   </li>
                 )}
-              </List>
+              </ul>
             </div>
           </div>
         )}

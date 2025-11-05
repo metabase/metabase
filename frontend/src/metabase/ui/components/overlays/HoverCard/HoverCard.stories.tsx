@@ -37,7 +37,7 @@ const argTypes = {
 const sampleArgs = {
   simple: <Text>Hover!</Text>,
   interactive: (
-    <Stack spacing="sm">
+    <Stack gap="sm">
       <TextInput autoFocus placeholder="First name" />
       <TextInput placeholder="Last name" />
       <Button>Update</Button>
@@ -62,7 +62,7 @@ const DefaultTemplate = ({
 );
 
 export default {
-  title: "Overlays/HoverCard",
+  title: "Components/Overlays/HoverCard",
   component: HoverCard,
   args,
   argTypes,

@@ -80,7 +80,7 @@ function getSeries(metrics) {
   ];
 }
 
-const setup = seriesMetrics => {
+const setup = (seriesMetrics) => {
   return renderWithProviders(
     <QuestionChartSettings
       series={getSeries(seriesMetrics)}

@@ -29,8 +29,9 @@ const setup = ({
 
   const onCreatePublicLink = jest.fn();
   const onDeletePublicLink = jest.fn();
-  const getPublicUrl = jest.fn(uuid => uuid);
+  const getPublicUrl = jest.fn((uuid) => uuid);
   const goToNextStep = jest.fn();
+  const closeModal = jest.fn();
 
   const { history } = renderWithProviders(
     <Route
@@ -43,6 +44,7 @@ const setup = ({
           onDeletePublicLink={onDeletePublicLink}
           getPublicUrl={getPublicUrl}
           goToNextStep={goToNextStep}
+          closeModal={closeModal}
         />
       )}
     ></Route>,
@@ -126,7 +128,7 @@ describe("SelectEmbedTypePane", () => {
 
         await userEvent.hover(screen.getByText("Remove public link"));
         expect(
-          screen.getByText(
+          await screen.findByText(
             "Affects both public link and embed URL for this dashboard",
           ),
         ).toBeInTheDocument();

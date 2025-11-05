@@ -1,16 +1,15 @@
 (ns metabase.query-processor.streaming.json
   "Impls for JSON-based QP streaming response types. `:json` streams a simple array of maps as opposed to the full
   response with all the metadata for `:api`."
+  (:refer-clojure :exclude [mapv empty? not-empty])
   (:require
-   [java-time.api :as t]
    [medley.core :as m]
-   [metabase.formatter :as formatter]
-   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.formatter.core :as formatter]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
-   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.performance :refer [mapv empty? not-empty]])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
    (java.io BufferedWriter OutputStream OutputStreamWriter)
@@ -26,7 +25,7 @@
     :status       200
     :headers      {"Content-Disposition" (format "attachment; filename=\"%s_%s.json\""
                                                  (or filename-prefix "query_result")
-                                                 (u.date/format (t/zoned-date-time)))}}))
+                                                 (streaming.common/export-filename-timestamp))}}))
 
 (defmethod qp.si/streaming-results-writer :json
   [_ ^OutputStream os]
@@ -39,8 +38,8 @@
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows?]
                    :or   {format-rows? true}} :data} viz-settings]
-        (let [cols           (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
-              pivot-grouping (qp.pivot.postprocess/pivot-grouping-key cols)]
+        (let [cols           (streaming.common/column-titles ordered-cols viz-settings format-rows?)
+              pivot-grouping (qp.pivot.postprocess/pivot-grouping-index cols)]
           (when pivot-grouping (vreset! pivot-grouping-idx pivot-grouping))
           (let [names (cond->> cols
                         pivot-grouping (m/remove-nth pivot-grouping))]
@@ -62,22 +61,25 @@
           ;; when a pivot-grouping col exists, we check its group number. When it's zero,
           ;; we keep it, otherwise don't include it in the results as it's a row representing a subtotal of some kind
           (when (or (not group)
-                    (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
+                    (= qp.pivot.postprocess/non-pivot-row-group (int group)))
             (when-not (zero? row-num)
               (.write writer ",\n"))
             (json/encode-to
-             (zipmap
-              @col-names
-              (map (fn [formatter r]
-                     ;; NOTE: Stringification of formatted values ensures consistency with what is shown in the
-                     ;; Metabase UI, especially numbers (e.g. percents, currencies, and rounding). However, this
-                     ;; does mean that all JSON values are strings. Any other strategy requires some level of
-                     ;; inference to know if we should or should not parse a string (or not stringify an object).
-                     (let [res (formatter (common/format-value r))]
-                       (if-some [num-str (:num-str res)]
-                         num-str
-                         res)))
-                   @ordered-formatters cleaned-row))
+             ;; #12247 Use array-map instead of zipmap for preserving order in json export
+             (apply array-map
+                    (interleave
+                     @col-names
+                     (map (fn [formatter r]
+                            ;; NOTE: Stringification of formatted values ensures consistency with what is shown in the
+                            ;; Metabase UI, especially numbers (e.g. percents, currencies, and rounding). However, this
+                            ;; does mean that all JSON values are strings. Any other strategy requires some level of
+                            ;; inference to know if we should or should not parse a string (or not stringify an object).
+                            (let [res (formatter (streaming.common/format-value r))]
+                              (cond
+                                (formatter/NumericWrapper? res) (:num-str res)
+                                (formatter/TextWrapper? res)    (:text-str res)
+                                :else                          res)))
+                          @ordered-formatters cleaned-row)))
              writer {})
             (.flush writer))))
 

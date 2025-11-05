@@ -34,15 +34,13 @@ const COLLECTIONS = {
 };
 
 function mockCollectionItemsEndpoint() {
-  fetchMock.get(
-    {
-      url: "path:/api/collection/root/items",
-      query: {
-        sort_column: "name",
-        sort_direction: "asc",
-      },
+  fetchMock.get({
+    url: "path:/api/collection/root/items",
+    query: {
+      sort_column: "name",
+      sort_direction: "asc",
     },
-    {
+    response: {
       total: 3,
       data: [
         createMockCollectionItem({
@@ -62,7 +60,7 @@ function mockCollectionItemsEndpoint() {
       limit: null,
       offset: null,
     },
-  );
+  });
 }
 
 async function setup() {
@@ -87,7 +85,7 @@ describe("SavedEntityPicker", () => {
     await setup();
 
     expect(
-      screen.getAllByTestId("tree-item-name").map(node => node.textContent),
+      screen.getAllByTestId("tree-item-name").map((node) => node.textContent),
     ).toEqual([
       "Our analytics",
       "Your personal collection",
@@ -99,7 +97,7 @@ describe("SavedEntityPicker", () => {
     await setup();
 
     expect(
-      screen.getAllByTestId("option-text").map(node => node.textContent),
+      screen.getAllByTestId("option-text").map((node) => node.textContent),
     ).toEqual(["a", "A", "B"]);
   });
 });

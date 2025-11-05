@@ -110,5 +110,5 @@ Everyone can view all of their subscriptions and alerts by clicking on the **gea
 
 For more, see [how permissions work with alerts and subscriptions](../permissions/notifications.md).
 
-[alerts]: ../questions/sharing/alerts.md
+[alerts]: ../questions/alerts.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md

@@ -11,7 +11,7 @@ So here's the scenario: you love Metabase. It's changed your life. But you have 
 Before you start building a driver from scratch, see if one already exists that you could contribute to:
 
 - [Officially supported drivers](../../databases/connecting.md#connecting-to-supported-databases)
-- [Partner and community drivers](../partner-and-community-drivers.md)
+- [Community drivers](../community-drivers.md)
 
 ## Setting up
 
@@ -36,4 +36,4 @@ Try to avoid skipping right to whichever page you think will give you the code y
 
 ## Driver development announcements
 
-Occasionally, we may make changes to Metabase that impact database drivers. We'll try to give everyone as much of a heads up as possible. For notifications regarding potential driver changes, subscribe to the [Metabase Community Authors mailing list](http://eepurl.com/gQcIO9).
+Occasionally, we may make changes to Metabase that impact database drivers. We'll try to give everyone as much of a heads up as possible. For notifications regarding potential driver changes, subscribe to the [Metabase Community Authors mailing list](https://eepurl.com/gQcIO9).

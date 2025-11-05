@@ -1,9 +1,12 @@
 (ns metabase.util.retry
   "Support for in-memory, thread-blocking retrying."
   (:require
-   [metabase.config :as config]
-   [metabase.models.setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]])
+   [malli.util :as mut]
+   [metabase.config.core :as config]
+   [metabase.settings.core :refer [defsetting]]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr])
   (:import
    (io.github.resilience4j.core IntervalFunction)
    (io.github.resilience4j.retry Retry RetryConfig)
@@ -11,6 +14,23 @@
 
 (set! *warn-on-reflection* true)
 
+(mr/def ::retry-config
+  [:map
+   [:max-attempts             :int]
+   [:initial-interval-millis  :int]
+   [:multiplier               :float]
+   [:randomization-factor     :float]
+   [:max-interval-millis      :int]
+   [:retry-on-exception-pred  {:optional true} [:=> [:cat :any] :boolean]]
+   [:retry-on-result-pred     {:optional true} [:=> [:cat :any] :boolean]]])
+
+(mr/def ::retry-overrides
+  (mut/optional-keys [:ref ::retry-config]))
+
+;;; these kondo warnings are ignored for now because I'm planning on moving this namespace out of `util` to eliminate
+;;; the dependency of `util` of `settings` -- will fix them after this namespace gets moved. -- Cam
+
+#_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting retry-max-attempts
   (deferred-tru "The maximum number of attempts for an event.")
   :type :integer
@@ -18,21 +38,25 @@
              1
              7))
 
+#_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting retry-initial-interval
   (deferred-tru "The initial retry delay in milliseconds.")
   :type :integer
   :default 500)
 
+#_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting retry-multiplier
   (deferred-tru "The delay multiplier between attempts.")
   :type :double
   :default 2.0)
 
+#_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting retry-randomization-factor
   (deferred-tru "The randomization factor of the retry delay.")
   :type :double
   :default 0.1)
 
+#_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting retry-max-interval-millis
   (deferred-tru "The maximum delay between attempts.")
   :type :integer
@@ -48,7 +72,8 @@
    :max-interval-millis (retry-max-interval-millis)})
 
 (defn- make-predicate [f]
-  (reify Predicate (test [_ x] (f x))))
+  (reify Predicate (test [_ x]
+                     (boolean (f x)))))
 
 (defn random-exponential-backoff-retry
   "Returns a randomized exponential backoff retry named `retry-name`
@@ -57,7 +82,8 @@
           {:keys [^long max-attempts ^long initial-interval-millis
                   ^double multiplier ^double randomization-factor
                   ^long max-interval-millis
-                  retry-on-result-pred retry-on-exception-pred]}]
+                  ^Callable retry-on-result-pred
+                  ^Callable retry-on-exception-pred]}]
   (let [interval-fn (IntervalFunction/ofExponentialRandomBackoff
                      initial-interval-millis multiplier
                      randomization-factor max-interval-millis)
@@ -84,11 +110,11 @@
                                       (apply f args)))]
        (.call (Retry/decorateCallable retry callable))))))
 
-(defn make
+(mu/defn make
   "Make a retrying function from `f` with the given `retry-config`.
 
     (let [retrier (retry/make retry-config)]
       (retrier f))"
-  [retry-config]
+  [retry-config :- ::retry-config]
   (fn [f]
     ((decorate f (random-exponential-backoff-retry (str (random-uuid)) retry-config)))))

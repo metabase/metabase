@@ -17,12 +17,12 @@ import {
 } from "./tags";
 
 export const subscriptionApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listSubscriptions: builder.query<
       DashboardSubscription[],
       ListSubscriptionsRequest
     >({
-      query: params => ({
+      query: (params) => ({
         method: "GET",
         url: "/api/pulse",
         params,
@@ -31,18 +31,18 @@ export const subscriptionApi = Api.injectEndpoints({
         provideSubscriptionListTags(subscriptions),
     }),
     getSubscription: builder.query<DashboardSubscription, number>({
-      query: id => ({
+      query: (id) => ({
         method: "GET",
         url: `/api/pulse/${id}`,
       }),
-      providesTags: subscription =>
+      providesTags: (subscription) =>
         subscription ? provideSubscriptionTags(subscription) : [],
     }),
     createSubscription: builder.mutation<
       DashboardSubscription,
       CreateSubscriptionRequest
     >({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/pulse",
         body,
@@ -66,7 +66,7 @@ export const subscriptionApi = Api.injectEndpoints({
         ]),
     }),
     unsubscribe: builder.mutation<void, number>({
-      query: id => ({
+      query: (id) => ({
         method: "DELETE",
         url: `/api/pulse/${id}/subscription`,
       }),

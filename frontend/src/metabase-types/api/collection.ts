@@ -1,20 +1,23 @@
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName, IconProps } from "metabase/ui";
 import type {
+  BaseEntityId,
   CollectionEssentials,
   Dashboard,
+  DashboardId,
   PaginationRequest,
   PaginationResponse,
   VisualizationDisplay,
 } from "metabase-types/api";
 
-import type { CardType } from "./card";
+import type { CardId, CardType } from "./card";
 import type { DatabaseId } from "./database";
 import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId } from "./user";
 
-export type RegularCollectionId = number;
+// Collection ID can be either a numeric or entity id
+export type RegularCollectionId = number | string;
 
 export type CollectionId =
   | RegularCollectionId
@@ -27,7 +30,11 @@ export type CollectionContentModel = "card" | "dataset";
 
 export type CollectionAuthorityLevel = "official" | null;
 
-export type CollectionType = "instance-analytics" | "trash" | null;
+export type CollectionType =
+  | "instance-analytics"
+  | "trash"
+  | "remote-synced"
+  | null;
 
 export type LastEditInfo = {
   email: string;
@@ -47,7 +54,7 @@ export type CollectionAuthorityLevelConfig = {
 
 export type CollectionInstanceAnaltyicsConfig = {
   type: CollectionType;
-  name: string;
+  name?: string;
   icon: IconName;
   color?: string;
   tooltips?: Record<string, string>;
@@ -57,7 +64,8 @@ export interface Collection {
   id: CollectionId;
   name: string;
   slug?: string;
-  entity_id?: string;
+  // "" for the default for EE's CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID
+  entity_id?: BaseEntityId | "";
   description: string | null;
   can_write: boolean;
   can_restore: boolean;
@@ -65,7 +73,7 @@ export interface Collection {
   archived: boolean;
   children?: Collection[];
   authority_level?: CollectionAuthorityLevel;
-  type?: "instance-analytics" | "trash" | null;
+  type?: CollectionType;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
@@ -78,6 +86,8 @@ export interface Collection {
 
   here?: CollectionContentModel[];
   below?: CollectionContentModel[];
+
+  git_sync_enabled?: boolean;
 
   // Assigned on FE
   originalName?: string;
@@ -92,6 +102,7 @@ export const COLLECTION_ITEM_MODELS = [
   "snippet",
   "collection",
   "indexed-entity",
+  "document",
 ] as const;
 export type CollectionItemModel = (typeof COLLECTION_ITEM_MODELS)[number];
 
@@ -99,6 +110,7 @@ export type CollectionItemId = number;
 
 export interface CollectionItem {
   id: CollectionItemId;
+  entity_id?: BaseEntityId;
   model: CollectionItemModel;
   name: string;
   description: string | null;
@@ -152,14 +164,21 @@ export type getCollectionRequest = {
   namespace?: "snippets";
 };
 
+export type ListCollectionItemsSortColumn =
+  | "name"
+  | "last_edited_at"
+  | "last_edited_by"
+  | "model";
+
 export type ListCollectionItemsRequest = {
   id: CollectionId;
   models?: CollectionItemModel[];
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
   namespace?: "snippets";
+  collection_type?: CollectionType;
 } & PaginationRequest &
-  Partial<SortingOptions>;
+  Partial<SortingOptions<ListCollectionItemsSortColumn>>;
 
 export type ListCollectionItemsResponse = {
   data: CollectionItem[];
@@ -173,6 +192,7 @@ export interface UpdateCollectionRequest {
   archived?: boolean;
   parent_id?: RegularCollectionId | null;
   authority_level?: CollectionAuthorityLevel;
+  type?: CollectionType;
 }
 
 export interface CreateCollectionRequest {
@@ -188,6 +208,7 @@ export interface ListCollectionsRequest {
   namespace?: string;
   "personal-only"?: boolean;
   "exclude-other-user-collections"?: boolean;
+  collection_type?: CollectionType;
 }
 export interface ListCollectionsTreeRequest {
   "exclude-archived"?: boolean;
@@ -195,8 +216,39 @@ export interface ListCollectionsTreeRequest {
   namespace?: string;
   shallow?: boolean;
   "collection-id"?: RegularCollectionId | null;
+  collection_type?: CollectionType;
 }
 
 export interface DeleteCollectionRequest {
   id: RegularCollectionId;
+}
+
+export interface DashboardQuestionCandidate {
+  id: CardId;
+  name: string;
+  description: string | null;
+  sole_dashboard_info: {
+    id: DashboardId;
+    name: string;
+    description: string | null;
+  };
+}
+
+export interface GetCollectionDashboardQuestionCandidatesRequest
+  extends PaginationRequest {
+  collectionId: CollectionId;
+}
+
+export interface GetCollectionDashboardQuestionCandidatesResult {
+  total: number;
+  data: DashboardQuestionCandidate[];
+}
+
+export interface MoveCollectionDashboardCandidatesRequest {
+  collectionId: CollectionId;
+  cardIds: CardId[];
+}
+
+export interface MoveCollectionDashboardCandidatesResult {
+  moved: CardId[];
 }

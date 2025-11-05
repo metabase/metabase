@@ -26,6 +26,8 @@ const MODEL_NAME: Record<EnabledSearchModel, string> = {
   metric: "Metric",
   table: "Table",
   "indexed-entity": "Indexed record",
+  document: "Document",
+  transform: "Transform",
 };
 
 const TEST_TYPES: Array<EnabledSearchModel> = [
@@ -130,7 +132,7 @@ describe("TypeFilterContent", () => {
 
     expect(options).toHaveLength(TEST_TYPE_SUBSET.length);
 
-    options.forEach(option => {
+    options.forEach((option) => {
       expect(TEST_TYPE_SUBSET).toContain(option.value);
     });
   });
@@ -142,7 +144,7 @@ describe("TypeFilterContent", () => {
 
     expect(options.length).toEqual(TEST_TYPES.length);
 
-    const checkedOptions = options.filter(option => option.checked);
+    const checkedOptions = options.filter((option) => option.checked);
 
     expect(checkedOptions.length).toEqual(TEST_TYPE_SUBSET.length);
     for (const checkedOption of checkedOptions) {
@@ -167,7 +169,7 @@ describe("TypeFilterContent", () => {
     const { onChangeFilters } = await setup({ initialValue: TEST_TYPE_SUBSET });
 
     const options = getCheckboxes();
-    const checkedOptions = options.filter(option => option.checked);
+    const checkedOptions = options.filter((option) => option.checked);
     for (const checkedOption of checkedOptions) {
       await userEvent.click(checkedOption);
     }

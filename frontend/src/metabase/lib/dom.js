@@ -1,6 +1,8 @@
 import querystring from "querystring";
 import _ from "underscore";
 
+import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isCypressActive, isStorybookActive } from "metabase/env";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -15,13 +17,13 @@ export const getScrollY = () =>
 // Storybook also uses an iframe to display story content, so we want to ignore it
 export const isWithinIframe = function () {
   try {
-    if (isCypressActive || isStorybookActive) {
-      return false;
-    }
-
-    // Mock that we're embedding, so we could visual test embed components
+    // Mock that we're embedding, so we could test embed components
     if (window.overrideIsWithinIframe) {
       return true;
+    }
+
+    if (isCypressActive || isStorybookActive) {
+      return false;
     }
 
     return window.self !== window.top;
@@ -104,7 +106,7 @@ export function elementIsInView(element, percentX = 1, percentY = 1) {
     element = element.parentElement;
   }
 
-  return parentRects.every(parentRect => {
+  return parentRects.every((parentRect) => {
     const visiblePixelX =
       Math.min(elementRect.right, parentRect.right) -
       Math.max(elementRect.left, parentRect.left);
@@ -190,7 +192,7 @@ function getTextNodeAtPosition(root, index) {
   const treeWalker = document.createTreeWalker(
     root,
     NodeFilter.SHOW_TEXT,
-    elem => {
+    (elem) => {
       if (index > elem.textContent.length) {
         index -= elem.textContent.length;
         return NodeFilter.FILTER_REJECT;
@@ -257,7 +259,7 @@ function isMetabaseUrl(url) {
 }
 
 function isAbsoluteUrl(url) {
-  return ["/", "http:", "https:", "mailto:"].some(prefix =>
+  return ["/", "http:", "https:", "mailto:"].some((prefix) =>
     url.startsWith(prefix),
   );
 }
@@ -293,7 +295,7 @@ let metaKey;
 let ctrlKey;
 window.addEventListener(
   "mouseup",
-  e => {
+  (e) => {
     metaKey = e.metaKey;
     ctrlKey = e.ctrlKey;
   },
@@ -308,9 +310,9 @@ export function open(
   url,
   {
     // custom function for opening in same window
-    openInSameWindow = url => clickLink(url, false),
+    openInSameWindow = (url) => clickLink(url, false),
     // custom function for opening in new window
-    openInBlankWindow = url => clickLink(url, true),
+    openInBlankWindow = (url) => clickLink(url, true),
     // custom function for opening in same app instance
     openInSameOrigin,
     ignoreSiteUrl = false,
@@ -318,6 +320,12 @@ export function open(
   } = {},
 ) {
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
+
+  // In the react sdk, allow the host app to override how to open links
+  if (isEmbeddingSdk() && handleLinkSdkPlugin(url).handled) {
+    // Plugin handled the link, don't continue with default behavior
+    return;
+  }
 
   if (shouldOpenInBlankWindow(url, options)) {
     openInBlankWindow(url);
@@ -364,6 +372,10 @@ export function shouldOpenInBlankWindow(
     blankOnDifferentOrigin = true,
   } = {},
 ) {
+  if (isEmbeddingSdk()) {
+    // always open in new window in modular embedding (react SDK + EAJS)
+    return true;
+  }
   const isMetaKey = event && event.metaKey != null ? event.metaKey : metaKey;
   const isCtrlKey = event && event.ctrlKey != null ? event.ctrlKey : ctrlKey;
 
@@ -377,7 +389,7 @@ export function shouldOpenInBlankWindow(
   return false;
 }
 
-const getOrigin = url => {
+const getOrigin = (url) => {
   try {
     return new URL(url, window.location.origin).origin;
   } catch {
@@ -385,7 +397,7 @@ const getOrigin = url => {
   }
 };
 
-const getLocation = url => {
+const getLocation = (url) => {
   try {
     const { pathname, search, hash } = new URL(url, window.location.origin);
     const query = querystring.parse(search.substring(1));
@@ -440,6 +452,10 @@ export function isSameOrSiteUrlOrigin(url) {
 }
 
 export function getUrlTarget(url) {
+  if (isEmbeddingSdk()) {
+    // always open in new window in modular embedding (react SDK + EAJS)
+    return "_blank";
+  }
   return isSameOrSiteUrlOrigin(url) ? "_self" : "_blank";
 }
 
@@ -450,8 +466,10 @@ export function removeAllChildren(element) {
 }
 
 export function parseDataUri(url) {
+  // https://regexr.com/8e8gt
   const match =
-    url && url.match(/^data:(?:([^;]+)(?:;([^;]+))?)?(;base64)?,(.*)$/);
+    url &&
+    url.match(/^data:(?:([^;]+)(?:;([^;]+))?)?(;base64)?,((?:(?!\1|,).)*)$/);
   if (match) {
     let [, mimeType, charset, base64, data] = match;
     if (charset === "base64" && !base64) {
@@ -530,7 +548,7 @@ export function isSmallScreen() {
 /**
  * @param {MouseEvent<Element, MouseEvent>} event
  */
-export const getEventTarget = event => {
+export const getEventTarget = (event) => {
   let target = document.getElementById("popover-event-target");
   if (!target) {
     target = document.createElement("div");

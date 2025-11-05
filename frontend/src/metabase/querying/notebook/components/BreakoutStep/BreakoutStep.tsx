@@ -80,18 +80,20 @@ export function BreakoutStep({
       hasAddButton={hasAddButton}
       isAddButtonDisabled={isAddButtonDisabled}
       renderName={renderBreakoutName}
-      renderPopover={({ item: breakout, index, onClose }) => (
-        <BreakoutPopover
-          query={query}
-          stageIndex={stageIndex}
-          breakout={breakout}
-          breakoutIndex={index}
-          isMetric={isMetric}
-          onAddBreakout={handleAddBreakout}
-          onUpdateBreakoutColumn={handleUpdateBreakoutColumn}
-          onClose={onClose}
-        />
-      )}
+      renderPopover={({ item: breakout, index, onClose }) =>
+        readOnly ? null : (
+          <BreakoutPopover
+            query={query}
+            stageIndex={stageIndex}
+            breakout={breakout}
+            breakoutIndex={index}
+            isMetric={isMetric}
+            onAddBreakout={handleAddBreakout}
+            onUpdateBreakoutColumn={handleUpdateBreakoutColumn}
+            onClose={onClose}
+          />
+        )
+      }
       onReorder={handleReorderBreakout}
       onRemove={handleRemoveBreakout}
       data-testid="breakout-step"
@@ -133,7 +135,10 @@ export const BreakoutPopover = ({
         if (isMetric && !Lib.isDateOrDateTime(column)) {
           return columns;
         } else if (breakout && checkColumnSelected(columnInfo, breakoutIndex)) {
-          columns.push(Lib.breakoutColumn(query, stageIndex, breakout));
+          const column = Lib.breakoutColumn(query, stageIndex, breakout);
+          if (column != null) {
+            columns.push(column);
+          }
         } else {
           columns.push(column);
         }
@@ -154,7 +159,7 @@ export const BreakoutPopover = ({
       hasTemporalBucketing
       withInfoIcons
       color="summarize"
-      checkIsColumnSelected={item => checkColumnSelected(item, breakoutIndex)}
+      checkIsColumnSelected={(item) => checkColumnSelected(item, breakoutIndex)}
       onSelect={(column: Lib.ColumnMetadata) => {
         const isUpdate = breakout != null;
         if (isUpdate) {

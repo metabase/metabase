@@ -60,7 +60,7 @@ const DatabaseSchemasPane = ({
                 </NodeListTitleText>
               </NodeListTitle>
               <ul>
-                {sortedModels.map(model => (
+                {sortedModels.map((model) => (
                   <li key={model.id}>
                     <NodeListItemLink
                       onClick={() => onItemClick("question", model)}
@@ -86,7 +86,7 @@ const DatabaseSchemasPane = ({
             </NodeListTitleText>
           </NodeListTitle>
           <ul>
-            {schemas.map(schema => (
+            {schemas.map((schema) => (
               <li key={schema.id}>
                 <NodeListItemLink onClick={() => onItemClick("schema", schema)}>
                   <NodeListItemIcon name="folder" />

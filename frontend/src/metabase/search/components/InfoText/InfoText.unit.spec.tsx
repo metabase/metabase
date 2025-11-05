@@ -1,5 +1,4 @@
-import { waitFor } from "@testing-library/react";
-import moment from "moment"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 
 import {
   setupCollectionByIdEndpoint,
@@ -8,7 +7,7 @@ import {
   setupUserRecipientsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { WrappedResult } from "metabase/search/types";
 import type { IconName } from "metabase/ui";
 import type { SearchModel, SearchResult } from "metabase-types/api";
@@ -38,7 +37,7 @@ const MOCK_OTHER_USER = createMockUser({
 
 const CREATED_AT_TIME = "2022-01-01T00:00:00.000Z";
 const LAST_EDITED_TIME = "2023-01-01T00:00:00.000Z";
-const formatDuration = (timestamp: string) => moment(timestamp).fromNow();
+const formatDuration = (timestamp: string) => dayjs(timestamp).fromNow();
 
 const CREATED_AT_DURATION = formatDuration(CREATED_AT_TIME);
 const LAST_EDITED_DURATION = formatDuration(LAST_EDITED_TIME);

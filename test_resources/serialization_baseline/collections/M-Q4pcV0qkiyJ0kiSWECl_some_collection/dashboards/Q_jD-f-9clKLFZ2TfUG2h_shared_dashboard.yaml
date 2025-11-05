@@ -10,6 +10,7 @@ collection_position: null
 position: null
 enable_embedding: false
 embedding_params: null
+embedding_type: null
 made_public_by_id: null
 public_uuid: null
 show_in_getting_started: false
@@ -31,6 +32,7 @@ dashcards:
   size_y: 4
   action_id: null
   dashboard_tab_id: null
+  inline_parameters: []
   parameter_mappings: []
   series:
   - card_id: OMuZ0wHe2O5Z_59-cLmn4
@@ -53,6 +55,7 @@ dashcards:
   size_y: 4
   action_id: null
   dashboard_tab_id: null
+  inline_parameters: []
   parameter_mappings: []
   series: []
   visualization_settings:

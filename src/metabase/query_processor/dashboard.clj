@@ -1,24 +1,24 @@
 (ns metabase.query-processor.dashboard
   "Code for running a query in the context of a specific DashboardCard."
+  (:refer-clojure :exclude [some select-keys not-empty])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.driver.common.parameters.operators :as params.ops]
-   [metabase.events :as events]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.dashboard-card :refer [DashboardCard]]
-   [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-   [metabase.models.user-parameter-value :as user-parameter-value]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.parameters.operators :as params.ops]
+   [metabase.users.models.user-parameter-value :as user-parameter-value]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys some not-empty]]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
@@ -28,15 +28,15 @@
   `dashcard-id` at the top level or as a series. If not such relationship exists this will throw a 404 Exception."
   [dashboard-id card-id dashcard-id]
   (api/check-404
-   (or (t2/exists? DashboardCard
+   (or (t2/exists? :model/DashboardCard
                    :id           dashcard-id
                    :dashboard_id dashboard-id
                    :card_id      card-id)
        (and
-        (t2/exists? DashboardCard
+        (t2/exists? :model/DashboardCard
                     :id           dashcard-id
                     :dashboard_id dashboard-id)
-        (t2/exists? DashboardCardSeries
+        (t2/exists? :model/DashboardCardSeries
                     :card_id          card-id
                     :dashboardcard_id dashcard-id)))))
 
@@ -125,8 +125,8 @@
    dashcard-id    :- ::lib.schema.id/dashcard
    request-params :- [:maybe [:sequential :map]]]
   (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
-  (let [request-params            (mbql.normalize/normalize-fragment [:parameters] request-params)
-        dashboard                 (-> (t2/select-one Dashboard :id dashboard-id)
+  (let [request-params            (some-> request-params not-empty (->> (lib/normalize ::dashboards.schema/parameters)))
+        dashboard                 (-> (t2/select-one :model/Dashboard :id dashboard-id)
                                       (t2/hydrate :resolved-params)
                                       (api/check-404))
         dashboard-param-id->param (into {}
@@ -161,8 +161,8 @@
 
 (defn process-query-for-dashcard
   "Like [[metabase.query-processor.card/process-query-for-card]], but runs the query for a `DashboardCard` with
-  `parameters` and `constraints`. By default, returns a `metabase.async.streaming_response.StreamingResponse` (see
-  [[metabase.async.streaming-response]]), but this may vary if you pass in a different `:make-run` function. Will throw an
+  `parameters` and `constraints`. By default, returns a `metabase.server.streaming_response.StreamingResponse` (see
+  [[metabase.server.streaming-response]]), but this may vary if you pass in a different `:make-run` function. Will throw an
   Exception if preconditions such as proper permissions are not met *before* returning the `StreamingResponse`.
 
   See [[metabase.query-processor.card/process-query-for-card]] for more information about the various parameters."
@@ -177,7 +177,7 @@
     (events/publish-event! :event/dashboard-queried {:object-id dashboard-id :user-id api/*current-user-id*})
     ;; make sure we can read this Dashboard. Card will get read-checked later on inside
     ;; [[qp.card/process-query-for-card]]
-    (api/read-check Dashboard dashboard-id)
+    (api/read-check :model/Dashboard dashboard-id)
     (check-card-and-dashcard-are-in-dashboard dashboard-id card-id dashcard-id)
     (let [resolved-params (resolve-params-for-query dashboard-id card-id dashcard-id parameters)
           options         (merge

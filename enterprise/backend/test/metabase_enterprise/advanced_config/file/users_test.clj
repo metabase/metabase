@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
-   [metabase.setup :as setup]
+   [metabase.setup.core :as setup]
    [metabase.test :as mt]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
@@ -157,3 +157,21 @@
      :last_name  "Era"
      :email      "cam+config-file-test@metabase.com"}
     (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :password)"))))
+
+(deftest email-case-irrelevant-test
+  (testing "Using any case in email still works #62894"
+    (try
+      (binding [advanced-config.file/*config* {:version 1
+                                               :config  {:users [{:first_name       "Cam"
+                                                                  :last_name        "Era"
+                                                                  :email            "Cam+config-file-test@metabase.com"
+                                                                  :password         "2cans"
+                                                                  :login_attributes {"a" 1}}]}}]
+        (is (= :ok
+               (advanced-config.file/initialize!)))
+        (testing "It should not fail with 'duplicate'"
+          (is (= :ok
+                 (advanced-config.file/initialize!)))))
+      (finally
+        (t2/delete! :model/User :email "cam+config-file-test@metabase.com")
+        (t2/delete! :model/User :email "Cam+config-file-test@metabase.com")))))

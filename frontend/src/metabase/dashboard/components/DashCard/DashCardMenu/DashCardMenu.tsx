@@ -1,60 +1,46 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { isValidElement, useState } from "react";
+import { useMemo, useState } from "react";
+import { t } from "ttag";
 
-import type { MetabasePluginsConfig } from "embedding-sdk";
-import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
-import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
-import CS from "metabase/css/core/index.css";
 import {
   canDownloadResults,
   canEditQuestion,
 } from "metabase/dashboard/components/DashCard/DashCardMenu/utils";
-import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
-import { useStore } from "metabase/lib/redux";
-import { QueryDownloadPopover } from "metabase/query_builder/components/QueryDownloadPopover";
-import { useDownloadData } from "metabase/query_builder/components/QueryDownloadPopover/use-download-data";
 import {
-  ActionIcon,
-  Icon,
-  type IconName,
-  Menu,
-  type MenuItemProps,
-} from "metabase/ui";
+  type DashboardContextReturned,
+  useDashboardContext,
+} from "metabase/dashboard/context";
+import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
+import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
+import { useStore } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
+import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
+import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
+import { ActionIcon, Icon, Menu, type MenuProps } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type Question from "metabase-lib/v1/Question";
-import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
-import type {
-  DashCardId,
-  DashboardId,
-  Dataset,
-  VisualizationSettings,
-} from "metabase-types/api";
+import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
+import type { DashboardCard, Dataset } from "metabase-types/api";
+
+import { getDashcardTokenId, getDashcardUuid } from "../dashcard-ids";
 
 import { DashCardMenuItems } from "./DashCardMenuItems";
 
 interface DashCardMenuProps {
   question: Question;
   result: Dataset;
-  dashboardId?: DashboardId;
-  dashcardId?: DashCardId;
-  uuid?: string;
-  token?: string;
-  visualizationSettings?: VisualizationSettings;
-  downloadsEnabled: boolean;
+  dashcard: DashboardCard;
+  position?: MenuProps["position"];
+  onEditVisualization?: () => void;
+  openUnderlyingQuestionItems?: React.ReactNode;
+  canEdit?: boolean;
 }
 
-export type DashCardMenuItem = {
-  iconName: IconName;
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-} & MenuItemProps;
-
-function isDashCardMenuEmpty(plugins?: MetabasePluginsConfig) {
-  const dashcardMenu = plugins?.dashboard?.dashboardCardMenu;
-
-  if (!plugins || !dashcardMenu || typeof dashcardMenu !== "object") {
+function isDashCardMenuEmpty(
+  dashcardMenu: DashboardContextReturned["dashcardMenu"],
+) {
+  if (typeof dashcardMenu !== "object") {
     return false;
   }
 
@@ -68,18 +54,25 @@ function isDashCardMenuEmpty(plugins?: MetabasePluginsConfig) {
 export const DashCardMenu = ({
   question,
   result,
-  dashboardId,
-  dashcardId,
-  uuid,
-  token,
+  dashcard,
+  position = "bottom-end",
+  onEditVisualization,
+  openUnderlyingQuestionItems,
+  canEdit,
 }: DashCardMenuProps) => {
   const store = useStore();
-  const { plugins } = useInteractiveDashboardContext();
 
+  const token = useMemo(() => {
+    return getDashcardTokenId(dashcard);
+  }, [dashcard]);
+  const uuid = useMemo(() => getDashcardUuid(dashcard), [dashcard]);
+  const dashcardId = dashcard.id;
+  const { dashboard, dashboardId, dashcardMenu, downloadsEnabled } =
+    useDashboardContext();
   const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
     question,
     result,
-    dashboardId,
+    dashboardId: checkNotNull(dashboardId),
     dashcardId,
     uuid,
     token,
@@ -93,27 +86,26 @@ export const DashCardMenu = ({
     },
   });
 
-  if (isDashCardMenuEmpty(plugins)) {
+  if (!dashboard || isDashCardMenuEmpty(dashcardMenu)) {
     return null;
   }
 
+  if (typeof dashcardMenu === "function") {
+    return dashcardMenu({
+      question: transformSdkQuestion(question),
+      dashcard,
+      result,
+      downloadsEnabled,
+    });
+  }
+
   const getMenuContent = () => {
-    if (typeof plugins?.dashboard?.dashboardCardMenu === "function") {
-      return plugins.dashboard.dashboardCardMenu({
-        question: transformSdkQuestion(question),
-      });
-    }
-
-    if (isValidElement(plugins?.dashboard?.dashboardCardMenu)) {
-      return plugins.dashboard.dashboardCardMenu;
-    }
-
     if (menuView === "download") {
       return (
-        <QueryDownloadPopover
+        <QuestionDownloadWidget
           question={question}
           result={result}
-          onDownload={opts => {
+          onDownload={(opts) => {
             close();
             handleDownload(opts);
           }}
@@ -122,23 +114,55 @@ export const DashCardMenu = ({
     }
 
     return (
-      <DashCardMenuItems
-        question={question}
-        result={result}
-        isDownloadingData={isDownloadingData}
-        onDownload={() => setMenuView("download")}
-      />
+      <>
+        <DashCardMenuItems
+          dashcardId={dashcardId}
+          question={question}
+          result={result}
+          isDownloadingData={isDownloadingData}
+          onDownload={() => setMenuView("download")}
+          onEditVisualization={onEditVisualization}
+          canEdit={canEdit}
+        />
+        {openUnderlyingQuestionItems && (
+          <Menu trigger="click-hover" shadow="md" position="right" width={200}>
+            <Menu.Target>
+              <Menu.Item
+                fw="bold"
+                styles={{
+                  // styles needed to override the hover styles
+                  // as hovering is bugged for submenus
+                  // this'll be much better in v8
+                  item: {
+                    backgroundColor: "transparent",
+                    color: "var(--mb-color-text-primary)",
+                  },
+                  itemSection: {
+                    color: "var(--mb-color-text-primary)",
+                  },
+                }}
+                leftSection={<Icon name="external" aria-hidden />}
+                rightSection={<Icon name="chevronright" aria-hidden />}
+              >
+                {t`View question(s)`}
+              </Menu.Item>
+            </Menu.Target>
+            <Menu.Dropdown data-testid="dashcard-menu-open-underlying-question">
+              {openUnderlyingQuestionItems}
+            </Menu.Dropdown>
+          </Menu>
+        )}
+      </>
     );
   };
 
   return (
-    <Menu offset={4} position="bottom-end" opened={isOpen} onClose={close}>
+    <Menu offset={4} position={position} opened={isOpen} onClose={close}>
       <Menu.Target>
         <ActionIcon
           size="xs"
           className={cx({
             [SAVING_DOM_IMAGE_HIDDEN_CLASS]: true,
-            [cx(CS.hoverChild, CS.hoverChildSmooth)]: !isOpen,
           })}
           onClick={toggle}
           data-testid="dashcard-menu"
@@ -152,37 +176,29 @@ export const DashCardMenu = ({
   );
 };
 
-interface QueryDownloadWidgetOpts {
-  question: Question;
+type ShouldRenderDashcardMenuProps = {
+  question: Question | null;
   result?: Dataset;
-  isXray?: boolean;
-  /** If public sharing or static/public embed */
-  isPublicOrEmbedded?: boolean;
-  isEditing: boolean;
-  downloadsEnabled: boolean;
-}
+} & Pick<DashboardContextReturned, "dashboard" | "dashcardMenu">;
 
 DashCardMenu.shouldRender = ({
   question,
+  dashboard,
+  dashcardMenu,
   result,
-  isXray,
-  isPublicOrEmbedded,
-  isEditing,
-  downloadsEnabled,
-}: QueryDownloadWidgetOpts) => {
+}: ShouldRenderDashcardMenuProps) => {
+  if (!question || !dashboard || dashcardMenu === null) {
+    return null;
+  }
+
   // Do not remove this check until we completely remove the old code related to Audit V1!
   // MLv2 doesn't handle `internal` queries used for Audit V1.
   const isInternalQuery = InternalQuery.isDatasetQueryType(
     question.datasetQuery(),
   );
 
-  if (isPublicOrEmbedded) {
-    return downloadsEnabled && !!result?.data && !result?.error;
-  }
   return (
     !isInternalQuery &&
-    !isEditing &&
-    !isXray &&
     (canEditQuestion(question) || canDownloadResults(result))
   );
 };

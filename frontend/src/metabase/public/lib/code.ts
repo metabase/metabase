@@ -19,25 +19,25 @@ export const getEmbedClientCodeExampleOptions =
       id: "pug",
       name: "Pug / Jade",
       source: getPugSource({ iframeUrl: `iframeUrl` }),
-      mode: "ace/mode/jade",
+      language: "pug",
     },
     {
       id: "mustache",
       name: "Mustache",
       source: getHtmlSource({ iframeUrl: `"{{iframeUrl}}"` }),
-      mode: "ace/mode/html",
+      language: "html",
     },
     {
       id: "erb",
       name: "ERB",
       source: getHtmlSource({ iframeUrl: `"<%= @iframe_url %>"` }),
-      mode: "ace/mode/html_ruby",
+      language: "html",
     },
     {
       id: "jsx",
       name: "JSX",
       source: getJsxSource({ iframeUrl: `{iframeUrl}` }),
-      mode: "ace/mode/jsx",
+      language: "typescript",
     },
   ];
 
@@ -52,7 +52,7 @@ export const getEmbedServerCodeExampleOptions = (
     getIframeQuerySource: node.getIframeQuerySource(
       codeSampleParameters.displayOptions,
     ),
-    mode: "ace/mode/javascript",
+    language: "typescript",
     embedOption: "pug",
   },
   {
@@ -63,7 +63,7 @@ export const getEmbedServerCodeExampleOptions = (
     getIframeQuerySource: ruby.getIframeQuerySource(
       codeSampleParameters.displayOptions,
     ),
-    mode: "ace/mode/ruby",
+    language: "ruby",
     embedOption: "erb",
   },
   {
@@ -74,7 +74,7 @@ export const getEmbedServerCodeExampleOptions = (
     getIframeQuerySource: python.getIframeQuerySource(
       codeSampleParameters.displayOptions,
     ),
-    mode: "ace/mode/python",
+    language: "python",
     embedOption: "pug",
   },
   {
@@ -85,7 +85,7 @@ export const getEmbedServerCodeExampleOptions = (
     getIframeQuerySource: clojure.getIframeQuerySource(
       codeSampleParameters.displayOptions,
     ),
-    mode: "ace/mode/clojure",
+    language: "clojure",
     embedOption: "pug",
   },
 ];

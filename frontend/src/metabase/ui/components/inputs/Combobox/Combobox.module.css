@@ -1,0 +1,31 @@
+.options {
+  padding: 0.75rem;
+}
+
+.option {
+  font-size: 0.875rem;
+  padding: 0.75rem 0.5rem;
+
+  &:hover {
+    color: var(--mb-color-brand);
+    background-color: var(--mb-color-background-hover);
+  }
+}
+
+.empty {
+  color: var(--mb-color-text-light);
+  font-size: 0.875rem;
+  padding: 1.5rem 0.5rem;
+}
+
+.chevron {
+  color: inherit;
+  width: 1rem !important;
+  height: 1rem !important;
+
+  path {
+    d: path(
+      "M 1.3781 4.1906 a 0.7031 0.7031 90 0 1 0.9938 0 L 7.5 9.3187 l 5.1281 -5.1281 a 0.7031 0.7031 90 1 1 0.9938 0.9938 l -5.625 5.625 a 0.7031 0.7031 90 0 1 -0.9938 0 l -5.625 -5.625 a 0.7031 0.7031 90 0 1 0 -0.9938 z"
+    );
+  }
+}

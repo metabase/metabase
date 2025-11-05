@@ -1,7 +1,7 @@
 import { jt, t } from "ttag";
 
-import HelpCard from "metabase/components/HelpCard";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import HelpCard from "metabase/common/components/HelpCard";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 
@@ -12,11 +12,11 @@ export interface DatabaseHelpCardProps {
 export const DatabaseHelpCard = ({
   className,
 }: DatabaseHelpCardProps): JSX.Element => {
-  const docsUrl = useSelector(state =>
+  const docsUrl = useSelector((state) =>
     // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup
     getDocsUrl(state, { page: "databases/connecting" }),
   );
-  const isHosted = useSelector(state => getSetting(state, "is-hosted?"));
+  const isHosted = useSelector((state) => getSetting(state, "is-hosted?"));
 
   return (
     <HelpCard

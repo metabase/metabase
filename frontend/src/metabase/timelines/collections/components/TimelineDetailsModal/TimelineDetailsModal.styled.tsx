@@ -1,7 +1,8 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Input from "metabase/core/components/Input";
-import Link from "metabase/core/components/Link";
+import Input from "metabase/common/components/Input";
+import Link from "metabase/common/components/Link";
 
 export const ModalRoot = styled.div`
   display: flex;
@@ -27,7 +28,7 @@ export const ModalToolbarLink = styled(Link)`
   margin-left: 1rem;
 `;
 
-export interface ModalBodyProps {
+interface ModalBodyProps {
   isTopAligned?: boolean;
 }
 
@@ -35,7 +36,7 @@ export const ModalBody = styled.div<ModalBodyProps>`
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
-  justify-content: ${props => (props.isTopAligned ? "" : "center")};
+  justify-content: ${(props) => (props.isTopAligned ? "" : "center")};
   margin: 1rem 0 0;
   padding: 1rem 2rem 2rem;
   overflow-y: auto;

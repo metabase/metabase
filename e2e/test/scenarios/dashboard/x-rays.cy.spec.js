@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -36,7 +36,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
   it("should work on questions with explicit joins (metabase#13112)", () => {
     const PRODUCTS_ALIAS = "Products";
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "13112",
         query: {
@@ -84,7 +84,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     cy.icon("warning").should("not.exist");
   });
 
-  ["X-ray", "Compare to the rest"].forEach(action => {
+  ["X-ray", "Compare to the rest"].forEach((action) => {
     it(`"${action.toUpperCase()}" should work on a nested question made from base native question (metabase#15655)`, () => {
       if (action === "Compare to the rest") {
         cy.log(
@@ -94,11 +94,11 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       }
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
 
-      cy.createNativeQuestion({
+      H.createNativeQuestion({
         name: "15655",
         native: { query: "select * from people" },
       }).then(({ body: { id } }) => {
-        cy.createQuestion(
+        H.createQuestion(
           {
             name: "Count of 15655 by SOURCE",
             display: "bar",
@@ -126,7 +126,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
           timeout: 15 * 1000,
         });
 
-        cy.wait("@xray").then(xhr => {
+        cy.wait("@xray").then((xhr) => {
           expect(xhr.response.body.cause).not.to.exist;
           expect(xhr.response.statusCode).not.to.eq(500);
         });
@@ -177,16 +177,28 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     cy.button("Save this").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Your dashboard was saved");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("See it").click();
+    cy.log(
+      "'See it' link should be displayed both in the header and in the toast",
+    );
+    H.undoToast()
+      .should("contain", "Your dashboard was saved")
+      .and("contain", "See it");
+
+    cy.findByTestId("automatic-dashboard-header").within(() => {
+      cy.findByRole("link", { name: "See it" }).should("be.visible").click();
+    });
 
     cy.url().should("contain", "a-look-at-orders");
 
     cy.findAllByTestId("dashcard").contains("18,760");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("How these transactions are distributed");
+
+    H.openNavigationSidebar();
+
+    H.navigationSidebar()
+      .findByRole("link", { name: /Automatically generated dashboards/i })
+      .should("exist");
   });
 
   it("should start loading cards from top to bottom", () => {
@@ -216,6 +228,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     H.getDashboardCards().eq(1).contains("Total transactions");
   });
 
+  // TODO - this is a legitimate failure because `param_fields` are not returned for x-ray dashboards
   it("should be able to click the title of an x-ray dashcard to see it in the query builder (metabase#19405)", () => {
     const timeout = { timeout: 10000 };
 
@@ -297,7 +310,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       ],
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findAllByTestId("chartsettings-field-picker")
       .findByDisplayValue("User → Source")
       .should("be.visible");
@@ -306,9 +319,8 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
   it("should be able to open x-ray on a dashcard from a dashboard with multiple tabs", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    return cy
-      .createDashboard({ name: "my dashboard" })
-      .then(({ body: { id: dashboard_id } }) => {
+    return H.createDashboard({ name: "my dashboard" }).then(
+      ({ body: { id: dashboard_id } }) => {
         H.addOrUpdateDashboardCard({
           card_id: ORDERS_BY_YEAR_QUESTION_ID,
           dashboard_id,
@@ -334,7 +346,8 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
         // Ensure charts actually got rendered
         cy.get("text").contains("Created At");
-      });
+      },
+    );
   });
 
   it("should default x-ray dashboard width to 'fixed'", () => {
@@ -395,6 +408,49 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       .findByText("Leaflet")
       .should("exist");
   });
+
+  it("should work on questions with breakout by day-of-week and null semantic type (metabase#23820)", () => {
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      semantic_type: null,
+    });
+    H.createQuestion(
+      {
+        name: "23820",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "day-of-week" }],
+          ],
+        },
+        display: "line",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    H.cartesianChartCircle()
+      .eq(3) // Wednesday
+      .click();
+
+    H.popover().within(() => {
+      cy.findByText("Automatic insights…").click();
+      cy.findByText("X-ray").click();
+    });
+
+    cy.wait("@dataset");
+
+    H.main().within(() => {
+      cy.findByText(
+        "A closer look at number of Orders where day of week of Created At is Wednesday",
+      ).should("be.visible");
+    });
+
+    getDashcardByTitle("A look at Created At fields").should("exist");
+
+    getDashcardByTitle("A look at the number of Orders").should("exist");
+  });
 });
 
 function waitForSatisfyingResponse(
@@ -407,7 +463,7 @@ function waitForSatisfyingResponse(
     throw `${maxRequests} requests exceeded`; // fail the test
   }
 
-  cy.wait(alias).then(interception => {
+  cy.wait(alias).then((interception) => {
     const isMatch = Cypress._.isMatch(interception.response, partialResponse);
     if (!isMatch) {
       waitForSatisfyingResponse(alias, partialResponse, maxRequests, level + 1);

@@ -7,7 +7,7 @@ title: Development environment
 The Metabase application has two basic components:
 
 1. A backend written in Clojure which contains a REST API as well as all the relevant code for talking to databases and processing queries.
-2. A frontend written as a Javascript single-page application which provides the web UI.
+2. A frontend written as a JavaScript single-page application which provides the web UI.
 
 Both components are built and assembled together into a single JAR file. In the directory where you run the JAR, you can create a JAR file (if Metabase hasn't already created it) and add drivers in there (the drivers are also JARs).
 
@@ -20,6 +20,8 @@ yarn dev
 ```
 
 This runs both the [frontend](#frontend) and [backend](#backend). Alternatively, you can run them separately in two terminal sessions below.
+
+To use any other database beside the default ones please take a look at [Building Drivers](#building-drivers) further down in this document.
 
 ### Frontend
 
@@ -79,21 +81,13 @@ There is also an option to reload changes on save without hot reloading if you p
 $ yarn build-watch
 ```
 
-Some systems may have trouble detecting changes to frontend files. You can enable filesystem polling by uncommenting the `watchOptions` clause in `webpack.config.js`. If you do this it may be worth making git ignore changes to webpack config, using `git update-index --assume-unchanged webpack.config.js`
+Some systems may have trouble detecting changes to frontend files. You can enable filesystem polling by uncommenting the `watchOptions` clause in `rspack.main.config.js`. If you do this it may be worth making git ignore changes to webpack config, using `git update-index --assume-unchanged rspack.main.config.js`
 
 We exclude ESLint loader in dev mode for seven times quicker initial builds by default. You can enable it by exporting an environment variable:
 
 ```sh
 $ USE_ESLINT=true yarn build-hot
 ```
-
-By default, these build processes rely on a memory cache. The build process with ESLint loader enabled uses a large amount of memory and may take a considerable amount of time to start (1 - 2 minutes or more). FE developers (or anyone else who frequently restarts FE builds) are encouraged to use webpack's filesystem cache option for much better start-up performance:
-
-```sh
-$ FS_CACHE=true yarn build-hot
-```
-
-When using `FS_CACHE=true` you may need to remove the `node_modules/.cache` directory to fix scenarios where the build may be improperly cached, and you must run `rm -rf node_modules/.cache` in order for the build to work correctly when alternating between open source and enterprise builds of the codebase.
 
 ### Frontend testing
 
@@ -104,8 +98,6 @@ yarn test
 ```
 
 Cypress tests and some unit tests are located in `frontend/test` directory. New unit test files are added next to the files they test.
-
-If you are using `FS_CACHE=true`, you can also use `FS_CACHE=true` with `yarn test`.
 
 ### Frontend debugging
 
@@ -154,6 +146,17 @@ You can also start a REPL another way (e.g., through your editor) and then call:
 
 To start the server (at `localhost:3000`). This will also set up or migrate your application database. To actually
 use Metabase, don't forget to start the frontend as well (e.g. with `yarn build-hot`).
+
+### Multiple Instances
+
+By default Rspack runs the development server on port `8088`. You can run multiple instances of Metabase on the same machine by specifying a different port for each instance.
+
+Frontend:
+- If you are running the frontend with `yarn build-hot`, set the `MB_FRONTEND_DEV_PORT` environment variable: `MB_FRONTEND_DEV_PORT=8089 MB_EDITION=ee yarn build-hot`
+- If you are building the frontend statically with `yarn build`, there is nothing different to do
+
+Backend:
+- Set the `MB_JETTY_PORT` environment variable and `MB_FRONTEND_DEV_PORT` to the same one as for the frontend.
 
 ### The application database
 
@@ -239,10 +242,10 @@ or a specific test (or test namespace) with
 
 ```
 # run tests in only one namespace (pass in a symbol)
-clojure -X:dev:test :only metabase.api.session-test
+clojure -X:dev:test :only metabase.session.api-test
 
 # run one specific test (pass in a qualified symbol)
-clojure -X:dev:test :only metabase.api.session-test/my-test
+clojure -X:dev:test :only metabase.session.api-test/my-test
 
 # run tests in one specific folder (test/metabase/util in this example)
 # pass arg in double-quotes so Clojure CLI interprets it as a string;
@@ -379,17 +382,17 @@ some-ns=> (take 10 (keys environ.core/env))
 `clj-kondo` must be [installed separately](https://github.com/clj-kondo/clj-kondo/blob/master/doc/install.md).
 
 ```
+# Run clj-kondo
+mage kondo
+
+# Lint the migrations file (if you've written a database migration):
+mage lint-migrations
+
 # Run Eastwood
 clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
 
 # Run the namespace checker
 clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
-
-# Run clj-kondo
-./bin/kondo.sh
-
-# Lint the migrations file (if you've written a database migration):
-./bin/lint-migrations-file.sh
 ```
 
 ## Continuous integration

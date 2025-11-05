@@ -1,136 +1,51 @@
 import cx from "classnames";
-import { assoc } from "icepick";
-import type { HandleThunkActionCreator } from "react-redux";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import ColorS from "metabase/css/core/colors.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import type {
-  setParameterValue as setParameterValueDashboardAction,
-  setParameterValueToDefault as setParameterValueToDefaultDashboardAction,
-} from "metabase/dashboard/actions";
-import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
-import { DashboardEmptyStateWithoutAddPrompt } from "metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState";
-import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
+import { Dashboard } from "metabase/dashboard/components/Dashboard";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
-import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
-import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
-import type {
-  DashboardFullscreenControls,
-  DashboardNightModeControls,
-  DashboardRefreshPeriodControls,
-  EmbedHideParameters,
-} from "metabase/dashboard/types";
-import { isActionDashCard } from "metabase/dashboard/utils";
+import { useDashboardContext } from "metabase/dashboard/context";
+import { SetTitle } from "metabase/hoc/Title";
 import { isWithinIframe } from "metabase/lib/dom";
-import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
+import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
 import type { DisplayTheme } from "metabase/public/lib/types";
-import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
-import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type {
-  Dashboard,
-  DashboardCard,
-  DashboardId,
-  ParameterValueOrArray,
-} from "metabase-types/api";
-import type { SelectedTabId } from "metabase-types/store";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 import { EmbedFrame } from "../../components/EmbedFrame";
 
-import { DashboardContainer } from "./PublicOrEmbeddedDashboard.styled";
+export function PublicOrEmbeddedDashboardView() {
+  const {
+    setParameterValue,
+    setParameterValueToDefault,
+    dashboard,
+    isFullscreen,
+    selectedTabId,
+    parameters,
+    headerParameters,
+    parameterValues,
+    draftParameterValues,
+    dashboardId,
+    background,
+    bordered,
+    titled,
+    theme,
+    hideParameters,
+    withFooter,
+    downloadsEnabled,
+  } = useDashboardContext();
 
-interface InnerPublicOrEmbeddedDashboardViewProps {
-  dashboard: Dashboard | null;
-  selectedTabId: SelectedTabId;
-  parameters: UiParameter[];
-  parameterValues: Record<string, ParameterValueOrArray>;
-  draftParameterValues: Record<string, ParameterValueOrArray | null>;
-  setParameterValue: HandleThunkActionCreator<
-    typeof setParameterValueDashboardAction
-  >;
-  setParameterValueToDefault: HandleThunkActionCreator<
-    typeof setParameterValueToDefaultDashboardAction
-  >;
-  dashboardId: DashboardId;
-  background: boolean;
-  bordered: boolean;
-  titled: boolean;
-  theme: DisplayTheme;
-  hideParameters: EmbedHideParameters;
-  navigateToNewCardFromDashboard?: (
-    opts: NavigateToNewCardFromDashboardOpts,
-  ) => void;
-  slowCards: Record<number, boolean>;
-  cardTitled: boolean;
-  downloadsEnabled: boolean;
-}
-
-export type PublicOrEmbeddedDashboardViewProps =
-  InnerPublicOrEmbeddedDashboardViewProps &
-    DashboardRefreshPeriodControls &
-    DashboardNightModeControls &
-    DashboardFullscreenControls;
-
-export function PublicOrEmbeddedDashboardView({
-  dashboard,
-  hasNightModeToggle,
-  isFullscreen,
-  isNightMode,
-  onFullscreenChange,
-  onNightModeChange,
-  onRefreshPeriodChange,
-  refreshPeriod,
-  setRefreshElapsedHook,
-  selectedTabId,
-  parameters,
-  parameterValues,
-  draftParameterValues,
-  setParameterValue,
-  setParameterValueToDefault,
-  dashboardId,
-  background,
-  bordered,
-  titled,
-  theme,
-  hideParameters,
-  navigateToNewCardFromDashboard,
-  slowCards,
-  cardTitled,
-  downloadsEnabled,
-}: InnerPublicOrEmbeddedDashboardViewProps &
-  DashboardRefreshPeriodControls &
-  DashboardNightModeControls &
-  DashboardFullscreenControls) {
   const buttons = !isWithinIframe() ? (
     <DashboardHeaderButtonRow
       canResetFilters={false}
       onResetFilters={_.noop}
-      dashboardActionKeys={DASHBOARD_DISPLAY_ACTIONS}
-      refreshPeriod={refreshPeriod}
-      onRefreshPeriodChange={onRefreshPeriodChange}
-      onFullscreenChange={onFullscreenChange}
-      setRefreshElapsedHook={setRefreshElapsedHook}
-      isFullscreen={isFullscreen}
-      hasNightModeToggle={hasNightModeToggle}
-      onNightModeChange={onNightModeChange}
-      isNightMode={isNightMode}
       isPublic={true}
     />
   ) : null;
 
-  const visibleDashcards = (dashboard?.dashcards ?? []).filter(
-    dashcard => !isActionDashCard(dashcard),
-  );
-
-  const dashboardHasCards = dashboard && visibleDashcards.length > 0;
-
-  const tabHasCards =
-    visibleDashcards.filter(
-      (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
-    ).length > 0;
+  const dashboardHasTabs = dashboard?.tabs && dashboard.tabs.length > 1;
+  const hasVisibleParameters =
+    headerParameters.filter((p) => !p.hidden).length > 0;
 
   const hiddenParameterSlugs = getTabHiddenParameterSlugs({
     parameters,
@@ -143,12 +58,14 @@ export function PublicOrEmbeddedDashboardView({
     background,
   });
 
+  const isCompactHeader = !titled && !hasVisibleParameters && !dashboardHasTabs;
+
   return (
     <EmbedFrame
       name={dashboard && dashboard.name}
       description={dashboard && dashboard.description}
       dashboard={dashboard}
-      parameters={parameters}
+      parameters={headerParameters}
       parameterValues={parameterValues}
       draftParameterValues={draftParameterValues}
       hiddenParameterSlugs={hiddenParameterSlugs}
@@ -156,100 +73,25 @@ export function PublicOrEmbeddedDashboardView({
       setParameterValueToDefault={setParameterValueToDefault}
       enableParameterRequiredBehavior
       actionButtons={buttons ? <div className={CS.flex}>{buttons}</div> : null}
-      dashboardTabs={
-        dashboard?.tabs &&
-        dashboard.tabs.length > 1 && <DashboardTabs dashboardId={dashboardId} />
-      }
+      dashboardTabs={dashboardId && dashboardHasTabs && <Dashboard.Tabs />}
       background={background}
       bordered={bordered}
       titled={titled}
       theme={normalizedTheme}
       hide_parameters={hideParameters}
-      downloadsEnabled={downloadsEnabled}
+      pdfDownloadsEnabled={downloadsEnabled.pdf}
+      withFooter={withFooter}
     >
-      <LoadingAndErrorWrapper
+      {dashboard && <SetTitle title={dashboard.name} />}
+      <FullWidthContainer
         className={cx({
           [DashboardS.DashboardFullscreen]: isFullscreen,
-          [DashboardS.DashboardNight]: isNightMode,
-          [ParametersS.DashboardNight]: isNightMode,
-          [ColorS.DashboardNight]: isNightMode,
         })}
-        loading={!dashboard}
+        mt={isCompactHeader ? "xs" : "sm"}
       >
-        {() => {
-          if (!dashboard) {
-            return null;
-          }
-
-          if (!dashboardHasCards || !tabHasCards) {
-            return (
-              <DashboardEmptyStateWithoutAddPrompt isNightMode={isNightMode} />
-            );
-          }
-
-          return (
-            <DashboardContainer>
-              <DashboardGridConnected
-                dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
-                isPublicOrEmbedded
-                mode={
-                  navigateToNewCardFromDashboard ? EmbeddingSdkMode : PublicMode
-                }
-                selectedTabId={selectedTabId}
-                slowCards={slowCards}
-                isEditing={false}
-                isEditingParameter={false}
-                isXray={false}
-                isFullscreen={isFullscreen}
-                isNightMode={isNightMode}
-                withCardTitle={cardTitled}
-                clickBehaviorSidebarDashcard={null}
-                navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-                downloadsEnabled={downloadsEnabled}
-              />
-            </DashboardContainer>
-          );
-        }}
-      </LoadingAndErrorWrapper>
+        <Dashboard.Grid />
+      </FullWidthContainer>
     </EmbedFrame>
-  );
-}
-
-function getTabHiddenParameterSlugs({
-  parameters,
-  dashboard,
-  selectedTabId,
-}: {
-  parameters: UiParameter[];
-  dashboard: Dashboard | null;
-  selectedTabId: SelectedTabId;
-}) {
-  const currentTabParameterIds =
-    getCurrentTabDashcards({ dashboard, selectedTabId })?.flatMap(
-      dashcard =>
-        dashcard.parameter_mappings?.map(mapping => mapping.parameter_id) ?? [],
-    ) ?? [];
-  const hiddenParameters = parameters.filter(
-    parameter => !currentTabParameterIds.includes(parameter.id),
-  );
-  return hiddenParameters.map(parameter => parameter.slug).join(",");
-}
-
-function getCurrentTabDashcards({
-  dashboard,
-  selectedTabId,
-}: {
-  dashboard: Dashboard | null;
-  selectedTabId: SelectedTabId;
-}) {
-  if (!Array.isArray(dashboard?.dashcards)) {
-    return [];
-  }
-  if (!selectedTabId) {
-    return dashboard?.dashcards;
-  }
-  return dashboard?.dashcards.filter(
-    dashcard => dashcard.dashboard_tab_id === selectedTabId,
   );
 }
 

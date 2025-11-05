@@ -21,7 +21,7 @@ When you view the question for the first time, Metabase will check for stored re
 
 If you run the question half an hour later, Metabase will return those stored results.
 
-If you run the question over an hour after that initial run, Metabase will notice that the stored results are older than your caching policy allows. Metabase will delete the stored results, run the query against your database, return the results, and store them for the future queries. This cache will remain valid for the next hour, according to the duration policy you set.
+If you run the question over an hour after that initial run, Metabase will notice that the stored results are older than your caching policy allows. Metabase will delete the stored results, run the query against your database, return the results, and store them for the future queries. This cache will remain valid for the next hour, according to the duration policy you set. To always refresh the cache when results expire, see [Refresh cache automatically](#refresh-cache-automatically).
 
 See how [different caching policies interact](#how-dashboard-question-database-and-default-caching-policies-interact).
 
@@ -70,6 +70,24 @@ On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.meta
 
 If you select "Don't cache results" for a question, dashboard, or database, Metabase won't cache its results; it'll always run the query against the database to refresh results.
 
+## Refresh cache automatically
+
+{% include plans-blockquote.html feature="Refresh cache automatically" %}
+
+> **Refreshing the cache automatically doesn't apply when [row and column security](../permissions/row-and-column-security.md) or [connection impersonation](../permissions/impersonation.md) permissions are in effect.** In those permissions setups, Metabase ignores the automatically generated cache and runs a fresh query (which it will then cache). So _caching_ still works for row and column security and impersonation, it's just that this preemptive, automatic caching doesn't apply in these cases, as those permissions setups filter data specific to each viewer.
+
+If you turn on refresh cache automatically for a question or dashboard, Metabase will rerun the query/queries as soon as the cache is invalidated by whichever caching policy you've set. Normally, Metabase only refreshes the cache when someone views the item _after_ its cache has expired. So, normally, when the cache has expired, the next person to view the question will be stuck waiting for the query to run and refresh the cache. But by automatically refreshing results to update the cache, the loading times will always be as fast as possible, and people will always get valid, cached results.
+
+### How Metabase handles parameter values when automatically refreshing the cache
+
+When automatically refreshing results, Metabase will apply the default parameter values (if any). Metabase will also cache results of up to ten of the most frequently applied parameter values that were applied _during the last caching period_ (as defined by your caching policy). If your question or dashboard has multiple parameters, Metabase will cache up to ten of the most frequently applied _combinations_ of parameter values.
+
+For example, let's say you have a dashboard with a category filter (default value: `Doohickey`) that's set to cache results every 24 hours. During the last 24 hours, people who viewed that dashboard applied the following values to the category filter: `Widget`, `Gizmo`. When Metabase next refreshes the cache, it will cache three sets of results, each set with one of those parameters applied: `Doohickey` (the default value), `Widget`, and `Gizmo`. If, however, _no one_ runs the query in that last 24 hours, Metabase will only refresh the cache for the results with the default parameter's value applied.
+
+### Automatic caching logs
+
+To view the queries Metabase ran to automatically refresh the cache, check out the [query log](../usage-and-performance-tools/usage-analytics.md#query-log-model) and filter the `Query source` by `cache-refresh`.
+
 ## Set caching policies for dashboards, questions, and databases
 
 You can set caching policies for different entities.
@@ -104,10 +122,12 @@ If you have databases connected to Metabase that are set to **Use default** poli
 To set a caching policy for a dashboard, you must have [curate access](../permissions/collections.md#curate-access) to the dashboard's collection.
 
 1. Go to your dashboard.
-2. Click on the **info** icon.
-3. Click **Caching policy**.
-4. Select the [caching invalidation policy](#cache-invalidation-policies).
-5. Save your changes.
+2. Click on the **three dots** icon in the top-right corner of the dashboard and choose **Edit settings**.
+3. By default, each question will use the database default caching settings. Click the current caching policy to change it.
+4. Select the new [caching policy](#cache-invalidation-policies).
+5. Optional: turn on [refresh cache automatically](#refresh-cache-automatically)
+6. Optional: to clear the cache for all questions on a dashboard, click **Clear cache for this dashboard** at the bottom of the setting sidebar.
+7. Save your changes.
 
 ### Question caching policy
 
@@ -116,9 +136,9 @@ To set a caching policy for a dashboard, you must have [curate access](../permis
 To set a caching policy for a question, you must have [curate access](../permissions/collections.md#curate-access) to the question's collection.
 
 1. Go to your question.
-2. Click on the **info** icon.
-3. Click **Caching policy**.
-4. Select the [caching invalidation policy](#cache-invalidation-policies).
+2. Click on the three-dot menu **...** and select **Edit settings**.
+3. Under **Caching**, select the [caching invalidation policy](#cache-invalidation-policies).
+4. Optional: if you select a Duration or Schedule policy, you'll have the option to [refresh cache automatically](#refresh-cache-automatically).
 5. Save your changes.
 
 ## How dashboard, question, database, and default caching policies interact

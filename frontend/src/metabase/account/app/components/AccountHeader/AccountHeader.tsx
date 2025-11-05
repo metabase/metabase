@@ -2,7 +2,7 @@ import type { Path } from "history";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import Radio from "metabase/core/components/Radio";
+import Radio from "metabase/common/components/Radio";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
 import type { User } from "metabase-types/api";
@@ -27,7 +27,7 @@ export const AccountHeader = ({
   onChangeLocation,
 }: AccountHeaderProps) => {
   const hasPasswordChange = useMemo(
-    () => PLUGIN_IS_PASSWORD_USER.every(predicate => predicate(user)),
+    () => PLUGIN_IS_PASSWORD_USER.every((predicate) => predicate(user)),
     [user],
   );
 

@@ -4,7 +4,8 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.server.middleware.security :as mw.security]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.server.settings :as server.settings]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
    (java.sql SQLException)
@@ -13,39 +14,6 @@
 (set! *warn-on-reflection* true)
 
 (declare api-exception-response)
-
-(defn public-exceptions
-  "Catch any exceptions other than 404 thrown in the request handler body and rethrow a generic 400 exception instead.
-  This minimizes information available to bad actors when exceptions occur on public endpoints."
-  [handler]
-  (with-meta
-   (fn [request respond _raise]
-     (let [raise (fn [e]
-                   (log/warn e "Exception in API call")
-                   (if (= 404 (:status-code (ex-data e)))
-                     (respond {:status 404, :body (deferred-tru "Not found.")})
-                     (respond {:status 400, :body (deferred-tru "An error occurred.")})))]
-       (try
-         (handler request respond raise)
-         (catch Throwable e
-           (raise e)))))
-   (meta handler)))
-
-(defn message-only-exceptions
-  "Catch any exceptions thrown in the request handler body and rethrow a 400 exception that only has the message from
-  the original instead (i.e., don't rethrow the original stacktrace). This reduces the information available to bad
-  actors but still provides some information that will prove useful in debugging errors."
-  [handler]
-  (with-meta
-   (fn [request respond _raise]
-     (let [raise (fn [^Throwable e]
-                   (respond {:status 400, :body (ex-message e)}))]
-       (try
-         (handler request respond raise)
-         (catch Throwable e
-           (log/error e "Exception in API call")
-           (raise e)))))
-   (meta handler)))
 
 (defmulti api-exception-response
   "Convert an uncaught exception from an API endpoint into an appropriate format to be returned by the REST API (e.g. a
@@ -56,7 +24,7 @@
 (defmethod api-exception-response Throwable
   [^Throwable e]
   (let [{:keys [status-code], :as info} (ex-data e)
-        other-info                      (dissoc info :status-code :schema :type :toucan2/context-trace)
+        other-info                      (dissoc info :status-code :schema :type :toucan2/context-trace ::log/context)
         body                            (cond
                                           (and status-code (not= status-code 500) (empty? other-info))
                                           ;; If status code was specified (but not a 500 -- an unexpected error, and
@@ -69,6 +37,11 @@
                                           ;; ex-data.
                                           (and status-code (:errors other-info))
                                           other-info
+
+                                          ;; allow administrators to configure their instances to suppress stacktraces
+                                          ;; returns 500 with a generic message
+                                          (server.settings/hide-stacktraces)
+                                          {:message (tru "Something went wrong")}
 
                                           ;; Otherwise return the full `Throwable->map` representation with Stacktrace
                                           ;; and ex-data

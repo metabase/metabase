@@ -1,9 +1,10 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-const QUESTION: H.StructuredQuestionDetails = {
+const QUESTION: StructuredQuestionDetails = {
   name: "Return input value",
   display: "scalar",
   query: {
@@ -47,7 +48,7 @@ describe("scenarios > dashboard > filters > reset", () => {
     }).then(({ body: dashboardCard }) => {
       const { card_id, dashboard_id } = dashboardCard;
 
-      cy.editDashboardCard(dashboardCard, {
+      H.editDashboardCard(dashboardCard, {
         parameter_mappings: [
           {
             parameter_id: FILTER_ONE.id,
@@ -86,15 +87,14 @@ describe("scenarios > dashboard > filters > reset", () => {
     );
     H.editDashboard();
 
-    openFilterOptions("Filter Two");
+    H.filterWidget({ name: "Filter Two", isEditing: true }).click();
 
     H.sidebar().within(() => {
       cy.findByLabelText("Input box").click();
       clearDefaultFilterValue();
-      setDefaultFilterValue("Foo");
     });
 
-    H.popover().button("Add filter").click();
+    setDefaultFilterValue("Foo");
 
     cy.location("search").should("eq", "?filter_one=&filter_two=Foo");
 
@@ -113,7 +113,7 @@ describe("scenarios > dashboard > filters > reset", () => {
     }).then(({ body: dashboardCard }) => {
       const { card_id, dashboard_id } = dashboardCard;
 
-      cy.editDashboardCard(dashboardCard, {
+      H.editDashboardCard(dashboardCard, {
         parameter_mappings: [
           {
             parameter_id: FILTER_ONE.id,
@@ -148,14 +148,13 @@ describe("scenarios > dashboard > filters > reset", () => {
     );
     H.editDashboard();
 
-    openFilterOptions("Filter One");
+    H.filterWidget({ name: "Filter One", isEditing: true }).click();
 
     H.sidebar().within(() => {
       cy.findByLabelText("Input box").click();
-      setDefaultFilterValue("Foo");
     });
 
-    H.popover().button("Add filter").click();
+    setDefaultFilterValue("Foo");
 
     cy.location("search").should("eq", "?filter_one=Foo&filter_two=Bar");
 
@@ -168,14 +167,16 @@ describe("scenarios > dashboard > filters > reset", () => {
   });
 });
 
-function openFilterOptions(name: string) {
-  cy.findByText(name).parent().icon("gear").click();
-}
-
 function clearDefaultFilterValue() {
   cy.findByLabelText("No default").parent().icon("close").click();
 }
 
 function setDefaultFilterValue(value: string) {
-  cy.findByLabelText("No default").type(value);
+  H.sidebar().within(() => {
+    cy.findByLabelText("No default").click();
+  });
+  H.popover().within(() => {
+    cy.findByPlaceholderText("Enter some text").type(value);
+    cy.button("Add filter").click();
+  });
 }

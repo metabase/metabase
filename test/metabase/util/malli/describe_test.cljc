@@ -1,8 +1,10 @@
 (ns metabase.util.malli.describe-test
   "Additional tests for this live in [[metabase.util.malli-test]]."
   (:require
+   #?@(:clj
+       ([metabase.lib.schema]
+        [metabase.util :as u]))
    [clojure.test :refer [are deftest is testing]]
-   [malli.core :as mc]
    [metabase.util.malli.describe :as umd]
    [metabase.util.malli.registry :as mr]))
 
@@ -55,9 +57,11 @@
    [:parent {:optional true} [:ref ::map]]])
 
 (deftest ^:parallel handle-circular-refs-test
-  (is (mc/validate ::cons [1 [2 [3 nil]]]))
+  (is (mr/validate ::cons [1 [2 [3 nil]]]))
   (is (= "nullable vector with exactly 2 items of type: anything, recursive :metabase.util.malli.describe-test/cons"
          (umd/describe ::cons)))
-  (is (mc/validate ::map {:k :child, :parent {:k :parent}}))
+  (is (mr/validate ::map {:k :child, :parent {:k :parent}}))
   (is (= "map where {:k -> <keyword>, :parent (optional) -> <recursive :metabase.util.malli.describe-test/map>}"
-         (umd/describe ::map))))
+         (umd/describe ::map)))
+  #?(:clj
+     (is (string? (u/with-timeout 500 (umd/describe :metabase.lib.schema/query))))))

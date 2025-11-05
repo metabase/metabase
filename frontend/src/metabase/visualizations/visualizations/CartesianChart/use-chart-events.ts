@@ -10,13 +10,14 @@ import {
 
 import {
   GOAL_LINE_SERIES_ID,
-  ORIGINAL_INDEX_DATA_KEY,
+  INDEX_KEY,
   TIMELINE_EVENT_DATA_NAME,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
   BaseCartesianChartModel,
   ChartDataset,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import { createAxisVisibilityOption } from "metabase/visualizations/echarts/cartesian/option/axis";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { useClickedStateTooltipSync } from "metabase/visualizations/echarts/tooltip";
 import type {
@@ -35,8 +36,10 @@ import {
   getTimelineEventsHoverData,
   hasSelectedTimelineEvents,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
+import { getVisualizerSeriesCardIndex } from "metabase/visualizer/utils";
 import type { CardId } from "metabase-types/api";
 
+import { useTooltipMouseLeave } from "./use-tooltip-mouse-leave";
 import {
   getHoveredEChartsSeriesDataKeyAndIndex,
   getHoveredSeriesDataKey,
@@ -44,12 +47,15 @@ import {
 
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
+  containerRef: React.RefObject<HTMLDivElement>,
   chartModel: BaseCartesianChartModel,
   timelineEventsModel: TimelineEventsModel | null,
   option: EChartsCoreOption,
   {
     card,
     rawSeries,
+    isVisualizerViz,
+    visualizerRawSeries = [],
     selectedTimelineEventIds,
     settings,
     visualizationIsClickable,
@@ -66,18 +72,21 @@ export const useChartEvents = (
   }: VisualizationProps,
 ) => {
   const isBrushing = useRef<boolean>();
+  useTooltipMouseLeave(chartRef, onHoverChange, containerRef);
 
   const onOpenQuestion = useCallback(
     (cardId?: CardId) => {
-      const nextCard =
-        rawSeries.find(series => series.card.id === cardId)?.card ?? card;
-      if (onChangeCardAndRun) {
-        onChangeCardAndRun({
-          nextCard,
-        });
+      if (isVisualizerViz) {
+        const index = getVisualizerSeriesCardIndex(cardId);
+        const nextCard = visualizerRawSeries[index].card;
+        onChangeCardAndRun?.({ nextCard });
+      } else {
+        const nextCard =
+          rawSeries.find((series) => series.card.id === cardId)?.card ?? card;
+        onChangeCardAndRun?.({ nextCard });
       }
     },
-    [card, onChangeCardAndRun, rawSeries],
+    [card, rawSeries, visualizerRawSeries, isVisualizerViz, onChangeCardAndRun],
   );
 
   const hoveredSeriesDataKey = useMemo(
@@ -102,15 +111,29 @@ export const useChartEvents = (
         return;
       }
 
-      const yAxisShowOption = [{ show: true }, { show: true }];
-      if (hoveredSeriesDataKey != null) {
-        const hiddenYAxisIndex = chartModel.leftAxisModel?.seriesKeys.includes(
-          hoveredSeriesDataKey,
-        )
-          ? 1
-          : 0;
+      let yAxisShowOption: ReturnType<typeof createAxisVisibilityOption>[];
 
-        yAxisShowOption[hiddenYAxisIndex].show = false;
+      const noSeriesHovered = hoveredSeriesDataKey == null;
+      const leftAxisSeriesHovered =
+        hoveredSeriesDataKey != null &&
+        chartModel.leftAxisModel?.seriesKeys.includes(hoveredSeriesDataKey);
+
+      if (noSeriesHovered) {
+        yAxisShowOption = [
+          createAxisVisibilityOption({ show: true, splitLineVisible: true }),
+          createAxisVisibilityOption({ show: true, splitLineVisible: false }),
+        ];
+      } else if (leftAxisSeriesHovered) {
+        yAxisShowOption = [
+          createAxisVisibilityOption({ show: true, splitLineVisible: true }),
+          createAxisVisibilityOption({ show: false, splitLineVisible: false }),
+        ];
+      } else {
+        // right axis series hovered
+        yAxisShowOption = [
+          createAxisVisibilityOption({ show: false, splitLineVisible: false }),
+          createAxisVisibilityOption({ show: true, splitLineVisible: true }),
+        ];
       }
 
       chartRef.current?.setOption({ yAxis: yAxisShowOption }, false, true);
@@ -151,7 +174,11 @@ export const useChartEvents = (
           }
 
           if (event.seriesId === GOAL_LINE_SERIES_ID) {
-            const eventData = getGoalLineHoverData(settings, event);
+            const eventData = getGoalLineHoverData(
+              settings,
+              event,
+              chartModel.leftAxisModel?.formatGoal,
+            );
 
             onHoverChange?.(eventData);
             return;
@@ -218,14 +245,21 @@ export const useChartEvents = (
         eventName: "brushEnd",
         handler: (event: EChartsSeriesBrushEndEvent) => {
           const eventData = getBrushData(
-            rawSeries,
+            isVisualizerViz ? visualizerRawSeries : rawSeries,
             metadata,
             chartModel,
             event,
           );
 
           if (eventData) {
-            onChangeCardAndRun(eventData);
+            onChangeCardAndRun?.(eventData);
+
+            // clear selected brush area after calling change handler
+            chartRef.current?.dispatchAction({
+              type: "brush",
+              command: "clear",
+              areas: [],
+            });
           }
         },
       },
@@ -245,6 +279,8 @@ export const useChartEvents = (
       onDeselectTimelineEvents,
       onOpenQuestion,
       rawSeries,
+      visualizerRawSeries,
+      isVisualizerViz,
       metadata,
       onChangeCardAndRun,
     ],
@@ -273,7 +309,7 @@ export const useChartEvents = (
       let dataIndex: number | undefined;
 
       const seriesModel = chartModel.seriesModels.find(
-        seriesModel => seriesModel.dataKey === hoveredSeriesDataKey,
+        (seriesModel) => seriesModel.dataKey === hoveredSeriesDataKey,
       );
       // If hovering a bar series, we highlight the entire series to ensure that
       // all the data labels show
@@ -383,13 +419,11 @@ export const useChartEvents = (
         cardId: seriesModel.cardId,
         dimensions,
         settings,
+        element: event.currentTarget,
       };
 
       if (hasBreakout && visualizationIsClickable(clickData)) {
-        onVisualizationClick({
-          ...clickData,
-          element: event.currentTarget,
-        });
+        onVisualizationClick(clickData);
       } else if (isDashboard) {
         onOpenQuestion(seriesModel.cardId);
       }
@@ -417,7 +451,7 @@ function getTransformedDatumIndex(
   originalDatumIndex: number,
 ) {
   const transformedDatumIndex = transformedDataset.findIndex(
-    datum => datum[ORIGINAL_INDEX_DATA_KEY] === originalDatumIndex,
+    (datum) => datum[INDEX_KEY] === originalDatumIndex,
   );
 
   if (transformedDatumIndex === -1) {

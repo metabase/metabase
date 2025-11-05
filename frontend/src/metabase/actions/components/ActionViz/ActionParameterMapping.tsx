@@ -2,9 +2,9 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { sortActionParams } from "metabase/actions/utils";
-import EmptyState from "metabase/components/EmptyState";
-import type { SelectChangeEvent } from "metabase/core/components/Select";
-import Select from "metabase/core/components/Select";
+import EmptyState from "metabase/common/components/EmptyState";
+import type { SelectChangeEvent } from "metabase/common/components/Select";
+import Select from "metabase/common/components/Select";
 import { setParameterMapping } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import type Question from "metabase-lib/v1/Question";
@@ -66,7 +66,7 @@ export const ActionParameterMappingForm = ({
         setParameterMapping(
           dashboardParameterId,
           dashcard.id,
-          -1, // this is irrelevant for action parameters
+          null, // this is irrelevant for action parameters
           target,
         ),
       );
@@ -158,7 +158,7 @@ export const ActionParameterMappingItem = ({
             hasDefaultValue,
             defaultValue,
           }),
-          ...dashboardParameters.map(dashboardParam => ({
+          ...dashboardParameters.map((dashboardParam) => ({
             key: dashboardParam.id,
             name: dashboardParam.name,
             value: dashboardParam.id,

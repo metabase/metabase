@@ -4,13 +4,13 @@
 
   `v2` in the API path represents the fact that we implement SCIM 2.0."
   (:require
-   [compojure.core :refer [GET POST]]
-   [metabase-enterprise.scim.api :as scim]
-   [metabase.analytics.prometheus :as prometheus]
-   [metabase.api.common :as api :refer [defendpoint]]
+   [metabase-enterprise.scim.settings :as scim.settings]
+   [metabase.analytics.core :as analytics]
+   [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.user :as user]
+   [metabase.permissions.core :as perms]
+   [metabase.users.models.user :as user]
+   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -69,7 +69,9 @@
    [:Operations
     [:sequential [:map
                   [:op ms/NonBlankString]
-                  [:value [:or ms/NonBlankString ms/BooleanValue]]]]]])
+                  [:value [:or [:map-of [:or :keyword :string]
+                                [:or ms/NonBlankString ms/BooleanValue]]
+                           ms/NonBlankString ms/BooleanValue]]]]]])
 
 (def SCIMGroup
   "Malli schema for a SCIM group."
@@ -111,10 +113,10 @@
   [thunk]
   (try
     (let [response (thunk)]
-      (prometheus/inc! :metabase-scim/response-ok)
+      (analytics/inc! :metabase-scim/response-ok)
       response)
     (catch Throwable e
-      (prometheus/inc! :metabase-scim/response-error)
+      (analytics/inc! :metabase-scim/response-error)
       (throw e))))
 
 (defmacro with-prometheus-counters
@@ -141,8 +143,8 @@
                                                               :join [[:permissions_group :pg] [:= :pg.id :group_id]]
                                                               :where [:and
                                                                       [:in :user_id (map u/the-id users)]
-                                                                      [:not= :pg.id (:id (perms-group/all-users))]
-                                                                      [:not= :pg.id (:id (perms-group/admin))]]}))
+                                                                      [:not= :pg.id (:id (perms/all-users-group))]
+                                                                      [:not= :pg.id (:id (perms/admin-group))]]}))
           membership->group    (fn [membership] (select-keys membership [:name :entity_id]))]
       (for [user users]
         (assoc user :user_group_memberships (->> (user-id->memberships (u/the-id user))
@@ -163,14 +165,14 @@
    :groups   (map
               (fn [membership]
                 {:value   (:entity_id membership)
-                 :$ref    (str (scim/scim-base-url) "/Groups/" (:entity_id membership))
+                 :$ref    (str (scim.settings/scim-base-url) "/Groups/" (:entity_id membership))
                  :display (:name membership)})
               (:user_group_memberships user))
    :locale   (:locale user)
    :active   (:is_active user)
    :meta     {:resourceType "User"}})
 
-(mu/defn ^:private scim-user->mb :- user/NewUser
+(mu/defn ^:private scim-user->mb :- users.schema/NewUser
   "Given a SCIM user, returns a Metabase user."
   [user]
   (let [{email :userName name-obj :name locale :locale is-active? :active} user
@@ -200,12 +202,13 @@
       [:= :%lower.email (u/lower-case-en match)]
       (throw-scim-error 400 (format "Unsupported filter parameter: %s" filter-parameter)))))
 
-(defendpoint GET "/Users"
+(api.macros/defendpoint :get "/Users"
   "Fetch a list of users."
-  [:as {{start-index :startIndex c :count filter-param :filter} :params}]
-  {start-index  [:maybe ms/PositiveInt]
-   c            [:maybe ms/PositiveInt]
-   filter-param [:maybe ms/NonBlankString]}
+  [_route-params
+   {start-index :startIndex, c :count, filter-param :filter} :- [:map
+                                                                 [:startIndex {:optional true} [:maybe ms/PositiveInt]]
+                                                                 [:count      {:optional true} [:maybe ms/PositiveInt]]
+                                                                 [:filter     {:optional true} [:maybe ms/NonBlankString]]]]
   (with-prometheus-counters
     (let [limit          (or c default-pagination-limit)
           ;; SCIM start-index is 1-indexed, so we need to decrement it here
@@ -228,19 +231,20 @@
                           :Resources    (map mb-user->scim hydrated-users)}]
       (scim-response result))))
 
-(defendpoint GET "/Users/:id"
+(api.macros/defendpoint :get ["/Users/:id" :id #"[^/]+"]
   "Fetch a single user."
-  [id]
-  {id ms/NonBlankString}
+  [{:keys [id]} :- [:map
+                    [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (-> (get-user-by-entity-id id)
         (t2/hydrate :scim_user_group_memberships)
         mb-user->scim)))
 
-(defendpoint POST "/Users"
+(api.macros/defendpoint :post "/Users"
   "Create a single user."
-  [:as {scim-user :body}]
-  {scim-user SCIMUser}
+  [_route-params
+   _query-params
+   scim-user :- SCIMUser]
   (with-prometheus-counters
     (let [mb-user (scim-user->mb scim-user)
           email   (:email mb-user)]
@@ -253,10 +257,11 @@
                            mb-user->scim))]
         (scim-response new-user 201)))))
 
-(defendpoint PUT "/Users/:id"
+(api.macros/defendpoint :put ["/Users/:id" :id #"[^/]+"]
   "Update a user."
-  [:as {scim-user :body {id :id} :params}]
-  {scim-user SCIMUser}
+  [{:keys [id]}
+   _query-params
+   scim-user :- SCIMUser]
   (with-prometheus-counters
     (let [updates      (scim-user->mb scim-user)
           email        (-> scim-user :emails first :value)
@@ -278,25 +283,32 @@
                                :status      400
                                :status-code 400})))))))))
 
-(defendpoint PATCH "/Users/:id"
+(defn- patch->user-updates
+  [acc path value]
+  (if (and (nil? path) (map? value))
+    (reduce-kv patch->user-updates acc value)
+    (let [path-str (some-> path name)]
+      (case path-str
+        "active"          (assoc acc :is_active (Boolean/valueOf (u/lower-case-en value)))
+        "userName"        (assoc acc :email value)
+        "name.givenName"  (assoc acc :first_name value)
+        "name.familyName" (assoc acc :last_name value)
+        (throw-scim-error 400 (format "Unsupported path: %s" path-str))))))
+
+(api.macros/defendpoint :patch ["/Users/:id" :id #"[^/]+"]
   "Activate or deactivate a user. Supports specific replace operations, but not arbitrary patches."
-  [:as {patch-ops :body {id :id} :params}]
-  {patch-ops UserPatch}
-  {id ms/NonBlankString}
+  [{:keys [id]} :- [:map
+                    [:id ms/NonBlankString]]
+   _query-params
+   patch-ops :- UserPatch]
   (with-prometheus-counters
     (t2/with-transaction [_conn]
       (let [user    (get-user-by-entity-id id)
             updates (reduce
                      (fn [acc operation]
                        (let [{:keys [op path value]} operation]
-                         (if (= (u/lower-case-en op) "replace")
-                           (case path
-                             "active"          (assoc acc :is_active (Boolean/valueOf (u/lower-case-en value)))
-                             "userName"        (assoc acc :email value)
-                             "name.givenName"  (assoc acc :first_name value)
-                             "name.familyName" (assoc acc :last_name value)
-                             (throw-scim-error 400 (format "Unsupported path: %s" path)))
-                           acc)))
+                         (cond-> acc
+                           (= (u/lower-case-en op) "replace") (patch->user-updates path value))))
                      {}
                      (:Operations patch-ops))]
         (t2/update! :model/User (u/the-id user) updates)
@@ -335,8 +347,8 @@
                      :entity_id entity-id
                      {:where
                       [:and
-                       [:not= :id (:id (perms-group/all-users))]
-                       [:not= :id (:id (perms-group/admin))]]})
+                       [:not= :id (:id (perms/all-users-group))]
+                       [:not= :id (:id (perms/admin-group))]]})
       (throw-scim-error 404 "Group not found")))
 
 (mu/defn ^:private mb-group->scim :- SCIMGroup
@@ -347,7 +359,7 @@
    :members     (map
                  (fn [member]
                    {:value   (:entity_id member)
-                    :$ref    (str (scim/scim-base-url) "/Users/" (:entity_id member))
+                    :$ref    (str (scim.settings/scim-base-url) "/Users/" (:entity_id member))
                     :display (:email member)})
                  (:members group))
    :displayName (:name group)
@@ -361,20 +373,22 @@
       (throw (ex-info "Unsupported filter parameter" {:filter      filter-parameter
                                                       :status-code 400})))))
 
-(defendpoint GET "/Groups"
+(api.macros/defendpoint :get "/Groups"
   "Fetch a list of groups."
-  [:as {{start-index :startIndex c :count filter-param :filter} :params}]
-  {start-index  [:maybe ms/PositiveInt]
-   c            [:maybe ms/PositiveInt]
-   filter-param [:maybe ms/NonBlankString]}
+  [_route-params
+   {start-index :startIndex, c :count, filter-param :filter}
+   :- [:map
+       [:startIndex {:optional true} [:maybe ms/PositiveInt]]
+       [:count      {:optional true} [:maybe ms/PositiveInt]]
+       [:filter     {:optional true} [:maybe ms/NonBlankString]]]]
   (with-prometheus-counters
     (let [limit          (or c default-pagination-limit)
           ;; SCIM start-index is 1-indexed, so we need to decrement it here
           offset         (if start-index (dec start-index) default-pagination-offset)
           filter-param   (when filter-param (codec/url-decode filter-param))
           where-clause   [:and
-                          [:not= :id (:id perms-group/all-users)]
-                          [:not= :id (:id perms-group/admin)]
+                          [:not= :id (:id perms/all-users-group)]
+                          [:not= :id (:id perms/admin-group)]
                           (when filter-param (group-filter-clause filter-param))]
           groups         (t2/select (cons :model/PermissionsGroup group-cols)
                                     {:where    where-clause
@@ -390,10 +404,10 @@
                           :Resources    (map mb-group->scim groups)}]
       (scim-response result))))
 
-(defendpoint GET "/Groups/:id"
+(api.macros/defendpoint :get ["/Groups/:id" :id #"[^/]+"]
   "Fetch a single group."
-  [id]
-  {id ms/NonBlankString}
+  [{:keys [id]} :- [:map
+                    [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (-> (get-group-by-entity-id id)
         (t2/hydrate :scim_group_members)
@@ -404,16 +418,17 @@
   any existing members."
   [group-id user-entity-ids]
   (let [user-ids (t2/select-fn-set :id :model/User {:where [:in :entity_id user-entity-ids]})]
-    (when-let [memberships (map
-                            (fn [user-id] {:group_id group-id :user_id user-id})
-                            user-ids)]
+    (when-let [memberships (not-empty (map
+                                       (fn [user-id] {:group group-id :user user-id})
+                                       user-ids))]
       (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
-      (t2/insert! :model/PermissionsGroupMembership memberships))))
+      (perms/add-users-to-groups! memberships))))
 
-(defendpoint POST "/Groups"
+(api.macros/defendpoint :post "/Groups"
   "Create a single group, and populates it if necessary."
-  [:as {scim-group :body}]
-  {scim-group SCIMGroup}
+  [_route-params
+   _query-params
+   scim-group :- SCIMGroup]
   (with-prometheus-counters
     (let [group-name (:displayName scim-group)
           entity-ids (map :value (:members scim-group))]
@@ -428,10 +443,11 @@
               mb-group->scim
               (scim-response 201)))))))
 
-(defendpoint PUT "/Groups/:id"
+(api.macros/defendpoint :put ["/Groups/:id" :id #"[^/]+"]
   "Update a group."
-  [:as {scim-group :body {id :id} :params}]
-  {scim-group SCIMGroup}
+  [{:keys [id]}
+   _query-params
+   scim-group :- SCIMGroup]
   (with-prometheus-counters
     (let [group-name (:displayName scim-group)
           entity-ids (map :value (:members scim-group))]
@@ -445,13 +461,11 @@
               mb-group->scim
               scim-response))))))
 
-(defendpoint DELETE "/Groups/:id"
+(api.macros/defendpoint :delete ["/Groups/:id" :id #"[^/]+"]
   "Delete a group."
-  [id]
-  {id ms/NonBlankString}
+  [{:keys [id]} :- [:map
+                    [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (let [group (get-group-by-entity-id id)]
       (t2/delete! :model/PermissionsGroup (u/the-id group))
       (scim-response nil 204))))
-
-(api/define-routes)

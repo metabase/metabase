@@ -1,9 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import registerVisualizations from "metabase/visualizations/register";
 import {
   createMockCard,
+  createMockDashboard,
   createMockDashboardCard,
   createMockDataset,
   createMockVisualizationSettings,
@@ -29,7 +31,9 @@ type SetupOpts = Partial<DashboardChartSettingsProps>;
 
 const setup = (props: SetupOpts) => {
   return renderWithProviders(
-    <DashboardChartSettings {...DEFAULT_PROPS} {...props} />,
+    <MockDashboardContext dashboard={createMockDashboard()}>
+      <DashboardChartSettings {...DEFAULT_PROPS} {...props} />,
+    </MockDashboardContext>,
   );
 };
 

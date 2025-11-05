@@ -83,7 +83,7 @@
   true)
 
 ;; These drivers do not support concat with non-string args
-(doseq [driver [:athena :mongo :presto-jdbc :vertica]]
+(doseq [driver [:athena :mongo :presto-jdbc :vertica :starburst]]
   (defmethod driver/database-supports? [driver ::concat-non-string-args]
     [_driver _feature _database]
     false))

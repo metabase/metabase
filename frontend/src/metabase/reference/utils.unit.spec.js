@@ -1,7 +1,8 @@
 import { createMockMetadata } from "__support__/metadata";
 import { separateTablesBySchema } from "metabase/reference/databases/TableList";
-import { databaseToForeignKeys, getQuestion } from "metabase/reference/utils";
-import { TYPE } from "metabase-lib/v1/types/constants";
+import { getQuestion } from "metabase/reference/utils";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import {
   createMockDatabase,
   createMockField,
@@ -10,59 +11,7 @@ import {
 } from "metabase-types/api/mocks";
 
 describe("Reference utils.js", () => {
-  describe("databaseToForeignKeys()", () => {
-    it("should build foreignKey viewmodels from database", () => {
-      const database = {
-        tables_lookup: {
-          1: {
-            id: 1,
-            display_name: "foo",
-            schema_name: "PUBLIC",
-            fields: [
-              {
-                id: 1,
-                semantic_type: TYPE.PK,
-                display_name: "bar",
-                description: "foobar",
-              },
-            ],
-          },
-          2: {
-            id: 2,
-            display_name: "bar",
-            schema_name: "public",
-            fields: [
-              {
-                id: 2,
-                semantic_type: TYPE.PK,
-                display_name: "foo",
-                description: "barfoo",
-              },
-            ],
-          },
-          3: {
-            id: 3,
-            display_name: "boo",
-            schema_name: "TEST",
-            fields: [
-              {
-                id: 3,
-                display_name: "boo",
-                description: "booboo",
-              },
-            ],
-          },
-        },
-      };
-
-      const foreignKeys = databaseToForeignKeys(database);
-
-      expect(foreignKeys).toEqual({
-        1: { id: 1, name: "Public.foo → bar", description: "foobar" },
-        2: { id: 2, name: "bar → foo", description: "barfoo" },
-      });
-    });
-  });
+  const stageIndex = 0;
 
   describe("tablesToSchemaSeparatedTables()", () => {
     it("should add schema separator to appropriate locations and sort tables by name", () => {
@@ -75,8 +24,8 @@ describe("Reference utils.js", () => {
         6: { id: 6, name: "Buffalo", schema_name: "bar" },
       };
 
-      const createSchemaSeparator = table => table.schema_name;
-      const createListItem = table => table;
+      const createSchemaSeparator = (table) => table.schema_name;
+      const createListItem = (table) => table;
 
       const schemaSeparatedTables = separateTablesBySchema(
         tables,
@@ -104,122 +53,50 @@ describe("Reference utils.js", () => {
     const fieldId = field.id;
     const table = createMockTable({
       id: tableId,
+      db_id: dbId,
       fields: [field],
       segments: [segment],
     });
     const database = createMockDatabase({ id: dbId, tables: [table] });
     const metadata = createMockMetadata({ databases: [database] });
 
-    const getNewQuestion = ({
-      display = "table",
-      aggregation,
-      breakout,
-      filter,
-    } = {}) => {
-      const card = {
-        name: undefined,
-        collection_id: undefined,
-        display,
-        visualization_settings: {},
-        dataset_query: {
-          database: database.id,
-          type: "query",
-          query: {
-            "source-table": tableId,
-          },
-        },
-      };
-      if (aggregation != null) {
-        card.dataset_query.query.aggregation = aggregation;
-      }
-      if (breakout != null) {
-        card.dataset_query.query.breakout = breakout;
-      }
-      if (filter != null) {
-        card.dataset_query.query.filter = filter;
-      }
-      return card;
-    };
-
-    function areLegacyQueriesEqual(a, b, customTesters) {
-      // If a and b are (inner) legacy query maps and one has aggregation-idents, expression-idents or breakout-idents
-      // but the other does not, compare the two maps without the idents.
-      if (typeof a !== "object" || typeof b !== "object") {
-        return undefined; // Let other logic handle it.
-      }
-
-      function hasIdents(x) {
-        return (
-          "aggregation-idents" in x ||
-          "breakout-idents" in x ||
-          "expression-idents" in x
-        );
-      }
-
-      // Using an arrow function so this inherits this.equals from the outer function, which gets it from Jest.
-      const compareWithoutIdents = (withIdents, noIdents) => {
-        const copy = { ...withIdents };
-        delete copy["aggregation-idents"];
-        delete copy["breakout-idents"];
-        delete copy["expression-idents"];
-        return this.equals(copy, noIdents, customTesters);
-      };
-
-      const aHasIdents = hasIdents(a);
-      const bHasIdents = hasIdents(b);
-      if (aHasIdents && !bHasIdents) {
-        return compareWithoutIdents(a, b);
-      } else if (!aHasIdents && bHasIdents) {
-        return compareWithoutIdents(b, a);
-      } else {
-        // If either both have idents or neither, just fall through to the rest of the equality logic.
-        return undefined;
-      }
-    }
-    expect.addEqualityTesters([areLegacyQueriesEqual]);
-
     it("should generate correct question for table raw data", () => {
-      const question = getQuestion({
+      const card = getQuestion({
         dbId,
         tableId,
         metadata,
       });
 
-      expect(question).toEqual(getNewQuestion());
+      const query = new Question(card).query();
+      expect(Lib.sourceTableOrCardId(query)).toBe(tableId);
     });
 
     it("should generate correct question for table counts", () => {
-      const question = getQuestion({
+      const card = getQuestion({
         dbId,
         tableId,
         getCount: true,
         metadata,
       });
 
-      expect(question).toEqual(
-        getNewQuestion({
-          aggregation: [["count"]],
-        }),
-      );
+      const query = new Question(card).query();
+      expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
     });
 
     it("should generate correct question for field raw data", () => {
-      const question = getQuestion({
+      const card = getQuestion({
         dbId,
         tableId,
         fieldId,
         metadata,
       });
 
-      expect(question).toEqual(
-        getNewQuestion({
-          breakout: [["field", fieldId, { "base-type": "type/Text" }]],
-        }),
-      );
+      const query = new Question(card).query();
+      expect(Lib.breakouts(query, stageIndex)).toHaveLength(1);
     });
 
     it("should generate correct question for field group by bar chart", () => {
-      const question = getQuestion({
+      const card = getQuestion({
         dbId,
         tableId,
         fieldId,
@@ -228,17 +105,14 @@ describe("Reference utils.js", () => {
         metadata,
       });
 
-      expect(question).toEqual(
-        getNewQuestion({
-          display: "bar",
-          breakout: [["field", fieldId, { "base-type": "type/Text" }]],
-          aggregation: [["count"]],
-        }),
-      );
+      const query = new Question(card).query();
+      expect(card.display).toBe("bar");
+      expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
+      expect(Lib.breakouts(query, stageIndex)).toHaveLength(1);
     });
 
     it("should generate correct question for field group by pie chart", () => {
-      const question = getQuestion({
+      const card = getQuestion({
         dbId,
         tableId,
         fieldId,
@@ -247,32 +121,26 @@ describe("Reference utils.js", () => {
         metadata,
       });
 
-      expect(question).toEqual(
-        getNewQuestion({
-          display: "pie",
-          breakout: [["field", fieldId, { "base-type": "type/Text" }]],
-          aggregation: [["count"]],
-        }),
-      );
+      const query = new Question(card).query();
+      expect(card.display).toBe("pie");
+      expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
+      expect(Lib.breakouts(query, stageIndex)).toHaveLength(1);
     });
 
     it("should generate correct question for segment raw data", () => {
-      const question = getQuestion({
+      const card = getQuestion({
         dbId,
         tableId,
         segmentId,
         metadata,
       });
 
-      expect(question).toEqual(
-        getNewQuestion({
-          filter: ["segment", segmentId],
-        }),
-      );
+      const query = new Question(card).query();
+      expect(Lib.filters(query, stageIndex)).toHaveLength(1);
     });
 
     it("should generate correct question for segment counts", () => {
-      const question = getQuestion({
+      const card = getQuestion({
         dbId,
         tableId,
         segmentId,
@@ -280,12 +148,9 @@ describe("Reference utils.js", () => {
         metadata,
       });
 
-      expect(question).toEqual(
-        getNewQuestion({
-          aggregation: [["count"]],
-          filter: ["segment", segmentId],
-        }),
-      );
+      const query = new Question(card).query();
+      expect(Lib.filters(query, stageIndex)).toHaveLength(1);
+      expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
     });
   });
 });

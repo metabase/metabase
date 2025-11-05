@@ -4,7 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase.public-settings :as public-settings]
+   [metabase.system.core :as system]
    [metabase.util :as u])
   (:import
    (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock HardLineBreak
@@ -201,11 +201,11 @@
   "If the provided URI is a relative path, resolve it relative to the site URL so that links work
   correctly in Slack/Email."
   [^String uri]
-  (letfn [(ensure-slash [s] (when s
-                              (cond-> s
-                                (not (str/ends-with? s "/")) (str "/"))))]
+  (letfn [(ensure-slash ^String [s] (when s
+                                      (cond-> s
+                                        (not (str/ends-with? s "/")) (str "/"))))]
     (when uri
-      (if-let [^String site-url (ensure-slash (public-settings/site-url))]
+      (if-let [site-url (ensure-slash (system/site-url))]
         (.. (URI. site-url) (resolve uri) toString)
         uri))))
 
@@ -228,6 +228,7 @@
   * All headers are just rendered as bold text.
   * Ordered and unordered lists are printed in plain text.
   * Inline images are rendered as text that links to the image source, e.g. <image.png|[Image: alt-text]>."
+  {:arglists '([ast-map])}
   :tag)
 
 (defn ^:private resolved-content
@@ -410,6 +411,7 @@
 (defmulti process-markdown
   "Converts a markdown string from a virtual card into a form that can be sent to a channel
   (Slack's markup language, or HTML for email)."
+  {:arglists '([markdown channel-type])}
   (fn [_markdown channel-type] channel-type))
 
 (defmethod process-markdown :slack

@@ -3,7 +3,6 @@ import { jt, msgid, ngettext, t } from "ttag";
 
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
-import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {
@@ -60,7 +59,7 @@ function getClickBehaviorDescription({
 
   if (clickBehavior.type === "crossfilter") {
     const parameters = Object.keys(clickBehavior.parameterMapping || {});
-    return (n =>
+    return ((n) =>
       ngettext(
         msgid`${column.display_name} updates ${n} filter`,
         `${column.display_name} updates ${n} filters`,
@@ -87,7 +86,7 @@ export const Column = ({ column, clickBehavior, onClick }: ColumnProps) => (
   <SidebarItem onClick={onClick}>
     <SidebarItem.Icon
       name={getIconForField(column) as unknown as IconName}
-      color={color("brand")}
+      c="brand"
       size={18}
     />
     <div>

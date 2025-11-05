@@ -1,3 +1,8 @@
+import type {
+  DatePickerOperator,
+  DatePickerValue,
+} from "metabase/querying/filters/types";
+
 import { getExcludeOperatorValue } from "../ExcludeDatePicker/utils";
 import {
   getDirectionDefaultValue,
@@ -7,18 +12,19 @@ import {
   getOperatorDefaultValue,
   setOperator,
 } from "../SpecificDatePicker/utils";
-import type { DatePickerOperator, DatePickerValue } from "../types";
 
 import { OPERATOR_OPTIONS } from "./constants";
 import type { OperatorOption, OptionType } from "./types";
 
 export function getAvailableOptions(
-  availableOperators: ReadonlyArray<DatePickerOperator>,
+  availableOperators: DatePickerOperator[],
 ): OperatorOption[] {
   return OPERATOR_OPTIONS.filter(
-    option =>
+    (option) =>
       option.operators.length === 0 ||
-      option.operators.some(operator => availableOperators.includes(operator)),
+      option.operators.some((operator) =>
+        availableOperators.includes(operator),
+      ),
   );
 }
 
@@ -27,10 +33,10 @@ export function getOptionType(value: DatePickerValue | undefined): OptionType {
     case "specific":
       return value.operator;
     case "relative":
-      if (value.value === "current") {
+      if (value.value === 0) {
         return "current";
       } else {
-        return value.value < 0 ? "last" : "next";
+        return value.value < 0 ? "past" : "future";
       }
     case "exclude":
       if (value.operator !== "!=") {
@@ -55,8 +61,8 @@ export function setOptionType(
       return value?.type === "specific"
         ? setOperator(value, optionType)
         : getOperatorDefaultValue(optionType);
-    case "last":
-    case "next":
+    case "past":
+    case "future":
     case "current":
       return value?.type === "relative"
         ? setDirectionAndCoerceUnit(value, optionType)

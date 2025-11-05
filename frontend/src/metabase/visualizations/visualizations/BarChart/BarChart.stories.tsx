@@ -1,15 +1,19 @@
 import type { StoryFn } from "@storybook/react";
 
-import {
-  SdkVisualizationWrapper,
-  VisualizationWrapper,
-} from "__support__/storybook";
+import { VisualizationWrapper } from "__support__/storybook";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
-import type { MetabaseTheme } from "embedding-sdk";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { createMockCard } from "metabase-types/api/mocks";
+import type { Series } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { BarChart } from "./BarChart";
 
@@ -35,7 +39,7 @@ const MOCK_SERIES = [
       ],
     },
   },
-];
+] as Series;
 
 export const Default: StoryFn = () => (
   <VisualizationWrapper>
@@ -45,18 +49,18 @@ export const Default: StoryFn = () => (
   </VisualizationWrapper>
 );
 
-// Example of how themes can be applied in the SDK.
-export const EmbeddingHugeFont: StoryFn = () => {
-  const theme: MetabaseTheme = {
-    fontSize: "20px",
-    components: { cartesian: { padding: "0.5rem 1rem" } },
-  };
-
-  return (
-    <SdkVisualizationWrapper theme={theme}>
-      <Box h={500}>
-        <Visualization rawSeries={MOCK_SERIES} width={500} />
-      </Box>
-    </SdkVisualizationWrapper>
-  );
-};
+export const Watermark: StoryFn = () => (
+  <VisualizationWrapper
+    initialStore={createMockState({
+      settings: createMockSettingsState({
+        "token-features": createMockTokenFeatures({
+          development_mode: true,
+        }),
+      }),
+    })}
+  >
+    <Box h={500}>
+      <Visualization rawSeries={MOCK_SERIES} width={500} />
+    </Box>
+  </VisualizationWrapper>
+);

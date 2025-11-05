@@ -166,7 +166,6 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  source_alias: Content - Entity Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -198,7 +197,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  source_alias: Content - Entity Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -230,7 +228,6 @@ result_metadata:
   semantic_type: type/Description
   settings: null
   source: fields
-  source_alias: Content - Entity Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -304,6 +301,8 @@ serdes/meta:
   label: last_viewed_dashboards
   model: Card
 archived_directly: false
+card_schema: 20
+dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 metabase_version: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

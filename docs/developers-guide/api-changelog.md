@@ -4,6 +4,62 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.57.0
+
+- MBQL queries (in Cards and elsewhere) are now serialized as MBQL 5 as opposed to MBQL 4 (aka legacy MBQL) in the
+  application database and in REST API responses. While we do not officially support editing or introspection of MBQL
+  via the REST API (please treat it as an opaque object), to support existing usages the `GET /api/card/:id` endpoint
+  can return the Card `dataset_query` as MBQL 4 if you include the query parameter `?legacy-mbql=true`.
+
+## Metabase 0.55.0
+
+- `POST /api/card/from-csv` has been renamed to `POST /api/upload/csv`.
+
+- `GET /api/util/stats` has been renamed to `GET /api/analytics/anonymous-stats`.
+
+- `GET /api/util/bug_report_details` has been renamed to `GET /api/bug-reporting/details`.
+
+- `POST /api/util/product-feedback` has been renamed to `POST /api/product-feedback`.
+
+- `POST /api/util/entity_id` has been renamed to `POST /api/eid-translation/translate`.
+
+- `POST /api/util/password_check` has been renamed to `POST /api/session/password-check`.
+
+- `GET /api/util/logs` has been renamed to `GET /api/logger/logs`.
+
+- `GET /api/util/openapi` has been removed; you can use `GET /api/docs/openapi.json` instead, which does the same
+  thing.
+
+- `GET /api/util/diagnostic_info/connection_pool_info` has been renamed to `GET
+/api/bug-reporting/connection-pool-details`.
+
+## Metabase 0.54.0
+
+- The alert system has been migrated from the legacy pulse infrastructure to the new notification system. This migration includes the following changes:
+
+  - The majority of `/api/alert` endpoints have been removed in favor of the new `/api/notification` endpoints. For backward compatibility, these endpoints will remain available until the next release:
+
+    - `GET /api/alert`
+    - `GET /api/alert/:id`
+    - `DELETE /api/alert/:id/subscription`
+
+  - Developers should migrate to using the `/api/notification` endpoints. For reference:
+    - An overview of the new notification system can be found at `src/metabase/notification/README.md`
+    - Notification API documentation at `{{YOUR_URL}}/api/docs/#tag/apinotification`
+    - Interactive API documentation available at `/api/docs` endpoint
+
+## Metabase 0.53.0
+
+- `POST /api/card/:card-id/query/:export-format`
+
+  Previously, request parameters (parameters, pivot-results?, and format-rows?) could be sent via query parameters or
+  as application/x-www-form-urlencoded form content. In Metabase 0.53.0, parameters must be sent as either:
+
+  - application/x-www-form-urlencoded form content
+  - JSON-encoded in the request body
+
+  Sending parameters as query parameters in the URL is no longer supported.
+
 ## Metabase 0.52.0
 
 - `POST /api/user/:id/send_invite` has been removed.
@@ -42,7 +98,7 @@ title: API changelog
   When setting `archived` to `false`, you may optionally also provide a `collection_id` (for Dashboards or Cards) or a
   `parent_id` (for Collections). In this case, the entity will be re-parented to the specified Collection when it is
   moved from the Trash. If a new `collection_id` or `parent_id` is not provided, the entity will be moved back to its
-  original location if possible. If this is not possible (for example, the original location is also in the Trash) an
+  original location if possible. If this is impossible (for example, the original location is also in the Trash) an
   error will occur.
 
 - `/api/metric`
@@ -74,7 +130,7 @@ NOTE: These endpoint changes were added in 0.49.3, and a bug in `GET /api/embed/
 
   The above endpoints now accept the `format_rows` query parameter. It is an optional boolean parameter that will default to `true` if not included in the request.
   When `format_rows` is `true`, the export will have formatting applied such that the values match what they appear as in the app.
-  When `format_rows` is `false`, formatting is not applied and exports will behave as they did prior to 0.49.0.
+  When `format_rows` is `false`, formatting is not applied and exports will behave as they did before 0.49.0.
 
   The value of `format_rows` has no effect when exporting xlsx files.
 

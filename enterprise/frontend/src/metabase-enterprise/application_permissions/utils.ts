@@ -10,8 +10,7 @@ const canAccessSettings = (user?: UserWithApplicationPermissions) =>
 
 export const monitoringPermissionAllowedPathGetter = (
   user?: UserWithApplicationPermissions,
-): AdminPathKey[] =>
-  canAccessMonitoringItems(user) ? ["audit", "tools", "troubleshooting"] : [];
+): AdminPathKey[] => (canAccessMonitoringItems(user) ? ["tools"] : []);
 
 export const settingsPermissionAllowedPathGetter = (
   user?: UserWithApplicationPermissions,

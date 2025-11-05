@@ -1,11 +1,13 @@
 import { t } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { Box, type BoxProps, Text } from "metabase/ui";
 
 import { UpsellCard, type UpsellCardProps } from "./components";
+import { UPGRADE_URL } from "./constants";
 
 const usageAnalyticsIllustrationSource = "app/assets/img/usage-analytics.png";
 
@@ -16,7 +18,13 @@ export const UpsellUsageAnalytics = (
       "children" | "title" | "buttonText" | "buttonLink" | "campaign"
     >,
 ) => {
-  const usageAnalyticsUrl = useSelector(state =>
+  const campaign = "usage_analytics";
+  const { location } = props;
+  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
+    campaign,
+    location,
+  });
+  const usageAnalyticsUrl = useSelector((state) =>
     getDocsUrl(state, {
       page: "usage-and-performance-tools/usage-analytics",
     }),
@@ -27,10 +35,16 @@ export const UpsellUsageAnalytics = (
       large
       title={t`See who’s doing what, when`}
       buttonText={t`Try for free`}
-      buttonLink="https://www.metabase.com/upgrade"
-      campaign="usage_analytics"
+      buttonLink={UPGRADE_URL}
+      campaign={campaign}
       illustrationSrc={usageAnalyticsIllustrationSource}
       lh="1.5rem"
+      onClick={triggerUpsellFlow}
+      buttonStyle={{
+        marginInlineStart: "2rem",
+        width: "10rem",
+        maxWidth: "100%",
+      }}
       {...props}
     >
       <Text lh="1.5rem" style={{ paddingInlineStart: "2rem" }}>

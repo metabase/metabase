@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { Icon } from "metabase/ui";
@@ -50,7 +52,7 @@ export const CardAside = styled.div`
   font-size: 0.75rem;
 `;
 
-export interface CardProps {
+interface CardProps {
   isSelected?: boolean;
 }
 
@@ -77,7 +79,7 @@ export const CardRoot = styled.div<CardProps>`
   padding: 1rem;
   border-radius: 0.25rem;
   cursor: pointer;
-  ${props => props.isSelected && selectedStyles}
+  ${(props) => props.isSelected && selectedStyles}
 
   &:hover {
     ${selectedStyles}

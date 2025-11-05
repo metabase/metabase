@@ -5,17 +5,17 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.audit-app.audit :as ee-audit]
+   [metabase-enterprise.audit-app.settings :as ee.audit.settings]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
-   [metabase.audit :as audit]
-   [metabase.core :as mbc]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.audit-app.core :as audit]
+   [metabase.core.core :as mbc]
    [metabase.models.serialization :as serdes]
-   [metabase.plugins :as plugins]
-   [metabase.task :as task]
-   [metabase.task.sync-databases :as task.sync-databases]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.plugins.core :as plugins]
+   [metabase.sync.task.sync-databases :as task.sync-databases]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -23,16 +23,17 @@
 
 (use-fixtures :once (fixtures/initialize :db :plugins))
 
-(defmacro with-audit-db-restoration [& body]
+(defn do-with-audit-db-restoration! [thunk]
+  (mbc/ensure-audit-db-installed!)
+  (try
+    (thunk)
+    (finally
+      (mbc/ensure-audit-db-installed!))))
+
+(defmacro with-audit-db-restoration! [& body]
   "Calls `ensure-audit-db-installed!` before and after `body` to ensure that the audit DB is installed and then
   restored if necessary. Also disables audit content loading if it is already loaded."
-  `(let [audit-collection-exists?# (t2/exists? :model/Collection :type "instance-analytics")]
-     (mt/with-temp-env-var-value! [mb-load-analytics-content (not audit-collection-exists?#)]
-       (mbc/ensure-audit-db-installed!)
-       (try
-         ~@body
-         (finally
-           (mbc/ensure-audit-db-installed!))))))
+  `(do-with-audit-db-restoration! (fn [] ~@body)))
 
 (deftest audit-db-installation-test
   (mt/test-drivers #{:postgres :h2 :mysql}
@@ -43,7 +44,7 @@
       (with-redefs [ee-audit/analytics-dir-resource nil]
         (is (nil? @#'ee-audit/analytics-dir-resource))
         (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
-        (is (= audit/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
+        (is (= audit/audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]}))
             "Audit DB is installed.")
         (is (= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
             "No cards created for Audit DB."))
@@ -52,7 +53,7 @@
 
     (testing "Audit DB content is installed when it is found"
       (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
-      (is (= audit/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
+      (is (= audit/audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]}))
           "Audit DB is installed.")
       (is (some? (io/resource "instance_analytics")))
       (is (not= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
@@ -76,12 +77,12 @@
         (is (not (db-has-sync-job-trigger? audit/audit-db-id)))))
 
     (testing "Audit DB doesn't get re-installed unless the engine changes"
-      (with-redefs [ee-audit/load-analytics-content (constantly nil)]
+      (with-redefs [ee.audit.settings/load-analytics-content (constantly nil)]
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
-        (t2/update! Database :is_audit true {:engine "datomic"})
+        (t2/update! :model/Database :is_audit true {:engine "datomic"})
         (is (= ::ee-audit/updated (ee-audit/ensure-audit-db-installed!)))
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
-        (t2/update! Database :is_audit true {:engine "h2"})))))
+        (t2/update! :model/Database :is_audit true {:engine "h2"})))))
 
 (deftest instance-analytics-content-is-copied-to-mb-plugins-dir-test
   (mt/with-temp-env-var-value! [mb-plugins-dir "card_catalogue_dir"]
@@ -111,16 +112,23 @@
     (filter audit-db? trigger-keys)))
 
 (deftest no-sync-tasks-for-audit-db
-  (with-audit-db-restoration
-    (ee-audit/ensure-audit-db-installed!)
-    (is (= 0 (count (get-audit-db-trigger-keys))) "no sync scheduled after installation")
+  ;; clear out the old audit-db instance so that a new one can setup triggers with the temp scheduler
+  (t2/delete! :model/Database :id audit/audit-db-id)
+  (mt/with-temp-scheduler!
+    (#'task.sync-databases/job-init)
+    (with-audit-db-restoration!
+      (is (= '("metabase.task.update-field-values.trigger.13371337")
+             (get-audit-db-trigger-keys))
+          "no sync scheduled after installation")
 
-    (with-redefs [task.sync-databases/job-context->database-id (constantly audit/audit-db-id)]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Cannot sync Database: It is the audit db."
-           (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
-    (is (= 0 (count (get-audit-db-trigger-keys))) "no sync occured even when called directly for audit db.")))
+      (with-redefs [task.sync-databases/job-context->database-id (constantly audit/audit-db-id)]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cannot sync Database: It is the audit db."
+             (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
+      (is (= '("metabase.task.update-field-values.trigger.13371337")
+             (get-audit-db-trigger-keys))
+          "no sync occured even when called directly for audit db."))))
 
 (deftest no-backfill-occurs-when-loading-analytics-content-test
   (mt/with-model-cleanup [:model/Collection]
@@ -164,3 +172,86 @@
     (is (not (#'ee-audit/should-load-audit? false 3 5))))
   (testing "load-analytics-content is false + checksums do not match  => do not load"
     (is (not (#'ee-audit/should-load-audit? false 1 3)))))
+
+(deftest adjust-audit-db-to-source-test
+  (testing "adjust-audit-db-to-source! correctly handles tables and fields with mixed case"
+    (mt/with-temp [:model/Database {audit-db-id :id} {:engine "h2"}
+                   ;; Create tables with both uppercase and lowercase names
+                   :model/Table {upper-table-id :id} {:db_id audit-db-id
+                                                      :schema "public"
+                                                      :name "USERS"}
+                   :model/Table {lower-table-id :id} {:db_id audit-db-id
+                                                      :schema "public"
+                                                      :name "users"}
+                   ;; Create another table that doesn't have a lowercase version
+                   :model/Table {single-table-id :id} {:db_id audit-db-id
+                                                       :schema "public"
+                                                       :name "ORDERS"}
+
+                   ;; Create another table that has a two lower case versions
+                   ;; one without a nil schema
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema "public"
+                                   :name "accounts"}
+
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema nil
+                                   :name "accounts"}
+
+                   ;; Create another table that has both upper and lower case schemas
+                   ;; and table names
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema "public"
+                                   :name "friends"}
+
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema "PUBLIC"
+                                   :name "FRIENDS"}
+
+                   :model/Table {no-schema-table :id} {:db_id audit-db-id
+                                                       :schema nil
+                                                       :name "products"}
+
+                   ;; Create fields with both uppercase and lowercase names
+                   :model/Field {upper-field-id :id} {:table_id upper-table-id
+                                                      :name "EMAIL"}
+                   :model/Field {lower-field-id :id} {:table_id lower-table-id
+                                                      :name "email"}
+                   ;; Create another field that doesn't have a lowercase version
+                   :model/Field {single-field-id :id} {:table_id single-table-id
+                                                       :name "PRODUCT"}]
+
+      ;; Call the function we're testing
+      (#'ee-audit/adjust-audit-db-to-source! {:id audit-db-id})
+
+      (testing "Database engine should be set to postgres"
+        (is (= :postgres
+               (t2/select-one-fn :engine :model/Database :id audit-db-id))))
+
+      (testing "Tables with existing lowercase versions should not be modified"
+        (is (= "USERS"
+               (t2/select-one-fn :name :model/Table :id upper-table-id)))
+        (is (= "users"
+               (t2/select-one-fn :name :model/Table :id lower-table-id))))
+
+      (testing "Tables without lowercase versions should be converted to lowercase"
+        (is (= "orders"
+               (t2/select-one-fn :name :model/Table :id single-table-id))))
+
+      (testing "Tables with nil schemas should not be changed if a table with a schema exists"
+        (is (= 2
+               (t2/count :model/Table {:where [:= :name "accounts"]}))))
+
+      (testing "Tables with nil schemas have their schema set to \"public\""
+        (is (= "public"
+               (t2/select-one-fn :schema :model/Table :id no-schema-table))))
+
+      (testing "Fields with existing lowercase versions should not be modified"
+        (is (= "EMAIL"
+               (t2/select-one-fn :name :model/Field :id upper-field-id)))
+        (is (= "email"
+               (t2/select-one-fn :name :model/Field :id lower-field-id))))
+
+      (testing "Fields without lowercase versions should be converted to lowercase"
+        (is (= "product"
+               (t2/select-one-fn :name :model/Field :id single-field-id)))))))

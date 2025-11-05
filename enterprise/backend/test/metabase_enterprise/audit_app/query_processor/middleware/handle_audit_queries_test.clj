@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries-test
+(ns metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries-test
   "Additional tests for this namespace can be found in `metabase-enterprise.audit-app.pages-test`."
   (:require
    [clojure.test :refer :all]

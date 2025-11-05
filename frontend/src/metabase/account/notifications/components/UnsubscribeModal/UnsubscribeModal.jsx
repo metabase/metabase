@@ -2,8 +2,8 @@ import PropTypes from "prop-types";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import ModalContent from "metabase/components/ModalContent";
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
+import ModalContent from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
 
 const propTypes = {
@@ -67,7 +67,7 @@ const isCreator = (item, user) => {
   return user != null && user.id === item.creator?.id;
 };
 
-const getUnsubscribeMessage = type => {
+const getUnsubscribeMessage = (type) => {
   switch (type) {
     case "alert":
       return t`You’ll stop receiving this alert from now on. `;

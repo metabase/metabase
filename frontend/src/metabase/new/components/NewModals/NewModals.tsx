@@ -5,19 +5,27 @@ import { push } from "react-router-redux";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
-import Modal from "metabase/components/Modal";
-import { CreateDashboardModalConnected } from "metabase/dashboard/containers/CreateDashboardModal";
+import Modal from "metabase/common/components/Modal";
+import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { closeModal } from "metabase/redux/ui";
-import { currentOpenModal } from "metabase/selectors/ui";
+import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import {
+  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
+  type SdkIframeEmbedSetupModalProps,
+} from "metabase/plugins";
+import { closeModal, setOpenModal } from "metabase/redux/ui";
+import { getCurrentOpenModalState } from "metabase/selectors/ui";
 import type { WritebackAction } from "metabase-types/api";
 
 export const NewModals = withRouter((props: WithRouterProps) => {
-  const currentNewModal = useSelector(currentOpenModal);
+  const { id: currentNewModalId, props: currentNewModalProps } = useSelector(
+    getCurrentOpenModalState<SdkIframeEmbedSetupModalProps>,
+  );
   const dispatch = useDispatch();
-  const collectionId = useSelector(state =>
+  const collectionId = useSelector((state) =>
     Collections.selectors.getInitialCollectionId(state, props),
   );
 
@@ -33,7 +41,23 @@ export const NewModals = withRouter((props: WithRouterProps) => {
     dispatch(closeModal());
   }, [dispatch]);
 
-  switch (currentNewModal) {
+  useRegisterShortcut(
+    [
+      {
+        id: "shortcuts-modal",
+        perform: () => {
+          if (currentNewModalId) {
+            handleModalClose();
+          } else {
+            dispatch(setOpenModal("help"));
+          }
+        },
+      },
+    ],
+    [currentNewModalId],
+  );
+
+  switch (currentNewModalId) {
     case "collection":
       return (
         <CreateCollectionModal
@@ -44,28 +68,36 @@ export const NewModals = withRouter((props: WithRouterProps) => {
 
     case "dashboard":
       return (
-        <Modal onClose={handleModalClose}>
-          <CreateDashboardModalConnected
-            onClose={handleModalClose}
-            collectionId={collectionId}
-          />
-        </Modal>
+        <CreateDashboardModal
+          opened
+          onClose={handleModalClose}
+          collectionId={collectionId}
+        />
       );
     case "action":
       return (
-        <Modal
-          wide
-          closeOnClickOutside
-          onClose={handleModalClose}
-          enableTransition={false}
-        >
+        <Modal wide onClose={handleModalClose} enableTransition={false}>
           <ActionCreator
             onClose={handleModalClose}
             onSubmit={handleActionCreated}
           />
         </Modal>
       );
+    case "embed": {
+      return (
+        <PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetupModal
+          opened
+          initialState={currentNewModalProps?.initialState}
+          onClose={handleModalClose}
+        />
+      );
+    }
     default:
-      return null;
+      return (
+        <PaletteShortcutsModal
+          onClose={handleModalClose}
+          open={currentNewModalId === "help"}
+        />
+      );
   }
 });

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -22,7 +22,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
       sectionId: "string",
     };
 
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "18113 Source",
       native: {
         query: "select * from products limit 5",
@@ -41,7 +41,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
         parameters: [filter],
       };
 
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: nestedQuestion,
         dashboardDetails,
       }).then(({ body: { dashboard_id } }) => {
@@ -50,8 +50,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
     });
 
     H.editDashboard();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(filter.name).find(".Icon-gear").click();
+    H.filterWidget({ isEditing: true, name: filter.name }).click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
 
@@ -68,8 +67,8 @@ describe("scenarios > dashboard > filters > nested questions", () => {
 
     // Add multiple values (metabase#18113)
     H.filterWidget().click();
-    H.popover().within(() => {
-      H.multiAutocompleteInput().type("Gizmo,Gadget").blur();
+    H.dashboardParametersPopover().within(() => {
+      H.fieldValuesCombobox().type("Gizmo,Gadget").blur();
     });
 
     cy.button("Add filter").click();
@@ -77,7 +76,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2 selections");
-    cy.get("tbody > tr").should("have.length", 2);
+    H.tableInteractiveBody().findAllByRole("row").should("have.length", 2);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Doohickey").should("not.exist");
@@ -90,8 +89,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
     cy.findByText("2 selections");
 
     H.editDashboard();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(filter.name).find(".Icon-gear").click();
+    H.filterWidget({ isEditing: true, name: filter.name }).click();
 
     H.getDashboardCard().within(() => {
       cy.findByText("Column to filter on");
@@ -112,12 +110,12 @@ describe("scenarios > dashboard > filters > nested questions", () => {
       query: { "source-table": PRODUCTS_ID },
     };
 
-    cy.createQuestion(baseQuestion).then(({ body: { id: baseQuestionId } }) => {
+    H.createQuestion(baseQuestion).then(({ body: { id: baseQuestionId } }) => {
       const questionDetails = {
         query: { "source-table": `card__${baseQuestionId}` },
       };
 
-      cy.createQuestionAndDashboard({ questionDetails }).then(
+      H.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: { dashboard_id } }) => {
           H.visitDashboard(dashboard_id);
         },

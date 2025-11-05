@@ -1,8 +1,15 @@
 import {
   categorizeIssues,
   generateReleaseNotes,
+  getChangelogUrl,
   getReleaseTitle,
+  getWebsiteChangelog,
+  markdownIssueLinks,
 } from "./release-notes";
+import {
+  githubReleaseTemplate,
+  websiteChangelogTemplate,
+} from "./release-notes-templates";
 import type { Issue } from "./types";
 
 describe("Release Notes", () => {
@@ -15,13 +22,9 @@ describe("Release Notes", () => {
 
   describe("getReleaseTitle", () => {
     it("should generate generic release title", () => {
-      expect(getReleaseTitle("v1.2.3")).toEqual(
-        "Metabase 2.3",
-      );
+      expect(getReleaseTitle("v1.2.3")).toEqual("Metabase 2.3");
 
-      expect(getReleaseTitle("v0.2.3")).toEqual(
-        "Metabase 2.3",
-      );
+      expect(getReleaseTitle("v0.2.3")).toEqual("Metabase 2.3");
     });
   });
 
@@ -61,38 +64,78 @@ describe("Release Notes", () => {
         title: "A bug fix that lacks a category label",
         labels: [{ name: "Type:Bug" }],
       },
+      {
+        number: 7,
+        title: "SDK Package Bug Issue",
+        labels: [
+          { name: "Type:Bug" },
+          { name: ".team/Embedding" },
+          { name: "no-release-notes" },
+        ],
+      },
+      {
+        number: 8,
+        title: "SDK Bundle Bug Issue",
+        labels: [
+          { name: "Type:Bug" },
+          { name: ".team/Embedding" },
+          { name: "Embedding/SDK" },
+        ],
+      },
+      {
+        number: 9,
+        title: "SDK Bundle Another Bug Issue",
+        labels: [{ name: "Type:Bug" }, { name: "Embedding/SDK" }],
+      },
     ] as Issue[];
 
     it("should generate release notes", () => {
       const notes = generateReleaseNotes({
         version: "v1.2.3",
+        template: websiteChangelogTemplate,
         issues,
       });
 
       expect(notes).toContain(
-        "Get the most out of Metabase"
+        "### Enhancements | 2.3\n\n**Querying**\n\n- Feature Issue (#2)",
+      );
+      expect(notes).toContain(
+        "### Bug fixes | 2.3\n\n**Embedding**\n\n- Bug Issue (#1)\n- SDK Bundle Bug Issue (#8)\n- SDK Bundle Another Bug Issue (#9)",
+      );
+      expect(notes).toContain(
+        "### Already Fixed | 2.3\n\nIssues confirmed to have been fixed in a previous release.\n\n**Embedding**\n\n- Issue Already Fixed (#3)",
+      );
+      expect(notes).toContain(
+        "### Under the Hood | 2.3\n\n**Administration**\n\n- Issue That Users Don't Care About (#4)",
       );
 
+      expect(notes).toContain("metabase/metabase-enterprise:v1.2.3.x");
+      expect(notes).toContain("metabase/metabase:v0.2.3.x");
       expect(notes).toContain(
-        "### Enhancements\n\n**Querying**\n\n- Feature Issue (#2)",
+        "https://downloads.metabase.com/enterprise/v1.2.3.x/metabase.jar",
       );
       expect(notes).toContain(
-        "### Bug fixes\n\n**Embedding**\n\n- Bug Issue (#1)",
+        "https://downloads.metabase.com/v0.2.3.x/metabase.jar",
       );
-      expect(notes).toContain(
-        "### Already Fixed\n\nIssues confirmed to have been fixed in a previous release.\n\n**Embedding**\n\n- Issue Already Fixed (#3)",
-      );
-      expect(notes).toContain(
-        "### Under the Hood\n\n**Administration**\n\n- Issue That Users Don't Care About (#4)",
-      );
+      expect(notes).not.toContain("SDK Package Bug Issue");
+    });
 
-      expect(notes).toContain("metabase/metabase-enterprise:v1.2.3");
-      expect(notes).toContain("metabase/metabase:v0.2.3");
+    it("should generate release notes from alternative templates", () => {
+      const notes = generateReleaseNotes({
+        version: "v1.2.3",
+        template: githubReleaseTemplate,
+        issues,
+      });
+
+      expect(notes).toContain("https://www.metabase.com/changelog/");
+
+      expect(notes).toContain("metabase/metabase-enterprise:v1.2.3.x");
+      expect(notes).toContain("metabase/metabase:v0.2.3.x");
       expect(notes).toContain(
-        "https://downloads.metabase.com/enterprise/v1.2.3/metabase.jar",
+        "https://downloads.metabase.com/enterprise/v1.2.3.x/metabase.jar",
       );
       expect(notes).toContain(
-        "https://downloads.metabase.com/v0.2.3/metabase.jar",
+        "https://downloads.metabase.com/v0.2.3.x/metabase.jar",
       );
     });
   });
@@ -376,5 +419,107 @@ describe("Release Notes", () => {
         sortedIssues.underTheHoodIssues,
       );
     });
+  });
+
+  describe("markdownIssuelinks", () => {
+    it("should generate markdown links for a single issue", () => {
+      expect(markdownIssueLinks("(#12345) is done")).toEqual(
+        "([#12345](https://github.com/metabase/metabase/issues/12345)) is done",
+      );
+    });
+
+    it("should generate markdown links for a multiple issues", () => {
+      expect(
+        markdownIssueLinks(`
+        (#12345) is done
+        (#12346) is not done
+        12348 is not an issue
+      `),
+      ).toEqual(`
+        ([#12345](https://github.com/metabase/metabase/issues/12345)) is done
+        ([#12346](https://github.com/metabase/metabase/issues/12346)) is not done
+        12348 is not an issue
+      `);
+    });
+
+    it("should preserve text without issue numbers", () => {
+      expect(markdownIssueLinks("my text")).toEqual("my text");
+    });
+  });
+
+  describe("getWebsiteChangelog", () => {
+    const issues = [
+      {
+        number: 1,
+        title: "Bug Issue",
+        labels: [{ name: "Type:Bug" }, { name: "Embedding/Interactive" }],
+      },
+      {
+        number: 2,
+        title: "Feature Issue",
+        labels: [{ name: "Querying/MBQL" }],
+      },
+      {
+        number: 3,
+        title: "Issue Already Fixed",
+        labels: [{ name: ".Already Fixed" }, { name: "Embedding/Static" }],
+      },
+      {
+        number: 4,
+        title: "Issue That Users Don't Care About",
+        labels: [
+          { name: ".CI & Tests" },
+          { name: "Administration/Permissions" },
+          { name: "Embedding/Interactive" },
+        ],
+      },
+      {
+        number: 5,
+        title: "Another feature issue",
+        labels: [{ name: "Reporting/Dashboards" }],
+      },
+      {
+        number: 6,
+        title: "A bug fix that lacks a category label",
+        labels: [{ name: "Type:Bug" }],
+      },
+    ] as Issue[];
+
+    it("should generate a website changelog", () => {
+      const notes = getWebsiteChangelog({
+        version: "v1.2.3",
+        issues,
+      });
+
+      expect(notes).toContain("### Enhancements");
+      expect(notes).toContain("Metabase 2.3");
+      expect(notes).toContain("- Issue That Users Don't Care About");
+    });
+
+    it("should linkify issue numbers", () => {
+      const notes = getWebsiteChangelog({
+        version: "v1.2.3",
+        issues,
+      });
+
+      expect(notes).toContain("### Enhancements");
+      expect(notes).toContain(
+        "- Issue That Users Don't Care About ([#4](https://github.com/metabase/metabase/issues/4))",
+      );
+    });
+  });
+
+  it.each([
+    ["v0.53.2", "53#metabase-532"],
+    ["v1.53.0", "53#metabase-530"],
+    ["v1.57.16", "57#metabase-5716"],
+    ["v1.59.0.4-beta", "59#metabase-590"],
+    ["v1.60.0", "60#metabase-600"],
+    ["v0.32.0", "32#metabase-320"],
+    ["v0.444.1", "444#metabase-4441"],
+  ])("getChangelogUrl: %s -> %s", (input, expected) => {
+    expect(getChangelogUrl(input)).toEqual(
+      `https://www.metabase.com/changelog/${expected}`,
+    );
   });
 });

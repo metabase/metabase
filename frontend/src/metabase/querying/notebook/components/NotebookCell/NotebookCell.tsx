@@ -41,6 +41,7 @@ interface NotebookCellItemProps {
   "data-testid"?: string;
   ref?: React.Ref<HTMLDivElement>;
   className?: string;
+  hasPopover?: boolean;
 }
 
 export const NotebookCellItem = forwardRef<
@@ -56,6 +57,7 @@ export const NotebookCellItem = forwardRef<
     rightContainerStyle,
     children,
     readOnly,
+    hasPopover,
     className,
     ...restProps
   },
@@ -71,7 +73,9 @@ export const NotebookCellItem = forwardRef<
           [S.inactive]: inactive,
           [S.disabled]: disabled,
           [S.cursorPointer]:
-            (!inactive || restProps.onClick) && !readOnly && !disabled,
+            (!inactive || restProps.onClick) &&
+            !disabled &&
+            (!readOnly || hasPopover),
         },
         className,
       )}
@@ -94,9 +98,9 @@ export const NotebookCellItem = forwardRef<
             [S.canHover]: !inactive && !readOnly && !disabled,
           },
         )}
-        p={CONTAINER_PADDING}
         style={
           {
+            padding: CONTAINER_PADDING,
             ...containerStyle,
             "--notebook-cell-item-content-container-color": color,
           } as CSSProperties
@@ -115,9 +119,9 @@ export const NotebookCellItem = forwardRef<
               [S.canHover]: !inactive && !readOnly && !disabled,
             },
           )}
-          p={CONTAINER_PADDING}
           style={
             {
+              padding: CONTAINER_PADDING,
               ...rightContainerStyle,
               "--notebook-cell-item-content-container-color": color,
             } as CSSProperties

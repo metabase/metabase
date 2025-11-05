@@ -1,0 +1,66 @@
+import type React from "react";
+import { t } from "ttag";
+
+import ErrorBoundary from "metabase/ErrorBoundary";
+import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_METABOT } from "metabase/plugins";
+import { getLocation } from "metabase/selectors/routing";
+import { Box } from "metabase/ui";
+
+import { NotFound } from "../ErrorPages";
+
+import S from "./AdminSettingsLayout.module.css";
+
+export const AdminSettingsLayout = ({
+  sidebar,
+  children,
+  fullWidth = false,
+  maw = "50rem",
+}: {
+  sidebar?: React.ReactNode;
+  children?: React.ReactNode;
+  fullWidth?: boolean;
+  maw?: string;
+}) => {
+  const location = useSelector(getLocation);
+  const isMetabotEnabledForRoute =
+    location.pathname.startsWith("/admin/transforms");
+
+  return (
+    <Box className={S.Wrapper}>
+      <Box className={S.Main}>
+        {sidebar && (
+          <Box className={S.Sidebar} data-testid="admin-layout-sidebar">
+            {sidebar}
+          </Box>
+        )}
+        <Box
+          className={S.Content}
+          data-testid="admin-layout-content"
+          p={fullWidth ? 0 : "2rem"}
+        >
+          <Box maw={fullWidth ? undefined : maw} w="100%">
+            <Box {...(fullWidth ? { h: "100%" } : { pb: "2rem" })}>
+              <ErrorBoundary>{children ?? <NotFound />}</ErrorBoundary>
+            </Box>
+          </Box>
+        </Box>
+
+        <PLUGIN_METABOT.Metabot
+          hide={!isMetabotEnabledForRoute}
+          config={{
+            // we don't save snapshots of the metabot conversation "state" value and do not
+            // revert it to the point in time of a message was sent. this will cause values
+            // like the todo list to confuse the agent as there may no longer be any conversation
+            // history but an in progress/complete todo list.
+            preventRetryMessage: true,
+            preventClose: true,
+            hideSuggestedPrompts: true,
+            emptyText: t`Let's transform your data together!`,
+            suggestionModels: ["dataset", "transform", "table", "database"],
+          }}
+        />
+      </Box>
+    </Box>
+  );
+};

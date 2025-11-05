@@ -1,10 +1,8 @@
-import { Box, Stack, Title, type TitleProps } from "metabase/ui";
+import { Group, Stack, Title, type TitleProps } from "metabase/ui";
 
 const args = {
   align: "left",
   order: 1,
-  underline: false,
-  truncate: false,
 };
 
 const argTypes = {
@@ -16,60 +14,56 @@ const argTypes = {
     options: [1, 2, 3, 4],
     control: { type: "inline-radio" },
   },
-  underline: {
-    control: { type: "boolean" },
-  },
-  truncate: {
-    control: { type: "boolean" },
-  },
 };
 
 const DefaultTemplate = (args: TitleProps) => <Title {...args}>Header</Title>;
 
 const SizeTemplate = (args: TitleProps) => (
-  <Stack>
-    <Title {...args} order={1}>
-      Header 1
-    </Title>
-    <Title {...args} order={2}>
-      Header 2
-    </Title>
-    <Title {...args} order={3}>
-      Header 3
-    </Title>
-    <Title {...args} order={4}>
-      Header 4
-    </Title>
-  </Stack>
-);
-
-const TruncatedTemplate = (args: TitleProps) => (
-  <Stack>
-    <Box w="6rem">
+  <Group align="top">
+    <Stack>
       <Title {...args} order={1}>
-        Header 1
+        Get up and running in no time
       </Title>
-    </Box>
-    <Box w="5rem">
       <Title {...args} order={2}>
-        Header 2
+        Get up and running in no time
       </Title>
-    </Box>
-    <Box w="4rem">
       <Title {...args} order={3}>
-        Header 3
+        Get up and running in no time
       </Title>
-    </Box>
-    <Box w="3.5rem">
       <Title {...args} order={4}>
-        Header 4
+        Get up and running in no time
       </Title>
-    </Box>
-  </Stack>
+      <Title {...args} order={5}>
+        Get up and running in no time
+      </Title>
+    </Stack>
+    <Stack maw={400}>
+      <Title {...args} order={1}>
+        Segment access and unlock multi-tenant analytics via row-level data
+        sandboxes
+      </Title>
+      <Title {...args} order={2}>
+        Segment access and unlock multi-tenant analytics via row-level data
+        sandboxes
+      </Title>
+      <Title {...args} order={3}>
+        Segment access and unlock multi-tenant analytics via row-level data
+        sandboxes
+      </Title>
+      <Title {...args} order={4}>
+        Segment access and unlock multi-tenant analytics via row-level data
+        sandboxes
+      </Title>
+      <Title {...args} order={5}>
+        Segment access and unlock multi-tenant analytics via row-level data
+        sandboxes
+      </Title>
+    </Stack>
+  </Group>
 );
 
 export default {
-  title: "Typography/Title",
+  title: "Design System/Typography/Title",
   component: Title,
   args,
   argTypes,
@@ -81,27 +75,4 @@ export const Default = {
 
 export const Sizes = {
   render: SizeTemplate,
-};
-
-export const Underlined = {
-  render: SizeTemplate,
-  args: {
-    underline: true,
-  },
-};
-
-export const Truncated = {
-  render: TruncatedTemplate,
-  args: {
-    truncate: true,
-  },
-};
-
-export const TruncatedAndUnderlined = {
-  render: TruncatedTemplate,
-  name: "Truncated and underlined",
-  args: {
-    truncate: true,
-    underline: true,
-  },
 };

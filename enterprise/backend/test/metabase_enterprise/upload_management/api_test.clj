@@ -2,11 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.api.table-test :as oss-test]
    [metabase.test :as mt]
-   [metabase.upload :as upload]
-   [metabase.upload-test :as upload-test]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.upload.core :as upload]
+   [metabase.upload.impl-test :as upload-test]
+   [metabase.warehouse-schema.api.table-test :as oss-test]))
 
 (def list-url "ee/upload-management/tables")
 
@@ -15,9 +14,9 @@
     (testing "These should come back in alphabetical order and include relevant metadata"
       (mt/with-premium-features #{:upload-management}
         (oss-test/with-tables-as-uploads [:categories :reviews]
-          (t2.with-temp/with-temp [:model/Card {} {:table_id (mt/id :categories)}
-                                   :model/Card {} {:table_id (mt/id :reviews)}
-                                   :model/Card {} {:table_id (mt/id :reviews)}]
+          (mt/with-temp [:model/Card {} {:table_id (mt/id :categories)}
+                         :model/Card {} {:table_id (mt/id :reviews)}
+                         :model/Card {} {:table_id (mt/id :reviews)}]
             (let [result (mt/user-http-request :rasta :get 200 list-url)]
               ;; =? doesn't currently know how to treat sets as literals, only as predicates, so we can't use it.
               ;; See https://github.com/metabase/hawk/issues/23
@@ -82,9 +81,9 @@
 
             (testing "The archive_cards argument is passed through"
               (let [passed-value (atom nil)]
-                (mt/with-dynamic-redefs [upload/delete-upload! (fn [_ & {:keys [archive-cards?]}]
-                                                                 (reset! passed-value archive-cards?)
-                                                                 :done)]
+                (mt/with-dynamic-fn-redefs [upload/delete-upload! (fn [_ & {:keys [archive-cards?]}]
+                                                                    (reset! passed-value archive-cards?)
+                                                                    :done)]
                   (let [table-id (:id (oss-test/create-csv!))]
                     (is (mt/user-http-request :crowberto :delete 200 (delete-url table-id) :archive-cards true))
                     (is (true? @passed-value))))))))))))

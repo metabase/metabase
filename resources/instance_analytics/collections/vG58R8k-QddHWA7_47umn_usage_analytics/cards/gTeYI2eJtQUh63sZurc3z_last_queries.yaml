@@ -380,7 +380,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  source_alias: Content - Card Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -412,7 +411,6 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  source_alias: Content - Card Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -444,7 +442,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  source_alias: Content - Dashboard Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -476,7 +473,6 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  source_alias: Content - Dashboard Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -508,7 +504,6 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  source_alias: Databases - Database Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -540,7 +535,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  source_alias: Databases - Database Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -690,6 +684,8 @@ serdes/meta:
   label: last_queries
   model: Card
 archived_directly: false
+card_schema: 20
+dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 metabase_version: vUNKNOWN (ad99d37)
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

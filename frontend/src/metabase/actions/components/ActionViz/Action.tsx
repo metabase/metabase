@@ -2,7 +2,6 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
-import Tooltip from "metabase/core/components/Tooltip";
 import {
   executeRowAction,
   reloadDashboardCards,
@@ -14,12 +13,13 @@ import {
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
 import { connect, useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import { Tooltip } from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
   ActionDashboardCard,
   Dashboard,
-  ParameterValueOrArray,
+  ParameterValuesMap,
   ParametersForActionExecution,
   WritebackAction,
 } from "metabase-types/api";
@@ -38,7 +38,7 @@ import {
 interface OwnProps {
   dashcard: ActionDashboardCard;
   dashboard: Dashboard;
-  parameterValues: { [id: string]: ParameterValueOrArray };
+  parameterValues: ParameterValuesMap;
 }
 
 interface StateProps {
@@ -167,7 +167,7 @@ function ActionFn(props: ActionProps) {
     });
 
     return (
-      <Tooltip tooltip={tooltip}>
+      <Tooltip label={tooltip}>
         <FullContainer data-testid="action-button-full-container">
           <ActionButtonView
             disabled

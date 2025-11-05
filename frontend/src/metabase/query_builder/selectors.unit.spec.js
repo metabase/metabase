@@ -1,15 +1,28 @@
-import { assoc, assocIn } from "icepick";
+import { assoc } from "icepick";
 
 import { createMockEntitiesState } from "__support__/store";
 import {
   getIsResultDirty,
+  getIsVisualized,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getQuestion,
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
+import registerVisualizations from "metabase/visualizations/register";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { createMockTable } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
+  createMockNativeQuery,
+  createMockTable,
+  createMockTableColumnOrderSetting,
+  createMockTemplateTag,
+  createMockVisualizationSettings,
+} from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
@@ -23,6 +36,8 @@ import {
   createMockQueryBuilderUIControlsState,
   createMockState,
 } from "metabase-types/store/mocks";
+
+registerVisualizations();
 
 function getBaseState({ uiControls = {}, ...state } = {}) {
   return createMockState({
@@ -89,9 +104,7 @@ describe("getQuestion", () => {
 
     const question = getQuestion(getBaseState({ card }));
 
-    expect(question.card()).toEqual(
-      assocIn(card, ["dataset_query", "query", "source-table"], "card__1"),
-    );
+    expect(Lib.sourceTableOrCardId(question.query())).toBe("card__1");
   });
 
   it("should return real dataset when dataset is open in 'dataset' QB mode", () => {
@@ -157,7 +170,6 @@ describe("getIsResultDirty", () => {
       const filter = [">", ["field", ORDERS.TOTAL, null], 20];
       const join = {
         alias: "Products",
-        ident: "LUso-laB06h37QT_phn2R",
         fields: "all",
         "source-table": PRODUCTS_ID,
         condition: [
@@ -227,7 +239,7 @@ describe("getIsResultDirty", () => {
 
     it("should not be dirty if fields were just made explicit", () => {
       const orderTableFieldIds = Object.values(ORDERS);
-      const orderTableFieldRefs = orderTableFieldIds.map(id => [
+      const orderTableFieldRefs = orderTableFieldIds.map((id) => [
         "field",
         id,
         null,
@@ -246,7 +258,9 @@ describe("getIsResultDirty", () => {
 
   describe("native query", () => {
     function getCard(native) {
-      return getBaseCard({ dataset_query: { type: "native", native } });
+      return getBaseCard({
+        dataset_query: { type: "native", native },
+      });
     }
 
     function getState(lastRunCardQuery, cardQuery) {
@@ -263,14 +277,20 @@ describe("getIsResultDirty", () => {
 
     it("should be dirty if template-tags differ", () => {
       const state = getState(
-        { "template-tags": { foo: {} } },
-        { "template-tags": { bar: {} } },
+        createMockNativeQuery({
+          query: "SELECT {{foo}}",
+          "template-tags": { foo: createMockTemplateTag({ name: "foo" }) },
+        }),
+        createMockNativeQuery({
+          query: "SELECT {{bar}}",
+          "template-tags": { bar: createMockTemplateTag({ name: "bar" }) },
+        }),
       );
       expect(getIsResultDirty(state)).toBe(true);
     });
 
     describe("native editor selection/cursor", () => {
-      function getStateWithSelectedQueryText(start, end) {
+      function getStateWithSelectedQueryText(ranges) {
         return getBaseState({
           card: getBaseCard({
             dataset_query: {
@@ -279,7 +299,7 @@ describe("getIsResultDirty", () => {
             },
           }),
           uiControls: {
-            nativeEditorSelectedRange: { start, end },
+            nativeEditorSelectedRange: ranges,
           },
         });
       }
@@ -292,7 +312,9 @@ describe("getIsResultDirty", () => {
         it(`should correctly determine the cursor offset for ${JSON.stringify(
           position,
         )}`, () => {
-          const state = getStateWithSelectedQueryText(position, position);
+          const state = getStateWithSelectedQueryText([
+            { start: position, end: position },
+          ]);
           expect(getNativeEditorCursorOffset(state)).toBe(offset);
         }),
       );
@@ -305,10 +327,18 @@ describe("getIsResultDirty", () => {
         it(`should correctly get selected text from ${JSON.stringify(
           start,
         )} to ${JSON.stringify(end)}`, () => {
-          const state = getStateWithSelectedQueryText(start, end);
+          const state = getStateWithSelectedQueryText([{ start, end }]);
           expect(getNativeEditorSelectedText(state)).toBe(text);
         }),
       );
+
+      it("should correctly get selected text when there are multiple selected ranges", () => {
+        const state = getStateWithSelectedQueryText([
+          { start: { row: 2, column: 0 }, end: { row: 2, column: 2 } },
+          { start: { row: 0, column: 0 }, end: { row: 0, column: 2 } },
+        ]);
+        expect(getNativeEditorSelectedText(state)).toBe("33");
+      });
     });
   });
 
@@ -395,5 +425,54 @@ describe("getQuestionDetailsTimelineDrawerState", () => {
       },
     };
     expect(getQuestionDetailsTimelineDrawerState(state)).toBe("foo");
+  });
+});
+
+describe("getIsVisualized", () => {
+  it("should be false when there is a `table.columns` setting only", () => {
+    const state = getBaseState({
+      card: createMockCard({
+        display: "table",
+        visualization_settings: createMockVisualizationSettings({
+          "table.columns": [createMockTableColumnOrderSetting()],
+        }),
+      }),
+    });
+    expect(getIsVisualized(state)).toBe(false);
+  });
+
+  it("should be true when the table is implicitly visualized as a pivot table", () => {
+    const state = getBaseState({
+      card: createMockCard({
+        display: "table",
+      }),
+      queryResults: [
+        createMockDataset({
+          data: createMockDatasetData({
+            cols: [
+              createMockColumn({
+                name: "count",
+                base_type: "type/Integer",
+                effective_type: "type/Integer",
+                source: "aggregation",
+              }),
+              createMockColumn({
+                name: "CATEGORY",
+                base_type: "type/Text",
+                effective_type: "type/Text",
+                source: "breakout",
+              }),
+              createMockColumn({
+                name: "VENDOR",
+                base_type: "type/Text",
+                effective_type: "type/Text",
+                source: "breakout",
+              }),
+            ],
+          }),
+        }),
+      ],
+    });
+    expect(getIsVisualized(state)).toBe(true);
   });
 });

@@ -213,7 +213,7 @@ describe("metabase/visualization/lib/utils", () => {
         getDefaultDimensionsAndMetrics([
           {
             data: {
-              rows: _.range(0, 100).map(v => [0, 0, v]),
+              rows: _.range(0, 100).map((v) => [0, 0, v]),
               cols: [
                 {
                   name: "count",
@@ -242,7 +242,7 @@ describe("metabase/visualization/lib/utils", () => {
         getDefaultDimensionsAndMetrics([
           {
             data: {
-              rows: _.range(0, 101).map(v => [0, v, v]),
+              rows: _.range(0, 101).map((v) => [0, v, v]),
               cols: [
                 {
                   name: "count",
@@ -368,7 +368,7 @@ describe("metabase/visualization/lib/utils", () => {
 
     it("returns null if all columns has cardinality > 16", () => {
       const cols = [highestCardinalityColumn, highCardinalityColumn];
-      const rows = _.range(highestCardinality).map(n => [
+      const rows = _.range(highestCardinality).map((n) => [
         n,
         n % highCardinality,
       ]);
@@ -383,7 +383,7 @@ describe("metabase/visualization/lib/utils", () => {
         lowCardinalityColumn,
         lowestCardinalityColumn,
       ];
-      const rows = _.range(highestCardinality).map(n => [
+      const rows = _.range(highestCardinality).map((n) => [
         n,
         n % highCardinality,
         n % lowCardinality,
@@ -403,7 +403,7 @@ describe("metabase/visualization/lib/utils", () => {
           source: "aggregation",
         }),
       ];
-      const rows = _.range(lowCardinality).map(n => [n, 1]);
+      const rows = _.range(lowCardinality).map((n) => [n, 1]);
 
       expect(getDefaultPivotColumn(cols, rows)).toEqual(lowCardinalityColumn);
     });

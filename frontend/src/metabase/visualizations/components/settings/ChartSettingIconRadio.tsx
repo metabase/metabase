@@ -21,7 +21,7 @@ export const ChartSettingIconRadio = ({
 
   return (
     <div>
-      {options.map(option => (
+      {options.map((option) => (
         <IconButton
           icon={option.iconName}
           onClick={() => handleClick(option.value)}

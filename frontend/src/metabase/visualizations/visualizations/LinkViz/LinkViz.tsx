@@ -1,13 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
-import TippyPopover from "metabase/components/Popover/TippyPopover";
+import TippyPopover from "metabase/common/components/Popover/TippyPopover";
+import { useToggle } from "metabase/common/hooks/use-toggle";
+import { getParameterValues } from "metabase/dashboard/selectors";
 import Search from "metabase/entities/search";
-import { useToggle } from "metabase/hooks/use-toggle";
 import { getUrlTarget } from "metabase/lib/dom";
+import { useSelector } from "metabase/lib/redux";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
+import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
+  Dashboard,
   LinkCardSettings,
   SearchModel,
   UnrestrictedLinkEntity,
@@ -44,6 +48,7 @@ const MODELS_TO_SEARCH: SearchModel[] = [
 
 export interface LinkVizProps {
   dashcard: VirtualDashboardCard;
+  dashboard: Dashboard;
   isEditing: boolean;
   onUpdateVisualizationSettings: (
     newSettings: Partial<VirtualDashboardCard["visualization_settings"]>,
@@ -51,16 +56,16 @@ export interface LinkVizProps {
   settings: VirtualDashboardCard["visualization_settings"] & {
     link: LinkCardSettings;
   };
-  isEditingParameter?: boolean;
 }
 
 function LinkVizInner({
   dashcard,
+  dashboard,
   isEditing,
   onUpdateVisualizationSettings,
   settings,
-  isEditingParameter,
 }: LinkVizProps) {
+  const parameterValues = useSelector(getParameterValues);
   const {
     link: { url, entity },
   } = settings;
@@ -97,10 +102,22 @@ function LinkVizInner({
     }
   }, [previousUrl, url]);
 
+  const interpolatedUrl = useMemo(
+    () =>
+      fillParametersInText({
+        dashcard,
+        dashboard,
+        parameterValues,
+        text: url,
+        urlEncode: true,
+      }),
+    [dashboard, dashcard, parameterValues, url],
+  );
+
   if (entity) {
     if (isRestrictedLinkEntity(entity)) {
       return (
-        <EditLinkCardWrapper fade={isEditingParameter}>
+        <EditLinkCardWrapper>
           <RestrictedEntityDisplay />
         </EditLinkCardWrapper>
       );
@@ -115,10 +132,7 @@ function LinkVizInner({
 
     if (isEditing) {
       return (
-        <EditLinkCardWrapper
-          data-testid="entity-edit-display-link"
-          fade={isEditingParameter}
-        >
+        <EditLinkCardWrapper data-testid="entity-edit-display-link">
           <EntityDisplay entity={wrappedEntity} showDescription={false} />
         </EditLinkCardWrapper>
       );
@@ -138,13 +152,13 @@ function LinkVizInner({
     );
   }
 
-  if (isEditing && !isEditingParameter) {
+  if (isEditing) {
     return (
       <EditLinkCardWrapper data-testid="custom-edit-text-link">
         <TippyPopover
           visible={inputIsFocused && !isUrlString(url)}
           content={
-            !url?.trim?.().length && !entity ? (
+            !interpolatedUrl?.trim?.().length && !entity ? (
               <StyledRecentsList onClick={handleEntitySelect} />
             ) : (
               <SearchResultsContainer>
@@ -164,12 +178,12 @@ function LinkVizInner({
             value={url ?? ""}
             autoFocus={autoFocus}
             placeholder={"https://example.com"}
-            onChange={e => handleLinkChange(e.target.value)}
+            onChange={(e) => handleLinkChange(e.target.value)}
             onFocus={onFocusInput}
             // we need to debounce this or it may close the popover before the click event can fire
             onBlur={_.debounce(onBlurInput, 100)}
             // the dashcard really wants to turn all mouse events into drag events
-            onMouseDown={e => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
           />
         </TippyPopover>
       </EditLinkCardWrapper>
@@ -178,16 +192,13 @@ function LinkVizInner({
 
   // external link
   return (
-    <DisplayLinkCardWrapper
-      data-testid="custom-view-text-link"
-      fade={isEditingParameter}
-    >
+    <DisplayLinkCardWrapper data-testid="custom-view-text-link">
       <ExternalLink
-        href={url ?? ""}
+        href={interpolatedUrl ?? ""}
         target={getUrlTarget(url)}
         rel="noreferrer"
       >
-        <UrlLinkDisplay url={url} />
+        <UrlLinkDisplay url={interpolatedUrl} />
       </ExternalLink>
     </DisplayLinkCardWrapper>
   );

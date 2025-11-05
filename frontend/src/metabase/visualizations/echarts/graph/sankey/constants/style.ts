@@ -2,7 +2,7 @@ export const SANKEY_CHART_STYLE = {
   nodeWidth: 20,
   nodeLabels: {
     weight: 400,
-    size: 13,
+    size: 12,
     textBorderWidth: 3,
   },
   edgeLabels: {
@@ -15,6 +15,7 @@ export const SANKEY_CHART_STYLE = {
     minPadding: 24,
   },
   edgeColor: {
+    // eslint-disable-next-line no-color-literals
     gray: "#81898e", // --mb-base-color-orion-50
   },
 };

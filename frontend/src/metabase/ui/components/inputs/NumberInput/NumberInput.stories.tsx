@@ -1,3 +1,5 @@
+import { fn } from "@storybook/test";
+
 import { Icon, Stack } from "metabase/ui";
 
 import { NumberInput, type NumberInputProps } from "./";
@@ -12,6 +14,7 @@ const args = {
   disabled: false,
   readOnly: false,
   withAsterisk: false,
+  onChange: fn(),
 };
 
 const sampleArgs = {
@@ -62,11 +65,11 @@ const VariantTemplate = (args: NumberInputProps) => (
 );
 
 const IconTemplate = (args: NumberInputProps) => (
-  <VariantTemplate {...args} icon={<Icon name="int" />} />
+  <VariantTemplate {...args} leftSection={<Icon name="int" />} />
 );
 
 export default {
-  title: "Inputs/NumberInput",
+  title: "Components/Inputs/NumberInput",
   component: NumberInput,
   args,
   argTypes,

@@ -3,7 +3,7 @@
    [potemkin.types :as p.types]))
 
 (defmulti stream-options
-  "Options for the streaming response for this specific stream type. See `metabase.async.streaming-response` for all
+  "Options for the streaming response for this specific stream type. See `metabase.server.streaming-response` for all
   available options."
   {:arglists '([export-format] [export-format filename-prefix])}
   (fn ([export-format & _] (keyword export-format))))

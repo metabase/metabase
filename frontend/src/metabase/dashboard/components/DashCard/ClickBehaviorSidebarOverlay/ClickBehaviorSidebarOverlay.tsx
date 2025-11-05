@@ -1,16 +1,12 @@
+import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
+import { Box, Flex, Icon } from "metabase/ui";
 import type { DashboardCard, QuestionDashboardCard } from "metabase-types/api";
 
-import {
-  Button,
-  ClickBehaviorDescription,
-  ClickIcon,
-  HelperText,
-  Root,
-} from "./ClickBehaviorSidebarOverlay.styled";
+import S from "./ClickBehaviorSidebarOverlay.module.css";
 
 interface Props {
   dashcard: DashboardCard;
@@ -40,16 +36,38 @@ export function ClickBehaviorSidebarOverlay({
   ]);
 
   return (
-    <Root>
-      <Button isActive={isShowingThisClickBehaviorSidebar} onClick={onClick}>
-        <ClickIcon name="click" isActive={isShowingThisClickBehaviorSidebar} />
+    <Flex align="center" justify="center" h="100%">
+      <Flex
+        component="button"
+        mb="md"
+        fw="bold"
+        px="md"
+        py="sm"
+        className={cx(S.Button, {
+          [S.isActive]: isShowingThisClickBehaviorSidebar,
+        })}
+        onClick={onClick}
+      >
+        <Icon
+          mr="sm"
+          name="click"
+          className={cx(S.ClickIcon, {
+            [S.isActive]: isShowingThisClickBehaviorSidebar,
+          })}
+        />
         {dashcardWidth > MIN_WIDTH_FOR_ON_CLICK_LABEL && (
-          <HelperText>{t`On click`}</HelperText>
+          <Box component="span" display="block" mr="md">{t`On click`}</Box>
         )}
-        <ClickBehaviorDescription isActive={isShowingThisClickBehaviorSidebar}>
+        <Box
+          component="span"
+          display="block"
+          className={cx(S.ClickBehaviorDescription, {
+            [S.isActive]: isShowingThisClickBehaviorSidebar,
+          })}
+        >
           {getClickBehaviorDescription(dashcard)}
-        </ClickBehaviorDescription>
-      </Button>
-    </Root>
+        </Box>
+      </Flex>
+    </Flex>
   );
 }

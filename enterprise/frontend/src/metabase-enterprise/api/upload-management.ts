@@ -7,7 +7,7 @@ import type {
 import { EnterpriseApi } from "./api";
 
 export const uploadManagementApi = EnterpriseApi.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listUploadTables: builder.query<UploadManagementResponse, void>({
       query: () => ({
         method: "GET",

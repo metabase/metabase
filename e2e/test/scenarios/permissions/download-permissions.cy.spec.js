@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -22,11 +22,11 @@ const {
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const DOWNLOAD_PERMISSION_INDEX = 2;
 
-H.describeEE("scenarios > admin > permissions > data > downloads", () => {
+describe("scenarios > admin > permissions > data > downloads", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     // Restrict downloads for Collection and Data groups before each test so that they don't override All Users
     cy.updatePermissionsGraph({
       [COLLECTION_GROUP]: {
@@ -154,17 +154,14 @@ H.describeEE("scenarios > admin > permissions > data > downloads", () => {
     cy.signInAsNormalUser();
     H.visitQuestion(ORDERS_QUESTION_ID);
 
-    H.downloadAndAssert(
-      { fileType: "xlsx", questionId: ORDERS_QUESTION_ID },
-      H.assertSheetRowsCount(10000),
-    );
+    H.downloadAndAssert({ fileType: "xlsx", questionId: ORDERS_QUESTION_ID });
   });
 
   describe("native questions", () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
 
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "Native Orders",
           native: {
@@ -178,32 +175,23 @@ H.describeEE("scenarios > admin > permissions > data > downloads", () => {
     it("lets user download results from native queries", () => {
       cy.signInAsNormalUser();
 
-      cy.get("@nativeQuestionId").then(id => {
+      cy.get("@nativeQuestionId").then((id) => {
         H.visitQuestion(id);
 
-        H.downloadAndAssert(
-          { fileType: "xlsx", questionId: id },
-          H.assertSheetRowsCount(18760),
-        );
+        H.downloadAndAssert({ fileType: "xlsx", questionId: id });
 
         // Make sure we can download results from an ad-hoc nested query based on a native question
         cy.findByText("Explore results").click();
         cy.wait("@dataset");
 
-        H.downloadAndAssert(
-          { fileType: "xlsx" },
-          H.assertSheetRowsCount(18760),
-        );
+        H.downloadAndAssert({ fileType: "xlsx" });
 
         // Make sure we can download results from a native model
         cy.request("PUT", `/api/card/${id}`, { name: "Native Model" });
 
         H.visitQuestion(id);
 
-        H.downloadAndAssert(
-          { fileType: "xlsx", questionId: id },
-          H.assertSheetRowsCount(18760),
-        );
+        H.downloadAndAssert({ fileType: "xlsx", questionId: id });
       });
     });
 
@@ -212,7 +200,7 @@ H.describeEE("scenarios > admin > permissions > data > downloads", () => {
 
       cy.signInAsNormalUser();
 
-      cy.get("@nativeQuestionId").then(id => {
+      cy.get("@nativeQuestionId").then((id) => {
         H.visitQuestion(id);
 
         cy.findByText("Showing first 2,000 rows");
@@ -240,32 +228,23 @@ H.describeEE("scenarios > admin > permissions > data > downloads", () => {
 
       cy.signInAsNormalUser();
 
-      cy.get("@nativeQuestionId").then(id => {
+      cy.get("@nativeQuestionId").then((id) => {
         H.visitQuestion(id);
 
-        H.downloadAndAssert(
-          { fileType: "xlsx", questionId: id },
-          H.assertSheetRowsCount(10000),
-        );
+        H.downloadAndAssert({ fileType: "xlsx", questionId: id });
 
         // Ad-hoc nested query based on a native question should also have a download row limit
         cy.findByText("Explore results").click();
         cy.wait("@dataset");
 
-        H.downloadAndAssert(
-          { fileType: "xlsx" },
-          H.assertSheetRowsCount(10000),
-        );
+        H.downloadAndAssert({ fileType: "xlsx" });
 
         // Convert question to a model, which should also have a download row limit
         cy.request("PUT", `/api/card/${id}`, { name: "Native Model" });
 
         H.visitQuestion(id);
 
-        H.downloadAndAssert(
-          { fileType: "xlsx", questionId: id },
-          H.assertSheetRowsCount(10000),
-        );
+        H.downloadAndAssert({ fileType: "xlsx", questionId: id });
       });
     });
   });

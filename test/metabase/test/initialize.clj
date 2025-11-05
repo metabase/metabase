@@ -3,9 +3,9 @@
   (:require
    [clojure.string :as str]
    [mb.hawk.init]
-   [metabase.config :as config]
+   [metabase.classloader.core :as classloader]
+   [metabase.config.core :as config]
    [metabase.notification.core :as notification]
-   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -118,7 +118,12 @@
   (initialize-if-needed! :db)
   (notification/seed-notification!))
 
-(defn- all-components
+(define-initialization :row-lock
+  (initialize-if-needed! :db)
+  (classloader/require 'metabase.test.initialize.row-lock)
+  ((resolve 'metabase.test.initialize.row-lock/init!)))
+
+(defn all-components
   "Set of all components/initialization steps that are defined."
   []
   (set (keys (methods do-initialization!))))

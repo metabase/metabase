@@ -1,30 +1,42 @@
-// @ts-expect-error There is no type definition
-import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryContext, StoryFn } from "@storybook/react";
-import { userEvent, within } from "@storybook/testing-library";
-import { type ComponentProps, useEffect } from "react";
+import { userEvent, within } from "@storybook/test";
+import { HttpResponse, http } from "msw";
+import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
-import { createMockMetadata } from "__support__/metadata";
+import { createMockEntitiesState } from "__support__/store";
+import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+import { Api } from "metabase/api";
+import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
+import { stableStringify } from "metabase/lib/objects";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
-import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import {
+  MockDashboardContext,
+  type MockDashboardContextProps,
+} from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { publicReducers } from "metabase/reducers-public";
-import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { registerVisualization } from "metabase/visualizations";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import Table from "metabase/visualizations/visualizations/Table/Table";
+import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
+import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDatabase,
   createMockDataset,
   createMockDatasetData,
   createMockParameter,
 } from "metabase-types/api/mocks";
 import {
   PRODUCTS,
-  createSampleDatabase,
+  createProductsCategoryField,
+  createProductsCreatedAtField,
+  createProductsRatingField,
 } from "metabase-types/api/mocks/presets";
 import {
   createMockDashboardState,
@@ -32,21 +44,35 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import {
-  PublicOrEmbeddedDashboardView,
-  type PublicOrEmbeddedDashboardViewProps,
-} from "./PublicOrEmbeddedDashboardView";
+import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
+
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(Table);
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(BarChart);
+
+/**
+ * This is an arbitrary number, it should be big enough to pass CI tests.
+ * This works because we set delays for ExplicitSize to 0 in storybook.
+ */
+const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 2500;
 
 export default {
-  title: "embed/PublicOrEmbeddedDashboardView/filters",
+  title: "App/Embed/PublicOrEmbeddedDashboardView/filters",
   component: PublicOrEmbeddedDashboardView,
   decorators: [
     ReduxDecorator,
-    WaitForResizeToStopDecorator,
-    MockIsEmbeddingDecorator,
+    createWaitForResizeToStopDecorator(TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING),
   ],
   parameters: {
     layout: "fullscreen",
+    msw: {
+      handlers: [
+        http.get("*/api/database", () =>
+          HttpResponse.json(createMockDatabase()),
+        ),
+      ],
+    },
   },
   argTypes: {
     parameterType: {
@@ -57,12 +83,21 @@ export default {
 };
 
 function ReduxDecorator(Story: StoryFn, context: StoryContext) {
-  const parameterType: ParameterType = context.args.parameterType;
+  const dashboard = context.args.dashboard as Dashboard;
+  const parameterType = context.args.parameterType as ParameterType;
   const initialState = createMockState({
     settings: createMockSettingsState({
       "hide-embed-branding?": false,
     }),
     dashboard: createMockDashboardState({
+      dashboardId: dashboard.id,
+      dashboards: {
+        [dashboard.id]: {
+          ...dashboard,
+          dashcards: dashboard.dashcards.map((dashcard) => dashcard.id),
+        },
+      },
+      dashcards: _.indexBy(dashboard.dashcards, "id"),
       dashcardData: {
         [DASHCARD_BAR_ID]: {
           [CARD_BAR_ID]: createMockDataset({
@@ -86,49 +121,38 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
     }),
     parameters: {
       parameterValuesCache: {
-        [`{"paramId":"${CATEGORY_FILTER.id}","dashId":${DASHBOARD_ID}}`]: {
+        [stableStringify({
+          paramId: CATEGORY_DROPDOWN_FILTER.id,
+          dashId: DASHBOARD_ID,
+        })]: {
           values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
           has_more_values: parameterType === "search" ? true : false,
         },
-        [`{"paramId":"${CATEGORY_FILTER.id}","dashId":${DASHBOARD_ID},"query":"g"}`]:
-          {
-            values: [["Gadget"], ["Gizmo"], ["Widget"]],
-            has_more_values: parameterType === "search" ? true : false,
-          },
+        [stableStringify({
+          paramId: CATEGORY_DROPDOWN_FILTER.id,
+          dashId: DASHBOARD_ID,
+          query: "g",
+        })]: {
+          values: [["Gadget"], ["Gizmo"], ["Widget"]],
+          has_more_values: parameterType === "search" ? true : false,
+        },
       },
     },
+    entities: createMockEntitiesState({
+      fields: [
+        createProductsCategoryField(),
+        createProductsCreatedAtField(),
+        createProductsCreatedAtField(),
+      ],
+    }),
   });
 
-  const store = getStore(publicReducers, initialState);
+  const store = getStore(publicReducers, initialState, [Api.middleware]);
   return (
     <MetabaseReduxProvider store={store}>
       <Story />
     </MetabaseReduxProvider>
   );
-}
-
-/**
- * This is an arbitrary number, it should be big enough to pass CI tests.
- * This works because we set delays for ExplicitSize to 0 in storybook.
- */
-const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1500;
-function WaitForResizeToStopDecorator(Story: StoryFn) {
-  const asyncCallback = createAsyncCallback();
-  useEffect(() => {
-    setTimeout(asyncCallback, TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING);
-  }, [asyncCallback]);
-
-  return <Story />;
-}
-
-declare global {
-  interface Window {
-    overrideIsWithinIframe?: boolean;
-  }
-}
-function MockIsEmbeddingDecorator(Story: StoryFn) {
-  window.overrideIsWithinIframe = true;
-  return <Story />;
 }
 
 const DASHBOARD_ID = getNextId();
@@ -137,8 +161,14 @@ const DASHCARD_TABLE_ID = getNextId();
 const CARD_BAR_ID = getNextId();
 const CARD_TABLE_ID = getNextId();
 const TAB_ID = getNextId();
-const CATEGORY_FILTER = createMockParameter({
+
+const CATEGORY_DROPDOWN_FILTER = createMockParameter({
   id: "category-hex",
+  name: "Category",
+  slug: "category",
+});
+const CATEGORY_TEXT_FILTER = createMockParameter({
+  id: "category-text",
   name: "Category",
   slug: "category",
 });
@@ -148,18 +178,96 @@ const CATEGORY_SINGLE_FILTER = createMockParameter({
   slug: "category",
   isMultiSelect: false,
 });
+
 const NUMBER_FILTER_ID = "number-hex";
 const DATE_FILTER_ID = "date-hex";
 const UNIT_OF_TIME_FILTER_ID = "unit-of-time-hex";
 
+const PARAMETER_MAPPING = {
+  text: CATEGORY_TEXT_FILTER,
+  number: createMockParameter({
+    id: NUMBER_FILTER_ID,
+    name: "Number Equals",
+    sectionId: "number",
+    slug: "number_equals",
+    type: "number/=",
+  }),
+  dropdown_multiple: CATEGORY_DROPDOWN_FILTER,
+  dropdown_single: CATEGORY_SINGLE_FILTER,
+  search: CATEGORY_DROPDOWN_FILTER,
+  date_all_options: createMockParameter({
+    id: DATE_FILTER_ID,
+    name: "Date all options",
+    sectionId: "date",
+    slug: "date_all_options",
+    type: "date/all-options",
+  }),
+  date_month_year: createMockParameter({
+    id: DATE_FILTER_ID,
+    name: "Date Month and Year",
+    sectionId: "date",
+    slug: "date_month_and_year",
+    type: "date/month-year",
+  }),
+  date_quarter_year: createMockParameter({
+    id: DATE_FILTER_ID,
+    name: "Date Quarter and Year",
+    sectionId: "date",
+    slug: "date_quarter_and_year",
+    type: "date/quarter-year",
+  }),
+  date_single: createMockParameter({
+    id: DATE_FILTER_ID,
+    name: "Date single",
+    sectionId: "date",
+    slug: "date_single",
+    type: "date/single",
+  }),
+  date_range: createMockParameter({
+    id: DATE_FILTER_ID,
+    name: "Date range",
+    sectionId: "date",
+    slug: "date_range",
+    type: "date/range",
+  }),
+  date_relative: createMockParameter({
+    id: DATE_FILTER_ID,
+    name: "Date relative",
+    sectionId: "date",
+    slug: "date_relative",
+    type: "date/relative",
+  }),
+  temporal_unit: createMockParameter({
+    id: UNIT_OF_TIME_FILTER_ID,
+    name: "Time grouping",
+    sectionId: "temporal-unit",
+    slug: "unit_of_time",
+    type: "temporal-unit",
+  }),
+};
+
 interface CreateDashboardOpts {
   hasScroll?: boolean;
+  parameterType?: ParameterType;
 }
-function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
+
+function createDashboard({
+  hasScroll,
+  parameterType = "text",
+}: CreateDashboardOpts = {}) {
+  const parameter = PARAMETER_MAPPING[parameterType];
+
   return createMockDashboard({
     id: DASHBOARD_ID,
     name: "My dashboard",
     width: "full",
+    parameters: [parameter],
+    param_fields: {
+      [CATEGORY_DROPDOWN_FILTER.id]: [createProductsCategoryField()],
+      [DATE_FILTER_ID]: [createProductsCreatedAtField()],
+      [UNIT_OF_TIME_FILTER_ID]: [createProductsCreatedAtField()],
+      [NUMBER_FILTER_ID]: [createProductsRatingField()],
+    },
     dashcards: [
       createMockDashboardCard({
         id: DASHCARD_BAR_ID,
@@ -170,7 +278,15 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
         parameter_mappings: [
           {
             card_id: CARD_BAR_ID,
-            parameter_id: CATEGORY_FILTER.id,
+            parameter_id: CATEGORY_DROPDOWN_FILTER.id,
+            target: [
+              "dimension",
+              ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+            ],
+          },
+          {
+            card_id: CARD_BAR_ID,
+            parameter_id: "category-text",
             target: [
               "dimension",
               ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
@@ -222,167 +338,23 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
-  // @ts-expect-error -- custom prop to support non JSON-serializable value as args
-  const parameterType: ParameterType = args.parameterType;
+const Template: StoryFn<MockDashboardContextProps> = (args) => {
   const dashboard = args.dashboard;
+
   if (!dashboard) {
     return <>Please pass `dashboard`</>;
   }
 
-  const PARAMETER_MAPPING: Record<ParameterType, UiParameter[]> = {
-    text: getDashboardUiParameters(
-      dashboard.dashcards,
-      [CATEGORY_FILTER],
-      createMockMetadata({}),
-      {},
-    ),
-    number: getDashboardUiParameters(
-      dashboard.dashcards,
-      [
-        createMockParameter({
-          id: NUMBER_FILTER_ID,
-          name: "Number Equals",
-          sectionId: "number",
-          slug: "number_equals",
-          type: "number/=",
-        }),
-      ],
-      createMockMetadata({}),
-      {},
-    ),
-    dropdown_multiple: getDashboardUiParameters(
-      dashboard.dashcards,
-      [CATEGORY_FILTER],
-      createMockMetadata({
-        databases: [createSampleDatabase()],
-      }),
-      {},
-    ),
-    dropdown_single: getDashboardUiParameters(
-      dashboard.dashcards,
-      [CATEGORY_SINGLE_FILTER],
-      createMockMetadata({
-        databases: [createSampleDatabase()],
-      }),
-      {},
-    ),
-    search: getDashboardUiParameters(
-      dashboard.dashcards,
-      [CATEGORY_FILTER],
-      createMockMetadata({
-        databases: [createSampleDatabase()],
-      }),
-      {},
-    ),
-    date_all_options: getDashboardUiParameters(
-      dashboard.dashcards,
-      [
-        createMockParameter({
-          id: DATE_FILTER_ID,
-          name: "Date all options",
-          sectionId: "date",
-          slug: "date_all_options",
-          type: "date/all-options",
-        }),
-      ],
-      createMockMetadata({}),
-      {},
-    ),
-    date_month_year: getDashboardUiParameters(
-      dashboard.dashcards,
-      [
-        createMockParameter({
-          id: DATE_FILTER_ID,
-          name: "Date Month and Year",
-          sectionId: "date",
-          slug: "date_month_and_year",
-          type: "date/month-year",
-        }),
-      ],
-      createMockMetadata({}),
-      {},
-    ),
-    date_quarter_year: getDashboardUiParameters(
-      dashboard.dashcards,
-      [
-        createMockParameter({
-          id: DATE_FILTER_ID,
-          name: "Date Quarter and Year",
-          sectionId: "date",
-          slug: "date_quarter_and_year",
-          type: "date/quarter-year",
-        }),
-      ],
-      createMockMetadata({}),
-      {},
-    ),
-    date_single: getDashboardUiParameters(
-      dashboard.dashcards,
-      [
-        createMockParameter({
-          id: DATE_FILTER_ID,
-          name: "Date single",
-          sectionId: "date",
-          slug: "date_single",
-          type: "date/single",
-        }),
-      ],
-      createMockMetadata({}),
-      {},
-    ),
-    date_range: getDashboardUiParameters(
-      dashboard.dashcards,
-      [
-        createMockParameter({
-          id: DATE_FILTER_ID,
-          name: "Date range",
-          sectionId: "date",
-          slug: "date_range",
-          type: "date/range",
-        }),
-      ],
-      createMockMetadata({}),
-      {},
-    ),
-    date_relative: getDashboardUiParameters(
-      dashboard.dashcards,
-      [
-        createMockParameter({
-          id: DATE_FILTER_ID,
-          name: "Date relative",
-          sectionId: "date",
-          slug: "date_relative",
-          type: "date/relative",
-        }),
-      ],
-      createMockMetadata({}),
-      {},
-    ),
-    temporal_unit: getDashboardUiParameters(
-      dashboard.dashcards,
-      [
-        createMockParameter({
-          id: UNIT_OF_TIME_FILTER_ID,
-          name: "Time grouping",
-          sectionId: "temporal-unit",
-          slug: "unit_of_time",
-          type: "temporal-unit",
-        }),
-      ],
-      createMockMetadata({}),
-      {},
-    ),
-  };
   return (
-    <PublicOrEmbeddedDashboardView
+    <MockDashboardContext
       {...args}
-      parameters={PARAMETER_MAPPING[parameterType]}
-    />
+      dashboardId={dashboard.id}
+      dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
+    >
+      <PublicOrEmbeddedDashboardView />
+    </MockDashboardContext>
   );
 };
-
-type ArgType = Partial<ComponentProps<typeof PublicOrEmbeddedDashboardView>>;
 
 type ParameterType =
   | "text"
@@ -398,19 +370,28 @@ type ParameterType =
   | "date_relative"
   | "temporal_unit";
 
-const createDefaultArgs = (
-  args: ArgType & { parameterType?: ParameterType } = {},
-): ArgType & { parameterType: ParameterType } => {
-  const dashboard = createDashboard();
+type DefaultArgs = MockDashboardContextProps & {
+  parameterType?: ParameterType;
+};
+const createDefaultArgs = ({
+  parameterType = "text",
+  ...args
+}: Omit<
+  DefaultArgs,
+  "dashboardId" | "navigateToNewCardFromDashboard"
+> = {}): DefaultArgs => {
+  const dashboard = createDashboard({ parameterType });
   return {
     dashboard,
+    dashboardId: dashboard.id,
+    navigateToNewCardFromDashboard: null,
     titled: true,
     bordered: true,
     background: true,
     slowCards: {},
     selectedTabId: TAB_ID,
-    parameterType: "text",
     ...args,
+    downloadsEnabled: { pdf: true, results: false },
   };
 };
 
@@ -450,7 +431,6 @@ export const LightThemeTextWithValue = {
   args: createDefaultArgs(),
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const asyncCallback = createAsyncCallback();
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", { name: "Category" });
     await userEvent.click(filter);
@@ -461,7 +441,6 @@ export const LightThemeTextWithValue = {
       "filter value",
     );
     await userEvent.click(getLastPopoverElement());
-    asyncCallback();
   },
 };
 
@@ -681,16 +660,8 @@ export const LightThemeDateFilterMonthYear = {
     await userEvent.click(filter);
 
     const popover = getLastPopover();
-    const month = popover.getByText("March");
+    const month = popover.getByText("May");
     month.classList.add("pseudo-hover");
-
-    await userEvent.click(
-      popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
-    );
-    const dropdown = getLastPopover();
-    dropdown
-      .getByRole("option", { name: "2023" })
-      .setAttribute("data-hovered", "true");
   },
 };
 
@@ -749,14 +720,8 @@ export const LightThemeDateFilterQuarterYearDropdown = {
     await userEvent.click(filter);
 
     const popover = getLastPopover();
-
-    await userEvent.click(
-      popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
-    );
-    const dropdown = getLastPopover();
-    dropdown
-      .getByRole("option", { name: "2023" })
-      .setAttribute("data-hovered", "true");
+    await userEvent.click(popover.getByText("2024"));
+    popover.getByRole("button", { name: "2023" }).classList.add("pseudo-hover");
   },
 };
 
@@ -842,7 +807,8 @@ export const LightThemeDateFilterRange = {
     await userEvent.click(filter);
 
     const popover = getLastPopover();
-    popover.getByText("15").classList.add("pseudo-hover");
+    await userEvent.click(popover.getByRole("button", { name: "Add time" }));
+    popover.getAllByText("15")[0].classList.add("pseudo-hover");
   },
 };
 

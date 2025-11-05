@@ -31,13 +31,16 @@ import barMaxCategoriesDefault from "./bar-max-categories-default.json";
 import barMaxCategoriesStackedNormalized from "./bar-max-categories-stacked-normalized.json";
 import barMaxCategoriesStacked from "./bar-max-categories-stacked.json";
 import barMinHeightLimit from "./bar-min-height-limit.json";
+import barNonLinearNumericXAxis from "./bar-non-linear-numeric-x-axis.json";
 import barOrdinalXScaleAutoRotatedLabels from "./bar-ordinal-x-scale-auto-rotated-labels.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barRelativeDatetimeOrdinalScale from "./bar-relative-datetime-ordinal-scale.json";
 import barStackLinearXAxis from "./bar-stack-linear-x-axis.json";
 import barStackedAllLabelsTimeseriesWithGap45717 from "./bar-stacked-all-labels-timeseries-with-gap-45717.json";
 import barStackedLabelsNullVsZero from "./bar-stacked-labels-null-vs-zero.json";
+import barStackedNormalizedCustomMinMax48021 from "./bar-stacked-normalized-custom-min-max-48021.json";
 import barStackedNormalizedEmptySpace37880 from "./bar-stacked-normalized-empty-space-37880.json";
+import barStackedNormalizedGoalLine51054 from "./bar-stacked-normalized-goal-line-51054.json";
 import barStackedNormalizedSeriesLabels from "./bar-stacked-normalized-series-labels.json";
 import barStackedPowYAxisNegatives from "./bar-stacked-pow-y-axis-negatives.json";
 import barStackedPowYAxis from "./bar-stacked-pow-y-axis.json";
@@ -50,6 +53,7 @@ import barStackedSeriesLabelsRotated from "./bar-stacked-series-labels-rotated.j
 import barStackedTotalFormattedValues from "./bar-stacked-total-formatted-values.json";
 import barTwoAxesStackedWithNegativeValues from "./bar-two-axes-stacked-with-negative-values.json";
 import barTwoDaysOfWeek from "./bar-two-days-of-week.json";
+import barWidthDstTimezones56424 from "./bar-width-dst-timezones-56424.json";
 import barsBreakoutSortedWithNegativeValuesPowerYAxis from "./bars-breakout-sorted-with-negative-values-power-y-axis.json";
 import breakoutNullAndEmptyString from "./breakout-null-and-empty-string.json";
 import combinedBarTimeSeriesDifferentGranularityWithBreakout from "./combined-bar-timeseries-different-granularity-with-breakout.json";
@@ -118,6 +122,7 @@ import trendMultiSeriesStackedBar from "./trend-multi-series-stacked-bar.json";
 import trendSingleSeriesArea from "./trend-single-series-area.json";
 import trendSingleSeriesBar from "./trend-single-series-bar.json";
 import trendSingleSeriesLine from "./trend-single-series-line.json";
+import visualizerTimeseriesDifferentUnits from "./visualizer-timeseries-different-units.json";
 import wrongYAxisRange37306 from "./wrong-y-axis-range-37306.json";
 import yAxisCompactWithoutDataLabels from "./y-axis-compact-without-data-labels.json";
 
@@ -156,6 +161,8 @@ export const data = {
   barLogYScaleStacked,
   barLogYScaleStackedNegative,
   barStackedNormalizedEmptySpace37880,
+  barStackedNormalizedGoalLine51054,
+  barStackedNormalizedCustomMinMax48021,
   barsBreakoutSortedWithNegativeValuesPowerYAxis,
   barFullyNullDimension37902,
   autoYSplit,
@@ -244,4 +251,7 @@ export const data = {
   trendGoalLinesWithScalingPowScaleCustomRange,
   barStackedAllLabelsTimeseriesWithGap45717,
   offsetBasedTimezone47835,
+  barNonLinearNumericXAxis,
+  barWidthDstTimezones56424,
+  visualizerTimeseriesDifferentUnits,
 };

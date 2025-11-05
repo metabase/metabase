@@ -3,9 +3,9 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import FormInput from "metabase/core/components/FormInput";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import FormErrorMessage from "metabase/common/components/FormErrorMessage";
+import FormInput from "metabase/common/components/FormInput";
+import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
@@ -28,6 +28,7 @@ const RESET_PASSWORD_SCHEMA = Yup.object({
   password_confirm: Yup.string()
     .default("")
     .required(Errors.required)
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     .oneOf([Yup.ref("password")], t`passwords do not match`),
 });
 

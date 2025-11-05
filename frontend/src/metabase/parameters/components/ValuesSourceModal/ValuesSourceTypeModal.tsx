@@ -3,17 +3,17 @@ import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import ModalContent from "metabase/components/ModalContent";
-import Button from "metabase/core/components/Button";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import type { RadioOption } from "metabase/core/components/Radio";
-import Radio from "metabase/core/components/Radio";
-import type { SelectChangeEvent } from "metabase/core/components/Select";
-import Select, { Option } from "metabase/core/components/Select";
-import SelectButton from "metabase/core/components/SelectButton";
+import Button from "metabase/common/components/Button";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import ModalContent from "metabase/common/components/ModalContent";
+import type { RadioOption } from "metabase/common/components/Radio";
+import Radio from "metabase/common/components/Radio";
+import type { SelectChangeEvent } from "metabase/common/components/Select";
+import Select, { Option } from "metabase/common/components/Select";
+import SelectButton from "metabase/common/components/SelectButton";
+import { useSafeAsyncFunction } from "metabase/common/hooks/use-safe-async-function";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
-import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import { connect, useSelector } from "metabase/lib/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
@@ -23,7 +23,10 @@ import type Field from "metabase-lib/v1/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
-import { isValidSourceConfig } from "metabase-lib/v1/parameters/utils/parameter-source";
+import {
+  getQueryType,
+  isValidSourceConfig,
+} from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
   getParameterType,
   isNumberParameter,
@@ -40,7 +43,6 @@ import type { State } from "metabase-types/store";
 import type { FetchParameterValuesOpts } from "../../actions";
 import { fetchParameterValues } from "../../actions";
 
-import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import S from "./ValuesSourceTypeModal.module.css";
 import {
   ModalBodyWithPane,
@@ -48,11 +50,12 @@ import {
   ModalErrorMessage,
   ModalHelpMessage,
   ModalLabel,
+  ModalLoadingAndErrorWrapper,
   ModalMain,
   ModalPane,
   ModalSection,
   ModalTextArea,
-} from "./ValuesSourceTypeModal.styled";
+} from "./ValuesSourceTypeModalComponents";
 import { getStaticValues, getValuesText } from "./utils";
 
 interface ModalOwnProps {
@@ -441,7 +444,7 @@ const ListSourceModal = ({
 function ModelHint() {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
-  const href = getLearnUrl("data-modeling/models");
+  const href = getLearnUrl("metabase-basics/getting-started/models");
   const text = t`do it once in a model`;
   const link = showMetabaseLinks ? (
     <strong key="link">
@@ -454,7 +457,7 @@ function ModelHint() {
   return (
     <Box mt="lg" p="md" className={S.info}>
       <Flex gap="md" align="center">
-        <Icon name="info_filled" color="text-dark" className={S.icon} />
+        <Icon name="info" color="text-dark" className={S.icon} />
         <div>
           {jt`If you find yourself doing value-label mapping often, you might want to ${link}.`}
         </div>
@@ -468,7 +471,7 @@ const getSourceValues = (values: ParameterValue[] = []) => {
 };
 
 const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
-  return fields.find(field => _.isEqual(field.reference(), fieldReference));
+  return fields.find((field) => _.isEqual(field.reference(), fieldReference));
 };
 
 const getFieldFilter = (parameter: Parameter) => {
@@ -497,7 +500,7 @@ const getSourceTypeOptions = (
     ...(hasFields(parameter)
       ? [{ name: t`From connected fields`, value: null }]
       : []),
-    ...(isNumberParameter(parameter)
+    ...(isNumberParameter(parameter) && getQueryType(parameter) === "search"
       ? []
       : ([
           { name: t`From another model or question`, value: "card" },

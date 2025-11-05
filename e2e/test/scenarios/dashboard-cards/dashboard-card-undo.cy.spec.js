@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 describe("scenarios > dashboard cards > undo", () => {
   beforeEach(() => {
@@ -48,7 +48,7 @@ describe("scenarios > dashboard cards > undo", () => {
         }),
       ];
 
-      cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+      H.createDashboard().then(({ body: { id: dashboard_id } }) => {
         H.updateDashboardCards({ dashboard_id, cards });
 
         H.visitDashboard(dashboard_id);

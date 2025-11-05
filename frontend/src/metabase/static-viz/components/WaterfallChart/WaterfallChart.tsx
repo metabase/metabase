@@ -7,6 +7,8 @@ import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/
 import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
 import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
 
+import Watermark from "../../watermark.svg?component";
+
 registerEChartsModules();
 
 const WIDTH = 540;
@@ -19,6 +21,7 @@ export function WaterfallChart({
   width = WIDTH,
   height = HEIGHT,
   isStorybook = false,
+  hasDevWatermark = false,
 }: StaticChartProps) {
   const chartModel = getWaterfallChartModel(
     rawSeries,
@@ -52,6 +55,15 @@ export function WaterfallChart({
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height}>
       <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>
+      {hasDevWatermark && (
+        <Watermark
+          x="0"
+          y="0"
+          height={height}
+          width={width}
+          preserveAspectRatio="xMinYMin slice"
+        />
+      )}
     </svg>
   );
 }

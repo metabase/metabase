@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { extractRemappings } from "metabase/visualizations";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
@@ -23,8 +24,6 @@ import type { CardDisplayType } from "metabase-types/api";
 export function useModelsAndOption(
   {
     rawSeries,
-    series: transformedSeries,
-    isPlaceholder,
     settings,
     card,
     fontFamily,
@@ -35,19 +34,21 @@ export function useModelsAndOption(
     selectedTimelineEventIds,
     onRender,
     hovered,
+    isFullscreen,
+    gridSize,
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement>,
 ) {
-  const renderingContext = useBrowserRenderingContext({ fontFamily });
+  const tc = useTranslateContent();
 
-  const rawSeriesWithRemappings = useMemo(
-    () => extractRemappings(rawSeries),
-    [rawSeries],
-  );
+  const renderingContext = useBrowserRenderingContext({
+    fontFamily,
+    isFullscreen,
+  });
 
   const seriesToRender = useMemo(
-    () => (isPlaceholder ? transformedSeries : rawSeriesWithRemappings),
-    [isPlaceholder, transformedSeries, rawSeriesWithRemappings],
+    () => extractRemappings(rawSeries),
+    [rawSeries],
   );
 
   const showWarning = useCallback(
@@ -62,6 +63,13 @@ export function useModelsAndOption(
   const chartModel = useMemo(() => {
     let getModel;
 
+    settings["graph.x_axis.title_text"] = tc(
+      settings["graph.x_axis.title_text"],
+    );
+    settings["graph.y_axis.title_text"] = tc(
+      settings["graph.y_axis.title_text"],
+    );
+
     getModel = getCartesianChartModel;
     if (card.display === "waterfall") {
       getModel = getWaterfallChartModel;
@@ -69,13 +77,21 @@ export function useModelsAndOption(
       getModel = getScatterPlotModel;
     }
 
-    return getModel(
+    const model = getModel(
       seriesToRender,
       settings,
       Array.from(hiddenSeries),
       renderingContext,
       showWarning,
+      gridSize,
     );
+
+    if (model.dimensionModel.column) {
+      model.dimensionModel.column.display_name = tc(
+        model.dimensionModel.column.display_name,
+      );
+    }
+    return model;
   }, [
     card.display,
     seriesToRender,
@@ -83,6 +99,8 @@ export function useModelsAndOption(
     hiddenSeries,
     renderingContext,
     showWarning,
+    gridSize,
+    tc,
   ]);
 
   const chartMeasurements = useMemo(
@@ -116,7 +134,7 @@ export function useModelsAndOption(
       ids.push(...selectedTimelineEventIds);
     }
     if (hovered?.timelineEvents != null) {
-      ids.push(...hovered.timelineEvents.map(e => e.id));
+      ids.push(...hovered.timelineEvents.map((e) => e.id));
     }
 
     return ids;
@@ -136,7 +154,7 @@ export function useModelsAndOption(
       return {};
     }
 
-    const shouldAnimate = !isPlaceholder && !isReducedMotionPreferred();
+    const shouldAnimate = !isReducedMotionPreferred();
 
     let baseOption;
     switch (card.display) {
@@ -184,7 +202,6 @@ export function useModelsAndOption(
   }, [
     width,
     height,
-    isPlaceholder,
     card.display,
     tooltipOption,
     chartModel,

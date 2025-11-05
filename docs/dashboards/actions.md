@@ -34,7 +34,7 @@ You can select from a variety of handsome buttons:
 
 For most actions, when people click on a button, they'll be prompted to input values in the fields defined by that action.
 
-Many types of actions rely on knowing the entity IDs for the model to determine which records to update or delete. To have people select the ID for the action, you'll need to:
+Many types of actions rely on knowing the Entity ID for the model to determine which records to update or delete. To have people select the ID for the action, you'll need to:
 
 1. Click on the pencil icon to edit the dashboard.
 2. Add an action to the dashboard (if you haven't already).

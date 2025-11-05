@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { forwardRef } from "react";
@@ -22,9 +23,11 @@ const propTypes = {
  * Setting the overflow to "hidden" while resizing fixes that behavior.
  * @link Demo: https://github.com/metabase/metabase/pull/19103#issuecomment-981935878
  */
-const getOverflow = isResizing => (isResizing ? "hidden" : "auto");
+const getOverflow = (isResizing) => (isResizing ? "hidden" : "auto");
 
 const Handle = forwardRef(function Handle(props, ref) {
+  const { handleAxis, ...rest } = props;
+
   return (
     <Flex
       align="center"
@@ -32,12 +35,12 @@ const Handle = forwardRef(function Handle(props, ref) {
       w="100%"
       h="sm"
       pos="absolute"
-      bottom={`-${rem(4)}`}
+      bottom={rem(-4)}
       style={{
         cursor: "row-resize",
       }}
       ref={ref}
-      {...props}
+      {...rest}
     >
       <Box
         w="6.25rem"

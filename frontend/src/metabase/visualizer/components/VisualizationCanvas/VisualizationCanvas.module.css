@@ -1,0 +1,36 @@
+.Container {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(118px, auto);
+  grid-template-rows: auto minmax(0, 1fr) minmax(auto, 42px);
+  grid-template-areas:
+    ". . top"
+    "left main main"
+    "bottom-left bottom bottom";
+  position: relative;
+}
+
+.SwapAffordance {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background-color: var(--mb-color-text-white-alpha-85);
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+
+  &.visible {
+    opacity: 1;
+  }
+
+  & .SwapAffordanceIcon {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 64px;
+    height: 64px;
+    background-color: var(--mb-color-background-inverse);
+    border-radius: 8px;
+    color: var(--mb-color-text-white);
+  }
+}

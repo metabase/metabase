@@ -17,18 +17,22 @@ import { formatValueForSorting } from "./utils";
 const hourlyScheduleStrategy: ScheduleStrategy = {
   type: "schedule",
   schedule: "0 0 * * * ?",
+  refresh_automatically: false,
 };
 const dailyScheduleStrategy: ScheduleStrategy = {
   type: "schedule",
   schedule: "0 0 8 * * ?",
+  refresh_automatically: false,
 };
 const weeklyScheduleStrategy: ScheduleStrategy = {
   type: "schedule",
   schedule: "0 0 8 ? * 2",
+  refresh_automatically: false,
 };
 const monthlyScheduleStrategy: ScheduleStrategy = {
   type: "schedule",
   schedule: "0 0 8 ? * 2#1",
+  refresh_automatically: false,
 };
 const adaptiveStrategy: AdaptiveStrategy = {
   type: "ttl",
@@ -62,6 +66,7 @@ const unsortedRows: CacheableItem[] = [
       type: "duration",
       duration: 100,
       unit: CacheDurationUnit.Hours,
+      refresh_automatically: false,
     },
     collection: createMockCollection({
       ...b,
@@ -80,7 +85,12 @@ const unsortedRows: CacheableItem[] = [
   {
     model: "question",
     id: 3,
-    strategy: { type: "duration", duration: 10, unit: CacheDurationUnit.Hours },
+    strategy: {
+      type: "duration",
+      duration: 10,
+      unit: CacheDurationUnit.Hours,
+      refresh_automatically: false,
+    },
     collection: createMockCollection({
       ...d,
       effective_ancestors: [b, c],
@@ -98,7 +108,12 @@ const unsortedRows: CacheableItem[] = [
   {
     model: "question",
     id: 5,
-    strategy: { type: "duration", duration: 1, unit: CacheDurationUnit.Hours },
+    strategy: {
+      type: "duration",
+      duration: 1,
+      unit: CacheDurationUnit.Hours,
+      refresh_automatically: false,
+    },
     collection: createMockCollection({
       ...f,
       effective_ancestors: [d, e],
@@ -139,7 +154,9 @@ describe("StrategyEditorForQuestionsAndDashboards utilities", () => {
         const b = formatValueForSorting(rowB, "policy") as string;
         return a.localeCompare(b);
       });
-      const strategies = sorted.map(row => getShortStrategyLabel(row.strategy));
+      const strategies = sorted.map((row) =>
+        getShortStrategyLabel(row.strategy),
+      );
       expect(strategies).toEqual([
         "Adaptive",
         "Duration: 1h",
@@ -158,7 +175,7 @@ describe("StrategyEditorForQuestionsAndDashboards utilities", () => {
         const b = formatValueForSorting(rowB, "collection") as string;
         return a.localeCompare(b);
       });
-      const collections = sorted.map(row =>
+      const collections = sorted.map((row) =>
         row.collection ? getCollectionPathAsString(row.collection) : null,
       );
       expect(collections).toEqual([

@@ -1,28 +1,30 @@
 .button {
-  .inner {
-    align-items: flex-start;
-    justify-content: flex-start;
-  }
+  &[data-variant] {
+    .inner {
+      align-items: flex-start;
+      justify-content: flex-start;
+    }
 
-  .example {
-    font-weight: normal;
-  }
-
-  .content,
-  .example {
-    font-family: var(--mb-default-font-family) !important;
-  }
-
-  &:hover {
-    background: var(--mb-color-brand);
+    .example {
+      font-weight: normal;
+    }
 
     .content,
     .example {
-      color: var(--mb-color-text-white);
+      font-family: var(--mb-default-font-family) !important;
     }
-  }
 
-  .label {
-    width: 100%;
+    &:hover {
+      background: var(--mb-color-brand);
+
+      .content,
+      .example {
+        color: var(--mb-color-text-white);
+      }
+    }
+
+    .label {
+      width: 100%;
+    }
   }
 }

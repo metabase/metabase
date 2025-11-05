@@ -94,7 +94,7 @@ describe("ChartTypeOption", () => {
         const { onSelectVisualization } = setup({
           visualizationType,
           selectedVisualization: EXPECTED_VISUALIZATION_VALUES.find(
-            elem => elem.visualizationType !== visualizationType,
+            (elem) => elem.visualizationType !== visualizationType,
           )?.visualizationType,
         });
 

@@ -1,0 +1,6 @@
+.description {
+  [aria-selected="true"] & {
+    /* override styling from SelectItem.module.css */
+    color: var(--mb-color-text-selected) !important;
+  }
+}

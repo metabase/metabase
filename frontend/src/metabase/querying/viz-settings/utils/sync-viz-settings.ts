@@ -1,3 +1,4 @@
+import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import * as Lib from "metabase-lib";
 import {
   getColumnKey,
@@ -76,7 +77,7 @@ function isNativeQuery(query: Lib.Query) {
 
 function getReturnedColumns(query: Lib.Query): ColumnInfo[] {
   const stageIndex = -1;
-  return Lib.returnedColumns(query, stageIndex).map(column => {
+  return Lib.returnedColumns(query, stageIndex).map((column) => {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
     return {
       key: Lib.columnKey(column),
@@ -91,7 +92,7 @@ function isValidSeries(series: SingleSeries) {
 }
 
 function getSeriesColumns(series: SingleSeries): ColumnInfo[] {
-  return series.data.cols.map(column => ({
+  return series.data.cols.map((column) => ({
     key: column.name,
     name: column.name,
     isAggregation: false,
@@ -118,13 +119,13 @@ function syncColumns<T>({
   shouldCreateSetting = () => false,
 }: SyncColumnsOpts<T>): T[] {
   const newNameByKey = Object.fromEntries(
-    newColumns.map(column => [column.key, column.name]),
+    newColumns.map((column) => [column.key, column.name]),
   );
   const oldKeyByName = Object.fromEntries(
-    oldColumns.map(column => [column.name, column.key]),
+    oldColumns.map((column) => [column.name, column.key]),
   );
   const oldNameByKey = Object.fromEntries(
-    oldColumns.map(column => [column.key, column.name]),
+    oldColumns.map((column) => [column.key, column.name]),
   );
   const remappedSettings = settings.reduce((settings: T[], setting) => {
     const oldName = getColumnName(setting);
@@ -137,9 +138,14 @@ function syncColumns<T>({
     }
     return settings;
   }, []);
+  const remappedNames = new Set(remappedSettings.map(getColumnName));
   const addedSettings = newColumns
-    .filter(column => !oldNameByKey[column.key])
-    .filter(shouldCreateSetting)
+    .filter(
+      (column) =>
+        !oldNameByKey[column.key] &&
+        !remappedNames.has(column.name) &&
+        shouldCreateSetting(column),
+    )
     .map(createSetting);
 
   return [...remappedSettings, ...addedSettings];
@@ -162,9 +168,9 @@ function syncColumnNames({
     settings,
     newColumns,
     oldColumns,
-    getColumnName: setting => setting,
+    getColumnName: (setting) => setting,
     setColumnName: (_, newName) => newName,
-    createSetting: column => column.name,
+    createSetting: (column) => column.name,
     shouldCreateSetting,
   });
 }
@@ -182,12 +188,12 @@ function syncTableColumns(
   return {
     ...settings,
     "table.columns": syncColumns({
-      settings: columnSettings,
+      settings: getDeduplicatedTableColumnSettings(columnSettings),
       newColumns,
       oldColumns,
-      getColumnName: setting => setting.name,
+      getColumnName: (setting) => setting.name,
       setColumnName: (setting, newName) => ({ ...setting, name: newName }),
-      createSetting: column => ({ name: column.name, enabled: true }),
+      createSetting: (column) => ({ name: column.name, enabled: true }),
       shouldCreateSetting: () => true,
     }),
   };
@@ -208,8 +214,8 @@ function syncColumnSettings(
     newColumns,
     oldColumns,
     getColumnName: ([key]) => getColumnNameFromKey(key),
-    setColumnName: ([_, setting], name) => [getColumnKey({ name }), setting],
-    createSetting: column => [getColumnKey(column), {}],
+    setColumnName: ([_key, setting], name) => [getColumnKey({ name }), setting],
+    createSetting: (column) => [getColumnKey(column), {}],
     shouldCreateSetting: () => false,
   });
 
@@ -235,7 +241,7 @@ function syncGraphMetrics(
       settings: graphMetrics,
       newColumns,
       oldColumns,
-      shouldCreateSetting: column => column.isAggregation,
+      shouldCreateSetting: (column) => column.isAggregation,
     }),
   };
 }

@@ -4,7 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -135,21 +135,23 @@
                     chunk-xform)]
     (reify clojure.lang.IReduceInit
       (reduce [_this rf init]
-        (let [rf (xform rf)]
-          (if chunk-size
-            (transduce
-             (partition-all chunk-size)
-             ;; we are very deliberately not passing `rf` directly here, because calling the completing arity with it
-             ;; breaks things since we're not supposed to be doing that inside `reduce`. We have to use `transduce` here
-             ;; to get the `partition-all` transducer to work correctly tho which is why we're not just using reduce
-             (fn
-               ([acc]
-                acc)
-               ([acc chunk]
-                (rf acc chunk)))
-             init
-             rows)
-            (rf init rows)))))))
+        (if (empty? rows)
+          init
+          (let [rf (xform rf)]
+            (if chunk-size
+              (transduce
+               (partition-all chunk-size)
+                ;; we are very deliberately not passing `rf` directly here, because calling the completing arity with it
+                ;; breaks things since we're not supposed to be doing that inside `reduce`. We have to use `transduce` here
+                ;; to get the `partition-all` transducer to work correctly tho which is why we're not just using reduce
+               (fn
+                 ([acc]
+                  acc)
+                 ([acc chunk]
+                  (rf acc chunk)))
+               init
+               rows)
+              (rf init rows))))))))
 
 (mu/defn- reducible-chunks  :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
   [driver   :- :keyword
@@ -206,7 +208,7 @@
           (catch Throwable e
             (throw (ex-info (format "INSERT FAILED: %s" (ex-message e))
                             {:driver   driver
-                             :sql-args (into [(str/split-lines (mdb.query/format-sql (first sql-args)))]
+                             :sql-args (into [(str/split-lines (app-db/format-sql (first sql-args)))]
                                              (rest sql-args))}
                             e))))))))
 

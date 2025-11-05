@@ -1,3 +1,4 @@
+import { stableStringify } from "metabase/lib/objects";
 import { CardApi, DashboardApi, ParameterApi } from "metabase/services";
 import { getNonVirtualFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -32,7 +33,9 @@ export const fetchParameterValues =
   (dispatch: Dispatch, getState: GetState) => {
     const request = {
       parameter: normalizeParameter(parameter),
-      field_ids: getNonVirtualFields(parameter).map(field => Number(field.id)),
+      field_ids: getNonVirtualFields(parameter).map((field) =>
+        Number(field.id),
+      ),
       query,
     };
 
@@ -156,7 +159,7 @@ const fetchParameterValuesWithCache = async <T>(
   dispatch: Dispatch,
   getState: GetState,
 ) => {
-  const requestKey = JSON.stringify(request);
+  const requestKey = stableStringify(request);
   const requestCache = getParameterValuesCache(getState());
   const response = requestCache[requestKey]
     ? requestCache[requestKey]

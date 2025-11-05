@@ -80,13 +80,6 @@
   {::*boolean-int*  ::boolean
    ::*float-or-int* ::float})
 
-;; TODO: the set of allowed promotions should be driver-specific, because not all drivers support coercions between all
-;; types e.g. redshift does not allow coercions except between text types
-(def ^:private allowed-promotions
-  "A mapping of which types a column can be implicitly relaxed to, based on the content of appended values.
-  If we require a relaxation which is not allowlisted here, we will reject the corresponding file."
-  {::int #{::float}})
-
 (def ^:private column-type->coercible-value-types
   "A mapping of which value types should be coerced to the given existing type, rather than triggering promotion."
   {::int #{::*float-or-int*}})
@@ -263,11 +256,22 @@
       ;; It's important to realize this lazy sequence, because otherwise we can build a huge stack and overflow.
       (vec (u/map-all relax value-types row)))))
 
+(def ^:private column-type->abstract
+  "Before a type has been concretized, values have more degrees of freedom for relaxation.
+
+  e.g. The type given for '1' would be *boolean-or-int*, which can relax into an int if a '2' is encountered.
+
+  If we are appending or replacing a previous .csv, we no longer know how the existing values were encoded.
+  Therefore, this mapping allows us to give a type the 'the benefit of the doubt'
+  and assume relaxations that might have been available given all possible encodings."
+  {::boolean ::*boolean-int*})
+
 (mu/defn column-types-from-rows :- [:sequential (into [:enum] column-types)]
   "Given the types of the existing columns (if there are any), and rows to be added, infer the best supporting types."
   [settings existing-types rows]
-  (->> (reduce (type-relaxer settings) existing-types rows)
-       (u/map-all concretize existing-types)))
+  (let [current-types (mapv #(column-type->abstract % %) existing-types)]
+    (->> (reduce (type-relaxer settings) current-types rows)
+         (u/map-all concretize existing-types))))
 
 (defn base-type->upload-type
   "Returns the most specific upload type for the given base type."
@@ -285,14 +289,14 @@
 
 (defn- promotable?
   "Are we allowed to promote a column's schema from `current-type` to `inferred-type`?"
-  [current-type inferred-type]
-  (when-let [allowed? (allowed-promotions current-type)]
+  [current-type inferred-type allowed-promotions]
+  (when-let [allowed? (get allowed-promotions current-type)]
     (allowed? inferred-type)))
 
 (defn new-type
   "Given the `current-type` of a column, and an `inferred-type` for new values to be added, return its new type.
   This assumes we have already coerced the new values down to the existing type, if possible."
-  [current-type inferred-type]
+  [current-type inferred-type allowed-promotions]
   (cond
     ;; No restriction on new columns
     (nil? current-type) inferred-type
@@ -300,6 +304,6 @@
     (= current-type inferred-type) current-type
     :else
     ;; Keep the existing type unless a promotion is allowed.
-    (if (promotable? current-type inferred-type)
+    (if (promotable? current-type inferred-type allowed-promotions)
       inferred-type
       current-type)))

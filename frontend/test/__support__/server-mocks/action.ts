@@ -1,22 +1,28 @@
 import fetchMock from "fetch-mock";
 
-import type { CardId, WritebackAction } from "metabase-types/api";
+import type {
+  CardId,
+  GetPublicAction,
+  WritebackAction,
+} from "metabase-types/api";
 import {
   createMockImplicitQueryAction,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
 
 export function setupActionEndpoints(action: WritebackAction) {
-  fetchMock.get(`path:/api/action/${action.id}`, action);
-  fetchMock.put(`path:/api/action/${action.id}`, action);
+  const getName = `action-${action.id}-get`;
+  const putName = `action-${action.id}-put`;
+
+  fetchMock.get(`path:/api/action/${action.id}`, action, { name: getName });
+  fetchMock.put(`path:/api/action/${action.id}`, action, { name: putName });
   fetchMock.delete(`path:/api/action/${action.id}`, action);
 }
 
 function setupActionPostEndpoint() {
   fetchMock.post(
-    { url: "path:/api/action", overwriteRoutes: true },
-    async url => {
-      const call = fetchMock.lastCall(url);
+    "path:/api/action",
+    async (call) => {
       const data = await call?.request?.json();
       if (data.type === "implicit") {
         return createMockImplicitQueryAction(data);
@@ -26,6 +32,7 @@ function setupActionPostEndpoint() {
       }
       throw new Error(`Unknown action type: ${data.type}`);
     },
+    { name: "action-post" },
   );
 }
 
@@ -34,23 +41,26 @@ export function setupActionsEndpoints(actions: WritebackAction[]) {
 
   setupActionPostEndpoint();
 
-  actions.forEach(action => setupActionEndpoints(action));
+  actions.forEach((action) => setupActionEndpoints(action));
 }
 
 export function setupModelActionsEndpoints(
   actions: WritebackAction[],
   modelId: CardId,
 ) {
-  fetchMock.get(
-    {
-      url: "path:/api/action",
-      query: { "model-id": modelId },
-      overwriteRoutes: false,
-    },
-    actions,
-  );
+  fetchMock.get({
+    url: "path:/api/action",
+    query: { "model-id": modelId },
+    response: actions,
+  });
 
   setupActionPostEndpoint();
 
-  actions.forEach(action => setupActionEndpoints(action));
+  actions.forEach((action) => setupActionEndpoints(action));
+}
+
+export function setupListPublicActionsEndpoint(
+  publicActions: GetPublicAction[],
+) {
+  fetchMock.get("path:/api/action/public", publicActions);
 }

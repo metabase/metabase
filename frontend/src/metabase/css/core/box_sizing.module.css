@@ -4,21 +4,9 @@ body:where(:global(.mb-wrapper)) {
 }
 
 :where(:global(.mb-wrapper)) {
-  div,
-  nav,
-  article,
-  section,
-  main,
-  header,
-  footer,
-  input,
-  form,
-  table,
-  fieldset,
-  textarea,
-  ul,
-  li,
-  span {
+  *,
+  *::before,
+  *::after {
     box-sizing: border-box;
   }
 }

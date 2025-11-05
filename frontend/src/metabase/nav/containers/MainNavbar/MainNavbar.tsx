@@ -79,7 +79,7 @@ function MainNavbar({
   onChangeLocation,
   ...props
 }: Props) {
-  const { data: card } = useGetCardQuery(
+  const { currentData: card } = useGetCardQuery(
     questionId
       ? {
           id: questionId,
@@ -87,7 +87,7 @@ function MainNavbar({
       : skipToken,
   );
 
-  const { data: collection } = useGetCollectionQuery(
+  const { currentData: collection } = useGetCollectionQuery(
     collectionId ? { id: collectionId } : skipToken,
   );
 
@@ -109,7 +109,7 @@ function MainNavbar({
   }, [isOpen, openNavbar, closeNavbar]);
 
   const selectedItems = useMemo<SelectedItem[]>(() => {
-    const question = new Question(card);
+    const question = card && new Question(card);
 
     return getSelectedItems({
       pathname: location.pathname,
@@ -123,6 +123,7 @@ function MainNavbar({
   return (
     <Sidebar
       isOpen={isOpen}
+      side="left"
       aria-hidden={!isOpen}
       data-testid="main-navbar-root"
       data-element-id="navbar-root"
@@ -164,5 +165,13 @@ function maybeGetCollectionId(
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(connect(mapStateToProps, mapDispatchToProps))(
-  MainNavbar,
+  /**
+   * Previously the `_.compose` type was broken, so it wasn't checking for type compatibility, and would
+   * return the composed function type as `any`. Now that it works better, legit errors are surfacing.
+   * But I don't have time, or enough context to fix this one.
+   *
+   * It seems the error came from the mismatch of the `dashboard` type, where the component expects
+   * a dashboard response, but the injected prop is from the redux store which has a different type.
+   */
+  MainNavbar as any,
 );

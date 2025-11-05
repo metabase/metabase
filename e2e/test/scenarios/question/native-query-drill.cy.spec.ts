@@ -1,21 +1,22 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import type { NativeQuestionDetails } from "e2e/support/helpers";
 
-const ordersTableQuestionDetails: H.NativeQuestionDetails = {
+const ordersTableQuestionDetails: NativeQuestionDetails = {
   display: "table",
   native: {
     query: "SELECT ID, CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
   },
 };
 
-const peopleTableQuestionDetails: H.NativeQuestionDetails = {
+const peopleTableQuestionDetails: NativeQuestionDetails = {
   display: "table",
   native: {
     query: "SELECT ID, EMAIL, CREATED_AT FROM PEOPLE ORDER BY ID LIMIT 10",
   },
 };
 
-const timeseriesLineQuestionDetails: H.NativeQuestionDetails = {
+const timeseriesLineQuestionDetails: NativeQuestionDetails = {
   display: "line",
   native: {
     query: "SELECT CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
@@ -26,7 +27,7 @@ const timeseriesLineQuestionDetails: H.NativeQuestionDetails = {
   },
 };
 
-const timeseriesWithCategoryLineQuestionDetails: H.NativeQuestionDetails = {
+const timeseriesWithCategoryLineQuestionDetails: NativeQuestionDetails = {
   display: "line",
   native: {
     query:
@@ -38,7 +39,7 @@ const timeseriesWithCategoryLineQuestionDetails: H.NativeQuestionDetails = {
   },
 };
 
-const numericLineQuestionDetails: H.NativeQuestionDetails = {
+const numericLineQuestionDetails: NativeQuestionDetails = {
   display: "line",
   native: {
     query: "SELECT ID, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
@@ -49,7 +50,7 @@ const numericLineQuestionDetails: H.NativeQuestionDetails = {
   },
 };
 
-const pinMapQuestionDetails: H.NativeQuestionDetails = {
+const pinMapQuestionDetails: NativeQuestionDetails = {
   display: "map",
   native: {
     query: "SELECT LATITUDE, LONGITUDE FROM PEOPLE ORDER BY ID LIMIT 10",
@@ -61,7 +62,7 @@ const pinMapQuestionDetails: H.NativeQuestionDetails = {
   },
 };
 
-const gridMapQuestionDetails: H.NativeQuestionDetails = {
+const gridMapQuestionDetails: NativeQuestionDetails = {
   display: "map",
   native: {
     query: "SELECT LATITUDE, LONGITUDE FROM PEOPLE ORDER BY ID LIMIT 10",
@@ -95,7 +96,7 @@ describe("scenarios > question > native query drill", () => {
 
       H.tableInteractive().findByText("October 7, 2023, 1:34 AM").click();
       H.popover().within(() => {
-        cy.findByText("Filter by this date").should("not.exist");
+        cy.findByText("Filter by this date and time").should("not.exist");
         cy.button("Save").click();
       });
       H.modal().within(() => {
@@ -107,7 +108,7 @@ describe("scenarios > question > native query drill", () => {
 
       H.tableInteractive().findByText("October 7, 2023, 1:34 AM").click();
       H.popover().within(() => {
-        cy.findByText("Filter by this date").should("be.visible");
+        cy.findByText("Filter by this date and time").should("be.visible");
         cy.findByText("On").click();
       });
       cy.wait("@dataset");
@@ -364,7 +365,7 @@ describe("scenarios > question > native query drill", () => {
       H.createNativeQuestion(pinMapQuestionDetails, { visitQuestion: true });
       cy.findByTestId("visualization-root").realHover();
       cy.findByTestId("visualization-root").within(() => {
-        cy.findByText("Save as default view").should("be.visible");
+        cy.findByText("Set as default view").should("be.visible");
         cy.findByText("Draw box to filter").click();
       });
       applyBoxFilter({
@@ -380,7 +381,7 @@ describe("scenarios > question > native query drill", () => {
       H.createNativeQuestion(gridMapQuestionDetails, { visitQuestion: true });
       cy.findByTestId("visualization-root").realHover();
       cy.findByTestId("visualization-root").within(() => {
-        cy.findByText("Save as default view").should("be.visible");
+        cy.findByText("Set as default view").should("be.visible");
         cy.findByText("Draw box to filter").should("not.exist");
       });
     });
@@ -394,7 +395,7 @@ describe("scenarios > question > native query drill", () => {
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().findByText("May 15, 2024, 8:04 AM").click();
       H.popover().within(() => {
-        cy.findByText("Filter by this date").should("be.visible");
+        cy.findByText("Filter by this date and time").should("be.visible");
         cy.findByText("On").click();
         cy.wait("@dataset");
       });
@@ -420,7 +421,7 @@ describe("scenarios > question > native query drill", () => {
         questionDetails: timeseriesLineQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().within(() =>
-        applyBrushFilter({ left: 100, right: 300 }),
+        applyBrushFilter({ left: 150, right: 300 }),
       );
       cy.wait("@dataset");
       H.assertQueryBuilderRowCount(4);
@@ -431,10 +432,10 @@ describe("scenarios > question > native query drill", () => {
         questionDetails: numericLineQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().within(() =>
-        applyBrushFilter({ left: 100, right: 300 }),
+        applyBrushFilter({ left: 100, right: 320 }),
       );
       cy.wait("@dataset");
-      H.assertQueryBuilderRowCount(5);
+      H.assertQueryBuilderRowCount(6);
     });
   });
 });

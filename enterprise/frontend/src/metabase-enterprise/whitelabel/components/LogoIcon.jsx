@@ -6,10 +6,14 @@ import { Component } from "react";
 import CS from "metabase/css/core/index.css";
 import { parseDataUri, removeAllChildren } from "metabase/lib/dom";
 import { connect } from "metabase/lib/redux";
-import { getLogoUrl } from "metabase-enterprise/settings/selectors";
+import {
+  getIsDefaultMetabaseLogo,
+  getLogoUrl,
+} from "metabase-enterprise/settings/selectors";
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   url: getLogoUrl(state),
+  isDefaultMetabaseLogo: getIsDefaultMetabaseLogo(state),
 });
 
 class LogoIcon extends Component {
@@ -120,19 +124,32 @@ class LogoIcon extends Component {
   }
 
   render() {
-    const { dark, style = {}, className } = this.props;
-    style.height ||= "32px";
+    const {
+      dark,
+      style = {},
+      height,
+      className,
+      isDefaultMetabaseLogo,
+    } = this.props;
+
     return (
       <span
-        ref={c => (this._container = c)}
+        ref={(c) => (this._container = c)}
         className={cx(
           "Icon",
           CS.textCentered,
-          { [CS.textBrand]: !dark },
+          // If using the Metabase logo, use the non-whitelabeled Metabase brand color.
+          {
+            [isDefaultMetabaseLogo ? CS.textMetabaseBrand : CS.textBrand]:
+              !dark,
+          },
           { [CS.textWhite]: dark },
           className,
         )}
-        style={style}
+        style={{
+          ...style,
+          height: style.height || height || "32px",
+        }}
         data-testid="main-logo"
       />
     );

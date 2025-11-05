@@ -10,7 +10,6 @@ import {
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
 } from "__support__/ui";
@@ -87,7 +86,6 @@ function setup({
   searchResults = [],
   collectionItems = [],
 }: SetupOpts) {
-  mockScrollBy();
   mockGetBoundingClientRect();
   setupCollectionsEndpoints({ collections: COLLECTIONS });
 
@@ -197,7 +195,7 @@ describe("LinkedEntityPicker", () => {
             await screen.findByText(dashboardSearchResult.name),
           ).toBeInTheDocument();
 
-          const call = fetchMock.lastCall("path:/api/search");
+          const call = fetchMock.callHistory.lastCall("path:/api/search");
           const urlObject = new URL(checkNotNull(call?.request?.url));
           expect(urlObject.pathname).toEqual("/api/search");
           expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({
@@ -258,7 +256,7 @@ describe("LinkedEntityPicker", () => {
             await screen.findByText(dashboardSearchResult.name),
           ).toBeInTheDocument();
 
-          const call = fetchMock.lastCall("path:/api/search");
+          const call = fetchMock.callHistory.lastCall("path:/api/search");
           const urlObject = new URL(checkNotNull(call?.request?.url));
           expect(urlObject.pathname).toEqual("/api/search");
           expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({
@@ -330,13 +328,13 @@ describe("LinkedEntityPicker", () => {
             await screen.findByPlaceholderText(/search/i),
             typedText,
           );
-          await userEvent.click(screen.getByText("Everywhere"));
+          await userEvent.click(await screen.findByText("Everywhere"));
 
           expect(
             await screen.findByText(questionSearchResult.name),
           ).toBeInTheDocument();
 
-          const call = fetchMock.lastCall("path:/api/search");
+          const call = fetchMock.callHistory.lastCall("path:/api/search");
           const urlObject = new URL(checkNotNull(call?.request?.url));
           expect(urlObject.pathname).toEqual("/api/search");
 
@@ -400,7 +398,7 @@ describe("LinkedEntityPicker", () => {
             await screen.findByText(questionSearchResult.name),
           ).toBeInTheDocument();
 
-          const call = fetchMock.lastCall("path:/api/search");
+          const call = fetchMock.callHistory.lastCall("path:/api/search");
           const urlObject = new URL(checkNotNull(call?.request?.url));
           expect(urlObject.pathname).toEqual("/api/search");
           expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({

@@ -3,8 +3,8 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import AccordionList from "metabase/core/components/AccordionList";
+import { AccordionList } from "metabase/common/components/AccordionList";
+import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
@@ -22,7 +22,7 @@ export default class CollectionOptionsButton extends Component {
       <div
         className={className}
         // prevent the ellipsis click from selecting the folder also
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         // cap the large ellipsis so it doesn't increase the row height
         style={{ height: ICON_SIZE }}
       >
@@ -34,7 +34,7 @@ export default class CollectionOptionsButton extends Component {
             <AccordionList
               className={CS.textBrand}
               sections={[{ items }]}
-              onChange={item => {
+              onChange={(item) => {
                 item.onClick(item);
                 closePopover();
               }}
@@ -58,7 +58,7 @@ export default class CollectionOptionsButton extends Component {
         },
       ];
     }
-    const onEdit = collection =>
+    const onEdit = (collection) =>
       setSidebarState({ modalSnippetCollection: collection });
     const onEditCollectionPermissions = () =>
       setSidebarState({ permissionsModalCollectionId: collection.id });

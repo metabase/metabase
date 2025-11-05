@@ -23,7 +23,7 @@
 (set! *warn-on-reflection* true)
 
 (defn col-wise
-  "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
+  "Apply reducing functions `rfs` coll-wise to a seq of seqs."
   [& rfs]
   (let [rfs (vec rfs)]
     (fn
@@ -103,27 +103,49 @@
                                     result))))
                              kfs)))
 
-(defmulti fingerprinter
-  "Return a fingerprinter transducer for a given field based on the field's type."
-  {:arglists '([field])}
-  (fn [{base-type :base_type, effective-type :effective_type, semantic-type :semantic_type, :keys [unit]}]
-    [(cond
-       (u.date/extract-units unit)
-       :type/Integer
+(def ^:private supported-coercions
+  #{:Coercion/String->Temporal
+    :Coercion/Bytes->Temporal
+    :Coercion/Temporal->Temporal
+    :Coercion/Number->Temporal
+    :Coercion/String->Number
+    ;; the numeric fingerprinter consider every number as a double
+    :Coercion/Float->Integer})
+
+(defn- ensure-coercion-is-supported [{coercion-strategy :coercion_strategy :as field}]
+  (when coercion-strategy
+    (when-not (some #(isa? coercion-strategy %) supported-coercions)
+      (throw (ex-info (format "Coercion strategy %s not supported by fingerprinters" coercion-strategy) field)))))
+
+(defn- fingerprinter-dispatch
+  [{base-type :base_type, effective-type :effective_type, semantic-type :semantic_type, :keys [unit] :as field}]
+  (ensure-coercion-is-supported field)
+  [(cond
+     (u.date/extract-units unit)
+     :type/Integer
 
        ;; for historical reasons the Temporal fingerprinter is still called `:type/DateTime` so anything that derives
        ;; from `Temporal` (such as DATEs and TIMEs) should still use the `:type/DateTime` fingerprinter
-       (isa? (or effective-type base-type) :type/Temporal)
-       :type/DateTime
+     (isa? (or effective-type base-type) :type/Temporal)
+     :type/DateTime
 
-       :else
-       base-type)
-     (if (isa? semantic-type :Semantic/*)
-       semantic-type
-       :Semantic/*)
-     (if (isa? semantic-type :Relation/*)
-       semantic-type
-       :Relation/*)]))
+     :else
+     (or effective-type base-type))
+   (if (isa? semantic-type :Semantic/*)
+     semantic-type
+     :Semantic/*)
+   (if (isa? semantic-type :Relation/*)
+     semantic-type
+     :Relation/*)])
+
+(defmulti fingerprinter
+  "Return a fingerprinter transducer for a given field based on the field's type."
+  {:arglists '([field])}
+  (fn [field]
+    (do-with-error-handling
+     (fingerprinter-dispatch field)
+     (fn [_] nil)
+     "Error during fingerprinter dispatch")))
 
 (defn- global-fingerprinter []
   (redux/post-complete
@@ -201,6 +223,7 @@
 
 (extend-protocol ITemporalCoerceable
   nil      (->temporal [_]    nil)
+  Object   (->temporal [_]    nil)
   String   (->temporal [this] (->temporal (u.date/parse this)))
   Long     (->temporal [this] (->temporal (t/instant this)))
   Integer  (->temporal [this] (->temporal (t/instant this)))
@@ -220,9 +243,23 @@
   ([^Histogram histogram] histogram)
   ([^Histogram histogram x] (hist/insert-simple! histogram x)))
 
+(defprotocol ^:private INumberCoerceable
+  "Protocol for converting objects to a java.lang.Number."
+  (->number ^Number [this] "Coerce object to a java.lang.Number"))
+
+(extend-protocol INumberCoerceable
+  nil (->number [_] nil)
+  Object (->number [_] nil)
+  Boolean (->number [this] (if this 1 0))
+  Number (->number [this] this)
+  String (->number [this]
+           ;; faster to be optimistic and fail than to explicitely test and dispatch
+           (or (parse-long this)
+               (parse-double this))))
+
 (deffingerprinter :type/Number
   (redux/post-complete
-   ((filter u/real-number?) histogram)
+   ((comp (map ->number) (filter u/real-number?)) histogram)
    (fn [h]
      (let [{q1 0.25 q3 0.75} (hist/percentiles h 0.25 0.75)]
        (robust-map

@@ -9,9 +9,9 @@ import { Api } from "./api";
 import { invalidateTags, listTag, provideModelIndexListTags } from "./tags";
 
 export const modelIndexApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listModelIndexes: builder.query<ModelIndex[], ModelIndexesListQuery>({
-      query: body => ({
+      query: (body) => ({
         method: "GET",
         url: "/api/model-index",
         body,
@@ -20,7 +20,7 @@ export const modelIndexApi = Api.injectEndpoints({
         provideModelIndexListTags(modelIndexes),
     }),
     createModelIndex: builder.mutation<ModelIndex, ModelIndexCreateQuery>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/model-index",
         body,

@@ -6,12 +6,13 @@ import {
   updateCardEmbeddingParams,
   updateCardEnableEmbedding,
 } from "metabase/api";
-import type { Card, DatasetQuery } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 
 import {
   API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
   CANCEL_QUESTION_CHANGES,
+  CLOSE_QB,
   INITIALIZE_QB,
   QUERY_COMPLETED,
   RELOAD_CARD,
@@ -22,9 +23,10 @@ import {
 } from "./actions";
 
 // the card that is actively being worked on
-export const card = createReducer<Card<DatasetQuery> | null>(null, builder => {
+export const card = createReducer<Card | null>(null, (builder) => {
   builder
     .addCase(RESET_QB, () => null)
+    .addCase(CLOSE_QB, () => null)
     .addCase<
       string,
       {
@@ -119,7 +121,7 @@ export const card = createReducer<Card<DatasetQuery> | null>(null, builder => {
         public_uuid: action.payload.uuid,
       };
     })
-    .addMatcher(deleteCardPublicLink.matchFulfilled, state => {
+    .addMatcher(deleteCardPublicLink.matchFulfilled, (state) => {
       if (!state) {
         return state;
       }

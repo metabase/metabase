@@ -26,7 +26,7 @@ Problems, their causes, how to detect them, and how to fix them.
 ## Permissions
 
 - [My permissions aren't working][permissions].
-- [My data sandboxes aren't working][sandbox].
+- [Row and column security isn't working][row-and-column].
 
 ## Databases
 
@@ -54,6 +54,7 @@ Problems, their causes, how to detect them, and how to fix them.
 ## Email and alerts
 
 - [Metabase isn't sending email][not-sending-email].
+- [Troubleshooting notifications](./notifications.md).
 
 ## Error messages
 
@@ -83,7 +84,7 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [appdb]: ./loading-from-h2.md
 [bugs]: ./bugs.md
 [cant-see-tables]: ./cant-see-tables.md
-[cloud]: https://www.metabase.com/start/
+[cloud]: https://www.metabase.com/cloud/
 [db-connection]: ./db-connection.md
 [db-performance]: ./db-performance.md
 [docker]: ./docker.md
@@ -104,7 +105,7 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [releases]: https://github.com/metabase/metabase/releases
 [running]: ./running.md
 [saml]: ./saml.md
-[sandbox]: ./sandboxing.md
+[row-and-column]: ./row-and-column-security.md
 [slow-dashboard]: ./my-dashboard-is-slow.md
 [sql]: ./sql.md
 [sync-fingerprint-scan]: ./sync-fingerprint-scan.md

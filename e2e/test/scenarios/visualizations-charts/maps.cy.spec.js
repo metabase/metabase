@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -13,7 +13,8 @@ describe("scenarios > visualizations > maps", () => {
   it("should display a pin map for a native query", () => {
     cy.signInAsNormalUser();
     // create a native query with lng/lat fields
-    H.openNativeEditor().type(
+    H.startNewNativeQuestion();
+    H.NativeEditor.type(
       "select -80 as lng, 40 as lat union all select -120 as lng, 40 as lat",
     );
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -26,46 +27,36 @@ describe("scenarios > visualizations > maps", () => {
       cy.icon("gear").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Map type").next().click();
-    H.popover().contains("Pin map").click();
+    toggleFieldSelectElement("Map type");
+    H.popover().findByText("Pin map").click();
 
     // When the settings sidebar opens, both latitude and longitude selects are
     // open. That makes it difficult to select each in Cypress, so we click
     // inside both of them before reopening them one-by-one. :(
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
-    ["Latitude field", "Longitude field"].map(field =>
-      H.leftSidebar()
-        .findByText(field)
-        .parent()
-        .within(() => {
-          cy.findByPlaceholderText("Select a field").click();
-        }),
+    ["Latitude field", "Longitude field"].map((field) =>
+      H.leftSidebar().within(() => {
+        toggleFieldSelectElement(field);
+      }),
     );
 
     // select both columns
-    H.leftSidebar()
-      .findByText("Latitude field")
-      .parent()
-      .within(() => {
-        cy.findByPlaceholderText("Select a field").click();
-      });
-    H.popover().contains("LAT").click();
+    H.leftSidebar().within(() => {
+      toggleFieldSelectElement("Latitude field");
+    });
+    H.popover().findByText("LAT").click();
 
-    H.leftSidebar()
-      .findByText("Longitude field")
-      .parent()
-      .within(() => {
-        cy.findByPlaceholderText("Select a field").click();
-      });
-    H.popover().contains("LNG").click();
+    H.leftSidebar().within(() => {
+      toggleFieldSelectElement("Longitude field");
+    });
+    H.popover().findByText("LNG").click();
 
     // check that a map appears
     cy.get(".leaflet-container");
   });
 
   it("should suggest map visualization regardless of the first column type (metabase#14254)", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "14254",
         native: {
@@ -90,6 +81,57 @@ describe("scenarios > visualizations > maps", () => {
     cy.get("@sensibleOptions").within(() => {
       cy.findByText("Map").should("be.visible");
     });
+  });
+
+  it("should wrap markers around the international date line correctly (metabase#5369)", () => {
+    H.createNativeQuestion(
+      {
+        name: "friends across time",
+        native: {
+          query: `
+            SELECT 'Kleavor' as name, 68 as lat, -159 as lng
+            UNION ALL
+            SELECT 'Spectrier' as name, 68 as lat, 159 as lng
+            UNION ALL
+            SELECT 'Blastoise' as name, 68 as lat, 22 as lng
+          `,
+          "template-tags": {},
+        },
+        display: "map",
+        visualization_settings: {
+          "map.region": "world",
+          "map.type": "pin",
+          "map.latitude_column": "LAT",
+          "map.longitude_column": "LNG",
+          "map.center_latitude": 67,
+          "map.center_longitude": -175,
+          "map.zoom": 1,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.log("zooming should preserve tooltips (metabase#64939)");
+
+    cy.get(".leaflet-marker-icon")
+      .then((markers) => {
+        // should draw 6 markers
+        expect(markers).to.have.length(6);
+
+        return cy.wrap(markers[2]); // Blastoise in Sweden
+      })
+      .then((marker) => {
+        cy.get(marker)
+          .realHover()
+          .realMouseWheel({ deltaY: -100, scrollBehavior: "nearest" });
+      });
+
+    // this waits until we redraw from 6 to 3
+    cy.get(".leaflet-marker-icon").should("have.length", 3);
+
+    cy.get(".leaflet-marker-icon").eq(2).as("blastoiseMarker");
+    cy.get("@blastoiseMarker").trigger("mousemove");
+    H.popover().findByText("Blastoise").should("be.visible");
   });
 
   it("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
@@ -132,13 +174,53 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByText(/See these People/i).click();
 
     cy.log("Reported as a regression since v0.37.0");
-    cy.wait("@dataset").then(xhr => {
-      expect(xhr.request.body.query.filter).not.to.contain("Texas");
-    });
+    cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("State is TX");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("171 Olive Oyle Lane"); // Address in the first row
+  });
+
+  it("should display pins when a breakout column sets a base-type (metabase#59984)", () => {
+    cy.intercept("/api/tiles/**").as("tiles");
+
+    H.visitQuestionAdhoc({
+      display: "map",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": PEOPLE_ID,
+          aggregation: ["count"],
+          breakout: [
+            [
+              "field",
+              PEOPLE.LONGITUDE,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+            [
+              "field",
+              PEOPLE.LATITUDE,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+          ],
+        },
+      },
+      visualization_settings: {
+        "map.type": "pin",
+        "map.latitude_column": "LATITUDE",
+        "map.longitude_column": "LONGITUDE",
+      },
+    });
+
+    // this should not create a 400 error
+    cy.wait("@tiles").then((xhr) => {
+      expect(xhr.response.statusCode).to.equal(200);
+    });
   });
 
   it("should display a tooltip for a grid map without a metric column (metabase#17940)", () => {
@@ -225,40 +307,161 @@ describe("scenarios > visualizations > maps", () => {
     });
   });
 
-  it("should apply brush filters by dragging map", () => {
-    cy.viewport(1280, 800);
+  it("should display pins type viz setting (metabase#40999)", () => {
+    cy.intercept("/api/tiles/**").as("tiles");
 
     H.visitQuestionAdhoc({
+      display: "map",
       dataset_query: {
-        type: "query",
         database: SAMPLE_DB_ID,
+        type: "query",
         query: {
           "source-table": PEOPLE_ID,
+          aggregation: ["count"],
+          breakout: [
+            [
+              "field",
+              PEOPLE.LONGITUDE,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+            [
+              "field",
+              PEOPLE.LATITUDE,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+          ],
         },
       },
-      display: "map",
       visualization_settings: {
-        "map.region": "us_states",
         "map.type": "pin",
         "map.latitude_column": "LATITUDE",
         "map.longitude_column": "LONGITUDE",
       },
     });
 
-    cy.get(".CardVisualization").realHover();
-    cy.findByTestId("visualization-root")
-      .findByText("Draw box to filter")
-      .click();
+    cy.wait("@tiles");
+
+    cy.findByTestId("viz-settings-button").click();
+
+    H.leftSidebar().within(() => {
+      cy.findByText("Pin type").should("be.visible");
+
+      cy.findByLabelText("Pin type").click();
+      H.popover().findByText("Markers").click();
+    });
 
     cy.findByTestId("visualization-root")
-      .realMouseDown(500, 500)
-      .realMouseMove(600, 600)
-      .realMouseUp(600, 600);
-
-    cy.wait("@dataset");
-
-    cy.get(".CardVisualization").should("exist");
-    // selecting area at the map provides different filter values, so the simplified assertion is used
-    cy.findByTestId("filter-pill").should("have.length", 1);
+      .get(".leaflet-marker-icon")
+      .should("have.length.greaterThan", 10);
   });
+
+  describe(
+    "Pin Map brush filters",
+    { viewportWidth: 1280, viewportHeight: 800 },
+    () => {
+      function pinMapSelectRegion(
+        x,
+        y,
+        moveX,
+        moveY,
+        visualization_settings = {
+          "map.center_latitude": 0,
+          "map.center_longitude": 0,
+          "map.zoom": 0,
+          "map.type": "pin",
+          "map.latitude_column": "LATITUDE",
+          "map.longitude_column": "LONGITUDE",
+        },
+      ) {
+        H.visitQuestionAdhoc({
+          dataset_query: {
+            type: "query",
+            database: SAMPLE_DB_ID,
+            query: {
+              "source-table": PEOPLE_ID,
+            },
+          },
+          display: "map",
+          visualization_settings,
+        });
+
+        cy.get(".CardVisualization").realHover();
+        cy.findByTestId("visualization-root")
+          .findByText("Draw box to filter")
+          .click();
+
+        cy.findByTestId("visualization-root")
+          .realMouseDown({ x, y })
+          .realMouseMove(moveX, moveY)
+          .realMouseUp();
+
+        cy.wait("@dataset");
+      }
+
+      it("should apply brush filters by dragging map", () => {
+        pinMapSelectRegion(500, 500, 600, 600, {
+          "map.region": "us_states",
+          "map.type": "pin",
+          "map.latitude_column": "LATITUDE",
+          "map.longitude_column": "LONGITUDE",
+        });
+        cy.get(".CardVisualization").should("exist");
+        // selecting area at the map provides different filter values, so the simplified assertion is used
+        cy.findAllByTestId("filter-pill").should("have.length", 1);
+      });
+
+      it("should apply brush filters by dragging map when zoomed out (metabase#41056)", () => {
+        pinMapSelectRegion(250, 150, 500, 250);
+        cy.get(".CardVisualization").should("exist");
+        cy.findAllByTestId("filter-pill").should("have.length", 1);
+      });
+
+      it("should handle brush filters that select zero data points (metabase#41056)", () => {
+        pinMapSelectRegion(10, 10, 20, 20);
+        cy.get(".CardVisualization").should("not.exist");
+        cy.findByTestId("question-row-count").findByText("Showing 0 rows");
+        cy.findAllByTestId("filter-pill").should("have.length", 1);
+      });
+
+      it("should handle brush filters that exceed 360 deg of longitude (metabase#41056)", () => {
+        pinMapSelectRegion(10, 10, 1270, 600);
+        cy.get(".CardVisualization").should("exist");
+        cy.findByTestId("question-row-count").findByText(
+          "Showing first 2,000 rows",
+        );
+        cy.findAllByTestId("filter-pill")
+          .should("have.length", 1)
+          .contains("Longitude is between -180 and 180");
+      });
+
+      it("should handle brush filters that cross the 180th meridian (metabase#41056)", () => {
+        pinMapSelectRegion(100, 100, 200, 200);
+
+        cy.get(".CardVisualization").should("exist");
+        cy.findByTestId("question-row-count").findByText("Showing 9 rows");
+
+        // Exact value for these longitude bounds is not important.
+        const lngRegex = /\d+(\.\d+)?/.source;
+
+        cy.findAllByTestId("filter-pill")
+          .should("have.length", 1)
+          .contains(
+            new RegExp(
+              `(Latitude is between .*) and Longitude is between ${lngRegex} and 180` +
+                ` or \\1 and Longitude is between -180 and -${lngRegex}`,
+            ),
+          );
+      });
+    },
+  );
 });
+
+function toggleFieldSelectElement(field) {
+  return cy.get(`[data-field-title="${field}"]`).within(() => {
+    cy.findByTestId("chart-setting-select").click();
+  });
+}

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   FIRST_COLLECTION_ID,
@@ -79,16 +79,14 @@ describe("issue 24660", () => {
   };
 
   function createParentCollectionAndMoveQuestionToIt(questionId) {
-    return cy
-      .createCollection({
-        name: collectionName,
-        parent_id: null,
-      })
-      .then(({ body: { id } }) => {
-        cy.request("PUT", `/api/card/${questionId}`, {
-          collection_id: id,
-        });
+    return H.createCollection({
+      name: collectionName,
+      parent_id: null,
+    }).then(({ body: { id } }) => {
+      cy.request("PUT", `/api/card/${questionId}`, {
+        collection_id: id,
       });
+    });
   }
 
   beforeEach(() => {
@@ -111,17 +109,17 @@ describe("issue 24660", () => {
   });
 });
 
-H.describeEE("issue 30235", () => {
+describe("issue 30235", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should allow to turn to official collection after moving it from personal to root parent collection (metabase#30235)", () => {
     const COLLECTION_NAME = "C30235";
 
-    cy.createCollection({
+    H.createCollection({
       name: COLLECTION_NAME,
       parent_id: ADMIN_PERSONAL_COLLECTION_ID,
     }).then(({ body: { id } }) => {
@@ -136,5 +134,26 @@ H.describeEE("issue 30235", () => {
         cy.findByText("Edit permissions").should("be.visible");
       });
     });
+  });
+});
+
+describe("issue 58231", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+  });
+
+  it("should allow to edit permissions for Usage Analytics collection (metabase#58231)", () => {
+    cy.visit("/collection/2-usage-analytics");
+
+    cy.findByTestId("collection-menu")
+      .findByLabelText("Edit permissions")
+      .should("be.visible")
+      .click();
+
+    H.modal()
+      .findByText("Permissions for Usage analytics")
+      .should("be.visible");
   });
 });

@@ -14,6 +14,7 @@ For an introduction to expressions, check out the [overview of custom expression
   - [Count](#count)
   - [CountIf](./expressions/countif.md)
   - [Distinct](#distinct)
+  - [DistinctIf](#distinctif)
   - [Max](#max)
   - [Median](#median)
   - [Min](#min)
@@ -34,8 +35,10 @@ For an introduction to expressions, check out the [overview of custom expression
     - [case](./expressions/case.md)
     - [coalesce](./expressions/coalesce.md)
     - [if](./expressions/case.md)
-    - [isnull](./expressions/isnull.md)
-    - [notnull](#notnull)
+    - [in](#in)
+    - [isNull](./expressions/isnull.md)
+    - [notIn](#notin)
+    - [notNull](#notnull)
 
   - [Math functions](#math-functions)
 
@@ -43,6 +46,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [ceil](#ceil)
     - [exp](#exp)
     - [floor](#floor)
+    - [integer](#integer)
     - [log](#log)
     - [power](#power)
     - [round](#round)
@@ -52,27 +56,36 @@ For an introduction to expressions, check out the [overview of custom expression
 
     - [concat](./expressions/concat.md)
     - [contains](#contains)
+    - [date](#date)
+    - [datetime](#datetime)
     - [doesNotContain](#doesnotcontain)
     - [domain](#domain)
     - [endsWith](#endswith)
+    - [float](#float)
     - [host](#host)
-    - [isempty](./expressions/isempty.md)
-    - [ltrim](#ltrim)
+    - [isEmpty](./expressions/isempty.md)
+    - [integer](#integer)
+    - [lTrim](#ltrim)
     - [length](#length)
     - [lower](#lower)
-    - [notempty](#notempty)
-    - [regexextract](./expressions/regexextract.md)
+    - [notEmpty](#notempty)
+    - [path](#path)
+    - [regexExtract](./expressions/regexextract.md)
     - [replace](#replace)
-    - [rtrim](#rtrim)
+    - [splitPart](#splitpart)
+    - [rTrim](#rtrim)
     - [startsWith](#startswith)
     - [subdomain](#subdomain)
     - [substring](./expressions/substring.md)
+    - [text](#text)
     - [trim](#trim)
     - [upper](#upper)
 
   - [Date functions](#date-functions)
 
     - [convertTimezone](./expressions/converttimezone.md)
+    - [date](#date)
+    - [datetime](#datetime)
     - [datetimeAdd](./expressions/datetimeadd.md)
     - [datetimeDiff](./expressions/datetimediff.md)
     - [datetimeSubtract](./expressions/datetimesubtract.md)
@@ -88,11 +101,22 @@ For an introduction to expressions, check out the [overview of custom expression
     - [quarterName](#quartername)
     - [relativeDateTime](#relativedatetime)
     - [second](#second)
+    - [timeSpan](#timespan)
+    - [today](#today)
     - [week](#week)
     - [weekday](#weekday)
     - [year](#year)
 
+  - [Type-casting functions](#type-casting-functions)
+
+    - [date](#date)
+    - [datetime](#datetime)
+    - [float](#float)
+    - [integer](#integer)
+    - [text](#text)
+
   - [Window functions](#window-functions)
+
     - [Offset](./expressions/offset.md)
     - [CumulativeCount](./expressions/cumulative.md)
     - [CumulativeSum](./expressions/cumulative.md)
@@ -102,7 +126,7 @@ For an introduction to expressions, check out the [overview of custom expression
 
 ## Aggregations
 
-Aggregation expressions take into account all values in a field. They can only be used in the **Summarize** section of the query builder.
+Aggregation expressions consider all values in a field. They can only be used in the **Summarize** section of the query builder.
 
 ### Average
 
@@ -116,15 +140,15 @@ Example: `Average([Quantity])` would return the mean for the `Quantity` field.
 
 Returns the count of rows (also known as records) in the selected data.
 
-Syntax: `Count`
+Syntax: `Count()`
 
-Example: `Count` If a table or result returns 10 rows, `Count` will return `10`.
+Example: `Count()` If a table or result returns 10 rows, `Count` will return `10`.
 
 ### [CountIf](./expressions/countif.md)
 
 Only counts rows where the condition is true.
 
-Syntax: `CountIf(condition)`.
+Syntax: `CountIf(condition)`
 
 Example: `CountIf([Subtotal] > 100)` would return the number of rows where the subtotal were greater than 100.
 
@@ -132,15 +156,23 @@ Example: `CountIf([Subtotal] > 100)` would return the number of rows where the s
 
 The number of distinct values in this column.
 
-Syntax: `Distinct(column)`.
+Syntax: `Distinct(column)`
 
-`Distinct([Last Name])`. Returns the count of unique last names in the column. Duplicates (of the last name "Smith" for example) are not counted.
+Example: `Distinct([Last Name])`. Returns the count of unique last names in the column. Duplicates (of the last name "Smith" for example) are not counted.
+
+### DistinctIf
+
+Returns the count of distinct values in a column where the condition is true.
+
+Syntax: `DistinctIf(column, condition)`
+
+Example: `DistinctIf([ID], [Category] = "Gizmo")` would return the count of unique IDs where the `Category` column is "Gizmo".
 
 ### Max
 
 Returns the largest value found in the column.
 
-Syntax: `Max(column)`.
+Syntax: `Max(column)`
 
 Example: `Max([Age])` would return the oldest age found across all values in the `Age` column.
 
@@ -150,7 +182,7 @@ Related: [Min](#min), [Average](#average), [Median](#median).
 
 Returns the median value of the specified column.
 
-Syntax: `Median(column)`.
+Syntax: `Median(column)`
 
 Example: `Median([Age])` would find the midpoint age where half of the ages are older, and half of the ages are younger.
 
@@ -162,7 +194,7 @@ Related: [Min](#min), [Max](#max), [Average](#average).
 
 Returns the smallest value found in the column.
 
-Syntax: `Min(column)`.
+Syntax: `Min(column)`
 
 Example: `Min([Salary])` would find the lowest salary among all salaries in the `Salary` column.
 
@@ -208,7 +240,7 @@ Example: `Sum([Subtotal])` would add up all the values in the `Subtotal` column.
 
 Sums up the specified column only for rows where the condition is true.
 
-Syntax: `SumIf(column, condition)`.
+Syntax: `SumIf(column, condition)`
 
 Example:`SumIf([Subtotal], [Order Status] = "Valid")` would add up all the subtotals for orders with a status of "Valid".
 
@@ -266,25 +298,55 @@ Syntax: `if(condition, output, ...)`
 
 Example: `if([Weight] > 200, "Large", [Weight] > 150, "Medium", "Small")` If a `Weight` is 250, the expression would return "Large". In this case, the default value is "Small", so any `Weight` 150 or less would return "Small".
 
-### [isnull](./expressions/isnull.md)
+### in
+
+Returns true if `value1` equals `value2` (or `value3`, etc., if specified).
+
+Syntax: `in(value1, value2, ...)`
+
+- `value1`: The column or value to check.
+- `value2, ...`: The list of columns or values to check against.
+
+You can add more values to check against.
+
+Example: `in([Category], "Widget", "Gadget")` would return true for rows where the `Category` is either "Widget" or "Gadget".
+
+Related: [notIn](#notin), [contains](#contains), [startsWith](#startswith), [endsWith](#endswith)
+
+### [isNull](./expressions/isnull.md)
 
 Returns true if the column is null.
 
-Syntax: `isnull(column)`
+Syntax: `isNull(column)`
 
-Example: `isnull([Tax])` would return true if no value were present in the column for that row.
+Example: `isNull([Tax])` would return true if no value were present in the column for that row.
 
-Related: [notnull](#notnull), [isempty](#isempty)
+Related: [notNull](#notnull), [isEmpty](#isempty)
 
-### notnull
+### notNull
 
 Returns true if the column contains a value.
 
-Syntax: `notnull(column)`
+Syntax: `notNull(column)`
 
-Example: `notnull([Tax])` would return true if there is a value present in the column for that row.
+Example: `notNull([Tax])` would return true if there is a value present in the column for that row.
 
-Related: [isnull](#isnull), [notempty](#notempty)
+Related: [isNull](#isnull), [notEmpty](#notempty)
+
+### notIn
+
+Returns true if `value1` doesn't equal `value2` (and `value3`, etc., if specified).
+
+Syntax: `notIn(value1, value2, ...)`
+
+- `value1`: The column or value to check.
+- `value2, ...`: The column or values to look for.
+
+You can add more values to look for.
+
+Example: `notIn([Category], "Widget", "Gadget")` would return true for rows where the `Category` is not "Widget" or "Gadget".
+
+Related: [in](#in), [case](./expressions/case.md)
 
 ## Math functions
 
@@ -302,7 +364,7 @@ Example: `abs([Debt])`. If `Debt` were -100, `abs(-100)` would return `100`.
 
 Rounds a decimal up (ceil as in ceiling).
 
-Syntax: `ceil(column)`.
+Syntax: `ceil(column)`
 
 Example: `ceil([Price])`. `ceil(2.99)` would return 3.
 
@@ -312,7 +374,7 @@ Related: [floor](#floor), [round](#round).
 
 Returns [Euler's number](<https://en.wikipedia.org/wiki/E_(mathematical_constant)>), e, raised to the power of the supplied number. (Euler sounds like "Oy-ler").
 
-Syntax: `exp(column)`.
+Syntax: `exp(column)`
 
 Example: `exp([Interest Months])`
 
@@ -332,7 +394,7 @@ Related: [ceil](#ceil), [round](#round).
 
 Returns the base 10 log of the number.
 
-Syntax: `log(column)`.
+Syntax: `log(column)`
 
 Example: `log([Value])`.
 
@@ -340,7 +402,7 @@ Example: `log([Value])`.
 
 Raises a number to the power of the exponent value.
 
-Syntax: `power(column, exponent)`.
+Syntax: `power(column, exponent)`
 
 Example: `power([Length], 2)`. If the length were `3`, the expression would return `9` (3 to the second power is 3\*3).
 
@@ -352,7 +414,7 @@ Related: [exp](#exp).
 
 Rounds a decimal number either up or down to the nearest integer value.
 
-Syntax: `round(column)`.
+Syntax: `round(column)`
 
 Example: `round([Temperature])`. If the temp were `13.5` degrees centigrade, the expression would return `14`.
 
@@ -362,13 +424,13 @@ Example: `round([Temperature] * 10) / 10`. If the temp were `100.75`, the expres
 
 Returns the square root of a value.
 
-Syntax: `sqrt(column)`.
+Syntax: `sqrt(column)`
 
 Example: `sqrt([Hypotenuse])`.
 
 Databases that don't support `sqrt`: SQLite.
 
-Related: [Power](#power).
+Related: [power](#power).
 
 ## String functions
 
@@ -397,7 +459,63 @@ Example: `contains([Status], "Class")`.
 
 If `Status` were "Classified", the expression would return `true`. If the `Status` were "**c**lassified", the expression would return `false`, because the case does not match.
 
-Related: [doesNotContain](#doesnotcontain), [regexextract](#regexextract).
+Related: [doesNotContain](#doesnotcontain), [regexExtract](#regexextract).
+
+### date
+
+> Unavailable for Oracle or the non-JDBC Apache Druid driver.
+
+- When used on a string, converts an ISO 8601 date string to a date. The string _must_ be in a valid ISO 8601 format. If the string contains time, the time part is truncated.
+- When used on a datetime value, truncates datetime to a date.
+
+Syntax: `date(value)`
+
+Example: `date("2025-03-20")` would return a date value so that you can use all the date features in the query builder: group by month, filter by previous 30 days, etc.
+
+ISO 8601 standard format:
+
+- Year (YYYY): 2025
+- Month (MM): 03
+- Day (DD): 25
+- Time separator (T)
+- Hours (HH): 14
+- Minutes (MM): 30
+- Seconds (SS): 45
+- UTC timezone indicator (Z)
+
+Valid ISO 8601 examples include:
+
+- Date only: `2025-03-25`
+- Date with time: `2025-03-25T14:30:45`
+- Date with time and timezone offset: `2025-03-25T14:30:45+01:00`
+
+Another example: `date(2025-04-19T17:42:53+01:00)` would return `2025-04-19`.
+
+Related: [datetime](#datetime)
+
+### datetime
+
+> Available on PostgreSQL, MySQL/MariaDB, BigQuery, Redshift, ClickHouse, and Snowflake
+
+Converts a datetime string or bytes to a datetime.
+
+Syntax: `datetime(value, mode)`
+
+- `value`: The string, bytes, or number to convert to a datetime.
+- `mode`: Optional. The mode indicating the format. One of: `"simple"`, `"iso"`, `"simpleBytes"`, `"isoBytes"`, `"unixSeconds"`, `"unixMilliseconds"`, `"unixMicroseconds"`, `"unixNanoseconds"`. Default is `"iso"`.
+
+Example: `datetime("2025-03-20 12:45:04")`
+
+`datetime` supports the following datetime string formats:
+
+```txt
+2025-05-15T22:20:01
+2025-05-15 22:20:01
+```
+
+But some databases may also work with other datetime formats.
+
+Related: [date](#date)
 
 ### doesNotContain
 
@@ -412,17 +530,17 @@ Syntax: `doesNotContain(string1, string2)` for case-sensitive match.
 
 Example: `doesNotContain([Status], "Class")`. If `Status` were "Classified", the expression would return `false`.
 
-Related: [contains](#contains), [regexextract](#regexextract).
+Related: [contains](#contains), [regexExtract](#regexextract).
 
 ### domain
 
 Extracts the domain name from a URL or email.
 
-Syntax: `domain(urlOrEmail)`.
+Syntax: `domain(urlOrEmail)`
 
 Example: `domain([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `domain([Page URL])` would return `metabase`. `domain([Email])` would extract `metabase` from `hello@metabase.com`.
 
-Related: [host](#host), [subdomain](#subdomain).
+Related: [host](#host), [path](#path), [subdomain](#subdomain).
 
 ### endsWith
 
@@ -439,35 +557,60 @@ Example: `endsWith([Appetite], "hungry")`
 
 Related: [startsWith](#startswith), [contains](#contains), [doesNotContain](#doesnotcontain).
 
+### float
+
+> Available for PostgreSQL, MySQL/MariaDB, BigQuery, Redshift, ClickHouse, and Snowflake.
+
+Converts a string to a floating point value. Useful if you want to do some math on numbers, but your data is stored as strings.
+
+Syntax: `float(value)`
+
+Example: `float("123.45")` would return `123.45` as a floating point value.
+
 ### host
 
 Extracts the host, which is the domain and the TLD, from a URL or email.
 
-Syntax: `host(urlOrEmail)`.
+Syntax: `host(urlOrEmail)`
 
 Example: `host([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `host([Page URL])` would return `metabase.com`. `host([Email])` would extract `metabase.com` from `hello@metabase.com`.
 
-Related: [domain](#domain), [subdomain](#subdomain).
+Related: [domain](#domain), [path](#path), [subdomain](#subdomain).
 
-### [isempty](./expressions/isempty.md)
+### [isEmpty](./expressions/isempty.md)
 
-Returns true if a _string column_ contains an empty string or is null. Calling this function on a non-string column will cause an error. You can use [isnull](#isnull) for non-string columns.
+Returns true if a _string column_ contains an empty string or is null. Calling this function on a non-string column will cause an error. You can use [isNull](#isnull) for non-string columns.
 
-Syntax: `isempty(column)`
+Syntax: `isEmpty(column)`
 
-Example: `isempty([Feedback])` would return true if `Feedback` was an empty string (`''`) or did not contain a value.
+Example: `isEmpty([Feedback])` would return true if `Feedback` was an empty string (`''`) or did not contain a value.
 
-Related: [notempty](#notempty), [isnull](#isnull)
+Related: [notEmpty](#notempty), [isNull](#isnull).
 
-### ltrim
+### integer
+
+> Only available for BigQuery, ClickHouse, MySQL, PostgreSQL, Amazon Redshift, and Snowflake.
+
+- Converts a string to an integer value. Useful if you want to do some math on numbers, but your data is stored as strings.
+- Converts a floating point value by rounding it to an integer.
+
+Syntax: `integer(value)`
+
+String example: `integer("123")` would return `123` as an integer. The string must evaluate to an integer (so `integer("123.45")` would return an error.)
+
+Float example: `integer(123.45)` would return `123`.
+
+Related: [round](#round).
+
+### lTrim
 
 Removes leading whitespace from a string of text.
 
-Syntax: `ltrim(text)`
+Syntax: `lTrim(text)`
 
-Example: `ltrim([Comment])`. If the comment were `" I'd prefer not to"`, `ltrim` would return `"I'd prefer not to"`.
+Example: `lTrim([Comment])`. If the comment were `" I'd prefer not to"`, `lTrim` would return `"I'd prefer not to"`.
 
-Related: [trim](#trim) and [rtrim](#rtrim).
+Related: [trim](#trim) and [rTrim](#rtrim).
 
 ### length
 
@@ -481,33 +624,43 @@ Example: `length([Comment])`. If the `comment` were "wizard", `length` would ret
 
 Returns the string of text in all lower case.
 
-Syntax: `lower(text)`.
+Syntax: `lower(text)`
 
 Example: `lower([Status])`. If the `Status` were "QUIET", the expression would return "quiet".
 
 Related: [upper](#upper).
 
-### notempty
+### notEmpty
 
-Returns true if a _string column_ contains a value that is not the empty string. Calling this function on a non-string column will cause an error. You can use [notnull](#notnull) on non-string columns.
+Returns true if a _string column_ contains a value that is not the empty string. Calling this function on a non-string column will cause an error. You can use [notNull](#notnull) on non-string columns.
 
-Syntax: `notempty(column)`
+Syntax: `notEmpty(column)`
 
-Example: `notempty([Feedback])` would return true if `Feedback` contains a value that isn't the empty string (`''`).
+Example: `notEmpty([Feedback])` would return true if `Feedback` contains a value that isn't the empty string (`''`).
 
-Related: [isempty](#isempty), [isnull](#isnull), [notnull](#notnull)
+Related: [isEmpty](#isempty), [isNull](#isnull), [notNull](#notnull)
 
-### [regexextract](./expressions/regexextract.md)
+### path
 
-> ⚠️ `regexextract` is unavailable for MongoDB, SQLite, and SQL Server. For Druid, `regexextract` is only available for the Druid-JDBC driver.
+Extracts the pathname from a URL.
+
+Syntax: `path(url)`
+
+Example: `path([Page URL])`. For example, `path("https://www.example.com/path/to/page.html?key1=value")` would return `/path/to/page.html`.
+
+Related: [domain](#domain), [host](#host), [subdomain](#subdomain).
+
+### [regexExtract](./expressions/regexextract.md)
+
+> ⚠️ `regexExtract` is unavailable for MongoDB, SQLite, and SQL Server. For Druid, `regexExtract` is only available for the Druid-JDBC driver.
 
 Extracts matching substrings according to a regular expression.
 
-Syntax: `regexextract(text, regular_expression)`.
+Syntax: `regexExtract(text, regular_expression)`
 
-Example: `regexextract([Address], "[0-9]+")`.
+Example: `regexExtract([Address], "[0-9]+")`
 
-Databases that don't support `regexextract`: H2, SQL Server, SQLite.
+Databases that don't support `regexExtract`: H2, SQL Server, SQLite.
 
 Related: [contains](#contains), [doesNotContain](#doesnotcontain), [substring](#substring).
 
@@ -515,19 +668,37 @@ Related: [contains](#contains), [doesNotContain](#doesnotcontain), [substring](#
 
 Replaces all occurrences of a search text in the input text with the replacement text.
 
-Syntax: `replace(text, find, replace)`.
+Syntax: `replace(text, find, replace)`
 
-Example: `replace([Title], "Enormous", "Gigantic")`.
+Example: `replace([Title], "Enormous", "Gigantic")`
 
-### rtrim
+### splitPart
+
+> Available in PostgreSQL, MySQL/MariaDB, BigQuery, Redshift, Clickhouse, and Snowflake
+
+Splits a string on a specified delimiter and returns the nth substring.
+
+Syntax: `splitPart(text, delimiter, position)`
+
+`text`: The column or text to return a portion of.
+
+`delimiter`: The pattern describing where each split should occur.
+
+`position`: Which substring to return after the split. Index starts at position 1.
+
+Example: `splitPart([Date string], " ", 1)`. If the value for `Date string` was `"2024-09-18 16:55:15.373733-07"`, `splitPart` would return `"2024-09-18"` because it split the data on space (`" "`, and took the first part (the substring at index 1)).
+
+Another example: `splitPart("First name, Middle Name, Last name", ", ", 3)` would return `"Last Name"` (because we used the comma and space `", "` as the delimiter to split the string into parts, and took the third substring).
+
+### rTrim
 
 Removes trailing whitespace from a string of text.
 
-Syntax: `rtrim(text)`
+Syntax: `rTrim(text)`
 
-Example: `rtrim([Comment])`. If the comment were "Fear is the mindkiller. ", the expression would return "Fear is the mindkiller."
+Example: `rTrim([Comment])`. If the comment were "Fear is the mindkiller. ", the expression would return "Fear is the mindkiller."
 
-Related: [trim](#trim) and [ltrim](#ltrim).
+Related: [trim](#trim) and [lTrim](#ltrim).
 
 ### startsWith
 
@@ -550,11 +721,11 @@ Related: [endsWith](#endswith), [contains](#contains), [doesNotContain](#doesnot
 
 Extracts the subdomain from a URL. Ignores `www` (returns a blank string).
 
-Syntax: `subdomain(url)`.
+Syntax: `subdomain(url)`
 
 Example: `subdomain([Page URL])`. If the `[Page URL]` column had a value of `https://status.metabase.com`, `subdomain([Page URL])` would return `status`.
 
-Related: [host](#host), [domain](#domain).
+Related: [domain](#domain), [host](#host), [path](#path).
 
 ### [substring](./expressions/substring.md)
 
@@ -564,7 +735,17 @@ Syntax: `substring(text, position, length)`
 
 Example: `substring([Title], 1, 10)` returns the first 10 letters of a string (the string index starts at position 1).
 
-Related: [regexextract](#regexextract), [replace](#replace).
+Related: [regexExtract](#regexextract), [replace](#replace).
+
+### text
+
+> Unavailable for the non-JDBC Druid driver
+
+Converts a number or date to text (a string). Useful for applying text filters or joining with other columns based on text comparisons.
+
+Syntax: `text(value)`
+
+Example: `text(Created At])` would take a datetime (`Created At`) and return that datetime converted to a string (like `"2024-03-17 16:55:15.373733-07"`).
 
 ### trim
 
@@ -578,9 +759,11 @@ Example: `trim([Comment])` will remove any whitespace characters on either side 
 
 Returns the text in all upper case.
 
-Syntax: `upper(text)`.
+Syntax: `upper(text)`
 
 Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would return "HYPER".
+
+Related: [lower](#lower).
 
 ## Date functions
 
@@ -590,7 +773,7 @@ Date functions manipulate, extract, or create date and time values.
 
 Shifts a date or timestamp value into a specified time zone.
 
-Syntax: `convertTimezone(column, target, source)`.
+Syntax: `convertTimezone(column, target, source)`
 
 Example: `convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")` would return the value `2022-12-28T09:00:00`, displayed as `December 28, 2022, 9:00 AM`.
 
@@ -600,7 +783,7 @@ See the [database limitations](./expressions/converttimezone.md#limitations) for
 
 Adds some unit of time to a date or timestamp value.
 
-Syntax: `datetimeAdd(column, amount, unit)`.
+Syntax: `datetimeAdd(column, amount, unit)`
 
 Example: `datetimeAdd("2021-03-25", 1, "month")` would return the value `2021-04-25`, displayed as `April 25, 2021`.
 
@@ -610,9 +793,9 @@ Related: [between](#between), [datetimeSubtract](#datetimesubtract).
 
 ### [datetimeDiff](./expressions/datetimediff.md)
 
-Returns the difference between two datetimes in some unit of time. For example, `datetimeDiff(d1, d2, "day") ` will return the number of days between `d1` and `d2`.
+Returns the difference between two datetimes in some unit of time. For example, `datetimeDiff(d1, d2, "day")` will return the number of days between `d1` and `d2`.
 
-Syntax: `datetimeDiff(datetime1, datetime2, unit)`.
+Syntax: `datetimeDiff(datetime1, datetime2, unit)`
 
 Example: `datetimeDiff("2022-02-01", "2022-03-01", "month")` would return `1`.
 
@@ -622,7 +805,7 @@ See the [database limitations](./expressions/datetimediff.md#limitations) for `d
 
 Subtracts some unit of time from a date or timestamp value.
 
-Syntax: `datetimeSubtract(column, amount, unit)`.
+Syntax: `datetimeSubtract(column, amount, unit)`
 
 Example: `datetimeSubtract("2021-03-25", 1, "month")` would return the value `2021-02-25`, displayed as `February 25, 2021`.
 
@@ -634,7 +817,7 @@ Related: [between](#between), [datetimeAdd](#datetimeadd).
 
 Takes a datetime and returns the day of the month as an integer.
 
-Syntax: `day([datetime column])`.
+Syntax: `day([datetime column])`
 
 Example: `day("2021-03-25T12:52:37")` would return the day as an integer, `25`.
 
@@ -642,7 +825,7 @@ Example: `day("2021-03-25T12:52:37")` would return the day as an integer, `25`.
 
 Returns the localized name of a day of the week, given the day's number (1-7). Respects the [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week).
 
-Syntax: `dayName(dayNumber)`.
+Syntax: `dayName(dayNumber)`
 
 Example: `dayName(1)` would return `Sunday`, unless you change the [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week).
 
@@ -652,7 +835,7 @@ Related: [quarterName](#quartername), [monthName](#monthname).
 
 Takes a datetime and returns the hour as an integer (0-23).
 
-Syntax: `hour([datetime column])`.
+Syntax: `hour([datetime column])`
 
 Example: `hour("2021-03-25T12:52:37")` would return `12`.
 
@@ -660,9 +843,9 @@ Example: `hour("2021-03-25T12:52:37")` would return `12`.
 
 Checks a date column's values to see if they're within the relative range.
 
-Syntax: `interval(column, number, text)`.
+Syntax: `interval(column, number, text)`
 
-Example: `interval([Created At], -1, "month")`.
+Example: `interval([Created At], -1, "month")`
 
 The `number` must be an integer. You cannot use a fractional value.
 
@@ -672,7 +855,7 @@ Related: [between](#between).
 
 Takes a datetime and returns the minute as an integer (0-59).
 
-Syntax: `minute([datetime column])`.
+Syntax: `minute([datetime column])`
 
 Example: `minute("2021-03-25T12:52:37")` would return `52`.
 
@@ -680,7 +863,7 @@ Example: `minute("2021-03-25T12:52:37")` would return `52`.
 
 Takes a datetime and returns the month number (1-12) as an integer.
 
-Syntax: `month([datetime column])`.
+Syntax: `month([datetime column])`
 
 Example: `month("2021-03-25T12:52:37")` would return the month as an integer, `3`.
 
@@ -698,13 +881,13 @@ Related: [dayName](#dayname), [quarterName](#quartername).
 
 Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
 
-Syntax: `now`.
+Syntax: `now()`
 
 ### quarter
 
 Takes a datetime and returns the number of the quarter in a year (1-4) as an integer.
 
-Syntax: `quarter([datetime column])`.
+Syntax: `quarter([datetime column])`
 
 Example: `quarter("2021-03-25T12:52:37")` would return `1` for the first quarter.
 
@@ -712,7 +895,7 @@ Example: `quarter("2021-03-25T12:52:37")` would return `1` for the first quarter
 
 Given the quarter number (1-4), returns a string like `Q1`.
 
-Syntax: `quarterName([Fiscal Quarter])`.
+Syntax: `quarterName([Fiscal Quarter])`
 
 Example: `quarterName(3)` would return `Q3`.
 
@@ -728,7 +911,7 @@ Syntax: `relativeDateTime(number, text)`
 
 `text`: Type of interval like `"day"`, `"month"`, `"year"`
 
-`relativeDateTime` can only be used as part of a conditional expression.
+Note that `relativeDateTime()` will truncate the result to the unit specified as its argument.
 
 Example: `[Orders → Created At] < relativeDateTime(-30, "day")` will filter for orders created over 30 days ago from current date.
 
@@ -738,7 +921,7 @@ Related: [datetimeAdd](#datetimeadd), [datetimeSubtract](#datetimesubtract).
 
 Takes a datetime and returns the number of seconds in the minute (0-59) as an integer.
 
-Syntax: `second([datetime column])`.
+Syntax: `second([datetime column])`
 
 Example: `second("2021-03-25T12:52:37")` would return the integer `37`.
 
@@ -746,7 +929,7 @@ Example: `second("2021-03-25T12:52:37")` would return the integer `37`.
 
 Gets a time interval of specified length.
 
-Syntax: `timeSpan(number, text)`.
+Syntax: `timeSpan(number, text)`
 
 `number`: Period of interval, where negative values are back in time. The `number` must be an integer. You cannot use a fractional value.
 
@@ -754,11 +937,21 @@ Syntax: `timeSpan(number, text)`.
 
 Example: `[Orders → Created At] + timeSpan(7, "day")` will return the date 7 days after the `Created At` date.
 
-### week
+### today
+
+Returns the current date (without time).
+
+Syntax: `today()`
+
+Example: `today()` would return the current date, such as `2025-05-04`.
+
+Related: [now](#now).
+
+### [week](./expressions/week.md)
 
 Takes a datetime and returns the week as an integer.
 
-Syntax: `week(column, mode)`.
+Syntax: `week(column, mode)`
 
 Example: `week("2021-03-25T12:52:37")` would return the week as an integer, `12`.
 
@@ -767,6 +960,8 @@ Example: `week("2021-03-25T12:52:37")` would return the week as an integer, `12`
   - ISO: (default) Week 1 starts on the Monday before the first Thursday of January.
   - US: Week 1 starts on Jan 1. All other weeks start on Sunday.
   - Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
+
+Note that summarizing by week of year in the query builder uses a different mode of determining the first week, see [Week of year](./expressions/week.md) for more information.
 
 ### weekday
 
@@ -793,9 +988,17 @@ case(
 
 Takes a datetime and returns the year as an integer.
 
-Syntax: `year([datetime column])`.
+Syntax: `year([datetime column])`
 
 Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer, `2,021`.
+
+## Type-casting functions
+
+- [date](#date)
+- [datetime](#datetime)
+- [float](#float)
+- [integer](#integer)
+- [text](#text)
 
 ## Window functions
 
@@ -807,9 +1010,7 @@ For more info, check out our page on [cumulative functions](./expressions/cumula
 
 The additive total of rows across a breakout.
 
-Syntax: `CumulativeCount`.
-
-Example: `CumulativeCount`.
+Syntax: `CumulativeCount()`
 
 ### CumulativeSum
 
@@ -817,15 +1018,15 @@ For more info, check out our page on [cumulative functions](./expressions/cumula
 
 The rolling sum of a column across a breakout.
 
-Syntax: `CumulativeSum(column)`.
+Syntax: `CumulativeSum(column)`
 
-Example: `CumulativeSum([Subtotal])`.
+Example: `CumulativeSum([Subtotal])`
 
 Related: [Sum](#sum) and [SumIf](#sumif).
 
 ### Offset
 
-> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, MongoDB, and Druid.
+> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, ClickHouse, MongoDB, and Druid.
 
 For more info, check out our page on [Offset](./expressions/offset.md).
 
@@ -847,31 +1048,31 @@ Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the 
 
 Limitations are noted for each aggregation and function above, and here there are in summary:
 
-**H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone` and `regexextract`.
+**H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone`, `regexExtract`, `datetime`, `float`, `splitPart`.
 
-**Athena**: `convertTimezone`.
+**Athena**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
-**Databricks**: `convertTimezone`.
+**Databricks**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
-**Druid**: `Median`, `Percentile`, `StandardDeviation`, `power`, `log`, `exp`, `sqrt`, `Offset`. Function `regexextract` is only available for the Druid-JDBC driver.
+**Druid**: `Median`, `Percentile`, `StandardDeviation`, `power`, `log`, `exp`, `sqrt`, `Offset`, `datetime`, `float`, `splitPart`. Function `regexExtract` and some [type casting functions](#type-casting-functions) are only available for the Druid-JDBC driver.
 
-**MongoDB**: `Median`, `Percentile`, `power`, `log`, `exp`, `sqrt`, `Offset`, `regexextract`
+**MongoDB**: `Median`, `Percentile`, `power`, `log`, `exp`, `sqrt`, `Offset`, `regexExtract`, `datetime`, `float`, `splitPart`.
 
 **MariaDB**: `Median`, `Percentile`, `Offset`.
 
 **MySQL**: `Median`, `Percentile`, `Offset`.
 
-**Presto**: `convertTimezone`. Only provides _approximate_ results for `Median` and `Percentile`.
+**Oracle**: `date`, `datetime`, `float`, `splitPart`.
 
-**Redshift**: `Average` will return [integer results for integer columns](https://docs.aws.amazon.com/redshift/latest/dg/r_AVG.html#r_AVG-data-types).
+**Presto**: `convertTimezone`, `datetime`, `float`, `splitPart`. Only provides _approximate_ results for `Median` and `Percentile`.
 
-**SparkSQL**: `convertTimezone`.
+**SparkSQL**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
-**SQL Server**: `Median`, `Percentile` and `regexextract`.
+**SQL Server**: `Median`, `Percentile`, `regexExtract`, `datetime`, `float`, `splitPart`.
 
-**SQLite**: `exp`, `log`, `Median`, `Percentile`, `power`, `regexextract`, `StandardDeviation`, `sqrt` and `Variance`.
+**SQLite**: `exp`, `log`, `Median`, `Percentile`, `power`, `regexExtract`, `StandardDeviation`, `sqrt`, `Variance`, `datetime`, `float`, `splitPart`.
 
-**Vertica**: `Median` and `Percentile`.
+**Vertica**: `Median`, `Percentile`, `datetime`, `float`, `splitPart`.
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
 

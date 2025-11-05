@@ -1,15 +1,17 @@
 import type { StoryFn } from "@storybook/react";
 
-import ProgressBar, { type ProgressBarProps } from "./ProgressBar";
+import { StaticVisualization } from "../StaticVisualization";
+import type { StaticChartProps } from "../StaticVisualization/types";
+
 import { BELOW_GOAL, EXCEEDS_GOAL, REACHED_GOAL, ZERO } from "./stories-data";
 
 export default {
-  title: "static-viz/ProgressBar",
-  component: ProgressBar,
+  title: "Viz/Static Viz/ProgressBar",
+  component: StaticVisualization,
 };
 
-const Template: StoryFn<ProgressBarProps> = args => {
-  return <ProgressBar {...args} />;
+const Template: StoryFn<StaticChartProps> = (args) => {
+  return <StaticVisualization {...args} />;
 };
 
 export const Default = {
@@ -30,4 +32,9 @@ export const ReachedGoal = {
 export const ExceedsGoal = {
   render: Template,
   args: EXCEEDS_GOAL,
+};
+
+export const Watermark = {
+  render: Template,
+  args: { ...EXCEEDS_GOAL, hasDevWatermark: true },
 };

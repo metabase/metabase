@@ -2,12 +2,11 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase-enterprise.advanced-permissions.models.connection-impersonation :as conn-imp]
+   [metabase-enterprise.impersonation.model]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
-   [metabase.db :as mdb]
-   [metabase.models]
+   [metabase.app-db.core :as mdb]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -15,12 +14,11 @@
    [toucan2.core :as t2]))
 
 (comment
-  metabase.models/keep-me
-  conn-imp/keep-me)
+  metabase-enterprise.impersonation.model/keep-me)
 
-(def datetime? #{"timestamptz"
-                 "TIMESTAMP WITH TIME ZONE"
-                 "timestamp"})
+(def ^:private datetime? #{"timestamptz"
+                           "TIMESTAMP WITH TIME ZONE"
+                           "timestamp"})
 
 (deftest ^:parallel every-model-is-supported-test
   (testing "Serialization support\n"
@@ -56,7 +54,7 @@
                 (is (not random-entity-id?))))))))))
 
 (deftest serialization-complete-spec-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     ;; When serialization spec is defined, it describes every column
     (doseq [m    (-> (methods serdes/make-spec)
                      (dissoc :default)

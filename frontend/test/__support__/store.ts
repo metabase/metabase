@@ -6,6 +6,7 @@ import {
   CollectionSchema,
   DashboardSchema,
   DatabaseSchema,
+  DocumentSchema,
   FieldSchema,
   IndexedEntitySchema,
   QuestionSchema,
@@ -13,10 +14,8 @@ import {
   SegmentSchema,
   SnippetSchema,
   TableSchema,
-  UserSchema,
 } from "metabase/schema";
 import type {
-  Alert,
   Card,
   Collection,
   Dashboard,
@@ -35,7 +34,6 @@ import { createMockNormalizedEntitiesState } from "metabase-types/store/mocks";
 
 export interface EntitiesStateOpts {
   actions?: WritebackAction[];
-  alerts?: Alert[];
   collections?: Collection[];
   dashboards?: Dashboard[];
   databases?: (Database | SavedQuestionDatabase)[];
@@ -50,17 +48,16 @@ export interface EntitiesStateOpts {
 
 const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
   actions: [ActionSchema],
-  alerts: [],
   collections: [CollectionSchema],
   dashboards: [DashboardSchema],
   databases: [DatabaseSchema],
+  documents: [DocumentSchema],
   schemas: [SchemaSchema],
   tables: [TableSchema],
   fields: [FieldSchema],
   segments: [SegmentSchema],
   snippets: [SnippetSchema],
   indexedEntities: [IndexedEntitySchema],
-  users: [UserSchema],
   questions: [QuestionSchema],
 };
 

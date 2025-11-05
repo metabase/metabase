@@ -1,7 +1,5 @@
 // these tests use QuestionChartSettings directly, but logic we're testing logic in ChartSettingFieldPicker
-import { within } from "@testing-library/react";
-
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -45,7 +43,7 @@ function getSeries(metricColumnProps) {
   ];
 }
 
-const setup = seriesDisplay => {
+const setup = (seriesDisplay) => {
   const series = getSeries(seriesDisplay);
   return renderWithProviders(
     <QuestionChartSettings series={series} initial={{ section: "Data" }} />,
@@ -59,10 +57,10 @@ describe("ChartSettingFieldPicker", () => {
     const fields = screen.getAllByTestId("chartsettings-field-picker");
 
     expect(
-      within(fields[0]).getByTestId("chartsettings-field-picker-select"),
+      within(fields[0]).getByTestId("chart-setting-select"),
     ).toHaveDisplayValue("FOO");
     expect(
-      within(fields[1]).getByTestId("chartsettings-field-picker-select"),
+      within(fields[1]).getByTestId("chart-setting-select"),
     ).toHaveDisplayValue("BAR");
 
     expect(

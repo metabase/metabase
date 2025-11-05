@@ -29,6 +29,7 @@ const USER_PASSWORD_SCHEMA = Yup.object({
   password_confirm: Yup.string()
     .default("")
     .required(requiredErrorMessage)
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     .oneOf([Yup.ref("password")], t`Passwords do not match`),
 });
 

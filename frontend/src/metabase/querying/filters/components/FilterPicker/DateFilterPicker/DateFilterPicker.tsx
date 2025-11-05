@@ -1,10 +1,12 @@
 import { useMemo } from "react";
 
 import { useDateFilter } from "metabase/querying/filters/hooks/use-date-filter";
+import type { DatePickerValue } from "metabase/querying/filters/types";
 import { PopoverBackButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { DatePicker, type DatePickerValue } from "../../DatePicker";
+import { DatePicker } from "../../DatePicker";
+import { FilterSubmitButton } from "../FilterSubmitButton";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function DateFilterPicker({
@@ -13,8 +15,11 @@ export function DateFilterPicker({
   column,
   filter,
   isNew,
+  withAddButton,
+  withSubmitButton,
   onChange,
   onBack,
+  readOnly,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(() => {
     return Lib.displayInfo(query, stageIndex, column);
@@ -29,7 +34,11 @@ export function DateFilterPicker({
     });
 
   const handleChange = (value: DatePickerValue) => {
-    onChange(getFilterClause(value));
+    onChange(getFilterClause(value), { run: true });
+  };
+
+  const handleAddButtonClick = (value: DatePickerValue) => {
+    onChange(getFilterClause(value), { run: false });
   };
 
   return (
@@ -38,16 +47,34 @@ export function DateFilterPicker({
         value={value}
         availableOperators={availableOperators}
         availableUnits={availableUnits}
-        backButton={
-          onBack && (
-            <PopoverBackButton p="sm" onClick={onBack}>
+        renderSubmitButton={({ value, isDisabled }) => {
+          if (!withSubmitButton) {
+            return null;
+          }
+
+          return (
+            <FilterSubmitButton
+              isNew={isNew}
+              isDisabled={isDisabled}
+              withAddButton={withAddButton}
+              onAddButtonClick={() => handleAddButtonClick(value)}
+            />
+          );
+        }}
+        renderBackButton={() =>
+          onBack ? (
+            <PopoverBackButton
+              p="sm"
+              onClick={onBack}
+              disabled={readOnly}
+              withArrow={!readOnly}
+            >
               {columnInfo.longDisplayName}
             </PopoverBackButton>
-          )
+          ) : null
         }
-        canUseRelativeOffsets
-        isNew={isNew}
         onChange={handleChange}
+        readOnly={readOnly}
       />
     </div>
   );

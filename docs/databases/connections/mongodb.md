@@ -1,20 +1,18 @@
 ---
-title: Working with MongoDB in Metabase
+title: MongoDB
 redirect_from:
   - /docs/latest/administration-guide/databases/mongodb
 ---
 
-# Working with MongoDB in Metabase
+# MongoDB
 
-Metabase supports MongoDB version 4.2 or higher.
+To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
-## How Metabase syncs data in MongoDB
+## Supported versions
 
-Because MongoDB contains unstructured data, Metabase takes a different approach to syncing your database's metadata. To get a sense of the schema, Metabase will scan the first 10,000 documents of each collection in your MongoDB. This sampling helps Metabase do things like differentiate datetime fields from string fields, and provide people with pre-populated filters. The reason Metabase only scans a sample of the documents is because scanning every document in every collection on every sync would be put too much strain on your database. And while the sampling does a pretty good job keeping Metabase up to date, it can also mean that new fields can sometimes fall through the cracks, leading to visualization issues, or even fields failing to appear in your results. For more info, check out our [troubleshooting guide](../../troubleshooting-guide/db-connection.md).
+Metabase supports the oldest supported version of MongoDB through the latest stable version. See [MongoDB Software Lifecycle Schedules](https://www.mongodb.com/legal/support-policy/lifecycles).
 
 ## Connecting to MongoDB
-
-Go to Admin -> Databases, and click the **Add database** button. Select MongoDB from the dropdown, and enter your desired **Display name** for this database.
 
 There are two ways to connect to MongoDB:
 
@@ -54,17 +52,15 @@ If you need to use a certificate, connect via the [default method](#using-metaba
 ### Settings common to both connection options
 
 - **Use an SSH tunnel**: Some database installations can only be accessed by connecting through an SSH bastion host. This option also provides an extra layer of security when a VPN is not available. Enabling this is usually slower than a direct connection.
-- **Rerun queries for simple exploration**: When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.
-- **Choose when syncs and scans happen**: By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.
+- **Rerun queries for simple exploration**: When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn't affect drill-throughs or SQL queries.
+- **Choose when syncs and scans happen**: See [syncs and scans](../sync-scan.md#choose-when-syncs-and-scans-happen).
 - **Periodically refingerprint tables**: This setting — disabled by default — enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.
 
 ## Connecting to a MongoDB Atlas cluster
 
-> You can use Metabase with Atlas Dedicated and Shared clusters. Metabase does not currently support Atlas Serverless.
-
 ### Whitelist IP addresses
 
-If you are using Metabase Cloud, you'll need to whitelist [Metabase Cloud IP addresses](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist) in your Atlas cluster. If you are using self-hosted Metabase, you'll need to whitelist the IP of your Metabase instance.
+If you are using Metabase Cloud, you'll need to whitelist [Metabase Cloud IP addresses](../../cloud/ip-addresses-to-whitelist.md) in your Atlas cluster. If you are using self-hosted Metabase, you'll need to whitelist the IP of your Metabase instance.
 
 1. Log into your [Atlas cluster](https://cloud.mongodb.com)
 2. Go to **Network Access**
@@ -114,7 +110,11 @@ Then, start Metabase using the store:
 java -Djavax.net.ssl.trustStore=cacerts.jks -Djavax.net.ssl.trustStorePassword=changeit -jar metabase.jar
 ```
 
-Learn more about [configuring SSL with MongoDB](http://mongodb.github.io/mongo-java-driver/3.0/driver/reference/connecting/ssl/).
+Learn more about [configuring SSL with MongoDB](https://mongodb.github.io/mongo-java-driver/3.0/driver/reference/connecting/ssl/).
+
+## How Metabase syncs data in MongoDB
+
+Because MongoDB contains unstructured data, Metabase takes a different approach to syncing your database's metadata. To get a sense of the schema, Metabase will query the first and last 500 documents (most of the calculation is done in MongoDB). This sampling helps Metabase do things like differentiate datetime fields from string fields, and provide people with pre-populated filters. Metabase also syncs 1,000 leaf fields (fields at the deepest nesting level) per MongoDB collection. The reason Metabase only scans a sample of the documents is because scanning every document in every collection on every sync would put too much strain on your database. And while the sampling does a pretty good job keeping Metabase up to date, it can also mean that new fields can sometimes fall through the cracks, leading to visualization issues, or even fields failing to appear in your results. For more info, check out our [troubleshooting guide](../../troubleshooting-guide/db-connection.md).
 
 ## General connectivity concerns
 
@@ -129,6 +129,16 @@ Metabase may not sync all of your fields. Since any document in a MongoDB collec
 Instead, Metabase gets a sample of the fields in a collection by scanning a sample of 1000 documents in each collection (the first 500 documents and the last 500 documents in each collection).
 
 If you're not seeing all of the fields show up for a collection in Metabase, one workaround is to include all possible keys in the first document of the collection, and give those keys null values. That way, Metabase will be able to recognize the correct schema for the entire collection.
+
+## Database routing
+
+With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
+
+See [Database routing](../../permissions/database-routing.md).
+
+## Danger zone
+
+See [Danger zone](../danger-zone.md).
 
 ## Further reading
 

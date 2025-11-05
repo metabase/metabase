@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 export const ChunkyListItem = styled.button<{
@@ -11,6 +13,7 @@ export const ChunkyListItem = styled.button<{
     isSelected ? "var(--mb-color-brand)" : "var(--mb-color-bg-white)"};
   color: ${({ isSelected }) =>
     isSelected ? "var(--mb-color-text-white)" : "var(--mb-color-text-dark)"};
+  outline-offset: -3px;
 
   &:hover {
     ${({ isSelected }) =>

@@ -39,7 +39,7 @@ Something may have changed on the database side (if you were previously connecte
 
 ## Check table access
 
-To make sure that your table is actually queryable by Metabase:
+To make sure that your table is queryable by Metabase:
 
 1. Go to the Metabase [SQL editor](../questions/native-editor/writing-sql.md).
 2. Look for your table:
@@ -50,7 +50,7 @@ To make sure that your table is actually queryable by Metabase:
 
 If there's a problem with your table name or database permissions, you'll get an error message like:
 
-- [Table not found](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-syntax#column-or-table-name-is-not-found-or-not-recognized)
+- [Table not found](https://www.metabase.com/learn/sql/debugging-sql/sql-syntax#column-or-table-name-is-not-found-or-not-recognized)
 - [Permission denied](./data-permissions.md#getting-a-permission-denied-error-message)
 
 For less common errors, try searching or asking the [Metabase community](https://discourse.metabase.com/).
@@ -86,7 +86,7 @@ MongoDB lets you "successfully connect" to any collection name, even if the coll
 ## Related topics
 
 - [Table visibility](../data-modeling/metadata-editing.md#table-visibility).
-- [My data sandboxes aren't working](./sandboxing.md).
+- [Row and column security isn't working](./row-and-column-security.md)
 - [I can't view or edit a question or dashboard](./cant-view-or-edit.md).
 - [My visualizations are wrong](./visualization.md).
 

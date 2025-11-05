@@ -1,6 +1,7 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Radio from "metabase/core/components/Radio";
+import Radio from "metabase/common/components/Radio";
 
 export const SectionContainer = styled.div`
   width: 100%;
@@ -26,14 +27,9 @@ export const SectionContainer = styled.div`
   }
 `;
 
-export const ChartSettingsMenu = styled.div`
-  flex: 1 0 0;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-`;
-
 export const ChartSettingsListContainer = styled.div`
   position: relative;
   padding: 1.5rem 0;
+  flex: 1;
+  overflow: auto;
 `;

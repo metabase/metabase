@@ -1,3 +1,5 @@
+import { Route } from "react-router";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCardEndpoints,
@@ -238,7 +240,7 @@ export function setup({
   }
 
   const mockMetricResults = mockMetrics.map(createMockMetricResult);
-  const mockRecentMetrics = mockMetrics.map(metric =>
+  const mockRecentMetrics = mockMetrics.map((metric) =>
     createMockRecentMetric(metric as RecentMetric),
   );
 
@@ -259,5 +261,17 @@ export function setup({
     setupCardQueryEndpoints(card, TEST_DATASET);
   }
 
-  return renderWithProviders(<BrowseMetrics />, { storeInitialState: state });
+  return renderWithProviders(
+    <>
+      <Route path="/" component={() => <BrowseMetrics />} />
+      <Route
+        path="/metric/:slug"
+        component={() => <div data-testid="metric-detail-page" />}
+      />
+    </>,
+    {
+      storeInitialState: state,
+      withRouter: true,
+    },
+  );
 }

@@ -4,23 +4,18 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.config :as config]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.util.match :as lib.util.match]
-   [metabase.public-settings :as public-settings]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util :as qp.util]
-   [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
-   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -39,13 +34,23 @@
 
 (driver/register! :redshift, :parent #{:postgres})
 
-(doseq [[feature supported?] {:connection-impersonation  true
-                              :describe-fields           true
-                              :describe-fks              true
-                              :identifiers-with-spaces   false
-                              :uuid-type                 false
-                              :nested-field-columns      false
-                              :test/jvm-timezone-setting false}]
+(doseq [[feature supported?] {:connection-impersonation       true
+                              :describe-fields                true
+                              :describe-fks                   true
+                              :rename                         true
+                              :atomic-renames                 true
+                              :expression-literals            true
+                              :identifiers-with-spaces        false
+                              :uuid-type                      false
+                              :nested-field-columns           false
+                              :test/jvm-timezone-setting      false
+                              :database-routing               true
+                              :metadata/table-existence-check true
+                              :transforms/python              true
+                              :transforms/table               true
+                              :describe-default-expr          false
+                              :describe-is-generated          false
+                              :describe-is-nullable           false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -53,9 +58,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Skip the postgres implementation of describe fields as it has to handle custom enums which redshift doesn't support.
-(defmethod driver/describe-fields :redshift
+(defmethod sql-jdbc.sync/describe-fields-pre-process-xf :redshift
   [driver database & args]
-  (apply (get-method driver/describe-fields :sql-jdbc) driver database args))
+  (apply (get-method sql-jdbc.sync/describe-fields-pre-process-xf :sql-jdbc) driver database args))
+
+;; Skip the postgres implementation  as it has to handle custom enums which redshift doesn't support.
+(defmethod driver/dynamic-database-types-lookup :redshift
+  [driver database database-types]
+  ((get-method driver/dynamic-database-types-lookup :sql-jdbc) driver database database-types))
 
 (def ^:private get-tables-sql
   ;; Cal 2024-04-09 This query uses tables that the JDBC redshift driver currently uses.
@@ -104,26 +114,26 @@
   (let [[inclusion-patterns
          exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
         syncable? (fn [schema]
-                    (driver.s/include-schema? inclusion-patterns exclusion-patterns schema))]
+                    (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns exclusion-patterns schema))]
     (eduction
      (comp (filter (comp syncable? :schema))
            (map #(dissoc % :type)))
      (sql-jdbc.execute/reducible-query database get-tables-sql))))
 
-(defmethod driver/describe-database :redshift
+(defmethod driver/describe-database* :redshift
   [driver database]
   ;; TODO: change this to return a reducible so we don't have to hold 100k tables in memory in a set like this
   ;;
   ;; Redshift sync is super duper flaky and un-robust! This auto-retry is a temporary workaround until we can actually
   ;; fix #45874
   (try
-    (u/auto-retry (if config/is-prod? 2 5)
+    (u/auto-retry (if driver-api/is-prod? 2 5)
       (try
         {:tables (into #{} (describe-database-tables database))}
         (catch Throwable e
           ;; during test/REPL runs, wait a second before throwing the exception, that way when we do our retry there is
           ;; a better chance of it succeeding.
-          (when-not config/is-prod?
+          (when-not driver-api/is-prod?
             (Thread/sleep 1000))
           (throw e))))
     (catch Throwable e
@@ -162,8 +172,8 @@
                             [:= :c.column_name :pk.column_name]]]
                :where [:and
                        [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
-                       (when schema-names [:in :c.table_schema schema-names])
-                       (when table-names [:in :c.table_name table-names])]
+                       (when schema-names [:in :c.table_schema (map u/lower-case-en schema-names)])
+                       (when table-names [:in :c.table_name (map u/lower-case-en table-names)])]
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
 
@@ -177,6 +187,46 @@
 
 ;; custom Redshift type handling
 
+(defn- external-database-type->base-type
+  "Additional type mappings of external columns. Return nil when no matching type is found."
+  [database-type]
+  (when (or (string? database-type)
+            (instance? clojure.lang.Named database-type))
+    (let [stn  (-> (name database-type) ; sanitized-type-name
+                   (u/lower-case-en))]
+      ;; Following is inspired by mysql docs and redshift jdbc driver code: https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java#L3414-L3448
+      (cond
+        (str/starts-with? stn "tinyint")   :type/Integer
+        (str/starts-with? stn "smallint")  :type/Integer
+        (str/starts-with? stn "mediumint") :type/Integer
+        (str/starts-with? stn "int")       :type/Integer
+        (str/starts-with? stn "bigint")    :type/BigInteger
+
+        (str/starts-with? stn "float")     :type/Float
+        (str/starts-with? stn "double")    :type/Float
+
+        (and (or (str/starts-with? stn "char")
+                 (str/starts-with? stn "varchar")
+                 (str/starts-with? stn "text"))
+             (re-find #"character set binary" stn))         :type/*
+
+        (str/starts-with? stn "char")                       :type/Text
+        (str/starts-with? stn "varchar")                    :type/Text
+        (str/starts-with? stn "text")                       :type/Text
+        ;; https://dev.mysql.com/doc/refman/8.4/en/charset-national.html
+        (str/starts-with? stn "national varchar")           :type/Text
+        (str/starts-with? stn "nvarchar")                   :type/Text
+        (str/starts-with? stn "nchar varchar")              :type/Text
+        (str/starts-with? stn "national character varying") :type/Text
+        (str/starts-with? stn "national char varying")      :type/Text
+
+        (str/starts-with? stn "tinytext")   :type/Text
+        (str/starts-with? stn "mediumtext") :type/Text
+        (str/starts-with? stn "longtext")   :type/Text
+
+        (= stn "datetime")                  :type/DateTime
+        (= stn "year")                      :type/Integer))))
+
 (def ^:private database-type->base-type
   (some-fn (sql-jdbc.sync/pattern-based-database-type->base-type
             [[#"(?i)CHARACTER VARYING" :type/Text]       ; Redshift uses CHARACTER VARYING (N) as a synonym for VARCHAR(N)
@@ -186,12 +236,18 @@
             :geometry    :type/*    ; spatial data
             :geography   :type/*    ; spatial data
             :intervaly2m :type/*    ; interval literal
-            :intervald2s :type/*})) ; interval literal
+            :intervald2s :type/*}   ; interval literal
+           ))
 
 (defmethod sql-jdbc.sync/database-type->base-type :redshift
   [driver column-type]
   (or (database-type->base-type column-type)
-      ((get-method sql-jdbc.sync/database-type->base-type :postgres) driver column-type)))
+      (let [assumed-type ((get-method sql-jdbc.sync/database-type->base-type :postgres) driver column-type)]
+        (if-not (contains? #{nil :type/*} assumed-type)
+          assumed-type
+          (if-some [external-assumed-type (external-database-type->base-type column-type)]
+            external-assumed-type
+            assumed-type)))))
 
 (defmethod sql.qp/add-interval-honeysql-form :redshift
   [_ hsql-form amount unit]
@@ -201,13 +257,15 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:redshift :seconds]
   [_ _ expr]
-  (h2x/+ [:raw "TIMESTAMP '1970-01-01T00:00:00Z'"]
-         (h2x/* expr
-                [:raw "INTERVAL '1 second'"])))
+  (h2x/with-database-type-info
+   (h2x/+ [:raw "TIMESTAMP '1970-01-01T00:00:00Z'"]
+          (h2x/* expr
+                 [:raw "INTERVAL '1 second'"]))
+   :timestamp))
 
 (defmethod sql.qp/current-datetime-honeysql-form :redshift
-  [_]
-  :%getdate)
+  [_driver]
+  :%getdate) ; TODO -- this should include type info
 
 (defmethod sql-jdbc.execute/set-timezone-sql :redshift
   [_]
@@ -222,12 +280,13 @@
    db-or-id-or-spec
    options
    (fn [^Connection conn]
+     (let [db (cond (integer? db-or-id-or-spec) (driver-api/with-metadata-provider db-or-id-or-spec
+                                                  (driver-api/database (driver-api/metadata-provider)))
+                    (u/id db-or-id-or-spec)     db-or-id-or-spec)]
+       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
-       (sql-jdbc.execute/set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (qp.store/with-metadata-provider db-or-id-or-spec
-                                                                                                (lib.metadata/database (qp.store/metadata-provider)))
-                                                                  (u/id db-or-id-or-spec)     db-or-id-or-spec))
        (try
          (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
          (catch Throwable e
@@ -269,7 +328,7 @@
    ;; the parameter to REGEXP_SUBSTR can only be a string literal; neither prepared statement parameters nor encoding/
    ;; decoding functions seem to work (fails with java.sql.SQLExcecption: "The pattern must be a valid UTF-8 literal
    ;; character expression"), hence we will use a different function to safely escape it before splicing here
-   [:raw (quote-literal-for-database driver (lib.metadata/database (qp.store/metadata-provider)) pattern)]])
+   [:raw (quote-literal-for-database driver (driver-api/database (driver-api/metadata-provider)) pattern)]])
 
 (defmethod sql.qp/->honeysql [:redshift :replace]
   [driver [_ arg pattern replacement]]
@@ -289,6 +348,14 @@
                    [:concat x y]
                    y))
                nil)))
+
+(defmethod sql.qp/->honeysql [:redshift :avg]
+  [driver [_ field]]
+  [:avg [:cast (sql.qp/->honeysql driver field) :float]])
+
+(defmethod sql.qp/->integer :redshift
+  [driver value]
+  (sql.qp/->integer-with-round driver value))
 
 (defn- extract [unit temporal]
   [::h2x/extract (format "'%s'" (name unit)) temporal])
@@ -310,7 +377,7 @@
 
 (defmethod sql.qp/->honeysql [:redshift :relative-datetime]
   [driver [_ amount unit]]
-  (qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql driver unit amount))
+  (driver-api/maybe-cacheable-relative-datetime-honeysql driver unit amount))
 
 (defmethod sql.qp/->honeysql [:redshift java.time.LocalDate]
   [_driver t]
@@ -389,20 +456,27 @@
   [_driver _unit x y]
   (h2x/- (extract :epoch y) (extract :epoch x)))
 
+(defmethod sql.qp/->honeysql [:redshift ::sql.qp/expression-literal-text-value]
+  [driver [_ value]]
+  (->> (sql.qp/->honeysql driver value)
+       (h2x/cast :text)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql-jdbc.conn/connection-details->spec :redshift
-  [_ {:keys [host port db], :as opts}]
+  [_ {:keys [host port db dbname], :as opts}]
+  (when (and db dbname)
+    (log/warn "Redshift connection details should not contain both 'db' and 'dbname' options. Ignoring 'dbname'."))
   (sql-jdbc.common/handle-additional-options
    (merge
     {:classname                     "com.amazon.redshift.jdbc42.Driver"
      :subprotocol                   "redshift"
-     :subname                       (str "//" host ":" port "/" db)
+     :subname                       (str "//" host ":" port "/" (or db dbname))
      :ssl                           true
      :OpenSourceSubProtocolOverride false}
-    (dissoc opts :host :port :db))))
+    (dissoc opts :host :port :db :dbname))))
 
 (prefer-method
  sql-jdbc.execute/read-column-thunk
@@ -436,24 +510,24 @@
                 (if (contains? param :name)
                   [(:name param) (:value param)]
 
-                  (when-let [field-id (lib.util.match/match-one param
+                  (when-let [field-id (driver-api/match-one param
                                         [:field (field-id :guard integer?) _]
                                         (when (contains? (set &parents) :dimension)
                                           field-id))]
-                    [(:name (lib.metadata/field (qp.store/metadata-provider) field-id))
+                    [(:name (driver-api/field (driver-api/metadata-provider) field-id))
                      (:value param)]))))
         user-parameters))
 
-(defmethod qp.util/query->remark :redshift
+(defmethod driver-api/query->remark :redshift
   [_ {{:keys [executed-by card-id dashboard-id]} :info, :as query}]
   (str "/* partner: \"metabase\", "
        (json/encode {:dashboard_id        dashboard-id
                      :chart_id            card-id
                      :optional_user_id    executed-by
-                     :optional_account_id (public-settings/site-uuid)
+                     :optional_account_id (driver-api/site-uuid)
                      :filter_values       (field->parameter-value query)})
        " */ "
-       (qp.util/default-query->remark query)))
+       (driver-api/default-query->remark query)))
 
 (defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
   [driver ps i t]
@@ -462,16 +536,39 @@
 (defmethod driver/upload-type->database-type :redshift
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar-255              [[:varchar 255]]
-    ::upload/text                     [[:varchar 65535]]
-    ::upload/int                      [:bigint]
+    :metabase.upload/varchar-255              [[:varchar 255]]
+    :metabase.upload/text                     [[:varchar 65535]]
+    :metabase.upload/int                      [:bigint]
     ;; identity(1, 1) defines an auto-increment column starting from 1
-    ::upload/auto-incrementing-int-pk [:bigint [:identity 1 1]]
-    ::upload/float                    [(keyword "double precision")]
-    ::upload/boolean                  [:boolean]
-    ::upload/date                     [:date]
-    ::upload/datetime                 [:timestamp]
-    ::upload/offset-datetime          [:timestamp-with-time-zone]))
+    :metabase.upload/auto-incrementing-int-pk [:bigint [:identity 1 1]]
+    :metabase.upload/float                    [(keyword "double precision")]
+    :metabase.upload/boolean                  [:boolean]
+    :metabase.upload/date                     [:date]
+    :metabase.upload/datetime                 [:timestamp]
+    :metabase.upload/offset-datetime          [:timestamp-with-time-zone]))
+
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for Redshift that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/TextLike [_] [[:varchar 65535]])
+(defmethod type->database-type :type/Text [_] [[:varchar 65535]])
+(defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/BigInteger [_] [:bigint])
+(defmethod type->database-type :type/Integer [_] [:integer])
+(defmethod type->database-type :type/Float [_] [(keyword "double precision")])
+(defmethod type->database-type :type/Boolean [_] [:boolean])
+(defmethod type->database-type :type/Date [_] [:date])
+(defmethod type->database-type :type/DateTime [_] [:timestamp])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:timestamp-with-time-zone])
+(defmethod type->database-type :type/Time [_] [:time])
+
+(defmethod driver/type->database-type :redshift
+  [_driver base-type]
+  (type->database-type base-type))
+
+(defmethod driver/allowed-promotions :redshift [_] {})
 
 (defmethod driver/table-name-length-limit :redshift
   [_driver]
@@ -538,9 +635,26 @@
     (doseq [[k v] column-definitions]
       (f driver db-id table-name {k v} settings))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/alter-columns! :redshift
   [_driver _db-id _table-name column-definitions]
   ;; TODO: redshift doesn't allow promotion of ints to floats using ALTER TABLE.
   (let [[column-name type-and-constraints] (first column-definitions)
         type (first type-and-constraints)]
     (throw (ex-info (format "There's a value with the wrong type ('%s') in the '%s' column" (name type) (name column-name)) {}))))
+
+(defmethod sql.qp/cast-temporal-byte [:redshift :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:from_varbyte expr (h2x/literal "UTF8")]))
+
+(defmethod sql.qp/cast-temporal-byte [:redshift :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
+                               [:from_varbyte expr (h2x/literal "UTF8")]))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :redshift
+  [_ e]
+  ;; https://docs.aws.amazon.com/redshift/latest/mgmt/rsql-query-tool-error-codes.html
+  ;; 42P01: undefined_table, 3F000: invalid_schema_name
+  (contains? #{"42P01" "3F000"} (sql-jdbc/get-sql-state e)))

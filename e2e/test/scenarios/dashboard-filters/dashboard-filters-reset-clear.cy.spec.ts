@@ -1,10 +1,13 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { checkNotNull } from "metabase/lib/types";
+import type {
+  DashboardDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { LocalFieldReference } from "metabase-types/api";
 
@@ -43,7 +46,7 @@ const PEOPLE_CITY_FIELD: LocalFieldReference = [
   },
 ];
 
-const ORDERS_COUNT_OVER_TIME: H.StructuredQuestionDetails = {
+const ORDERS_COUNT_OVER_TIME: StructuredQuestionDetails = {
   display: "line",
   query: {
     "source-table": ORDERS_ID,
@@ -52,14 +55,14 @@ const ORDERS_COUNT_OVER_TIME: H.StructuredQuestionDetails = {
   },
 };
 
-const PEOPLE_QUESTION: H.StructuredQuestionDetails = {
+const PEOPLE_QUESTION: StructuredQuestionDetails = {
   query: {
     "source-table": PEOPLE_ID,
     limit: 1,
   },
 };
 
-const ORDERS_QUESTION: H.StructuredQuestionDetails = {
+const ORDERS_QUESTION: StructuredQuestionDetails = {
   query: {
     "source-table": ORDERS_ID,
     limit: 1,
@@ -229,17 +232,38 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
 
     checkDashboardParameters({
       defaultValueFormatted: "Bassett",
-      otherValue: "{backspace}Thomson",
-      otherValueFormatted: "Thomson",
+      otherValue: "{backspace}Dike",
+      otherValueFormatted: "Dike",
       setValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").clear().type(value).blur();
-        H.popover().button("Add filter").click();
+        H.dashboardParametersPopover().within(() => {
+          H.fieldValuesTextbox().type(`${value}`).blur();
+          cy.button("Add filter").click();
+        });
       },
       updateValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").clear().type(value).blur();
-        H.popover().button("Update filter").click();
+        H.dashboardParametersPopover().within(() => {
+          H.fieldValuesTextbox().type(`{selectAll}{backspace}${value}`).blur();
+          cy.button("Update filter").click();
+        });
+      },
+      setDefaultValue: (label, value) => {
+        filter(label).click();
+        H.dashboardParametersPopover().within(() => {
+          cy.findByPlaceholderText("Search the list").type(value);
+          // select filtered value
+          cy.findByRole("listitem").click();
+          cy.button("Add filter").click();
+        });
+      },
+      updateDefaultValue: (label, value) => {
+        filter(label).click();
+        H.dashboardParametersPopover().within(() => {
+          cy.findByPlaceholderText("Search the list").type(value);
+          cy.findByRole("listitem").click();
+          cy.button("Update filter").click();
+        });
       },
     });
   });
@@ -274,17 +298,44 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
 
     checkDashboardParameters({
       defaultValueFormatted: "2 selections",
-      otherValue: "{backspace}{backspace}Washington,",
-      otherValueFormatted: "Washington",
+      otherValue: "{backspace}{backspace}Dike",
+      otherValueFormatted: "Dike",
       setValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").focus().type(value).blur();
-        H.popover().button("Add filter").click();
+        H.dashboardParametersPopover().within(() => {
+          H.fieldValuesCombobox().type(value).blur();
+          cy.button("Add filter").click();
+        });
       },
       updateValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").clear().type(value).blur();
-        H.popover().button("Update filter").click();
+        H.dashboardParametersPopover().within(() => {
+          H.fieldValuesCombobox().type(value).blur();
+          cy.button("Update filter").click();
+        });
+      },
+      // we use setDefaultValue here as e2e tests setup shows options
+      // differently than in UI and with a local sample database. Maybe it's a
+      // sign of a bug in setup
+      setDefaultValue: (label, value) => {
+        filter(label).click();
+        H.dashboardParametersPopover().within(() => {
+          cy.findByPlaceholderText("Search the list").type(value);
+          // select filtered value
+          cy.findAllByRole("checkbox").should("have.length", 2);
+          cy.findAllByRole("checkbox").eq(1).click();
+          cy.button("Add filter").click();
+        });
+      },
+      updateDefaultValue: (label, value) => {
+        filter(label).click();
+        H.dashboardParametersPopover().within(() => {
+          cy.findByPlaceholderText("Search the list").type(value);
+          // select filtered value
+          cy.findAllByRole("checkbox").should("have.length", 2);
+          cy.findAllByRole("checkbox").eq(1).click();
+          cy.button("Update filter").click();
+        });
       },
     });
   });
@@ -321,18 +372,22 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     ]);
 
     checkDashboardParameters({
-      defaultValueFormatted: "1",
+      defaultValueFormatted: "Hudson Borer - 1",
       otherValue: "{backspace}2",
-      otherValueFormatted: "2",
+      otherValueFormatted: "Domenica Williamson - 2",
       setValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").focus().type(value).blur();
-        H.popover().button("Add filter").click();
+        H.dashboardParametersPopover().within(() => {
+          H.fieldValuesTextbox().type(value).blur();
+          cy.button("Add filter").click();
+        });
       },
       updateValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").clear().type(value).blur();
-        H.popover().button("Update filter").click();
+        H.dashboardParametersPopover().within(() => {
+          H.fieldValuesTextbox().type(value).blur();
+          cy.button("Update filter").click();
+        });
       },
     });
   });
@@ -368,16 +423,20 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     checkDashboardParameters({
       defaultValueFormatted: "2 selections",
       otherValue: "{backspace}{backspace}3",
-      otherValueFormatted: "3",
+      otherValueFormatted: "Lina Heaney - 3",
       setValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").focus().type(value).blur();
-        H.popover().button("Add filter").click();
+        H.dashboardParametersPopover().within(() => {
+          H.fieldValuesCombobox().type(value).blur();
+          cy.button("Add filter").click();
+        });
       },
       updateValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("searchbox").clear().type(value).blur();
-        H.popover().button("Update filter").click();
+        H.dashboardParametersPopover().within(() => {
+          H.fieldValuesCombobox().type(value).blur();
+          cy.button("Update filter").click();
+        });
       },
     });
   });
@@ -411,9 +470,9 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     ]);
 
     checkDashboardParameters({
-      defaultValueFormatted: "1",
+      defaultValueFormatted: "Hudson Borer - 1",
       otherValue: "{backspace}2",
-      otherValueFormatted: "2",
+      otherValueFormatted: "Domenica Williamson - 2",
       setValue: (label, value) => {
         filter(label).click();
         H.popover().findByRole("textbox").focus().type(value).blur();
@@ -501,16 +560,18 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
 
     checkDashboardParameters({
       defaultValueFormatted: "Gizmo",
-      otherValue: "{backspace}Gadget,",
+      otherValue: "{selectAll}{backspace}Gadget",
       otherValueFormatted: "Gadget",
       setValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("combobox").type(value);
+        H.popover().findByRole("textbox").type(value).blur();
+        H.popover().findByRole("listitem").eq(0).click();
         H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("combobox").type(value);
+        H.popover().findByRole("textbox").type(value);
+        H.popover().findByRole("listitem").eq(0).click();
         H.popover().button("Update filter").click();
       },
     });
@@ -546,16 +607,34 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
 
     checkDashboardParameters({
       defaultValueFormatted: "2 selections",
-      otherValue: "{backspace}{backspace}Doohickey,Widget,",
+      otherValue: "Doohickey,Widget,",
       otherValueFormatted: "2 selections",
       setValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("combobox").type(value);
+        H.popover().within(() => {
+          value
+            .split(",")
+            .filter(Boolean)
+            .forEach((value) => {
+              cy.findAllByRole("listitem").contains(value).click();
+            });
+        });
+        // H.popover().findByRole("textbox").type(value);
         H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("combobox").type(value);
+        H.popover().within(() => {
+          cy.findAllByRole("listitem").contains("Select all").click();
+          cy.findAllByRole("listitem").contains("Select all").click();
+
+          value
+            .split(",")
+            .filter(Boolean)
+            .forEach((value) => {
+              cy.findAllByRole("listitem").contains(value).click();
+            });
+        });
         H.popover().button("Update filter").click();
       },
     });
@@ -599,7 +678,7 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
     cy.signInAsAdmin();
   });
 
-  describe("resetting to empty value", () => {
+  describe("resetting to empty value", { tags: "@flaky" }, () => {
     it("works across all tabs with 'auto-apply filters' on", () => {
       createDashboardWithParameterInEachTab({
         autoApplyFilters: true,
@@ -610,15 +689,19 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
       });
     });
 
-    it("works across all tabs with 'auto-apply filters' off", () => {
-      createDashboardWithParameterInEachTab({
-        autoApplyFilters: false,
-        parameters: [PARAMETER_A, PARAMETER_B],
-      });
-      checkResetAllFiltersWorksAcrossTabs({
-        autoApplyFilters: false,
-      });
-    });
+    it(
+      "works across all tabs with 'auto-apply filters' off",
+      { tags: "@flaky" },
+      () => {
+        createDashboardWithParameterInEachTab({
+          autoApplyFilters: false,
+          parameters: [PARAMETER_A, PARAMETER_B],
+        });
+        checkResetAllFiltersWorksAcrossTabs({
+          autoApplyFilters: false,
+        });
+      },
+    );
   });
 
   describe("resetting to default value", () => {
@@ -630,34 +713,116 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
       checkResetAllFiltersToDefaultWorksAcrossTabs({ autoApplyFilters: true });
     });
 
-    it("works across all tabs with 'auto-apply filters' off", () => {
-      createDashboardWithParameterInEachTab({
-        autoApplyFilters: false,
-        parameters: [PARAMETER_A_DEFAULT_VALUE, PARAMETER_B_DEFAULT_VALUE],
+    it(
+      "works across all tabs with 'auto-apply filters' off",
+      { tags: "@flaky" },
+      () => {
+        createDashboardWithParameterInEachTab({
+          autoApplyFilters: false,
+          parameters: [PARAMETER_A_DEFAULT_VALUE, PARAMETER_B_DEFAULT_VALUE],
+        });
+        checkResetAllFiltersToDefaultWorksAcrossTabs({
+          autoApplyFilters: false,
+        });
+      },
+    );
+  });
+
+  describe("issue 46177", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("should update value inside popover when resetting value to default (metabase#46177)", () => {
+      const ORDERS_QUESTION = {
+        name: "Orders question",
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 5,
+        },
+      };
+
+      const targetField: LocalFieldReference = ["field", ORDERS.TAX, null];
+      const numberFilter = {
+        name: "Number filter",
+        slug: "number_filter",
+        id: "10c0d4bc",
+        type: "number/=",
+        sectionId: "number",
+        default: 2.9,
+      };
+
+      createDashboardWithParameters(ORDERS_QUESTION, targetField, [
+        numberFilter,
+      ]);
+
+      cy.log("update filter value");
+
+      filter(numberFilter.name).click();
+      cy.findByTestId("token-field").findByLabelText("Remove").click();
+      cy.findByTestId("token-field").findByRole("combobox").type("3");
+      cy.realPress("Tab");
+      H.popover().findByText("Update filter").click();
+
+      filter(numberFilter.name).findByText("3").should("exist");
+
+      cy.log("reset value to default with filter widget open");
+      filter(numberFilter.name).click();
+      cy.findByRole("dialog").should("be.visible");
+      filter(numberFilter.name).icon("revert").click();
+
+      filter(numberFilter.name)
+        .findByText(numberFilter.default)
+        .should("exist");
+      cy.findByRole("dialog").should("not.exist");
+    });
+  });
+
+  describe("issue 57388", () => {
+    it("should be possible to reset a required text filter to it's default value (metabase#57388)", () => {
+      const textFilter = {
+        name: "Filter",
+        slug: "filter",
+        id: "75d67d39",
+        type: "string/=",
+        required: true,
+        sectionId: "string",
+        default: ["Gizmo", "Gadget", "Widget", "Doohickey"],
+      };
+      createDashboardWithParameters(ORDERS_QUESTION, PRODUCTS_CATEGORY_FIELD, [
+        textFilter,
+      ]);
+
+      filter(textFilter.name).click();
+      H.popover().within(() => {
+        cy.findByText("Select all").click();
+        cy.findByText("Set to default").click();
       });
-      checkResetAllFiltersToDefaultWorksAcrossTabs({ autoApplyFilters: false });
+      H.filterWidget().eq(0).should("contain.text", "4 selections");
     });
   });
 });
 
 function createDashboardWithParameters(
-  questionDetails: H.StructuredQuestionDetails,
+  questionDetails: StructuredQuestionDetails,
   targetField: LocalFieldReference,
-  parameters: H.DashboardDetails["parameters"],
+  parameters: DashboardDetails["parameters"],
 ) {
   H.createQuestionAndDashboard({
     questionDetails,
     dashboardDetails: {
       parameters,
     },
-  }).then(({ body: { dashboard_id, card_id } }) => {
+  }).then(({ body: { dashboard_id }, questionId }) => {
     H.updateDashboardCards({
       dashboard_id,
       cards: [
         {
-          parameter_mappings: parameters?.map(parameter => ({
+          card_id: questionId,
+          parameter_mappings: parameters?.map((parameter) => ({
             parameter_id: parameter.id,
-            card_id: checkNotNull(card_id),
+            card_id: questionId,
             target: ["dimension", targetField],
           })),
         },
@@ -686,12 +851,16 @@ function checkDashboardParameters<T = string>({
   otherValueFormatted,
   setValue,
   updateValue = setValue,
+  setDefaultValue = setValue,
+  updateDefaultValue = updateValue,
 }: {
   defaultValueFormatted: string;
   otherValue: T;
   otherValueFormatted: string;
   setValue: (label: string, value: T) => void;
   updateValue?: (label: string, value: T) => void;
+  setDefaultValue?: (label: string, value: T) => void;
+  updateDefaultValue?: (label: string, value: T) => void;
 }) {
   cy.log("no default value, non-required, no current value");
   checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
@@ -699,14 +868,18 @@ function checkDashboardParameters<T = string>({
 
   cy.log("no default value, non-required, has current value");
   setValue(NO_DEFAULT_NON_REQUIRED, otherValue);
-  filter(NO_DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
+  filter(NO_DEFAULT_NON_REQUIRED).should("contain.text", otherValueFormatted);
   checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "clear");
   checkResetAllFiltersShown();
 
   // reset all filters
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
-  filter(NO_DEFAULT_NON_REQUIRED).should("have.text", NO_DEFAULT_NON_REQUIRED);
+  filter(NO_DEFAULT_NON_REQUIRED).should(
+    "contain.text",
+    NO_DEFAULT_NON_REQUIRED,
+  );
+
   checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
   checkResetAllFiltersHidden();
 
@@ -715,17 +888,22 @@ function checkDashboardParameters<T = string>({
 
   // clear with status button
   clearButton(NO_DEFAULT_NON_REQUIRED).click();
-  filter(NO_DEFAULT_NON_REQUIRED).should("have.text", NO_DEFAULT_NON_REQUIRED);
+  filter(NO_DEFAULT_NON_REQUIRED).should(
+    "contain.text",
+    NO_DEFAULT_NON_REQUIRED,
+  );
+
   checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
   checkResetAllFiltersHidden();
 
   cy.log("has default value, non-required, current value same as default");
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
-  filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+  filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
+
   checkResetAllFiltersHidden();
 
   clearButton(DEFAULT_NON_REQUIRED).click();
-  filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
+  filter(DEFAULT_NON_REQUIRED).should("contain.text", DEFAULT_NON_REQUIRED);
   checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
   checkResetAllFiltersShown();
 
@@ -733,34 +911,37 @@ function checkDashboardParameters<T = string>({
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
-  filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+  filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
 
   // revert so that we can try resetting with status button as well
   clearButton(DEFAULT_NON_REQUIRED).click();
 
   cy.log("has default value, non-required, no current value");
-  filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
+  filter(DEFAULT_NON_REQUIRED).should("contain.text", DEFAULT_NON_REQUIRED);
   checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
   checkResetAllFiltersShown();
 
   // reset with status button
   resetButton(DEFAULT_NON_REQUIRED).click();
-  filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+  filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
+
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
   checkResetAllFiltersHidden();
 
   cy.log(
     "has default value, non-required, current value different than default",
   );
+
   updateValue(DEFAULT_NON_REQUIRED, otherValue);
-  filter(DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
+  filter(DEFAULT_NON_REQUIRED).should("contain.text", otherValueFormatted);
   checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
   checkResetAllFiltersShown();
 
   // reset all filters
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
-  filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+  filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
+
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
   checkResetAllFiltersHidden();
 
@@ -769,7 +950,8 @@ function checkDashboardParameters<T = string>({
 
   // reset with status button
   resetButton(DEFAULT_NON_REQUIRED).click();
-  filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+  filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
+
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
   checkResetAllFiltersHidden();
 
@@ -779,14 +961,14 @@ function checkDashboardParameters<T = string>({
 
   cy.log("has default value, required, current value different than default");
   updateValue(DEFAULT_REQUIRED, otherValue);
-  filter(DEFAULT_REQUIRED).should("have.text", otherValueFormatted);
+  filter(DEFAULT_REQUIRED).should("contain.text", otherValueFormatted);
   checkStatusIcon(DEFAULT_REQUIRED, "reset");
   checkResetAllFiltersShown();
 
   // reset all filters
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
-  filter(DEFAULT_REQUIRED).should("have.text", defaultValueFormatted);
+  filter(DEFAULT_REQUIRED).should("contain.text", defaultValueFormatted);
   checkStatusIcon(DEFAULT_REQUIRED, "none");
   checkResetAllFiltersHidden();
 
@@ -795,7 +977,7 @@ function checkDashboardParameters<T = string>({
 
   // reset with status button
   resetButton(DEFAULT_REQUIRED).click();
-  filter(DEFAULT_REQUIRED).should("have.text", defaultValueFormatted);
+  filter(DEFAULT_REQUIRED).should("contain.text", defaultValueFormatted);
   checkStatusIcon(DEFAULT_REQUIRED, "none");
   checkResetAllFiltersHidden();
 
@@ -803,8 +985,8 @@ function checkDashboardParameters<T = string>({
     defaultValueFormatted,
     otherValue,
     otherValueFormatted,
-    setValue,
-    updateValue,
+    setValue: setDefaultValue,
+    updateValue: updateDefaultValue,
   });
 }
 
@@ -828,54 +1010,54 @@ function checkParameterSidebarDefaultValue<T = string>({
   editFilter(NO_DEFAULT_NON_REQUIRED);
   H.dashboardParameterSidebar().within(() => {
     filter("Default value").scrollIntoView();
-    filter("Default value").should("have.text", "No default");
+    filter("Default value").findByText("No default");
     checkStatusIcon("Default value", "chevron");
   });
 
   setValue("Default value", otherValue);
 
   H.dashboardParameterSidebar().within(() => {
-    filter("Default value").should("have.text", otherValueFormatted);
+    filter("Default value").should("contain.text", otherValueFormatted);
     checkStatusIcon("Default value", "clear");
 
     clearButton("Default value").click();
-    filter("Default value").should("have.text", "No default");
+    filter("Default value").should("contain.text", "No default");
     checkStatusIcon("Default value", "chevron");
   });
 
   cy.log(DEFAULT_NON_REQUIRED);
   editFilter(DEFAULT_NON_REQUIRED);
   H.dashboardParameterSidebar().within(() => {
-    filter("Default value").should("have.text", defaultValueFormatted);
+    filter("Default value").should("contain.text", defaultValueFormatted);
     checkStatusIcon("Default value", "clear");
 
     clearButton("Default value").click();
-    filter("Default value").should("have.text", "No default");
+    filter("Default value").should("contain.text", "No default");
     checkStatusIcon("Default value", "chevron");
   });
 
   setValue("Default value", otherValue);
 
   H.dashboardParameterSidebar().within(() => {
-    filter("Default value").should("have.text", otherValueFormatted);
+    filter("Default value").should("contain.text", otherValueFormatted);
     checkStatusIcon("Default value", "clear");
   });
 
   cy.log(DEFAULT_REQUIRED);
   editFilter(DEFAULT_REQUIRED);
   H.dashboardParameterSidebar().within(() => {
-    filter("Default value").should("have.text", defaultValueFormatted);
+    filter("Default value").should("contain.text", defaultValueFormatted);
     checkStatusIcon("Default value", "clear");
 
     clearButton("Default value").click();
-    filter("Default value (required)").should("have.text", "No default");
+    filter("Default value (required)").should("contain.text", "No default");
     checkStatusIcon("Default value (required)", "chevron");
   });
 
   updateValue("Default value (required)", otherValue);
 
   H.dashboardParameterSidebar().within(() => {
-    filter("Default value").should("have.text", otherValueFormatted);
+    filter("Default value").should("contain.text", otherValueFormatted);
     checkStatusIcon("Default value", "clear");
   });
 }
@@ -925,7 +1107,7 @@ function createDashboardWithParameterInEachTab({
         ],
       },
     ],
-  }).then(dashboard => H.visitDashboard(dashboard.id));
+  }).then((dashboard) => H.visitDashboard(dashboard.id));
 }
 
 function checkResetAllFiltersWorksAcrossTabs({
@@ -934,14 +1116,14 @@ function checkResetAllFiltersWorksAcrossTabs({
   autoApplyFilters: boolean;
 }) {
   checkResetAllFiltersHidden();
-  filter(PARAMETER_A.name).should("have.text", PARAMETER_A.name);
+  filter(PARAMETER_A.name).findByText(PARAMETER_A.name).should("exist");
   H.getDashboardCard(0).findByText("37.65").should("be.visible");
   H.getDashboardCard(0).findByText("116.01").should("not.exist");
 
   addDateFilter(PARAMETER_A.name, "01/01/2024");
-  filter(PARAMETER_A.name).should("have.text", "January 1, 2024");
+  filter(PARAMETER_A.name).findByText("January 1, 2024").should("exist");
   if (!autoApplyFilters) {
-    cy.button("Apply").click();
+    H.applyFilterButton().click();
   }
   checkResetAllFiltersShown();
   H.getDashboardCard(0).findByText("116.01").should("be.visible");
@@ -949,26 +1131,26 @@ function checkResetAllFiltersWorksAcrossTabs({
 
   cy.findAllByTestId("tab-button-input-wrapper").eq(1).click();
   checkResetAllFiltersShown();
-  filter(PARAMETER_B.name).should("have.text", PARAMETER_B.name);
+  filter(PARAMETER_B.name).findByText(PARAMETER_B.name).should("exist");
   H.getDashboardCard(0).findByText("18,760").should("be.visible");
 
   addDateFilter(PARAMETER_B.name, "01/01/2023");
   if (!autoApplyFilters) {
-    cy.button("Apply").click();
+    H.applyFilterButton().click();
   }
   checkResetAllFiltersShown();
-  filter(PARAMETER_B.name).should("have.text", "January 1, 2023");
+  filter(PARAMETER_B.name).findByText("January 1, 2023").should("exist");
   H.getDashboardCard(0).findByText("5").should("be.visible");
 
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
   checkResetAllFiltersHidden();
-  filter(PARAMETER_B.name).should("have.text", PARAMETER_B.name);
+  filter(PARAMETER_B.name).findByText(PARAMETER_B.name).should("exist");
   H.getDashboardCard(0).findByText("18,760").should("be.visible");
 
   cy.findAllByTestId("tab-button-input-wrapper").eq(0).click();
   checkResetAllFiltersHidden();
-  filter(PARAMETER_A.name).should("have.text", PARAMETER_A.name);
+  filter(PARAMETER_A.name).findByText(PARAMETER_A.name).should("exist");
   H.getDashboardCard(0).findByText("37.65").should("be.visible");
   H.getDashboardCard(0).findByText("116.01").should("not.exist");
 }
@@ -979,14 +1161,14 @@ function checkResetAllFiltersToDefaultWorksAcrossTabs({
   autoApplyFilters: boolean;
 }) {
   checkResetAllFiltersHidden();
-  filter(PARAMETER_A.name).should("have.text", "January 5, 2023");
+  filter(PARAMETER_A.name).findByText("January 5, 2023").should("exist");
   H.getDashboardCard(0).findByText("73.99").should("be.visible");
   H.getDashboardCard(0).findByText("116.01").should("not.exist");
 
   updateDateFilter(PARAMETER_A.name, "01/01/2024");
-  filter(PARAMETER_A.name).should("have.text", "January 1, 2024");
+  filter(PARAMETER_A.name).findByText("January 1, 2024").should("exist");
   if (!autoApplyFilters) {
-    cy.button("Apply").click();
+    H.applyFilterButton().click();
   }
   checkResetAllFiltersShown();
   H.getDashboardCard(0).findByText("116.01").should("be.visible");
@@ -994,26 +1176,26 @@ function checkResetAllFiltersToDefaultWorksAcrossTabs({
 
   cy.findAllByTestId("tab-button-input-wrapper").eq(1).click();
   checkResetAllFiltersShown();
-  filter(PARAMETER_B.name).should("have.text", "January 5, 2023");
+  filter(PARAMETER_B.name).findByText("January 5, 2023").should("exist");
   H.getDashboardCard(0).findByText("4").should("be.visible");
 
   updateDateFilter(PARAMETER_B.name, "01/01/2023");
   if (!autoApplyFilters) {
-    cy.button("Apply").click();
+    H.applyFilterButton().click();
   }
   checkResetAllFiltersShown();
-  filter(PARAMETER_B.name).should("have.text", "January 1, 2023");
+  filter(PARAMETER_B.name).findByText("January 1, 2023").should("exist");
   H.getDashboardCard(0).findByText("5").should("be.visible");
 
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
   checkResetAllFiltersHidden();
-  filter(PARAMETER_B.name).should("have.text", "January 5, 2023");
+  filter(PARAMETER_B.name).findByText("January 5, 2023").should("exist");
   H.getDashboardCard(0).findByText("4").should("be.visible");
 
   cy.findAllByTestId("tab-button-input-wrapper").eq(0).click();
   checkResetAllFiltersHidden();
-  filter(PARAMETER_A.name).should("have.text", "January 5, 2023");
+  filter(PARAMETER_A.name).findByText("January 5, 2023").should("exist");
   H.getDashboardCard(0).findByText("73.99").should("be.visible");
   H.getDashboardCard(0).findByText("116.01").should("not.exist");
 }
@@ -1069,7 +1251,9 @@ function addDateFilter(label: string, value: string) {
 function updateDateFilter(label: string, value: string) {
   filter(label).click();
   H.popover().findByRole("textbox").clear().type(value).blur();
-  H.popover().button("Update filter").click();
+  H.popover()
+    .button(/(Add|Update) filter/)
+    .click();
 }
 
 function addRangeFilter(
@@ -1079,6 +1263,7 @@ function addRangeFilter(
 ) {
   filter(label).click();
   H.popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
   H.popover().button("Add filter").click();
 }
@@ -1090,6 +1275,7 @@ function updateRangeFilter(
 ) {
   filter(label).click();
   H.popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
   H.popover().button("Update filter").click();
 }

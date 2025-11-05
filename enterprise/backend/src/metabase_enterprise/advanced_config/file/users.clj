@@ -3,8 +3,8 @@
    [clojure.spec.alpha :as s]
    [metabase-enterprise.advanced-config.file.interface
     :as advanced-config.file.i]
-   [metabase.models.user :as user]
-   [metabase.setup :as setup]
+   [metabase.setup.core :as setup]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -56,4 +56,5 @@
 (defmethod advanced-config.file.i/initialize-section! :users
   [_section-name users]
   (doseq [user users]
-    (init-from-config-file! user)))
+    ;; we're lower-casing emails in :model/User, so we should do the same here
+    (init-from-config-file! (update user :email u/lower-case-en))))

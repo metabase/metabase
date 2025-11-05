@@ -3,38 +3,52 @@ import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
 import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
-import { color } from "metabase/lib/colors";
-import { formatNativeQuery, getEngineNativeType } from "metabase/lib/engine";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
-import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
-import { Editor } from "metabase/query_builder/components/NativeQueryEditor/Editor";
-import { getQuestion } from "metabase/query_builder/selectors";
+import { getEngineNativeType } from "metabase/lib/engine";
+import { CodeMirrorEditor as Editor } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
-import { createDatasetQuery, createNativeQuery } from "./utils";
+import { createNativeQuestion } from "./utils";
 
 const TITLE = {
-  sql: t`SQL for this question`,
-  json: t`Native query for this question`,
+  get sql() {
+    return t`SQL for this question`;
+  },
+  get json() {
+    return t`Native query for this question`;
+  },
 };
 
 const BUTTON_TITLE = {
-  sql: t`Convert this question to SQL`,
-  json: t`Convert this question to a native query`,
+  get sql() {
+    return t`Convert this question to SQL`;
+  },
+  get json() {
+    return t`Convert this question to a native query`;
+  },
 };
 
-export const NotebookNativePreview = (): JSX.Element => {
-  const dispatch = useDispatch();
-  const question = checkNotNull(useSelector(getQuestion));
+type NotebookNativePreviewProps = {
+  question: Question;
+  title?: string;
+  buttonTitle?: string;
+  onConvertClick: (newQuestion: Question) => void;
+};
 
-  const engine = question.database()?.engine;
+export const NotebookNativePreview = ({
+  question,
+  title,
+  buttonTitle,
+  onConvertClick,
+}: NotebookNativePreviewProps) => {
+  const database = question.database();
+  const engine = database?.engine;
   const engineType = getEngineNativeType(engine);
 
   const sourceQuery = question.query();
   const canRun = Lib.canRun(sourceQuery, question.type());
-  const payload = Lib.toLegacyQuery(sourceQuery);
+  const payload = Lib.toJsQuery(sourceQuery);
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
 
   const showLoader = isFetching;
@@ -42,25 +56,19 @@ export const NotebookNativePreview = (): JSX.Element => {
   const showQuery = !isFetching && canRun && !error;
   const showEmptySidebar = !canRun;
 
-  const formattedQuery = formatNativeQuery(data?.query, engine);
-  const query = createNativeQuery(question, formattedQuery);
-
-  const handleConvertClick = useCallback(() => {
-    if (!formattedQuery) {
-      return;
-    }
-
-    const newDatasetQuery = createDatasetQuery(formattedQuery, question);
-    const newQuestion = question.setDatasetQuery(newDatasetQuery);
-
-    dispatch(updateQuestion(newQuestion, { shouldUpdateUrl: true, run: true }));
-    dispatch(setUIControls({ isNativeEditorOpen: true }));
-  }, [question, dispatch, formattedQuery]);
+  const newQuestion = createNativeQuestion(question, data);
+  const newQuery = newQuestion?.query();
 
   const getErrorMessage = (error: unknown) =>
     typeof error === "string" ? error : undefined;
 
   const borderStyle = "1px solid var(--mb-color-border)";
+
+  const handleConvertClick = useCallback(() => {
+    if (newQuestion) {
+      onConvertClick(newQuestion);
+    }
+  }, [newQuestion, onConvertClick]);
 
   return (
     <Box
@@ -74,33 +82,35 @@ export const NotebookNativePreview = (): JSX.Element => {
     >
       <Box
         component="header"
-        c={color("text-dark")}
+        c="text-dark"
         fz={rem(20)}
         lh={rem(24)}
         fw="bold"
         ta="start"
         p="1.5rem"
       >
-        {TITLE[engineType]}
+        {title ?? TITLE[engineType]}
       </Box>
-      <Box
-        style={{ flex: 1, borderTop: borderStyle, borderBottom: borderStyle }}
+      <Flex
+        style={{
+          flex: 1,
+          borderTop: borderStyle,
+          borderBottom: borderStyle,
+          overflow: "auto",
+        }}
+        direction="column"
       >
         {showLoader && <DelayedLoadingSpinner delay={1000} />}
         {showEmptySidebar}
         {showError && (
           <Flex align="center" justify="center" h="100%" direction="column">
-            <Icon name="warning" size="2rem" color={color("error")} />
+            <Icon name="warning" size="2rem" c="error" />
             {t`Error generating the query.`}
             <Box mt="sm">{getErrorMessage(error)}</Box>
           </Flex>
         )}
-        {showQuery && (
-          <div style={{ height: "100%", flex: 1 }}>
-            <Editor query={query} readOnly />
-          </div>
-        )}
-      </Box>
+        {showQuery && newQuery != null && <Editor query={newQuery} readOnly />}
+      </Flex>
       <Box ta="end" p="1.5rem">
         <Button
           variant="subtle"
@@ -108,7 +118,7 @@ export const NotebookNativePreview = (): JSX.Element => {
           onClick={handleConvertClick}
           disabled={!showQuery}
         >
-          {BUTTON_TITLE[engineType]}
+          {buttonTitle ?? BUTTON_TITLE[engineType]}
         </Button>
       </Box>
     </Box>

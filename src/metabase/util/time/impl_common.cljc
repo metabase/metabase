@@ -7,12 +7,14 @@
 (defmulti to-range
   "Given a datetime and a unit (eg. \"hour\"), returns an *inclusive* datetime range as a pair of datetimes.
   For a unit of an hour, and a datetime for 13:49:28, that means [13:00:00 13:59:59.999], ie. 1 ms before the end."
+  {:arglists '([value options])}
   by-unit)
 
 (defmulti string->timestamp
   "Given a string representation of a datetime and the `options` map, parses the string as a representation of the
   `:unit` option (eg. \"hour\").
   Returns a platform-specific datetime."
+  {:arglists '([value options])}
   by-unit)
 
 (defmulti number->timestamp
@@ -24,6 +26,7 @@
   has 31 days or not.
 
   Returns a platform-specific datetime."
+  {:arglists '([value options])}
   by-unit)
 
 (def ^:private year-part

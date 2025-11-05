@@ -1,4 +1,6 @@
-import { H } from "e2e/support";
+const { H } = cy;
+import { chunk } from "underscore";
+
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
@@ -8,7 +10,7 @@ const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
 
 describe("issue 6010", () => {
   const createMetric = () => {
-    return cy.createQuestion({
+    return H.createQuestion({
       name: "Metric",
       description: "Metric with a filter",
       type: "metric",
@@ -20,8 +22,8 @@ describe("issue 6010", () => {
     });
   };
 
-  const createQuestion = metric_id => {
-    return cy.createQuestion({
+  const createQuestion = (metric_id) => {
+    return H.createQuestion({
       name: "Question",
       display: "line",
       query: {
@@ -47,13 +49,15 @@ describe("issue 6010", () => {
       .then(({ body: { id } }) => createQuestion(id))
       .then(({ body: { id } }) => H.visitQuestion(id));
 
-    H.cartesianChartCircle().eq(0).click();
+    // Metric filters are transformed into aggregation case expression condition. The 21st point is first non filtered
+    // point.
+    H.cartesianChartCircle().eq(21).click();
 
     H.popover().findByText("See these Orders").click();
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").within(() => {
-      cy.findByText("Created At is Jan 1–31, 2024").should("be.visible");
+      cy.findByText("Created At: Month is Jan 1–31, 2024").should("be.visible");
     });
     // FIXME metrics v2 -- check that the values in column Total are above 150
   });
@@ -86,7 +90,7 @@ describe("issue 11249", () => {
   it("should not allow adding more series when all columns are used (metabase#11249)", () => {
     H.visitQuestionAdhoc(questionDetails);
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByText("Data").click();
@@ -122,6 +126,7 @@ describe("issue 11435", () => {
     },
   };
   const hoverLineDot = ({ index } = {}) => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.cartesianChartCircle().eq(index).realHover();
   };
 
@@ -131,7 +136,7 @@ describe("issue 11435", () => {
   });
 
   it("should use time formatting settings in tooltips for native questions (metabase#11435)", () => {
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
     hoverLineDot({ index: 1 });
     H.assertEChartsTooltip({
       header: "March 11, 2025, 8:45:17.010 PM",
@@ -163,15 +168,15 @@ describe("issue 15353", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should be able to change field name used for values (metabase#15353)", () => {
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.sidebar()
-      .contains("Count")
-      .siblings("[data-testid$=settings-button]")
-      .click();
+      .findByTestId("draggable-item-Count")
+      .icon("ellipsis")
+      .click({ force: true });
 
     cy.findByDisplayValue("Count").type(" renamed").blur();
 
@@ -215,7 +220,7 @@ describe("issue 18976, 18817", () => {
   });
 
   it("should not keep orphan columns rendered after switching from pivot to regular table (metabase#18817)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": PEOPLE_ID,
@@ -232,7 +237,9 @@ describe("issue 18976, 18817", () => {
       { visitQuestion: true },
     );
 
-    cy.findByTestId("qb-header").button("Summarize").click();
+    cy.findByTestId("qb-header")
+      .button(/Summarize/)
+      .click();
     H.rightSidebar()
       .findByLabelText("Source")
       .findByRole("button", { name: "Remove dimension" })
@@ -245,56 +252,7 @@ describe("issue 18976, 18817", () => {
   });
 });
 
-describe("issue 18996", () => {
-  const questionDetails = {
-    name: "18996",
-    native: {
-      query: `
-  select 1 "ID", 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg' "IMAGE", 123 "PRICE"
-  union all select 2, 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg', 123
-  union all select 3, 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg', 123
-  union all select 4, 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg', 123
-  union all select 5, null, 123
-  union all select 6, '', 123
-  union all select 7, 'non-exisiting', 123
-  union all select 8, null, 123
-  union all select 9, 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg', 123
-  union all select 10, 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg', 123
-  `,
-    },
-    display: "table",
-    visualization_settings: {
-      "table.cell_column": "ID",
-      "table.pivot_column": "PRICE",
-      column_settings: {
-        '["name","IMAGE"]': {
-          view_as: "image",
-        },
-      },
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should navigate between pages in a table with images in a dashboard (metabase#18996)", () => {
-    cy.createNativeQuestionAndDashboard({
-      questionDetails,
-    }).then(({ body: { dashboard_id } }) => {
-      H.visitDashboard(dashboard_id);
-    });
-
-    H.getDashboardCard().within(() => {
-      cy.findByText(/Rows \d+-\d+ of 10/).should("be.visible");
-      cy.icon("chevronright").click();
-      cy.findByText(/Rows \d+-\d+ of 10/).should("be.visible");
-    });
-  });
-});
-
-describe.skip("issue 19373", () => {
+describe("issue 19373", { tags: "@skip" }, () => {
   const questiondDetails = {
     name: "Products, Distinct values of Rating, Grouped by Category and Created At (year)",
     query: {
@@ -316,12 +274,12 @@ describe.skip("issue 19373", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questiondDetails, { visitQuestion: true });
+    H.createQuestion(questiondDetails, { visitQuestion: true });
   });
 
   it("should return correct sum of the distinct values in row totals (metabase#19373)", () => {
     // Convert to the pivot table manually to reflect the real-world scenario
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("Pivot Table-button").should("be.visible").click();
     cy.wait("@pivotDataset");
 
@@ -330,16 +288,19 @@ describe.skip("issue 19373", () => {
     cy.findAllByRole("grid").eq(2).as("tableCells");
 
     // Sanity check before we start asserting on this column
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@columnTitles")
       .findAllByTestId("pivot-table-cell")
       .eq(ROW_TOTALS_INDEX)
       .should("contain", "Row totals");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@rowTitles")
       .findAllByTestId("pivot-table-cell")
       .eq(GRAND_TOTALS_INDEX)
       .should("contain", "Grand totals");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@tableCells")
       .findAllByTestId("pivot-table-cell")
       .eq(ROW_TOTALS_INDEX)
@@ -391,14 +352,13 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
   });
 
   it("should not duplicate column in settings when removing and adding it back", () => {
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     // remove column
     cy.findByTestId("sidebar-content")
-      .findByText("Subtotal")
-      .parent()
-      .find(".Icon-eye_outline")
-      .click();
+      .findByTestId("draggable-item-Subtotal")
+      .icon("eye_outline")
+      .click({ force: true });
 
     // rerun query
     cy.findAllByTestId("run-button").first().click();
@@ -407,10 +367,9 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
 
     // add column back again
     cy.findByTestId("sidebar-content")
-      .findByText("Subtotal")
-      .parent()
-      .find(".Icon-eye_crossed_out")
-      .click();
+      .findByTestId("draggable-item-Subtotal")
+      .icon("eye_crossed_out")
+      .click({ force: true });
 
     // fails because there are 2 columns, when there should be one
     cy.findByTestId("sidebar-content").findByText("Subtotal");
@@ -450,11 +409,11 @@ describe("issue 23076", () => {
       locale: "de",
     });
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should correctly translate dates (metabase#23076)", () => {
-    cy.findAllByText(/^Summen für/)
+    cy.findAllByText(/^Summen für/, { timeout: 10000 })
       .should("be.visible")
       .eq(1)
       .invoke("text")
@@ -519,11 +478,14 @@ describe("issue 28304", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count by Created At: Month").should("be.visible");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.leftSidebar().should("not.contain", "[Unknown]");
     H.leftSidebar().should("contain", "Created At");
     H.leftSidebar().should("contain", "Count");
-    cy.findAllByTestId("mini-bar").should("have.length.greaterThan", 0);
+    cy.findAllByTestId("mini-bar-container").should(
+      "have.length.greaterThan",
+      0,
+    );
     H.getDraggableElements().should("have.length", 2);
   });
 });
@@ -580,7 +542,7 @@ describe("issue 25250", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID").should("be.visible");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.moveDnDKitElement(H.getDraggableElements().contains("Product ID"), {
       vertical: -100,
     });
@@ -596,15 +558,15 @@ describe("issue 30039", () => {
 
   it("should not trigger object detail navigation after the modal was closed (metabase#30039)", () => {
     H.startNewNativeQuestion();
-    H.focusNativeEditor().as("editor").type("select * from ORDERS LIMIT 2");
+    H.NativeEditor.type("select * from ORDERS LIMIT 2");
     H.runNativeQuery();
-    cy.findAllByTestId("detail-shortcut").first().click();
+    cy.findAllByTestId("detail-shortcut").first().click({ force: true });
     cy.findByTestId("object-detail").should("be.visible");
 
     cy.realPress("{esc}");
     cy.findByTestId("object-detail").should("not.exist");
 
-    cy.get("@editor").type("{downArrow};");
+    H.NativeEditor.type("{downArrow};");
     H.runNativeQuery();
     cy.findByTestId("object-detail").should("not.exist");
   });
@@ -651,10 +613,10 @@ describe("issue 37726", () => {
 
     // The important data point in this question is that it has custom
     // leftHeaderWidths as if a user had dragged them to change the defaults.
-    cy.createQuestion(PIVOT_QUESTION, { visitQuestion: true });
+    H.createQuestion(PIVOT_QUESTION, { visitQuestion: true });
 
     // Now, add in another column to the pivot table
-    cy.button("Summarize").click();
+    cy.button(/Summarize/).click();
 
     cy.findByRole("listitem", { name: "Category" })
       .realHover()
@@ -672,21 +634,20 @@ describe("issue 37726", () => {
     // along with the rest of the pivot table, would not appear.
     // Instead, you got a nice ⚠️ icon and a "Something's gone wrong" tooltip.
     H.main().within(() => {
-      cy.findByText("Product → Category");
+      cy.findByText("Product → Category", { timeout: 8000 });
     });
   });
 });
 
-// unskip once metabase#42049 is addressed
-describe.skip("issue 42049", () => {
+describe("issue 42049", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
   it("should not mess up columns order (metabase#42049)", () => {
-    cy.intercept("POST", "/api/card/*/query", req => {
-      req.on("response", res => {
+    cy.intercept("POST", "/api/card/*/query", (req) => {
+      req.on("response", (res) => {
         const createdAt = res.body.data.cols[1];
 
         createdAt.field_ref[1] = "created_at"; // simulate named field ref
@@ -741,11 +702,11 @@ describe.skip("issue 42049", () => {
     cy.get("@headerCells").eq(1).should("have.text", "Created At");
     cy.get("@headerCells").eq(2).should("have.text", "Quantity");
 
-    cy.findByRole("button", { name: "Filter" }).click();
+    cy.findByTestId("question-filter-header").click();
 
-    cy.findByRole("dialog").within(() => {
-      cy.findByRole("button", { name: "Last month" }).click();
-      cy.findByRole("button", { name: "Apply filters" }).click();
+    H.popover().within(() => {
+      cy.findByText("Created At").click();
+      cy.button("Previous month").click();
     });
 
     cy.wait("@cardQuery");
@@ -850,7 +811,7 @@ describe("issue 14148", { tags: "@external" }, () => {
           },
         },
         {
-          callback: xhr =>
+          callback: (xhr) =>
             expect(xhr.response.body.cause || "").not.to.contain("ERROR"),
         },
       ),
@@ -867,14 +828,14 @@ describe("issue 14148", { tags: "@external" }, () => {
   });
 });
 
-describe.skip("issue 25415", () => {
+describe("issue 25415", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
   it("should allow to drill-through aggregated query with a custom column on top level (metabase#25415)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Aggregated query with custom column",
         display: "line",
@@ -911,7 +872,7 @@ describe.skip("issue 25415", () => {
     cy.findByTestId("qb-filters-panel").should("contain", "Product ID is 1");
 
     // there is a table with data
-    cy.findByTestId("TableInteractive-root").should("exist");
+    H.tableInteractive().should("exist");
   });
 });
 
@@ -928,7 +889,7 @@ describe("issue 7884", () => {
     },
   };
 
-  const getNestedQuestionDetails = sourceQuestionId => ({
+  const getNestedQuestionDetails = (sourceQuestionId) => ({
     query: {
       "source-table": `card__${sourceQuestionId}`,
     },
@@ -955,7 +916,8 @@ describe("issue 7884", () => {
             cy.request("PUT", `/api/card/${sourceQuestion.id}`, {
               ...sourceQuestion,
               dataset_query: {
-                ...sourceQuestion.dataset_query,
+                type: "native",
+                database: SAMPLE_DB_ID,
                 native: newSourceQuestionDetails.native,
               },
             });
@@ -969,7 +931,7 @@ describe("issue 7884", () => {
     cy.findAllByTestId("header-cell").eq(1).should("contain.text", "C1");
 
     cy.log("verify column order in viz settings");
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.getDraggableElements().eq(0).should("contain.text", "C3");
     H.getDraggableElements().eq(1).should("contain.text", "C1");
   });
@@ -1041,7 +1003,7 @@ describe("issue 12368", () => {
       cy.findByText("Ean").should("be.visible");
       cy.findByText("Vendor2").should("be.visible");
     });
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.button("Add or remove columns").should("be.visible");
       cy.findByText("Pivot column").should("not.exist");
@@ -1089,7 +1051,7 @@ describe("issue 32718", () => {
       cy.findByText("Category").should("not.exist");
       cy.findByText("Created At").should("be.visible");
     });
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("Detail-button").click();
     cy.findByTestId("object-detail").within(() => {
       cy.findByText("ID").should("be.visible");
@@ -1129,12 +1091,9 @@ describe("issue 50346", () => {
     display: "pivot",
     visualization_settings: {
       "pivot_table.column_split": {
+        // mix field refs with and without `base-type` to make sure we support both cases
         rows: [
-          [
-            "field",
-            PRODUCTS.CATEGORY,
-            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
-          ],
+          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
           [
             "field",
             PRODUCTS.VENDOR,
@@ -1193,5 +1152,448 @@ describe("issue 50346", () => {
       cy.findByTestId(`${groupValue}-toggle-button`).click();
       cy.findByText(totalValue).should("be.visible");
     });
+  });
+});
+
+describe("issue 50686", () => {
+  const questionDetails = {
+    name: "50686",
+    display: "smartscalar",
+    native: {
+      query:
+        "select 100 as total, 110 as forecast, 80 as last_year, now() as now",
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow selecting more than 1 comparison (metabase#50686)", () => {
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+    // Default comparison
+    H.queryBuilderMain().findByText("N/A");
+
+    // Add another comparison
+    H.openVizSettingsSidebar();
+    cy.button("Add comparison").click();
+    H.popover().findByText("Value from another column…").click();
+    H.popover().findByText("FORECAST").click();
+    H.popover().button("Done").click();
+
+    H.queryBuilderMain().within(() => {
+      // First comparison still exists
+      cy.findByText("N/A");
+
+      // New comparison has been added
+      cy.findByText("9.09%");
+      cy.contains("vs. FORECAST");
+    });
+  });
+});
+
+describe("issue 52339", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow mapping pivot table dashcard fields to click behavior targets (metabase#52339)", () => {
+    const questionDetails = {
+      name: "Orders, Distinct values of ID, Grouped by Product → Title and Created At (month) and User → ID",
+
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["distinct", ["field", ORDERS.ID, null]]],
+        breakout: [
+          ["field", PRODUCTS.TITLE, { "source-field": ORDERS.PRODUCT_ID }],
+          ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
+        ],
+      },
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: ["TITLE", "SOURCE"],
+          columns: [],
+          values: ["distinct"],
+        },
+      },
+    };
+
+    const sourceParam = {
+      name: "Source",
+      slug: "filter-text",
+      id: "1b9cd9f1",
+      type: "string/=",
+      sectionId: "string",
+    };
+
+    H.createQuestionAndDashboard({
+      dashboardDetails: {
+        parameters: [sourceParam],
+      },
+      questionDetails,
+      cardDetails: {
+        size_x: 16,
+        size_y: 8,
+      },
+    }).then(({ body: { id, card_id, dashboard_id }, questionId }) => {
+      cy.wrap(questionId).as("questionId");
+
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
+          {
+            id,
+            card_id,
+            row: 0,
+            col: 0,
+            size_x: 16,
+            size_y: 8,
+            series: [],
+            visualization_settings: {},
+            parameter_mappings: [
+              {
+                parameter_id: sourceParam.id,
+                card_id,
+                target: [
+                  "dimension",
+                  [
+                    "field",
+                    PEOPLE.SOURCE,
+                    {
+                      "source-field": ORDERS.USER_ID,
+                    },
+                  ],
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      H.visitDashboard(dashboard_id);
+    });
+
+    H.editDashboard();
+    H.findDashCardAction(H.getDashboardCard(0), "Click behavior").click();
+
+    H.sidebar().within(() => {
+      cy.findByText("Go to a custom destination").click();
+      cy.findByText("Dashboard").click();
+    });
+
+    H.modal().findByText("Test Dashboard").click();
+
+    cy.findByTestId("click-mappings").findByText("Source").click();
+
+    H.popover().within(() => {
+      cy.findByText("Product → Title");
+      cy.findByText("User → Source");
+      cy.findByText("Distinct values of ID");
+    });
+  });
+});
+
+describe("issue 56771", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should apply correct column widths after changing query (metabase#56771)", () => {
+    H.openOrdersTable();
+    cy.log(
+      "Resize a column first to make width stored in the visualization settings",
+    );
+    H.resizeTableColumn("ID", 100);
+
+    H.openNotebook();
+    H.join();
+    H.joinTable("Products");
+    H.visualize();
+
+    cy.wait(100); // wait for the column to be resized
+
+    cy.findAllByTestId("header-cell")
+      .filter(":contains(Products → Category)")
+      .as("headerCell")
+      .then(($cell) => {
+        const width = $cell[0].getBoundingClientRect().width;
+        expect(width).to.be.greaterThan(160);
+      });
+  });
+});
+
+describe("issue 57132", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    cy.intercept("POST", "/api/dataset", function (req) {
+      req.continue((res) => {
+        // remove description from the CATEGORY column
+        const index = res.body.data.cols.findIndex(
+          (col) => col.name === "CATEGORY",
+        );
+        delete res.body.data.cols[index].description;
+      });
+    });
+  });
+
+  it("should render more values when hovering colum header without description (metabase#57132)", () => {
+    H.openProductsTable();
+    H.tableInteractive().findByText("Category").realHover();
+
+    cy.log("The popover should be wide enough to show at least some values");
+    H.popover()
+      .findByText(/^Doohickey, Gadget, Gizmo/)
+      .should("be.visible");
+  });
+});
+
+describe("issue 52333", () => {
+  const baseQuery = `
+SELECT *
+FROM (
+  SELECT
+    category,
+    source,
+    state,
+    SUM(orders.discount) AS discount,
+    SUM(orders.total) AS total,
+    SUM(orders.quantity) AS quantity
+  FROM
+    orders
+    LEFT JOIN products ON orders.product_id = products.id
+    LEFT JOIN people ON orders.user_id = people.id
+  GROUP BY category, source, state
+) AS filtered_orders
+WHERE NOT (
+  category = 'Gizmo'
+  AND (
+    source IN ('Facebook', 'Google', 'Organic', 'Twitter')
+    OR state NOT IN ('AK')
+  )
+);`;
+
+  const baseQuestionDetails = {
+    name: "52333",
+    display: "table",
+    native: {
+      query: baseQuery,
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("pivot table should show subtotals for a group of a single value (metabase#52333)", () => {
+    H.createNativeQuestion(baseQuestionDetails, {
+      visitQuestion: true,
+      wrapId: true,
+    });
+
+    cy.get("@questionId").then((id) => {
+      const questionDetails = {
+        query: {
+          "source-table": `card__${id}`,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              "CATEGORY",
+              {
+                "base-type": "type/Text",
+              },
+            ],
+            [
+              "field",
+              "SOURCE",
+              {
+                "base-type": "type/Text",
+              },
+            ],
+            [
+              "field",
+              "STATE",
+              {
+                "base-type": "type/Text",
+              },
+            ],
+          ],
+        },
+        display: "pivot",
+        visualization_settings: {
+          "pivot_table.column_split": {
+            rows: ["CATEGORY", "SOURCE", "STATE"],
+            columns: [],
+            values: ["count", "avg"],
+          },
+          "pivot_table.column_widths": {
+            leftHeaderWidths: [104, 92, 80],
+            totalLeftHeaderWidths: 276,
+            valueHeaderWidths: {},
+          },
+          "pivot_table.collapsed_rows": {
+            value: ['["Doohickey"]', '["Gadget"]', '["Widget"]'],
+            rows: ["CATEGORY", "SOURCE", "STATE"],
+          },
+        },
+      };
+
+      H.createQuestion(questionDetails, { visitQuestion: true });
+    });
+
+    H.queryBuilderMain().within(() => {
+      cy.findByText("Affiliate");
+      cy.findByText("AK");
+
+      // Ensure it does not show subtotals for the single value by default
+      cy.findByText("Totals for Affiliate").should("not.exist");
+
+      H.openVizSettingsSidebar();
+    });
+
+    H.sidebar().findByText("Condense duplicate totals").click();
+
+    // Ensure it shows subtotals for the single value
+    H.queryBuilderMain()
+      .findByText("Totals for Affiliate")
+      .should("be.visible");
+  });
+});
+
+describe("issue 55673", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable();
+  });
+
+  it("should be able to close a header popover using Escape (metabase#55673)", () => {
+    H.tableHeaderClick("Product ID");
+    cy.findByTestId("click-actions-view").should("be.visible");
+
+    cy.focused().should(
+      "have.attr",
+      "data-testid",
+      "click-actions-sort-control-sort.ascending",
+    );
+    cy.realPress(["Escape"]);
+    cy.findByTestId("click-actions-view").should("not.exist");
+  });
+});
+
+describe("issue 55637", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show column metadata popovers when header cell is clicked (metabase#55637)", () => {
+    H.openOrdersTable();
+    H.tableHeaderColumn("ID").realHover();
+    cy.findByTestId("column-info").should("exist");
+
+    H.tableHeaderColumn("ID").click();
+
+    H.tableHeaderColumn("ID").realHover();
+    cy.findByTestId("column-info").should("not.exist");
+
+    H.tableHeaderColumn("Tax").realHover();
+    cy.findByTestId("column-info").should("not.exist");
+  });
+});
+
+describe("issue 63745", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should display correct data when toggling columns (metabase#63745)", () => {
+    H.visitQuestionAdhoc({
+      name: "63745",
+      display: "object",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 5,
+        },
+      },
+    });
+
+    H.openVizSettingsSidebar();
+    cy.findByTestId("chartsettings-sidebar")
+      .button("Add or remove columns")
+      .click();
+
+    cy.findAllByTestId("object-details-table-cell").should(($cells) => {
+      const cellsFlat = $cells.toArray().map((el) => el.textContent);
+      const map = new Map(chunk(cellsFlat, 2));
+      expect(map.get("User ID")).to.eq("1");
+    });
+
+    cy.findByTestId("orders-table-columns").findByLabelText("ID").click();
+
+    cy.findAllByTestId("object-details-table-cell").should(($cells) => {
+      const cellsFlat = $cells.toArray().map((el) => el.textContent);
+      const map = new Map(chunk(cellsFlat, 2));
+      expect(map.get("User ID")).to.eq("1");
+    });
+  });
+});
+
+describe("issue 56094", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow to switch between automatic pivot table and usual table visualization (metabase#56094)", () => {
+    H.visitQuestionAdhoc({
+      name: "56094",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PRODUCTS.CATEGORY,
+              {
+                "base-type": "type/Text",
+              },
+            ],
+            [
+              "field",
+              PRODUCTS.RATING,
+              {
+                binning: {
+                  strategy: "default",
+                },
+              },
+            ],
+          ],
+
+          limit: 20,
+        },
+      },
+    });
+
+    H.queryBuilderFooter().findByLabelText("Switch to data").click();
+
+    H.queryBuilderFooterDisplayToggle().should("exist");
+
+    H.queryBuilderFooter().findByLabelText("Switch to visualization").click();
+
+    H.queryBuilderFooterDisplayToggle().should("exist");
   });
 });

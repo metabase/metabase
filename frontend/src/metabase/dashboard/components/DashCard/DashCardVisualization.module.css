@@ -1,0 +1,12 @@
+.DashCardVisualization {
+  color: var(--mb-color-text-medium);
+}
+
+.VirtualDashCardOverlayText {
+  color: var(--mb-color-text-medium);
+}
+
+.InlineParametersList *,
+.InlineParametersMenuTrigger * {
+  pointer-events: all;
+}

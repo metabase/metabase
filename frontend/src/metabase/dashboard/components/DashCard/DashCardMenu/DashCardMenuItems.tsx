@@ -1,16 +1,20 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type { DashboardCardCustomMenuItem } from "embedding-sdk";
-import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
-import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
+/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
+import { useSdkDashboardContext } from "embedding-sdk-bundle/components/public/dashboard/context";
 import { editQuestion } from "metabase/dashboard/actions";
-import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
+import { useDashboardContext } from "metabase/dashboard/context";
+import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
+import type { DashboardCardCustomMenuItem } from "metabase/embedding-sdk/types/plugins";
 import { useDispatch } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
+import { PLUGIN_DASHCARD_MENU } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type { Dataset } from "metabase-types/api";
+import type { DashCardId, Dataset } from "metabase-types/api";
 
+import type { DashCardMenuItem } from "./dashcard-menu";
 import { canDownloadResults, canEditQuestion } from "./utils";
 
 type DashCardMenuItemsProps = {
@@ -18,22 +22,28 @@ type DashCardMenuItemsProps = {
   result: Dataset;
   isDownloadingData: boolean;
   onDownload: () => void;
+  onEditVisualization?: () => void;
+  dashcardId?: DashCardId;
+  canEdit?: boolean;
 };
 export const DashCardMenuItems = ({
   question,
   result,
   isDownloadingData,
   onDownload,
+  onEditVisualization,
+  dashcardId,
+  canEdit,
 }: DashCardMenuItemsProps) => {
   const dispatch = useDispatch();
 
   const {
-    plugins,
     onEditQuestion = (question, mode = "notebook") =>
       dispatch(editQuestion(question, mode)),
-  } = useInteractiveDashboardContext();
+  } = useSdkDashboardContext();
 
-  const dashcardMenuItems = plugins?.dashboard?.dashboardCardMenu as
+  const { dashcardMenu } = useDashboardContext();
+  const dashcardMenuItems = dashcardMenu as
     | DashboardCardCustomMenuItem
     | undefined;
 
@@ -48,7 +58,14 @@ export const DashCardMenuItems = ({
       key: string;
     })[] = [];
 
-    if (withEditLink && canEditQuestion(question)) {
+    if (withEditLink && canEdit && onEditVisualization) {
+      items.push({
+        key: "MB_EDIT_VISUALIZER_QUESTION",
+        iconName: "lineandbar",
+        label: t`Edit visualization`,
+        onClick: onEditVisualization,
+      });
+    } else if (withEditLink && canEdit && canEditQuestion(question)) {
       const type = question.type();
       if (type === "question") {
         items.push({
@@ -87,9 +104,15 @@ export const DashCardMenuItems = ({
       });
     }
 
+    items.push(
+      ...PLUGIN_DASHCARD_MENU.dashcardMenuItemGetters
+        .map((itemGetter) => itemGetter(question, dashcardId, dispatch))
+        .filter(isNotNull),
+    );
+
     if (customItems) {
       items.push(
-        ...customItems.map(item => {
+        ...customItems.map((item) => {
           const customItem =
             typeof item === "function"
               ? item({ question: transformSdkQuestion(question) })
@@ -113,16 +136,25 @@ export const DashCardMenuItems = ({
     result,
     withDownloads,
     withEditLink,
+    onEditVisualization,
+    dashcardId,
+    dispatch,
+    canEdit,
   ]);
 
-  return menuItems.map(item => (
-    <Menu.Item
-      fw="bold"
-      {...item}
-      key={item.key}
-      icon={<Icon name={item.iconName} aria-hidden />}
-    >
-      {item.label}
-    </Menu.Item>
-  ));
+  return menuItems.map((item) => {
+    const { iconName, key, ...rest } = item;
+
+    return (
+      <Menu.Item
+        fw="bold"
+        {...rest}
+        key={key}
+        leftSection={<Icon name={iconName} aria-hidden />}
+        aria-label={item.label}
+      >
+        {item.label}
+      </Menu.Item>
+    );
+  });
 };

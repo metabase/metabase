@@ -1,7 +1,7 @@
 import { type ReactElement, isValidElement } from "react";
 import { match } from "ts-pattern";
 
-import { TableInfoIcon } from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
+import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
@@ -16,11 +16,12 @@ import {
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import * as ML_Urls from "metabase-lib/v1/urls";
 
-import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
+import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
+import HeaderS from "../HeaderBreadcrumbs/HeaderBreadcrumbs.module.css";
 
 import S from "./QuestionDataSource.module.css";
 
-type DataSourcePart = ReactElement | DataSourceBadgePart;
+export type DataSourcePart = ReactElement | DataSourceBadgePart;
 
 type DataSourceBadgePart = {
   name?: string;
@@ -68,7 +69,7 @@ export function getDataSourceParts({
 
   const table = !isNative
     ? metadata.table(Lib.sourceTableOrCardId(query))
-    : (question.legacyQuery() as NativeQuery).table();
+    : (question.legacyNativeQuery() as NativeQuery).table();
   if (table && table.hasSchema()) {
     const isBasedOnSavedQuestion = isVirtualCardId(table.id);
     if (database != null && !isBasedOnSavedQuestion) {
@@ -94,8 +95,8 @@ export function getDataSourceParts({
     const allTables = [
       table,
       ...Lib.joins(query, -1)
-        .map(join => Lib.pickerInfo(query, Lib.joinedThing(query, join)))
-        .map(pickerInfo => {
+        .map((join) => Lib.pickerInfo(query, Lib.joinedThing(query, join)))
+        .map((pickerInfo) => {
           if (pickerInfo?.tableId != null) {
             return metadata.table(pickerInfo.tableId);
           }
@@ -127,7 +128,7 @@ export function getDataSourceParts({
   }
 
   return parts.filter(
-    part =>
+    (part) =>
       isValidElement(part) ||
       ("name" in part && part.name) ||
       ("icon" in part && part.icon),
@@ -149,7 +150,7 @@ function QuestionTableBadges({
 }: QuestionTableBadgesProps) {
   const badgeInactiveColor = isLast && !subHead ? "text-dark" : "text-light";
 
-  const parts = tables.map(table => (
+  const parts = tables.map((table) => (
     <HeadBreadcrumbs.Badge
       key={table.id}
       to={hasLink ? getTableURL(table) : ""}
@@ -161,9 +162,10 @@ function QuestionTableBadges({
           <span className={S.IconWrapper}>
             <TableInfoIcon
               table={table}
-              icon="info_filled"
-              size={12}
-              position="bottom"
+              icon="info"
+              size={16}
+              position="top"
+              className={HeaderS.HeaderBadgeIcon}
             />
           </span>
         )}

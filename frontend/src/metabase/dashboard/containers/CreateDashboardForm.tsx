@@ -1,30 +1,34 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
+import { useCreateDashboardMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
-import Button from "metabase/core/components/Button";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import FormFooter from "metabase/core/components/FormFooter";
-import FormInput from "metabase/core/components/FormInput";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormTextArea from "metabase/core/components/FormTextArea";
+import { FormFooter } from "metabase/common/components/FormFooter";
 import Collections from "metabase/entities/collections";
-import Dashboards from "metabase/entities/dashboards";
-import { Form, FormProvider } from "metabase/forms";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+  FormTextarea,
+} from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { connect } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
+import { Button, Stack } from "metabase/ui";
 import type { CollectionId, Dashboard } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
-import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "../constants";
+import {
+  DASHBOARD_DESCRIPTION_MAX_LENGTH,
+  DASHBOARD_NAME_MAX_LENGTH,
+} from "../constants";
 
 const DASHBOARD_SCHEMA = Yup.object({
   name: Yup.string()
     .required(Errors.required)
-    .max(100, Errors.maxLength)
+    .max(DASHBOARD_NAME_MAX_LENGTH, Errors.maxLength)
     .default(""),
   description: Yup.string()
     .nullable()
@@ -34,8 +38,19 @@ const DASHBOARD_SCHEMA = Yup.object({
 });
 
 export interface CreateDashboardProperties {
+  /**
+   * Dashboard title
+   */
   name: string;
+
+  /**
+   * Dashboard description
+   */
   description: string | null;
+
+  /**
+   * @internal
+   */
   collection_id: CollectionId;
 }
 
@@ -47,41 +62,18 @@ export interface CreateDashboardFormOwnProps {
   filterPersonalCollections?: FilterItemsInPersonalCollection;
 }
 
-interface CreateDashboardFormStateProps {
-  initialCollectionId: CollectionId;
-}
-
-interface CreateDashboardFormDispatchProps {
-  handleCreateDashboard: (
-    dashboard: CreateDashboardProperties,
-  ) => Promise<Dashboard>;
-}
-
-type Props = CreateDashboardFormOwnProps &
-  CreateDashboardFormStateProps &
-  CreateDashboardFormDispatchProps;
-
-function mapStateToProps(state: State, props: CreateDashboardFormOwnProps) {
-  return {
-    initialCollectionId: Collections.selectors.getInitialCollectionId(
-      state,
-      props,
-    ),
-  };
-}
-
-const mapDispatchToProps = {
-  handleCreateDashboard: Dashboards.actions.create,
-};
-
-function CreateDashboardForm({
-  initialCollectionId,
-  handleCreateDashboard,
+export function CreateDashboardForm({
   onCreate,
   onCancel,
   initialValues,
   filterPersonalCollections,
-}: Props) {
+  collectionId,
+}: CreateDashboardFormOwnProps) {
+  const initialCollectionId = useSelector((state) =>
+    Collections.selectors.getInitialCollectionId(state, { collectionId }),
+  );
+
+  const [handleCreateDashboard] = useCreateDashboardMutation();
   const computedInitialValues = useMemo(
     () => ({
       ...DASHBOARD_SCHEMA.getDefault(),
@@ -93,9 +85,10 @@ function CreateDashboardForm({
 
   const handleCreate = useCallback(
     async (values: CreateDashboardProperties) => {
-      const action = await handleCreateDashboard(values);
-      const dashboard = Dashboards.HACK_getObjectFromAction(action);
-      onCreate?.(dashboard);
+      const dashboard = await handleCreateDashboard(values).unwrap();
+      if (dashboard) {
+        onCreate?.(dashboard);
+      }
     },
     [handleCreateDashboard, onCreate],
   );
@@ -108,18 +101,25 @@ function CreateDashboardForm({
       onSubmit={handleCreate}
     >
       {() => (
-        <Form>
-          <FormInput
+        <Form as={Stack} gap={0}>
+          <FormTextInput
+            labelProps={{ mb: "xs" }}
             name="name"
-            title={t`Name`}
+            label={t`Name`}
             placeholder={t`What is the name of your dashboard?`}
-            autoFocus
+            data-autofocus
+            mt="md"
           />
-          <FormTextArea
+          <FormTextarea
+            labelProps={{ mb: "xs" }}
             name="description"
-            title={t`Description`}
+            label={t`Description`}
             placeholder={t`It's optional but oh, so helpful`}
             nullable
+            autosize={false}
+            minRows={5}
+            maxRows={5}
+            my="md"
           />
           <FormCollectionPicker
             name="collection_id"
@@ -131,14 +131,10 @@ function CreateDashboardForm({
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
-            <FormSubmitButton title={t`Create`} primary />
+            <FormSubmitButton label={t`Create`} variant="filled" />
           </FormFooter>
         </Form>
       )}
     </FormProvider>
   );
 }
-
-export const CreateDashboardFormConnected = _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
-)(CreateDashboardForm);

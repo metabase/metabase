@@ -4,7 +4,7 @@ title: Offset
 
 # Offset
 
-> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, MongoDB, and Druid.
+> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, ClickHouse, MongoDB, and Druid.
 
 The `Offset` function returns the value of an expression in a different row. `Offset` can only be used in the query builder's Summarize step (you cannot use `Offset` to create a custom column).
 
@@ -64,7 +64,7 @@ Which yields:
 
 ![Year over year order sum of order totals](../../images/year-over-year-sum-totals.png)
 
-With these offsets (the Sums in the "Previous period" column), we can then create [custom columns](../introduction.md#creating-custom-columns) to calculate things like the difference between yearly Sums:
+With these offsets (the Sums in the "Previous period" column), we can then create [custom columns](../editor.md#custom-columns) to calculate things like the difference between yearly Sums:
 
 ```
 [Sum of total] - [Previous period]

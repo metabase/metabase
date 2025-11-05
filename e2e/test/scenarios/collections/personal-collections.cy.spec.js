@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -30,20 +30,54 @@ describe("personal collections", () => {
      *  - When the solution for this problem is ready, either adjust the test or completely remove it!
      */
 
-    it.skip("shouldn't get API response containing all other personal collections when visiting the home page (metabase#24330)", () => {
-      cy.intercept("GET", "/api/collection/tree*").as("getCollections");
+    it(
+      "shouldn't get API response containing all other personal collections when visiting the home page (metabase#24330)",
+      { tags: "@skip" },
+      () => {
+        cy.intercept("GET", "/api/collection/tree*").as("getCollections");
+
+        cy.visit("/");
+
+        cy.wait("@getCollections").then(({ response: { body } }) => {
+          const personalCollections = body.filter(({ personal_owner_id }) => {
+            return personal_owner_id !== null;
+          });
+
+          // Admin can only see their own personal collection, so this list should return only that
+          // Loading all other users' personal collections can lead to performance issues!
+          expect(personalCollections).to.have.lengthOf(1);
+        });
+      },
+    );
+
+    it("should see a link to other users' personal collections only if there are other users", () => {
+      cy.intercept("GET", "/api/session/properties", (req) => {
+        req.continue((res) => {
+          res.body["active-users-count"] = 1;
+          return res.body;
+        });
+      }).as("getSessionProperties");
 
       cy.visit("/");
+      cy.wait("@getSessionProperties");
 
-      cy.wait("@getCollections").then(({ response: { body } }) => {
-        const personalCollections = body.filter(({ personal_owner_id }) => {
-          return personal_owner_id !== null;
+      H.navigationSidebar()
+        .findByLabelText("Other users' personal collections")
+        .should("not.exist");
+
+      cy.intercept("GET", "/api/session/properties", (req) => {
+        req.continue((res) => {
+          res.body["active-users-count"] = 2;
+          return res.body;
         });
+      }).as("getSessionProperties");
 
-        // Admin can only see their own personal collection, so this list should return only that
-        // Loading all other users' personal collections can lead to performance issues!
-        expect(personalCollections).to.have.lengthOf(1);
-      });
+      cy.reload();
+      cy.wait("@getSessionProperties");
+
+      H.navigationSidebar()
+        .findByLabelText("Other users' personal collections")
+        .should("be.visible");
     });
 
     it("should be able to view their own as well as other users' personal collections (including other admins)", () => {
@@ -56,13 +90,12 @@ describe("personal collections", () => {
       cy.findAllByRole("tree")
         .contains("Your personal collection")
         .should("be.visible");
-      H.navigationSidebar().within(() => {
-        cy.icon("ellipsis").click();
-      });
-      H.popover().findByText("Other users' personal collections").click();
+      H.navigationSidebar()
+        .findByLabelText("Other users' personal collections")
+        .click();
       cy.location("pathname").should("eq", "/collection/users");
       cy.findByTestId("browsercrumbs").findByText(/All personal collections/i);
-      Object.values(USERS).forEach(user => {
+      Object.values(USERS).forEach((user) => {
         const FULL_NAME = `${user.first_name} ${user.last_name}`;
         cy.findByText(FULL_NAME);
       });
@@ -75,12 +108,13 @@ describe("personal collections", () => {
         parent_id: ADMIN_PERSONAL_COLLECTION_ID,
       });
 
-      // Go to admin's personal collection
-      cy.visit("/collection/root");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Your personal collection").click();
+      H.visitCollection(ADMIN_PERSONAL_COLLECTION_ID);
 
+      cy.log(
+        "Make sure it's not possible to edit personal collection's permissions",
+      );
       H.getCollectionActions().within(() => {
+        cy.icon("info").should("exist");
         cy.icon("ellipsis").should("not.exist");
       });
 
@@ -96,11 +130,14 @@ describe("personal collections", () => {
 
       // Go to the newly created sub-collection "Foo"
       H.navigationSidebar().findByText("Foo").click();
-
-      // It should be possible to edit sub-collections' details, but not its permissions
       cy.findByDisplayValue("Foo").should("be.enabled");
+
+      cy.log(
+        "Other menu options exist, but editing permissions is not possible",
+      );
       H.openCollectionMenu();
       H.popover().within(() => {
+        cy.findByText("Move to trash").should("be.visible");
         cy.findByText("Edit permissions").should("not.exist");
       });
 
@@ -112,15 +149,16 @@ describe("personal collections", () => {
       // });
 
       // Go to random user's personal collection
-      cy.visit(`/collection/${NO_DATA_PERSONAL_COLLECTION_ID}`);
+      H.visitCollection(NO_DATA_PERSONAL_COLLECTION_ID);
 
       H.getCollectionActions().within(() => {
+        cy.icon("info").should("exist");
         cy.icon("ellipsis").should("not.exist");
       });
     });
 
     it("should be able view other users' personal sub-collections (metabase#15339)", () => {
-      cy.createCollection({
+      H.createCollection({
         name: "Foo",
         parent_id: NO_DATA_PERSONAL_COLLECTION_ID,
       });
@@ -132,14 +170,13 @@ describe("personal collections", () => {
   });
 
   describe("all users", () => {
-    Object.keys(USERS).forEach(user => {
+    Object.keys(USERS).forEach((user) => {
       describe(`${user} user`, () => {
         beforeEach(() => {
           cy.signIn(user);
 
           cy.visit("/collection/root");
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Your personal collection").click();
+          H.navigationSidebar().findByText("Your personal collection").click();
 
           // Create initial collection inside the personal collection and navigate to it
           addNewCollection("Foo");
@@ -161,11 +198,9 @@ describe("personal collections", () => {
           );
 
           H.openCollectionMenu();
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          H.popover().within(() => cy.findByText("Move to trash").click());
-          H.modal().findByRole("button", { name: "Move to trash" }).click();
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Trashed collection");
+          H.popover().findByText("Move to trash").click();
+          H.modal().button("Move to trash").click();
+          cy.findByTestId("toast-undo").should("contain", "Trashed collection");
           cy.get("@sidebar").findByText("Foo").should("not.exist");
         });
       });
@@ -174,12 +209,10 @@ describe("personal collections", () => {
 });
 
 function addNewCollection(name) {
-  H.openNewCollectionItemFlowFor("collection");
+  H.startNewCollectionFromSidebar();
   cy.findByPlaceholderText("My new fantastic collection").type(name, {
     delay: 0,
   });
 
-  cy.findByTestId("new-collection-modal").then(modal => {
-    cy.findByText("Create").click();
-  });
+  cy.findByTestId("new-collection-modal").button("Create").click();
 }

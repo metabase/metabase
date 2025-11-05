@@ -4,43 +4,16 @@
   height: auto;
 }
 
-/* Night mode */
-.Dashboard.DashboardNight {
-  background-color: var(--mb-color-bg-black);
-}
-
-.Dashboard.DashboardNight .Card {
-  color: var(--mb-color-text-white);
-}
-
 .Dashboard.DashboardFullscreen .fullscreenNormalText {
   color: var(--mb-color-text-dark);
-  transition: color 1s linear;
-}
-
-.Dashboard.DashboardNight.DashboardFullscreen .fullscreenNightText {
-  color: var(--mb-color-text-white-alpha-85);
-  transition: color 1s linear;
-}
-
-.Dashboard.DashboardNight .DashCard .Card svg text {
-  fill: var(--mb-color-text-white-alpha-85) !important;
-  stroke: none !important;
-}
-
-.Dashboard.DashboardNight
-  .enableDotsOnHover
-  :global(.dc-tooltip circle.dot:hover),
-.Dashboard.DashboardNight .enableDots :global(.dc-tooltip circle.dot) {
-  fill: currentColor;
+  transition: var(--transition-theme-change);
 }
 
 /* Night mode transition */
 .Dashboard.DashboardFullscreen,
+.Dashboard.DashboardFullscreen .ParameterFieldSet,
 .Dashboard.DashboardFullscreen .DashCard .Card {
-  transition:
-    background-color 1s linear,
-    border 1s linear;
+  transition: var(--transition-theme-change);
 }
 
 .DashEditing {
@@ -102,7 +75,7 @@
   transition: opacity 0.15s linear;
 }
 
-.DashEditing .DashCard {
+.DashEditing:not(.Mobile) .DashCard {
   cursor: move;
 }
 
@@ -160,13 +133,6 @@
 .DashDragging {
 }
 
-.Modal.AddSeriesModal {
-  height: 80%;
-  max-height: 600px;
-  width: 80%;
-  max-width: 1024px;
-}
-
 /* what for to print the dashboards */
 @media print {
   header,
@@ -186,21 +152,6 @@
   margin: 1cm;
 }
 
-/* when in night mode goal lines should be more visible */
-.DashboardNight :global(.goal .line),
-.DashboardNight :global(.trend .line) {
-  stroke: white;
-}
-
-/* when in night mode code snippets should have a more readable background-color */
-.DashboardNight pre code {
-  background-color: var(--mb-color-bg-white-alpha-15);
-}
-
-.DashboardNight :global(.text-card-markdown code) {
-  background-color: var(--mb-color-bg-white-alpha-15);
-}
-
 .Dashboard :global(text.value-label),
 .Dashboard :global(text.value-label-white) {
   font-size: 12px;
@@ -209,6 +160,12 @@
 .ScalarValue {
   font-weight: 700;
   white-space: pre;
+}
+
+.Dashboard .DashboardChartLegend {
+  color: var(--mb-color-text-primary);
+  font-size: 0.8125rem;
+  font-weight: 400;
 }
 
 /*

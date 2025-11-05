@@ -1,12 +1,13 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import List from "metabase/components/List";
-import S from "metabase/components/List/List.module.css";
-import ListItem from "metabase/components/ListItem";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import List from "metabase/common/components/List";
+import S from "metabase/common/components/List/List.module.css";
+import ListItem from "metabase/common/components/ListItem";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
@@ -27,17 +28,16 @@ const mapDispatchToProps = {
 
 class DatabaseList extends Component {
   static propTypes = {
-    style: PropTypes.object.isRequired,
     entities: PropTypes.object.isRequired,
     loading: PropTypes.bool,
     loadingError: PropTypes.object,
   };
 
   render() {
-    const { entities, style, loadingError, loading } = this.props;
+    const { entities, loadingError, loading } = this.props;
 
     const databases = Object.values(entities)
-      .filter(database => {
+      .filter((database) => {
         const exists = Boolean(database?.id && database?.name);
         return exists && !database.is_saved_questions;
       })
@@ -47,7 +47,7 @@ class DatabaseList extends Component {
       });
 
     return (
-      <div style={style} className={CS.full}>
+      <div>
         <ReferenceHeader name={t`Our data`} />
         <LoadingAndErrorWrapper
           loading={!loadingError && loading}
@@ -55,9 +55,9 @@ class DatabaseList extends Component {
         >
           {() =>
             Object.keys(entities).length > 0 ? (
-              <div className={CS.wrapper}>
+              <div className={cx(CS.wrapper, CS.wrapperTrim)}>
                 <List>
-                  {databases.map(database => (
+                  {databases.map((database) => (
                     <ListItem
                       key={database.id}
                       name={database.name}

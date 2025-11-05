@@ -10,12 +10,12 @@ import DatabaseEngineWarning, {
 } from "./DatabaseEngineWarning";
 
 export default {
-  title: "Databases/DatabaseEngineWarning",
+  title: "App/Databases/DatabaseEngineWarning",
   component: DatabaseEngineWarning,
   argTypes: { onChange: { action: "onChange" } },
 };
 
-const Template: StoryFn<DatabaseEngineWarningProps> = args => {
+const Template: StoryFn<DatabaseEngineWarningProps> = (args) => {
   return <DatabaseEngineWarning {...args} />;
 };
 Template.args = {
@@ -37,16 +37,6 @@ Template.args = {
       "driver-name": "CommunityEngine",
       source: createMockEngineSource({
         type: "community",
-      }),
-    }),
-    partnerEngine: createMockEngine({
-      "driver-name": "PartnerEngine",
-      source: createMockEngineSource({
-        type: "partner",
-        contact: {
-          name: "Partners Incorporated",
-          address: "https://example.com/contact",
-        },
       }),
     }),
   },
@@ -75,15 +65,6 @@ export const Community = {
 
   args: {
     engineKey: "communityEngine",
-    ...Template.args,
-  },
-};
-
-export const Partner = {
-  render: Template,
-
-  args: {
-    engineKey: "partnerEngine",
     ...Template.args,
   },
 };

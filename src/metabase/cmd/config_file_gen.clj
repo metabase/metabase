@@ -3,7 +3,7 @@
   The example config includes all configurable settings and their default values."
   (:require
    [clj-yaml.core :as yaml]
-   [clojure.java.io :as io]
+   [metabase.cmd.common :as cmd.common]
    [metabase.cmd.env-var-dox :as dox]))
 
 ;;;; Get settings and their default values
@@ -19,9 +19,11 @@
   (reduce (fn [settings k] (assoc settings k nil)) settings settings-to-reset))
 
 (defn settings
-  "Gets valid config settings."
+  "Gets valid config settings. We include deprecated settings in the env var docs,
+   but we exclude them from the config file template."
   []
-  (dox/filter-env-vars (dox/get-settings)))
+  (->> (dox/get-settings)
+       dox/remove-env-vars-we-should-not-document))
 
 (defn get-name-and-default
   "Get a setting's name and its default."
@@ -34,6 +36,7 @@
   "Creates a sorted map of settings from their names and defaults."
   [settings]
   (->> settings
+       (remove :deprecated)
        (map get-name-and-default)
        (into (sorted-map))))
 
@@ -62,9 +65,9 @@
 (defn- build-markdown-page
   "Take a YAML string and builds a Markdown page for docs on a configuration file."
   [config-yaml]
-  (str (slurp (io/resource markdown-intro))
+  (str (cmd.common/load-resource! markdown-intro)
        config-yaml
-       (slurp (io/resource markdown-outro))))
+       (cmd.common/load-resource! markdown-outro)))
 
 (defn- format-yaml
   "Takes configuration map that includes settings data and preps YAML for embedding in Markdown doc."
@@ -76,8 +79,7 @@
    with settings and their default values."
   [yaml-template]
   (-> yaml-template
-      (io/resource)
-      (slurp)
+      (cmd.common/load-resource!)
       (yaml/parse-string)
       (add-settings)
       (format-yaml)
@@ -95,5 +97,5 @@
   "Generates a configuration file doc with template and saves to docs directory."
   []
   (println "Creating config file doc with template...")
-  (spit (io/file config-file-path) (create-config-doc yaml-template))
+  (cmd.common/write-doc-file! config-file-path (create-config-doc yaml-template))
   (println (str "Config doc file created: `" config-file-path "`.")))

@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 
-import EmptyState from "metabase/components/EmptyState";
+import EmptyState from "metabase/common/components/EmptyState";
 
 import { EmptyStateRoot } from "./PermissionsEditorEmptyState.styled";
 
@@ -9,7 +9,7 @@ const propTypes = {
   message: PropTypes.string.isRequired,
 };
 
-export const PermissionsEditorEmptyState = props => (
+export const PermissionsEditorEmptyState = (props) => (
   <EmptyStateRoot>
     <EmptyState {...props} />
   </EmptyStateRoot>

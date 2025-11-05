@@ -1,15 +1,17 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeExternalLinks from "rehype-external-links";
 import remarkGfm from "remark-gfm";
 import { t } from "ttag";
 
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
+import { updateParameterMappingsForDashcardText } from "metabase/dashboard/actions";
 import { getParameterValues } from "metabase/dashboard/selectors";
-import { useToggle } from "metabase/hooks/use-toggle";
-import { useSelector } from "metabase/lib/redux";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 
@@ -20,9 +22,9 @@ import {
   TextInput,
 } from "./Text.styled";
 
-const getSettingsStyle = settings => ({
-  [CS.alignCenter]: settings["text.align_horizontal"] === "center",
-  [CS.alignEnd]: settings["text.align_horizontal"] === "right",
+const getSettingsStyle = (settings) => ({
+  [CS.textCentered]: settings["text.align_horizontal"] === "center",
+  [CS.textRight]: settings["text.align_horizontal"] === "right",
   [CS.justifyCenter]: settings["text.align_vertical"] === "middle",
   [CS.justifyEnd]: settings["text.align_vertical"] === "bottom",
 });
@@ -42,15 +44,19 @@ export function Text({
   isEditing,
   isMobile,
 }) {
+  const dispatch = useDispatch();
   const parameterValues = useSelector(getParameterValues);
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
   const [textValue, setTextValue] = useState(settings.text);
+
+  const tc = useTranslateContent();
+  const translatedText = tc(settings.text);
 
   const [isFocused, { turnOn: toggleFocusOn, turnOff: toggleFocusOff }] =
     useToggle(justAdded);
   const isPreviewing = !isFocused;
 
-  const preventDragging = e => e.stopPropagation();
+  const preventDragging = (e) => e.stopPropagation();
 
   const isSingleRow = gridSize?.height === 1;
 
@@ -65,11 +71,19 @@ export function Text({
         dashcard,
         dashboard,
         parameterValues,
-        text: settings.text,
+        text: translatedText,
         escapeMarkdown: true,
       }),
-    [dashcard, dashboard, parameterValues, settings.text],
+    [dashcard, dashboard, parameterValues, translatedText],
   );
+
+  const updateParameterMappings = useCallback(() => {
+    if (!dashcard.id) {
+      return;
+    }
+
+    dispatch(updateParameterMappingsForDashcardText(dashcard?.id));
+  }, [dashcard?.id, dispatch]);
 
   const hasContent = !isEmpty(settings.text);
   const placeholder = t`You can use Markdown here, and include variables {{like_this}}`;
@@ -84,6 +98,7 @@ export function Text({
         onClick={toggleFocusOn}
         isSingleRow={isSingleRow}
         isMobile={isMobile}
+        isFixedWidth={dashboard?.width === "fixed"}
       >
         {isPreviewing ? (
           <ReactMarkdownStyleWrapper
@@ -114,13 +129,14 @@ export function Text({
             placeholder={placeholder}
             value={textValue}
             autoFocus={justAdded || isFocused}
-            onChange={e => setTextValue(e.target.value)}
+            onChange={(e) => setTextValue(e.target.value)}
             onMouseDown={preventDragging}
             onBlur={() => {
               toggleFocusOff();
 
               if (settings.text !== textValue) {
                 onUpdateVisualizationSettings({ text: textValue });
+                updateParameterMappings();
               }
             }}
             isMobile={isMobile}
@@ -136,6 +152,7 @@ export function Text({
       className={cx(className)}
       isSingleRow={isSingleRow}
       isMobile={isMobile}
+      isFixedWidth={dashboard?.width === "fixed"}
     >
       <ReactMarkdownStyleWrapper>
         <ReactMarkdown

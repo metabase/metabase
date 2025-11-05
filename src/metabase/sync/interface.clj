@@ -10,12 +10,16 @@
   [:map {:closed true}
    [:name                                     ::lib.schema.common/non-blank-string]
    [:schema                                   [:maybe ::lib.schema.common/non-blank-string]]
+   ;; true if the current connection can make insert, update and delete operations. Only works for drivers that support
+   ;; :table-privileges feature
+   [:is_writable             {:optional true} [:maybe :boolean]]
    ;; for databases that store an estimated row count in system tables (e.g: postgres)
    [:estimated_row_count     {:optional true} [:maybe :int]]
    ;; for databases that support forcing query to include a filter (e.g: partitioned table on bigquery)
    [:database_require_filter {:optional true} [:maybe :boolean]]
    ;; `:description` in this case should be a column/remark on the Table, if there is one.
-   [:description             {:optional true} [:maybe :string]]])
+   [:description             {:optional true} [:maybe :string]]
+   [:visibility_type         {:optional true} [:maybe :string]]])
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."
@@ -44,12 +48,17 @@
    [:pk?                        {:optional true} :boolean] ; optional for databases that don't support PKs
    [:nested-fields              {:optional true} [:set [:ref ::TableMetadataField]]]
    [:json-unfolding             {:optional true} :boolean]
-   [:nfc-path                   {:optional true} [:any]]
+   ;; TODO (Cam 8/11/25) -- this should be required to be a sequence of strings but we'll need to go fix some code
+   [:nfc-path                   {:optional true} [:maybe [:sequential [:or :keyword :string]]]]
    [:custom                     {:optional true} :map]
+   [:database-default           {:optional true} :string]
    [:database-is-auto-increment {:optional true} :boolean]
+   [:database-is-generated      {:optional true} :boolean]
+   [:database-is-nullable       {:optional true} :boolean]
    ;; nullable for databases that don't support field partition
    [:database-partitioned       {:optional true} [:maybe :boolean]]
-   [:database-required          {:optional true} :boolean]])
+   [:database-required          {:optional true} :boolean]
+   [:visibility-type            {:optional true} [:maybe :keyword]]])
 
 (def TableMetadataField
   "Schema for a given Field as provided in [[metabase.driver/describe-table]]."

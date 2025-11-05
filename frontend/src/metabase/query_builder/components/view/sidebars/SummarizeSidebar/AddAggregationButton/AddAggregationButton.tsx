@@ -3,7 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
 import { Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -53,8 +53,7 @@ export function AddAggregationButton({
           query={query}
           stageIndex={stageIndex}
           operators={operators}
-          allowTemporalComparisons
-          onQueryChange={query => {
+          onQueryChange={(query) => {
             onQueryChange(query);
             setIsOpened(false);
           }}

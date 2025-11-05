@@ -1,0 +1,8 @@
+.wrapper {
+  align-items: center;
+}
+
+.title {
+  color: var(--mb-color-text-dark);
+  line-height: 1rem;
+}

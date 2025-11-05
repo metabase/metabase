@@ -5,24 +5,32 @@ import type { MockDatasetOpts } from "metabase-types/api/mocks";
 import { createMockDataset } from "metabase-types/api/mocks";
 
 export function setupAdhocQueryMetadataEndpoint(metadata: CardQueryMetadata) {
-  fetchMock.post(`path:/api/dataset/query_metadata`, metadata);
+  fetchMock.post(`path:/api/dataset/query_metadata`, metadata, {
+    name: "dataset-query-metadata",
+  });
 }
 
-export function setupParameterValuesEndpoints(
-  parameterValues: ParameterValues,
-) {
-  fetchMock.post("path:/api/dataset/parameter/values", parameterValues);
+export function setupParameterValuesEndpoints(response: ParameterValues) {
+  fetchMock.post("path:/api/dataset/parameter/values", response);
 }
 
 export function setupErrorParameterValuesEndpoints() {
   fetchMock.post("path:/api/dataset/parameter/values", 500);
 }
 
-export function setupCardDataset(
-  options: MockDatasetOpts = {},
-  overwriteRoutes = false,
+export function setupParameterSearchValuesEndpoint(
+  query: string,
+  response: ParameterValues,
 ) {
+  fetchMock.post({
+    url: `path:/api/dataset/parameter/search/${encodeURIComponent(query)}`,
+    response,
+    name: `dataset-parameter-search-${query}`,
+  });
+}
+
+export function setupCardDataset(options: MockDatasetOpts = {}) {
   fetchMock.post("path:/api/dataset", createMockDataset(options), {
-    overwriteRoutes,
+    name: "dataset-post",
   });
 }

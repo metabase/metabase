@@ -1,17 +1,16 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 import {
   checkGroupConsistencyAfterDeletingMappings,
   crudGroupMappingsWidget,
 } from "./shared/group-mappings-widget";
-import { getSuccessUi, getUserProvisioningInput } from "./shared/helpers";
 
-H.describeEE("scenarios > admin > settings > SSO > JWT", () => {
+describe("scenarios > admin > settings > SSO > JWT", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     cy.intercept("PUT", "/api/setting").as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
   });
@@ -19,10 +18,14 @@ H.describeEE("scenarios > admin > settings > SSO > JWT", () => {
   it("should allow to save and enable jwt", () => {
     cy.visit("/admin/settings/authentication/jwt");
 
-    enterJwtSettings();
+    H.typeAndBlurUsingLabel(
+      /JWT Identity Provider URI/i,
+      "https://example.test",
+    );
+    cy.button("Generate key").click();
     cy.button("Save and enable").click();
     cy.wait("@updateSettings");
-    cy.findAllByRole("link", { name: "Authentication" }).first().click();
+    H.goToAuthOverviewPage();
 
     getJwtCard().findByText("Active").should("exist");
   });
@@ -46,11 +49,12 @@ H.describeEE("scenarios > admin > settings > SSO > JWT", () => {
     enableJwtAuth();
     cy.visit("/admin/settings/authentication/jwt");
 
-    getUserProvisioningInput().label.click();
-    cy.button("Save changes").click();
-    cy.wait("@updateSettings");
+    cy.findByTestId("jwt-user-provisioning-enabled?-setting")
+      .findByText("Enabled")
+      .click();
+    cy.wait("@updateSetting");
 
-    getSuccessUi().should("exist");
+    H.undoToast().findByText("Changes saved").should("be.visible");
   });
 
   it("should allow to reset jwt settings", () => {
@@ -80,8 +84,9 @@ H.describeEE("scenarios > admin > settings > SSO > JWT", () => {
     cy.button("Save changes").click();
     cy.wait("@updateSettings");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Success").should("exist");
+    cy.findByTestId("admin-layout-content")
+      .findByText("Success")
+      .should("exist");
   });
 
   describe("Group Mappings Widget", () => {
@@ -105,10 +110,9 @@ H.describeEE("scenarios > admin > settings > SSO > JWT", () => {
 });
 
 const getJwtCard = () => {
-  return cy.findByText("JWT").parent().parent();
-};
-
-const enterJwtSettings = () => {
-  H.typeAndBlurUsingLabel(/JWT Identity Provider URI/, "https://example.test");
-  cy.button("Generate key").click();
+  return cy
+    .findByTestId("admin-layout-content")
+    .findByText("JWT")
+    .parent()
+    .parent();
 };

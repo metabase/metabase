@@ -1,35 +1,35 @@
 import { t } from "ttag";
 
-import * as Lib from "metabase-lib";
-
 import type {
   DatePickerTruncationUnit,
   DatePickerUnit,
+  RelativeDatePickerValue,
   RelativeIntervalDirection,
-} from "../../types";
-import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
+} from "metabase/querying/filters/types";
+import * as Lib from "metabase-lib";
+
 import { getAvailableTruncationUnits, getDirection } from "../utils";
 
-export function getDirectionText(value: DateOffsetIntervalValue): string {
+export function getDirectionText(value: RelativeDatePickerValue): string {
   const direction = getDirection(value);
-  return direction === "last" ? t`Previous` : t`Next`;
+  return direction === "past" ? t`Previous` : t`Next`;
 }
 
 export function setUnit(
-  value: DateOffsetIntervalValue,
+  value: RelativeDatePickerValue,
   unit: DatePickerTruncationUnit,
-): DateOffsetIntervalValue {
+): RelativeDatePickerValue {
   return { ...value, unit, offsetUnit: unit };
 }
 
-export function getOffsetInterval(value: DateOffsetIntervalValue): number {
-  return Math.abs(value.offsetValue);
+export function getOffsetInterval(value: RelativeDatePickerValue): number {
+  return Math.abs(value.offsetValue ?? 0);
 }
 
 export function setOffsetInterval(
-  value: DateOffsetIntervalValue,
+  value: RelativeDatePickerValue,
   offsetValue: number,
-): DateOffsetIntervalValue {
+): RelativeDatePickerValue {
   if (offsetValue === 0) {
     return { ...value, offsetValue: 0 };
   } else {
@@ -39,21 +39,21 @@ export function setOffsetInterval(
 }
 
 export function setOffsetUnit(
-  value: DateOffsetIntervalValue,
+  value: RelativeDatePickerValue,
   offsetUnit: DatePickerTruncationUnit,
-): DateOffsetIntervalValue {
+): RelativeDatePickerValue {
   return { ...value, offsetUnit };
 }
 
 export function removeOffset(
-  value: DateOffsetIntervalValue,
-): DateIntervalValue {
+  value: RelativeDatePickerValue,
+): RelativeDatePickerValue {
   return { ...value, offsetValue: undefined, offsetUnit: undefined };
 }
 
 export function getOffsetUnitOptions(
-  value: DateOffsetIntervalValue,
-  availableUnits: ReadonlyArray<DatePickerUnit>,
+  value: RelativeDatePickerValue,
+  availableUnits: DatePickerUnit[],
 ) {
   const truncationUnits = getAvailableTruncationUnits(availableUnits);
   const direction = getDirection(value);
@@ -61,9 +61,9 @@ export function getOffsetUnitOptions(
 
   return truncationUnits
     .filter((_, index) => index >= unitIndex)
-    .map(unit => ({
+    .map((unit) => ({
       value: unit,
-      label: getOffsetUnitText(unit, direction, value.offsetValue),
+      label: getOffsetUnitText(unit, direction, value.offsetValue ?? 0),
     }));
 }
 
@@ -73,5 +73,5 @@ function getOffsetUnitText(
   interval: number,
 ) {
   const unitText = Lib.describeTemporalUnit(unit, interval).toLowerCase();
-  return direction === "last" ? t`${unitText} ago` : t`${unitText} from now`;
+  return direction === "past" ? t`${unitText} ago` : t`${unitText} from now`;
 }

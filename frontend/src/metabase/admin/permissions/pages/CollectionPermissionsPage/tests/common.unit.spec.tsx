@@ -1,8 +1,7 @@
-import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 
 import { defaultPermissionsGraph, setup } from "./setup";
 
@@ -90,11 +89,14 @@ describe("Admin > CollectionPermissionsPage", () => {
       expect(await screen.findAllByText("View")).toHaveLength(2);
       expect(screen.queryByText("No access")).not.toBeInTheDocument();
 
-      const lastRequest = await fetchMock
-        .lastCall("path:/api/collection/graph", {
-          method: "PUT",
-        })
-        ?.request?.json();
+      const lastCall = fetchMock.callHistory.lastCall(
+        "path:/api/collection/graph",
+        { method: "PUT" },
+      );
+      const lastRequest =
+        typeof lastCall?.options?.body === "string"
+          ? JSON.parse(lastCall?.options?.body)
+          : undefined;
 
       expect(lastRequest).toEqual({
         ...defaultPermissionsGraph,
@@ -120,7 +122,7 @@ describe("Admin > CollectionPermissionsPage", () => {
       // should also change permissions on nested one from no access to curate
       const otherUsersRow = await screen
         .findAllByRole("row")
-        .then(rows => rows[3]);
+        .then((rows) => rows[3]);
 
       expect(within(otherUsersRow).getByText("Other Users")).toBeVisible();
       await userEvent.click(within(otherUsersRow).getByText("View"));
@@ -145,11 +147,14 @@ describe("Admin > CollectionPermissionsPage", () => {
       expect(await screen.findAllByText("Curate")).toHaveLength(3);
       expect(screen.queryByText("No access")).not.toBeInTheDocument();
 
-      const lastRequest = await fetchMock
-        .lastCall("path:/api/collection/graph", {
-          method: "PUT",
-        })
-        ?.request?.json();
+      const lastCall = fetchMock.callHistory.lastCall(
+        "path:/api/collection/graph",
+        { method: "PUT" },
+      );
+      const lastRequest =
+        typeof lastCall?.options?.body === "string"
+          ? JSON.parse(lastCall?.options?.body)
+          : undefined;
 
       expect(lastRequest).toEqual({
         ...defaultPermissionsGraph,

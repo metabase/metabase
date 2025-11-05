@@ -1,14 +1,13 @@
 import cx from "classnames";
-import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs, { type Dayjs } from "dayjs";
 import Mustache from "mustache";
-import type * as React from "react";
 import ReactMarkdown from "react-markdown";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { renderLinkTextForClick } from "metabase/lib/formatting/link";
+import { parseNumber } from "metabase/lib/number";
 import {
   clickBehaviorIsValid,
   getDataFromClicked,
@@ -29,6 +28,7 @@ import { formatEmail } from "./email";
 import { formatCoordinate } from "./geography";
 import { formatImage } from "./image";
 import { formatNumber } from "./numbers";
+import { removeNewLines } from "./strings";
 import { formatTime } from "./time";
 import type { OptionsType } from "./types";
 import { formatUrl } from "./url";
@@ -124,6 +124,9 @@ function formatStringFallback(value: any, options: OptionsType = {}) {
       value = formatImage(value, options);
     }
   }
+  if (typeof value === "string" && options.collapseNewlines) {
+    value = removeNewLines(value);
+  }
   return value;
 }
 
@@ -141,7 +144,7 @@ export function formatValueRaw(
 
   const remapped = getRemappedValue(value as string | number, options);
   if (remapped !== undefined && options.view_as !== "link") {
-    return remapped;
+    value = remapped;
   }
 
   if (value == null) {
@@ -155,12 +158,12 @@ export function formatValueRaw(
     // Style this like a link if we're in a jsx context.
     // It's not actually a link since we handle the click differently for dashboard and question targets.
     return (
-      <div
+      <span
         data-testid="link-formatted-text"
         className={cx(CS.link, CS.linkWrappable)}
       >
         {formatValueRaw(value, { ...options, jsx: false })}
-      </div>
+      </span>
     );
   } else if (
     options.click_behavior &&
@@ -178,7 +181,7 @@ export function formatValueRaw(
   } else if (isEmail(column)) {
     return formatEmail(value as string, options);
   } else if (isTime(column)) {
-    return formatTime(value as Moment, column.unit, options);
+    return formatTime(value as Dayjs, column.unit, options);
   } else if (column && column.unit != null) {
     return formatDateTimeWithUnit(
       value as string | number,
@@ -187,17 +190,23 @@ export function formatValueRaw(
     );
   } else if (
     isDate(column) ||
-    moment.isDate(value) ||
-    moment.isMoment(value) ||
-    moment(value as string, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
+    isDateValue(value) ||
+    dayjs.isDayjs(value) ||
+    dayjs(value as string, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
   ) {
     return formatDateTimeWithUnit(value as string | number, "minute", options);
   } else if (typeof value === "string") {
+    if (isNumber(column)) {
+      const number = parseNumber(value);
+      if (number != null) {
+        return formatNumber(number, options);
+      }
+    }
     if (options.view_as === "image") {
       return formatImage(value, options);
     }
     if (column?.semantic_type) {
-      return value;
+      return options.collapseNewlines ? removeNewLines(value) : value;
     }
     return formatStringFallback(value, options);
   } else if (typeof value === "number" && isCoordinate(column)) {
@@ -214,12 +223,19 @@ export function formatValueRaw(
     } else {
       return formatNumber(value, options);
     }
+  } else if (typeof value === "bigint" && isNumber(column)) {
+    return formatNumber(value, options);
   } else if (typeof value === "boolean" && isBoolean(column)) {
     return JSON.stringify(value);
   } else if (typeof value === "object") {
     // no extra whitespace for table cells
     return JSON.stringify(value);
   } else {
-    return String(value);
+    const strValue = String(value);
+    return options.collapseNewlines ? removeNewLines(strValue) : strValue;
   }
+}
+
+function isDateValue(value: unknown): value is Date {
+  return Object.prototype.toString.call(value) === "[object Date]";
 }

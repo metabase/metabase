@@ -6,3 +6,66 @@
 .icon {
   flex-shrink: 0;
 }
+
+.ModalBodyWithPane {
+  height: 50vh;
+  display: flex;
+  gap: 2rem;
+}
+
+.ModalPane {
+  flex: 1;
+}
+
+.ModalMain {
+  display: flex;
+  flex: 2;
+  flex-direction: row;
+}
+
+.ModalLabel {
+  display: block;
+  color: var(--mb-color-text-medium);
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+.ModalTextArea {
+  display: block;
+  resize: none;
+}
+
+.ModalHelpMessage {
+  color: var(--mb-color-text-medium);
+  margin-top: 0.25rem;
+  margin-left: 1.25rem;
+}
+
+.ModalErrorMessage {
+  color: var(--mb-color-text-medium);
+  padding: 1rem;
+  border: 1px solid var(--mb-color-error);
+  border-radius: 0.5rem;
+}
+
+.ModalEmptyState {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+  background-color: var(--mb-color-bg-light);
+  color: var(--mb-color-text-medium);
+  font-weight: bold;
+  line-height: 1.5rem;
+  text-align: center;
+}
+
+.ModalLoadingAndErrorWrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: calc(50vh + 11.25rem);
+}

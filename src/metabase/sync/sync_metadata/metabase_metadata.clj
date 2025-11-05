@@ -9,9 +9,6 @@
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.table :refer [Table]]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
@@ -46,19 +43,19 @@
    {:keys [table-name field-name k]} :- KeypathComponents
    value]
   (boolean
-    ;; ignore legacy entries that try to set field_type since it's no longer part of Field
+   ;; ignore legacy entries that try to set field_type since it's no longer part of Field
    (when-not (= k :field_type)
-      ;; fetch the corresponding Table, then set the Table or Field property
+     ;; fetch the corresponding Table, then set the Table or Field property
      (if table-name
-       (when-let [table-id (t2/select-one-pk Table
-                                              ;; TODO: this needs to support schemas
+       (when-let [table-id (t2/select-one-pk :model/Table
+                                             ;; TODO: this needs to support schemas
                                              :db_id  (u/the-id database)
                                              :name   table-name
                                              :active true)]
          (if field-name
-           (pos? (t2/update! Field {:name field-name, :table_id table-id} {k value}))
-           (pos? (t2/update! Table table-id {k value}))))
-       (pos? (t2/update! Database (u/the-id database) {k value}))))))
+           (t2/update! :model/Field {:name field-name, :table_id table-id} {k value})
+           (t2/update! :model/Table table-id {k value})))
+       (t2/update! :model/Database (u/the-id database) {k value})))))
 
 (mu/defn- sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insensitive) which includes descriptions or other

@@ -2,7 +2,7 @@
   (:require
    [clojure.walk :as walk]
    [metabase.channel.template.handlebars-helper :as handlebars-helper]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -69,4 +69,4 @@
   (render-string "{{format-date \"2000-01-02\" \"YYYY-dd-MM\" }}" {})
   (render-string "Hello {{name}}" {:name "Ngoc"})
   (render-string "Hello {{#unless hide_name}}{{name}}{{/unless}}" {:name "Ngoc" :hide_name false})
-  (render "/metabase/email/_header.hbs" {}))
+  (render "/metabase/channel/email/_header.hbs" {}))

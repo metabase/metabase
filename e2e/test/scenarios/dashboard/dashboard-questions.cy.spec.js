@@ -1,6 +1,14 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import * as S from "e2e/support/cypress_sample_instance_data";
+import { createMockDashboardCard } from "metabase-types/api/mocks";
+
+const DASHBOARD_ONE = "Dashboard One";
+const DASHBOARD_TWO = "Dashboard Two";
+
+const QUESTION_ONE = "Question One";
+const QUESTION_TWO = "Question Two";
+const QUESTION_THREE = "Question Three";
 
 describe("Dashboard > Dashboard Questions", () => {
   beforeEach(() => {
@@ -10,7 +18,7 @@ describe("Dashboard > Dashboard Questions", () => {
   describe("admin", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("can save a new question to a dashboard and move it to a collection", () => {
@@ -33,8 +41,9 @@ describe("Dashboard > Dashboard Questions", () => {
       H.modal().findByText("Orders in a dashboard");
       H.modal().button("Save").click();
 
-      // should take you to the edit dashboard screen
+      // should take you to the edit dashboard screen + url has hash param to auto-scroll
       cy.url().should("include", "/dashboard/");
+      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
       H.dashboardCards().findByText("Orders with a discount");
       cy.findByTestId("edit-bar").findByText("You're editing this dashboard.");
 
@@ -57,6 +66,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.modal().button("Done").click();
       H.undoToast().findByText("First collection");
       H.appBar().findByText("First collection"); // breadcrumb should change
+      H.appBar().findByText("Orders in a dashboard").should("not.exist"); // dashboard name should no longer be visible
 
       // card should still be visible in dashboard
       cy.visit(`/dashboard/${S.ORDERS_DASHBOARD_ID}`);
@@ -163,7 +173,7 @@ describe("Dashboard > Dashboard Questions", () => {
         { wrapId: true, idAlias: "anotherDashboardId" },
       );
 
-      cy.get("@anotherDashboardId").then(anotherDashboardId => {
+      cy.get("@anotherDashboardId").then((anotherDashboardId) => {
         H.createQuestion(
           {
             name: "Total Orders",
@@ -194,13 +204,18 @@ describe("Dashboard > Dashboard Questions", () => {
         cy.button("Okay").click();
       });
 
-      // its in the new dash
+      // its in the new dash + url has hash param to auto-scroll
+      cy.url().should("include", "/dashboard/");
+
+      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
       H.undoToast().findByText("Orders in a dashboard");
-      H.dashboardCards().findByText("Total Orders").should("be.visible");
+      H.dashboardCards().should("contain", "Total Orders");
 
       // and not in the old dash
       H.visitDashboard("@anotherDashboardId");
-      H.dashboardCards().findByText("Total Orders").should("not.exist");
+      cy.findByRole("heading", { name: "This dashboard is empty" }).should(
+        "be.visible",
+      );
     });
 
     it("can bulk move questions into a dashboard", () => {
@@ -299,7 +314,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.collectionTable().findByText("Test Dashboard").click();
 
       cy.findByTestId("dashboard-empty-state")
-        .findByText("This dashboard is looking empty.")
+        .findByText("This dashboard is empty")
         .should("exist");
 
       H.visitDashboard(S.ORDERS_DASHBOARD_ID);
@@ -323,7 +338,9 @@ describe("Dashboard > Dashboard Questions", () => {
 
       H.appBar().findByText("Orders in a dashboard");
 
-      H.queryBuilderHeader().button("Summarize").click();
+      H.queryBuilderHeader()
+        .button(/Summarize/)
+        .click();
       H.rightSidebar().findByText("Count").click();
       H.popover()
         .findByText(/Average of/)
@@ -345,9 +362,16 @@ describe("Dashboard > Dashboard Questions", () => {
         { wrapId: true },
       );
 
-      cy.get("@dashboardId").then(dashboardId => {
-        H.visitDashboard(dashboardId);
+      cy.get("@dashboardId").then((dashboardId) => {
+        //Simulate having picked the dashboard in the entity picker previously
+        cy.request("POST", "/api/activity/recents", {
+          context: "selection",
+          model: "dashboard",
+          model_id: dashboardId,
+        });
       });
+
+      cy.visit("/");
 
       cy.findByLabelText("Navigation bar").findByText("New").click();
       H.popover().findByText("Question").click();
@@ -369,11 +393,10 @@ describe("Dashboard > Dashboard Questions", () => {
     });
 
     it("can save a native question to a dashboard", () => {
-      cy.visit("/");
-      H.newButton("SQL query").click();
+      H.startNewNativeQuestion({ query: "SELECT 123" });
 
-      H.focusNativeEditor();
-      cy.realType("SELECT COUNT(*) / 2 as half_count FROM ORDERS");
+      // this reduces the flakiness
+      cy.wait(500);
 
       H.queryBuilderHeader().button("Save").click();
       H.modal().within(() => {
@@ -432,7 +455,7 @@ describe("Dashboard > Dashboard Questions", () => {
       );
       H.commandPalette()
         .findByText("Total Orders Dashboard Question")
-        .parent()
+        .closest("a")
         .findByText(/Orders in a dashboard/)
         .should("be.visible");
       H.closeCommandPalette();
@@ -481,7 +504,8 @@ describe("Dashboard > Dashboard Questions", () => {
       H.openSharingMenu("Create a public link");
       cy.findByTestId("public-link-input")
         .invoke("val")
-        .then(publicLink => {
+        .should("not.be.empty")
+        .then((publicLink) => {
           cy.signOut();
           cy.visit(publicLink);
           cy.findByTestId("embed-frame-header")
@@ -521,6 +545,59 @@ describe("Dashboard > Dashboard Questions", () => {
       H.navigationSidebar().findByText("Orders").should("be.visible");
     });
 
+    it("shows trash action for the last dashcard for a dashboard question", () => {
+      H.createDashboard({
+        name: "Foo Dashboard",
+      }).then(({ body: dashboard }) => {
+        H.createQuestion({
+          name: "Foo dashboard question",
+          query: { "source-table": SAMPLE_DATABASE.ORDERS_ID, limit: 5 },
+          dashboard_id: dashboard.id,
+        }).then(({ body: card }) => {
+          H.addOrUpdateDashboardCard({
+            card_id: card.id,
+            dashboard_id: dashboard.id,
+            card: {
+              size_x: 6,
+              size_y: 6,
+            },
+          });
+
+          H.visitDashboard(dashboard.id);
+        });
+      });
+
+      H.editDashboard();
+
+      cy.log(
+        "should have trash option as only dashcard for dashboard question",
+      );
+      H.showDashboardCardActions(0);
+      cy.icon("trash").realHover();
+      H.tooltip().findByText("Remove and trash").should("exist");
+
+      cy.log(
+        "should have remove options if there's more than one dashcard for the dashboard question",
+      );
+      cy.icon("copy").click();
+      cy.findAllByTestId("dashcard").should("have.length", 2);
+      H.showDashboardCardActions(0);
+      cy.icon("trash").should("not.exist");
+      cy.icon("close").should("exist");
+
+      cy.log(
+        "should have the trash option if changes leave only one dashcard for a question",
+      );
+      cy.findAllByTestId("dashcard").eq(1).realHover().icon("close").click();
+      cy.findAllByTestId("dashcard").should("have.length", 1);
+      H.showDashboardCardActions(0);
+      cy.icon("trash").should("exist");
+
+      cy.log("should notify user that removal will also trash the card");
+      cy.icon("trash").click();
+      cy.findAllByTestId("dashcard").should("have.length", 0);
+    });
+
     it("can delete a question from a dashboard without deleting all of the questions in metabase", () => {
       H.createQuestion({
         name: "Total Orders",
@@ -546,7 +623,7 @@ describe("Dashboard > Dashboard Questions", () => {
       );
 
       // there has to be a card already in the trash from this dashboard for this to reproduce
-      cy.get("@deletedCardId").then(deletedCardId => {
+      cy.get("@deletedCardId").then((deletedCardId) => {
         cy.request("PUT", `/api/card/${deletedCardId}`, { archived: true });
       });
 
@@ -558,8 +635,9 @@ describe("Dashboard > Dashboard Questions", () => {
       // remove the card saved inside the dashboard
       H.editDashboard();
       H.dashboardCards().findByText("Total Orders").realHover();
-      cy.icon("close").last().click();
-      H.undoToast().findByText("Removed card");
+      // eslint-disable-next-line no-unsafe-element-filtering
+      cy.icon("trash").last().click();
+      H.undoToast().findByText("Trashed and removed card");
       H.saveDashboard();
 
       // check that we didn't accidentally delete everything
@@ -575,7 +653,7 @@ describe("Dashboard > Dashboard Questions", () => {
         { wrapId: true, idAlias: "dashboardWithTitleId" },
       );
 
-      cy.get("@dashboardWithTitleId").then(dashboardId => {
+      cy.get("@dashboardWithTitleId").then((dashboardId) => {
         // add a text card to the dashboard
         H.visitDashboard(dashboardId);
         H.editDashboard();
@@ -673,6 +751,8 @@ describe("Dashboard > Dashboard Questions", () => {
     });
 
     it("notifies the user about dashboards and dashcard series that a question will be removed from", () => {
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
       H.createQuestion(
         {
           name: "Average Quantity by Month Question",
@@ -753,7 +833,7 @@ describe("Dashboard > Dashboard Questions", () => {
         { wrapId: true, idAlias: "purpleDashboardId" },
       );
 
-      cy.get("@blueDashboardId").then(blueDashboardId => {
+      cy.get("@blueDashboardId").then((blueDashboardId) => {
         H.visitDashboard(blueDashboardId);
       });
 
@@ -765,7 +845,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.sidebar().findByText("Average Quantity by Month Question").click();
       H.saveDashboard();
 
-      cy.get("@purpleDashboardId").then(purpleDashboardId => {
+      cy.get("@purpleDashboardId").then((purpleDashboardId) => {
         H.visitDashboard(purpleDashboardId);
       });
 
@@ -777,11 +857,16 @@ describe("Dashboard > Dashboard Questions", () => {
       H.sidebar().findByText("Average Order Total by Month Question").click();
 
       // overlay the quantity series in the purple dashboard
-      H.showDashboardCardActions(0);
-      cy.findByLabelText("Add series").click();
+      H.showDashcardVisualizerModal(0, {
+        isVisualizerCard: false,
+      });
 
-      H.modal().findByLabelText("Average Quantity by Month Question").click();
-      H.modal().button("Done").click();
+      H.modal().within(() => {
+        H.switchToAddMoreData();
+        H.selectDataset("Average Quantity by Month Question");
+        cy.button("Save").click();
+      });
+
       H.saveDashboard();
       H.dashboardCards()
         .findByText(/Average Quantity by Month/)
@@ -798,8 +883,8 @@ describe("Dashboard > Dashboard Questions", () => {
       let shouldError = true;
 
       // Simulate an error to ensure that it's passed back and shown in the modal.
-      cy.get("@avgQuanityQuestionId").then(questionId => {
-        cy.intercept("PUT", `**/api/card/${questionId}**`, req => {
+      cy.get("@avgQuanityQuestionId").then((questionId) => {
+        cy.intercept("PUT", `**/api/card/${questionId}**`, (req) => {
           if (shouldError === true) {
             shouldError = false;
             req.reply({
@@ -826,7 +911,7 @@ describe("Dashboard > Dashboard Questions", () => {
         cy.button("Move it").click();
       });
 
-      cy.get("@purpleDashboardId").then(purpleDashboardId => {
+      cy.get("@purpleDashboardId").then((purpleDashboardId) => {
         H.visitDashboard(purpleDashboardId);
       });
 
@@ -837,6 +922,128 @@ describe("Dashboard > Dashboard Questions", () => {
         "not.contain.text",
         "Average Quantity by Month Question",
       );
+    });
+
+    it("should be able to save a question to a specific tab", () => {
+      cy.intercept("POST", "/api/card").as("saveQuestion");
+
+      const NO_TABS_DASH_NAME = "Orders in a dashboard";
+      const TABS_DASH_NAME = "Dashboard with tabs";
+      const TAB_ONE_NAME = "First tab";
+      const TAB_TWO_NAME = "Second tab";
+      const DASHBOARD_QUESTION_NAME = "A tab two kind of question";
+
+      H.createDashboardWithTabs({
+        name: TABS_DASH_NAME,
+        tabs: [
+          { id: -1, name: TAB_ONE_NAME },
+          { id: -2, name: TAB_TWO_NAME },
+        ],
+        dashcards: [],
+      });
+
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+
+      H.newButton("SQL query").click();
+      H.NativeEditor.type("SELECT 123;");
+
+      H.queryBuilderHeader().button("Save").click();
+
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByLabelText(/Where do you want to save this/).should(
+          "contain.text",
+          NO_TABS_DASH_NAME,
+        );
+
+        cy.findByLabelText(/Which tab should this go on/).should("not.exist");
+
+        cy.findByLabelText(/Where do you want to save this/).click();
+      });
+
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Browse").click();
+        cy.findByText("Dashboard with tabs").click();
+        cy.findByText("Select this dashboard").click();
+      });
+
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByLabelText(/Where do you want to save this/).should(
+          "contain.text",
+          TABS_DASH_NAME,
+        );
+
+        cy.findByLabelText(/Which tab should this go on/)
+          .should("exist")
+          .should("have.value", TAB_ONE_NAME)
+          .click();
+      });
+
+      H.popover().findByText(TAB_TWO_NAME).click();
+
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByLabelText(/Which tab should this go on/).should(
+          "have.value",
+          TAB_TWO_NAME,
+        );
+
+        cy.findByLabelText(/Name/).type(DASHBOARD_QUESTION_NAME);
+
+        cy.findByText("Save").click();
+      });
+
+      cy.log("should navigate user to the tab the question was saved to");
+      cy.url().should("include", "/dashboard/");
+      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
+      cy.location("search").should("contain", "tab"); // url should have tab param configured
+      H.assertTabSelected(TAB_TWO_NAME);
+      H.dashboardCards().within(() => {
+        cy.findByText(DASHBOARD_QUESTION_NAME).should("exist");
+      });
+    });
+
+    it("should allow a user to copy a question into a tab", () => {
+      const TAB_ONE_NAME = "First tab";
+      H.createDashboardWithTabs({
+        name: "Dashboard with tabs",
+        tabs: [
+          { id: -1, name: TAB_ONE_NAME },
+          { id: -2, name: "Second tab" },
+        ],
+        dashcards: [],
+      });
+
+      H.visitQuestion(S.ORDERS_COUNT_QUESTION_ID);
+      H.openQuestionActions();
+      H.popover().findByText("Duplicate").click();
+
+      H.modal().within(() => {
+        cy.findByLabelText(/Which tab should this go on/).should("not.exist");
+        cy.findByLabelText(/Where do you want to save this/).click();
+      });
+
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Browse").click();
+        cy.findByText("Dashboard with tabs").click();
+        cy.findByText("Select this dashboard").click();
+      });
+
+      H.entityPickerModal().should("not.exist"); // avoid test flaking from two modals being open at once
+
+      H.modal().within(() => {
+        cy.findByLabelText(/Which tab should this go on/)
+          .should("exist")
+          .should("have.value", TAB_ONE_NAME);
+        cy.findByText("Duplicate").click();
+      });
+
+      cy.log("should navigate user to the tab the question was saved to");
+      cy.url().should("include", "/dashboard/");
+      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
+      cy.location("search").should("contain", "tab"); // url should have tab param configured
+      H.assertTabSelected(TAB_ONE_NAME);
+      H.dashboardCards().within(() => {
+        cy.findByText("Orders, Count - Duplicate").should("exist");
+      });
     });
   });
 
@@ -899,7 +1106,7 @@ describe("Dashboard > Dashboard Questions", () => {
         { wrapId: true, idAlias: "personalDashboardId" },
       );
 
-      cy.get("@personalDashboardId").then(personalDashboardId => {
+      cy.get("@personalDashboardId").then((personalDashboardId) => {
         H.visitDashboard(personalDashboardId);
       });
 
@@ -915,7 +1122,7 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.signOut();
       cy.signIn("normal");
 
-      cy.get("@totalOrdersQuestionId").then(totalOrdersQuestionId => {
+      cy.get("@totalOrdersQuestionId").then((totalOrdersQuestionId) => {
         H.visitQuestion(totalOrdersQuestionId);
       });
 
@@ -937,7 +1144,231 @@ describe("Dashboard > Dashboard Questions", () => {
         .should("be.visible");
     });
   });
+
+  describe("migration modal", () => {
+    it("should allow users to migrate questions in one dashboard into their respective dashboards", () => {
+      cy.signInAsAdmin();
+      cy.log("seed data");
+      seedMigrationToolData();
+
+      cy.log("assert questions are in the collection");
+      H.visitCollection(S.FIRST_COLLECTION_ID);
+      H.collectionTable().within(() => {
+        cy.findByText(QUESTION_ONE).should("exist");
+        cy.findByText(QUESTION_TWO).should("exist");
+        cy.findByText(QUESTION_THREE).should("exist");
+      });
+
+      cy.log("user should be able to engage with the tool");
+      H.openCollectionMenu();
+      H.popover().within(() => {
+        cy.findByText("Move questions into their dashboards")
+          .should("exist")
+          .click();
+      });
+
+      cy.log("info modal should appear on first visit");
+      cy.findByTestId("move-questions-into-dashboard-info-modal")
+        .should("exist")
+        .within(() => {
+          cy.findByText("Move questions into their dashboards?").should(
+            "exist",
+          );
+          cy.findByText("Preview the changes").should("exist").click();
+        });
+      cy.log("info modal should disappear");
+      cy.findByTestId("move-questions-into-dashboard-info-modal").should(
+        "not.exist",
+      );
+
+      cy.log("assert migration modal appears");
+      cy.findByTestId("move-questions-into-dashboard-modal")
+        .should("exist")
+        .within(() => {
+          cy.log("assert migration tool shows expected data");
+          cy.findByText(QUESTION_ONE).should("exist");
+          cy.findByText(DASHBOARD_ONE).should("exist");
+          cy.findByText(QUESTION_TWO).should("exist");
+          cy.findByText(DASHBOARD_TWO).should("exist");
+          cy.findByText(QUESTION_THREE).should("not.exist");
+
+          cy.log("migrate the dashboard question candidates");
+          cy.findByText("Move these questions").click();
+        });
+      cy.findByTestId("move-questions-into-dashboard-modal").should(
+        "not.exist",
+      );
+      H.undoToast().should("exist");
+
+      cy.log("assert questions have been migrated out of the collection");
+      H.collectionTable().within(() => {
+        cy.findByText(QUESTION_ONE).should("not.exist");
+        cy.findByText(QUESTION_TWO).should("not.exist");
+        cy.findByText(QUESTION_THREE).should("exist");
+      });
+
+      cy.log("assert questions have been migrated into their dashboards");
+      H.collectionTable().findByText(DASHBOARD_ONE).click();
+      H.dashboardCards().within(() => {
+        cy.findByText(QUESTION_ONE).should("exist");
+        cy.findByText(QUESTION_TWO).should("not.exist");
+        cy.findByText(QUESTION_THREE).should("exist");
+      });
+      cy.go("back");
+
+      H.collectionTable().findByText(DASHBOARD_TWO).click();
+      H.dashboardCards().within(() => {
+        cy.findByText(QUESTION_ONE).should("not.exist");
+        cy.findByText(QUESTION_TWO).should("exist");
+        cy.findByText(QUESTION_THREE).should("exist");
+      });
+      cy.go("back");
+
+      cy.log("assert option to migrate is no longer available");
+      H.openCollectionMenu();
+      H.popover().within(() => {
+        cy.findByText("Move questions into their dashboards").should(
+          "not.exist",
+        );
+      });
+
+      cy.log(
+        "should not show the info modal if user has acknowledged it previously",
+      );
+      H.visitCollection("root");
+      H.openCollectionMenu();
+      H.popover().within(() => {
+        cy.findByText("Move questions into their dashboards")
+          .should("exist")
+          .click();
+      });
+      cy.findByTestId("move-questions-into-dashboard-modal")
+        .should("exist")
+        .within(() => {
+          cy.findByText("Cancel").click();
+        });
+
+      cy.log(
+        "should be immediately responsive to dashcard changes making new candidates",
+      );
+      H.visitCollection(S.FIRST_COLLECTION_ID);
+      H.openCollectionMenu();
+      H.popover().within(() => {
+        cy.findByText("Move questions into their dashboards").should(
+          "not.exist",
+        );
+      });
+      H.collectionTable().findByText(DASHBOARD_ONE).click();
+      H.editDashboard();
+      H.removeDashboardCard(1); // removes card for QUESTION_THREE
+      H.saveDashboard();
+      H.appBar().findByText("First collection").click(); // navigate via breadcrumbs to avoid page refresh
+      H.openCollectionMenu();
+      H.popover().within(() => {
+        cy.findByText("Move questions into their dashboards")
+          .should("exist")
+          .click();
+      });
+      cy.findByTestId("move-questions-into-dashboard-modal")
+        .should("exist")
+        .within(() => {
+          cy.findByText(QUESTION_THREE).should("exist");
+          cy.findByText(DASHBOARD_TWO).should("exist");
+        });
+    });
+
+    it("should not show migration tool to non-admins", () => {
+      cy.signInAsAdmin();
+      cy.log("seed data");
+      seedMigrationToolData();
+      cy.signIn("normal");
+
+      cy.log("assert questions are in the collection");
+      H.visitCollection(S.FIRST_COLLECTION_ID);
+      H.collectionTable().within(() => {
+        cy.findByText(QUESTION_ONE).should("exist");
+        cy.findByText(QUESTION_TWO).should("exist");
+        cy.findByText(QUESTION_THREE).should("exist");
+      });
+
+      cy.log("user should not be able to engage with the tool");
+      H.openCollectionMenu();
+      H.popover().within(() => {
+        cy.findByText("Move questions into their dashboards").should(
+          "not.exist",
+        );
+      });
+
+      cy.log("should get redirect if the user navigates to url directly");
+      cy.visit(`/collection/${S.FIRST_COLLECTION_ID}/move-questions-dashboard`);
+      cy.url().should("not.include", "move-questions-dashboard");
+      cy.url().should("include", `/collection/${S.FIRST_COLLECTION_ID}`);
+    });
+  });
 });
+
+function seedMigrationToolData() {
+  const query = { "source-table": SAMPLE_DATABASE.ORDERS_ID };
+  const baseDc = { size_x: 8, size_y: 5 };
+
+  H.createQuestion({
+    name: QUESTION_THREE,
+    query,
+    collection_id: S.FIRST_COLLECTION_ID,
+  }).then(({ body: { id } }) => {
+    const dc = createMockDashboardCard({
+      ...baseDc,
+      id: 3,
+      card_id: id,
+      col: 8,
+    });
+    cy.wrap(dc).as("questionThreeCard");
+  });
+
+  H.createQuestionAndDashboard({
+    dashboardDetails: {
+      name: DASHBOARD_ONE,
+      collection_id: S.FIRST_COLLECTION_ID,
+    },
+    questionDetails: {
+      name: QUESTION_ONE,
+      query,
+      collection_id: S.FIRST_COLLECTION_ID,
+    },
+  }).then(({ body: { dashboard_id, card_id } }) => {
+    cy.get("@questionThreeCard").then((questionThreeCard) => {
+      H.updateDashboardCards({
+        dashboard_id,
+        cards: [
+          createMockDashboardCard({ ...baseDc, id: 1, card_id }),
+          questionThreeCard,
+        ],
+      });
+    });
+  });
+
+  H.createQuestionAndDashboard({
+    dashboardDetails: {
+      name: DASHBOARD_TWO,
+      collection_id: S.FIRST_COLLECTION_ID,
+    },
+    questionDetails: {
+      name: QUESTION_TWO,
+      query,
+      collection_id: S.FIRST_COLLECTION_ID,
+    },
+  }).then(({ body: { dashboard_id, card_id } }) => {
+    cy.get("@questionThreeCard").then((questionThreeCard) => {
+      H.updateDashboardCards({
+        dashboard_id,
+        cards: [
+          createMockDashboardCard({ ...baseDc, id: 2, card_id }),
+          questionThreeCard,
+        ],
+      });
+    });
+  });
+}
 
 function selectCollectionItem(name) {
   cy.findAllByTestId("collection-entry-name")

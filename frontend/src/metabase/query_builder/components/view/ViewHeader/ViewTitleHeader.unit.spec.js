@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 import _ from "underscore";
 
+import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 import { createMockEntitiesState } from "__support__/store";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import MetabaseSettings from "metabase/lib/settings";
@@ -99,7 +100,7 @@ function getSavedNativeQuestionCard(overrides) {
 }
 
 function mockSettings({ enableNestedQueries = true } = {}) {
-  MetabaseSettings.get = jest.fn().mockImplementation(key => {
+  MetabaseSettings.get = jest.fn().mockImplementation((key) => {
     if (key === "enable-nested-queries") {
       return enableNestedQueries;
     }
@@ -119,6 +120,12 @@ function setup({
   ...props
 } = {}) {
   mockSettings(settings);
+
+  setupGetUserKeyValueEndpoint({
+    namespace: "user_acknowledgement",
+    key: "turn_into_model_modal",
+    value: false,
+  });
 
   const callbacks = {
     runQuestionQuery: jest.fn(),
@@ -199,10 +206,6 @@ function setupSavedNative(props = {}) {
 }
 
 describe("ViewTitleHeader", () => {
-  beforeEach(() => {
-    fetchMock.reset();
-  });
-
   const TEST_CASE = {
     SAVED_GUI_QUESTION: {
       card: getSavedGUIQuestionCard(),
@@ -237,7 +240,7 @@ describe("ViewTitleHeader", () => {
   ];
 
   describe("Common", () => {
-    ALL_TEST_CASES.forEach(testCase => {
+    ALL_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -278,12 +281,11 @@ describe("ViewTitleHeader", () => {
           expect(screen.getByLabelText("refresh icon")).toBeInTheDocument();
         });
 
-        it("displays refresh button tooltip above the refresh button", async () => {
+        it("displays refresh button tooltip for the refresh button", async () => {
           setup({ card });
           const refreshButton = screen.getByLabelText("refresh icon");
           await userEvent.hover(refreshButton);
-          const tooltip = screen.getByRole("tooltip");
-          expect(tooltip).toHaveAttribute("data-placement", "top");
+          const tooltip = await screen.findByRole("tooltip");
           expect(tooltip).toHaveTextContent("Refresh");
         });
       });
@@ -291,7 +293,7 @@ describe("ViewTitleHeader", () => {
   });
 
   describe("GUI", () => {
-    GUI_TEST_CASES.forEach(testCase => {
+    GUI_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -303,12 +305,11 @@ describe("ViewTitleHeader", () => {
         });
 
         it("offers to filter query results", () => {
-          const { onOpenModal } = setup({
+          setup({
             card,
             queryBuilderMode: "view",
           });
-          fireEvent.click(screen.getByText("Filter"));
-          expect(onOpenModal).toHaveBeenCalled();
+          expect(screen.getByText("Filter")).toBeInTheDocument();
         });
 
         it("offers to summarize query results", () => {
@@ -363,7 +364,7 @@ describe("ViewTitleHeader", () => {
   });
 
   describe("Native", () => {
-    NATIVE_TEST_CASES.forEach(testCase => {
+    NATIVE_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -388,7 +389,7 @@ describe("ViewTitleHeader", () => {
   });
 
   describe("Saved", () => {
-    SAVED_QUESTIONS_TEST_CASES.forEach(testCase => {
+    SAVED_QUESTIONS_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -614,7 +615,6 @@ describe("View Header | Hidden tables", () => {
             joins: [
               {
                 alias: "Orders",
-                ident: "3Q-699fD5ZhmyLL1fPle2",
                 fields: "all",
                 "source-table": ORDERS_ID,
                 condition: [
@@ -645,7 +645,6 @@ describe("View Header | Inaccessible Cards", () => {
             joins: [
               {
                 alias: "Orders",
-                ident: "uAysG9UfH3RUnErkkOw77",
                 fields: "all",
                 "source-table": ORDERS_ID,
                 condition: [

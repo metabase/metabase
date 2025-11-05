@@ -1,0 +1,11 @@
+name: Metabot
+description: Metabot instance for internal users.
+created_at: '2025-05-28T17:49:20.649159Z'
+entity_id: metabotmetabotmetabot
+updated_at: '2025-05-28T17:49:20.649159Z'
+serdes/meta:
+- id: metabotmetabotmetabot
+  model: Metabot
+collection_id: null
+prompts: []
+use_verified_content: false

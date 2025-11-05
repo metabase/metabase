@@ -1,9 +1,11 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { VisualizationRoot } from "metabase/visualizations/components/Visualization/Visualization.styled";
 import { animationStyles } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton.styled";
 import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption";
 
+// eslint-disable-next-line no-color-literals
 export const PositionedActionMenu = styled.div`
   position: absolute;
   top: 0.3125rem;
@@ -27,5 +29,5 @@ export const SkeletonBottomImage = styled.svg`
 `;
 export const SkeletonCenterCaption = styled(SkeletonCaption)`
   margin-top: 0.25rem;
-  margin-bottom: 2.25rem;
+  margin-bottom: 1.25rem;
 `;

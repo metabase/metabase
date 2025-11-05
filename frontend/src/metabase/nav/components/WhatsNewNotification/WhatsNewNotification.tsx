@@ -2,12 +2,13 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { updateSetting } from "metabase/admin/settings/settings";
+import { useGetVersionInfoQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getIsEmbedded } from "metabase/selectors/embed";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import { Anchor, Flex, Icon, Paper, Stack, Text } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 import { DismissIconButtonWrapper } from "./WhatsNewNotification.styled";
 import Sparkles from "./sparkles.svg?component";
@@ -15,8 +16,8 @@ import { getLatestEligibleReleaseNotes } from "./utils";
 
 export function WhatsNewNotification() {
   const dispatch = useDispatch();
-  const isEmbedded = useSelector(getIsEmbedded);
-  const versionInfo = useSetting("version-info");
+  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+  const { data: versionInfo } = useGetVersionInfoQuery();
   const currentVersion = useSetting("version");
   const lastAcknowledgedVersion = useSetting("last-acknowledged-version");
   const isWhiteLabeling = useSelector(getIsWhiteLabeling);
@@ -26,7 +27,7 @@ export function WhatsNewNotification() {
       versionInfo,
       currentVersion: currentVersion.tag,
       lastAcknowledgedVersion: lastAcknowledgedVersion,
-      isEmbedded,
+      isEmbeddingIframe,
       isWhiteLabeling,
     });
 
@@ -35,11 +36,11 @@ export function WhatsNewNotification() {
     versionInfo,
     currentVersion.tag,
     lastAcknowledgedVersion,
-    isEmbedded,
+    isEmbeddingIframe,
     isWhiteLabeling,
   ]);
 
-  const dimiss = useCallback(() => {
+  const dismiss = useCallback(() => {
     dispatch(
       updateSetting({
         key: "last-acknowledged-version",
@@ -53,20 +54,20 @@ export function WhatsNewNotification() {
   }
   return (
     <Paper my="lg" mx="auto" p="md" shadow="md" withBorder w={244}>
-      <Stack spacing="sm">
+      <Stack gap="sm">
         <Flex justify="space-between">
           <Sparkles color={color("brand")} />
-          <DismissIconButtonWrapper onClick={dimiss}>
+          <DismissIconButtonWrapper onClick={dismiss}>
             <Icon name="close" />
           </DismissIconButtonWrapper>
         </Flex>
 
         {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins */}
-        <Text weight="bold" size="sm">{t`Metabase has been updated`}</Text>
+        <Text fw="bold" size="sm">{t`Metabase has been updated`}</Text>
 
         <Anchor
           size="sm"
-          weight="bold"
+          fw="bold"
           component="a"
           href={url}
           target="_blank"

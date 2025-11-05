@@ -24,9 +24,9 @@ function getAllSlicePercentages(sliceTree: SliceTree) {
       return;
     }
 
-    node.children.forEach(c => getPercentages(c));
+    node.children.forEach((c) => getPercentages(c));
   }
-  sliceTree.forEach(node => getPercentages(node));
+  sliceTree.forEach((node) => getPercentages(node));
 
   return percentages;
 }
@@ -59,7 +59,7 @@ export function getPieChartFormatters(
         location === "chart"
           ? getAllSlicePercentages(chartModel.sliceTree)
           : getArrayFromMapValues(chartModel.sliceTree).map(
-              s => s.normalizedPercentage,
+              (s) => s.normalizedPercentage,
             );
 
       decimals = computeMaxDecimalsForValues(percentages, {

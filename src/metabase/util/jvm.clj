@@ -2,17 +2,24 @@
   "JVM-specific utilities and helpers.
   You don't want to import this namespace directly - these functions are re-exported by [[metabase.util]]."
   (:require
-   [clojure.java.classpath :as classpath]
    [clojure.string :as str]
-   [clojure.tools.namespace.find :as ns.find]
    [metabase.util.format :as u.format]
    [metabase.util.log :as log])
   (:import
    (java.net InetAddress InetSocketAddress Socket)
-   (java.util Base64 Base64$Decoder Base64$Encoder Locale PriorityQueue)
-   (java.util.concurrent TimeoutException)))
+   (java.nio.charset StandardCharsets)
+   (java.util
+    Base64
+    Base64$Decoder
+    Base64$Encoder
+    Locale
+    PriorityQueue)
+   (java.util.concurrent Executors ExecutorService TimeoutException)))
 
 (set! *warn-on-reflection* true)
+
+(defonce ^:private ^ExecutorService virtual-thread-executor
+  (Executors/newVirtualThreadPerTaskExecutor))
 
 (defmacro varargs
   "Make a properly-tagged Java interop varargs argument. This is basically the same as `into-array` but properly tags
@@ -142,6 +149,17 @@
    nil
    (full-exception-chain e)))
 
+(defn all-ex-messages
+  "Returns a list of all non-nil messages in an exception, starting from the outermost and working inward.
+  If no messages are found, returns nil."
+  [^Throwable e]
+  (loop [ex e
+         messages []]
+    (if ex
+      (recur (.getCause ex)
+             (conj messages (.getMessage ex)))
+      (seq (remove nil? messages)))))
+
 (defn do-with-auto-retries
   "Execute `f`, a function that takes no arguments, and return the results.
    If `f` fails with an exception, retry `f` up to `num-retries` times until it succeeds.
@@ -180,25 +198,39 @@
   "A shared Base64 decoder instance."
   (Base64/getDecoder))
 
+(defn bytes-to-string
+  "Converts UTF-8 bytes into a string."
+  ^String [^bytes bs]
+  (String. bs StandardCharsets/UTF_8))
+
 (defn decode-base64-to-bytes
   "Decodes a Base64 string into bytes."
   ^bytes [^String string]
   (.decode base64-decoder string))
 
-;;; TODO -- this is only used [[metabase.analytics.snowplow-test]] these days
 (defn decode-base64
   "Decodes the Base64 string `input` to a UTF-8 string."
   [input]
-  (new java.lang.String (decode-base64-to-bytes input) "UTF-8"))
+  (bytes-to-string (decode-base64-to-bytes input)))
 
 (def ^:private ^Base64$Encoder base64-encoder
   "A shared Base64 encoder instance."
   (Base64/getEncoder))
 
+(defn string-to-bytes
+  "Converts a string into UTF-8 bytes"
+  ^bytes [^String input]
+  (.getBytes input StandardCharsets/UTF_8))
+
 (defn encode-base64
   "Encodes the UTF-8 encoding of the string `input` to a Base64 string."
   ^String [^String input]
-  (.encodeToString base64-encoder (.getBytes input "UTF-8")))
+  (.encodeToString base64-encoder (string-to-bytes input)))
+
+(defn encode-base64-bytes
+  "Encodes the bytes `input` to a Base64 string."
+  ^String [^bytes input]
+  (.encodeToString base64-encoder input))
 
 (def ^:private do-with-us-locale-lock (Object.))
 
@@ -245,17 +277,6 @@
   [& body]
   `(do-with-us-locale (fn [] ~@body)))
 
-;; This is made `^:const` so it will get calculated when the uberjar is compiled. `find-namespaces` won't work if
-;; source is excluded; either way this takes a few seconds, so doing it at compile time speeds up launch as well.
-(defonce ^:const ^{:doc "Vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended
-  for use by various routines that load related namespaces, such as task and events
-  initialization."}
-  metabase-namespace-symbols
-  (vec (sort (for [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
-                   :when   (and (str/starts-with? ns-symb "metabase")
-                                (not (str/includes? ns-symb "test")))]
-               ns-symb))))
-
 (defn deref-with-timeout
   "Call `deref` on a something derefable (e.g. a future or promise), and throw an exception if it takes more than
   `timeout-ms`. If `ref` is a future it will attempt to cancel it as well."
@@ -285,7 +306,7 @@
   The default timeout is 1000ms and the default interval is 100ms.
 
     (u/poll {:thunk       (fn [] (upload!))
-             :done        (fn [response] (get-in response [:status :done]))
+             :done?       (fn [response] (get-in response [:status :done]))
              :timeout-ms  1000
              :interval-ms 100})"
   [{:keys [thunk done? timeout-ms interval-ms]
@@ -327,3 +348,13 @@
        [#","                  "."]
        ;; move minus sign at end to front
        [#"(^[^-]+)-$"         "-$1"]]))))
+
+(defn run-in-virtual-thread
+  "Run `thunk` in a virtual thread. Returns the j.u.concurrent.Future immediately. The Future will contain the return value."
+  [thunk]
+  (.submit virtual-thread-executor ^Runnable thunk))
+
+(defmacro in-virtual-thread*
+  "Run body once in a virtual thread. Uses ^:once metadata and `bound-fn*` to define the function."
+  [& body]
+  `(run-in-virtual-thread (bound-fn* (^:once fn [] ~@body))))

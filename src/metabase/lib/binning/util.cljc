@@ -1,4 +1,5 @@
 (ns metabase.lib.binning.util
+  (:refer-clojure :exclude [some])
   (:require
    [clojure.math :as math]
    [metabase.lib.metadata :as lib.metadata]
@@ -6,15 +7,19 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some]]))
 
 (mu/defn- calculate-bin-width :- ::lib.schema.binning/bin-width
   "Calculate bin width required to cover interval [`min-value`, `max-value`] with `num-bins`."
   [min-value :- number?
    max-value :- number?
    num-bins  :- ::lib.schema.binning/num-bins]
-  (u/round-to-decimals 5 (/ (- max-value min-value)
-                            num-bins)))
+  (let [width (u/round-to-decimals 5 (/ (- max-value min-value)
+                                        num-bins))]
+    (if (zero? width)
+      1                         ; a nice (in the sense of [[nicer-bin-width]]), positive but otherwise arbitrary width
+      width)))
 
 (mu/defn- calculate-num-bins :- ::lib.schema.binning/num-bins
   "Calculate number of bins of width `bin-width` required to cover interval [`min-value`, `max-value`]."

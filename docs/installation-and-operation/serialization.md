@@ -1,5 +1,6 @@
 ---
 title: "Serialization"
+summary: How to export and import Metabase content between instances using serialization. Useful for version control, staging environments, and duplicating assets.
 redirect_from:
   - /docs/latest/enterprise-guide/serialization
 ---
@@ -8,7 +9,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Serialization" %}
 
-Once you really get rolling with Metabase, it's often the case that you'll have more than one Metabase instance spun up. You might have a couple of testing or development instances and a few production ones, or maybe you have a separate Metabase per office or region.
+Once you get rolling with Metabase, it's often the case that you'll have more than one Metabase instance spun up. You might have a couple of testing or development instances and a few production ones, or maybe you have a separate Metabase per office or region.
 
 To help you out in situations like this, Metabase has a serialization feature which lets you create an _export_ of the contents of a Metabase that can then be _imported_ into one or more Metabases.
 
@@ -19,7 +20,7 @@ To help you out in situations like this, Metabase has a serialization feature wh
 There are two ways to run these `export` and `import` commands:
 
 - [Using CLI commands](#serialization-with-cli-commands)
-- [Through the API](#serialization-via-the-api).
+- [Through the API](#serialization-via-the-api)
 
 > We're interested in how we can improve serialization to suit your workflow. [Upvote an existing issue](https://github.com/metabase/metabase/issues?q=is%3Aissue+is%3Aopen+serialization+label%3AOperation%2FSerialization) to let us know it's important to you. If a relevant issue doesn't yet exist, please create one and tell us what you need.
 
@@ -31,10 +32,8 @@ There are two ways to run these `export` and `import` commands:
 
 Check out our guides for:
 
-- [Running multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//multi-env)
-- [Setting up git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//git-based-workflow)
-
-> Serialization isn't intended for use cases like duplicating assets or swapping data sources _within_ the same Metabase instance. If you're using serialization for duplicating assets within the same instance, check out [How export works](#how-export-works), [How import works](#how-import-works), and the directions for your use case in [Other uses of serialization](#other-uses-of-serialization)
+- [Running multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/multi-env)
+- [Setting up git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/git-based-workflow)
 
 ## How export works
 
@@ -51,18 +50,20 @@ Metabase will only export the following entities:
 - Collections (but personal collections don't get exported unless explicitly specified them through [export options](#customize-what-gets-exported))
 - Dashboards
 - Saved questions
+- Transforms (including jobs)
+- Documents (without comments)
 - Actions
 - Models
 - Metrics
-- SQL Snippets
+- Snippets
 - Data model and table metadata
 - Segments
 - Public sharing settings for questions and dashboards
 - [General Metabase settings](#general-metabase-settings-that-are-exported)
 - Events and timelines
-- Database connection strings (only if specified through [export options](#customize-what-gets-exported)).
+- Database connection strings (only if specified through [export options](#customize-what-gets-exported))
 
-All other entities—including users, groups, permissions, alerts, subscriptions—won't get exported.
+All other entities—including users, groups, permissions, alerts, subscriptions, document comments—won't get exported.
 
 Metabase will export its artifacts to a directory of YAML files. The export includes:
 
@@ -146,7 +147,7 @@ See [export parameters in CLI commands](#export-options) or [export parameters i
 
 Questions can be found in the `cards` directory of a collection directory. Here's an example card YAML file for a question written with SQL that uses a field filter and has an area chart visualization.
 
-> To preserve a native query's multi-line format, remove trailing whitespace from native queries. If your native query has trailing whitespace, YAML will convert your query to a single string literal (which only affects presentation, not functionality).
+To preserve a native query's multi-line format, remove trailing whitespace from native queries. If your native query has trailing whitespace, YAML will convert your query to a single string literal (which only affects presentation, not functionality).
 
 ```yml
 name: Products by week
@@ -258,9 +259,15 @@ type: question
 
 ### Metabase uses Entity IDs to identify and reference Metabase items
 
-Metabase assigns a unique entity ID to every Metabase item (a dashboard, question, model, collection, etc.). Entity IDs use the [NanoID format](https://github.com/ai/nanoid).
+Metabase assigns a unique Entity ID to every Metabase item (a dashboard, question, model, collection, etc.). These Entity IDs are in addition to the sequential IDs Metabase generates. Entity IDs use the [NanoID format](https://github.com/ai/nanoid), and are stable across Metabases. By "stable" we mean that you can, for example, export a dashboard with an entity ID from one Metabase, and import that dashboard into another Metabase and have that dashboard use the same Entity ID, even though it's in a different Metabase.
 
-You can see the entity IDs of items in the exported YAML files in the `entity_id` field. For example, in the [Example of a serialized question](#example-of-a-serialized-question), you'll see the Entity ID of that question:
+To get an item's Entity ID in Metabase:
+
+1. Visit the item in Metabase.
+2. Click on the info button.
+3. In the overview tab, copy the Entity ID.
+
+You can also see the Entity IDs of items in the exported YAML files in the `entity_id` field. For example, in the [Example of a serialized question](#example-of-a-serialized-question), you'll see the Entity ID of that question:
 
 ```yaml
 entity_id: r6vC_vLmo9zG6_r9sAuYG
@@ -273,7 +280,7 @@ serdes/meta:
   - id: r6vC_vLmo9zG6_r9sAuYG
 ```
 
-To disambiguate entities that share the same name, Metabase includes entity IDs in the file and directory names for exported entities.
+To disambiguate entities that share the same name, Metabase includes Entity IDs in the file and directory names for exported entities.
 
 ```
 r6vC_vLmo9zG6_r9sAuYG_products_by_week.yaml
@@ -289,13 +296,25 @@ collection_id: onou5H28Wvy3kWnjxxdKQ
 
 This ID refers to the collection where the question was saved. In a real export, you'd be able to find a YAML file for this collection whose name starts with its ID: `onou5H28Wvy3kWnjxxdKQ`.
 
+### Entity IDs work with embedding
+
+Metabase supports working with [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) for questions, dashboards, and collections in [Static Embedding](../embedding/static-embedding.md), [Embedded analytics JS](../embedding/embedded-analytics-js.md), [Interactive embedding](../embedding/interactive-embedding.md), and the [Embedded analytics SDK](../embedding/sdk/introduction.md).
+
+A high-level workflow for using Entity IDs when embedding Metabase in your app would look something like:
+
+1. Create a dashboard in a Metabase running locally on your machine.
+2. Embed the dashboard in your app locally using the Entity ID in your application code.
+3. Export your Metabase changes to YAML files via serialization.
+4. Import your Metabase changes (the exported YAML files) to your production Metabase.
+5. Since the Entity ID remains the same in the production Metabase, you can just push the code in your app to production, and the code will refer to the right dashboard.
+
 ### Databases, schemas, tables, and fields are identified by name
 
 By default, Metabase exports some database and data model settings. Exports exclude database connection strings by default. You can [explicitly include database connection strings](#customize-what-gets-exported). You can also choose to exclude the data model entirely.
 
 Metabase serializes databases and tables in the `databases` directory. It will include YAML files for every database, table, field, segment, and metric.
 
-Databases, tables, and fields are referred to by their names (unlike Metabase-specific items, which are [referred to by entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items)).
+Databases, tables, and fields are referred to by their names (unlike Metabase-specific items, which are [referred to by Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items)).
 
 For example, in the [Example of a serialized question](#example-of-a-serialized-question), there are several YAML keys that reference Sample Database:
 
@@ -333,7 +352,7 @@ Metabase relies on [Entity IDs](#metabase-uses-entity-ids-to-identify-and-refere
 
   In particular, this means that if you export a question, then make a change in an exported YAML file — like rename a question by directly editing the `name` field — and then import the edited file back, Metabase will try to apply the changes you made to the YAML.
 
-- If you import an item with blank `entity_id` (and blank `serdes/meta → id`), Metabase will create a new item.
+- If you import an item with a blank `entity_id`, Metabase will create a new item. Any `serdes/meta → id` will be ignored in this case.
 
 - All items and data sources referenced in YAML must either exist in the target Metabase already, or be included in the import.
 
@@ -360,7 +379,7 @@ If you're instead looking to do a one-time migration from the default H2 databas
 
 ### You'll need to manually add license tokens
 
-Metabase excludes your license token from exports, so if you're running multiple environments of Metabase Enterprise Edition, you'll need to manually add your license token to the target Metabase(s), either via the [Metabase user interface](https://www.metabase.com/docs/latest/paid-features/activating-the-enterprise-edition), or via an [environment variable](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
+Metabase excludes your license token from exports, so if you're running multiple environments of Metabase Enterprise Edition, you'll need to manually add your license token to the target Metabase(s), either via the [Metabase user interface](../installation-and-operation/activating-the-enterprise-edition.md), or via an [environment variable](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
 
 ### Metabase adds logs to exports and imports
 
@@ -616,7 +635,7 @@ tar -xvf  metabase_data.tgz
 ```sh
 curl \
   -H 'x-api-key: YOUR_API_KEY' \
-  -X POST 'http://your-metabase-url/api/ee/serialization/export' \
+  -X POST 'https://your-metabase-url/api/ee/serialization/export' \
   -o metabase_data.tgz
 ```
 
@@ -652,7 +671,7 @@ From the directory where you've stored your GZIP-compressed file, run:
 curl -X POST \
   -H 'x-api-key: YOUR_API_KEY' \
   -F file=@metabase_data.tgz \
-  'http://your-metabase-url/api/ee/serialization/import' \
+  'https://your-metabase-url/api/ee/serialization/import' \
   -o -
 ```
 
@@ -669,29 +688,31 @@ We're providing some directions on how to approach these unsupported use cases, 
 
 ### Using serialization for duplicating content within the same Metabase
 
-Using serialization to duplicate content is not trivial, because you'll need to wrangle [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) for all the items you want to duplicate — and the IDs for all the items that are related to those items — to avoid overwriting existing data.
+> Duplicating assets via serialization, while technically possible, isn't officially supported, so do so at your own risk. The risk here being that you may have to manage long chains of dependencies, which can make it more likely you'll forget to edit an entity ID, or overwrite an entity ID that already exists. So make sure you're doing backups and checking your changes into version control.
+
+Using serialization to duplicate content is not trivial, because you'll need to wrangle [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) for all the items you want to duplicate — _and_ the IDs for all the items that are related to those items — to avoid overwriting existing data.
 
 Before starting this perilous journey, review [how export works](#how-export-works) and [how import works](#how-import-works), and contact [help@metabase.com](mailto:help@metabase.com) if you have any questions.
 
 You'll need to keep in mind:
 
-- Importing an item with an entity ID that already exists will overwrite the existing item. To use an existing YAML file to create a new item, you'll need to either a) create a new entity ID or b) clear the Entity ID.
-- Two items cannot have the same entity IDs.
+- Importing an item with an Entity ID that already exists will overwrite the existing item. To use an existing YAML file to create a new item, you'll need to either a) create a new Entity ID or b) clear the Entity ID.
+- Two items cannot have the same Entity IDs.
 - `entity_id` and `serdes/meta → id` fields in the YAML file should match.
 - If the `entity_id` and `serdes/meta → id` fields in a YAML file for an item are blank, Metabase will create a new item with a new Entity ID.
 - All items and data sources referenced by an item should either already exist in target Metabase or be included in the import.
 
   For example, a collection can contain a dashboard that contains a question that is built on a model that references a data source. All of those dependencies must be either included in the import or already exist in the target instance.
 
-  This means that you might need a multi-stage export/import: create some of the items you need (like collections) in Metabase first, export them to get their entity IDs, then export the stuff that you want to duplicate and use those IDs in items that reference them.
+  This means that you might need a multi-stage export/import: create some of the items you need (like collections) in Metabase first, export them to get their Entity IDs, then export the stuff that you want to duplicate and use those IDs in items that reference them.
 
 For example, to duplicate a collection that contains _only_ questions that are built directly on raw data (not on models or other saved questions), without changing the data source for the questions, you can use a process like this:
 
 1. In Metabase, create a "template" collection and add the items you'd like to duplicate.
 2. In Metabase, create a new collection which will serve as the target for duplicated items.
 3. Export the template collection and the target collection (you can use [export parameters](#customize-what-gets-exported) to export only a few collections).
-   The YAML files for template questions in the export will have their own Entity IDs and reference the entity ID of the template collection.
-4. Get the entity ID of the target collection from its export.
+   The YAML files for template questions in the export will have their own Entity IDs and reference the Entity ID of the template collection.
+4. Get the Entity ID of the target collection from its export.
 5. In the YAML files for questions in the template collection export:
 
    - Clear the values for the fields `entity_id` and `serdes/meta → id` for questions. This will ensure that the template questions don't get overwritten, and instead Metabase will create new questions.
@@ -701,15 +722,19 @@ For example, to duplicate a collection that contains _only_ questions that are b
 
 This process assumes that your duplicated questions will all use the same data source. You can combine this with [switching the data source](#using-serialization-to-swap-the-data-source-for-questions-within-one-instance) to use a different data source for every duplicated collection.
 
-If you want to create multiple copies of a collection at once, then instead of repeating this process for every copy, you could create your own target entity IDs (they can be any string that uses the [NanoID format](https://github.com/ai/nanoid)), duplicate all the template YAML files, and replace template entity IDs and any references to them with your created entity IDs.
+If you want to create multiple copies of a collection at once, then instead of repeating this process for every copy, you could create your own target Entity IDs (they can be any string that uses the [NanoID format](https://github.com/ai/nanoid)), duplicate all the template YAML files, and replace template Entity IDs and any references to them with your created Entity IDs.
 
 If your collections contains dashboards, models, and other items that can add dependencies, this process can become even more complicated -- you need to handle every dependency. We strongly recommend that you first test your serialization on a non-production Metabase, and reach out to [help@metabase.com](mailto:help@metabase.com) if you need any help.
 
 ### Using serialization to swap the data source for questions within one instance
 
-If you want to change the data source for some of the questions in your Metabase — for example, just for questions in a single collection - you can serialize the questions manually, then edit the exported YAML files.
+> We've since built an official solution for situations where you want to build one dashboard and change the database it queries based on who's viewing it. Check out [Database routing](../permissions/database-routing.md).
 
-> If you want to switch _every_ question built on database A to use database B instead, and database B has exactly the same schema as database A, you don't need to use serialization: you can just swap the connection string in **Admin > Databases**
+Read the blockquote above before proceeding, as that's probably what you're looking for. We're leaving the docs below as a backup in case [database routing](../permissions/database-routing.md) doesn't solve your problem.
+
+If you want to switch _every_ question built on database A to use database B instead, and database B has exactly the same schema as database A, you don't need to use serialization: you can just swap the connection string in **Admin > Databases**.
+
+If you want to change the data source for some of the questions in your Metabase — for example, just for questions in a single collection - you can serialize the questions manually, then edit the exported YAML files.
 
 Your databases must have the same engine, and ideally they should have the same schema.
 
@@ -743,8 +768,8 @@ If you're upgrading from Metabase version 46.X or older, here's what you need to
 A few other changes to call out:
 
 - The exported YAML files have a slightly different structure:
-  - Metabase will prefix each file with a 24-character entity ID (like `IA96oUzmUbYfNFl0GzhRj_accounts_model.yaml`).
-    You can run a Metabase command to [drop entity IDs](./commands.md#drop-entity-ids) before exporting.
+  - Metabase will prefix each file with a 24-character Entity ID (like `IA96oUzmUbYfNFl0GzhRj_accounts_model.yaml`).
+    You can run a Metabase command to [drop Entity IDs](./commands.md#drop-entity-ids).
   - The file tree is slightly different.
 - To serialize personal collections, you just need to include the personal collection IDs in the list of comma-separated IDs following the `-c` option (short for `--collection`).
 
@@ -756,7 +781,8 @@ If you've written scripts to automate serialization, you'll need to:
 
 ## Further reading
 
-- [Serialization tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//serialization).
-- [Multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//multi-env)
-- [Setting up a git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//git-based-workflow).
-- Need help? Contact [support@metabase.com](mailto:support@metabase.com).
+- [Serialization tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/serialization)
+- [Database routing](../permissions/database-routing.md)
+- [Multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/multi-env)
+- [Setting up a git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/git-based-workflow)
+- Need help? Contact [support@metabase.com](mailto:support@metabase.com)

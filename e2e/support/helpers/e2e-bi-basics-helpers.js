@@ -1,4 +1,4 @@
-import { popover, queryBuilderMain, selectDropdown } from "e2e/support/helpers";
+import { queryBuilderMain, tableHeaderColumn } from "e2e/support/helpers";
 
 /**
  * Initiate Summarize action
@@ -22,83 +22,17 @@ export function addCustomColumn() {
   initiateAction("CustomColumn", "notebook");
 }
 
-export function filterField(
-  fieldName,
-  { operator, value, placeholder, order } = {},
-) {
-  if (operator) {
-    changeOperator(getFilterField(fieldName, order), operator);
-  }
-
-  if (value) {
-    const values = Array.isArray(value) ? value : [value];
-    values.forEach(value => {
-      changeValue(getFilterField(fieldName, order), value, placeholder);
-    });
-  }
-
-  return getFilterField(fieldName, order);
-}
-
-export function filterSelectField(fieldName, { operator, value, order } = {}) {
-  if (operator) {
-    changeOperator(getFilterField(fieldName, order), operator);
-  }
-
-  if (value) {
-    const values = Array.isArray(value) ? value : [value];
-    values.forEach(value => {
-      getFilterField(fieldName, order)
-        .findByLabelText("Filter value")
-        .focus()
-        .clear()
-        .type(value);
-      popover().findByText(value).click();
-    });
-  }
-
-  return getFilterField(fieldName, order);
-}
-
-export function filterFieldPopover(
-  fieldName,
-  { value, placeholder, order } = {},
-) {
-  getFilterField(fieldName, order).within(() => {
-    cy.get("input").last().click();
-  });
-
-  if (value) {
-    changeValue(selectDropdown(), value, placeholder);
-  }
-  return selectDropdown();
-}
-
-function getFilterField(fieldName, order = 0) {
-  return cy.findAllByTestId(`filter-column-${fieldName}`).eq(order);
-}
-
-function changeOperator(subject, operator) {
-  subject.findByLabelText("Filter operator").click();
-  popover().findAllByText(new RegExp(operator, "i")).first().click();
-}
-
-function changeValue(subject, newValue, placeholder) {
-  subject.within(() => {
-    const input = placeholder
-      ? cy.findByPlaceholderText(placeholder)
-      : cy.findByLabelText("Filter value");
-    input.focus().clear().type(newValue).blur();
-  });
+export function sort() {
+  cy.button("Sort").click();
 }
 
 /**
  * Initiate a certain action such as filtering or summarizing taking the question's mode into account.
  *
  * @param {("Summarize"|"Filter"|"Join"|"CustomColumn")} actionType
- * @param {(undefined|"notebook")} mode
+ * @param {"notebook"} [mode]
  */
-function initiateAction(actionType, mode) {
+export function initiateAction(actionType, mode) {
   const icon = getIcon(actionType);
 
   if (mode === "notebook") {
@@ -130,7 +64,10 @@ function getIcon(actionType) {
 export function assertQueryBuilderRowCount(count) {
   const message =
     count === 1 ? "Showing 1 row" : `Showing ${count.toLocaleString()} rows`;
-  cy.findByTestId("question-row-count").should("contain.text", message);
+  cy.findByTestId("question-row-count", { timeout: 10000 }).should(
+    "contain.text",
+    message,
+  );
 }
 
 /**
@@ -159,7 +96,7 @@ export function assertJoinValid({
 
   // Ensure the results have columns from both tables
   queryBuilderMain().within(() => {
-    cy.findByText(lhsSampleColumn).should("be.visible");
-    cy.findByText(rhsSampleColumn).should("be.visible");
+    tableHeaderColumn(lhsSampleColumn).should("be.visible");
+    tableHeaderColumn(rhsSampleColumn).should("be.visible");
   });
 }

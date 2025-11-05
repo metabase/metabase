@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
@@ -62,7 +62,7 @@ describe("scenarios > embedding > questions", () => {
   it("should display the regular GUI question correctly", () => {
     const { name: title, description } = regularQuestion;
 
-    cy.createQuestion(regularQuestion).then(({ body: { id } }) => {
+    H.createQuestion(regularQuestion).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
@@ -78,7 +78,7 @@ describe("scenarios > embedding > questions", () => {
       cy.icon("info").realHover();
     });
 
-    H.popover().contains(description);
+    H.tooltip().contains(description);
 
     cy.findByTestId("embed-frame").within(() => {
       // Data model: Renamed column
@@ -94,7 +94,7 @@ describe("scenarios > embedding > questions", () => {
       // Question settings: Abbreviated date, day enabled, 24H clock with seconds
       cy.findByText("Tue, Feb 11, 2025, 21:40:27");
       // Question settings: Show mini-bar
-      cy.findAllByTestId("mini-bar");
+      cy.findAllByTestId("mini-bar-container");
 
       // Data model: Subtotal is turned off globally
       cy.findByText("Subtotal").should("not.exist");
@@ -102,7 +102,7 @@ describe("scenarios > embedding > questions", () => {
   });
 
   it("should display the GUI question with aggregation correctly", () => {
-    cy.createQuestion(questionWithAggregation).then(({ body: { id } }) => {
+    H.createQuestion(questionWithAggregation).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
@@ -122,6 +122,7 @@ describe("scenarios > embedding > questions", () => {
     H.echartsContainer().should("contain", "60");
 
     // Check the tooltip for the last point on the line
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.cartesianChartCircle().last().trigger("mousemove");
 
     H.assertEChartsTooltip({
@@ -131,12 +132,12 @@ describe("scenarios > embedding > questions", () => {
   });
 
   it("should display the nested GUI question correctly", () => {
-    cy.createQuestion(regularQuestion).then(({ body: { id } }) => {
+    H.createQuestion(regularQuestion).then(({ body: { id } }) => {
       const nestedQuestion = {
         query: { "source-table": `card__${id}`, limit: 10 },
       };
 
-      cy.createQuestion(nestedQuestion).then(({ body: { id: nestedId } }) => {
+      H.createQuestion(nestedQuestion).then(({ body: { id: nestedId } }) => {
         cy.request("PUT", `/api/card/${nestedId}`, { enable_embedding: true });
 
         H.visitQuestion(nestedId);
@@ -165,7 +166,7 @@ describe("scenarios > embedding > questions", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("February 11, 2025, 9:40 PM");
 
-    cy.findAllByTestId("mini-bar").should("not.exist");
+    cy.findAllByTestId("mini-bar-container").should("not.exist");
 
     // Data model: Subtotal is turned off globally
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -173,7 +174,7 @@ describe("scenarios > embedding > questions", () => {
   });
 
   it("should display GUI question with explicit joins correctly", () => {
-    cy.createQuestion(joinedQuestion).then(({ body: { id } }) => {
+    H.createQuestion(joinedQuestion).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
@@ -184,41 +185,32 @@ describe("scenarios > embedding > questions", () => {
     H.visitIframe();
 
     // Base question assertions
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Product ID as Title");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Awesome Concrete Shoes");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Math");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Billed");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("€39.72");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Tue, Feb 11, 2025, 21:40:27");
-    cy.findAllByTestId("mini-bar");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Subtotal").should("not.exist");
+    cy.findByTestId("visualization-root")
+      .should("contain", "Product ID as Title")
+      .should("contain", "Awesome Concrete Shoes")
+      .should("contain", "Math")
+      .should("contain", "Billed")
+      .should("contain", "€39.72")
+      .should("contain", "Tue, Feb 11, 2025, 21:40:27")
+      .should("not.contain", "Subtotal");
+
+    cy.findAllByTestId("mini-bar-container").should("have.length", 5);
+    H.tableInteractiveScrollContainer().scrollTo("right");
 
     // Joined table fields
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("98.52598640° W");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("User → Birth Date");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("December 12, 1986");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("October 7, 2023, 1:34 AM");
+    cy.findByTestId("visualization-root")
+      .should("contain", "98.52598640° W")
+      .should("contain", "User → Birth Date")
+      .should("contain", "December 12, 1986")
+      .should("contain", "October 7, 2023, 1:34 AM");
   });
 });
 
-H.describeEE("scenarios [EE] > embedding > questions", () => {
+describe("scenarios [EE] > embedding > questions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     // Remap Product ID -> Product Title
     cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
@@ -238,23 +230,46 @@ H.describeEE("scenarios [EE] > embedding > questions", () => {
       enable_embedding: true,
     });
 
-    H.visitQuestion(ORDERS_QUESTION_ID);
+    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
+    cy.intercept("/app/locales/de.json").as("deLocale");
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: false });
+    H.visitEmbeddedPage(
+      {
+        resource: { question: ORDERS_QUESTION_ID },
+        params: {},
+      },
+      {
+        additionalHashOptions: {
+          locale: "de-CH",
+        },
+      },
+    );
 
-    H.visitIframe();
-
-    cy.url().then(url => {
-      cy.visit({
-        // there is already a `#` in the URL from other static embed display options e.g. `#bordered=true&titled=true&downloads=true`
-        url: url + "&locale=de",
-      });
-    });
+    cy.wait("@deLocale");
 
     H.main().findByText("Februar 11, 2025, 9:40 PM");
-    H.main().findByText("Zeilen", { exact: false });
-
+    cy.findByRole("button", { name: "Ergebnis downloaden" }).should("exist");
     cy.url().should("include", "locale=de");
+  });
+
+  it("should display according to `#font` hash parameter (metabase#45638)", () => {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+      enable_embedding: true,
+    });
+
+    H.visitEmbeddedPage(
+      {
+        resource: { question: ORDERS_QUESTION_ID },
+        params: {},
+      },
+      {
+        additionalHashOptions: {
+          font: "Roboto",
+        },
+      },
+    );
+
+    H.main().should("have.css", "font-family", "Roboto, sans-serif");
   });
 });
 
@@ -264,7 +279,7 @@ function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
   H.echartsContainer().get("text").contains(yLabel);
 }
 
-H.describeEE("scenarios > embedding > questions > downloads", () => {
+describe("scenarios > embedding > questions > downloads", () => {
   const questionDetails = {
     name: "Simple SQL Query for Embedding",
     native: {
@@ -288,14 +303,14 @@ H.describeEE("scenarios > embedding > questions > downloads", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, {
+    H.createNativeQuestion(questionDetails, {
       wrapId: true,
     });
   });
 
   context("without token", () => {
     it("should not be possible to disable downloads", () => {
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         H.visitQuestion(questionId);
 
         H.openStaticEmbeddingModal({ activeTab: "lookAndFeel" });
@@ -305,7 +320,7 @@ H.describeEE("scenarios > embedding > questions > downloads", () => {
         );
         cy.findByLabelText("Customizing look and feel").should(
           "not.contain",
-          "Download buttons",
+          "Download (csv, xlsx, json, png)",
         );
 
         cy.log('Use API to "publish" this question and to enable its filter');
@@ -328,11 +343,12 @@ H.describeEE("scenarios > embedding > questions > downloads", () => {
           setFilters: { text: "Foo" },
         });
 
-        cy.get("[data-testid=cell-data]").should("have.text", "Foo");
-        cy.findByRole("contentinfo").icon("download").click();
+        cy.findByRole("gridcell").should("have.text", "Foo");
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).click();
 
         H.popover().within(() => {
-          cy.findAllByText("Download").should("have.length", 2);
+          cy.findByText("Download");
           cy.findByText(".csv");
           cy.findByText(".xlsx");
           cy.findByText(".json");
@@ -341,21 +357,22 @@ H.describeEE("scenarios > embedding > questions > downloads", () => {
         cy.log(
           "Trying to prevent downloads via query params doesn't have any effect",
         );
-        cy.url().then(url => {
+        cy.url().then((url) => {
           cy.visit(url + "&downloads=false");
         });
 
-        cy.get("[data-testid=cell-data]").should("have.text", "Foo");
-        cy.findByRole("contentinfo").icon("download");
+        cy.findByRole("gridcell").should("have.text", "Foo");
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).should("exist");
       });
     });
   });
 
   context("premium token with paid features", () => {
-    beforeEach(() => H.setTokenFeatures("all"));
+    beforeEach(() => H.activateToken("pro-self-hosted"));
 
     it("should be possible to disable downloads", () => {
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         H.visitQuestion(questionId);
 
         H.openStaticEmbeddingModal({
@@ -364,11 +381,11 @@ H.describeEE("scenarios > embedding > questions > downloads", () => {
         });
 
         cy.log("Disable downloads");
-        cy.findByLabelText("Download buttons")
+        cy.findByLabelText("Download (csv, xlsx, json, png)")
           .as("allow-download-toggle")
           .should("be.checked");
 
-        cy.findByText("Download buttons").click();
+        cy.findByText("Download (csv, xlsx, json, png)").click();
         cy.get("@allow-download-toggle").should("not.be.checked");
 
         cy.log('Use API to "publish" this question and to enable its filter');
@@ -382,7 +399,7 @@ H.describeEE("scenarios > embedding > questions > downloads", () => {
         H.visitIframe();
 
         H.filterWidget().type("Foo{enter}");
-        cy.get("[data-testid=cell-data]").should("have.text", "Foo");
+        cy.findByRole("gridcell").should("have.text", "Foo");
 
         cy.location("search").should("eq", "?text=Foo");
         cy.location("hash").should("match", /&downloads=false$/);

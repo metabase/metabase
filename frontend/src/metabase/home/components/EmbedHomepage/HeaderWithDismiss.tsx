@@ -10,7 +10,7 @@ type HeaderWithDismissProps = {
 
 export const HeaderWithDismiss = ({ onDismiss }: HeaderWithDismissProps) => {
   return (
-    <Group position="apart">
+    <Group gap="space-between">
       <Text
         fw="bold"
         // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
@@ -19,7 +19,7 @@ export const HeaderWithDismiss = ({ onDismiss }: HeaderWithDismissProps) => {
         <Menu.Target>
           <Text
             fw="bold"
-            color="brand"
+            c="brand"
             className={CS.cursorDefault}
           >{t`Hide these`}</Text>
         </Menu.Target>

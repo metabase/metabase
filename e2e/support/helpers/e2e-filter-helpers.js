@@ -46,7 +46,7 @@ export function setFilterListSource({ values }) {
       .clear()
       .type(
         values
-          .map(value => {
+          .map((value) => {
             if (Array.isArray(value)) {
               return value.join(", ");
             }
@@ -62,7 +62,7 @@ export function checkFilterListSourceHasValue({ values }) {
   cy.findByText("Edit").click();
 
   const expectedString = values
-    .map(value => {
+    .map((value) => {
       if (Array.isArray(value)) {
         return value.join(", ");
       }

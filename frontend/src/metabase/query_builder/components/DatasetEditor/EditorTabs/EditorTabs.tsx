@@ -4,16 +4,23 @@ import { t } from "ttag";
 
 import { alpha, darken } from "metabase/lib/colors";
 import { Icon, useMantineTheme } from "metabase/ui";
+import type { DatasetEditorTab } from "metabase-types/store";
 
 import EditorTabsS from "./EditorTabs.module.css";
 
 type Props = {
   currentTab: string;
-  disabledMetadata: boolean;
-  onChange: (optionId: string) => void;
+  disabledQuery: boolean;
+  disabledColumns: boolean;
+  onChange: (optionId: DatasetEditorTab) => void;
 };
 
-export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
+export function EditorTabs({
+  currentTab,
+  disabledQuery,
+  disabledColumns,
+  onChange,
+}: Props) {
   const theme = useMantineTheme();
 
   return (
@@ -34,10 +41,11 @@ export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
           className={cx(EditorTabsS.Tab, {
             [EditorTabsS.active]: currentTab === "query",
             [EditorTabsS.inactive]: currentTab !== "query",
+            [EditorTabsS.disabled]: disabledQuery,
           })}
           htmlFor="editor-tabs-query"
         >
-          <Icon name="notebook" />
+          <Icon name="sql" mr="10px" />
           <input
             className={EditorTabsS.RadioInput}
             type="radio"
@@ -45,9 +53,11 @@ export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
             name="editor-tabs"
             value="query"
             checked={currentTab === "query"}
+            disabled={disabledQuery}
             onChange={() => {
               onChange("query");
             }}
+            data-testid="editor-tabs-query"
           />
           <span data-testid="editor-tabs-query-name">{t`Query`}</span>
         </label>
@@ -56,13 +66,38 @@ export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
       <li>
         <label
           className={cx(EditorTabsS.Tab, {
+            [EditorTabsS.active]: currentTab === "columns",
+            [EditorTabsS.inactive]: currentTab !== "columns",
+            [EditorTabsS.disabled]: disabledColumns,
+          })}
+          htmlFor="editor-tabs-columns"
+        >
+          <Icon name="notebook" mr="10px" />
+          <input
+            type="radio"
+            className={EditorTabsS.RadioInput}
+            id="editor-tabs-columns"
+            name="editor-tabs"
+            value="columns"
+            checked={currentTab === "columns"}
+            onChange={() => {
+              onChange("columns");
+            }}
+            disabled={disabledColumns}
+            data-testid="editor-tabs-columns"
+          />
+          <span data-testid="editor-tabs-columns-name">{t`Columns`}</span>
+        </label>
+      </li>
+      <li>
+        <label
+          className={cx(EditorTabsS.Tab, {
             [EditorTabsS.active]: currentTab === "metadata",
             [EditorTabsS.inactive]: currentTab !== "metadata",
-            [EditorTabsS.disabled]: disabledMetadata,
           })}
           htmlFor="editor-tabs-metadata"
         >
-          <Icon name="notebook" />
+          <Icon name="gear" mr="10px" />
           <input
             type="radio"
             className={EditorTabsS.RadioInput}
@@ -73,10 +108,9 @@ export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
             onChange={() => {
               onChange("metadata");
             }}
-            disabled={disabledMetadata}
             data-testid="editor-tabs-metadata"
           />
-          <span data-testid="editor-tabs-metadata-name">{t`Metadata`}</span>
+          <span data-testid="editor-tabs-metadata-name">{t`Settings`}</span>
         </label>
       </li>
     </ul>

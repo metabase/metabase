@@ -4,16 +4,21 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.public-settings :as public-settings]
-   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.util.date-2 :as u.date]
    [metabase.util.formatting.constants :as constants]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log])
   (:import
    (com.ibm.icu.text RuleBasedNumberFormat)
    (java.util Locale)))
 
 (set! *warn-on-reflection* true)
+
+(def ^:dynamic *formatting-locale*
+  "Dynamic var to hold the current locale for datetime formatting.
+  Defaults to the site locale from system settings."
+  (i18n/site-locale))
 
 (defn temporal-string?
   "Returns `true` if the string `s` is parseable as a datetime.
@@ -27,29 +32,29 @@
      (catch Exception _e false))))
 
 (defn- reformat-temporal-str [timezone-id s new-format-string]
-  (t/format new-format-string (u.date/parse s timezone-id)))
+  (u.date/format new-format-string (u.date/parse s timezone-id) *formatting-locale*))
 
 (defn- day-of-week
   [n abbreviate]
-  (let [fmtr (java.time.format.DateTimeFormatter/ofPattern (if abbreviate "EEE" "EEEE"))]
+  (let [fmtr (java.time.format.DateTimeFormatter/ofPattern (if abbreviate "EEE" "EEEE") *formatting-locale*)]
     (.format fmtr (java.time.DayOfWeek/of n))))
 
 (defn- month-of-year
   [n abbreviate]
-  (let [fmtr (java.time.format.DateTimeFormatter/ofPattern (if abbreviate "MMM" "MMMM"))]
+  (let [fmtr (java.time.format.DateTimeFormatter/ofPattern (if abbreviate "MMM" "MMMM") *formatting-locale*)]
     (.format fmtr (java.time.Month/of n))))
 
 (defn- x-of-y
   "Format an integer as x-th of y, for example, 2nd week of year."
   [n]
-  (let [nf (RuleBasedNumberFormat. (Locale. (public-settings/site-locale)) RuleBasedNumberFormat/ORDINAL)]
+  (let [nf (RuleBasedNumberFormat. ^Locale *formatting-locale* RuleBasedNumberFormat/ORDINAL)]
     (.format nf n)))
 
 (defn- hour-of-day
   [s time-style]
   (let [n  (parse-long s)
         ts (u.date/parse "2022-01-01-00:00:00")]
-    (u.date/format time-style (t/plus ts (t/hours n)))))
+    (u.date/format time-style (t/plus ts (t/hours n)) *formatting-locale*)))
 
 (defn- viz-settings-for-col
   "Get the column-settings map for the given column from the viz-settings."
@@ -61,9 +66,9 @@
                               ;; and not have any metadata. Since we don't know the metadata, we can never
                               ;; match a key with metadata, even if we do have the correct name or id
                               (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))]
-    (or (all-cols-settings {::mb.viz/field-id field-id-or-name})
-        (all-cols-settings {::mb.viz/column-name field-id-or-name})
-        (all-cols-settings {::mb.viz/column-name column-name}))))
+    (merge (all-cols-settings {::mb.viz/field-id field-id-or-name})
+           (or (all-cols-settings {::mb.viz/column-name field-id-or-name})
+               (all-cols-settings {::mb.viz/column-name column-name})))))
 
 (defn- determine-time-format
   "Given viz-settings with a time-style and possible time-enabled (precision) entry, create the format string.
@@ -117,13 +122,19 @@
 
 (defmulti format-timestring
   "Reformat a temporal literal string to the desired format based on column `:unit`, if provided, then on the column type.
-The type is the highest present of semantic, effective, or base type. This is currently expected to be one of:
-- `:type/Time` - The hour, minute, second, etc. portion of a day, not anchored to a date
-- `:type/Date` - A date without hour and minute information
-- `:type/DateTime` - A full date plus hour, minute, seconds, etc.
-If neither a unit nor a temporal type is provided, just bottom out by assuming a date.
-"
-  (fn [_timezone-id _temporal-str col _viz-settings] (col-type col)))
+
+  The type is the highest present of semantic, effective, or base type. This is currently expected to be one of:
+
+  - `:type/Time` - The hour, minute, second, etc. portion of a day, not anchored to a date
+
+  - `:type/Date` - A date without hour and minute information
+
+  - `:type/DateTime` - A full date plus hour, minute, seconds, etc.
+
+  If neither a unit nor a temporal type is provided, just bottom out by assuming a date. "
+  {:arglists '([timezone-id temporal-str col viz-settings])}
+  (fn [_timezone-id _temporal-str col _viz-settings]
+    (col-type col)))
 
 (defmethod format-timestring :minute [timezone-id temporal-str _col {:keys [date-style time-style] :as viz-settings}]
   (reformat-temporal-str timezone-id temporal-str
@@ -209,7 +220,7 @@ If neither a unit nor a temporal type is provided, just bottom out by assuming a
                                 time-style
                                 (str ", " time-style))
         default-format-string (post-process-date-style date-time-style viz-settings)]
-    (t/format default-format-string (u.date/parse temporal-str timezone-id))))
+    (u.date/format default-format-string (u.date/parse temporal-str timezone-id) *formatting-locale*)))
 
 (defmethod format-timestring :default [timezone-id temporal-str {:keys [unit] :as col} {:keys [date-style] :as viz-settings}]
   (if (= :default unit)
@@ -231,13 +242,13 @@ If neither a unit nor a temporal type is provided, just bottom out by assuming a
           temporal-str)))))
 
 (defn make-temporal-str-formatter
-  "Return a formatter which, given a temporal literal string, reformts it by combining time zone, column, and viz
+  "Return a formatter which, given a temporal literal string, reformats it by combining time zone, column, and viz
   setting information to create a final desired output format."
   [timezone-id col viz-settings]
-  (Locale/setDefault (Locale. (public-settings/site-locale)))
-  (let [merged-viz-settings (common/normalize-keys
-                             (common/viz-settings-for-col col viz-settings))]
+  (let [merged-viz-settings (streaming.common/normalize-keys
+                             (streaming.common/viz-settings-for-col col viz-settings))]
     (fn [temporal-str]
       (if (str/blank? temporal-str)
         ""
-        (format-timestring timezone-id temporal-str col merged-viz-settings)))))
+        (binding [*formatting-locale* (i18n/user-locale)]
+          (format-timestring timezone-id temporal-str col merged-viz-settings))))))

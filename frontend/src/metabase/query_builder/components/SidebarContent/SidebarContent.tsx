@@ -1,5 +1,6 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
+import type React from "react";
 import { t } from "ttag";
 
 import {
@@ -26,10 +27,14 @@ type Props = {
   doneButtonText?: string;
   footer?: ReactNode;
   children?: ReactNode;
+  headerActions?: ReactNode;
   "data-testid"?: string;
 };
 
-const SidebarContentMain = ({ children, ...props }: BoxProps) => {
+const SidebarContentMain = ({
+  children,
+  ...props
+}: BoxProps & { children: React.ReactNode }) => {
   return (
     <Box className={SidebarContentS.SidebarContentMain} {...props}>
       {children}
@@ -70,6 +75,7 @@ function SidebarContent({
     </ViewButton>
   ) : null,
   children,
+  headerActions,
   "data-testid": dataTestId,
 }: Props) {
   return (
@@ -82,6 +88,7 @@ function SidebarContent({
             icon={icon}
             onBack={onBack}
             onClose={onClose}
+            actions={headerActions}
           />
         )}
         {children}
@@ -91,7 +98,7 @@ function SidebarContent({
   );
 }
 
-export const PaneContent = (props: BoxProps) => {
+const PaneContent = (props: BoxProps & { children: React.ReactNode }) => {
   return <Box px="lg" {...props} />;
 };
 

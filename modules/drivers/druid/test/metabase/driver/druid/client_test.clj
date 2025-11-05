@@ -3,9 +3,9 @@
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.driver.druid.client :as druid.client]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]))
 
@@ -41,7 +41,7 @@
                                                                 (reset! executed-query query)
                                                                 [])]
           (qp/process-query query)
-          (is (partial= {:context {:timeout qp.pipeline/*query-timeout-ms*}}
+          (is (partial= {:context {:timeout driver.settings/*query-timeout-ms*}}
                         @executed-query)))))))
 
 (deftest ssh-tunnel-test

@@ -1,9 +1,16 @@
 import { trackSchemaEvent } from "metabase/lib/analytics";
+import type { SetupVersion } from "metabase-types/analytics/setup";
 import type { UsageReason } from "metabase-types/api";
 
 import type { SetupStep } from "./types";
 
-const ONBOARDING_VERSION = "1.3.0";
+/**
+ * The internal "versioning" tracker that needs to be bumbed for every significant
+ * change to the setup flow. If you update the version here, make sure to add an
+ * entry to the corresponding Notion doc:
+ * {@link https://www.notion.so/metabase/Set-up-step-seen-19f39925938d401da2111f8a3d0dc36c}.
+ */
+const ONBOARDING_VERSION: SetupVersion = "1.4.0";
 
 export const trackStepSeen = ({
   stepName,

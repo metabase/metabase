@@ -1,8 +1,8 @@
 import {
-  selectTab,
   setOrUnsetParameterValues,
   setParameterValue,
-} from "metabase/dashboard/actions";
+} from "metabase/dashboard/actions/parameters";
+import { selectTab } from "metabase/dashboard/actions/tabs";
 import type {
   AlwaysDefaultClickAction,
   AlwaysDefaultClickActionSubAction,
@@ -54,7 +54,7 @@ function getAction(
       };
     case "dashboard-reset":
       return {
-        action: () => dispatch => {
+        action: () => (dispatch) => {
           const tabId = getDashboardDrillTab(clicked);
 
           if (tabId) {
@@ -64,7 +64,7 @@ function getAction(
           const parameterIdValuePairs = getDashboardDrillParameters(clicked);
           parameterIdValuePairs
             .map(([id, value]) => setParameterValue(id, value))
-            .forEach(action => dispatch(action));
+            .forEach((action) => dispatch(action));
         },
       };
   }

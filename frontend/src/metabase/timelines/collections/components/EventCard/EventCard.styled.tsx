@@ -1,7 +1,9 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Markdown from "metabase/core/components/Markdown";
+import Markdown from "metabase/common/components/Markdown";
 import { Icon } from "metabase/ui";
 
 export const CardRoot = styled.div`
@@ -44,7 +46,7 @@ export const CardBody = styled.div`
   min-width: 0;
 `;
 
-export interface CardTitleProps {
+interface CardTitleProps {
   to?: string;
 }
 
@@ -60,7 +62,7 @@ export const CardTitle = styled.div<CardTitleProps>`
   line-height: 1.25rem;
   font-weight: bold;
   word-wrap: break-word;
-  ${props => props.to && cardTitleHoverStyles};
+  ${(props) => props.to && cardTitleHoverStyles};
 `;
 
 export const CardDescription = styled(Markdown)`

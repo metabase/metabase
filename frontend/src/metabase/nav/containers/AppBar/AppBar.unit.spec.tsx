@@ -9,14 +9,17 @@ import {
   setupDashboardEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
-import { DEFAULT_EMBED_OPTIONS } from "metabase/redux/embed";
+import { DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS } from "metabase/redux/embed";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockDashboard,
 } from "metabase-types/api/mocks";
-import type { DashboardState, EmbedOptions } from "metabase-types/store";
+import type {
+  DashboardState,
+  InteractiveEmbeddingOptions,
+} from "metabase-types/store";
 import {
   createMockAppState,
   createMockDashboardState,
@@ -266,18 +269,19 @@ function setup({
   dashboardState,
   initialRoute = "/question/1",
 }: {
-  embedOptions?: Partial<EmbedOptions>;
+  embedOptions?: Partial<InteractiveEmbeddingOptions>;
   card?: Card;
   dashboardState?: { dashboard: DashboardState };
   initialRoute?: string;
 }) {
+  // Need to set the location because CollectionBreadcrumbs uses the useLocation()
+  window.history.pushState({}, "", initialRoute);
+
   setupCollectionsEndpoints({
     collections: [FOO_COLLECTION],
   });
   setupCollectionByIdEndpoint({ collections: [FOO_COLLECTION] });
   setupCardEndpoints(card);
-  // setupCardEndpoints(CARD_IN_COLLECTION);
-  // setupCardEndpoints(CARD_IN_DASHBOARD);
   setupDashboardEndpoints(BAR_DASHBOARD);
 
   return renderWithProviders(<Route path="*" component={AppBar} />, {
@@ -287,7 +291,7 @@ function setup({
       app: createMockAppState({ isNavbarOpen: false }),
       embed: createMockEmbedState({
         options: createMockEmbedOptions({
-          ...DEFAULT_EMBED_OPTIONS,
+          ...DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS,
           ...embedOptions,
         }),
       }),

@@ -8,7 +8,7 @@
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -82,7 +82,8 @@
             (lib/drill-thru query -1 nil drill)))))
 
 (deftest ^:parallel automatic-insights-apply-test
-  (let [filters [[:= {} [:field {} (meta/id :orders :created-at)] "2023-12-01"]]]
+  (let [filters [[:between {} [:field {} (meta/id :orders :created-at)]
+                  "2023-12-01" "2023-12-31"]]]
     (testing "breakouts are turned to filters, aggregations dropped"
       (auto-insights (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                          (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
@@ -109,31 +110,28 @@
                        (lib/breakout (lib/with-temporal-bucket
                                        (meta/field-metadata :orders :created-at)
                                        :month)))
-                   [[:= {} [:field {} (meta/id :orders :created-at)] "2023-12-01"]
+                   [[:between {} [:field {} (meta/id :orders :created-at)] "2023-12-01" "2023-12-31"]
                     [:= {} [:field {} (meta/id :products :category)] "Doohickey"]])))
 
 (deftest ^:parallel automatic-insights-apply-test-3
   (testing "metric over time"
-    (let [metric-id 101
-          metric-card {:description "Orders with a subtotal of $100 or more."
-                       :lib/type :metadata/card
-                       :type :metric
-                       :dataset-query {:type     :query
-                                       :database (meta/id)
-                                       :query    {:source-table (meta/id :orders)
-                                                  :aggregation  [[:count]]
-                                                  :filter       [:>= [:field (meta/id :orders :subtotal) nil] 100]}}
-                       :database-id (meta/id)
-                       :name "Large orders"
-                       :id metric-id}
-          provider (lib/composed-metadata-provider
-                    meta/metadata-provider
-                    (providers.mock/mock-metadata-provider {:cards [metric-card]}))]
+    (let [metric-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/filter (lib/>= (meta/field-metadata :orders :subtotal) 100))
+                           (lib/aggregate (lib/count)))
+          metric-id    101
+          metric-card  {:description "Orders with a subtotal of $100 or more."
+                        :lib/type :metadata/card
+                        :type :metric
+                        :name "Large orders"
+                        :id metric-id}
+          provider     (lib.tu/metadata-provider-with-card-from-query
+                        meta/metadata-provider metric-id metric-query metric-card)]
       (auto-insights (-> (lib/query provider (lib.metadata/card provider metric-id))
                          (lib/breakout (lib/with-temporal-bucket
                                          (meta/field-metadata :orders :created-at)
                                          :month)))
-                     [[:= {} [:field {} (meta/id :orders :created-at)] "2023-12-01"]]))))
+                     [[:between {} [:field {} (meta/id :orders :created-at)]
+                       "2023-12-01" "2023-12-31"]]))))
 
 (deftest ^:parallel binned-column-test
   (testing "Automatic insights for a binned column should generate filters for current bin's min/max values"

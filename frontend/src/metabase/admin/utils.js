@@ -1,42 +1,44 @@
-import { replace, routerActions } from "react-router-redux";
+import { push, replace, routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
-import { connect } from "metabase/lib/redux";
-import { getUser } from "metabase/selectors/user";
+import { MetabaseReduxContext, connect } from "metabase/lib/redux";
 
 export const createAdminRouteGuard = (routeKey, Component) => {
   const Wrapper = connectedReduxRedirect({
     wrapperDisplayName: `CanAccess(${routeKey})`,
     redirectPath: "/unauthorized",
     allowRedirectBack: false,
-    authenticatedSelector: state =>
-      getAdminPaths(state)?.find(path => path.key === routeKey) != null,
+    authenticatedSelector: (state) =>
+      getAdminPaths(state)?.find((path) => path.key === routeKey) != null,
     redirectAction: routerActions.replace,
+    context: MetabaseReduxContext,
   });
 
   return Wrapper(Component ?? (({ children }) => children));
 };
 
-const mapStateToProps = state => ({
-  user: getUser(state),
+const mapStateToProps = (state, props) => ({
+  adminItems: getAdminPaths(state),
+  path: props.location.pathname,
 });
 
 const mapDispatchToProps = {
+  push,
   replace,
 };
 
-export const createAdminRedirect = (adminPath, nonAdminPath) => {
-  const NonAdminRedirectComponent = connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  )(({ user, replace, location }) => {
-    const path = `${location.pathname}/${
-      user.is_superuser ? adminPath : nonAdminPath
-    }`;
-    replace(path);
-    return null;
-  });
+const _RedirectToAllowedSettings = ({ adminItems, replace }) => {
+  if (adminItems.length === 0) {
+    replace("/unauthorized");
+  } else {
+    replace(adminItems[0].path);
+  }
 
-  return NonAdminRedirectComponent;
+  return null;
 };
+
+export const RedirectToAllowedSettings = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(_RedirectToAllowedSettings);

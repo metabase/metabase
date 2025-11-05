@@ -4,8 +4,9 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.config :as config]
-   [metabase.public-settings :as public-settings]
+   [metabase.config.core :as config]
+   [metabase.embedding.util :as embed.util]
+   [metabase.request.settings :as request.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.json :as json]
@@ -78,12 +79,12 @@
   (some-> request (get-in [:headers "x-metabase-embedded"]) Boolean/parseBoolean))
 
 (defn ip-address
-  "The IP address a Ring `request` came from. Looks at the `public-settings/source-address-header` header (by default
+  "The IP address a Ring `request` came from. Looks at the `request.settings/source-address-header` header (by default
   `X-Forwarded-For`, or the `(:remote-addr request)` if not set, or if disabled via MB_NOT_BEHIND_PROXY=true."
   [{:keys [headers remote-addr]}]
-  (let [header-ip-address (some->> (public-settings/source-address-header)
+  (let [header-ip-address (some->> (request.settings/source-address-header)
                                    (get headers))
-        source-address    (if (or (public-settings/not-behind-proxy)
+        source-address    (if (or (request.settings/not-behind-proxy)
                                   (not header-ip-address))
                             remote-addr
                             header-ip-address)]
@@ -100,6 +101,7 @@
   [:map {:closed true}
    [:device_id          ms/NonBlankString]
    [:device_description ms/NonBlankString]
+   [:embedded           ms/BooleanValue]
    [:ip_address         ms/NonBlankString]])
 
 (mu/defn device-info :- DeviceInfo
@@ -114,7 +116,8 @@
     (when-not (and id description ip-address)
       (log/warn "Error determining login history for request"))
     {:device_id          (or id (trs "unknown"))
-     :device_description (or description (trs "unknown"))
+     :device_description (or description (trs "unknown")),
+     :embedded           (embed.util/is-modular-embedding-request? request)
      :ip_address         (or ip-address (trs "unknown"))}))
 
 (defn describe-user-agent
@@ -175,11 +178,3 @@
           (catch Throwable e
             (log/error e "Error geocoding IP addresses" {:url url})
             nil))))))
-
-(def response-unauthentic
-  "Generic `401 (Unauthenticated)` Ring response map."
-  {:status 401, :body "Unauthenticated"})
-
-(def response-forbidden
-  "Generic `403 (Forbidden)` Ring response map."
-  {:status 403, :body "Forbidden"})

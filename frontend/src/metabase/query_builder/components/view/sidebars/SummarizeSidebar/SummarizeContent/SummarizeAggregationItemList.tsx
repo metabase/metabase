@@ -29,7 +29,7 @@ export const SummarizeAggregationItemList = ({
   return (
     <Group
       data-testid="summarize-aggregation-item-list"
-      spacing="sm"
+      gap="sm"
       align="flex-start"
       {...containerProps}
     >

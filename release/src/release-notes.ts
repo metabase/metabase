@@ -2,60 +2,21 @@ import { match } from "ts-pattern";
 
 import { hiddenLabels, nonUserFacingLabels } from "./constants";
 import { getMilestoneIssues, hasBeenReleased } from "./github";
+import { issueNumberRegex } from "./linked-issues";
+import { githubReleaseTemplate, websiteChangelogTemplate } from "./release-notes-templates";
 import type { Issue, ReleaseProps } from "./types";
 import {
+  getDotXVersion,
   getEnterpriseVersion,
   getGenericVersion,
+  getMajorVersion,
+  getMinorVersion,
   getOSSVersion,
   isEnterpriseVersion,
   isPreReleaseVersion,
   isValidVersionString,
 } from "./version-helpers";
 
-const releaseTemplate = `## Upgrading
-
-> Before you upgrade, back up your Metabase application database!
-
-Check out our [upgrading instructions](https://metabase.com/docs/latest/operations-guide/upgrading-metabase).
-
-[Get the most out of Metabase](https://www.metabase.com/pricing?utm_source=github&utm_medium=release-notes&utm_campaign=plan-comparison). Learn more about advanced features, managed cloud, and first-class support.
-
-## Metabase Open Source
-
-Docker image: {{oss-docker-tag}}
-JAR download: {{oss-download-url}}
-
-## Metabase Enterprise
-
-Docker image: {{ee-docker-tag}}
-JAR download: {{ee-download-url}}
-
-## Notes
-
-<details>
-<summary><h2>Changelog</h2></summary>
-
-### Enhancements
-
-{{enhancements}}
-
-### Bug fixes
-
-{{bug-fixes}}
-
-### Already Fixed
-
-Issues confirmed to have been fixed in a previous release.
-
-{{already-fixed}}
-
-### Under the Hood
-
-{{under-the-hood}}
-
-</details>
-
-`;
 
 const hasLabel = (issue: Issue, label: string) => {
   if (typeof issue.labels === "string") {
@@ -84,18 +45,28 @@ const formatIssue = (issue: Issue) =>
   `- ${issue.title.trim()} (#${issue.number})`;
 
 export const getDockerTag = (version: string) => {
+  const dotXVersion = getDotXVersion(version);
+
   const imagePath = `${process.env.DOCKERHUB_OWNER}/${
     process.env.DOCKERHUB_REPO
   }${isEnterpriseVersion(version) ? "-enterprise" : ""}`;
 
-  return `[\`${imagePath}:${version}\`](https://hub.docker.com/r/${imagePath}/tags)`;
+  return `[\`${imagePath}:${dotXVersion}\`](https://hub.docker.com/r/${imagePath}/tags)`;
 };
 
 export const getDownloadUrl = (version: string) => {
+  const dotXVersion = getDotXVersion(version);
+
   return `https://${process.env.AWS_S3_DOWNLOADS_BUCKET}/${
     isEnterpriseVersion(version) ? "enterprise/" : ""
-  }${version}/metabase.jar`;
+  }${dotXVersion}/metabase.jar`;
 };
+
+export const getChangelogUrl = (version: string ) => {
+  const majorVersion = getMajorVersion(version);
+  const minorVersion = getMinorVersion(version);
+  return `https://www.metabase.com/changelog/${majorVersion}#metabase-${majorVersion}${minorVersion}`
+}
 
 export const getReleaseTitle = (version: string) => {
   return `Metabase ${getGenericVersion(version)}`;
@@ -108,19 +79,34 @@ enum IssueType {
   underTheHoodIssues = "underTheHoodIssues",
 }
 
-// Product area labels take the form of "Category/Subcategory", e.g., "Querying/MBQL"
-// We're only interested in the main product category, e.g., "Querying"
-enum ProductCategory {
-  administration = "Administration",
-  database = "Database",
-  embedding = "Embedding",
-  operation = "Operation",
-  organization = "Organization",
-  querying = "Querying",
-  reporting = "Reporting",
-  visualization = "Visualization",
-  other = "Other",
-}
+const otherProductCategory = "Other";
+
+type ProductCategory =
+  | "Administration"
+  | "Database"
+  | "Embedding"
+  | "Operation"
+  | "Organization"
+  | "Querying"
+  | "Reporting"
+  | "Visualization"
+  | "Other";
+
+// Map `Map<ProductCategory, LabelPart[]>`:
+// - `ProductCategory` is product categories in release notes
+// - `LabelPart` is PR/Issue labels parts that used to route issues to those categories
+// The item position in labels parts list determines the order in which these strings are tested against the actual label
+const productCategories: Record<ProductCategory, readonly string[]> = {
+  Administration: ["Administration"],
+  Database: ["Database"],
+  Embedding: ["Embedding", "SDK"],
+  Operation: ["Operation"],
+  Organization: ["Organization"],
+  Querying: ["Querying"],
+  Reporting: ["Reporting"],
+  Visualization: ["Visualization"],
+  [otherProductCategory]: ["Other"],
+};
 
 type CategoryIssueMap = Record<Partial<ProductCategory>, Issue[]>;
 
@@ -146,17 +132,25 @@ const getLabels = (issue: Issue): string[] => {
   return issue.labels.map(label => label.name || "");
 };
 
-const hasCategory = (issue: Issue, categoryName: ProductCategory): boolean => {
+const hasCategory = (issue: Issue, labelPart: string): boolean => {
   const labels = getLabels(issue);
-  return labels.some(label => label.includes(categoryName));
+  return labels.some((label) => label.includes(labelPart));
 };
 
 export const getProductCategory = (issue: Issue): ProductCategory => {
-  const category = Object.values(ProductCategory).find(categoryName =>
-    hasCategory(issue, categoryName)
-  );
+  for (const [productCategory, labelParts] of Object.entries(
+    productCategories,
+  )) {
+    const isMatching = labelParts.some((labelPart) =>
+      hasCategory(issue, labelPart),
+    );
 
-  return category ?? ProductCategory.other;
+    if (isMatching) {
+      return productCategory as ProductCategory;
+    }
+  }
+
+  return otherProductCategory;
 };
 
 // Format issues for a single product category
@@ -167,10 +161,10 @@ const formatIssueCategory = (categoryName: ProductCategory, issues: Issue[]): st
 // We want to alphabetize the issues by product category, with "Other" (uncategorized) issues as the caboose
 const sortCategories = (categories: ProductCategory[]) => {
   const uncategorizedIssues = categories.filter(
-    category => category === ProductCategory.other,
+    (category) => category === otherProductCategory,
   );
   const sortedCategories = categories
-    .filter(cat => cat !== ProductCategory.other)
+    .filter((cat) => cat !== otherProductCategory)
     .sort((a, b) => a.localeCompare(b));
 
   return [
@@ -218,16 +212,19 @@ export const categorizeIssues = (issues: Issue[]) => {
 export const generateReleaseNotes = ({
   version,
   issues,
+  template,
 }: {
   version: string;
   issues: Issue[];
+  template: string;
 }) => {
   const issuesByType = categorizeIssues(issues);
 
   const ossVersion = getOSSVersion(version);
   const eeVersion = getEnterpriseVersion(version);
 
-  return releaseTemplate
+  return template
+    .replace("{{version}}", getGenericVersion(version))
     .replace(
       "{{enhancements}}",
       formatIssues(issuesByType.enhancements),
@@ -247,32 +244,61 @@ export const generateReleaseNotes = ({
     .replace("{{ee-docker-tag}}", getDockerTag(eeVersion))
     .replace("{{ee-download-url}}", getDownloadUrl(eeVersion))
     .replace("{{oss-docker-tag}}", getDockerTag(ossVersion))
-    .replace("{{oss-download-url}}", getDownloadUrl(ossVersion));
+    .replace("{{oss-download-url}}", getDownloadUrl(ossVersion))
+    .replaceAll("{{generic-version}}", getGenericVersion(version))
+    .replace("{{changelog-url}}", getChangelogUrl(ossVersion));
 };
 
 export async function publishRelease({
   version,
   owner,
   repo,
+  issues,
   github,
-}: ReleaseProps & { oss_checksum: string, ee_checksum: string }) {
+}: ReleaseProps & { oss_checksum: string, ee_checksum: string, issues: Issue[] }) {
   if (!isValidVersionString(version)) {
     throw new Error(`Invalid version string: ${version}`);
   }
-
-  const issues = await getMilestoneIssues({ version, github, owner, repo });
-
   const payload = {
     owner,
     repo,
     tag_name: getOSSVersion(version),
     name: getReleaseTitle(version),
-    body: generateReleaseNotes({ version, issues }),
+    body: generateReleaseNotes({
+      version,
+      issues,
+      template: githubReleaseTemplate,
+    }),
     draft: true,
     prerelease: isPreReleaseVersion(version), // this api arg has never worked, but maybe it will someday! 🤞
   };
 
   return github.rest.repos.createRelease(payload);
+}
+
+const issueLink = (issueNumber: string) => `https://github.com/metabase/metabase/issues/${issueNumber}`;
+
+export function markdownIssueLinks(text: string) {
+  return text?.replaceAll(issueNumberRegex, (_, issueNumber) => {
+    return `([#${issueNumber}](${issueLink(issueNumber)}))`;
+  }) ?? text ?? '';
+}
+
+export function getWebsiteChangelog({
+  version,
+  issues,
+}: { version: string; issues: Issue[]; }) {
+  if (!isValidVersionString(version)) {
+    throw new Error(`Invalid version string: ${version}`);
+  }
+
+  const notes = generateReleaseNotes({
+    version,
+    issues,
+    template: websiteChangelogTemplate,
+  });
+
+  return markdownIssueLinks(notes);
 }
 
 export async function getChangelog({
@@ -300,6 +326,7 @@ export async function getChangelog({
   });
 
   return generateReleaseNotes({
+    template: githubReleaseTemplate,
     version,
     issues,
   });

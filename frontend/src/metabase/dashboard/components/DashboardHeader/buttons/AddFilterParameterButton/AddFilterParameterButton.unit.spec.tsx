@@ -1,7 +1,7 @@
-import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import {
   createMockDashboardState,
   createMockState,
@@ -49,9 +49,14 @@ const setup = ({ isAddParameterPopoverOpen = false } = {}) => {
     }),
   });
 
-  return renderWithProviders(<AddFilterParameterButton />, {
-    storeInitialState: state,
-  });
+  return renderWithProviders(
+    <MockDashboardContext>
+      <AddFilterParameterButton />
+    </MockDashboardContext>,
+    {
+      storeInitialState: state,
+    },
+  );
 };
 
 describe("AddFilterParameterButton", () => {

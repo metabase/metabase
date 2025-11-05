@@ -2,17 +2,19 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import { getExample } from "metabase/querying/drills/utils/column-extract-drill";
 import { Box, Button, Flex, Stack, Text, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { ExpressionWidgetHeader } from "../ExpressionWidgetHeader";
+import { ExpressionWidgetHeader } from "../ExpressionWidget/ExpressionWidgetHeader";
 
 import styles from "./ExtractColumn.module.css";
-import { getExample, getName } from "./util";
+import { getName } from "./util";
 
 type Props = {
   query: Lib.Query;
   stageIndex: number;
+  availableColumns: Lib.ColumnMetadata[];
   onSubmit: (
     clause: Lib.ExpressionClause,
     name: string,
@@ -24,6 +26,7 @@ type Props = {
 export function ExtractColumn({
   query,
   stageIndex,
+  availableColumns,
   onCancel,
   onSubmit,
 }: Props) {
@@ -38,6 +41,7 @@ export function ExtractColumn({
       <ColumnPicker
         query={query}
         stageIndex={stageIndex}
+        availableColumns={availableColumns}
         column={column}
         onCancel={onCancel}
         onSelect={handleSelect}
@@ -73,22 +77,24 @@ export function ExtractColumn({
 function ColumnPicker({
   query,
   stageIndex,
+  availableColumns,
   column,
   onSelect,
   onCancel,
 }: {
   query: Lib.Query;
   stageIndex: number;
+  availableColumns: Lib.ColumnMetadata[];
   column: Lib.ColumnMetadata | null;
   onSelect: (column: Lib.ColumnMetadata) => void;
   onCancel?: () => void;
 }) {
   const extractableColumns = useMemo(
     () =>
-      Lib.expressionableColumns(query, stageIndex).filter(
-        column => Lib.columnExtractions(query, column).length > 0,
+      availableColumns.filter(
+        (column) => Lib.columnExtractions(query, column).length > 0,
       ),
-    [query, stageIndex],
+    [query, availableColumns],
   );
   const columnGroups = Lib.groupColumns(extractableColumns);
 
@@ -111,7 +117,7 @@ function ColumnPicker({
           stageIndex={stageIndex}
           columnGroups={columnGroups}
           onSelect={onSelect}
-          checkIsColumnSelected={item => item.column === column}
+          checkIsColumnSelected={(item) => item.column === column}
           width="100%"
           alwaysExpanded
           disableSearch
@@ -141,7 +147,7 @@ function ExtractionPicker({
 
   const extractions = useMemo(
     () =>
-      Lib.columnExtractions(query, column).map(extraction => ({
+      Lib.columnExtractions(query, column).map((extraction) => ({
         extraction,
         info: Lib.displayInfo(query, stageIndex, extraction),
       })),
@@ -155,8 +161,8 @@ function ExtractionPicker({
         onBack={onCancel}
       />
       <Box p="sm">
-        <Stack spacing={0}>
-          {extractions.map(extraction => (
+        <Stack gap={0}>
+          {extractions.map((extraction) => (
             <ExtractColumnButton
               key={extraction.info.tag}
               title={extraction.info.displayName}
@@ -181,9 +187,10 @@ function ExtractColumnButton({
 }) {
   return (
     <Button
-      variant="unstyled"
+      variant="subtle"
       type="button"
       p="sm"
+      mb="xs"
       className={styles.button}
       classNames={{
         inner: styles.inner,
@@ -192,7 +199,7 @@ function ExtractColumnButton({
       onClick={onClick}
     >
       <Flex align="center" justify="space-between" gap="1rem">
-        <Text color="text-dark" className={styles.content} weight="bold" p={0}>
+        <Text color="text-dark" className={styles.content} fw="bold" p={0}>
           {title}
         </Text>
         <Text color="text-light" size="sm" className={styles.example}>

@@ -1,15 +1,16 @@
 (ns ^:mb/driver-tests metabase.driver-test
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.classloader.core :as classloader]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.driver.h2 :as h2]
    [metabase.driver.impl :as driver.impl]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.driver.settings :as driver.settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.task.sync-databases :as task.sync-databases]
+   [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.interface :as tx]
@@ -33,11 +34,12 @@
        (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
 
 (deftest the-driver-test
-  (testing (str "calling `the-driver` should set the context classloader, important because driver plugin code exists "
-                "there but not elsewhere")
+  (testing (str "calling `the-driver` should set the context classloader if the driver is not registered yet,"
+                "important because driver plugin code exists there but not elsewhere")
     (.setContextClassLoader (Thread/currentThread) (ClassLoader/getSystemClassLoader))
-    (driver/the-driver :h2)
-    (is (= @@#'classloader/shared-context-classloader
+    (with-redefs [driver.impl/hierarchy (make-hierarchy)] ;; To simulate :h2 not being registed yet.
+      (driver/the-driver :h2))
+    (is (= @classloader/shared-context-classloader
            (.getContextClassLoader (Thread/currentThread))))))
 
 (deftest available?-test
@@ -83,32 +85,36 @@
                          :field-definitions [{:field-name "foo", :base-type :type/Text}]
                          :rows              [["bar"]]}]}))
 
+(doseq [driver [:redshift :snowflake :vertica :presto-jdbc :oracle]]
+  (defmethod driver/database-supports? [driver :test/cannot-destroy-db]
+    [_driver _feature _database]
+    true))
+
 (deftest can-connect-with-destroy-db-test
   (testing "driver/can-connect? should fail or throw after destroying a database"
-    (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+                                     (mt/normal-drivers-with-feature :test/creates-db-on-connect))
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
           (let [db (mt/db)
                 details (tx/dbdef->connection-details driver/*driver* :db dbdef)]
             (testing "can-connect? should return true before deleting the database"
-              (is (true? (binding [h2/*allow-testing-h2-connections* true]
+              (is (true? (binding [driver.settings/*allow-testing-h2-connections* true]
                            (driver/can-connect? driver/*driver* details)))))
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
             (driver/notify-database-updated driver/*driver* db)
             (testing "after deleting a database, can-connect? should return false or throw an exception"
               (let [;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
                     ;; so fake it by changing the database details
-                    details (case driver/*driver*
-                              (:redshift :snowfake :vertica) (assoc details :db (mt/random-name))
-                              :oracle                        (assoc details :service-name (mt/random-name))
-                              :presto-jdbc                   (assoc details :catalog (mt/random-name))
+                    details (if (driver/database-supports? driver/*driver* :test/cannot-destroy-db (mt/db))
+                              (merge details (tx/bad-connection-details driver/*driver*))
                               ;; otherwise destroy the db and use the original details
                               (do
                                 (tx/destroy-db! driver/*driver* dbdef)
                                 details))]
                 (is (false? (try
-                              (binding [h2/*allow-testing-h2-connections* true]
+                              (binding [driver.settings/*allow-testing-h2-connections* true]
                                 (driver/can-connect? driver/*driver* details))
                               (catch Exception _
                                 false))))))
@@ -117,7 +123,8 @@
 
 (deftest check-can-connect-before-sync-test
   (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+                                     (mt/normal-drivers-with-feature :test/creates-db-on-connect))
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -141,14 +148,11 @@
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
             (driver/notify-database-updated driver/*driver* db)
             ;; destroy the db
-            (if (contains? #{:redshift :snowflake :vertica :presto-jdbc :oracle} driver/*driver*)
+            (if (driver/database-supports? driver/*driver* :test/cannot-destroy-db (mt/db))
               ;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
               ;; so fake it by changing the database details
               (let [details     (:details (mt/db))
-                    new-details (case driver/*driver*
-                                  (:redshift :snowflake :vertica) (assoc details :db (mt/random-name))
-                                  :oracle                         (assoc details :service-name (mt/random-name))
-                                  :presto-jdbc                    (assoc details :catalog (mt/random-name)))]
+                    new-details (merge details (tx/bad-connection-details driver/*driver*))]
                 (t2/update! :model/Database (u/the-id db) {:details new-details}))
               ;; otherwise destroy the db and use the original details
               (tx/destroy-db! driver/*driver* dbdef))
@@ -164,36 +168,82 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :table-privileges)
     (is (some? (driver/current-user-table-privileges driver/*driver* (mt/db))))))
 
-(deftest nonsql-dialects-return-original-query-test
+(deftest ^:parallel mongo-prettify-native-form-test
   (mt/test-driver :mongo
-    (testing "Passing a mongodb query through [[driver/prettify-native-form]] returns the original query (#31122)"
-      (let [query [{"$group"   {"_id" {"created_at" {"$let" {"vars" {"parts" {"$dateToParts" {"timezone" "UTC"
-                                                                                              "date"     "$created_at"}}}
-                                                             "in"   {"$dateFromParts" {"timezone" "UTC"
-                                                                                       "year"     "$$parts.year"
-                                                                                       "month"    "$$parts.month"
-                                                                                       "day"      "$$parts.day"}}}}}
-                                "sum" {"$sum" "$tax"}}}
-                   {"$sort"    {"_id" 1}}
-                   {"$project" {"_id"        false
-                                "created_at" "$_id.created_at"
-                                "sum"        true}}]
-            formatted-query (driver/prettify-native-form :mongo query)]
+    (let [query [{"$group"   {"_id" {"created_at" {"$let" {"vars" {"parts" {"$dateToParts" {"timezone" "UTC"
+                                                                                            "date"     "$created_at"}}}
+                                                           "in"   {"$dateFromParts" {"timezone" "UTC"
+                                                                                     "year"     "$$parts.year"
+                                                                                     "month"    "$$parts.month"
+                                                                                     "day"      "$$parts.day"}}}}}
+                              "sum" {"$sum" "$tax"}}}
+                 {"$sort"    {"_id" 1}}
+                 {"$project" {"_id"        false
+                              "created_at" "$_id.created_at"
+                              "sum"        true}}]
+          formatted-query (driver/prettify-native-form :mongo query)]
 
-        (testing "Formatting a non-sql query returns the same query"
-          (is (= query formatted-query)))
+      (testing "Formatting a mongo query returns a JSON-like string"
+        (is (= (str/join "\n"
+                         ["["
+                          "  {"
+                          "    \"$group\": {"
+                          "      \"_id\": {"
+                          "        \"created_at\": {"
+                          "          \"$let\": {"
+                          "            \"vars\": {"
+                          "              \"parts\": {"
+                          "                \"$dateToParts\": {"
+                          "                  \"timezone\": \"UTC\","
+                          "                  \"date\": \"$created_at\""
+                          "                }"
+                          "              }"
+                          "            },"
+                          "            \"in\": {"
+                          "              \"$dateFromParts\": {"
+                          "                \"timezone\": \"UTC\","
+                          "                \"year\": \"$$parts.year\","
+                          "                \"month\": \"$$parts.month\","
+                          "                \"day\": \"$$parts.day\""
+                          "              }"
+                          "            }"
+                          "          }"
+                          "        }"
+                          "      },"
+                          "      \"sum\": {"
+                          "        \"$sum\": \"$tax\""
+                          "      }"
+                          "    }"
+                          "  },"
+                          "  {"
+                          "    \"$sort\": {"
+                          "      \"_id\": 1"
+                          "    }"
+                          "  },"
+                          "  {"
+                          "    \"$project\": {"
+                          "      \"_id\": false,"
+                          "      \"created_at\": \"$_id.created_at\","
+                          "      \"sum\": true"
+                          "    }"
+                          "  }"
+                          "]"])
+               formatted-query)))
+
+      (testing "The formatted JSON-like string is equivalent to the query"
+        (is (= query (json/decode formatted-query))))
 
         ;; TODO(qnkhuat): do we really need to handle case where wrong driver is passed?
-        (let [;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
+      (let [;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
               ;; This is a corner case since the system should always be using the right driver
-              weird-formatted-query (driver/prettify-native-form :postgres (json/encode query))]
-          (testing "The wrong formatter will change the format..."
-            (is (not= query weird-formatted-query)))
-          (testing "...but the resulting data is still the same"
+            weird-formatted-query (driver/prettify-native-form :postgres (json/encode query))]
+        (testing "The wrong formatter will change the format..."
+          (is (not= query weird-formatted-query)))
+        (testing "...but the resulting data is still the same"
             ;; Bottom line - Use the right driver, but if you use the wrong
             ;; one it should be harmless but annoying
-            (is (= query
-                   (json/decode weird-formatted-query)))))))))
+          (is (= query
+                 (json/decode weird-formatted-query))))))))
 
 (deftest ^:parallel prettify-native-form-executable-test
   (mt/test-drivers
@@ -203,6 +253,16 @@
                                :type     :native
                                :native   (-> (qp.compile/compile (mt/mbql-query orders {:limit 1}))
                                              (update :query (partial driver/prettify-native-form driver/*driver*)))})))))
+
+(deftest ^:parallel table-exists-test
+  (testing "Make sure checking for table existence works"
+    (mt/test-drivers (mt/normal-drivers-with-feature :metadata/table-existence-check)
+      (let [venues-table (t2/select-one :model/Table :id (mt/id :venues))
+            fake-table {:name "fake_table_xyz123" :schema (:schema venues-table)}]
+        (is (driver/table-exists? driver/*driver* (mt/db) venues-table)
+            (str "Driver " driver/*driver* " should detect that venues table exists"))
+        (is (not (driver/table-exists? driver/*driver* (mt/db) fake-table))
+            (str "Driver " driver/*driver* " should detect that fake table doesn't exist"))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Begin tests for `describe-*` methods used in sync
@@ -236,6 +296,52 @@
                     :database-position 2
                     :base-type         #(isa? % :type/Number)}]
                   (describe-fields-for-table (mt/db) table))))))))
+
+(deftest ^:parallel describe-fields-returns-nullability-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading :test/create-table-without-data)
+    (mt/dataset nullable-db
+      (let [table   (t2/select-one :model/Table :id (mt/id :nullable))
+            fields  (describe-fields-for-table (mt/db) table)
+            [a b c] (->> ["a" "b" "c"]
+                         (map #(ddl.i/format-name driver/*driver* %))
+                         (map (u/index-by :name fields)))]
+        ;; this test only properties of the field-meta returned by the driver, not whether it syncs, for that see sync_metadata/fields_test.clj
+        (if (driver/database-supports? driver/*driver* :describe-is-nullable (mt/db))
+          (testing ":database-is-nullable should be provided"
+            (is (= [false true false] (mapv :database-is-nullable [a b c]))))
+          (testing ":database-is-nullable should remain unspecified"
+            (is (= [nil nil nil] (mapv :database-is-nullable [a b c])))))))))
+
+(deftest ^:parallel describe-fields-returns-default-expr-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading :test/create-table-without-data)
+    (mt/dataset default-expr-db
+      (let [table (t2/select-one :model/Table :id (mt/id :default_expr))
+            fields (describe-fields-for-table (mt/db) table)
+            [a b c] (->> ["a" "b" "c"]
+                         (map #(ddl.i/format-name driver/*driver* %))
+                         (map (u/index-by :name fields)))]
+        ;; this test only properties of the field-meta returned by the driver, not whether it syncs, for that see sync_metadata/fields_test.clj
+        (if (driver/database-supports? driver/*driver* :describe-default-expr (mt/db))
+          (testing ":database-default should be provided"
+            ;; SQL Server likes to add some parens
+            (is (=? [nil #"\(*42\)*" nil] (mapv :database-default [a b c]))))
+          (testing ":database-default should remain unspecified"
+            (is (= [nil nil nil] (mapv :database-default [a b c])))))))))
+
+(deftest ^:parallel describe-fields-returns-is-generated-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading :test/create-table-without-data)
+    (mt/dataset generated-column-db
+      (let [table (t2/select-one :model/Table :id (mt/id :generated_column))
+            fields (describe-fields-for-table (mt/db) table)
+            [a b c] (->> ["a" "b" "c"]
+                         (map #(ddl.i/format-name driver/*driver* %))
+                         (map (u/index-by :name fields)))]
+        ;; this test only properties of the field-meta returned by the driver, not whether it syncs, for that see sync_metadata/fields_test.clj
+        (if (driver/database-supports? driver/*driver* :describe-is-generated (mt/db))
+          (testing ":database-is-generated should be provided"
+            (is (= [false true false] (mapv :database-is-generated [a b c]))))
+          (testing ":database-is-generated should remain unspecified"
+            (is (= [nil nil nil] (mapv :database-is-generated [a b c])))))))))
 
 (deftest ^:parallel describe-table-fks-test
   (testing "`describe-table-fks` should work for drivers that do not support `describe-fks`"
@@ -300,3 +406,63 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; End tests for `describe-*` methods used in sync
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO: Uncomment when https://github.com/metabase/metabase/pull/60263 is merged
+#_(deftest data-editing-requires-describe-features-test
+    (testing "Drivers supporting :actions/data-editing must support relevant describe-X features"
+      (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+        (testing "describe-default-expr feature"
+          (is (driver/database-supports? driver/*driver* :describe-default-expr (mt/db))
+              (str driver/*driver* " must support :describe-default-expr to support :actions/data-editing")))
+        (testing "describe-is-generated feature"
+          (is (driver/database-supports? driver/*driver* :describe-is-generated (mt/db))
+              (str driver/*driver* " must support :describe-is-generated to support :actions/data-editing")))
+        (testing "describe-is-nullable feature"
+          (is (driver/database-supports? driver/*driver* :describe-is-nullable (mt/db))
+              (str driver/*driver* " must support :describe-is-nullable to support :actions/data-editing"))))))
+
+(deftest query-driver-success-metrics-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "the number of successful and failed queries should be tracked correctly"
+      (let [success-query (assoc-in (mt/mbql-query venues) [:middleware :userland-query?] true)
+            failure-query (assoc-in (mt/native-query {:query "bad query"})
+                                    [:middleware :userland-query?] true)]
+        (mt/with-prometheus-system! [_ system]
+          (qp/process-query success-query)
+          (try
+            (qp/process-query failure-query)
+            (catch Exception _))
+          (qp/process-query success-query)
+          (try
+            (qp/process-query failure-query)
+            (catch Exception _))
+          (qp/process-query success-query)
+          (is (= 3.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "success"})))
+          (is (= 2.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "failure"}))))))))
+
+(deftest python-transform-drivers-multimethods-support
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
+    (let [driver driver/*driver*]
+      (is (get-method driver/create-table! driver))
+      (is (get-method driver/table-name-length-limit driver))
+      (is (get-method driver/drop-table! driver))
+      (is (let [should-be-supported-by-all #{:type/Number :type/Text :type/Date :type/DateTime :type/DateTimeWithTZ :type/Boolean}]
+            (and (get-method driver/type->database-type driver)
+                 (every? #(driver/type->database-type driver %) should-be-supported-by-all))))
+      (is (get-method driver/insert-from-source! [driver :jsonl-file])))))
+
+(driver/register! ::mock-no-deps-driver, :abstract? true)
+
+(deftest deps-ignores-invalid-drivers-test
+  (is (= #{}
+         (driver/native-query-deps ::mock-no-deps-driver nil nil))))
+
+(driver/register! ::mock-deps-driver, :abstract? true)
+
+(defmethod driver/database-supports? [::mock-deps-driver :dependencies/native]
+  [_driver _feature _database]
+  true)
+
+(deftest deps-flags-when-supported-driver-is-not-covered-test
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database that supports :dependencies/native does not provide an implementation of driver/native-query-deps"
+                        (driver/native-query-deps ::mock-deps-driver nil nil))))

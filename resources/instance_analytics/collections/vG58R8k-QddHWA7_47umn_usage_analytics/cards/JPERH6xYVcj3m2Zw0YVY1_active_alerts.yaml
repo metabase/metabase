@@ -57,8 +57,7 @@ dataset_query:
     source-table: skoPT2xiuEcUV8vFkHE6S
   type: query
 result_metadata:
-- aggregation_index: 0
-  base_type: type/Integer
+- base_type: type/Integer
   display_name: Count
   field_ref:
   - aggregation
@@ -75,6 +74,8 @@ serdes/meta:
   label: active_alerts
   model: Card
 archived_directly: false
+card_schema: 20
+dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 metabase_version: null
 source_card_id: skoPT2xiuEcUV8vFkHE6S
 type: question

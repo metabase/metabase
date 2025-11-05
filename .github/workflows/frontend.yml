@@ -1,37 +1,32 @@
 name: Frontend
 
 on:
-  push:
-    branches:
-      - "master"
-      - "release-**"
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_call:
+    inputs:
+      skip:
+        type: boolean
+        default: false
+      skip-lint:
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      skip:
+        description: "Skip main frontend jobs (type-check, unit tests, timezone tests)"
+        type: boolean
+        default: false
+      skip-lint:
+        description: "Skip linting jobs (prettier, eslint, css variables check)"
+        type: boolean
+        default: false
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-frontend
   cancel-in-progress: true
 
 jobs:
-  files-changed:
-    name: Check which files changed
-    runs-on: ubuntu-22.04
-    timeout-minutes: 3
-    outputs:
-      frontend_all: ${{ steps.changes.outputs.frontend_all }}
-      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Test which files changed
-        uses: dorny/paths-filter@v3.0.0
-        id: changes
-        with:
-          token: ${{ github.token }}
-          filters: .github/file-paths.yaml
-
   fe-lint:
-    needs: files-changed
-    if: needs.files-changed.outputs.frontend_all == 'true' || needs.files-changed.outputs.e2e_specs == 'true'
+    if: ${{ !inputs.skip-lint }}
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -40,18 +35,29 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+
+      - name: Get Eslint cache key
+        uses: ./.github/actions/get-cache-keys
+        id: get-cache-keys
+      - name: Restore ESLint cache
+        uses: actions/cache/restore@v4
         with:
-          m2-cache-key: "cljs"
+          path: .eslintcache
+          key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
+
       - name: Compile CLJS
         run: yarn build-pure:cljs
+      - name: Find CSS variables that are used but never defined
+        run: yarn find-never-defined-css-variables
       - name: Run Prettier formatting linter
         run: yarn run lint-prettier-pure
       - name: Run ESLint linter
         run: yarn run lint-eslint-pure
+      - name: Run CSS linter
+        run: yarn run lint-css
 
   fe-type-check:
-    needs: files-changed
-    if: needs.files-changed.outputs.frontend_all == 'true'
+    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
@@ -60,19 +66,21 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
       - run: yarn build-pure:cljs
         name: Compile CLJS
       - run: yarn type-check-pure
         name: Check types
 
   fe-tests-unit:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
+    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2] # 2 shards for parallel execution
     env:
+      SHARDS: 2 # should match matrix above
       JEST_JUNIT_OUTPUT_DIR: ./target/junit
       JEST_JUNIT_OUTPUT_NAME: test-report-frontend-unit.xml
     steps:
@@ -81,24 +89,14 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
-      - name: Run frontend unit tests and collect the code coverage information
-        if: github.ref_name == 'master'
-        run: yarn run test-unit --coverage --silent
       - name: Run frontend unit tests
-        if: github.ref_name != 'master'
-        run: yarn run test-unit --silent
-      - name: Upload coverage to codecov.io
-        if: github.ref_name == 'master'
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage/lcov.info
-          flags: front-end
-          token: ${{ secrets.CODECOV_TOKEN }}
+        run: yarn run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
+        # We want Trunk to still receive test reports even if this job fails.
+        # It will filter out the quarantined tests, and will control the job exit code based on the analysis.
+        continue-on-error: true
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always()
+        if: always() && github.event_name != 'workflow_dispatch'
         with:
           input-path: ./target/junit
           output-name: frontend-unit
@@ -109,8 +107,7 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   fe-tests-timezones:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
+    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -119,7 +116,45 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
       - name: Run frontend timezones tests
         run: yarn run test-timezones
+
+  fe-tests-result:
+    needs:
+      - fe-lint
+      - fe-type-check
+      - fe-tests-unit
+      - fe-tests-timezones
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      needs: ${{ toJson(needs) }}
+    steps:
+      - name: Check frontend job status
+        uses: actions/github-script@v7
+        env:
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | # js
+            const needs = JSON.parse(process.env.needs);
+            const jobs = Object.entries(needs).map(
+              ([jobName, jobValues]) => ({
+                name: jobName,
+                result: jobValues.result
+              }));
+
+            // are all jobs skipped or successful?
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
+              console.log('All jobs are skipped or successful');
+              process.exit(0);
+            }
+
+            // otherwise, something failed
+            console.log('Some frontend jobs failed');
+            jobs.forEach((job) => {
+              if (job.result !== 'success') {
+                console.log(`${job.name} - ${job.result}`);
+              }
+            });
+            process.exit(1);

@@ -1,8 +1,8 @@
 (ns metabase.search.filter
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.search.config :as search.config]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
@@ -17,8 +17,9 @@
 
 (defn- visible-to? [search-ctx {:keys [visibility] :as _spec}]
   (case visibility
-    :all      true
-    :app-user (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))))
+    :all       true
+    :app-user  (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))
+    :superuser (:is-superuser? search-ctx)))
 
 (def ^:private context-key->filter
   "Map the context keys to their corresponding filters"
@@ -40,7 +41,8 @@
           (remove nil?)
           (for [search-model (:models search-ctx)
                 :let [spec (search.spec/spec search-model)]]
-            (when (and (visible-to? search-ctx spec) (every? (:attrs spec) required))
+            (when (and (visible-to? search-ctx spec)
+                       (every? (:attrs spec) required))
               (:name spec))))))
 
 (defn models-without-collection
@@ -54,7 +56,7 @@
 (defn- date-range-filter-clause
   [dt-col dt-val]
   (let [date-range (try
-                     (params.dates/date-string->range dt-val {:inclusive-end? false})
+                     (qp.parameters.dates/date-string->range dt-val {:inclusive-end? false})
                      (catch Exception _e
                        (throw (ex-info (tru "Failed to parse datetime value: {0}" dt-val) {:status-code 400}))))
         start      (some-> (:start date-range) u.date/parse)
@@ -70,12 +72,14 @@
       [:< dt-col end]
 
       (nil? end)
-      [:> dt-col start]
+      [:>= dt-col start]
 
       :else
       [:and [:>= dt-col start] [:< dt-col end]])))
 
-(defmulti ^:private where-clause* (fn [filter-type _column _v] filter-type))
+(defmulti ^:private where-clause*
+  {:arglists '([filter-type column v])}
+  (fn [filter-type _column _v] filter-type))
 
 (defmethod where-clause* ::single-value [_ k v] [:= k v])
 
@@ -93,7 +97,9 @@
     "only-mine"
     [:or
      [:= :collection.personal_owner_id current-user-id]
-     [:like :collection.location (format "/%d/%%" (t2/select-one-pk :model/Collection :personal_owner_id [:= current-user-id]))]]
+     [:like :collection.location (format "/%d/%%" (t2/select-one-pk :model/Collection
+                                                                    :personal_owner_id [:= current-user-id]
+                                                                    :location          "/"))]]
 
     "exclude-others"
     (let [with-filter #(personal-collections-where-clause
@@ -101,7 +107,7 @@
                         collection-id-col)]
       [:or (with-filter "only-mine") (with-filter "exclude")])
 
-    (let [personal-ids   (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
+    (let [personal-ids   (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/")
           child-patterns (for [id personal-ids] (format "/%d/%%" id))]
       (case filter-type
         "only"
@@ -131,10 +137,15 @@
                              [:= 1 2]))
     (sql.helpers/where qry (when-let [ids (:ids search-context)]
                              [:and
-                              [:in :search_index.model_id ids]
+                              [:in :search_index.model_id (map str ids)]
                               ;; NOTE: we limit id-based search to only a subset of the models
                               ;; TODO this should just become part of the model spec e.g. :search-by-id?
                               [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]))
+    (sql.helpers/where qry [:or
+                            ;; leverage the fact that only card-related models populate this attribute
+                            [:= nil :search_index.dashboard_id]
+                            (when (:include-dashboard-questions? search-context)
+                              [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])])
     (reduce (fn [qry {t :type :keys [context-key required-feature supported-value? field]}]
               (or (when-some [v (get search-context context-key)]
                     (assert (supported-value? v) (str "Unsupported value for " context-key " - " v))

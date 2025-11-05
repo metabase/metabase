@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -24,7 +24,7 @@ describe("scenarios > visualizations > scalar", () => {
       cy.skipOn(size === "mobile");
 
       cy.viewport(width, height);
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: {
           name: "12629",
           query: {
@@ -61,7 +61,7 @@ describe("scenarios > visualizations > scalar", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("April 30, 2024");
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show the time").should("be.hidden");

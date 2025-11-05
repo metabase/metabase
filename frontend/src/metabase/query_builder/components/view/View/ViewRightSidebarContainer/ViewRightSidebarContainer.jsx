@@ -3,15 +3,17 @@ import { NativeQueryRightSidebar } from "metabase/query_builder/components/view/
 import { StructuredQueryRightSidebar } from "metabase/query_builder/components/view/View/StructuredQueryRightSidebar/StructuredQueryRightSidebar";
 import * as Lib from "metabase-lib";
 
-export const ViewRightSidebarContainer = props => {
+export const ViewRightSidebarContainer = (props) => {
   const {
     question,
     deselectTimelineEvents,
     hideTimelineEvents,
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
+    isShowingAIQuestionAnalysisSidebar,
     isShowingSummarySidebar,
     isShowingTimelineSidebar,
+    onCloseAIQuestionAnalysisSidebar,
     onCloseQuestionInfo,
     onCloseSummary,
     onCloseTimelines,
@@ -28,14 +30,18 @@ export const ViewRightSidebarContainer = props => {
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
-  return !isNative ? (
+  return isNative ? (
+    <NativeQueryRightSidebar {...props} />
+  ) : (
     <StructuredQueryRightSidebar
       deselectTimelineEvents={deselectTimelineEvents}
       hideTimelineEvents={hideTimelineEvents}
       isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
       isShowingQuestionSettingsSidebar={isShowingQuestionSettingsSidebar}
+      isShowingAIQuestionAnalysisSidebar={isShowingAIQuestionAnalysisSidebar}
       isShowingSummarySidebar={isShowingSummarySidebar}
       isShowingTimelineSidebar={isShowingTimelineSidebar}
+      onCloseAIQuestionAnalysisSidebar={onCloseAIQuestionAnalysisSidebar}
       onCloseQuestionInfo={onCloseQuestionInfo}
       onCloseSummary={onCloseSummary}
       onCloseTimelines={onCloseTimelines}
@@ -50,7 +56,5 @@ export const ViewRightSidebarContainer = props => {
       visibleTimelineEventIds={visibleTimelineEventIds}
       xDomain={xDomain}
     />
-  ) : (
-    <NativeQueryRightSidebar {...props} />
   );
 };

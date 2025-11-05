@@ -1,52 +1,48 @@
 (ns metabase-enterprise.cache.strategies
   (:require
    [java-time.api :as t]
-   [metabase.models.cache-config :as cache-config]
-   [metabase.public-settings.premium-features :refer [defenterprise defenterprise-schema]]
+   [metabase.cache.api]
+   [metabase.cache.core :as cache]
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
-   [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+(comment metabase.cache.api/keep-me)
+
 ;; Data shape
 
-(defenterprise CacheStrategy
-  "Schema for a caching strategy"
-  :feature :cache-granular-controls
-  []
+;;; This is basically the same schema as `:metabase.cache.api/cache-strategy.ee` except it adds optional
+;;; `:invalidated-at` keys
+(mr/def ::cache-strategy
+  "Schema for a caching strategy used internally"
   [:and
-   [:map
-    [:type [:enum :nocache :ttl :duration :schedule]]]
+   :metabase.cache.api/cache-strategy.base.ee
    [:multi {:dispatch :type}
-    [:nocache  [:map ;; not closed due to a way it's used in tests for clarity
-                [:type [:= :nocache]]]]
-    [:ttl      [:map {:closed true}
-                [:type [:= :ttl]]
-                [:multiplier ms/PositiveInt]
-                [:min_duration_ms ms/IntGreaterThanOrEqualToZero]
-                ^:internal
-                [:invalidated-at {:optional true} some?]]]
-    [:duration [:map {:closed true}
-                [:type [:= :duration]]
-                [:duration ms/PositiveInt]
-                [:unit [:enum "hours" "minutes" "seconds" "days"]]
-                ^:internal
-                [:invalidated-at {:optional true} some?]]]
-    [:schedule [:map {:closed true}
-                [:type [:= :schedule]]
-                [:schedule u.cron/CronScheduleString]
-                ^:internal
-                [:invalidated-at {:optional true} some?]]]]])
+    [:nocache  :metabase.cache.api/cache-strategy.nocache]
+    [:ttl      [:merge
+                :metabase.cache.api/cache-strategy.ttl
+                [:map
+                 [:invalidated-at {:optional true} some?]]]]
+    [:duration [:merge
+                :metabase.cache.api/cache-strategy.ee.duration
+                [:map
+                 [:invalidated-at {:optional true} some?]]]]
+    [:schedule [:merge
+                :metabase.cache.api/cache-strategy.ee.schedule
+                [:map
+                 [:invalidated-at {:optional true} some?]]]]]])
 
 ;;; Querying DB
 
-(defenterprise-schema cache-strategy :- [:maybe (CacheStrategy)]
+(defenterprise-schema cache-strategy :- [:maybe ::cache-strategy]
   "Returns the granular cache strategy for a card."
   :feature :cache-granular-controls
-  [card dashboard-id]
+  [card         :- :metabase.queries.schema/card
+   dashboard-id :- [:maybe :metabase.lib.schema.id/dashboard]]
   (let [qs   (for [[i model model-id] [[1 "question"   (:id card)]
                                        [2 "dashboard"  dashboard-id]
                                        [3 "database"   (:database_id card)]
@@ -63,29 +59,30 @@
               :order-by :ordering
               :limit    [:inline 1]}
         item (t2/select-one :model/CacheConfig :id q)]
-    (cache-config/card-strategy item card)))
+    (cache/card-strategy item card)))
 
 ;;; Strategy execution
 
 (defmulti ^:private fetch-cache-stmt-ee*
   "Generate prepared statement for a db cache backend for a given strategy"
-  (fn [strategy _hash _conn] (:type strategy)))
+  {:arglists '([strategy query-hash])}
+  (fn [strategy _hash] (:type strategy)))
 
-(defmethod fetch-cache-stmt-ee* :ttl [strategy query-hash conn]
-  (backend.db/fetch-cache-stmt-ttl strategy query-hash conn))
+(defmethod fetch-cache-stmt-ee* :ttl [strategy query-hash]
+  (backend.db/fetch-cache-stmt-ttl strategy query-hash))
 
-(defmethod fetch-cache-stmt-ee* :duration [strategy query-hash conn]
+(defmethod fetch-cache-stmt-ee* :duration [strategy query-hash]
   (if-not (and (:duration strategy) (:unit strategy))
     (log/debugf "Caching strategy %s should have :duration and :unit" (pr-str strategy))
     (let [duration       (t/duration (:duration strategy) (keyword (:unit strategy)))
           duration-ago   (t/minus (t/offset-date-time) duration)
           invalidated-at (t/max duration-ago (:invalidated-at strategy))]
-      (backend.db/prepare-statement conn query-hash invalidated-at))))
+      (backend.db/select-cache query-hash invalidated-at))))
 
-(defmethod fetch-cache-stmt-ee* :schedule [{:keys [invalidated-at] :as strategy} query-hash conn]
+(defmethod fetch-cache-stmt-ee* :schedule [{:keys [invalidated-at] :as strategy} query-hash]
   (if-not invalidated-at
     (log/debugf "Caching strategy %s has not run yet" (pr-str strategy))
-    (backend.db/prepare-statement conn query-hash invalidated-at)))
+    (backend.db/select-cache query-hash invalidated-at)))
 
 (defmethod fetch-cache-stmt-ee* :nocache [_ _ _]
   nil)
@@ -93,5 +90,5 @@
 (defenterprise fetch-cache-stmt
   "Returns prepared statement to query for db cache backend."
   :feature :cache-granular-controls
-  [strategy query-hash conn]
-  (fetch-cache-stmt-ee* strategy query-hash conn))
+  [strategy query-hash]
+  (fetch-cache-stmt-ee* strategy query-hash))

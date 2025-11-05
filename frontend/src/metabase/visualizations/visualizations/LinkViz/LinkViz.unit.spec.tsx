@@ -11,22 +11,27 @@ import {
   getIcon,
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import * as domUtils from "metabase/lib/dom";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
   LinkCardSettings,
+  Parameter,
   VirtualDashboardCard,
 } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
+  createMockDashboard,
   createMockLinkDashboardCard,
+  createMockParameter,
   createMockRecentCollectionItem,
   createMockRecentTableItem,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import type { LinkVizProps } from "./LinkViz";
 import { LinkViz } from "./LinkViz";
@@ -95,6 +100,7 @@ const setup = (options?: Partial<LinkVizProps>) => {
 
   renderWithProviders(
     <LinkViz
+      dashboard={createMockDashboard()}
       dashcard={linkDashcard}
       isEditing={true}
       onUpdateVisualizationSettings={changeSpy}
@@ -196,6 +202,84 @@ describe("LinkViz", () => {
   });
 
   describe("entity links", () => {
+    it("renders markdown in entity description tooltip", async () => {
+      const markdownDescription =
+        "**Bold text** and _italic text_ and [link](https://example.com)";
+
+      const settings = {
+        link: {
+          entity: {
+            id: 1,
+            db_id: 20,
+            name: "Table Une",
+            model: "table",
+            description: markdownDescription,
+          },
+        },
+      } as LinkCardVizSettings;
+
+      setup({
+        isEditing: false,
+        dashcard: createMockLinkDashboardCard({
+          visualization_settings: settings,
+        }),
+        settings,
+      });
+
+      const infoIcon = screen.getByLabelText("info icon");
+      await userEvent.hover(infoIcon);
+
+      await waitFor(() => {
+        expect(screen.getByText("Bold text")).toHaveStyle({
+          "font-weight": "bold",
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("italic text")).toHaveStyle({
+          "font-style": "italic",
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("link")).toHaveAttribute(
+          "href",
+          "https://example.com",
+        );
+      });
+    });
+
+    it("disallows headings in markdown tooltip", async () => {
+      const markdownDescription = "# Heading\nRegular text";
+
+      const settings = {
+        link: {
+          entity: {
+            id: 1,
+            db_id: 20,
+            name: "Table Une",
+            model: "table",
+            description: markdownDescription,
+          },
+        },
+      } as LinkCardVizSettings;
+
+      setup({
+        isEditing: false,
+        dashcard: createMockLinkDashboardCard({
+          visualization_settings: settings,
+        }),
+        settings,
+      });
+
+      const infoIcon = screen.getByLabelText("info icon");
+      await userEvent.hover(infoIcon);
+
+      const tooltip = await screen.findByTestId("icon-tooltip");
+      expect(tooltip).not.toContainHTML("<h1>");
+      expect(tooltip).toHaveTextContent("Heading");
+    });
+
     it("shows a link to a pie chart question", () => {
       setup({
         isEditing: false,
@@ -342,6 +426,130 @@ describe("LinkViz", () => {
 
       expect(getIcon("key")).toBeInTheDocument();
       expect(screen.getByText(/don't have permission/i)).toBeInTheDocument();
+    });
+  });
+
+  describe("parameters", () => {
+    const setupParameterTest = ({
+      parameters,
+      linkUrl,
+      parameterValues,
+    }: {
+      parameters: Parameter[];
+      linkUrl: string;
+      parameterValues?: Record<string, string>;
+    }) => {
+      const dashboard = createMockDashboard({
+        parameters,
+      });
+
+      const dashcard = createMockLinkDashboardCard({
+        dashboard_id: dashboard.id,
+        visualization_settings: {
+          link: { url: linkUrl },
+        },
+        parameter_mappings: parameters.map((param) => ({
+          parameter_id: param.id,
+          target: ["text-tag", param.slug],
+        })),
+      });
+
+      renderWithProviders(
+        <LinkViz
+          dashcard={dashcard}
+          dashboard={dashboard}
+          isEditing={false}
+          onUpdateVisualizationSettings={jest.fn()}
+          settings={dashcard.visualization_settings as LinkCardVizSettings}
+        />,
+        {
+          storeInitialState: {
+            dashboard: createMockDashboardState({
+              dashboardId: dashboard.id,
+              dashboards: {
+                [dashboard.id]: {
+                  ...dashboard,
+                  dashcards: [dashcard.id],
+                },
+              },
+              dashcards: {
+                [dashcard.id]: dashcard,
+              },
+              parameterValues:
+                dashboard.parameters?.reduce(
+                  (acc, param) => ({
+                    ...acc,
+                    [param.id]: parameterValues?.[param.slug] ?? "",
+                  }),
+                  {},
+                ) ?? {},
+            }),
+          },
+        },
+      );
+    };
+
+    it("should substitute single parameter value in URL", () => {
+      const parameters = [
+        createMockParameter({
+          id: "1",
+          name: "Parameter 1",
+          slug: "param1",
+        }),
+      ];
+
+      setupParameterTest({
+        parameters,
+        linkUrl: "https://example.com/{{param1}}",
+        parameterValues: { param1: "foo" },
+      });
+
+      expect(screen.getByText("https://example.com/foo")).toBeInTheDocument();
+    });
+
+    it("should substitute multiple parameter values in URL", () => {
+      const parameters = [
+        createMockParameter({
+          id: "1",
+          name: "Parameter 1",
+          slug: "param1",
+        }),
+        createMockParameter({
+          id: "2",
+          name: "Parameter 2",
+          slug: "param2",
+        }),
+      ];
+
+      setupParameterTest({
+        parameters,
+        linkUrl: "https://example.com/{{param1}}?q={{param2}}",
+        parameterValues: { param1: "foo", param2: "bar" },
+      });
+
+      expect(
+        screen.getByText("https://example.com/foo?q=bar"),
+      ).toBeInTheDocument();
+    });
+
+    it("should URL-encode parameter values", () => {
+      const parameters = [
+        createMockParameter({
+          id: "1",
+          name: "Parameter 1",
+          slug: "param1",
+        }),
+      ];
+
+      setupParameterTest({
+        parameters,
+        linkUrl: "https://example.com/{{param1}}",
+        parameterValues: { param1: "pb&j" },
+      });
+
+      expect(
+        screen.getByText("https://example.com/pb%26j"),
+      ).toBeInTheDocument();
     });
   });
 });

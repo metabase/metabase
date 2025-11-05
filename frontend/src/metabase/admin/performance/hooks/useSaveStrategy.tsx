@@ -38,7 +38,7 @@ export const useSaveStrategy = (
       };
 
       const otherConfigs = configs.filter(
-        config => config.model_id !== targetId,
+        (config) => config.model_id !== targetId,
       );
       const shouldDeleteStrategy =
         values.type === "inherit" ||

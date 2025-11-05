@@ -10,7 +10,7 @@ const TEST_EMAIL = "test_email@metabase.test";
 describe("useSelector", () => {
   it("should allow access to redux store", () => {
     const Component = () => {
-      const email = useSelector(state => state.currentUser?.email);
+      const email = useSelector((state) => state.currentUser?.email);
       return <>{email || "No email found"}</>;
     };
 

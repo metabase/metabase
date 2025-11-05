@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { RelativeDatePickerValue } from "metabase/querying/filters/types";
 import { Switch } from "metabase/ui";
 
 import {
@@ -7,11 +8,10 @@ import {
   getIncludeCurrentLabel,
   setIncludeCurrent,
 } from "../DateIntervalPicker/utils";
-import type { DateIntervalValue } from "../types";
 
 interface IncludeCurrentSwitchProps {
-  value: DateIntervalValue;
-  onChange: (value: DateIntervalValue) => void;
+  value: RelativeDatePickerValue;
+  onChange: (value: RelativeDatePickerValue) => void;
 }
 
 export const IncludeCurrentSwitch = ({

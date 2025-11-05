@@ -1,9 +1,10 @@
 (ns metabase.channel.template.handlebars-helper
   (:refer-clojure :exclude [hash])
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.urls :as urls])
+   [metabase.channel.urls :as urls]
+   [metabase.util.date-2 :as u.date])
   (:import
    (com.github.jknack.handlebars
     Options Handlebars Helper Handlebars$SafeString)))
@@ -97,6 +98,12 @@
   [_context _params _kparams _options]
   (t/instant))
 
+(defhelper initials
+  "Return up to two uppercased initials from a full name. Splits by whitespace and hyphen."
+  [name _params _kparams _options]
+  #_:clj-kondo/ignore
+  (some->> name (re-seq #"\b(\w)") (take 2) (map second) (str/join "") str/upper-case))
+
 ;; Metabase specifics
 
 (defhelper card-url
@@ -106,6 +113,11 @@
   ;; => \"http://localhost:3000/question/10\""
   [id _params _kparams _options]
   (urls/card-url id))
+
+(defhelper trash-url
+  "Return the URL to trash page."
+  [_ _params _kparams _options]
+  (urls/trash-url))
 
 (defhelper dashboard-url
   "Return an appropriate URL for a `Dashboard` with ID.
@@ -119,5 +131,6 @@
   {"equals"        equals
    "format-date"   format-date
    "now"           now
+   "initials"      initials
    "card-url"      card-url
    "dashboard-url" dashboard-url})

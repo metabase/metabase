@@ -72,7 +72,7 @@ export const getSensibleVisualizations = ({
   result,
 }: GetSensibleVisualizationsProps) => {
   const availableVizTypes = Array.from(visualizations.entries())
-    .filter(([_, config]) => !config.hidden)
+    .filter(([_display, config]) => !config.hidden)
     .map(([vizType]) => vizType)
     .filter(isCardDisplayType);
 
@@ -80,7 +80,7 @@ export const getSensibleVisualizations = ({
 
   const [sensibleVisualizations, nonSensibleVisualizations] = _.partition(
     orderedVizTypes,
-    vizType => isSensibleVisualization({ result, vizType }),
+    (vizType) => isSensibleVisualization({ result, vizType }),
   );
 
   return { sensibleVisualizations, nonSensibleVisualizations };

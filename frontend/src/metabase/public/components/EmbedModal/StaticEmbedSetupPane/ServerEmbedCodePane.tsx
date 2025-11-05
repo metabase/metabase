@@ -1,7 +1,3 @@
-import "ace/mode-clojure";
-import "ace/mode-javascript";
-import "ace/mode-python";
-import "ace/mode-ruby";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -93,7 +89,7 @@ export const ServerEmbedCodePane = ({
       selectedOptionId={selectedServerCodeOptionId}
       languageOptions={serverCodeOptions}
       source={selectedServerCodeOption.source}
-      textHighlightMode={selectedServerCodeOption.mode}
+      language={selectedServerCodeOption.language}
       highlightedTexts={highlightedTexts}
       onChangeOption={setSelectedServerCodeOptionId}
       onCopy={onCopy}
@@ -135,6 +131,7 @@ function getHighlightedText({
         resourceId: resource.id,
         params: initialPreviewParameters,
         displayOptions,
+        withIframeSnippet: true,
       }).find(({ id }) => id === selectedServerCodeOptionId)?.parametersSource;
 
   const hasAppearanceCodeDiff = !_.isEqual(

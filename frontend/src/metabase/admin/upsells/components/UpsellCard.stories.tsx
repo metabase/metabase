@@ -1,3 +1,5 @@
+import { action } from "@storybook/addon-actions";
+
 import { ReduxProvider } from "__support__/storybook";
 import { Flex } from "metabase/ui";
 
@@ -43,19 +45,35 @@ const argTypes = {
   },
 };
 
+const Wrapper = (args: {
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}) => {
+  return (
+    <ReduxProvider>
+      <Flex justify="center" style={args.style}>
+        {args.children}
+      </Flex>
+    </ReduxProvider>
+  );
+};
+
 const DefaultTemplate = (args: UpsellCardProps) => (
-  <ReduxProvider>
-    <Flex justify="center">
-      <_UpsellCard {...args} />
-    </Flex>
-  </ReduxProvider>
+  <Wrapper>
+    <_UpsellCard {...args} />
+  </Wrapper>
 );
 
 export default {
-  title: "Upsells/Card",
+  title: "Patterns/Upsells/Card",
   component: _UpsellCard,
   args,
   argTypes,
+};
+
+export const WithOnClick = {
+  render: DefaultTemplate,
+  args: { ...args, onClick: action("clicked") },
 };
 
 export const WithImage = {
@@ -65,11 +83,6 @@ export const WithImage = {
 export const WithoutImage = {
   render: DefaultTemplate,
   args: { ...args, illustrationSrc: null },
-};
-
-export const LargeVariant = {
-  render: DefaultTemplate,
-  args: { ...args, large: true },
 };
 
 export const MaxWidth500Variant = {
@@ -82,12 +95,12 @@ export const FullWidthVariant = {
   args: { ...args, fullWidth: true },
 };
 
-export const LargeMaxWidth500Variant = {
+export const LargeVariant = {
   render: DefaultTemplate,
-  args: { ...args, large: true, maxWidth: 500 },
+  args: { ...args, large: true },
 };
 
 export const LargeFullWidthVariant = {
   render: DefaultTemplate,
-  args: { ...args, large: true, fullWidth: true },
+  args: { ...args, large: true, fullWidth: true, maxWidth: 800 },
 };

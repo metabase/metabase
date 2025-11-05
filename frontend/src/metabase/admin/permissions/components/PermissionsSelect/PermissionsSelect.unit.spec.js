@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { fireEvent, getIcon, render, screen } from "__support__/ui";
 
 import { DataPermissionValue } from "../../types";
@@ -85,17 +87,14 @@ describe("PermissionSelect", () => {
     fireEvent.mouseEnter(selected);
   });
 
-  it("shows warning", () => {
+  it("shows warning", async () => {
     const WARNING = "warning test";
     render(
       <PermissionsSelect options={options} value="all" warning={WARNING} />,
     );
 
-    expect(getIcon("warning")).toBeInTheDocument();
+    userEvent.hover(getIcon("warning"));
 
-    fireEvent.mouseEnter(getIcon("warning"));
-    const warningTooltip = screen.queryByText(WARNING);
-
-    expect(warningTooltip).toBeInTheDocument();
+    expect(await screen.findByText(WARNING)).toBeInTheDocument();
   });
 });

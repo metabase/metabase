@@ -8,7 +8,7 @@ The birth, care, and feeding of your Metabase.
 
 ## [Installing Metabase](./installing-metabase.md)
 
-Start here.
+Options for installing Metabase.
 
 ## [Migrating to a production database](./migrating-from-h2.md)
 
@@ -25,6 +25,10 @@ How to back up your Metabase data: questions, dashboards, and other application 
 ## [Upgrading Metabase](upgrading-metabase.md)
 
 How to safely upgrade your Metabase.
+
+## [Development instances](./development-instance.md)
+
+Try out your changes before deploying to production.
 
 ## [Serialization](./serialization.md)
 
@@ -45,6 +49,10 @@ Rest in peace, Internet Explorer.
 ## [About the anonymous usage data we collect](./information-collection.md).
 
 We collect anonymous Metabase usage data to improve the product. We don't collect your data.
+
+## [Accessibility](./accessibility.md)
+
+Notes on Metabase's accessibility.
 
 ## [Command line commands](./commands.md)
 

@@ -4,7 +4,6 @@ import fetchMock from "fetch-mock";
 import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
   within,
@@ -86,7 +85,6 @@ const mockSearchResults = createMockSearchResults({
 });
 
 const setup = ({
-  title = "Pick a thing",
   onItemSelect = jest.fn(),
   onClose = jest.fn(),
   onConfirm = jest.fn(),
@@ -99,7 +97,6 @@ const setup = ({
   ...rest
 }: SetupOpts = {}) => {
   mockGetBoundingClientRect();
-  mockScrollBy();
   setupRecentViewsAndSelectionsEndpoints(recentItems, ["selections", "views"], {
     delay: recentsDelay,
   });
@@ -110,7 +107,7 @@ const setup = ({
 
   renderWithProviders(
     <EntityPickerModal
-      title={title}
+      title={"Pick a thing"}
       onItemSelect={onItemSelect}
       canSelectItem={true}
       onClose={onClose}
@@ -440,8 +437,8 @@ describe("EntityPickerModal", () => {
     it("should accept an arbitrary filter", async () => {
       setup({
         recentItems,
-        recentFilter: items =>
-          items.filter(item => !item.description?.includes("invisible")),
+        recentFilter: (items) =>
+          items.filter((item) => !item.description?.includes("invisible")),
       });
 
       expect(await screen.findByText("Recent Question")).toBeInTheDocument();

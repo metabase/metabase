@@ -2,23 +2,23 @@ import cx from "classnames";
 import type * as React from "react";
 import { useState } from "react";
 import { useAsyncFn } from "react-use";
-import { jt, t } from "ttag";
+import { c, jt, t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
+import ActionButton from "metabase/common/components/ActionButton";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
-} from "metabase/common/components/QuestionPicker";
-import ActionButton from "metabase/components/ActionButton";
-import QuestionLoader from "metabase/containers/QuestionLoader";
-import Radio from "metabase/core/components/Radio";
+} from "metabase/common/components/Pickers/QuestionPicker";
+import QuestionLoader from "metabase/common/components/QuestionLoader";
+import Radio from "metabase/common/components/Radio";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { EntityName } from "metabase/entities/containers/EntityName";
-import { useToggle } from "metabase/hooks/use-toggle";
 import { GTAPApi } from "metabase/services";
 import type { IconName } from "metabase/ui";
-import { Button, Icon } from "metabase/ui";
+import { Button, Center, Icon, Loader } from "metabase/ui";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
@@ -29,13 +29,15 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   GroupTableAccessPolicy,
   Table,
-  UserAttribute,
+  UserAttributeKey,
 } from "metabase-types/api";
 
-import AttributeMappingEditor, {
+import {
   AttributeOptionsEmptyState,
+  DataAttributeMappingEditor,
 } from "../AttributeMappingEditor";
 
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const ERROR_MESSAGE = t`An error occurred.`;
 
 const getNormalizedPolicy = (
@@ -77,7 +79,7 @@ const isPolicyValid = (
 
 export interface EditSandboxingModalProps {
   policy?: GroupTableAccessPolicy;
-  attributes: UserAttribute[];
+  attributes: UserAttributeKey[];
   params: GroupTableAccessPolicyParams;
   onCancel: () => void;
   onSave: (policy: GroupTableAccessPolicy) => void;
@@ -112,7 +114,7 @@ const EditSandboxingModal = ({
   }, [normalizedPolicy]);
 
   const remainingAttributesOptions = attributes.filter(
-    attribute => !(attribute in policy.attribute_remappings),
+    (attribute) => !(attribute in policy.attribute_remappings),
   );
 
   const hasAttributesOptions = attributes.length > 0;
@@ -124,40 +126,67 @@ const EditSandboxingModal = ({
     (!_.isEqual(originalPolicy, normalizedPolicy) ||
       normalizedPolicy.id == null);
 
-  const { data: policyCard } = useGetCardQuery(
+  const { data: policyCard, isFetching: loadingCard } = useGetCardQuery(
     policy.card_id != null ? { id: policy.card_id } : skipToken,
   );
-  const { data: policyTable } = useGetTableQuery(
+  const { data: policyTable, isFetching: loadingTabe } = useGetTableQuery(
     policy.table_id != null ? { id: policy.table_id } : skipToken,
   );
 
+  const hasSavedQuestionSandboxingFeature = policyTable?.db?.features?.includes(
+    "saved-question-sandboxing",
+  );
+
+  if (loadingCard || loadingTabe) {
+    return (
+      <Center p="2rem">
+        <Loader data-testid="loading-indicator" />
+      </Center>
+    );
+  }
+
   return (
     <div>
-      <h2 className={CS.p3}>{t`Restrict access to this table`}</h2>
+      <h2
+        className={CS.p3}
+      >{t`Configure row and column security for this table`}</h2>
 
       <div>
         <div className={cx(CS.px3, CS.pb3)}>
-          <div className={CS.pb2}>
-            {t`When the following rules are applied, this group will see a customized version of the table.`}
-          </div>
-          <div className={CS.pb4}>
-            {t`These rules don’t apply to native queries.`}
-          </div>
-          <h4 className={CS.pb1}>{t`How do you want to filter this table?`}</h4>
-          <Radio
-            value={!shouldUseSavedQuestion}
-            options={[
-              { name: t`Filter by a column in the table`, value: true },
-              {
-                name: t`Use a saved question to create a custom view for this table`,
-                value: false,
-              },
-            ]}
-            onChange={shouldUseSavedQuestion =>
-              setShouldUseSavedQuestion(!shouldUseSavedQuestion)
-            }
-            vertical
-          />
+          {hasSavedQuestionSandboxingFeature ? (
+            <div>
+              <div className={CS.pb2}>
+                {t`When the following rules are applied, this group will see a customized version of the table.`}
+              </div>
+              <div className={CS.pb4}>
+                {t`These rules don’t apply to native queries.`}
+              </div>
+              <h4
+                className={CS.pb1}
+              >{t`How do you want to filter this table?`}</h4>
+              <Radio
+                value={!shouldUseSavedQuestion}
+                options={[
+                  { name: t`Filter by a column in the table`, value: true },
+                  {
+                    name: t`Use a saved question to create a custom view for this table`,
+                    value: false,
+                  },
+                ]}
+                onChange={(shouldUseSavedQuestion) =>
+                  setShouldUseSavedQuestion(!shouldUseSavedQuestion)
+                }
+                vertical
+              />
+            </div>
+          ) : (
+            <div>
+              <div className={CS.pb2}>
+                {t`Users in this group will only see rows where the selected column matches their user attribute value.`}
+              </div>
+              <div>{t`This rule doesn't apply to native queries`}</div>
+            </div>
+          )}
         </div>
         {shouldUseSavedQuestion && (
           <div className={cx(CS.px3, CS.pb3)}>
@@ -165,10 +194,10 @@ const EditSandboxingModal = ({
               {t`Pick a saved question that returns the custom view of this table that these users should see.`}
             </div>
             <Button
-              data-testid="collection-picker-button"
+              data-testid="custom-view-picker-button"
               onClick={showModal}
               fullWidth
-              rightIcon={<Icon name="ellipsis" />}
+              rightSection={<Icon name="ellipsis" />}
               styles={{
                 inner: {
                   justifyContent: "space-between",
@@ -185,7 +214,7 @@ const EditSandboxingModal = ({
                     ? getQuestionPickerValue(policyCard)
                     : undefined
                 }
-                onChange={newCard => {
+                onChange={(newCard) => {
                   setPolicy({ ...policy, card_id: newCard.id });
                   hideModal();
                 }}
@@ -202,10 +231,10 @@ const EditSandboxingModal = ({
                   {t`You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question.`}
                 </div>
               )}
-              <AttributeMappingEditor
+              <DataAttributeMappingEditor
                 value={policy.attribute_remappings}
                 policyTable={policyTable}
-                onChange={attribute_remappings =>
+                onChange={(attribute_remappings) =>
                   setPolicy({ ...policy, attribute_remappings })
                 }
                 shouldUseSavedQuestion={shouldUseSavedQuestion}
@@ -239,7 +268,6 @@ const EditSandboxingModal = ({
         <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd)}>
           <Button onClick={onCancel}>{t`Cancel`}</Button>
           <ActionButton
-            error={error}
             className={CS.ml1}
             actionFn={savePolicy}
             primary
@@ -282,9 +310,13 @@ interface PolicySummaryProps {
 }
 
 const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
+  const headingId = _.uniqueId();
   return (
-    <div>
-      <div className={cx(CS.px1, CS.pb2, CS.textUppercase, CS.textSmall)}>
+    <div aria-labelledby={headingId}>
+      <div
+        id={headingId}
+        className={cx(CS.px1, CS.pb2, CS.textUppercase, CS.textSmall)}
+      >
         {t`Summary`}
       </div>
       <SummaryRow
@@ -367,7 +399,9 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
     ) {
       return (
         <span>
-          <strong>{target[1][1]}</strong> variable
+          {c(
+            "{0} is a name of a variable being used by row and column security",
+          ).jt`${(<strong key="strong">{target[1][1]}</strong>)} variable`}
         </span>
       );
     } else if (target[0] === "dimension") {
@@ -405,7 +439,10 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
             const columnInfo = Lib.displayInfo(query, stageIndex, column);
             return (
               <span>
-                <strong>{columnInfo.displayName}</strong> field
+                {c(
+                  "{0} is a name of a field being used by row and column security",
+                )
+                  .jt`${(<strong key="strong">{columnInfo.displayName}</strong>)} field`}
               </span>
             );
           }}

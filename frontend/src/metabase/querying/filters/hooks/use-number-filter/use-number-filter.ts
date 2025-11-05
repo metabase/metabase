@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
-import type { NumberValue } from "./types";
+import type { NumberOrEmptyValue } from "./types";
 import {
   getAvailableOptions,
   getDefaultOperator,
@@ -16,7 +16,7 @@ interface UseNumberFilterProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  filter?: Lib.FilterClause;
+  filter?: Lib.Filterable;
 }
 
 export function useNumberFilter({
@@ -58,7 +58,7 @@ export function useNumberFilter({
     getDefaultValues,
     getFilterClause: (
       operator: Lib.NumberFilterOperator,
-      values: NumberValue[],
+      values: NumberOrEmptyValue[],
     ) => getFilterClause(operator, column, values),
     setOperator,
     setValues,

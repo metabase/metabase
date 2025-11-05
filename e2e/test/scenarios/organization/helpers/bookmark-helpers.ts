@@ -1,12 +1,14 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { moveDnDKitElement, navigationSidebar } from "e2e/support/helpers";
+import {
+  createQuestion,
+  moveDnDKitElement,
+  navigationSidebar,
+} from "e2e/support/helpers";
 
 export const toggleQuestionBookmarkStatus = ({ wasSelected = false } = {}) => {
-  const iconName = wasSelected ? "bookmark_filled" : "bookmark";
-  cy.findByTestId("qb-header-action-panel").within(() => {
-    cy.icon(iconName).click();
-  });
+  const labelText = wasSelected ? "Remove from bookmarks" : "Bookmark";
+  cy.findByTestId("qb-header-action-panel").findByLabelText(labelText).click();
   cy.wait("@toggleBookmark");
 };
 
@@ -16,7 +18,7 @@ export const createAndBookmarkQuestion = (questionName: string) => {
 };
 
 export const createSimpleQuestion = (name: string) =>
-  cy.createQuestion(
+  createQuestion(
     {
       name,
       display: "table",

@@ -1,7 +1,7 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import SidebarContentS from "metabase/query_builder/components/SidebarContent/SidebarContent.module.css";
-import { space } from "metabase/styled-components/theme";
 
 export const ActionCreatorBodyContainer = styled.div`
   display: grid;
@@ -22,7 +22,7 @@ export const EditorContainer = styled.div`
   background-color: var(--mb-color-bg-light);
 
   .ace_editor {
-    margin-left: ${space(2)};
+    margin-left: var(--mantine-spacing-md);
   }
 `;
 

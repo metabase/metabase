@@ -1,0 +1,14 @@
+.NativeCardText {
+  color: var(--mb-color-text-dark);
+  text-align: center;
+}
+
+.NativeCardIcon {
+  color: var(--mb-color-text-medium);
+}
+
+.NativeCardLink {
+  color: var(--mb-color-brand);
+  font-weight: bold;
+  margin-top: 0.5rem;
+}

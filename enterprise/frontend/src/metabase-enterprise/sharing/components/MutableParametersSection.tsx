@@ -1,28 +1,30 @@
 import cx from "classnames";
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import CollapseSection from "metabase/components/CollapseSection";
+import CollapseSection from "metabase/common/components/CollapseSection";
 import CS from "metabase/css/core/index.css";
 import { getPulseParameters } from "metabase/lib/pulse";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import {
   PULSE_PARAM_USE_DEFAULT,
   getDefaultValuePopulatedParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type {
-  Dashboard,
-  Parameter,
-  ParameterId,
-  Pulse,
-} from "metabase-types/api";
+import type { Dashboard, ParameterId, Pulse } from "metabase-types/api";
 
-type MutableParametersSectionProps = {
+import { getSortedParameters } from "./utils";
+
+export type MutableParametersSectionProps = {
   className?: string;
-  parameters: Parameter[];
+  parameters: UiParameter[];
   dashboard: Dashboard;
   pulse: Pulse;
-  setPulseParameters: (parameters: Parameter[]) => void;
+  setPulseParameters: (parameters: UiParameter[]) => void;
+  hiddenParameters?: string;
 };
 
 export const MutableParametersSection = ({
@@ -31,7 +33,12 @@ export const MutableParametersSection = ({
   dashboard,
   pulse,
   setPulseParameters,
+  hiddenParameters,
 }: MutableParametersSectionProps) => {
+  const sortedParameters = useMemo(() => {
+    return getSortedParameters(dashboard, parameters);
+  }, [parameters, dashboard]);
+
   const pulseParameters = getPulseParameters(pulse);
   const pulseParamValuesById = pulseParameters.reduce((map, parameter) => {
     map[parameter.id] = parameter.value;
@@ -39,14 +46,15 @@ export const MutableParametersSection = ({
   }, {});
 
   const valuePopulatedParameters = getDefaultValuePopulatedParameters(
-    parameters,
+    sortedParameters,
     pulseParamValuesById,
   );
 
   const setParameterValue = (id: ParameterId, value: any) => {
-    const parameter = parameters.find(parameter => parameter.id === id);
+    const parameter = sortedParameters.find((parameter) => parameter.id === id);
+    const operator = parameter && deriveFieldOperatorFromParameter(parameter);
     const filteredParameters = pulseParameters.filter(
-      parameter => parameter.id !== id,
+      (parameter) => parameter.id !== id,
     );
     const newParameters =
       value === PULSE_PARAM_USE_DEFAULT
@@ -54,12 +62,17 @@ export const MutableParametersSection = ({
         : filteredParameters.concat({
             ...parameter,
             value,
+            options: operator?.optionsDefaults,
           });
 
     setPulseParameters(newParameters);
   };
 
-  return _.isEmpty(parameters) ? null : (
+  const connectedParameters = useMemo(() => {
+    return getVisibleParameters(sortedParameters, hiddenParameters);
+  }, [sortedParameters, hiddenParameters]);
+
+  return _.isEmpty(connectedParameters) ? null : (
     <CollapseSection
       header={<h4>{t`Set filter values for when this gets sent`}</h4>}
       className={cx(className)}
@@ -70,8 +83,9 @@ export const MutableParametersSection = ({
       <ParametersList
         className={cx(CS.alignStretch, CS.rowGap1)}
         vertical
-        dashboard={dashboard}
+        dashboardId={dashboard?.id}
         parameters={valuePopulatedParameters}
+        hideParameters={hiddenParameters}
         setParameterValue={setParameterValue}
       />
     </CollapseSection>

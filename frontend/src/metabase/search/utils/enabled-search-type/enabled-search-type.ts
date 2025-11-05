@@ -5,7 +5,8 @@ export function isEnabledSearchModelType(
   value: unknown,
 ): value is EnabledSearchModel {
   return (
-    typeof value === "string" && enabledSearchTypes.some(type => type === value)
+    typeof value === "string" &&
+    enabledSearchTypes.some((type) => type === value)
   );
 }
 

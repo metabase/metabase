@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
@@ -100,8 +100,11 @@ describe("scenarios > search", () => {
       cy.findByTestId("app-bar").findByDisplayValue("ord");
       cy.findAllByTestId("search-result-item-name")
         .first()
-        .should("have.text", "Orders");
+        .should("have.text", "Orders in a dashboard");
 
+      cy.realPress("ArrowDown");
+      cy.realPress("ArrowDown");
+      cy.realPress("ArrowDown");
       cy.realPress("ArrowDown");
       cy.realPress("Enter");
 
@@ -114,7 +117,7 @@ describe("scenarios > search", () => {
     });
 
     it("should render a preview of markdown descriptions", () => {
-      cy.createQuestion({
+      H.createQuestion({
         name: "Description Test",
         query: { "source-table": ORDERS_ID },
         description: `![alt](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg)
@@ -137,7 +140,7 @@ describe("scenarios > search", () => {
       //Enseure that text is ellipsified
       cy.findByTestId("result-description")
         .findByText(/Lorem ipsum dolor sit amet./)
-        .then(el => H.assertIsEllipsified(el[0]));
+        .then((el) => H.assertIsEllipsified(el[0]));
 
       //Ensure that images are not being rendered in the descriptions
       cy.findByTestId("result-description")
@@ -145,8 +148,8 @@ describe("scenarios > search", () => {
         .should("not.exist");
     });
 
-    it("should not overflow container if results contain descriptions with large unborken strings", () => {
-      cy.createQuestion({
+    it("should not overflow container if results contain descriptions with large unbroken strings", () => {
+      H.createQuestion({
         name: "Description Test",
         query: { "source-table": ORDERS_ID },
         description:
@@ -157,20 +160,18 @@ describe("scenarios > search", () => {
         H.getSearchBar().type("Test");
       });
 
-      const resultDescription = cy.findByTestId("result-description");
-      const parentContainer = cy.findByTestId(
-        "search-results-floating-container",
-      );
-
-      parentContainer.invoke("outerWidth").then(parentWidth => {
-        resultDescription
-          .invoke("outerWidth")
-          .should(
-            "be.lessThan",
-            parentWidth,
-            "Result description width should not exceed parent container width",
-          );
-      });
+      cy.findByTestId("search-results-floating-container")
+        .as("parentContainer")
+        .invoke("outerWidth")
+        .then((parentWidth) => {
+          cy.findByTestId("result-description")
+            .invoke("outerWidth")
+            .should(
+              "be.lessThan",
+              parentWidth,
+              "Result description width should not exceed parent container width",
+            );
+        });
     });
 
     it("should not dismiss when a dashboard finishes loading (metabase#35009)", () => {
@@ -195,8 +196,8 @@ describe("scenarios > search", () => {
           method: "GET",
           middleware: true,
         },
-        req => {
-          req.continue(res => {
+        (req) => {
+          req.continue((res) => {
             res.delay = 1000;
             res.send();
           });
@@ -240,7 +241,7 @@ describe("scenarios > search", () => {
         cy.findByText('Results for "orders"').should("exist");
       });
 
-      cy.location().should(loc => {
+      cy.location().should((loc) => {
         expect(loc.pathname).to.eq("/search");
         expect(loc.search).to.eq("?q=orders");
       });
@@ -248,7 +249,7 @@ describe("scenarios > search", () => {
   });
 });
 
-describe.skip("issue 16785", () => {
+describe("issue 16785", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -288,10 +289,10 @@ describe("issue 28788", () => {
       },
     };
 
-    cy.createCollection({
+    H.createCollection({
       name: `Collection-${LONG_STRING}`,
     }).then(({ body: collection }) => {
-      cy.createQuestion({
+      H.createQuestion({
         ...questionDetails,
         collection_id: collection.id,
       });
@@ -305,7 +306,7 @@ describe("issue 28788", () => {
     cy.wait("@search");
     cy.icon("hourglass").should("not.exist");
 
-    cy.findByTestId("search-bar-results-container").then($container => {
+    cy.findByTestId("search-bar-results-container").then(($container) => {
       expect(H.isScrollableHorizontally($container[0])).to.be.false;
     });
   });

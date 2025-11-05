@@ -97,7 +97,7 @@ function createSmartScalarSeries({
 }
 
 export default {
-  title: "static-viz/SmartScalar",
+  title: "Viz/Static Viz/SmartScalar",
   component: StaticVisualization,
   args: {
     "scalar.field": "Count",

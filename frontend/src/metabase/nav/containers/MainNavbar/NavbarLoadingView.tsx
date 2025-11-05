@@ -1,5 +1,4 @@
-import { Flex, Skeleton } from "metabase/ui";
-import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
+import { Flex, Repeat, Skeleton } from "metabase/ui";
 
 import { SidebarSection } from "./MainNavbar.styled";
 

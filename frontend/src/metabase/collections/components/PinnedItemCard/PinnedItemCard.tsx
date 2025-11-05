@@ -7,12 +7,11 @@ import type {
   CreateBookmark,
   DeleteBookmark,
 } from "metabase/collections/types";
-import EventSandbox from "metabase/components/EventSandbox";
-import Tooltip from "metabase/core/components/Tooltip";
+import EventSandbox from "metabase/common/components/EventSandbox";
 import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls";
-import ModelDetailLink from "metabase/models/components/ModelDetailLink";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { Tooltip } from "metabase/ui";
 import { Flex, type IconName, Skeleton } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -61,10 +60,18 @@ export type PinnedItemCardProps = {
 const TOOLTIP_MAX_WIDTH = 450;
 
 const DEFAULT_DESCRIPTION: Record<string, string> = {
-  card: t`A question`,
-  metric: t`A metric`,
-  dashboard: t`A dashboard`,
-  dataset: t`A model`,
+  get card() {
+    return t`A question`;
+  },
+  get metric() {
+    return t`A metric`;
+  },
+  get dashboard() {
+    return t`A dashboard`;
+  },
+  get dataset() {
+    return t`A model`;
+  },
 };
 
 const isCollectionItem = (
@@ -121,7 +128,6 @@ function PinnedItemCard({
           <Header>
             <ItemIcon name={icon as unknown as IconName} />
             <ActionsContainer h={item ? undefined : "2rem"}>
-              {item?.model === "dataset" && <ModelDetailLink model={item} />}
               {hasActions && (
                 // This component is used within a `<Link>` component,
                 // so we must prevent events from triggering the activation of the link
@@ -143,13 +149,15 @@ function PinnedItemCard({
           {item ? (
             <>
               <Tooltip
-                tooltip={item.name}
-                placement="bottom"
-                maxWidth={TOOLTIP_MAX_WIDTH}
-                isEnabled={showTitleTooltip}
+                label={item.name}
+                position="bottom"
+                disabled={!showTitleTooltip}
+                maw={TOOLTIP_MAX_WIDTH}
               >
                 <Title
-                  onMouseEnter={e => maybeEnableTooltip(e, setShowTitleTooltip)}
+                  onMouseEnter={(e) =>
+                    maybeEnableTooltip(e, setShowTitleTooltip)
+                  }
                 >
                   <Flex align="center" gap="0.5rem">
                     {item.name}

@@ -1,6 +1,7 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -13,7 +14,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should allow brush date filter", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Brush Date Temporal Filter",
         query: {
@@ -48,7 +49,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     //       It is enough that we assert that the filter exists.
     cy.findByTestId("qb-filters-panel").should(
       "contain",
-      "Product → Created At is",
+      "Product → Created At: Month is",
     );
 
     H.queryBuilderMain().within(() => {
@@ -64,7 +65,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  ["month", "month-of-year"].forEach(granularity => {
+  ["month", "month-of-year"].forEach((granularity) => {
     it(`brush filter should work post-aggregation for ${granularity} granularity (metabase#18011)`, () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -82,7 +83,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         display: "line",
       };
 
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+      H.createQuestion(questionDetails, { visitQuestion: true });
 
       H.queryBuilderMain().within(() => {
         cy.findByLabelText("Legend").findByText("Gadget").should("exist");
@@ -101,7 +102,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       if (granularity === "month") {
         cy.findByTestId("qb-filters-panel")
           .findByText(
-            "Created At is Sep 1, 2022, 12:00 AM – Feb 1, 2023, 12:00 AM",
+            "Created At: Month is Sep 1, 2022, 12:00 AM – Feb 1, 2023, 12:00 AM",
           )
           .should("exist");
       }
@@ -111,7 +112,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should correctly drill through on a card with multiple series (metabase#11442)", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "11442_Q1",
       query: {
         "source-table": ORDERS_ID,
@@ -120,7 +121,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
       display: "line",
     }).then(({ body: { id: Q1_ID } }) => {
-      cy.createQuestion({
+      H.createQuestion({
         name: "11442_Q2",
         query: {
           "source-table": PRODUCTS_ID,
@@ -131,7 +132,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         },
         display: "line",
       }).then(({ body: { id: Q2_ID } }) => {
-        cy.createDashboard({ name: "11442D" }).then(
+        H.createDashboard({ name: "11442D" }).then(
           ({ body: { id: DASHBOARD_ID } }) => {
             cy.log("Add the first question to the dashboard");
 
@@ -173,7 +174,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should allow drill-through on combined cards with different amount of series (metabase#13457)", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "13457_Q1",
       query: {
         "source-table": ORDERS_ID,
@@ -182,7 +183,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
       display: "line",
     }).then(({ body: { id: Q1_ID } }) => {
-      cy.createQuestion({
+      H.createQuestion({
         name: "13457_Q2",
         query: {
           "source-table": ORDERS_ID,
@@ -194,7 +195,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         },
         display: "line",
       }).then(({ body: { id: Q2_ID } }) => {
-        cy.createDashboard({ name: "13457D" }).then(
+        H.createDashboard({ name: "13457D" }).then(
           ({ body: { id: DASHBOARD_ID } }) => {
             cy.log("Add the first question to the dashboard");
 
@@ -238,7 +239,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   it("should drill through a nested query", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.createQuestion({
+    H.createQuestion({
       name: "CA People",
       query: { "source-table": PEOPLE_ID, limit: 5 },
     });
@@ -274,8 +275,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains("Dominique Leffler");
   });
 
-  it.skip("should drill through a with date filter (metabase#12496)", () => {
-    cy.createQuestion({
+  it("should drill through a with date filter (metabase#12496)", () => {
+    H.createQuestion({
       name: "Orders by Created At: Week",
       query: {
         "source-table": ORDERS_ID,
@@ -285,82 +286,71 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       display: "line",
     });
 
-    // Load the question up
     cy.visit("/collection/root");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Orders by Created At: Week").click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("January 2025");
+    cy.findAllByTestId("collection-entry-name")
+      .contains("Orders by Created At: Week")
+      .click();
 
+    H.echartsContainer().contains("January 2025");
     // drill into a recent week
-    cy.get(".dot").eq(-4).click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("See these Orders").click();
+    H.cartesianChartCircle().should("have.length.gte", 4).eq(-4).click();
+
+    H.popover().contains("See these Orders").click();
 
     // check that filter is applied and rows displayed
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Showing 127 rows");
+    H.assertQueryBuilderRowCount(127);
 
     cy.log("Filter should show the range between two dates");
     // Now click on the filter widget to see if the proper parameters got passed in
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/^Created At is .*–/).click(); // en-dash to detect date range
+    cy.findByTestId("filter-pill")
+      .contains(/^Created At: Week is .*–/)
+      .click(); // en-dash to detect date range
   });
 
-  it.skip("should drill-through on filtered aggregated results (metabase#13504)", () => {
+  it("should drill-through on filtered aggregated results (metabase#13504)", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count of rows").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At").click();
-
-    // add filter: Count > 1
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter").click();
-    H.popover().within(() => {
-      cy.findByText("Count").click();
-      cy.findByText("Equal to").click();
+    H.popover().contains("Count of rows").click();
+    cy.findByTestId("breakout-step")
+      .contains("Pick a column to group by")
+      .click();
+    H.popover().contains("Created At").click();
+    cy.findByTestId("step-summarize-0-0").within(() => {
+      cy.icon("filter").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Greater than").click();
-    cy.findByPlaceholderText("Enter a number").click().type("1");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add filter").click();
-
+    H.popover().within(() => {
+      cy.contains("Count").click();
+      cy.contains("Between").click();
+    });
+    H.popover()
+      .should("have.length", 2)
+      .last()
+      .contains("Greater than")
+      .click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").click().type("1");
+      cy.button("Add filter").click();
+    });
     H.visualize();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").click();
+    cy.button("Visualization").click();
     cy.icon("line").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Done").click();
+    cy.button("Done").click();
     cy.log("Mid-point assertion");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Count by Created At: Month");
     // at this point, filter is displaying correctly with the name
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Count is greater than 1");
+    cy.findByTestId("filter-pill").contains("Count is greater than 1");
 
     // drill-through
-    cy.get(".dot")
-      .eq(10) // random dot
-      .click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("See these Orders").click();
+    H.cartesianChartCircle().should("have.length.gte", 10).eq(10).click();
+
+    H.clickActionsPopover().contains("See these Orders").click();
 
     cy.log("Reproduced on 0.34.3, 0.35.4, 0.36.7 and 0.37.0-rc2");
     // when the bug is present, filter is missing a name (showing only "is 256")
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Count is equal to 256");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("There was a problem with your question").should("not.exist");
+    H.assertQueryBuilderRowCount(256);
   });
 
   it("should display correct value in a tooltip for unaggregated data (metabase#11907)", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "11907",
         native: {
@@ -400,6 +390,61 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
+  it('should clear the graph.dimensions setting when drilling through on a chart with "graph.dimensions" set (metabase#55484)', () => {
+    H.createQuestion({
+      name: "55484",
+      display: "line",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+            ],
+            alias: "Products",
+          },
+        ],
+        filter: [],
+        aggregation: [["count"]],
+        breakout: [
+          ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "hour" }],
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour" }],
+        ],
+      },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}/notebook`);
+      cy.button("Visualize").click();
+      cy.url().should("include", `/question/${QUESTION_ID}-55484`);
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByDisplayValue("Created At: Hour").click();
+      H.popover().within(() => {
+        cy.findByText("Products → Created At: Hour").click();
+      });
+      cy.button("Done").click();
+
+      H.cartesianChartCircle().eq(82).click();
+      H.popover().within(() => {
+        cy.findByText("See these Orders").click();
+      });
+
+      cy.findByTestId("visualization-root").should(
+        "have.attr",
+        "data-viz-ui-name",
+        "Table",
+      );
+
+      cy.button("Visualization").click();
+      cy.findByTestId("Line-button").click();
+      cy.findByText(
+        "Cannot read properties of undefined (reading 'name')",
+      ).should("not.exist");
+    });
+  });
+
   it("should display correct value in a tooltip for unaggregated data with breakouts (metabase#15785)", () => {
     H.visitQuestionAdhoc({
       dataset_query: {
@@ -435,7 +480,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  it.skip("should drill-through a custom question that joins a native SQL question (metabase#14495)", () => {
+  it("should drill-through a custom question that joins a native SQL question (metabase#14495)", () => {
     // Restrict "normal user" (belongs to the DATA_GROUP) from writing native queries
     cy.log("Fetch permissions graph");
     cy.request("GET", "/api/permissions/graph", {}).then(
@@ -454,14 +499,14 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
     );
 
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "14495_SQL",
       native: { query: "SELECT * FROM ORDERS", "template-tags": {} },
     }).then(({ body: { id: SQL_ID } }) => {
       const ALIAS = `Question ${SQL_ID}`;
 
       // Create a QB question and join it with the previously created native question
-      cy.createQuestion({
+      H.createQuestion({
         name: "14495",
         query: {
           "source-table": PEOPLE_ID,
@@ -495,14 +540,14 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         H.visitQuestion(QUESTION_ID);
 
         // Initial visualization has rendered and we can now drill-through
-        cy.findByTestId("query-visualization-root")
-          .get(".bar")
+        H.chartPathWithFillColor("#509EE3")
+          .should("have.length.gte", 4)
           .eq(4)
-          .click({ force: true });
+          .click();
         cy.findByText("See these People").click();
 
         // We should see the resulting dataset of that drill-through
-        cy.wait("@dataset").then(xhr => {
+        cy.wait("@dataset").then((xhr) => {
           expect(xhr.response.body.error).not.to.exist;
         });
         cy.findByText("Macy Olson");
@@ -527,11 +572,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       display: "table",
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/^10 –/)
-      .closest(".test-TableInteractive-cellWrapper")
-      .next()
-      .contains("85")
-      .click();
+    cy.findByText(/^10 –/).parent().parent().next().contains("85").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See these Orders").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -575,7 +616,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should parse value on click through on the first row of pie chart (metabase#15250)", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "15250",
       query: {
         "source-table": PRODUCTS_ID,
@@ -584,7 +625,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
       display: "pie",
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+      H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         H.addOrUpdateDashboardCard({
           card_id: QUESTION_ID,
           dashboard_id: DASHBOARD_ID,
@@ -665,6 +706,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       H.visitQuestionAdhoc(questionDetails);
 
       // Drill-through the last bar (Widget)
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.chartPathWithFillColor("#509EE3").last().click();
       H.popover().findByTextEnsureVisible("See these Products").click();
     });
@@ -689,7 +731,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should display proper drills on chart click for line chart", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Line chart drills",
         query: {
@@ -733,7 +775,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should display proper drills on chart click for bar chart", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Line chart drills",
         query: {
@@ -784,7 +826,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should display proper drills on chart click for query grouped by state", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Line chart drills",
         query: {
@@ -801,7 +843,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     cy.findByTestId("click-actions-popover-content-for-Count").within(() => {
       cy.findByText("See these People").should("be.visible");
-      cy.findByText("Zoom in").should("be.visible");
+      cy.findByText("Zoom in: State").should("be.visible");
 
       cy.findByText("Break out by…").should("be.visible");
       cy.findByText("Automatic insights…").should("be.visible");
@@ -810,6 +852,96 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.findByText("<").should("be.visible");
       cy.findByText("=").should("be.visible");
       cy.findByText("≠").should("be.visible");
+    });
+  });
+
+  H.describeWithSnowplow("chart click actions analytics", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+      H.restore();
+      cy.signInAsAdmin();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    // This list is not exhaustive. It only covers the events that were defined in a ticket defined by Product.
+    // The full list can be found in frontend/src/metabase/visualizations/types/click-actions.ts
+    // See: `type ClickActionSection`
+    it("should track clicks on action sections", () => {
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+
+      H.popover()
+        .findByText(/^See these/)
+        .click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "click_action",
+        triggered_from: "records",
+      });
+
+      cy.go("back");
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+      H.popover()
+        .findByText(/^See this year/)
+        .click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "click_action",
+        triggered_from: "zoom",
+      });
+
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+      H.popover()
+        .findByText(/^Break out by/)
+        .click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "click_action",
+        triggered_from: "breakout",
+      });
+
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+      H.popover().findByText(">").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "click_action",
+        triggered_from: "filter",
+      });
+
+      cy.go("back");
+
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+      H.popover()
+        .findByText(/^Automatic insights/)
+        .click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "click_action",
+        triggered_from: "auto",
+      });
+
+      H.popover().findByText("X-ray").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_automatic_insights_clicked",
+        event_detail: "x-ray",
+      });
+
+      cy.go("back");
+
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+      H.popover()
+        .findByText(/^Automatic insights/)
+        .click();
+      H.popover().findByText("Compare to the rest").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_automatic_insights_clicked",
+        event_detail: "compare_to_rest",
+      });
     });
   });
 });

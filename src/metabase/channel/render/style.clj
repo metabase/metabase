@@ -3,7 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.public-settings :as public-settings]
+   [metabase.appearance.core :as appearance]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
@@ -65,12 +65,12 @@
 (defn primary-color
   "Primary color to use in Pulses; normally 'classic' MB blue, but customizable when whitelabeling is enabled."
   []
-  (public-settings/application-color))
+  (appearance/application-color))
 
 (defn secondary-color
   "Secondary color to use in Pulse charts; normally red, but customizable when whitelabeling is enabled."
   []
-  (public-settings/secondary-chart-color))
+  (appearance/secondary-chart-color))
 
 (defn font-style
   "Font family to use in rendered Pulses."
@@ -124,3 +124,54 @@
   (let [register!* (delay (register-fonts!))]
     (fn []
       @register!*)))
+
+(def ^:const max-bar-width
+  "Minibar max width in px"
+  70)
+
+(def ^:const font-size
+  "Font size in px"
+  12.5)
+
+(def ^:const td-x-padding-em
+  "Table cell x padding in em"
+  1)
+
+(def ^:const td-y-padding-em
+  "Table cell y padding in em"
+  0.75)
+
+(def ^:const mb-width
+  "Minibar width in pixels"
+  100)
+
+(def ^:const mb-height
+  "Minibar height in pixels"
+  8)
+
+(defn mb-primary-color
+  "Minibar primary color"
+  []
+  (appearance/application-color))
+
+(defn mb-primary-color-alpha
+  "Minibar primary color with alpha 0.2"
+  []
+  (format "%s33" (mb-primary-color)))
+
+(defn mb-secondary-color
+  "Minibar secondary color; used for negative values"
+  []
+  (appearance/secondary-chart-color))
+
+(defn mb-secondary-color-alpha
+  "Minibar secondary color with alpha 0.2"
+  []
+  (format "%s33" (mb-secondary-color)))
+
+(def ^:const view-as-img-style
+  "CSS Styles for img elements in cells of a column with {:view-as 'image'} setting"
+  {:max-width  "100%"
+   :max-height "30px"
+   :object-fit "contain"
+   :display    "block"})

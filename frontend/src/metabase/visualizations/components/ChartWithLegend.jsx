@@ -1,10 +1,9 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Component } from "react";
+import { Component, forwardRef } from "react";
 
-import ExplicitSize from "metabase/components/ExplicitSize";
+import ExplicitSize from "metabase/common/components/ExplicitSize";
 import DashboardS from "metabase/css/dashboard.module.css";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 import styles from "./ChartWithLegend.module.css";
 import LegendHorizontal from "./LegendHorizontal";
@@ -40,6 +39,7 @@ class ChartWithLegend extends Component {
       width,
       showLegend,
       isDashboard,
+      isDocument,
       onToggleSeriesVisibility,
     } = this.props;
 
@@ -67,7 +67,7 @@ class ChartWithLegend extends Component {
       LegendComponent = LegendVertical;
 
       if (width < HIDE_SECONDARY_INFO_THRESHOLD) {
-        legendTitles = legendTitles.map(title =>
+        legendTitles = legendTitles.map((title) =>
           Array.isArray(title) ? title.slice(0, 1) : title,
         );
       }
@@ -81,7 +81,7 @@ class ChartWithLegend extends Component {
     } else if (!isHorizontal && gridSize.height > 3 && gridSize.width > 2) {
       type = "vertical";
       LegendComponent = LegendHorizontal;
-      legendTitles = legendTitles.map(title =>
+      legendTitles = legendTitles.map((title) =>
         Array.isArray(title) ? title.join(" ") : title,
       );
       const desiredHeight = width * (1 / aspectRatio);
@@ -103,6 +103,7 @@ class ChartWithLegend extends Component {
         titles={legendTitles}
         hiddenIndices={legendHiddenIndices}
         colors={legendColors}
+        dotSize={isDashboard ? "8px" : "12px"}
         hovered={hovered}
         onHoverChange={onHoverChange}
         onToggleSeriesVisibility={onToggleSeriesVisibility}
@@ -114,8 +115,6 @@ class ChartWithLegend extends Component {
         className={cx(
           className,
           DashboardS.fullscreenNormalText,
-          DashboardS.fullscreenNightText,
-          EmbedFrameS.fullscreenNightText,
           styles.ChartWithLegend,
           styles[type],
           flexChart && styles.flexChart,
@@ -126,6 +125,7 @@ class ChartWithLegend extends Component {
           paddingLeft: PADDING,
           paddingRight: PADDING,
         }}
+        ref={this.props.forwardedRef}
       >
         {legend && (
           <div className={cx(styles.LegendWrapper)} data-testid="chart-legend">
@@ -143,7 +143,7 @@ class ChartWithLegend extends Component {
           <div
             className={cx(styles.LegendSpacer)}
             // don't center the chart on dashboards
-            style={isDashboard ? { flexBasis: 0 } : {}}
+            style={isDashboard || isDocument ? { flexBasis: 0 } : {}}
             data-testid="chart-legend-spacer"
           >
             {legend}
@@ -154,7 +154,13 @@ class ChartWithLegend extends Component {
   }
 }
 
+const ChartWithLegendRefWrapper = forwardRef(
+  function _ChartWithLegendRefWrapper(props, ref) {
+    return <ChartWithLegend {...props} forwardedRef={ref} />;
+  },
+);
+
 export default ExplicitSize({
   wrapped: true,
   refreshMode: "debounceLeading",
-})(ChartWithLegend);
+})(ChartWithLegendRefWrapper);

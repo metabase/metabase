@@ -1,20 +1,21 @@
 (ns metabase.search.impl-test
-  "There are a lot more tests around search in [[metabase.api.search-test]]. TODO: we should move more of those tests
+  "There are a lot more tests around search in [[metabase.search.api-test]]. TODO: we should move more of those tests
   into this namespace."
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
+   [metabase.queries.api.card :as api.card]
+   [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.impl :as search.impl]
    [metabase.search.in-place.legacy :as search.legacy]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
-   [metabase.util.json :as json]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel parse-engine-test
   (testing "Default engine"
@@ -44,6 +45,7 @@
              [:like [:lower :collection_name]   "%foo%"] [:inline 0]
              [:like [:lower :collection_type]   "%foo%"] [:inline 0]
              [:like [:lower :display]           "%foo%"] [:inline 0]
+             [:like [:lower :display_type]      "%foo%"] [:inline 0]
              [:like [:lower :table_schema]      "%foo%"] [:inline 0]
              [:like [:lower :table_name]        "%foo%"] [:inline 0]
              [:like [:lower :table_description] "%foo%"] [:inline 0]
@@ -55,7 +57,7 @@
 
 (deftest search-db-call-count-test
   (let [search-string (mt/random-name)]
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Card      _              {:name (str "card db 1 " search-string)}
        :model/Card      _              {:name (str "card db 2 " search-string)}
        :model/Card      _              {:name (str "card db 3 " search-string)}
@@ -88,22 +90,23 @@
                                                  :model-ancestors?            false
                                                  :limit-int                   100
                                                  :calculate-available-models? false}))]
-          ;; warm it up, in case the DB call depends on the order of test execution and it needs to
-          ;; do some initialization
+            ;; warm it up, in case the DB call depends on the order of test execution and it needs to
+            ;; do some initialization
+            (search/init-index!)
             (do-search)
             (t2/with-call-count [call-count]
               (do-search)
-            ;; the call count number here are expected to change if we change the search api
-            ;; we have this test here just to keep tracks this number to remind us to put effort
-            ;; into keep this number as low as we can
-              (is (<= (call-count) 5)))))))))
+              ;; the call count number here are expected to change if we change the search api
+              ;; we have this test here just to keep tracks this number to remind us to put effort
+              ;; into keep this number as low as we can
+              (is (<= (call-count) 9)))))))))
 
 (deftest created-at-correctness-test
   (let [search-term   "created-at-filtering"
         new           #t "2023-05-04T10:00Z[UTC]"
         two-years-ago (t/minus new (t/years 2))]
     (mt/with-clock new
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/Dashboard  {dashboard-new :id} {:name       search-term
                                                 :created_at new}
          :model/Dashboard  {dashboard-old :id} {:name       search-term
@@ -201,7 +204,7 @@
         new           #t "2023-05-04T10:00Z[UTC]"
         two-years-ago (t/minus new (t/years 2))]
     (mt/with-clock new
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/Dashboard  {dashboard-new :id} {:name search-term}
          :model/Dashboard  {dashboard-old :id} {:name search-term}
          :model/Card       {card-new :id}      {:name search-term}
@@ -277,18 +280,78 @@
           (test-search "past1years-from-12months" old-result)
           (test-search "today" new-result))))))
 
-(deftest ^:parallel serialize-test
-  (testing "It normalizes dataset queries from strings"
-    (let [query  {:type     :query
-                  :query    {:source-query {:source-table 1}}
-                  :database 1}
-          result {:name          "card"
-                  :model         "card"
-                  :dataset_query (json/encode query)
-                  :all-scores {}
-                  :relevant-scores {}}]
-      (is (= query (-> result search.impl/serialize :dataset_query)))))
-  (testing "Doesn't error on other models without a query"
-    (is (nil? (-> {:name "dash" :model "dashboard" :all-scores {} :relevant-scores {}}
-                  search.impl/serialize
-                  :dataset_query)))))
+(deftest old-values-removed-from-index
+  (when (search/supports-index?)
+    (#'search.index/sync-tracking-atoms!)
+    (let [search-term (str (random-uuid))]
+      (binding [search.ingestion/*force-sync* true]
+        (mt/with-temp
+          [:model/Card {card-id :id} {:name search-term}]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (testing "Initially finds the question"
+              (is (= #{["card" card-id]}
+                     (->> (search.impl/search (search.impl/search-context
+                                               {:search-string      search-term
+                                                :search-engine      "appdb"
+                                                :archived           false
+                                                :models             search.config/all-models
+                                                :current-user-id    (mt/user->id :crowberto)
+                                                :is-superuser?      true
+                                                :current-user-perms @api/*current-user-permissions-set*}))
+                          :data
+                          (map (juxt :model :id))
+                          set))))
+            (testing "Changing to a different type removes the old value from the index"
+              (api.card/update-card! card-id {:type :model} true)
+              (is (= #{["dataset" card-id]}
+                     (->> (search.impl/search (search.impl/search-context
+                                               {:search-string      search-term
+                                                :search-engine      "appdb"
+                                                :archived           false
+                                                :models             search.config/all-models
+                                                :current-user-id    (mt/user->id :crowberto)
+                                                :is-superuser?      true
+                                                :current-user-perms @api/*current-user-permissions-set*}))
+                          :data
+                          (map (juxt :model :id))
+                          set))))))))))
+
+(deftest limit-correct-with-permissions
+  (let [search-term "permissions-filtering"]
+    (mt/with-temp
+      [:model/Dashboard _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}
+       :model/Card _ {:name search-term}]
+      (testing "searching with limit"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (with-redefs [search.impl/check-permissions-for-model (fn [_search-ctx search-result]
+                                                                  (and (= "card" (:model search-result))
+                                                                       (= 0 (mod (:id search-result) 2))))]
+            (let [result (->> (search.impl/search (search.impl/search-context
+                                                   {:search-string      search-term
+                                                    :limit              4
+                                                    :search-engine      "in-place"
+                                                    :archived           false
+                                                    :models             search.config/all-models
+                                                    :current-user-id    (mt/user->id :crowberto)
+                                                    :is-superuser?      true
+                                                    :current-user-perms @api/*current-user-permissions-set*}))
+                              :data
+                              (map (juxt :model :id))
+                              set)]
+              (is (= 4 (count result)))
+              (doseq [[model id] result]
+                (is (= "card" model))
+                (is (= 0 (mod id 2)))))))))))

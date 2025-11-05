@@ -8,13 +8,14 @@ function setupPremium(opts?: Partial<SetupOpts>) {
   setup({
     ...opts,
     hasEnterprisePlugins: true,
-    tokenFeatures: createMockTokenFeatures({ embedding: true }),
+    tokenFeatures: createMockTokenFeatures({ embedding_simple: true }),
+    isHosted: true,
   });
 }
 
 describe("EmbedModalContent", () => {
   describe("Interactive Embedding", () => {
-    const INTERACTIVE_EMBEDDING_TITLE = "Interactive embedding";
+    const INTERACTIVE_EMBEDDING_TITLE = "Embedded Analytics JS";
 
     describe("when Interactive Embedding is disabled", () => {
       it("should mention Interactive Embedding and tell admin to enable Interactive Embedding in the setting", () => {
@@ -36,10 +37,7 @@ describe("EmbedModalContent", () => {
           withinInteractiveEmbeddingCard.getByRole("link", {
             name: "Enable in admin settings",
           }),
-        ).toHaveAttribute(
-          "href",
-          "/admin/settings/embedding-in-other-applications/full-app",
-        );
+        ).toHaveAttribute("href", "/admin/embedding/modular");
       });
     });
 
@@ -50,15 +48,6 @@ describe("EmbedModalContent", () => {
             interactive: true,
           },
         });
-
-        // The card is clickable
-        expect(
-          screen.getByRole("link", { name: INTERACTIVE_EMBEDDING_TITLE }),
-        ).toHaveProperty(
-          "href",
-          // I have no idea why only this URL is absolute in the test, it is relative in the markup 🤷
-          "http://localhost/admin/settings/embedding-in-other-applications/full-app",
-        );
 
         // We don't show the link at the bottom of the card
         const withinInteractiveEmbeddingCard = within(

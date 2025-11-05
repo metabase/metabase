@@ -2,22 +2,21 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
-   [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.field :as-alias lib.field]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
-
-(defn by-name [cols column-name]
-  (first (filter #(= (:name %) column-name) cols)))
 
 (def ^:private orders-query
   (lib/query meta/metadata-provider (meta/table-metadata :orders)))
@@ -109,21 +108,12 @@
          :drill-thru/pivot
          (log/warn "drill-thru-method is not yet implemented for :drill-thru/pivot (#33559)")
 
-         ;; Expected to throw - not intended that drill-thru should be called directly for these drills.
-         :drill-thru/compare-aggregations
-         (testing (str "\ndrill =\n" (u/pprint-to-str drill)
-                       "throws when [drill-thru] called")
-           (is (thrown-with-msg?
-                #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
-                #"Do not call drill-thru for "
-                (apply lib/drill-thru query -1 nil drill args))))
-
          (testing (str "\nquery =\n" (u/pprint-to-str query)
                        "\ndrill =\n" (u/pprint-to-str drill)
                        "\nargs =\n" (u/pprint-to-str args))
            (try
              (let [query' (apply lib/drill-thru query -1 nil drill args)]
-               (is (not (me/humanize (mc/validate ::lib.schema/query query'))))
+               (is (not (me/humanize (mr/explain ::lib.schema/query query'))))
                (when (< (inc depth) test-drill-applications-max-depth)
                  (testing (str "\n\nDEPTH = " (inc depth) "\n\nquery =\n" (u/pprint-to-str query'))
                    (test-drill-applications query' context (inc depth)))))
@@ -221,7 +211,7 @@
                   :type         :drill-thru/column-extract
                   :query        orders-query
                   :stage-number -1
-                  :extractions  (partial mc/validate [:sequential [:map [:tag keyword?]]])}]
+                  :extractions  (partial mr/validate [:sequential [:map [:tag keyword?]]])}]
                 (lib/available-drill-thrus orders-query -1 context)))
         (test-drill-applications orders-query context)))))
 
@@ -520,9 +510,7 @@
                     :initial-op {:display-name-variant :equal-to
                                  :short :=}}
                    {:type   :drill-thru/sort
-                    :column {:name "count"}}
-                   {:type   :drill-thru/compare-aggregations
-                    :aggregation [:count {}]}]
+                    :column {:name "count"}}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))
     (testing "Drills for max(discount) aggregation"
@@ -538,9 +526,7 @@
                     :initial-op {:display-name-variant :equal-to
                                  :short :=}}
                    {:type   :drill-thru/sort
-                    :column {:display-name "Max of Discount"}}
-                   {:type   :drill-thru/compare-aggregations
-                    :aggregation [:max {} [:field {} (meta/id :orders :discount)]]}]
+                    :column {:display-name "Max of Discount"}}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))))
 
@@ -553,7 +539,7 @@
                                              (meta/field-metadata :orders :created-at)
                                              :month)))
             columns      (lib/returned-columns query)
-            sum          (by-name columns "sum")
+            sum          (lib.drill-thru.tu/column-by-name columns "sum")
             sum-dim      {:column     sum
                           :column-ref (lib/ref sum)
                           :value      42295.12}
@@ -658,7 +644,9 @@
                    :many-pks? false}]}))
 
 (deftest ^:parallel available-drill-thrus-test-3
-  (lib.drill-thru.tu/test-available-drill-thrus
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-available-drill-thrus
+   "unaggregated cell click on numeric column"
    {:click-type  :cell
     :query-type  :unaggregated
     :column-name "SUBTOTAL"
@@ -668,7 +656,14 @@
                   {:type :drill-thru/quick-filter, :operators [{:name "<"}
                                                                {:name ">"}
                                                                {:name "="}
-                                                               {:name "≠"}]}]}))
+                                                               {:name "≠"}]}]}
+
+   "drill thrus are disabled for native queries with template-tag variables"
+   {:custom-native #(lib/with-native-query % "SELECT * FROM orders WHERE product_id = {{mytag}}")
+    :native-drills #{}}
+
+   "snippets and card tags are allowed"
+   {:custom-native #(lib/with-native-query % "SELECT * FROM {{#123-mycard}} WHERE {{snippet:mysnip}}")}))
 
 (deftest ^:parallel available-drill-thrus-test-4
   (lib.drill-thru.tu/test-available-drill-thrus
@@ -693,14 +688,23 @@
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
 
 (deftest ^:parallel available-drill-thrus-test-6
-  (lib.drill-thru.tu/test-available-drill-thrus
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-available-drill-thrus
+   "unaggregated header click on fk column"
    {:click-type  :header
     :query-type  :unaggregated
     :column-name "PRODUCT_ID"
     :expected    [{:type :drill-thru/column-filter, :initial-op {:short :=}}
                   {:type :drill-thru/distribution}
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
-                  {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
+                  {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}
+
+   "drill thrus are disabled for native queries with template-tag variables"
+   {:custom-native #(lib/with-native-query % "SELECT * FROM orders WHERE product_id = {{mytag}}")
+    :native-drills #{}}
+
+   "snippets and card tags are allowed"
+   {:custom-native #(lib/with-native-query % "SELECT * FROM {{#123-mycard}} WHERE {{snippet:mysnip}}")}))
 
 (deftest ^:parallel available-drill-thrus-test-7
   (lib.drill-thru.tu/test-available-drill-thrus
@@ -723,7 +727,7 @@
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}
                   {:type        :drill-thru/column-extract
-                   :extractions (partial mc/validate [:sequential [:map
+                   :extractions (partial mr/validate [:sequential [:map
                                                                    [:tag          keyword?]
                                                                    [:display-name string?]]])}]}))
 
@@ -731,7 +735,9 @@
   (testing (str "fk-filter should not get returned for non-fk column (#34440) "
                 "fk-details should not get returned for non-fk column (#34441) "
                 "underlying-records should only get shown once for aggregated query (#34439)"))
-  (lib.drill-thru.tu/test-available-drill-thrus
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-available-drill-thrus
+   "aggregated cell click on count column"
    {:click-type  :cell
     :query-type  :aggregated
     :column-name "count"
@@ -750,7 +756,15 @@
                    :type         :drill-thru/zoom-in.timeseries}]
     ;; Underlying records and automatic insights are not supported for native.
     ;; zoom-in.timeseries can't be because we don't know what unit (if any) it's currently bucketed by.
-    :native-drills #{:drill-thru/quick-filter}}))
+    :native-drills #{:drill-thru/quick-filter}}
+
+   "drill thrus are disabled for native queries with template-tag variables"
+   {:custom-native #(lib/with-native-query %
+                      "SELECT COUNT(*) FROM orders GROUP BY product_id HAVING product_id > {{mytag}}")
+    :native-drills #{}}
+
+   "snippets and card tags are allowed"
+   {:custom-native #(lib/with-native-query % "SELECT COUNT(*) FROM {{#123-mycard}} GROUP BY {{snippet:mysnip}}")}))
 
 (deftest ^:parallel available-drill-thrus-test-10
   (testing (str "fk-filter should not get returned for non-fk column (#34440) "
@@ -823,8 +837,359 @@
                       {:type            :drill-thru/sort
                        :sort-directions [:asc :desc]}]})))
 
+(deftest ^:parallel available-drill-thrus-no-column-drills-for-nil-dimension-values-test
+  (testing "column header drills should not be returned when dimensions have nil values (#49740, #51741)"
+    (lib.drill-thru.tu/test-available-drill-thrus
+     {:click-type  :cell
+      :query-type  :aggregated
+      :column-name "count"
+      :custom-row  #(assoc % "CREATED_AT" nil)
+      ;; Expect the same set of drills as [[available-drill-thrus-test-9]] above, but without zoom-in.timeseries
+      ;; since "CREATED_AT" is nil.
+      :expected    [{:type :drill-thru/automatic-insights
+                     :dimensions [{:column {:name "PRODUCT_ID"}}
+                                  {:column {:name "CREATED_AT"}}]}
+                    {:type      :drill-thru/quick-filter
+                     :operators [{:name "<"}
+                                 {:name ">"}
+                                 {:name "="}
+                                 {:name "≠"}]}
+                    {:type       :drill-thru/underlying-records
+                     :row-count  77
+                     :table-name "Orders"}]
+      ;; Underlying records and automatic insights are not supported for native.
+      :native-drills #{:drill-thru/quick-filter}})))
+
+(deftest ^:parallel available-drill-thrus-use-correct-field-with-models-test
+  (testing "drills get the model's column instead of the result metadata column #56799"
+    (let [card (:orders (lib.tu/mock-cards))
+          metadata-provider (lib.tu/metadata-provider-with-mock-card card)
+          query (lib/query metadata-provider card)
+          lib-col  (-> (m/find-first #(= (:name %) "CREATED_AT") (lib/returned-columns query))
+                       (dissoc :lib/deduplicated-name :lib/original-name :lib/desired-column-alias))
+          card-col (m/find-first #(= (:name %) "CREATED_AT") (:result-metadata card))
+          context {:column     card-col
+                   :column-ref (lib/ref card-col)
+                   :value      nil}
+          drills (lib/available-drill-thrus query context)]
+      (is (=? [;; filter drills are special and use a column from filterable-columns
+               {:type :drill-thru/column-filter}
+               {:type :drill-thru/distribution
+                :column lib-col}
+               {:type :drill-thru/sort
+                :column lib-col}
+               {:type :drill-thru/summarize-column
+                :column lib-col}
+               {:type :drill-thru/column-extract
+                :column lib-col}]
+              drills)))))
+
+(deftest ^:parallel available-drill-thrus-for-joined-pk-test
+  (testing "ORDERS + PRODUCTS click on PRODUCTS.ID PK key value from a join (#28095)"
+    (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                          (lib/join (-> (lib/join-clause (meta/table-metadata :products)
+                                                         [(lib/=
+                                                           (meta/field-metadata :orders :product-id)
+                                                           (-> (meta/field-metadata :products :id)
+                                                               (lib/with-join-alias "Products")))])
+                                        (lib/with-join-alias "Products")
+                                        (lib/with-join-strategy :left-join))))
+          orders-id   (meta/field-metadata :orders :id)
+          products-id (-> (m/find-first #(= (:id %) (meta/id :products :id))
+                                        (lib/returned-columns query))
+                          (lib/with-join-alias "Products"))
+          context     {:column     products-id
+                       :column-ref (lib/ref products-id)
+                       :value      (meta/id :products :id)
+                       :row        [{:column     orders-id
+                                     :column-ref (lib/ref orders-id)
+                                     :value      (meta/id :orders :id)}
+                                    {:column     products-id
+                                     :column-ref (lib/ref products-id)
+                                     :value      (meta/id :products :id)}]}]
+      (is (=? [{:lib/type     :metabase.lib.drill-thru/drill-thru
+                :type         :drill-thru/zoom
+                :object-id    (meta/id :orders :id)
+                :many-pks?    false
+                :column       orders-id}
+               {:lib/type     :metabase.lib.drill-thru/drill-thru
+                :type         :drill-thru/quick-filter
+                :operators    [{:name "<"}
+                               {:name ">"}
+                               {:name "="}
+                               {:name "≠"}]
+                :query        {:stages [{}]}
+                :stage-number -1
+                :value        (meta/id :products :id)}]
+              (lib/available-drill-thrus query -1 context))))))
+
+(deftest ^:parallel geographic-breakout-available-drill-thrus-test
+  (let [metadata-provider (lib.tu/mock-metadata-provider
+                           meta/metadata-provider
+                           {:fields [{:id             1
+                                      :table-id       (meta/id :people)
+                                      :name           "COUNTRY"
+                                      :base-type      :type/Text
+                                      :effective-type :type/Text
+                                      :semantic-type  :type/Country}]})
+        query (as-> (lib/query metadata-provider (meta/table-metadata :people)) $
+                (lib/aggregate $ (lib/count))
+                (lib/breakout $ (lib.metadata/field metadata-provider 1))
+                (lib/breakout $ (meta/field-metadata :people :state))
+                (lib/breakout $ (meta/field-metadata :people :city))
+                (lib/breakout $ (let [field (meta/field-metadata :people :latitude)]
+                                  (->> (lib/available-binning-strategies $ field)
+                                       first
+                                       (lib/with-binning field))))
+                (lib/breakout $ (let [field (meta/field-metadata :people :longitude)]
+                                  (->> (lib/available-binning-strategies $ field)
+                                       first
+                                       (lib/with-binning field)))))
+        lat-col (m/find-first #(= (:id %) (meta/id :people :latitude))
+                              (lib/returned-columns query))
+        lon-col (m/find-first #(= (:id %) (meta/id :people :longitude))
+                              (lib/returned-columns query))]
+    (testing "Drills for country breakout"
+      (let [country-col (m/find-first #(= (:id %) 1)
+                                      (lib/returned-columns query))]
+        (is (some? country-col))
+        (let [context {:column     country-col
+                       :column-ref (lib/ref country-col)
+                       :value      2
+                       :row        [{:column     lat-col
+                                     :column-ref (lib/ref lat-col)
+                                     :value      10}
+                                    {:column     lon-col
+                                     :column-ref (lib/ref lon-col)
+                                     :value      10}]}]
+          (is (=? [{:type :drill-thru/quick-filter}
+                   {:type    :drill-thru/zoom-in.geographic
+                    :subtype :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
+                    :display-name "Zoom in: Country"}]
+                  (lib/available-drill-thrus query -1 context)))
+          (test-drill-applications query context))))
+    (testing "Drills for state breakout"
+      (let [state-col (m/find-first #(= (:id %) (meta/id :people :state))
+                                    (lib/returned-columns query))]
+        (is (some? state-col))
+        (let [context {:column     state-col
+                       :column-ref (lib/ref state-col)
+                       :value      2
+                       :row        [{:column     lat-col
+                                     :column-ref (lib/ref lat-col)
+                                     :value      10}
+                                    {:column     lon-col
+                                     :column-ref (lib/ref lon-col)
+                                     :value      10}]}]
+          (is (=? [{:type :drill-thru/quick-filter}
+                   {:type    :drill-thru/zoom-in.geographic
+                    :subtype :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
+                    :display-name "Zoom in: State"}]
+                  (lib/available-drill-thrus query -1 context)))
+          (test-drill-applications query context))))
+    (testing "Drills for city breakout"
+      (let [city-col (m/find-first #(= (:id %) (meta/id :people :city))
+                                   (lib/returned-columns query))]
+        (is (some? city-col))
+        (let [context {:column     city-col
+                       :column-ref (lib/ref city-col)
+                       :value      2
+                       :row        [{:column     lat-col
+                                     :column-ref (lib/ref lat-col)
+                                     :value      10}
+                                    {:column     lon-col
+                                     :column-ref (lib/ref lon-col)
+                                     :value      10}]}]
+          (is (=? [{:type :drill-thru/quick-filter}
+                   {:type    :drill-thru/zoom-in.geographic
+                    :subtype :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
+                    :display-name "Zoom in: City"}]
+                  (lib/available-drill-thrus query -1 context)))
+          (test-drill-applications query context))))
+    (testing "Drills for latitude breakout"
+      (is (some? lat-col))
+      (let [context {:column     lat-col
+                     :column-ref (lib/ref lat-col)
+                     :value      2
+                     :row        [{:column     lat-col
+                                   :column-ref (lib/ref lat-col)
+                                   :value      10}
+                                  {:column     lon-col
+                                   :column-ref (lib/ref lon-col)
+                                   :value      10}]}]
+        (is (=? [{:type :drill-thru/quick-filter}
+                 {:type    :drill-thru/zoom-in.geographic
+                  :subtype :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
+                  :display-name "Zoom in: Lat/Lon"}]
+                (lib/available-drill-thrus query -1 context)))
+        (test-drill-applications query context)))
+    (testing "Drills for longitude breakout"
+      (is (some? lon-col))
+      (let [context {:column     lon-col
+                     :column-ref (lib/ref lon-col)
+                     :value      2
+                     :row        [{:column     lat-col
+                                   :column-ref (lib/ref lat-col)
+                                   :value      10}
+                                  {:column     lon-col
+                                   :column-ref (lib/ref lon-col)
+                                   :value      10}]}]
+        (is (=? [{:type :drill-thru/quick-filter}]
+                (lib/available-drill-thrus query -1 context)))
+        (test-drill-applications query context)))))
+
+(deftest ^:parallel only-lat-available-drill-thrus-test
+  (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :people)) $
+                (lib/aggregate $ (lib/count))
+                (lib/breakout $ (let [field (meta/field-metadata :people :latitude)]
+                                  (->> (lib/available-binning-strategies $ field)
+                                       first
+                                       (lib/with-binning field)))))
+        lat-col (m/find-first #(= (:id %) (meta/id :people :latitude))
+                              (lib/returned-columns query))]
+    (testing "Drills for latitude breakout with no longitude"
+      (is (some? lat-col))
+      (let [context {:column     lat-col
+                     :column-ref (lib/ref lat-col)
+                     :value      2
+                     :row        [{:column     lat-col
+                                   :column-ref (lib/ref lat-col)
+                                   :value      10}]}]
+        (is (=? [{:type :drill-thru/quick-filter}
+                 {:type :drill-thru/zoom-in.binning}]
+                (lib/available-drill-thrus query -1 context)))
+        (test-drill-applications query context)))))
+
+(deftest ^:parallel only-lon-available-drill-thrus-test
+  (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :people)) $
+                (lib/aggregate $ (lib/count))
+                (lib/breakout $ (let [field (meta/field-metadata :people :longitude)]
+                                  (->> (lib/available-binning-strategies $ field)
+                                       first
+                                       (lib/with-binning field)))))
+        lon-col (m/find-first #(= (:id %) (meta/id :people :longitude))
+                              (lib/returned-columns query))]
+    (testing "Drills for longitude breakout with no latitude"
+      (is (some? lon-col))
+      (let [context {:column     lon-col
+                     :column-ref (lib/ref lon-col)
+                     :value      2
+                     :row        [{:column     lon-col
+                                   :column-ref (lib/ref lon-col)
+                                   :value      10}]}]
+        (is (=? [{:type :drill-thru/quick-filter}
+                 {:type :drill-thru/zoom-in.binning}]
+                (lib/available-drill-thrus query -1 context)))
+        (test-drill-applications query context)))))
+
+(deftest ^:parallel regular-binning-with-lat-lon-available-drill-thrus-test
+  (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :people)) $
+                (lib/join $ (-> (lib/join-clause (meta/table-metadata :orders)
+                                                 [(lib/=
+                                                   (meta/field-metadata :people :id)
+                                                   (-> (meta/field-metadata :orders :user-id)
+                                                       (lib/with-join-alias "Orders")))])
+                                (lib/with-join-alias "Orders")
+                                (lib/with-join-strategy :left-join)))
+                (lib/aggregate $ (lib/count))
+                (lib/breakout $ (let [field (meta/field-metadata :people :latitude)]
+                                  (->> (lib/available-binning-strategies $ field)
+                                       first
+                                       (lib/with-binning field))))
+                (lib/breakout $ (let [field (meta/field-metadata :people :longitude)]
+                                  (->> (lib/available-binning-strategies $ field)
+                                       first
+                                       (lib/with-binning field))))
+                (lib/breakout $ (let [field (-> (meta/field-metadata :orders :subtotal)
+                                                (lib/with-join-alias "Orders"))]
+                                  (->> (lib/available-binning-strategies $ field)
+                                       first
+                                       (lib/with-binning field)))))
+        lat-col (m/find-first #(= (:id %) (meta/id :people :latitude))
+                              (lib/returned-columns query))
+        lon-col (m/find-first #(= (:id %) (meta/id :people :longitude))
+                              (lib/returned-columns query))]
+    (testing "Drills for numeric breakout when lat/lon exist"
+      (let [subtotal-col (m/find-first #(= (:id %) (meta/id :orders :subtotal))
+                                       (lib/returned-columns query))]
+        (is (some? subtotal-col))
+        (let [context {:column     subtotal-col
+                       :column-ref (lib/ref subtotal-col)
+                       :value      2
+                       :row        [{:column     lat-col
+                                     :column-ref (lib/ref lat-col)
+                                     :value      10}
+                                    {:column     lon-col
+                                     :column-ref (lib/ref lon-col)
+                                     :value      10}]}]
+          (is (=? [{:type :drill-thru/quick-filter}
+                   {:type :drill-thru/zoom-in.binning}]
+                  (lib/available-drill-thrus query -1 context)))
+          (test-drill-applications query context))))))
+
+(deftest ^:parallel primary-key?-test
+  (let [orders+products-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                  (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                             [(lib/=
+                                                               (meta/field-metadata :orders :product-id)
+                                                               (meta/field-metadata :products :id))])))
+        source-table-pk       (m/find-first #(= (:id %) (meta/id :orders :id))
+                                            (lib/returned-columns orders+products-query))
+
+        joined-table-pk       (m/find-first #(= (:id %) (meta/id :products :id))
+                                            (lib/returned-columns orders+products-query))
+        source-table-fk       (m/find-first #(= (:id %) (meta/id :orders :product-id))
+                                            (lib/returned-columns orders+products-query))]
+    (testing "primary key from source table"
+      (is (lib.drill-thru.common/primary-key? orders+products-query -1 source-table-pk)))
+    (testing "primary key from joined table"
+      (is (not (lib.drill-thru.common/primary-key? orders+products-query -1 joined-table-pk))))
+    (testing "foreign key from source table"
+      (is (not (lib.drill-thru.common/primary-key? orders+products-query -1 source-table-fk))))))
+
+(deftest ^:parallel foreign-key?-test
+  (let [products+orders-query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                                  (lib/join (lib/join-clause (meta/table-metadata :orders)
+                                                             [(lib/=
+                                                               (meta/field-metadata :products :id)
+                                                               (meta/field-metadata :orders :product-id))])))
+        source-table-fk       (m/find-first #(= (:id %) (meta/id :orders :product-id))
+                                            (lib/returned-columns orders-query))
+        joined-table-fk       (m/find-first #(= (:id %) (meta/id :orders :product-id))
+                                            (lib/returned-columns products+orders-query))
+        source-table-pk       (m/find-first #(= (:id %) (meta/id :orders :id))
+                                            (lib/returned-columns orders-query))]
+    (testing "foreign key from source table"
+      (is (lib.drill-thru.common/foreign-key? orders-query -1 source-table-fk)))
+    (testing "foreign key from joined table"
+      (is (not (lib.drill-thru.common/foreign-key? products+orders-query -1 joined-table-fk))))
+    (testing "primary key from source table"
+      (is (not (lib.drill-thru.common/foreign-key? products+orders-query -1 source-table-pk))))))
+
 (deftest ^:parallel drill-value->js-test
   (testing "should convert :null to nil"
     (doseq [[input expected] [[:null nil]
-                              [nil nil]]]
+                              [nil nil]
+                              [0 0]
+                              ["" ""]
+                              ["a" "a"]
+                              [{} {}]
+                              [[] []]]]
       (is (= expected (lib.drill-thru.common/drill-value->js input))))))
+
+(deftest ^:parallel js->drill-value-test
+  (testing "should convert nil to :null"
+    (doseq [[input expected] [[nil :null]
+                              [0 0]
+                              ["" ""]
+                              ["a" "a"]
+                              [{} {}]
+                              [[] []]]]
+      (is (= expected (lib.drill-thru.common/js->drill-value input))))))
+
+(deftest ^:parallel js->drill-value->js-test
+  (testing "should round trip js->drill-value -> drill-value->js"
+    (doseq [input [nil 0 1 "" "a" {} [] {"a" "b"} [nil "a" "b"]]]
+      (is (= input (-> input
+                       lib.drill-thru.common/js->drill-value
+                       lib.drill-thru.common/drill-value->js))))))

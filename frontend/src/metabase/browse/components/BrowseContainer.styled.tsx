@@ -1,30 +1,25 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import EmptyState from "metabase/components/EmptyState";
-import { Flex, Grid, Icon } from "metabase/ui";
+import EmptyState from "metabase/common/components/EmptyState";
+import { Flex, Icon } from "metabase/ui";
 
 export const BrowseContainer = styled.div`
   display: flex;
   flex: 1;
   flex-flow: column nowrap;
-  margin-top: 1rem;
+  padding-top: 1rem;
   container-name: ItemsTableContainer;
   container-type: inline-size;
-`;
-
-export const BrowseGrid = styled(Grid)`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-  gap: 1rem;
-  margin: 0;
-  width: 100%;
+  background-color: var(--mb-color-background-light);
+  min-height: 100%;
 `;
 
 export const BrowseSection = styled(Flex)`
   max-width: 64rem;
   margin: 0 auto;
   width: 100%;
-`;
+` as unknown as typeof Flex;
 
 export const BrowseHeader = styled.div`
   display: flex;

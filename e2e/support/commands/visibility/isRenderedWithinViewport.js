@@ -3,7 +3,7 @@ Cypress.Commands.add(
   {
     prevSubject: true,
   },
-  subject => {
+  (subject) => {
     const viewportTop = 0;
     const viewportBottom = Cypress.$(cy.state("window")).height();
     const element = subject[0].getBoundingClientRect();

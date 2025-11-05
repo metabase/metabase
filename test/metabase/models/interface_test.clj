@@ -1,87 +1,24 @@
 (ns metabase.models.interface-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.table :refer [Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import (com.fasterxml.jackson.core JsonParseException)))
+   [toucan2.core :as t2])
+  (:import
+   (com.fasterxml.jackson.core JsonParseException)))
 
-;; let's make sure the `transform-metabase-query`/`transform-metric-segment-definition`/`transform-parameters-list`
-;; normalization functions respond gracefully to invalid stuff when pulling them out of the Database. See #8914
-
-(deftest ^:parallel handle-bad-template-tags-test
-  (testing (str "an malformed template tags map like the one below is invalid. Rather than potentially destroy an entire API "
-                "response because of one malformed Card, dump the error to the logs and return nil.")
-    (is (= nil
-           ((:out mi/transform-metabase-query)
-            (json/encode
-             {:database 1
-              :type     :native
-              :native   {:template-tags 1000}}))))))
-
-(deftest ^:parallel template-tag-validate-saves-test
-  (testing "on the other hand we should be a little more strict on the way and disallow you from saving the invalid stuff"
-    ;; TODO -- we should make sure this returns a good error message so we don't have to dig thru the exception chain.
-    (is (thrown?
-         Exception
-         ((:in mi/transform-metabase-query)
-          {:database 1
-           :type     :native
-           :native   {:template-tags {100 [:field-id "WOW"]}}})))))
-
-(deftest ^:parallel normalize-empty-query-test
-  (is (= {}
-         ((:out mi/transform-metabase-query) "{}"))))
-
-(deftest ^:parallel normalize-metric-segment-definition-test
-  (testing "Legacy Metric/Segment definitions should get normalized"
-    (is (= {:filter [:= [:field 1 nil] [:field 2 {:temporal-unit :month}]]}
-           ((:out mi/transform-legacy-metric-segment-definition)
-            (json/encode
-             {:filter [:= [:field-id 1] [:datetime-field [:field-id 2] :month]]}))))))
-
-(deftest ^:parallel dont-explode-on-way-out-from-db-test
-  (testing "`metric-segment-definition`s should avoid explosions coming out of the DB..."
-    (is (= nil
-           ((:out mi/transform-legacy-metric-segment-definition)
-            (json/encode
-             {:filter 1000}))))
-
-    (testing "...but should still throw them coming in"
-      (is (thrown?
-           Exception
-           ((:in mi/transform-legacy-metric-segment-definition)
-            {:filter 1000}))))))
-
-(deftest handle-errors-gracefully-test
-  (testing (str "Cheat and override the `normalization-tokens` function to always throw an Exception so we can make "
-                "sure the Toucan type fn handles the error gracefully")
-    (with-redefs [mbql.normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
-      (is (= nil
-             ((:out mi/transform-parameters-list)
-              (json/encode
-               [{:target [:dimension [:field "ABC" nil]]}])))))))
-
-(deftest do-not-eat-exceptions-test
-  (testing "should not eat Exceptions if normalization barfs when saving"
-    (is (thrown?
-         Exception
-         (with-redefs [mbql.normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
-           ((:in mi/transform-parameters-list)
-            [{:target [:dimension [:field "ABC" nil]]}]))))))
+;; Let's make sure `transform-metric-segment-definition`/`transform-parameters-list` normalization functions respond
+;; gracefully to invalid stuff when pulling them out of the Database. See #8914
 
 (deftest timestamped-property-test
   (testing "Make sure updated_at gets updated for timestamped models"
-    (t2.with-temp/with-temp [Table table {:updated_at #t "2023-02-02T01:00:00"}]
+    (mt/with-temp [:model/Table table {:updated_at #t "2023-02-02T01:00:00"}]
       (let [updated-at (:updated_at table)
             new-name   (u/qualified-name ::a-new-name)]
         (is (= 1
@@ -89,27 +26,48 @@
         (is (=? {:id         (:id table)
                  :name       new-name
                  :updated_at (partial not= updated-at)}
-                (t2/select-one [Table :id :name :updated_at] (u/the-id table))))))))
+                (t2/select-one [:model/Table :id :name :updated_at] (u/the-id table))))))))
 
-(deftest timestamped-property-do-not-stomp-on-explicit-values-test
+(deftest ^:parallel timestamped-property-do-not-stomp-on-explicit-values-test
   (testing "The :timestamped property should not stomp on :created_at/:updated_at if they are explicitly specified"
-    (t2.with-temp/with-temp [Field field]
+    (mt/with-temp [:model/Field field]
       (testing "Nothing specified: use now() for both"
         (is (=? {:created_at java.time.temporal.Temporal
                  :updated_at java.time.temporal.Temporal}
-                field))))
+                field))))))
+
+(deftest ^:parallel timestamped-property-do-not-stomp-on-explicit-values-test-2
+  (testing "The :timestamped property should not stomp on :created_at/:updated_at if they are explicitly specified"
     (let [t                  #t "2022-10-13T19:21:00Z"
           expected-timestamp (t/offset-date-time "2022-10-13T19:21:00Z")]
       (testing "Explicitly specify :created_at"
-        (t2.with-temp/with-temp [Field field {:created_at t}]
+        (mt/with-temp [:model/Field field {:created_at t}]
           (is (=? {:created_at expected-timestamp
                    :updated_at java.time.temporal.Temporal}
                   field))))
       (testing "Explicitly specify :updated_at"
-        (t2.with-temp/with-temp [Field field {:updated_at t}]
+        (mt/with-temp [:model/Field field {:updated_at t}]
           (is (=? {:created_at java.time.temporal.Temporal
                    :updated_at expected-timestamp}
                   field)))))))
+
+(defmethod mi/non-timestamped-fields :test-model/updated-at-tester [_]
+  #{:non_timestamped :other})
+
+(deftest ^:parallel timestamped-property-skips-non-timestamped-fields-test
+  (testing "Does not add a timestamp if it only includes non-timestamped fields"
+    (let [instance (-> (t2/instance :test-model/updated-at-tester {:non_timestamped nil})
+                       (assoc :non_timestamped 1))]
+      (is (= {:non_timestamped 1}
+             (#'mi/add-updated-at-timestamp instance))))))
+
+(deftest ^:parallel timestamped-property-skips-non-timestamped-fields-test-2
+  (testing "Adds a timestamp if it includes other fields"
+    (let [instance (-> (t2/instance :test-model/updated-at-tester {:non_timestamped nil :included nil})
+                       (assoc :non_timestamped 1)
+                       (assoc :included 2))]
+      (is (= {:non_timestamped 1 :included 2 :updated_at (mi/now)}
+             (#'mi/add-updated-at-timestamp instance))))))
 
 (deftest ^:parallel upgrade-to-v2-viz-settings-test
   (let [migrate #(select-keys (#'mi/migrate-viz-settings %)
@@ -177,25 +135,25 @@
 
 (deftest ^:parallel normalize-mbql-clause-impostor-in-visualization-settings-test
   (let [viz-settings
-        {"table.pivot_column" "TAX",
-         "graph.metrics" ["expression"],
+        {"table.pivot_column" "TAX"
+         "graph.metrics" ["expression"]
          "pivot_table.column_split"
          {"rows"
-          ["CREATED_AT" "expression" "TAX"],
-          "columns" [],
-          "values" ["sum"]},
-         "pivot_table.column_widths" {"leftHeaderWidths" [141 99 80], "totalLeftHeaderWidths" 320, "valueHeaderWidths" {}},
-         "table.cell_column" "expression",
+          ["CREATED_AT" "expression" "TAX"]
+          "columns" []
+          "values" ["sum"]}
+         "pivot_table.column_widths" {"leftHeaderWidths" [141 99 80], "totalLeftHeaderWidths" 320, "valueHeaderWidths" {}}
+         "table.cell_column" "expression"
          "table.column_formatting"
-         [{"columns" ["expression" nil "TAX" "count"],
-           "type" "single",
-           "operator" "is-null",
-           "value" 10,
-           "color" "#EF8C8C",
-           "highlight_row" false,
-           "id" 0}],
-         "column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {"number_style" "currency"}},
-         "series_settings" {"expression" {"line.interpolate" "step-after", "line.style" "dotted"}},
+         [{"columns" ["expression" nil "TAX" "count"]
+           "type" "single"
+           "operator" "is-null"
+           "value" 10
+           "color" "#EF8C8C"
+           "highlight_row" false
+           "id" 0}]
+         "column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {"number_style" "currency"}}
+         "series_settings" {"expression" {"line.interpolate" "step-after", "line.style" "dotted"}}
          "graph.dimensions" ["CREATED_AT"]}]
     (is (= {:table.pivot_column "TAX"
             :graph.metrics ["expression"]
@@ -217,3 +175,47 @@
             :series_settings {:expression {:line.interpolate "step-after", :line.style "dotted"}}
             :graph.dimensions ["CREATED_AT"]}
            (mi/normalize-visualization-settings viz-settings)))))
+
+(deftest ^:parallel json-in-with-eliding
+  (is (= "{}" (#'mi/json-in-with-eliding {})))
+  (is (= (json/encode {:a "short"}) (#'mi/json-in-with-eliding {:a "short"})))
+  (is (= (json/encode {:a (str (apply str (repeat 247 "b")) "...")}) (#'mi/json-in-with-eliding {:a (apply str (repeat 500 "b"))})))
+  (is (= (json/encode {"ex-data" {"toucan2/context-trace" [["execute SQL with class com.mchange.v2.c3p0.impl.NewProxyConnection"
+                                                            {"toucan2.jdbc.query/sql-args" (str (apply str (repeat 247 "b")) "...")}]]}})
+         (#'mi/json-in-with-eliding {"ex-data" {"toucan2/context-trace" [["execute SQL with class com.mchange.v2.c3p0.impl.NewProxyConnection"
+                                                                          {"toucan2.jdbc.query/sql-args" (apply str (repeat 500 "b"))}]]}})))
+  (is (= (json/encode {:a (repeat 50 "x")}) (#'mi/json-in-with-eliding {:a (repeat 500 "x")})))
+  (testing "A passed string is not elided"
+    (is (= (apply str (repeat 1000 "a")) (#'mi/json-in-with-eliding (apply str (repeat 1000 "a")))))))
+
+(deftest ^:parallel lib-result-metadata-out-test
+  (let [cols [{:active                    true
+               :base-type                 :type/Text
+               :database-type             "CHARACTER VARYING"
+               :display-name              "Category"
+               :effective-type            :type/Text
+               :field-ref                 [:field 61339 nil]
+               :fingerprint               {:global {:distinct-count 4, :nil% 0.0}
+                                           :type   {:type/Text {:average-length 6.375
+                                                                :percent-email  0.0
+                                                                :percent-json   0.0
+                                                                :percent-state  0.0
+                                                                :percent-url    0.0}}}
+               :id                        61339
+               :name                      "CATEGORY"
+               :position                  3
+               :semantic-type             :type/Category
+               :source                    :breakout
+               :table-id                  10808
+               :visibility-type           :normal
+               :lib/breakout?             true
+               :lib/deduplicated-name     "CATEGORY"
+               :lib/desired-column-alias  "CATEGORY"
+               :lib/original-display-name "Category"
+               :lib/original-name         "CATEGORY"
+               :lib/source                :source/table-defaults
+               :lib/source-column-alias   "CATEGORY"
+               :lib/type                  :metadata/column}]]
+
+    (is (= cols
+           (#'mi/result-metadata-out (json/encode cols))))))

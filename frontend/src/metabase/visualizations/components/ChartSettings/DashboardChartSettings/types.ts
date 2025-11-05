@@ -1,23 +1,12 @@
-import type {
-  Dashboard,
-  DashboardCard,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { Dashboard, DashboardCard } from "metabase-types/api";
 
-import type {
-  BaseChartSettingsTestProps,
-  CommonChartSettingsProps,
-} from "../types";
+import type { CommonChartSettingsProps, Widget } from "../types";
 
 export type DashboardChartSettingsProps = {
   className?: string;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
   isDashboard?: boolean;
+  widgets?: Widget[];
   onClose?: () => void;
-} & CommonChartSettingsProps &
-  DashboardChartSettingsTestProps;
-
-export type DashboardChartSettingsTestProps = BaseChartSettingsTestProps & {
-  settings?: VisualizationSettings;
-};
+} & CommonChartSettingsProps;

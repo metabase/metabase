@@ -1,5 +1,8 @@
 (ns metabase.lib.extraction
+  #?(:clj (:refer-clojure :exclude [for]))
   (:require
+   #?@(:clj
+       ([metabase.util.performance :refer [for]]))
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -10,25 +13,24 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 (defn- column-extract-temporal-units [column]
   (let [time-units [:hour-of-day]
         date-units [:day-of-month :day-of-week :month-of-year :quarter-of-year :year]]
-    (vec (for [unit (concat (when-not (lib.types.isa/date-without-time? column)
-                              time-units)
-                            (when-not (lib.types.isa/time? column)
-                              date-units))]
-           {:lib/type     ::extraction
-            :tag          unit
-            :column       column
-            :display-name (lib.temporal-bucket/describe-temporal-unit unit)}))))
+    (for [unit (concat (when-not (lib.types.isa/date-without-time? column)
+                         time-units)
+                       (when-not (lib.types.isa/time? column)
+                         date-units))]
+      {:lib/type     ::extraction
+       :tag          unit
+       :column       column
+       :display-name (lib.temporal-bucket/describe-temporal-unit unit)})))
 
 (defn- regex-available? [metadata-providerable]
-  (-> (lib.metadata/database metadata-providerable)
-      :features
-      (contains? :regex)))
+  (lib.metadata/database-supports? metadata-providerable :regex))
 
 (defn- domain-extraction [column]
   {:lib/type     ::extraction
@@ -48,6 +50,12 @@
    :column       column
    :display-name (i18n/tru "Host")})
 
+(defn- path-extraction [column]
+  {:lib/type     ::extraction
+   :tag          :path
+   :column       column
+   :display-name (i18n/tru "Path")})
+
 (defn- email-extractions [column]
   [(domain-extraction    column)
    (host-extraction      column)])
@@ -55,7 +63,8 @@
 (defn- url-extractions [column]
   [(domain-extraction    column)
    (subdomain-extraction column)
-   (host-extraction      column)])
+   (host-extraction      column)
+   (path-extraction      column)])
 
 (mu/defn column-extractions :- [:maybe [:sequential ::lib.schema.extraction/extraction]]
   "Column extractions are a set of transformations possible on a given `column`, based on its type.
@@ -93,7 +102,8 @@
     ;; URLs and emails
     :domain          (lib.expression/domain column)
     :subdomain       (lib.expression/subdomain column)
-    :host            (lib.expression/host column)))
+    :host            (lib.expression/host column)
+    :path            (lib.expression/path column)))
 
 (mu/defn extract :- ::lib.schema/query
   "Given a query, stage and extraction as returned by [[column-extractions]], apply that extraction to the query."
@@ -104,7 +114,7 @@
   (let [unique-name-fn (->> (lib.util/query-stage query stage-number)
                             (lib.metadata.calculation/returned-columns query stage-number)
                             (map :name)
-                            (lib.util/unique-name-generator (lib.metadata/->metadata-provider query)))]
+                            (lib.util.unique-name-generator/unique-name-generator))]
     (lib.expression/expression
      query
      stage-number

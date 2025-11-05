@@ -6,23 +6,20 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(deftest timezone-id-test
+(deftest ^:parallel timezone-id-test
   (mt/test-driver :sqlite
     (is (= "UTC"
            (driver/db-default-timezone :sqlite (mt/db))))))
 
-(deftest filter-by-date-test
+(deftest ^:parallel filter-by-date-test
   (testing "Make sure filtering against a LocalDate works correctly in SQLite"
     (mt/test-driver :sqlite
       (is (= [[225 "2014-03-04T00:00:00Z"]
@@ -54,7 +51,7 @@
     (testing "Make sure we correctly infer complex types in views (#8630, #9276, #12191, #12547, #10681)"
       (let [details (mt/dbdef->connection-details :sqlite :db {:database-name "views_test"})
             spec    (sql-jdbc.conn/connection-details->spec :sqlite details)]
-        (t2.with-temp/with-temp [Database {db-id :id :as database} {:engine :sqlite, :details (assoc details :dbname "views_test")}]
+        (mt/with-temp [:model/Database {db-id :id :as database} {:engine :sqlite, :details (assoc details :dbname "views_test")}]
           (doseq [statement ["drop view if exists v_groupby_test;"
                              "drop table if exists groupby_test;"
                              "drop view if exists v_src;"
@@ -74,7 +71,7 @@
                              :base_type :type/Integer}
                             {:name      "time"
                              :base_type :type/Text}]}]
-                 (->> (t2/hydrate (t2/select Table :db_id db-id {:order-by [:name]}) :fields)
+                 (->> (t2/hydrate (t2/select :model/Table :db_id db-id {:order-by [:name]}) :fields)
                       (map table-fingerprint))))
           (doseq [statement ["drop view if exists v_groupby_test;"
                              "drop table if exists groupby_test;"
@@ -110,7 +107,7 @@
                              :base_type :type/Text}
                             {:name      "totalValue"
                              :base_type :type/Float}]}]
-                 (->> (t2/hydrate (t2/select Table :db_id db-id
+                 (->> (t2/hydrate (t2/select :model/Table :db_id db-id
                                              {:where    [:in :name ["groupby_test" "v_groupby_test"]]
                                               :order-by [:name]}) :fields)
                       (map table-fingerprint)))))))))
@@ -118,7 +115,8 @@
 (defn- default-table-result [table-name]
   {:name        table-name
    :schema      nil
-   :description nil})
+   :description nil
+   :is_writable nil})
 
 (deftest timestamp-test-db
   (let [driver :sqlite]
@@ -130,7 +128,7 @@
                       "INSERT INTO timestamp_table (created_at) VALUES (datetime('now'));"]]
           (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver details)
                          [stmt]))
-        (t2.with-temp/with-temp [Database db {:engine driver :details (assoc details :dbname db-name)}]
+        (mt/with-temp [:model/Database db {:engine driver :details (assoc details :dbname db-name)}]
           (sync/sync-database! db)
           (mt/with-db db
             (testing "timestamp columns"
@@ -147,8 +145,10 @@
                                    :database-position          0
                                    :database-required          false
                                    :json-unfolding             false
-                                   :database-is-auto-increment false}}}
-                       (driver/describe-table driver db (t2/select-one Table :id (mt/id :timestamp_table)))))))))))))
+                                   :database-is-auto-increment false
+                                   :database-is-nullable       true
+                                   :database-is-generated      false}}}
+                       (driver/describe-table driver db (t2/select-one :model/Table :id (mt/id :timestamp_table)))))))))))))
 
 (deftest select-query-datetime
   (mt/test-driver :sqlite
@@ -169,7 +169,7 @@
                       ('null',            null,                      null,          null);"]]
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :sqlite details)
                        [stmt]))
-      (t2.with-temp/with-temp [Database db {:engine :sqlite :details (assoc details :dbname db-name)}]
+      (mt/with-temp [:model/Database db {:engine :sqlite :details (assoc details :dbname db-name)}]
         (sync/sync-database! db)
         ;; In SQLite, you can actually store any value in any date/timestamp column,
         ;; let's test only values we'd reasonably run into.
@@ -211,28 +211,26 @@
                       {:fields [$col_timestamp $col_date $col_datetime]
                        :filter [:= $test_case "null"]}))))))))))
 
-(deftest duplicate-identifiers-test
+(deftest ^:parallel duplicate-identifiers-test
   (testing "Make sure duplicate identifiers (even with different cases) get unique aliases"
     (mt/test-driver :sqlite
-      (mt/dataset test-data
-        (is (= '{:select   [source.CATEGORY_2 AS CATEGORY
-                            COUNT (*)         AS count]
-                 :from     [{:select [products.category       AS category
-                                      products.category || ?  AS CATEGORY_2]
-                             :from   [products]}
-                            AS source]
-                 :group-by [source.CATEGORY_2]
-                 :order-by [source.CATEGORY_2 ASC]
-                 :limit    [1]}
-               (sql.qp-test-util/query->sql-map
-                (mt/mbql-query products
-                  {:expressions {:CATEGORY [:concat $category "2"]}
-                   :breakout    [:expression :CATEGORY]
-                   :aggregation [:count]
-                   :order-by    [[:asc [:expression :CATEGORY]]]
-                   :limit       1}))))))))
+      (is (= '{:select   [source.CATEGORY AS CATEGORY
+                          COUNT (*)         AS count]
+               :from     [{:select [products.category || ? AS CATEGORY]
+                           :from   [products]}
+                          AS source]
+               :group-by [source.CATEGORY]
+               :order-by [source.CATEGORY ASC]
+               :limit    [1]}
+             (sql.qp-test-util/query->sql-map
+              (mt/mbql-query products
+                {:expressions {:CATEGORY [:concat $category "2"]}
+                 :breakout    [:expression :CATEGORY]
+                 :aggregation [:count]
+                 :order-by    [[:asc [:expression :CATEGORY]]]
+                 :limit       1})))))))
 
-(deftest disallow-fdw-to-other-databases-test
+(deftest ^:parallel disallow-fdw-to-other-databases-test
   (testing "Don't allow connections to other SQLite databases with ATTACH DATABASE (https://github.com/metabase/metaboat/issues/152)"
     (mt/test-driver :sqlite
       ;; force creation of the sample dataset file

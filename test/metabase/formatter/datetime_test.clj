@@ -2,10 +2,14 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.appearance.core :as appearance]
    [metabase.formatter.datetime :as datetime]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.public-settings :as public-settings]
-   [metabase.test :as mt]))
+   [metabase.test :as mt])
+  (:import
+   (java.util Locale)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private now "2020-07-16T18:04:00Z[UTC]")
 
@@ -30,8 +34,11 @@
   ([timezone-id temporal-str col viz-settings]
    ((datetime/make-temporal-str-formatter timezone-id col viz-settings) temporal-str)))
 
+;;; TODO (Cam 6/18/25) -- these fail for me locally with `Dec` instead of `December` -- see
+;;; https://metaboat.slack.com/archives/CKZEMT1MJ/p1750288689214359
 (deftest format-temporal-str-test
-  (mt/with-temporary-setting-values [custom-formatting nil]
+  (mt/with-temporary-setting-values [site-locale "en"
+                                     custom-formatting nil]
     (testing "Null values do not blow up"
       (is (= ""
              (format-temporal-str "UTC" nil :now))))
@@ -101,72 +108,113 @@
                                   {:effective_type :type/Time
                                    :settings       {:time_enabled nil}}))))))
 
-(deftest format-temporal-str-column-viz-settings-test
-  (mt/with-temporary-setting-values [custom-formatting nil]
-    (testing "Written Date Formatting"
-      (let [fmt (fn [col-viz]
-                  (format-temporal-str "UTC" now {:field_ref      [:column_name "created_at"]
-                                                  :effective_type :type/Date}
-                                       {::mb.viz/column-settings
-                                        {{::mb.viz/column-name "created_at"} col-viz}}))]
-        (doseq [[date-style normal-result abbreviated-result]
-                [["MMMM D, YYYY" "July 16, 2020" "Jul 16, 2020"]
-                 ["D MMMM, YYYY" "16 July, 2020" "16 Jul, 2020"]
-                 ["dddd, MMMM D, YYYY" "Thursday, July 16, 2020" "Thu, Jul 16, 2020"] ;; Render datetimes with Day of Week option. (#27105)
-                 [nil "July 16, 2020" "Jul 16, 2020"]]]     ;; Render abbreviated date styles when no other style data is explicitly set. (#27020)
-          (testing (str "Date style: " date-style " correctly formats.")
-            (is (= normal-result
-                   (fmt (when date-style {::mb.viz/date-style date-style})))))
-          (testing (str "Date style: " date-style " with abbreviation correctly formats.")
-            (is (= abbreviated-result
-                   (fmt (merge {::mb.viz/date-abbreviate true}
-                               (when date-style {::mb.viz/date-style date-style})))))))))
-    (testing "Numerical Date Formatting"
-      (let [fmt (fn [col-viz]
-                  (format-temporal-str "UTC" now {:field_ref      [:column_name "created_at"]
-                                                  :effective_type :type/Date}
-                                       {::mb.viz/column-settings
-                                        {{::mb.viz/column-name "created_at"} col-viz}}))]
-        (doseq [[date-style slash-result dash-result dot-result]
-                [["M/D/YYYY" "7/16/2020" "7-16-2020" "7.16.2020"]
-                 ["D/M/YYYY" "16/7/2020" "16-7-2020" "16.7.2020"]
-                 ["YYYY/M/D" "2020/7/16" "2020-7-16" "2020.7.16"]
-                 [nil "July 16, 2020" "July 16, 2020" "July 16, 2020"]] ;; nil date-style does not blow up when date-separator exists
-                date-separator ["/" "-" "."]]
-          (testing (str "Date style: " date-style " with '" date-separator "' correctly formats.")
-            (is (= (get {"/" slash-result
-                         "-" dash-result
-                         "." dot-result} date-separator)
-                   (fmt (merge {::mb.viz/date-separator date-separator}
-                               (when date-style {::mb.viz/date-style date-style})))))))
-        (testing "Default date separator is '/'"
-          (is (= "7/16/2020"
-                 (fmt {::mb.viz/date-style "M/D/YYYY"}))))))
-    (testing "Custom Formatting options are respected as defaults."
-      ;; NOTE - format-temporal-str gets global settings from the `::mb.viz/global-column-settings`
-      ;; key of the viz-settings argument. These are looked up based on the type of the column.
-      (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style      "MMMM D, YYYY"
-                                                                            :date_abbreviate true}}]
-        (let [global-settings (m/map-vals mb.viz/db->norm-column-settings-entries
-                                          (public-settings/custom-formatting))]
-          (is (= "Jul 16, 2020"
-                 (format-temporal-str "UTC" now
-                                      {:effective_type :type/Date}
-                                      {::mb.viz/global-column-settings global-settings})))))
-      (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style     "M/DD/YYYY"
-                                                                            :date_separator "-"}}]
-        (let [global-settings (m/map-vals mb.viz/db->norm-column-settings-entries
-                                          (public-settings/custom-formatting))]
-          (is (= "7-16-2020, 6:04 PM"
-                 (format-temporal-str
-                  "UTC"
-                  now
-                  {:effective_type :type/DateTime}
-                  {::mb.viz/global-column-settings global-settings}))))))))
+(deftest format-temporal-str-respects-user-locale
+  (mt/with-temporary-setting-values [site-locale "en"
+                                     custom-formatting nil]
+    (testing "Uses the user locale if present"
+      (mt/with-temp [:model/User {id :id} {:locale "nl"}]
+        (mt/with-current-user id
+          (is (= "mei 1, 2014, 8:30 a.m."
+                 (format-temporal-str "UTC" "2014-05-01T08:30:00"
+                                      {:effective_type :type/DateTime}))))))
+    (testing "Falls back to site locale otherwise"
+      (is (= "May 1, 2014, 8:30 AM"
+             (format-temporal-str "UTC" "2014-05-01T08:30:00"
+                                  {:effective_type :type/DateTime}))))))
+
+(defn- format-with-colname-key
+  [column viz]
+  (format-temporal-str "UTC" now column {::mb.viz/column-settings
+                                         {{::mb.viz/column-name (:name column)} viz}}))
+
+(defn- format-with-field-id-key
+  [column viz]
+  (format-temporal-str "UTC" now column {::mb.viz/column-settings
+                                         {{::mb.viz/field-id (:id column)} viz}}))
+
+(defn- format-with-field-id-and-colname-key
+  [column viz]
+  (format-temporal-str "UTC" now column {::mb.viz/column-settings
+                                         {{::mb.viz/field-id (:id column)} {::mb.viz/view-as nil}
+                                          {::mb.viz/column-name (:name column)} viz}}))
+
+(def ^:private formatters-with-viz
+  [{:name " with column-name as key"
+    :fmt-fn format-with-colname-key}
+   {:name " with field-id as key"
+    :fmt-fn format-with-field-id-key}
+   {:name " with field-id and column name keys present"
+    :fmt-fn format-with-field-id-and-colname-key}])
+
+(deftest format-temporal-str-column-viz-settings-written-date-test
+  (mt/with-temporary-setting-values [site-locale "en"
+                                     custom-formatting nil]
+    (let [column {:field_ref [:field 1 nil] :name "created_at" :id 1 :effective_type :type/Date}]
+      (doseq [{:keys [name fmt-fn]} formatters-with-viz]
+        (let [fmt-part (partial fmt-fn column)]
+          (doseq [[date-style normal-result abbreviated-result]
+                  [["MMMM D, YYYY" "July 16, 2020" "Jul 16, 2020"]
+                   ["D MMMM, YYYY" "16 July, 2020" "16 Jul, 2020"]
+                   ["dddd, MMMM D, YYYY" "Thursday, July 16, 2020" "Thu, Jul 16, 2020"] ;; Render datetimes with Day of Week option. (#27105)
+                   [nil "July 16, 2020" "Jul 16, 2020"]]]     ;; Render abbreviated date styles when no other style data is explicitly set. (#27020)
+            (testing (str "Date style: " date-style " correctly formats" name)
+              (is (= normal-result
+                     (fmt-part (when date-style {::mb.viz/date-style date-style})))))
+            (testing (str "Date style: " date-style " with abbreviation correctly formats.")
+              (is (= abbreviated-result
+                     (fmt-part (merge {::mb.viz/date-abbreviate true}
+                                      (when date-style {::mb.viz/date-style date-style}))))))))))))
+
+(deftest format-temporal-str-column-viz-settings-numerical-date-test
+  (mt/with-temporary-setting-values [site-locale "en"
+                                     custom-formatting nil]
+    (let [column {:field_ref [:field 1 nil] :name "created_at" :id 1 :effective_type :type/Date}]
+      (doseq [{:keys [name fmt-fn]} formatters-with-viz]
+        (let [fmt-part (partial fmt-fn column)]
+          (doseq [[date-style slash-result dash-result dot-result]
+                  [["M/D/YYYY" "7/16/2020" "7-16-2020" "7.16.2020"]
+                   ["D/M/YYYY" "16/7/2020" "16-7-2020" "16.7.2020"]
+                   ["YYYY/M/D" "2020/7/16" "2020-7-16" "2020.7.16"]
+                   [nil "July 16, 2020" "July 16, 2020" "July 16, 2020"]] ;; nil date-style does not blow up when date-separator exists
+                  date-separator ["/" "-" "."]]
+            (testing (str "Date style: " date-style " with '" date-separator "' correctly formats" name)
+              (is (= (get {"/" slash-result
+                           "-" dash-result
+                           "." dot-result} date-separator)
+                     (fmt-part (merge {::mb.viz/date-separator date-separator}
+                                      (when date-style {::mb.viz/date-style date-style})))))))
+          (testing "Default date separator is '/'"
+            (is (= "7/16/2020"
+                   (fmt-part {::mb.viz/date-style "M/D/YYYY"})))))))))
+
+(deftest format-temporal-str-column-viz-settings-custom-fmt-test
+  (testing "Custom Formatting options are respected as defaults."
+    ;; NOTE - format-temporal-str gets global settings from the `::mb.viz/global-column-settings`
+    ;; key of the viz-settings argument. These are looked up based on the type of the column.
+    (mt/with-temporary-setting-values [site-locale "en"
+                                       custom-formatting {:type/Temporal {:date_style      "MMMM D, YYYY"
+                                                                          :date_abbreviate true}}]
+      (let [global-settings (m/map-vals mb.viz/db->norm-column-settings-entries
+                                        (appearance/custom-formatting))]
+        (is (= "Jul 16, 2020"
+               (format-temporal-str "UTC" now
+                                    {:effective_type :type/Date}
+                                    {::mb.viz/global-column-settings global-settings})))))
+    (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style     "M/DD/YYYY"
+                                                                          :date_separator "-"}}]
+      (let [global-settings (m/map-vals mb.viz/db->norm-column-settings-entries
+                                        (appearance/custom-formatting))]
+        (is (= "7-16-2020, 6:04 PM"
+               (format-temporal-str
+                "UTC"
+                now
+                {:effective_type :type/DateTime}
+                {::mb.viz/global-column-settings global-settings})))))))
 
 (deftest format-datetime-test
   (testing "Testing permutations of a datetime string with different type information and viz settings (#36559)"
-    (mt/with-temporary-setting-values [custom-formatting nil]
+    (mt/with-temporary-setting-values [site-locale "en"
+                                       custom-formatting nil]
       (let [common-viz-settings {::mb.viz/column-settings
                                  ;; Settings specific to a certain column
                                  {{::mb.viz/column-name "CUSTOM_DATETIME"}
@@ -263,3 +311,20 @@
                                       {{::mb.viz/column-name "created_at"} {::mb.viz/date-style "YYYY-MM-dd"}}}))]
       (doseq [the-date (mapcat dates (range 2008 3008))]
         (is (= the-date (fmt the-date)))))))
+
+(deftest site-locale-used-for-formatting-test
+  (testing "Datetime formatting uses site-locale and does not modify JVM locale"
+    (let [original-jvm-locale (Locale/getDefault)
+          test-datetime       "2020-07-16T18:04:00Z[UTC]"
+          col                 {:effective_type :type/DateTime}]
+      (mt/with-temporary-setting-values [site-locale "de"]
+        (let [german-result (format-temporal-str "UTC" test-datetime col)]
+          (is (re-find #"Juli" german-result))
+          (is (= original-jvm-locale (Locale/getDefault)))))
+
+      (mt/with-temporary-setting-values [site-locale "fr"]
+        (let [french-result (format-temporal-str "UTC" test-datetime col)]
+          (is (re-find #"juillet" french-result))
+          (is (= original-jvm-locale (Locale/getDefault)))))
+
+      (is (= original-jvm-locale (Locale/getDefault))))))

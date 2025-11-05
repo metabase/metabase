@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.namespace.find :as ns.find]
-   [metabase.cmd.copy :as copy]
-   [metabase.plugins.classloader :as classloader]))
+   [metabase.classloader.core :as classloader]
+   [metabase.cmd.copy :as copy]))
 
 (deftest ^:parallel sql-for-selecting-instances-from-source-db-test
   (is (= "SELECT * FROM metabase_field ORDER BY id ASC"
@@ -29,18 +29,32 @@
     :model/CacheConfig
     :model/CardFavorite
     :model/CloudMigration
+    :model/ContentTranslation
     :model/DashboardFavorite
-    :model/FieldUsage
-    :model/LegacyMetric
-    :model/LegacyMetricImportantField
+    :model/DatabaseRouter
+    :model/Dependency
+    :model/PythonLibrary
     :model/Query
-    :model/QueryAnalysis
     :model/QueryCache
     :model/QueryExecution
     :model/QueryField
     :model/QueryTable
+    :model/RemoteSyncObject
+    :model/RemoteSyncTask
     :model/SearchIndexMetadata
-    :model/TaskHistory})
+    :model/SemanticSearchTokenTracking
+    :model/TaskHistory
+    ;; TODO we should remove these models from here once serialization is supported
+    :model/Transform
+    :model/TransformRun
+    :model/TransformRunCancelation
+    :model/TransformJob
+    :model/TransformJobRun
+    :model/TransformJobTransformTag
+    :model/TransformTag
+    :model/TransformTransformTag
+    :model/Undo
+    :model/UserKeyValue})
 
 (defn- all-model-names []
   (into (sorted-set)

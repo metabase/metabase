@@ -16,7 +16,7 @@ export function SliceNameWidget({
     return null;
   }
 
-  const row = pieRows.find(row => row.key === initialKey);
+  const row = pieRows.find((row) => row.key === initialKey);
   if (row == null) {
     return null;
   }
@@ -27,8 +27,10 @@ export function SliceNameWidget({
     <Box w="100%" pb="0.5rem">
       <SliceNameInput
         value={row.name}
-        subtitle={row.name !== row.originalName ? row.originalName : undefined}
-        onBlurChange={event => {
+        description={
+          row.name !== row.originalName ? row.originalName : undefined
+        }
+        onBlurChange={(event) => {
           const newName = event.target.value;
 
           if (newName !== row.name) {

@@ -1,8 +1,7 @@
 (ns metabase.events.recent-views-test
   (:require
    [clojure.test :refer :all]
-   [metabase.events :as events]
-   [metabase.models :refer [Card Dashboard Table]]
+   [metabase.events.core :as events]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -15,7 +14,7 @@
                  {:order-by [[:id :desc]]}))
 
 (deftest card-query-test
-  (mt/with-temp [Card card {:creator_id (mt/user->id :rasta)}]
+  (mt/with-temp [:model/Card card {:creator_id (mt/user->id :rasta)}]
     (mt/with-test-user :rasta
       (events/publish-event! :event/card-query {:card-id (:id card)
                                                 :user-id (mt/user->id :rasta)
@@ -26,14 +25,21 @@
              (most-recent-view (mt/user->id :rasta) (:id card) "card")))
 
       (testing "pinned cards should not be counted"
-        (mt/with-temp [Card card-2 {:creator_id (mt/user->id :rasta)}]
+        (mt/with-temp [:model/Card card-2 {:creator_id (mt/user->id :rasta)}]
           (events/publish-event! :event/card-query {:card-id (:id card-2)
                                                     :user-id (mt/user->id :rasta)
                                                     :context :collection})
+          (is (nil? (most-recent-view (mt/user->id :rasta) (:id card-2) "card")))))
+
+      (testing "dashboard subscriptions should not be counted"
+        (mt/with-temp [:model/Card card-2 {:creator_id (mt/user->id :rasta)}]
+          (events/publish-event! :event/card-query {:card-id (:id card-2)
+                                                    :user-id (mt/user->id :rasta)
+                                                    :context :dashboard-subscription})
           (is (nil? (most-recent-view (mt/user->id :rasta) (:id card-2) "card"))))))))
 
 (deftest table-read-test
-  (mt/with-temp [Table table {}]
+  (mt/with-temp [:model/Table table {}]
     (mt/with-test-user :rasta
       (events/publish-event! :event/table-read {:object table :user-id (mt/user->id :rasta)})
       (is (partial=
@@ -43,7 +49,7 @@
            (most-recent-view (mt/user->id :rasta) (:id table) "table"))))))
 
 (deftest dashboard-read-test
-  (mt/with-temp [Dashboard dashboard {:creator_id (mt/user->id :rasta)}]
+  (mt/with-temp [:model/Dashboard dashboard {:creator_id (mt/user->id :rasta)}]
     (mt/with-test-user :rasta
       (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (mt/user->id :rasta)})
       (is (partial
@@ -51,3 +57,23 @@
             :model    "dashboard"
             :model_id (:id dashboard)}
            (most-recent-view (mt/user->id :rasta) (:id dashboard) "dashboard"))))))
+
+(deftest legacy-card-read-test
+  (testing "card-read events with context :question should be recorded"
+    (mt/with-temp [:model/Card card {:creator_id (mt/user->id :rasta)}]
+      (mt/with-test-user :rasta
+        (events/publish-event! :event/card-read {:object-id (:id card)
+                                                 :user-id (mt/user->id :rasta)
+                                                 :context :question})
+        (is (= {:user_id (mt/user->id :rasta)
+                :model "card"
+                :model_id (:id card)}
+               (most-recent-view (mt/user->id :rasta) (:id card) "card"))))))
+
+  (testing "card-read events with other contexts should not be recorded"
+    (mt/with-temp [:model/Card card {:creator_id (mt/user->id :rasta)}]
+      (mt/with-test-user :rasta
+        (events/publish-event! :event/card-read {:object-id (:id card)
+                                                 :user-id (mt/user->id :rasta)
+                                                 :context :dashboard})
+        (is (nil? (most-recent-view (mt/user->id :rasta) (:id card) "card")))))))

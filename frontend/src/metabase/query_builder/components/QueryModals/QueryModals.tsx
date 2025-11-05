@@ -2,45 +2,46 @@ import { useCallback } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
+import { getDashboard } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import Modal from "metabase/components/Modal";
-import QuestionSavedModal from "metabase/components/QuestionSavedModal";
-import { AddToDashSelectDashModal } from "metabase/containers/AddToDashSelectDashModal";
-import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
+import Modal from "metabase/common/components/Modal";
+import QuestionSavedModal from "metabase/common/components/QuestionSavedModal";
+import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { CreateAlertModalContent } from "metabase/notifications/AlertModals";
-import type { UpdateQuestionOpts } from "metabase/query_builder/actions/core/updateQuestion";
+import { QuestionAlertListModal } from "metabase/notifications/modals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
-import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
+import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
+import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import { getQuestionWithParameters } from "metabase/query_builder/selectors";
-import { FilterModal } from "metabase/querying/filters/components/FilterModal";
+import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Alert, Card, User } from "metabase-types/api";
+import type { Card, DashboardTabId } from "metabase-types/api";
 import type { QueryBuilderMode } from "metabase-types/store";
 
+import { AddToDashSelectDashModal } from "../AddToDashSelectDashModal";
 import { MoveQuestionModal } from "../MoveQuestionModal";
 
+type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
+
 interface QueryModalsProps {
-  questionAlerts: Alert[];
-  user: User;
   modal: QueryModalType;
   modalContext: number;
   question: Question;
-  updateQuestion: (question: Question, config?: UpdateQuestionOpts) => void;
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
   originalQuestion: Question;
   card: Card;
-  onCreate: (question: Question) => Promise<Question>;
+  onCreate: (
+    question: Question,
+    options?: OnCreateOptions,
+  ) => Promise<Question>;
   onSave: (
     question: Question,
     config?: { rerunQuery: boolean },
@@ -51,11 +52,8 @@ interface QueryModalsProps {
 }
 
 export function QueryModals({
-  questionAlerts,
-  user,
   onSave,
   onCreate,
-  updateQuestion,
   modal,
   modalContext,
   card,
@@ -69,32 +67,7 @@ export function QueryModals({
   const dispatch = useDispatch();
 
   const initialCollectionId = useGetDefaultCollectionId();
-  const questionWithParameters = useSelector(getQuestionWithParameters);
-
-  const showAlertsAfterQuestionSaved = useCallback(() => {
-    const hasAlertsCreatedByCurrentUser = _.any(
-      questionAlerts,
-      alert => alert.creator.id === user.id,
-    );
-
-    if (hasAlertsCreatedByCurrentUser) {
-      // TODO Atte Keinänen 11/10/17: The question was replaced and there is already an alert created by current user.
-      // Should we show pop up the alerts list in this case or do nothing (as we do currently)?
-      onCloseModal();
-    } else {
-      // HACK: in a timeout because save modal closes itself
-      setTimeout(() => onOpenModal(MODAL_TYPES.CREATE_ALERT));
-    }
-  }, [onCloseModal, onOpenModal, questionAlerts, user.id]);
-
-  const onQueryChange = useCallback(
-    (query: Lib.Query) => {
-      const nextLegacyQuery = Lib.toLegacyQuery(query);
-      const nextQuestion = question.setDatasetQuery(nextLegacyQuery);
-      updateQuestion(nextQuestion, { run: true });
-    },
-    [question, updateQuestion],
-  );
+  const underlyingQuestion = useSelector(getQuestionWithoutComposing);
 
   const handleSaveAndClose = useCallback(
     async (question: Question) => {
@@ -105,32 +78,47 @@ export function QueryModals({
   );
 
   const handleCreateAndClose = useCallback(
-    async (question: Question) => {
-      const newQuestion = await onCreate(question);
+    async (question: Question, options?: OnCreateOptions) => {
+      const newQuestion = await onCreate(question, options);
       onCloseModal();
       return newQuestion;
     },
     [onCloseModal, onCreate],
   );
 
-  const nativeToDashboarQuestionDashboard = useCallback(
-    (question: Question) => {
+  const navigateToDashboardQuestionDashboard = useCallback(
+    async (question: Question, tabId?: DashboardTabId | undefined) => {
+      const cardId = question.id();
       const dashboardId = question.dashboardId();
-
       if (!dashboardId) {
         throw new Error("must provide a valid dashboard question");
       }
 
-      dispatch(
-        push(Urls.dashboard({ id: dashboardId, name: "" }, { editMode: true })),
+      const dashboard = await dispatch(
+        getDashboard.initiate({ id: dashboardId }),
+      )
+        .unwrap()
+        .catch(() => undefined); // we can fallback to navigation w/o this info
+      const dashcard = dashboard?.dashcards.find((c) => c.card_id === cardId);
+
+      if (!dashboard || !dashcard) {
+        console.warn(
+          "Could not fetch dashcard position on dashboard, falling back to navigation without auto-scrolling",
+        );
+      }
+
+      const url = Urls.dashboard(
+        { id: dashboardId, name: "", ...question.dashboard(), ...dashboard },
+        { editMode: true, scrollToDashcard: dashcard?.id, tabId },
       );
+      dispatch(push(url));
     },
     [dispatch],
   );
 
   const handleSaveModalCreate = useCallback(
-    async (question: Question) => {
-      const newQuestion = await onCreate(question);
+    async (question: Question, options?: OnCreateOptions) => {
+      const newQuestion = await onCreate(question, options);
       const type = question.type();
       const isDashboardQuestion = _.isNumber(question.dashboardId());
 
@@ -138,7 +126,10 @@ export function QueryModals({
         onCloseModal();
         setQueryBuilderMode("view");
       } else if (isDashboardQuestion) {
-        nativeToDashboarQuestionDashboard(newQuestion);
+        navigateToDashboardQuestionDashboard(
+          newQuestion,
+          options?.dashboardTabId,
+        );
       } else {
         onOpenModal(MODAL_TYPES.SAVED);
       }
@@ -150,21 +141,38 @@ export function QueryModals({
       onCreate,
       onOpenModal,
       setQueryBuilderMode,
-      nativeToDashboarQuestionDashboard,
+      navigateToDashboardQuestionDashboard,
     ],
   );
 
   const handleCopySaved = useCallback(
-    (newQuestion: Question) => {
+    (
+      newQuestion: Question,
+      options?: {
+        dashboardTabId?: DashboardTabId | undefined;
+      },
+    ) => {
       const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
+      const isModel = newQuestion.type() === "model";
 
       if (isDashboardQuestion) {
-        nativeToDashboarQuestionDashboard(newQuestion);
+        navigateToDashboardQuestionDashboard(
+          newQuestion,
+          options?.dashboardTabId,
+        );
+      } else if (isModel) {
+        onCloseModal();
+        setQueryBuilderMode("view");
       } else {
         onOpenModal(MODAL_TYPES.SAVED);
       }
     },
-    [onOpenModal, nativeToDashboarQuestionDashboard],
+    [
+      onOpenModal,
+      navigateToDashboardQuestionDashboard,
+      setQueryBuilderMode,
+      onCloseModal,
+    ],
   );
 
   switch (modal) {
@@ -197,12 +205,12 @@ export function QueryModals({
           question={question}
           originalQuestion={originalQuestion}
           initialCollectionId={initialCollectionId}
-          onSave={async question => {
+          onSave={async (question) => {
             await onSave(question);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
-          onCreate={async question => {
-            const newQuestion = await onCreate(question);
+          onCreate={async (question, options) => {
+            const newQuestion = await onCreate(question, options);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
             return newQuestion;
           }}
@@ -221,32 +229,7 @@ export function QueryModals({
       );
     case MODAL_TYPES.CREATE_ALERT:
       return (
-        <Modal medium onClose={onCloseModal}>
-          <CreateAlertModalContent
-            onCancel={onCloseModal}
-            onAlertCreated={onCloseModal}
-          />
-        </Modal>
-      );
-    case MODAL_TYPES.SAVE_QUESTION_BEFORE_ALERT:
-      return (
-        <SaveQuestionModal
-          question={question}
-          originalQuestion={originalQuestion}
-          onSave={async question => {
-            await onSave(question);
-            showAlertsAfterQuestionSaved();
-          }}
-          onCreate={async question => {
-            const newQuestion = await onCreate(question);
-            showAlertsAfterQuestionSaved();
-            return newQuestion;
-          }}
-          onClose={onCloseModal}
-          opened={true}
-          multiStep
-          initialCollectionId={initialCollectionId}
-        />
+        <QuestionAlertListModal question={question} onClose={onCloseModal} />
       );
     case MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED:
       return (
@@ -259,14 +242,6 @@ export function QueryModals({
           opened={true}
           multiStep
           initialCollectionId={initialCollectionId}
-        />
-      );
-    case MODAL_TYPES.FILTERS:
-      return (
-        <FilterModal
-          question={question}
-          onSubmit={onQueryChange}
-          onClose={onCloseModal}
         />
       );
     case MODAL_TYPES.MOVE:
@@ -288,18 +263,20 @@ export function QueryModals({
                 ? question.collectionId()
                 : initialCollectionId,
             }}
-            copy={async formValues => {
-              if (!questionWithParameters) {
+            copy={async (formValues) => {
+              if (!underlyingQuestion) {
                 return;
               }
 
-              const object = await onCreate(
-                questionWithParameters
-                  .setDisplayName(formValues.name)
-                  .setCollectionId(formValues.collection_id)
-                  .setDashboardId(formValues.dashboard_id)
-                  .setDescription(formValues.description || null),
-              );
+              const question = underlyingQuestion
+                .setDisplayName(formValues.name)
+                .setCollectionId(formValues.collection_id)
+                .setDashboardId(formValues.dashboard_id)
+                .setDescription(formValues.description || null);
+
+              const object = await onCreate(question, {
+                dashboardTabId: formValues.dashboard_tab_id,
+              });
 
               return object;
             }}
@@ -347,12 +324,10 @@ export function QueryModals({
         </Modal>
       );
     case MODAL_TYPES.PREVIEW_QUERY:
+      return <PreviewQueryModal onClose={onCloseModal} />;
+    case MODAL_TYPES.QUESTION_EMBED:
       return (
-        <Modal fit onClose={onCloseModal}>
-          <PreviewQueryModal onClose={onCloseModal} />
-        </Modal>
+        <QuestionEmbedWidget card={question._card} onClose={onCloseModal} />
       );
-    default:
-      return null;
   }
 }

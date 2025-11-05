@@ -31,7 +31,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
   if (aggregations.length === 1 && breakouts.length === 1) {
     const [{ column }] = getBreakoutsWithColumns(query, stageIndex, breakouts);
 
-    if (Lib.isState(column)) {
+    if (column != null && Lib.isState(column)) {
       return {
         display: "map",
         settings: {
@@ -41,7 +41,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       };
     }
 
-    if (Lib.isCountry(column)) {
+    if (column != null && Lib.isCountry(column)) {
       return {
         display: "map",
         settings: {
@@ -59,13 +59,11 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       breakouts,
     );
 
-    if (Lib.isTemporal(column)) {
-      const info = Lib.displayInfo(query, stageIndex, breakout);
-
-      if (info.isTemporalExtraction) {
-        return { display: "bar" };
-      }
-
+    const breakoutInfo = Lib.displayInfo(query, stageIndex, breakout);
+    if (breakoutInfo.isTemporalExtraction) {
+      return { display: "bar" };
+    }
+    if (column != null && Lib.isTemporal(column)) {
       return { display: "line" };
     }
 
@@ -76,7 +74,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       return { display: "bar" };
     }
 
-    if (Lib.isCategory(column)) {
+    if (column != null && (Lib.isBoolean(column) || Lib.isCategory(column))) {
       return { display: "bar" };
     }
   }
@@ -89,14 +87,14 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
     );
 
     const isAnyBreakoutTemporal = breakoutsWithColumns.some(({ column }) => {
-      return Lib.isTemporal(column);
+      return column != null && Lib.isTemporal(column);
     });
     if (isAnyBreakoutTemporal) {
       return { display: "line" };
     }
 
     const areBreakoutsCoordinates = breakoutsWithColumns.every(({ column }) => {
-      return Lib.isCoordinate(column);
+      return column != null && Lib.isCoordinate(column);
     });
     if (areBreakoutsCoordinates) {
       const binningOne = Lib.binning(breakouts[0]);
@@ -121,7 +119,9 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
     }
 
     const areBreakoutsCategories = breakoutsWithColumns.every(({ column }) => {
-      return Lib.isCategory(column);
+      return (
+        column != null && (Lib.isBoolean(column) || Lib.isCategory(column))
+      );
     });
     if (areBreakoutsCategories) {
       return { display: "bar" };
@@ -136,7 +136,7 @@ const getBreakoutsWithColumns = (
   stageIndex: number,
   breakouts: Lib.BreakoutClause[],
 ) => {
-  return breakouts.map(breakout => {
+  return breakouts.map((breakout) => {
     const column = Lib.breakoutColumn(query, stageIndex, breakout);
     return { breakout, column };
   });

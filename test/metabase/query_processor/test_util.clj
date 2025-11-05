@@ -11,19 +11,18 @@
    [clojure.test :refer :all]
    [mb.hawk.init]
    [medley.core :as m]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.test-util :as driver.tu]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test.data :as data]
    [metabase.test.data.env :as tx.env]
@@ -38,15 +37,10 @@
 
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
-;; Non-"normal" drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
-(def abnormal-drivers
-  "Drivers that are so weird that we can't run the normal driver tests against them."
-  #{:druid :druid-jdbc})
-
 (defn normal-drivers
   "Drivers that are reasonably normal in the sense that they can participate in the shared driver tests."
   []
-  (set/difference (tx.env/test-drivers) abnormal-drivers))
+  (set/difference (tx.env/test-drivers) data/timeseries-drivers))
 
 (defn normal-drivers-with-feature
   "Set of drivers that support a given `feature`. If additional features are given, it will ensure all features are
@@ -89,18 +83,19 @@
 
     (qp.test/col :venues :id)"
   [table-kw field-kw]
-  (merge
-   (col-defaults)
-   (if (qp.store/initialized?)
-     (-> (lib.metadata/field (qp.store/metadata-provider) (data/id table-kw field-kw))
-         (select-keys [:lib/type :id :table-id :semantic-type :base-type :effective-type :coercion-strategy :name :display-name :fingerprint])
-         #_{:clj-kondo/ignore [:deprecated-var]}
-         qp.store/->legacy-metadata
-         (dissoc :lib/type))
-     (t2/select-one [:model/Field :id :table_id :semantic_type :base_type :effective_type
-                     :coercion_strategy :name :display_name :fingerprint]
-                    :id (data/id table-kw field-kw)))
-   {:field_ref [:field (data/id table-kw field-kw) nil]}))
+  (->> (merge
+        (col-defaults)
+        (if (qp.store/initialized?)
+          (-> (lib.metadata/field (qp.store/metadata-provider) (data/id table-kw field-kw))
+              (select-keys [:lib/type :id :table-id :semantic-type :base-type :effective-type :coercion-strategy :name :display-name :fingerprint])
+              #_{:clj-kondo/ignore [:deprecated-var]}
+              qp.store/->legacy-metadata
+              (dissoc :lib/type))
+          (t2/select-one [:model/Field :id :table_id :semantic_type :base_type :effective_type
+                          :coercion_strategy :name :display_name :fingerprint]
+                         :id (data/id table-kw field-kw)))
+        {:field_ref [:field (data/id table-kw field-kw) nil]})
+       (m/filter-vals some?)))
 
 (defn- expected-column-names
   "Get a sequence of keyword names of Fields belonging to a Table in the order they'd normally appear in QP results."
@@ -130,7 +125,10 @@
 
 (defn- backfill-effective-type [{:keys [base_type effective_type] :as col}]
   (cond-> col
-    (and (nil? effective_type) base_type) (assoc :effective_type base_type)))
+    ;; If the :effective_type is missing, or the :base_type is more specific, copy it to the `:effective_type`.
+    ;; Some driver extensions set a specialized `:base_type` but not `:effective_type`.
+    (or (and (nil? effective_type) base_type)
+        (isa? base_type effective_type))      (assoc :effective_type base_type)))
 
 (defn aggregate-col
   "Return the column information we'd expect for an aggregate column. For all columns besides `:count`, you'll need to
@@ -184,11 +182,7 @@
     (-> dest-col
         (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
         (assoc :field_ref    [:field (:id dest-col) {:source-field (:id source-col)}]
-               :fk_field_id  (:id source-col)
-               :source_alias (let [table-name (if (qp.store/initialized?)
-                                                (:name (lib.metadata/table (qp.store/metadata-provider) (data/id dest-table-kw)))
-                                                (t2/select-one-fn :name :model/Table :id (data/id dest-table-kw)))]
-                               (#'qp.add-implicit-joins/join-alias table-name (:name source-col)))))))
+               :fk_field_id  (:id source-col)))))
 
 (declare cols)
 
@@ -257,6 +251,20 @@
   (if (float? x)
     (partial u/round-to-decimals (int x))
     x))
+
+(defn boolish->bool
+  "Convert something that looks like a reasonable DB bool to a bool.
+
+  Throw an exception if the input does not seem boolish. Valid inputs are #{0 1 true false}.
+
+  Can be used with [[format-rows-by]] to normalize DB-specific bools in results."
+  [x]
+  (cond
+    (boolean? x) x
+    (zero? x)    false
+    (= x 1)      true
+    (= x 1M)     true
+    :else        (throw (ex-info "value is not boolish" {:value x}))))
 
 (defn format-rows-by
   "Format the values in result `rows` with the fns at the corresponding indecies in `format-fns`. `rows` can be a
@@ -351,7 +359,7 @@
 (defn cols
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
   [results]
-  (or (some->> (data results) :cols (mapv #(into {} (dissoc % :position))))
+  (or (some->> (data results) :cols (mapv #(dissoc % :position)))
       (throw (ex-info "Query does not have any :cols in results." results))))
 
 (defn rows-and-cols
@@ -383,7 +391,16 @@
   (contains? #{:oracle :redshift} driver))
 
 (defn nest-query
-  "Nest an MBQL/native query by `n-levels`. Useful for testing how nested queries behave."
+  "Nest an MBQL/native query by `n-levels`. Useful for testing how nested queries behave.
+
+  DEPRECATED: prefer MBQL 5 queries and [[metabase.lib.core/append-stage]] going forward.
+
+  You can do
+
+    (nth (iterate lib/append-stage query) n-levels)
+
+  to nest it multiple times."
+  {:deprecated "0.57.0"}
   [outer-query n-levels]
   (if-not (pos? n-levels)
     outer-query
@@ -398,6 +415,7 @@
                    (assoc outer-query :query {:source-query (:query outer-query)}))]
       (recur nested (dec n-levels)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (deftest ^:parallel nest-query-test
   (testing "MBQL"
     (is (= {:database 1, :type :query, :query {:source-table 2}}
@@ -428,7 +446,7 @@
   "A mock metadata provider composed with the application database metadata provider that adds FK relationships
   for Tables that would normally have them in drivers that have formal FK constraints."
   ([]
-   (mock-fks-application-database-metadata-provider (lib.metadata.jvm/application-database-metadata-provider (data/id))))
+   (mock-fks-application-database-metadata-provider (lib-be/application-database-metadata-provider (data/id))))
 
   ([parent-metadata-provider]
    (lib.tu/merged-mock-metadata-provider
@@ -449,26 +467,85 @@
 (defn card-with-source-metadata-for-query
   "Given an MBQL `query`, return the relevant keys for creating a Card with that query and matching `:result_metadata`.
 
-    (t2.with-temp/with-temp [Card card (qp.test-util/card-with-source-metadata-for-query
+    (mt/with-temp [Card card (qp.test-util/card-with-source-metadata-for-query
                                         (data/mbql-query venues {:aggregation [[:count]]}))]
       ...)
 
   Prefer [[metadata-provider-with-card-with-metadata-for-query]] instead of using this going forward."
   [query]
-  {:dataset_query   query
-   :result_metadata (actual-query-results query)})
+  (let [entity-id (u/generate-nano-id)]
+    {:dataset_query   query
+     :entity_id       entity-id
+     :result_metadata (-> query
+                          actual-query-results)}))
+
+(defn card-with-metadata
+  "Given a (partial) Card, such as might be passed to `with-temp`, fill in its `:result_metadata` based on the query."
+  [{:keys [dataset_query] :as card}]
+  (let [entity-id (or (:entity_id card) (u/generate-nano-id))]
+    (assoc card
+           :entity_id       entity-id
+           :result_metadata (-> dataset_query
+                                actual-query-results))))
+
+(defn card-with-updated-metadata
+  "Like [[card-with-metadata]] but takes an extra argument: a function `(f column-metadata card) => column-metadata`.
+
+  Helper for the decently common case of a query with slightly tweaked metadata."
+  [card metadata-fn]
+  (let [card (card-with-metadata card)]
+    (update card :result_metadata (fn [metadata]
+                                    (mapv #(metadata-fn % card) metadata)))))
 
 (mu/defn metadata-provider-with-cards-for-queries :- ::lib.schema.metadata/metadata-provider
   "Create an MLv2 metadata provider (by default, based on the app DB metadata provider) that adds a Card for each query
   in `queries`. Cards do not include result metadata. Cards have IDs starting at `1` and increasing sequentially."
   ([queries]
    (metadata-provider-with-cards-for-queries
-    (lib.metadata.jvm/application-database-metadata-provider (data/id))
+    (lib-be/application-database-metadata-provider (data/id))
     queries))
 
   ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
     queries                  :- [:sequential {:min 1} :map]]
    (lib.tu/metadata-provider-with-cards-for-queries parent-metadata-provider queries)))
+
+(mu/defn metadata-provider-with-cards-with-transformed-metadata-for-queries :- ::lib.schema.metadata/metadata-provider
+  "Like [[metadata-provider-with-cards-for-queries]], but includes the results
+  of [[metabase.query-processor.preprocess/query->expected-cols]] as `:result-metadata` for each Card. The metadata
+  provider is built up progressively, meaning metadata for previous Cards is available when calculating metadata for
+  subsequent Cards.
+   `transforms` can be a map of `card-id` to a function that accepts `metadata-provider` and `result-metadata`"
+  ([queries :- [:sequential {:min 1} :map]
+    transforms]
+   (metadata-provider-with-cards-with-transformed-metadata-for-queries
+    (lib-be/application-database-metadata-provider (data/id))
+    queries
+    transforms))
+
+  ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
+    queries :- [:sequential {:min 1} :map]
+    transforms :- [:maybe :map]]
+   (transduce
+    (map-indexed (fn [i {database-id :database, :as query}]
+                   {:id            (inc i)
+                    :database-id   (or (when (pos-int? database-id)
+                                         database-id)
+                                       (u/the-id (lib.metadata/database parent-metadata-provider)))
+                    :name          (format "Card %d" (inc i))
+                    :entity-id     (u/generate-nano-id)
+                    :dataset-query query}))
+    (completing
+     (fn [metadata-provider {query :dataset-query, card-id :id :as card}]
+       (qp.store/with-metadata-provider metadata-provider
+         (let [result-metadata (if (= (:type query) :query)
+                                 (qp.preprocess/query->expected-cols query)
+                                 (actual-query-results query))
+               transform       (get transforms card-id)
+               card            (assoc card :result-metadata (cond->> result-metadata
+                                                              transform (transform metadata-provider)))]
+           (lib.tu/mock-metadata-provider metadata-provider {:cards [card]})))))
+    parent-metadata-provider
+    queries)))
 
 (mu/defn metadata-provider-with-cards-with-metadata-for-queries :- ::lib.schema.metadata/metadata-provider
   "Like [[metadata-provider-with-cards-for-queries]], but includes the results
@@ -477,36 +554,20 @@
   subsequent Cards."
   ([queries]
    (metadata-provider-with-cards-with-metadata-for-queries
-    (lib.metadata.jvm/application-database-metadata-provider (data/id))
+    (lib-be/application-database-metadata-provider (data/id))
     queries))
 
   ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
     queries                  :- [:sequential {:min 1} :map]]
-   (transduce
-    (map-indexed (fn [i {database-id :database, :as query}]
-                   {:id            (inc i)
-                    :database-id   (or (when (pos-int? database-id)
-                                         database-id)
-                                       (u/the-id (lib.metadata/database parent-metadata-provider)))
-                    :name          (format "Card %d" (inc i))
-                    :dataset-query query}))
-    (completing
-     (fn [metadata-provider {query :dataset-query, :as card}]
-       (qp.store/with-metadata-provider metadata-provider
-         (let [result-metadata (if (= (:type query) :query)
-                                 (qp.preprocess/query->expected-cols query)
-                                 (actual-query-results query))
-               card            (assoc card :result-metadata result-metadata)]
-           (lib.tu/mock-metadata-provider metadata-provider {:cards [card]})))))
-    parent-metadata-provider
-    queries)))
+   (metadata-provider-with-cards-with-transformed-metadata-for-queries parent-metadata-provider queries nil)))
 
 (deftest ^:parallel metadata-provider-with-cards-with-metadata-for-queries-test
   (let [provider (metadata-provider-with-cards-with-metadata-for-queries
                   [(data/mbql-query venues)])]
     (is (partial= {:id              1
                    :name            "Card 1"
-                   :dataset-query   {:type :query}
+                   :dataset-query   {:lib/type :mbql/query
+                                     :stages   [{:lib/type :mbql.stage/mbql}]}
                    :result-metadata [{:name "ID"}
                                      {:name "NAME"}
                                      {:name "CATEGORY_ID"}
@@ -520,7 +581,7 @@
                   [(data/native-query (qp.compile/compile (data/mbql-query venues)))])]
     (is (partial= {:id              1
                    :name            "Card 1"
-                   :dataset-query   {:type :native}
+                   :dataset-query   {:stages [{:lib/type :mbql.stage/native}]}
                    :result-metadata [{:name "ID"}
                                      {:name "NAME"}
                                      {:name "CATEGORY_ID"}
@@ -590,3 +651,12 @@
   "Override the determined results timezone ID and execute `body`. Intended primarily for REPL and test usage."
   [timezone-id & body]
   `(do-with-results-timezone-id ~timezone-id (fn [] ~@body)))
+
+(defn metadata->native-form
+  "Given metadata for an MBQL query, transform it into the metadata which would be expected for a native query that
+  selected the same columns.
+
+  If the optional `entity_id` is provided, it will be used for the `:ident`s. If missing, a placeholder ident will
+  be used instead, as is done for ad-hoc native queries."
+  [metadata]
+  (mapv #(dissoc % :id :source) metadata))

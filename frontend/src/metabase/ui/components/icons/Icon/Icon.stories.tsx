@@ -24,7 +24,7 @@ const argTypes = {
 const ListTemplate = () => {
   return (
     <Box>
-      {iconNames.map(icon => (
+      {iconNames.map((icon) => (
         <Box key={icon} display="inline-block" w="100px" m="20px" ta="center">
           <p>{icon}</p>
           <Icon name={icon} />
@@ -35,7 +35,7 @@ const ListTemplate = () => {
 };
 
 export default {
-  title: "Icons/Icon",
+  title: "Design System/Icons",
   component: Icon,
   args,
   argTypes,
@@ -45,4 +45,5 @@ export const Default = {};
 
 export const List = {
   render: ListTemplate,
+  parameters: { loki: { skip: true } },
 };

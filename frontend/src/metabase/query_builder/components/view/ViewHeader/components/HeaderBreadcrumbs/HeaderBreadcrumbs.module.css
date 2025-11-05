@@ -1,4 +1,6 @@
 .Container {
+  max-width: 100%;
+
   &.headVariant {
     .HeaderBadge {
       font-size: 1.25rem;
@@ -15,8 +17,11 @@
   user-select: none;
 }
 
-.HeaderBadge :global(.Icon) {
-  width: 1em;
-  height: 1em;
-  margin-right: 0.5em;
+.HeaderBadge {
+  /* specificity */
+  .HeaderBadgeIcon {
+    width: 1em;
+    height: 1em;
+    margin-right: 0.5em;
+  }
 }

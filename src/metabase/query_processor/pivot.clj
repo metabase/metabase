@@ -3,13 +3,12 @@
   warehouse and concatenates the result rows together, sort of like the way [[clojure.core/lazy-cat]] works. This is
   dumb, right? It's not just me? Why don't we just generate a big ol' UNION query so we can run one single query
   instead of running like 10 separate queries? -- Cam"
+  (:refer-clojure :exclude [every? mapv some select-keys update-keys empty? not-empty])
   (:require
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -18,26 +17,28 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
+   [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf :refer [mapv some every? select-keys update-keys empty? not-empty]]))
 
 (set! *warn-on-reflection* true)
 
 (defn- powerset
   "Generate a powerset while maintaining the original ordering as much as possible"
   [xs]
-  (for [combo (reverse (range (int (Math/pow 2 (count xs)))))]
+  (for [combo (reverse (range (long (Math/pow 2 (count xs)))))]
     (for [item  (range 0 (count xs))
           :when (not (zero? (bit-and (bit-shift-left 1 item) combo)))]
       (nth xs item))))
@@ -53,9 +54,11 @@
 
 (mr/def ::pivot-opts [:maybe
                       [:map
-                       [:pivot-rows     {:optional true} [:maybe ::pivot-rows]]
-                       [:pivot-cols     {:optional true} [:maybe ::pivot-cols]]
-                       [:pivot-measures {:optional true} [:maybe ::pivot-measures]]]])
+                       [:pivot-rows         {:optional true} [:maybe ::pivot-rows]]
+                       [:pivot-cols         {:optional true} [:maybe ::pivot-cols]]
+                       [:pivot-measures     {:optional true} [:maybe ::pivot-measures]]
+                       [:show-row-totals    {:optional true} [:maybe :boolean]]
+                       [:show-column-totals {:optional true} [:maybe :boolean]]]])
 
 (mu/defn- group-bitmask :- ::bitmask
   "Come up with a display name given a combination of breakout `indexes` e.g.
@@ -71,7 +74,7 @@
   (transduce
    (map (partial bit-shift-left 1))
    (completing bit-xor)
-   (int (dec (Math/pow 2 num-breakouts)))
+   (long (dec (Math/pow 2 num-breakouts)))
    indexes))
 
 (mr/def ::breakout-combination
@@ -89,55 +92,64 @@
   "Return a sequence of all breakout combinations (by index) we should generate queries for.
 
     (breakout-combinations 3 [1 2] nil) ;; -> [[0 1 2] [] [1 2] [2] [1]]"
-  [num-breakouts :- ::num-breakouts
-   pivot-rows    :- [:maybe ::pivot-rows]
-   pivot-cols    :- [:maybe ::pivot-cols]]
-  ;; validate pivot-rows/pivot-cols
-  (doseq [[k pivots] [[:pivot-rows pivot-rows]
-                      [:pivot-cols pivot-cols]]
-          i          pivots]
-    (when (>= i num-breakouts)
-      (throw (ex-info (tru "Invalid {0}: specified breakout at index {1}, but we only have {2} breakouts"
-                           (name k) i num-breakouts)
-                      {:type          qp.error-type/invalid-query
-                       :num-breakouts num-breakouts
-                       :pivot-rows    pivot-rows
-                       :pivot-cols    pivot-cols}))))
-  (sort-by
-   (partial group-bitmask num-breakouts)
-   (m/distinct-by
-    (partial group-bitmask num-breakouts)
-    (map
-     (comp vec sort)
-     ;; this can happen for the public/embed endpoints, where we aren't given a pivot-rows / pivot-cols parameter, so
-     ;; we'll just generate everything
-     (if (empty? (concat pivot-rows pivot-cols))
-       (powerset (range 0 num-breakouts))
-       (concat
-        ;; e.g. given num-breakouts = 4; pivot-rows = [0 1 2]; pivot-cols = [3]
-        ;; primary data: return all breakouts
-        ;; => [0 1 2 3] => 0000 => Group #15
-        [(range num-breakouts)]
-        ;; subtotal rows
-        ;; _.range(1, pivotRows.length).map(i => [...pivotRow.slice(0, i), ...pivotCols])
-        ;;  => [0 _ _ 3] [0 1 _ 3] => 0110 0100 => Group #6, #4
-        (for [i (range 1 (count pivot-rows))]
-          (concat (take i pivot-rows) pivot-cols))
-        ;; “row totals” on the right
-        ;; pivotRows
-        ;; => [0 1 2 _] => 1000 => Group #8
-        [pivot-rows]
-        ;; subtotal rows within “row totals”
-        ;; _.range(1, pivotRows.length).map(i => pivotRow.slice(0, i))
-        ;; => [0 _ _ _] [0 1 _ _] => 1110 1100 => Group #14, #12
-        (for [i (range 1 (count pivot-rows))]
-          (take i pivot-rows))
-        ;; “grand totals” row
-        ;; pivotCols
-        ;; => [_ _ _ 3] => 0111 => Group #7
-        [pivot-cols]
-        ;; bottom right corner [_ _ _ _] => 1111 => Group #15
-        [[]]))))))
+  [num-breakouts      :- ::num-breakouts
+   pivot-rows         :- [:maybe ::pivot-rows]
+   pivot-cols         :- [:maybe ::pivot-cols]
+   show-row-totals    :- [:maybe :boolean]
+   show-column-totals :- [:maybe :boolean]]
+  (let [row-totals (if (nil? show-row-totals)    true show-row-totals)
+        col-totals (if (nil? show-column-totals) true show-column-totals)]
+    ;; validate pivot-rows/pivot-cols
+    (doseq [[k pivots] [[:pivot-rows pivot-rows]
+                        [:pivot-cols pivot-cols]]
+            i          pivots]
+      (when (>= i num-breakouts)
+        (throw (ex-info (tru "Invalid {0}: specified breakout at index {1}, but we only have {2} breakouts"
+                             (name k) i num-breakouts)
+                        {:type          qp.error-type/invalid-query
+                         :num-breakouts num-breakouts
+                         :pivot-rows    pivot-rows
+                         :pivot-cols    pivot-cols}))))
+    (sort-by
+     (partial group-bitmask num-breakouts)
+     (m/distinct-by
+      (partial group-bitmask num-breakouts)
+      (map
+       (comp vec sort)
+       ;; this can happen for the public/embed endpoints, where we aren't given a pivot-rows / pivot-cols parameter, so
+       ;; we'll just generate everything
+       (if (empty? (concat pivot-rows pivot-cols))
+         (powerset (range 0 num-breakouts))
+         (concat
+          ;; e.g. given num-breakouts = 4; pivot-rows = [0 1 2]; pivot-cols = [3]
+          ;; primary data: return all breakouts
+          ;; => [0 1 2 3] => 0000 => Group #15
+          [(range num-breakouts)]
+          ;; subtotal rows
+          ;; _.range(1, pivotRows.length).map(i => [...pivotRow.slice(0, i), ...pivotCols])
+          ;;  => [0 _ _ 3] [0 1 _ 3] => 0110 0100 => Group #6, #4
+          (when col-totals
+            (for [i (range 1 (count pivot-rows))]
+              (concat (take i pivot-rows) pivot-cols)))
+          ;; "row totals" on the right
+          ;; pivotRows
+          ;; => [0 1 2 _] => 1000 => Group #8
+          (when row-totals
+            [pivot-rows])
+          ;; subtotal rows within "row totals"
+          ;; _.range(1, pivotRows.length).map(i => pivotRow.slice(0, i))
+          ;; => [0 _ _ _] [0 1 _ _] => 1110 1100 => Group #14, #12
+          (when (and row-totals col-totals)
+            (for [i (range 1 (count pivot-rows))]
+              (take i pivot-rows)))
+          ;; "grand totals" row
+          ;; pivotCols
+          ;; => [_ _ _ 3] => 0111 => Group #7
+          (when col-totals
+            [pivot-cols])
+          ;; bottom right corner [_ _ _ _] => 1111 => Group #15
+          (when (and row-totals col-totals)
+            [[]]))))))))
 
 (mu/defn- keep-breakouts-at-indexes :- ::lib.schema/query
   "Keep the breakouts at indexes, reordering them if needed. Remove all other breakouts."
@@ -181,19 +193,25 @@
 
 (mu/defn- generate-queries :- [:sequential ::lib.schema/query]
   "Generate the additional queries to perform a generic pivot table"
-  [query                                               :- ::lib.schema/query
-   {:keys [pivot-rows pivot-cols], :as _pivot-options} :- ::pivot-opts]
+  [query :- ::lib.schema/query
+   {:keys [pivot-rows pivot-cols show-row-totals show-column-totals] :as _pivot-options} :- ::pivot-opts]
   (try
     (let [all-breakouts (lib/breakouts query)
-          all-queries   (for [breakout-indexes (u/prog1 (breakout-combinations (count all-breakouts) pivot-rows pivot-cols)
+          all-queries   (for [breakout-indexes (u/prog1 (breakout-combinations (count all-breakouts)
+                                                                               pivot-rows
+                                                                               pivot-cols
+                                                                               show-row-totals
+                                                                               show-column-totals)
                                                  (log/tracef "Using breakout combinations: %s" (pr-str <>)))
                               :let             [group-bitmask (group-bitmask (count all-breakouts) breakout-indexes)]]
                           (-> query
                               remove-non-aggregation-order-bys
                               (keep-breakouts-at-indexes breakout-indexes)
                               (add-pivot-group-breakout group-bitmask)))]
-      (conj (rest all-queries)
-            (assoc-in (first all-queries) [:info :pivot/original-query] query)))
+      (conj (rest (map #(assoc-in % [:info :pivot/result-metadata] :none) all-queries))
+            (->
+             (assoc-in (first all-queries) [:info :pivot/original-query] query)
+             (assoc-in [:info :pivot/result-metadata] (qp.metadata/result-metadata query)))))
     (catch Throwable e
       (throw (ex-info (tru "Error generating pivot queries")
                       {:type qp.error-type/qp, :query query}
@@ -227,7 +245,7 @@
   [pivot-column-mapping :- ::pivot-column-mapping]
   ;; the first query doesn't need any special mapping, it already has all the columns
   (if pivot-column-mapping
-    (apply juxt (for [mapping pivot-column-mapping]
+    (perf/juxt* (for [mapping pivot-column-mapping]
                   (if mapping
                     #(nth % mapping)
                     (constantly nil))))
@@ -260,7 +278,7 @@
 (mu/defn- process-queries-append-results
   "Reduce the results of a sequence of `queries` using `rf` and initial value `init`."
   [init
-   queries           :- [:sequential ::lib.schema/query]
+   queries           :- [:maybe [:sequential ::lib.schema/query]]
    rf                :- ::qp.schema/rf
    info              :- [:maybe ::lib.schema.info/info]
    column-mapping-fn :- ::column-mapping-fn]
@@ -342,12 +360,18 @@
   [[{:keys [info], :as first-query} & more-queries] :- [:sequential ::lib.schema/query]
    rff                                              :- ::qp.schema/rff
    column-mapping-fn                                :- ::column-mapping-fn]
-  (let [{:keys [rff execute reduce]} (append-queries-rff-and-fns info rff more-queries column-mapping-fn)
-        first-query                  (cond-> first-query
-                                       (seq info) qp/userland-query-with-default-constraints)]
-    (binding [qp.pipeline/*execute* (or execute qp.pipeline/*execute*)
-              qp.pipeline/*reduce*  (or reduce qp.pipeline/*reduce*)]
-      (qp/process-query first-query rff))))
+  (if (empty? more-queries)
+    ;; Single query - use normal QP pipeline to preserve userland metadata
+    (qp/process-query (cond-> first-query
+                        (seq info) qp/userland-query)
+                      rff)
+    ;; Multiple queries - use custom pivot pipeline
+    (let [{:keys [rff execute reduce]} (append-queries-rff-and-fns info rff more-queries column-mapping-fn)
+          first-query                  (cond-> first-query
+                                         (seq info) qp/userland-query)]
+      (binding [qp.pipeline/*execute* (or execute qp.pipeline/*execute*)
+                qp.pipeline/*reduce*  (or reduce qp.pipeline/*reduce*)]
+        (qp/process-query first-query rff)))))
 
 (mu/defn- column-name-pivot-options :- ::pivot-opts
   "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
@@ -356,24 +380,28 @@
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
   (let [{:keys [rows columns values]} (:pivot_table.column_split viz-settings)
+        show-row-totals    (get viz-settings :pivot.show_row_totals true)
+        show-column-totals (get viz-settings :pivot.show_column_totals true)
         metadata-provider  (or (:lib/metadata query)
-                               (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+                               (lib-be/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
-        returned-columns   (lib/returned-columns query)
-        {:source/keys [aggregations breakouts]} (group-by :lib/source returned-columns)
-        column-alias->index (into {}
-                                  (map-indexed (fn [i column] [(:lib/desired-column-alias column) i]))
-                                  (concat breakouts aggregations))
+        unique-name-fn     (lib/unique-name-generator)
+        returned-columns   (->> (lib/returned-columns query)
+                                (mapv #(update % :name unique-name-fn)))
+        aggregations       (filter #(= (:lib/source %) :source/aggregations)
+                                   returned-columns)
+        breakouts          (filter :lib/breakout? returned-columns)
         column-name->index (into {}
-                                 (map-indexed (fn [i column] [(:name column) i]))
+                                 (map-indexed (fn [i column] [(:lib/deduplicated-name column) i]))
                                  (concat breakouts aggregations))
         process-columns    (fn process-columns [column-names]
                              (when (seq column-names)
-                               (into [] (keep (fn [n] (or (column-alias->index n)
-                                                          (column-name->index n)))) column-names)))
-        pivot-opts         {:pivot-rows     (process-columns rows)
-                            :pivot-cols     (process-columns columns)
-                            :pivot-measures (process-columns values)}]
+                               (into [] (keep column-name->index) column-names)))
+        pivot-opts         {:pivot-rows         (process-columns rows)
+                            :pivot-cols         (process-columns columns)
+                            :pivot-measures     (process-columns values)
+                            :show-row-totals    show-row-totals
+                            :show-column-totals show-column-totals}]
     (when (some some? (vals pivot-opts))
       pivot-opts)))
 
@@ -384,10 +412,10 @@
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
   (let [metadata-provider  (or (:lib/metadata query)
-                               (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+                               (lib-be/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
         index-in-breakouts (into {}
-                                 (comp (filter (comp #{:source/breakouts :source/aggregations} :lib/source))
+                                 (comp (filter (some-fn :lib/breakout? #(= (:lib/source %) :source/aggregations)))
                                        (map-indexed (fn [i column] [(:name column) i])))
                                  (lib/returned-columns query))]
     (-> (or (:column_settings viz-settings)
@@ -405,8 +433,10 @@
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
   (let [{:keys [rows columns values]} (:pivot_table.column_split viz-settings)
+        show-row-totals    (get viz-settings "pivot.show_row_totals" true)
+        show-column-totals (get viz-settings "pivot.show_column_totals" true)
         metadata-provider             (or (:lib/metadata query)
-                                          (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+                                          (lib-be/application-database-metadata-provider (:database query)))
         mlv2-query                    (lib/query metadata-provider query)
         breakouts                     (into []
                                             (map-indexed (fn [i col]
@@ -432,9 +462,11 @@
         process-refs                  (fn process-refs [refs]
                                         (when (seq refs)
                                           (into [] (keep index-in-breakouts) refs)))
-        pivot-opts                    {:pivot-rows     (process-refs rows)
-                                       :pivot-cols     (process-refs columns)
-                                       :pivot-measures (process-refs values)}]
+        pivot-opts                    {:pivot-rows         (process-refs rows)
+                                       :pivot-cols         (process-refs columns)
+                                       :pivot-measures     (process-refs values)
+                                       :show-row-totals    show-row-totals
+                                       :show-column-totals show-column-totals}]
     (when (some some? (vals pivot-opts))
       pivot-opts)))
 
@@ -507,8 +539,8 @@
   (when (and (vector? breakout)
              (= (first breakout) :field))
     (not-empty (select-keys (second breakout)
-                            [::qp.add-dimension-projections/original-field-dimension-id
-                             ::qp.add-dimension-projections/new-field-dimension-id]))))
+                            [::qp.add-remaps/original-field-dimension-id
+                             ::qp.add-remaps/new-field-dimension-id]))))
 
 (defn- remapped-indexes
   [breakouts]
@@ -522,8 +554,8 @@
                              [{} 0]
                              breakouts))]
     (into {}
-          (map (juxt ::qp.add-dimension-projections/original-field-dimension-id
-                     ::qp.add-dimension-projections/new-field-dimension-id))
+          (map (juxt ::qp.add-remaps/original-field-dimension-id
+                     ::qp.add-remaps/new-field-dimension-id))
           (vals remap-pairs))))
 
 (mu/defn- splice-in-remap :- ::breakout-combination
@@ -571,16 +603,12 @@
   Some pivot subqueries exclude certain breakouts, so we need to fill in those missing columns with `nil` in the overall
   results -- "
   [query :- ::lib.schema/query]
-  (let [remapped-query          (->> query
-                                     lib.convert/->legacy-MBQL
-                                     qp.add-dimension-projections/add-remapped-columns
-                                     (lib.query/query (qp.store/metadata-provider)))
+  (let [remapped-query          (qp.add-remaps/add-remapped-columns query)
         remap                   (remapped-indexes (lib/breakouts remapped-query))
         canonical-query         (add-pivot-group-breakout remapped-query 0) ; a query that returns ALL the result columns.
         canonical-cols          (lib/returned-columns canonical-query)
         num-canonical-cols      (count canonical-cols)
-        num-canonical-breakouts (count (filter #(= (:lib/source %) :source/breakouts)
-                                               canonical-cols))]
+        num-canonical-breakouts (count (filter :lib/breakout? canonical-cols))]
     (fn column-mapping-fn* [subquery]
       (let [breakout-combination (:qp.pivot/breakout-combination subquery)
             full-breakout-combination (splice-in-remap breakout-combination remap)]
@@ -592,7 +620,7 @@
   ([query]
    (run-pivot-query query nil))
 
-  ([query :- ::qp.schema/query
+  ([query :- ::qp.schema/any-query
     rff   :- [:maybe ::qp.schema/rff]]
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
@@ -602,8 +630,9 @@
              pivot-opts        (or
                                 (pivot-options query (get query :viz-settings))
                                 (pivot-options query (get-in query [:info :visualization-settings]))
-                                (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures])))
-             query             (assoc-in query [:middleware :pivot-options] pivot-opts)
+                                (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
+             query             (-> query
+                                   (assoc-in [:middleware :pivot-options] pivot-opts))
              all-queries       (generate-queries query pivot-opts)
              column-mapping-fn (make-column-mapping-fn query)]
          (process-multiple-queries all-queries rff column-mapping-fn))))))

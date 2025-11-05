@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Switch } from "metabase/ui";
 
 import {
@@ -34,7 +34,7 @@ export const ImageToggle = ({
           id={toggleId}
           aria-checked={value}
           checked={value}
-          onChange={e => onChange(e.target.checked)}
+          onChange={(e) => onChange(e.target.checked)}
         />
       </ToggleContainer>
     </ToggleRoot>

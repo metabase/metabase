@@ -28,6 +28,9 @@
   color: var(--mb-color-text-white);
   border-radius: 0.3em;
   padding: 0.2em;
+  margin-right: 8px;
+  transition: all 0.25s;
+  flex-shrink: 0;
 
   &.isSelected {
     background-color: var(--mb-color-bg-white);
@@ -41,18 +44,6 @@
   flex-direction: column;
   flex-basis: 0;
   position: relative;
-}
-
-.TabHintToastContainer {
-  position: fixed;
-  bottom: 16px;
-  left: 24px;
-  transform: translateY(200%);
-  transition: all 0.4s;
-
-  &.isVisible {
-    transform: translateY(0);
-  }
 }
 
 .Root {
@@ -74,7 +65,7 @@
   flex-direction: row;
   align-items: center;
   min-width: 35px;
-  margin: 24px 0.75em;
+  height: 26px;
   padding: 3px 0.5rem;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -92,16 +83,11 @@
     background-color: var(--mb-color-brand);
   }
 
-  :global(.Icon) {
-    margin-right: 8px;
-    transition: all 0.25s;
-  }
-
   &:hover {
     color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
 
-    :global(.Icon) {
+    .FieldTypeIcon {
       background-color: var(--mb-color-bg-white);
       color: var(--mb-color-brand);
     }

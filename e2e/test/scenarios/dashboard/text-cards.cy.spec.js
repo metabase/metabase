@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { createMockParameter } from "metabase-types/api/mocks";
@@ -28,7 +28,7 @@ describe("scenarios > dashboard > text and headings", () => {
       cy.findByLabelText("Add a heading or text box").click();
       H.popover().findByText("Text").click();
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "new_text_card_created",
       });
 
@@ -85,6 +85,13 @@ describe("scenarios > dashboard > text and headings", () => {
           cy.findByLabelText("Show visualization options").click();
         });
 
+      // should not render visualizer option
+      H.getDashboardCard(1)
+        .realHover()
+        .within(() => {
+          cy.findByLabelText("Visualize another way").should("not.exist");
+        });
+
       cy.findByRole("dialog").within(() => {
         cy.findByTestId("chartsettings-sidebar").within(() => {
           cy.findByText("Vertical Alignment").should("be.visible");
@@ -115,7 +122,7 @@ describe("scenarios > dashboard > text and headings", () => {
         { delay: 0.5 },
       );
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "new_text_card_created",
       });
 
@@ -160,19 +167,19 @@ describe("scenarios > dashboard > text and headings", () => {
       cy.findByLabelText("Add a heading or text box").click();
       H.popover().findByText("Heading").click();
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "new_heading_card_created",
       });
 
       H.getDashboardCard(1).within(() => {
-        // heading input should
-        //   1. be auto-focused on creation
-        //   2. have no value
-        //   3. have placeholder "Heading"
         cy.get("input")
           .should("have.focus")
           .should("have.value", "")
-          .should("have.attr", "placeholder", "Heading");
+          .should(
+            "have.attr",
+            "placeholder",
+            "You can connect widgets to {{variables}} in heading cards.",
+          );
       });
 
       // should auto-preview on blur (de-focus)
@@ -183,8 +190,11 @@ describe("scenarios > dashboard > text and headings", () => {
         // preview mode should have no input
         cy.get("input").should("not.exist");
 
-        // if no content has been entered, preview should have placeholder "Heading"
-        cy.get("h2").findByText("Heading").should("be.visible");
+        cy.get("h2")
+          .findByText(
+            "You can connect widgets to {{variables}} in heading cards.",
+          )
+          .should("be.visible");
       });
 
       // should focus input editor on click
@@ -236,7 +246,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+    H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       H.visitDashboard(DASHBOARD_ID);
     });
   });
@@ -262,7 +272,9 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     H.saveDashboard();
 
     H.filterWidget().click();
-    H.popover().within(() => H.multiAutocompleteInput().type("1"));
+    H.dashboardParametersPopover().within(() =>
+      H.fieldValuesCombobox().type("1"),
+    );
     cy.button("Add filter").click();
     H.getDashboardCard(0).findByText("Variable: 1").should("exist");
     H.getDashboardCard(1).findByText("Variable: 1").should("exist");
@@ -270,8 +282,8 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     cy.findByTestId("dashboard-parameters-widget-container")
       .findByText("1")
       .click();
-    H.popover().within(() => {
-      H.multiAutocompleteInput().type("2");
+    H.dashboardParametersPopover().within(() => {
+      H.fieldValuesCombobox().type("2");
       cy.button("Update filter").click();
     });
     H.getDashboardCard(0).findByText("Variable: 1 and 2").should("exist");
@@ -366,7 +378,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     H.updateSetting("site-locale", "fr");
 
     // Create dashboard with a single date parameter, and a single question
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: { query: { "source-table": PRODUCTS_ID } },
     }).then(({ body: card }) => {
       const { dashboard_id } = card;
@@ -385,7 +397,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
         size_x: 11,
         size_y: 6,
       };
-      cy.editDashboardCard(card, updatedSize);
+      H.editDashboardCard(card, updatedSize);
       H.visitDashboard(dashboard_id);
 
       H.editDashboard();

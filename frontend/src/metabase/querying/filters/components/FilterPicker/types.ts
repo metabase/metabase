@@ -1,29 +1,42 @@
+import type { DefinedClauseName } from "metabase/querying/expressions";
 import type * as Lib from "metabase-lib";
 
-export interface FilterPickerWidgetProps {
+export type FilterPickerWidgetProps = {
+  autoFocus: boolean;
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  filter?: Lib.FilterClause;
+  filter?: Lib.Filterable;
   isNew: boolean;
-  onChange: (filter: Lib.ExpressionClause) => void;
+  withAddButton: boolean;
+  withSubmitButton: boolean;
+  onChange: (filter: Lib.ExpressionClause, opts: FilterChangeOpts) => void;
   onBack?: () => void;
-}
+  readOnly?: boolean;
+};
 
-export interface PickerOperatorOption<Operator> {
-  operator: Operator;
+export type FilterChangeOpts = {
+  run?: boolean;
+};
 
-  // An operator's longDisplayName is going to be used by default,
-  // but widgets can overwrite it with a custom name.
-  name?: string;
-}
-
-export type ColumnListItem = Lib.ColumnDisplayInfo & {
+export type ColumnListItem = {
+  name: string;
+  displayName: string;
   column: Lib.ColumnMetadata;
-  query: Lib.Query;
   stageIndex: number;
+  filterPositions?: number[];
+  combinedDisplayName: string;
 };
 
 export type SegmentListItem = Lib.SegmentDisplayInfo & {
+  name: string;
+  displayName: string;
   segment: Lib.SegmentMetadata;
+  stageIndex: number;
+};
+
+export type ExpressionClauseItem = {
+  type: "expression-clause";
+  clause: DefinedClauseName;
+  displayName: string;
 };

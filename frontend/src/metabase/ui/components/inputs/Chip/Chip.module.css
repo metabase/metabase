@@ -1,0 +1,22 @@
+.ChipLabel {
+  background-color: var(--mb-color-brand-light);
+  color: var(--mb-color-brand);
+  padding: 0.5rem 1rem;
+  display: block;
+  height: auto;
+  line-height: 100%;
+
+  &[data-checked="true"] {
+    padding-inline: 1rem;
+    background-color: var(--mb-color-brand);
+    color: var(--mb-color-text-white);
+  }
+}
+
+.ChipIconWrapper {
+  display: none;
+}
+
+.ChipInput {
+  display: block;
+}

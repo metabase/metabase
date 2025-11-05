@@ -23,7 +23,7 @@ import { GTAPApi } from "metabase/services";
 import { getPolicyKey, getPolicyKeyFromParams } from "./utils";
 
 export const FETCH_POLICY = "metabase-enterprise/sandboxes/FETCH_POLICY";
-export const fetchPolicy = withRequestState(params => [
+export const fetchPolicy = withRequestState((params) => [
   "plugins",
   "sandboxesPlugin",
   "policies",
@@ -42,7 +42,7 @@ export const UPDATE_TABLE_SANDBOXING_PERMISSION =
   "metabase-enterprise/sandboxes/UPDATE_TABLE_SANDBOXING_PERMISSION";
 export const updateTableSandboxingPermission = createThunkAction(
   UPDATE_TABLE_SANDBOXING_PERMISSION,
-  params => async dispatch => {
+  (params) => async (dispatch) => {
     const { groupId, ...entityId } = params;
     return dispatch(
       updateDataPermission({
@@ -111,12 +111,12 @@ const groupTableAccessPolicies = handleActions(
           const tables = database?.tables ?? [];
           // filter tables if there's a schema referenced in the entity id
           const entityTables = tables.filter(
-            table =>
+            (table) =>
               !entityId.schemaName || table.schema_name === entityId.schemaName,
           );
 
           // delete 0 to N sandboxes present in the state
-          const policyKeys = entityTables.map(table =>
+          const policyKeys = entityTables.map((table) =>
             getPolicyKeyFromParams({ groupId, tableId: table.id }),
           );
           return _.omit(state, policyKeys);

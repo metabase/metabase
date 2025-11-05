@@ -4,14 +4,13 @@
   (:require
    [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
-   [metabase.analyze :as analyze]
-   [metabase.db.metadata-queries :as metadata-queries]
-   [metabase.db.query :as mdb.query]
+   [metabase.analyze.core :as analyze]
+   [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models.field :as field :refer [Field]]
-   [metabase.models.table :as table]
-   [metabase.query-processor.store :as qp.store]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
+   ;; legacy usage -- don't do things like this going forward
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -19,11 +18,10 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.table :as table]
    [redux.core :as redux]
    [toucan2.core :as t2]))
-
-(comment
-  metadata-queries/keep-me-for-default-table-row-sample)
 
 (defn incomplete-analysis-kvs
   "Key-value pairs corresponding to the state of Fields that have the latest fingerprint, but have not yet
@@ -37,9 +35,9 @@
 
 (mu/defn- save-fingerprint!
   [field       :- i/FieldInstance
-   fingerprint :- [:maybe analyze/Fingerprint]]
+   fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
-  (t2/update! Field (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
+  (t2/update! :model/Field (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
 
 (mr/def ::FingerprintStats
   [:map
@@ -62,7 +60,7 @@
   issues when syncing."
   1234)
 
-(mu/defn- fingerprint-table!
+(mu/defn- fingerprint-fields!
   [table  :- i/TableInstance
    fields :- [:maybe [:sequential i/FieldInstance]]]
   (let [rff (fn [_metadata]
@@ -161,10 +159,10 @@
   [:and
    [:= :active true]
    [:or
-    [:not (mdb.query/isa :semantic_type :type/PK)]
+    [:not (app-db/isa :semantic_type :type/PK)]
     [:= :semantic_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
-   [:not-in :base_type (conj (mdb.query/type-keyword->descendants :type/fingerprint-unsupported)
+   [:not-in :base_type (conj (app-db/type-keyword->descendants :type/fingerprint-unsupported)
                              (u/qualified-name :type/*))]])
 
 (def ^:dynamic *refingerprint?*
@@ -191,21 +189,20 @@
   "Return a sequences of Fields belonging to `table` for which we should generate (and save) fingerprints.
    This should include NEW fields that are active and visible."
   [table :- i/TableInstance]
-  (seq (t2/select Field
+  (seq (t2/select :model/Field
                   (honeysql-for-fields-that-need-fingerprint-updating table))))
 
-;; TODO - `fingerprint-fields!` and `fingerprint-table!` should probably have their names switched
-(mu/defn fingerprint-fields!
+(mu/defn fingerprint-table!
   "Generate and save fingerprints for all the Fields in `table` that have not been previously analyzed."
   [table :- i/TableInstance]
   (if-let [fields (fields-to-fingerprint table)]
     (do
       (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
-      (let [stats (sync-util/with-error-handling
-                   (format "Error fingerprinting %s" (sync-util/name-for-logging table))
-                    (fingerprint-table! table fields))]
-        (if (instance? Exception stats)
-          (empty-stats-map 0)
+      (let [stats
+            (sync-util/with-returning-throwable (format "Error fingerprinting %s" (sync-util/name-for-logging table))
+              (fingerprint-fields! table fields))]
+        (if (:throwable stats)
+          (merge (empty-stats-map 0) stats)
           stats)))
     (empty-stats-map 0)))
 
@@ -213,7 +210,7 @@
   [:=> [:cat :string [:schema i/TableInstance]] :any])
 
 (mu/defn- fingerprint-fields-for-db!*
-  "Invokes `fingerprint-fields!` on every table in `database`"
+  "Invokes `fingerprint-table!` on every table in `database`"
   ([database        :- i/DatabaseInstance
     log-progress-fn :- LogProgressFn]
    (fingerprint-fields-for-db!* database log-progress-fn (constantly true)))
@@ -227,15 +224,21 @@
                     (sync-util/reducible-sync-tables database))]
        (reduce (fn [acc table]
                  (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
-                 (let [new-acc (merge-with + acc (fingerprint-fields! table))]
-                   (if (continue? new-acc)
+                 (let [ret (fingerprint-table! table)
+                       new-acc (let [ret (if (:throwable ret)
+                                           (-> ret
+                                               (dissoc :throwable)
+                                               (update :failed-fingerprints inc))
+                                           ret)]
+                                 (merge-with + acc ret))]
+                   (if (and (continue? new-acc) (not (sync-util/abandon-sync? ret)))
                      new-acc
                      (reduced new-acc))))
                (empty-stats-map 0)
                tables)))))
 
 (mu/defn fingerprint-fields-for-db!
-  "Invokes [[fingerprint-fields!]] on every table in `database`"
+  "Invokes [[fingerprint-table!]] on every table in `database`"
   [database        :- i/DatabaseInstance
    log-progress-fn :- LogProgressFn]
   (if (driver.u/supports? (:engine database) :fingerprint database)
@@ -261,4 +264,4 @@
   "Refingerprint a field"
   [field :- i/FieldInstance]
   (let [table (field/table field)]
-    (fingerprint-table! table [field])))
+    (fingerprint-fields! table [field])))

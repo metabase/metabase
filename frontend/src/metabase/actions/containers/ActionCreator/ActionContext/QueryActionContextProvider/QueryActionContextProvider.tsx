@@ -145,7 +145,7 @@ function QueryActionContextProvider({
   const [question, setQuestion] = useState(initialQuestion);
 
   const query = useMemo(
-    () => question.legacyQuery() as NativeQuery,
+    () => question.legacyNativeQuery() as NativeQuery,
     [question],
   );
 
@@ -194,7 +194,10 @@ function QueryActionContextProvider({
 
   const handleQueryChange = useCallback((nextQuery: NativeQuery) => {
     const nextQuestion = nextQuery.question();
-    const parameters = getTemplateTagParametersFromCard(nextQuestion.card());
+    const parameters = getTemplateTagParametersFromCard(
+      nextQuestion.card(),
+      nextQuestion.metadata(),
+    );
     setQuestion(nextQuestion.setParameters(parameters));
   }, []);
 

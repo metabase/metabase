@@ -10,6 +10,7 @@
    `test-data`            PUBLIC.CHECKINS.USER_ID    | <unique-session-schema>.test_data_checkins.user_id
    `sad-toucan-incidents` PUBLIC.INCIDENTS.TIMESTAMP | <unique-session-schema>.sad_toucan_incidents.timestamp"
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -72,9 +73,20 @@
           :schema-filters-type     "inclusion"
           :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
 
+(def db-routing-connection-details
+  (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
+          :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
+          :db                      (tx/db-test-env-var-or-throw :redshift :db-routing)
+          :user                    (tx/db-test-env-var-or-throw :redshift :user)
+          :password                (tx/db-test-env-var-or-throw :redshift :password)
+          :schema-filters-type     "inclusion"
+          :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
+
 (defmethod tx/dbdef->connection-details :redshift
   [& _]
-  @db-connection-details)
+  (if tx/*use-routing-details*
+    @db-routing-connection-details
+    @db-connection-details))
 
 (defmethod sql.tx/create-db-sql         :redshift [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)
@@ -196,6 +208,13 @@
    {:write? true}
    (fn [conn]
      (delete-old-schemas! conn)
+     (create-session-schema! conn)))
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   (sql-jdbc.conn/connection-details->spec driver @db-routing-connection-details)
+   {:write? true}
+   (fn [conn]
+     (delete-old-schemas! conn)
      (create-session-schema! conn))))
 
 (defn- delete-session-schema!
@@ -212,6 +231,11 @@
    driver
    (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
    {:write? true}
+   delete-session-schema!)
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   (sql-jdbc.conn/connection-details->spec driver @db-routing-connection-details)
+   {:write? true}
    delete-session-schema!))
 
 (def ^:dynamic *override-describe-database-to-filter-by-db-name?*
@@ -222,10 +246,10 @@
 
 (defonce ^:private ^{:arglists '([driver database])}
   original-describe-database
-  (get-method driver/describe-database :redshift))
+  (get-method driver/describe-database* :redshift))
 
 ;; For test databases, only sync the tables that are qualified by the db name
-(defmethod driver/describe-database :redshift
+(defmethod driver/describe-database* :redshift
   [driver database]
   (if *override-describe-database-to-filter-by-db-name?*
     (let [r                (original-describe-database driver database)
@@ -277,13 +301,53 @@
          table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))]
      (sql-jdbc.execute/do-with-connection-with-options
       driver
-      (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
+      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
       {:write? false}
       (fn [^java.sql.Connection conn]
         (with-open [rset (.getTables (.getMetaData conn)
-                                     #_catalog        (tx/db-test-env-var-or-throw :redshift :db)
+                                     #_catalog        (if tx/*use-routing-details*
+                                                        (tx/db-test-env-var :redshift :db-routing)
+                                                        (tx/db-test-env-var :redshift :db))
                                      #_schema-pattern session-schema
                                      #_table-pattern  table-name
                                      #_types          (into-array String ["TABLE"]))]
           ;; if the ResultSet returns anything we know the table is already loaded.
           (.next rset)))))))
+
+(defn drop-if-exists-and-create-roles!
+  [driver details roles]
+  (let [spec  (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name _table-perms] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+        (doseq [statement [(format "DROP USER IF EXISTS %s;" role-name)
+                           (format "CREATE USER %s WITH PASSWORD '%s';" role-name (:password details))]]
+          (jdbc/execute! spec [statement] {:transaction? false}))))))
+
+(defn grant-table-perms-to-roles!
+  [driver details roles]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)
+        schema (sql.tx/qualify-and-quote driver (unique-session-schema))]
+    (doseq [[role-name table-perms] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+        (doseq [[table-name _perms] table-perms]
+          (doseq [statement [(format "GRANT USAGE ON SCHEMA %s TO %s" schema role-name)
+                             (format "GRANT SELECT ON %s TO %s" table-name role-name)]]
+            (jdbc/execute! spec [statement] {:transaction? false})))))))
+
+(defmethod tx/create-and-grant-roles! :redshift
+  [driver details roles _user-name _default-role]
+  (drop-if-exists-and-create-roles! driver details roles)
+  (grant-table-perms-to-roles! driver details roles))
+
+(defmethod tx/drop-roles! :redshift
+  [driver details roles _user-name]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)
+        schema (sql.tx/qualify-and-quote driver (unique-session-schema))]
+    (doseq [[role-name _table-perms] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+        (doseq [statement [(format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA %s FROM %s" schema role-name)
+                           (format "REVOKE ALL PRIVILEGES ON SCHEMA %s FROM %s;" schema role-name)
+                           (format "DROP USER IF EXISTS %s" role-name)]]
+          (jdbc/execute! spec [statement] {:transaction? false}))))))
+
+(defmethod sql.tx/generated-column-sql :redshift [_ _] nil)

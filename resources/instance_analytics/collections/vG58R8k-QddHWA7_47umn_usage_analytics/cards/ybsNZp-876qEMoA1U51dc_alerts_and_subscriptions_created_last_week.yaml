@@ -58,7 +58,7 @@ result_metadata:
 - base_type: type/DateTimeWithLocalTZ
   coercion_strategy: null
   description: null
-  display_name: Created At
+  display_name: 'Created At: Week'
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
@@ -87,8 +87,7 @@ result_metadata:
   - v_subscriptions
   unit: week
   visibility_type: normal
-- aggregation_index: 0
-  base_type: type/Integer
+- base_type: type/Integer
   display_name: Count
   field_ref:
   - aggregation
@@ -108,6 +107,8 @@ serdes/meta:
   label: alerts_and_subscriptions_created_last_week
   model: Card
 archived_directly: false
+card_schema: 20
+dashboard_id: vFnGZMNN2K_KW1I0B52bq
 metabase_version: null
 source_card_id: 5ojUtU9iE-DCggHdFPIll
 type: question

@@ -1,27 +1,33 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-
-import { DATE_PICKER_UNITS } from "../constants";
-import type { DatePickerUnit, RelativeDatePickerValue } from "../types";
+import {
+  DATE_PICKER_DIRECTIONS,
+  DATE_PICKER_UNITS,
+} from "metabase/querying/filters/constants";
+import type {
+  DatePickerUnit,
+  RelativeDatePickerValue,
+  RelativeIntervalDirection,
+} from "metabase/querying/filters/types";
 
 import { RelativeDatePicker } from "./RelativeDatePicker";
 
 const TABS = ["Previous", "Current", "Next"];
-const TAB_CASES = TABS.flatMap(fromTab => TABS.map(toTab => [fromTab, toTab]));
+const TAB_CASES = TABS.flatMap((fromTab) =>
+  TABS.map((toTab) => [fromTab, toTab]),
+);
 
 interface SetupOpts {
   value?: RelativeDatePickerValue;
-  availableUnits?: ReadonlyArray<DatePickerUnit>;
-  canUseRelativeOffsets?: boolean;
-  isNew?: boolean;
+  availableUnits?: DatePickerUnit[];
+  availableDirections?: RelativeIntervalDirection[];
 }
 
 function setup({
   value,
   availableUnits = DATE_PICKER_UNITS,
-  canUseRelativeOffsets = false,
-  isNew = false,
+  availableDirections = DATE_PICKER_DIRECTIONS,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -30,8 +36,7 @@ function setup({
     <RelativeDatePicker
       value={value}
       availableUnits={availableUnits}
-      canUseRelativeOffsets={canUseRelativeOffsets}
-      isNew={isNew}
+      availableDirections={availableDirections}
       onChange={onChange}
       onBack={onBack}
     />,
@@ -69,9 +74,7 @@ describe("RelativeDatePicker", () => {
   });
 
   it("should not lose offset values when navigating from Past to Next tab", async () => {
-    setup({
-      canUseRelativeOffsets: true,
-    });
+    setup();
 
     await userEvent.click(await screen.findByLabelText("Starting from…"));
     await userEvent.clear(screen.getByLabelText("Starting from interval"));
@@ -91,7 +94,7 @@ describe("RelativeDatePicker", () => {
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
-      value: "current",
+      value: 0,
       unit: "week",
     });
   });
@@ -102,7 +105,7 @@ describe("RelativeDatePicker", () => {
     const input = screen.getByLabelText("Interval");
     await userEvent.clear(input);
     await userEvent.type(input, "20");
-    await userEvent.click(screen.getByText("Update filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
@@ -112,12 +115,10 @@ describe("RelativeDatePicker", () => {
   });
 
   it("should allow to submit a past value with an offset", async () => {
-    const { onChange } = setup({
-      canUseRelativeOffsets: true,
-    });
+    const { onChange } = setup();
 
     await userEvent.click(await screen.findByLabelText("Starting from…"));
-    await userEvent.click(screen.getByText("Update filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
@@ -136,7 +137,7 @@ describe("RelativeDatePicker", () => {
     const input = screen.getByLabelText("Interval");
     await userEvent.clear(input);
     await userEvent.type(input, "20");
-    await userEvent.click(screen.getByText("Update filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
@@ -146,13 +147,11 @@ describe("RelativeDatePicker", () => {
   });
 
   it("should allow to submit a next value with an offset", async () => {
-    const { onChange } = setup({
-      canUseRelativeOffsets: true,
-    });
+    const { onChange } = setup();
 
     await userEvent.click(screen.getByText("Next"));
     await userEvent.click(await screen.findByLabelText("Starting from…"));
-    await userEvent.click(screen.getByText("Update filter"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",

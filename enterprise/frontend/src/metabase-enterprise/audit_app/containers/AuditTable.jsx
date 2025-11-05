@@ -6,9 +6,9 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { PaginationControls } from "metabase/components/PaginationControls";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
-import { usePagination } from "metabase/hooks/use-pagination";
 import { connect } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
@@ -18,7 +18,7 @@ import { AuditMode } from "../lib/mode";
 import { PaginationControlsContainer } from "./AuditTable.styled";
 import QuestionLoadAndDisplay from "./QuestionLoadAndDisplay";
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   metadata: getMetadata(state),
 });
 
@@ -51,7 +51,7 @@ function AuditTable({
   const [loadedCount, setLoadedCount] = useState(0);
   const { handleNextPage, handlePreviousPage, page } = usePagination();
 
-  const handleOnLoad = results => {
+  const handleOnLoad = (results) => {
     setLoadedCount(results[0].row_count);
     onLoad?.(results);
   };
@@ -64,7 +64,7 @@ function AuditTable({
 
   const question = new Question(card, metadata);
   const shouldShowPagination = page > 0 || loadedCount === pageSize;
-  const handleChangeLocation = url => dispatch(push(url));
+  const handleChangeLocation = (url) => dispatch(push(url));
 
   return (
     <div>
@@ -80,8 +80,9 @@ function AuditTable({
         dispatch={dispatch}
         {...rest}
       />
-      <PaginationControlsContainer>
-        {shouldShowPagination && (
+
+      {shouldShowPagination && (
+        <PaginationControlsContainer>
           <PaginationControls
             page={page}
             pageSize={pageSize}
@@ -89,8 +90,9 @@ function AuditTable({
             onNextPage={loadedCount === pageSize ? handleNextPage : null}
             onPreviousPage={handlePreviousPage}
           />
-        )}
-      </PaginationControlsContainer>
+        </PaginationControlsContainer>
+      )}
+
       {children}
     </div>
   );

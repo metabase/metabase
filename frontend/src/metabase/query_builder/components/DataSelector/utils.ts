@@ -8,10 +8,12 @@ import type { DataTypeInfoItem } from "./types";
 
 export function getDataTypes({
   hasModels,
+  hasTables,
   hasNestedQueriesEnabled,
   hasSavedQuestions,
   hasMetrics,
 }: {
+  hasTables: boolean;
   hasModels: boolean;
   hasNestedQueriesEnabled: boolean;
   hasSavedQuestions: boolean;
@@ -23,7 +25,9 @@ export function getDataTypes({
     dataTypes.push(MODELS_INFO_ITEM);
   }
 
-  dataTypes.push(RAW_DATA_INFO_ITEM);
+  if (hasTables) {
+    dataTypes.push(RAW_DATA_INFO_ITEM);
+  }
 
   if (hasNestedQueriesEnabled && hasSavedQuestions) {
     dataTypes.push(SAVED_QUESTIONS_INFO_ITEM);

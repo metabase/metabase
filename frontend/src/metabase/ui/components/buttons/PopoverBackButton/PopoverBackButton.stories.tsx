@@ -51,7 +51,7 @@ const DefaultTemplate = (args: PopoverBackButtonProps) => {
 };
 
 export default {
-  title: "Buttons/PopoverBackButton",
+  title: "Patterns/PopoverBackButton",
   component: PopoverBackButton,
   args,
   argTypes,

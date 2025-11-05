@@ -1,8 +1,7 @@
-import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders } from "__support__/ui";
-import type { ParameterValueOrArray } from "metabase-types/api";
+import { renderWithProviders, screen } from "__support__/ui";
+import type { ParameterValuesMap } from "metabase-types/api";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { Text } from "../Text";
@@ -25,7 +24,7 @@ const defaultProps = {
 
 interface SetupOpts {
   settings?: Settings;
-  parameterValues?: Record<string, ParameterValueOrArray>;
+  parameterValues?: ParameterValuesMap;
 }
 
 const setup = ({ parameterValues, ...options }: SetupOpts = {}) => {

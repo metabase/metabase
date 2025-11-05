@@ -7,9 +7,8 @@ import { IconInButton } from "metabase/admin/performance/components/StrategyForm
 import { useInvalidateTarget } from "metabase/admin/performance/hooks/useInvalidateTarget";
 import { useIsFormPending } from "metabase/admin/performance/hooks/useIsFormPending";
 import type { ModelWithClearableCache } from "metabase/admin/performance/types";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Form, FormProvider } from "metabase/forms";
-import { useConfirmation } from "metabase/hooks/use-confirmation";
-import { color } from "metabase/lib/colors";
 import type { InvalidateNowButtonProps } from "metabase/plugins";
 import { Group, Icon, Loader, Text } from "metabase/ui";
 
@@ -71,28 +70,28 @@ const InvalidateNowFormBody = ({
     <>
       <Form>
         <StyledInvalidateNowButton
-          onClick={e => {
+          onClick={(e) => {
             confirmInvalidation();
             e.preventDefault();
             return false;
           }}
           disabled={wasFormRecentlyPending}
           label={
-            <Group spacing="sm">
-              <Icon color="var(--mb-color-danger)" name="trash" />
+            <Group gap="sm">
+              <Icon c="danger" name="trash" />
               <Text>{buttonText}</Text>
             </Group>
           }
           activeLabel={
-            <Group spacing="sm">
+            <Group gap="sm">
               <Loader size="1rem" />
               <Text>{c("Shown when a cache is being cleared")
                 .t`Clearing cache… `}</Text>
             </Group>
           }
           successLabel={
-            <Group spacing="sm">
-              <IconInButton name="check" color={color("success")} />
+            <Group gap="sm">
+              <IconInButton name="check" c={"success"} />
               <Text>{t`Cache cleared`}</Text>
             </Group>
           }

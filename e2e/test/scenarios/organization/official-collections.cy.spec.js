@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -11,7 +11,7 @@ const TEST_QUESTION_QUERY = {
   breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }]],
 };
 
-H.describeEE("official collections", () => {
+describe("official collections", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -39,8 +39,8 @@ H.describeEE("official collections", () => {
       // Gate the UI
       cy.visit("/collection/root");
 
-      H.openNewCollectionItemFlowFor("collection");
-      cy.findByTestId("new-collection-modal").then(modal => {
+      H.startNewCollectionFromSidebar();
+      cy.findByTestId("new-collection-modal").then((modal) => {
         assertNoCollectionTypeInput();
         cy.findByLabelText("Close").click();
       });
@@ -52,7 +52,7 @@ H.describeEE("official collections", () => {
   });
 
   context("premium token with paid features", () => {
-    beforeEach(() => H.setTokenFeatures("all"));
+    beforeEach(() => H.activateToken("pro-self-hosted"));
 
     it("should be able to manage collection authority level", () => {
       cy.visit("/collection/root");
@@ -84,8 +84,8 @@ H.describeEE("official collections", () => {
 
       openCollection("First collection");
 
-      H.openNewCollectionItemFlowFor("collection");
-      cy.findByTestId("new-collection-modal").then(modal => {
+      H.startNewCollectionFromSidebar();
+      cy.findByTestId("new-collection-modal").then((modal) => {
         assertNoCollectionTypeInput();
         cy.findByLabelText("Close").click();
       });
@@ -107,8 +107,8 @@ H.describeEE("official collections", () => {
 
       H.popover().findByText("Make collection official").should("exist");
 
-      H.openNewCollectionItemFlowFor("collection");
-      cy.findByTestId("new-collection-modal").then(modal => {
+      H.startNewCollectionFromSidebar();
+      cy.findByTestId("new-collection-modal").then((modal) => {
         assertHasCollectionTypeInput();
         cy.findByPlaceholderText("My new fantastic collection").type(
           "Personal collection child",
@@ -124,8 +124,8 @@ H.describeEE("official collections", () => {
       });
       H.popover().findByText("Make collection official").should("exist");
 
-      H.openNewCollectionItemFlowFor("collection");
-      cy.findByTestId("new-collection-modal").then(modal => {
+      H.startNewCollectionFromSidebar();
+      cy.findByTestId("new-collection-modal").then((modal) => {
         assertHasCollectionTypeInput();
         cy.findByLabelText("Close").click();
       });
@@ -133,7 +133,7 @@ H.describeEE("official collections", () => {
   });
 
   context("token expired or removed", () => {
-    beforeEach(() => H.setTokenFeatures("all"));
+    beforeEach(() => H.activateToken("pro-self-hosted"));
 
     it("should not display official collection icon anymore", () => {
       testOfficialBadgePresence(false);
@@ -146,22 +146,22 @@ H.describeEE("official collections", () => {
 });
 
 function testOfficialBadgePresence(expectBadge = true) {
-  cy.createCollection({
+  H.createCollection({
     name: COLLECTION_NAME,
     authority_level: "official",
-  }).then(response => {
+  }).then((response) => {
     const { id: collectionId } = response.body;
-    cy.createQuestion({
+    H.createQuestion({
       name: "Official Question",
       collection_id: collectionId,
       query: TEST_QUESTION_QUERY,
     });
-    cy.createDashboard({
+    H.createDashboard({
       name: "Official Dashboard",
       collection_id: collectionId,
     });
 
-    !expectBadge && H.setTokenFeatures("none");
+    !expectBadge && H.deleteToken();
     cy.visit(`/collection/${collectionId}`);
   });
 
@@ -206,12 +206,12 @@ function testOfficialBadgeInSearch({
 }
 
 function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
-  cy.createCollection({
+  H.createCollection({
     name: COLLECTION_NAME,
     authority_level: "official",
-  }).then(response => {
+  }).then((response) => {
     const { id: collectionId } = response.body;
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: {
         name: "Official Question",
         collection_id: collectionId,
@@ -221,7 +221,7 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
     });
   });
 
-  !expectBadge && H.setTokenFeatures("none");
+  !expectBadge && H.deleteToken();
 
   cy.visit("/collection/root");
   cy.findByText("Regular Dashboard").click();
@@ -236,8 +236,8 @@ function openCollection(collectionName) {
 }
 
 function createAndOpenOfficialCollection({ name }) {
-  H.openNewCollectionItemFlowFor("collection");
-  cy.findByTestId("new-collection-modal").then(modal => {
+  H.startNewCollectionFromSidebar();
+  cy.findByTestId("new-collection-modal").then((modal) => {
     cy.findByPlaceholderText("My new fantastic collection").type(name);
     cy.findByText("Official").click();
     cy.findByText("Create").click();

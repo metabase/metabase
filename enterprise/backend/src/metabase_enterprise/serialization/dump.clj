@@ -3,22 +3,7 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [metabase-enterprise.serialization.names :refer [fully-qualified-name name-for-logging safe-name]]
-   [metabase-enterprise.serialization.serialize :as serialize]
-   [metabase.config :as config]
-   [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.dimension :refer [Dimension]]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.interface :as mi]
-   [metabase.models.pulse :refer [Pulse]]
-   [metabase.models.segment :refer [Segment]]
-   [metabase.models.setting :as setting]
-   [metabase.models.table :refer [Table]]
-   [metabase.models.user :refer [User]]
-   [metabase.util.log :as log]
-   [metabase.util.yaml :as yaml]
-   [toucan2.core :as t2]))
+   [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
 
@@ -45,13 +30,13 @@
    (let [model (-> (:serdes/meta m) last :model)]
      (serialization-deep-sort m [(keyword model)])))
   ([m path]
-   (into (serialization-sorted-map path)
-         (for [[k v] m]
-           [k (cond
-                (map? v)               (serialization-deep-sort v (conj path k))
-                (and (sequential? v)
-                     (map? (first v))) (mapv #(serialization-deep-sort % (conj path k)) v)
-                :else                  v)]))))
+   (cond
+     (map? m)  (into (serialization-sorted-map path)
+                     (for [[k v] m]
+                       [k (serialization-deep-sort v (conj path k))]))
+     (and (sequential? m)
+          (map? (first m))) (mapv #(serialization-deep-sort % path) m)
+     :else                  m)))
 
 (defn spit-yaml!
   "Writes obj to filename and creates parent directories if necessary.
@@ -66,56 +51,3 @@
       (if-not (.canWrite (.getParentFile (io/file filename)))
         (throw (ex-info (format "Destination path is not writeable: %s" filename) {:filename filename}))
         (throw e)))))
-
-(defn- as-file?
-  [instance]
-  (some (fn [model]
-          (mi/instance-of? model instance))
-        [Pulse Dashboard Segment Field User]))
-
-(defn- spit-entity!
-  [path entity]
-  (let [filename (if (as-file? entity)
-                   (format "%s%s.yaml" path (fully-qualified-name entity))
-                   (format "%s%s/%s.yaml" path (fully-qualified-name entity) (safe-name entity)))]
-    (when (.exists (io/as-file filename))
-      (log/warn (str filename " is about to be overwritten."))
-      (log/debug (str "With object: " (pr-str entity))))
-
-    (spit-yaml! filename (serialize/serialize entity))))
-
-(defn dump!
-  "Serialize entities into a directory structure of YAMLs at `path`."
-  [path & entities]
-  (doseq [entity (flatten entities)]
-    (try
-      (spit-entity! path entity)
-      (catch Throwable e
-        (log/errorf e "Error dumping %s" (name-for-logging entity)))))
-  (spit-yaml! (str path "/manifest.yaml")
-              {:serialization-version serialize/serialization-protocol-version
-               :metabase-version      config/mb-version-info}))
-
-(defn dump-settings!
-  "Combine all settings into a map and dump it into YAML at `path`."
-  [path]
-  (spit-yaml! (str path "/settings.yaml")
-              (into {} (for [{:keys [key value]} (setting/admin-writable-site-wide-settings
-                                                  :getter (partial setting/get-value-of-type :string))]
-                         [key value]))))
-
-(defn dump-dimensions!
-  "Combine all dimensions into a vector and dump it into YAML at in the directory for the
-   corresponding schema starting at `path`."
-  [path]
-  (doseq [[table-id dimensions] (group-by (comp :table_id Field :field_id) (t2/select Dimension))
-          :let [table (t2/select-one Table :id table-id)]]
-    (spit-yaml! (if (:schema table)
-                  (format "%s%s/schemas/%s/dimensions.yaml"
-                          path
-                          (->> table :db_id (fully-qualified-name Database))
-                          (:schema table))
-                  (format "%s%s/dimensions.yaml"
-                          path
-                          (->> table :db_id (fully-qualified-name Database))))
-                (map serialize/serialize dimensions))))

@@ -1,7 +1,7 @@
 import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupAuditEndpoints } from "__support__/server-mocks";
+import { setupAuditInfoEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
@@ -21,12 +21,14 @@ export type SetupOpts = {
   isForADashboard?: boolean;
   enableAuditAppPlugin?: boolean;
   isUserAdmin?: boolean;
+  hasUsageAnalyticsPermission?: boolean;
 };
 
 export const setup = async ({
   isForADashboard = false,
   enableAuditAppPlugin = false,
   isUserAdmin = false,
+  hasUsageAnalyticsPermission = true,
 }: SetupOpts = {}) => {
   const storeInitialState = createMockState({
     currentUser: createMockUser({ is_superuser: isUserAdmin }),
@@ -40,7 +42,11 @@ export const setup = async ({
     ),
   });
 
-  setupAuditEndpoints();
+  if (hasUsageAnalyticsPermission) {
+    setupAuditInfoEndpoint();
+  } else {
+    setupAuditInfoEndpoint({ auditInfo: {} as any });
+  }
   setupEnterprisePlugins();
 
   const mockDashboard = createMockDashboard();

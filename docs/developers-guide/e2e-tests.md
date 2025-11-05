@@ -6,6 +6,8 @@ title: End-to-end tests with Cypress
 
 Metabase uses Cypress for “end-to-end testing”, that is, tests that are executed against the application as a whole, including the frontend, backend, and application database. These tests are essentially scripts written in JavaScript that run in the web browser: visit different URLs, click various UI elements, type text, and assert that things happen as expected (for example, an element appearing on screen, or a network request occuring).
 
+_Please, get familiar with the [Cypress best practices](https://docs.cypress.io/app/core-concepts/best-practices) before you proceed._
+
 ## Getting Started
 
 Metabase’s Cypress tests are located in the `e2e/test/scenarios` source tree, in a structure that roughly mirrors Metabase’s URL structure. For example, tests for the admin “datamodel” pages are located in `e2e/test/scenarios/admin/datamodel`.
@@ -20,26 +22,21 @@ Our custom Cypress runner builds its own backend and creates a temporary H2 app 
 
    b. If you want to run a local Metabase instance alongside Cypress, the easiest way to achieve this is by using `yarn dev` or `yarn dev-ee` (both rely on frontend hot reloading under the hood)
 
-2. In a separate terminal session (without killing the previous one) run `yarn test-cypress-open`. This will open a Cypress GUI that will let you choose which tests to run. Alterantively, take a look at more running options below.
+2. In a separate terminal session (without killing the previous one) run `yarn test-cypress`. This will open a Cypress GUI that will let you choose which tests to run. Alternatively, take a look at `run_cypress_local.js` and `e2e/test/scenarios/docker-compose.yml` for all possible options.
 
 ### Running Options
 
-To run all Cypress tests programmatically in the terminal:
+To run all Cypress tests headlessly in the terminal:
 
 ```sh
-yarn run test-cypress-run
-```
-
-You can run a specific set of scenarios by using a custom `--folder` flag, which will pick up the chosen scenarios under `e2e/test/scenarios/`.
-
-```sh
-yarn run test-cypress-run --folder sharing
+OPEN_UI=false yarn run test-cypress
 ```
 
 You can quickly test a single file only by using the official `--spec` flag.
+This flag can be used to run all specs within a folder, or to run multiple assorted specs. Consult [the official documentation](https://docs.cypress.io/app/references/command-line#cypress-run-spec-lt-spec-gt) for instructions.
 
 ```sh
-yarn test-cypress-run --spec e2e/test/scenarios/question/new.cy.spec.js
+OPEN_UI=false yarn test-cypress --spec e2e/test/scenarios/question/new.cy.spec.js
 ```
 
 You can specify a browser to execute Cypress tests in using the `--browser` flag. For more details, please consult [the official documentation](https://docs.cypress.io/guides/guides/launching-browsers).
@@ -138,31 +135,15 @@ export EXPERIMENTAL_DOCKER_DESKTOP_FORCE_QEMU=1
 
 ### Running tests that depend on Docker images
 
-A subset of our tests depend on the external services that are available through the Docker images. At the time of this writing, those are the three supported external QA databases, Webmail, Snowplow and LDAP servers. It's tedious to have all these Docker containers running locally. An escape hatch is provided for people who do not care about these tests, but still need to run specs containing them locally. Run this command:
+A subset of our tests depend on the external services that are available through the Docker images. At the time of this writing, those are the three supported external QA databases, Webmail, Snowplow and LDAP servers. The default cypress command will spin up all necessary docker containers for these tests to function properly, but you can toggle them off if you want
 
 ```sh
-yarn test-cypress-run --env grepTags="-@external" --spec path/to/spec/foo.cy.spec.js
-```
-
-Please note the minus sign before the `@external` tag. For more details, consult [the official documentation](https://github.com/cypress-io/cypress-grep#filter-with-tags).
-
-If you want to or need to run these tests, there is a handy option that does the heavy lifting for you:
-
-```sh
-yarn test-cypress-open-qa
+START_CONTAINERS=false yarn test-cypress
 ```
 
 ### Running tests with Snowplow involved
 
-Tests that depend on Snowplow expect a running server. To run them, you need to:
-
-- pass env variables to the test run: `MB_SNOWPLOW_AVAILABLE=true MB_SNOWPLOW_URL=http://localhost:9090 yarn test-cypress-open`
-
-## Testing with Snowplow
-
-Our end-to-end testing environment has been configured to run Snowplow Micro alongside the application.
-
-To run Snowplow locally use the following commands:
+Tests that depend on Snowplow expect a running server. This is enabled by default. You can manually enable them as well by spinning up the snowplow micro docker container and setting the appropriate environment variables:
 
 ```
 docker-compose -f ./snowplow/docker-compose.yml up -d
@@ -170,14 +151,25 @@ export MB_SNOWPLOW_AVAILABLE=true
 export MB_SNOWPLOW_URL=http://localhost:9090
 ```
 
-1. You can use `describeWithSnowplow` (or `describeWithSnowplowEE` for EE edition) method to define tests that only run when a Snowplow instance is running
-2. Use `resetSnowplow()` test helper before each test to clear the queue of processed events.
-3. Use `expectGoodSnowplowEvents(count)` to assert that events have been sent and processed correctly. Use `expectGoodSnowPlowEvent({ ...payload})` to assert on the content of a snowplow event
-4. Use `expectNoBadSnowplowEvents()` after each test to assert that no invalid events have been sent.
+## Testing with Snowplow
+
+We have a few helpers for dealing with tests involving snowplow
+
+1. You can use `describeWithSnowplow` (or `describeWithSnowplowEE` for EE edition) method to define tests that only
+   run when a Snowplow instance is running
+1. Use `resetSnowplow()` test helper before each test to clear the queue of processed events.
+1. Use `expectSnowplowEvent({ ...payload }, count=n)` to assert that exactly `count` snowplow events match (partially)
+   the payload provided (count defaults to 1)
+1. Use `expectUnstructuredSnowplowEvent` to assert that exactly `count` snowplow events are unstructured events that
+   partial-match the payload provided. This is simply a convenience function for comparing
+   `event.unstruct_event.data.data` rather than the entire `event`. Most of our events are unstructured events, so this is handy.
+1. Use `assertNoUnstructuredSnowplowEvent({ ...eventData })` is the inverse of `expectUnstructuredSnowplowEvent`, and asserts that
+   _no_ unstructured events match the payload.
+1. Use `expectNoBadSnowplowEvents()` after each test to assert that no invalid events have been sent.
 
 ### Running tests that require SMTP server
 
-Some of our tests, that depend on the email being set up, require a local SMTP server. We use `maildev` Docker image for that purpose. At the time of this writing the image we use is `maildev/maildev:2.1.0`. It should be safe to always use the `:latest` image in your local development. Run this command:
+Some of our tests depend on the email being set up, and require a local SMTP server. We use `maildev` Docker image for that purpose. At the time of this writing the image we use is `maildev/maildev:2.1.0`. The default cypress configuration for local development will handle this for you. If you want to set it up manually, you can use this command:
 
 ```sh
 docker run -d -p 1080:1080 -p 1025:1025 maildev/maildev:latest
@@ -198,11 +190,7 @@ Cypress._.times(N, () => {
 
 ### Embedding SDK tests
 
-Tests located in `e2e/test/scenarios/embedding-sdk` are used to run automated checks for the Embedding SDK.
-
-Embedding SDK is a library, and not an application. We use Storybook to host public components, and we run tests against it.
-
-In order to run stories used for tests locally, please check [storybook setup docs](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/README.md#storybook)
+See [sdk docs about e2e](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk-package/dev.md)
 
 ## DB Snapshots
 
@@ -224,29 +212,30 @@ The example of the artifacts for a failed test in "Onboarding" directory:
 
 ## Running Cypress tests against Metabase® Enterprise Edition™
 
-Prior to running Cypress against Metabase® Enterprise Edition™, set `MB_EDITION=ee` environment variable. We have a special `describe` block called `describeEE` that will conditionally skip or run tests based on the edition.
+Prior to running Cypress against Metabase® Enterprise Edition™, set `MB_EDITION=ee` environment variable.
 
 **Enterprise instance will start without a premium token!**
 
-If you want to test premium features (feature flags), valid tokens need to be available to all Cypress tests. We achieve this by prefixing environment variables with `CYPRESS_`.
-You must provide two tokens that correspond to the `EE/PRO` self-hosted (all features enabled) and `STARTER` Cloud (no features enabled) Metabase plans. For more information, please see [Metabase pricing page](https://www.metabase.com/pricing/).
+If you want to test premium features (feature flags), valid tokens need to be available to all Cypress tests.
+You should provide 4 tokens:
 
-- `CYPRESS_ALL_FEATURES_TOKEN`
-- `CYPRESS_NO_FEATURES_TOKEN`
+- MB_ALL_FEATURES_TOKEN: all feature enabled, including new feature not released yet to customers
+- MB_STARTER_CLOUD_TOKEN: only 'hosting' feature enabled to simulate the starter plan on cloud
+- MB_PRO_CLOUD_TOKEN: PRO features enabled + 'hosting' to simulate the pro plan on cloud
+- MB_PRO_SELF_HOSTED_TOKEN: PRO features but no 'hosting' to simulate the pro self-hosted plan
 
-```
-MB_EDITION=ee CYPRESS_ALL_FEATURES_TOKEN=xxxxxx CYPRESS_NO_FEATURES_TOKEN=xxxxxx yarn test-cypress-open
-```
+You can configure these via ENVs or via the `cypress.env.json` file (see `cypress.env.json.example` for an example).
+
+For more information, please see [Metabase pricing page](https://www.metabase.com/pricing/).
 
 If you navigate to the `/admin/settings/license` page, the license input field should display the active token. Be careful when sharing screenshots!
 
-- If tests under `describeEE` block are greyed out and not running, make sure you spun up Metabase® Enterprise Edition™.
 - If tests start running but the enterprise features are missing: make sure that the token you use has corresponding feature flags enabled.
 - If everything with the token seems to be okay, go nuclear and destroy all Java processes: run `killall java` and restart Cypress.
 
 ## Tags
 
-Cypress allows us to [tag](https://github.com/cypress-io/cypress/tree/develop/npm/grep#tags-in-the-test-config-object) tests, to easily find certain categories of tags. For example, we can tag all tests that require an external database with `@external` and then run only those tests with `yarn test-cypress-open --env grepTags="@external"`. Tags should start with `@` just to make it easier to distinguish them from other strings in searches.
+Cypress allows us to [tag](https://github.com/cypress-io/cypress/tree/develop/npm/grep#tags-in-the-test-config-object) tests, to easily find certain categories of tags. For example, we can tag all tests that require an external database with `@external` and then run only those tests with `yarn test-cypress --env grepTags="@external"`. Tags should start with `@` just to make it easier to distinguish them from other strings in searches.
 
 These are the tags currently in use:
 
@@ -282,3 +271,11 @@ Please follow these steps:
 - If the fix required a source-code change (either backend of frontend), please open a regular PR instead and let the CI run all tests first. After this,
   you can trigger the stress-test workflow manually, as explained above, and it will automatically download newly built artifact from this CI run. Please,
   keep in mind that CI needs to fully finish running first. The workflow uses GitHub REST API which doesn't see artifacts otherwise.
+
+## Reports
+
+Individual Mocha reports are automatically generated per spec. They are stored in `cypress/reports/mochareports`. Please keep in mind that the root level `cypress/` folder is git ignored!
+
+When tests run _in CI_ we do some extra steps by merging these individual reports (using `mochawesome-merge`), formatting them, and then generating customized GitHub Actions job summaries.
+
+On an off chance that you need a unified test report _while running tests locally_, you can achieve that by invoking `yarn generate-cypress-html-report`.

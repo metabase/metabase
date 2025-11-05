@@ -6,7 +6,7 @@
   instances. After 51 we can remove this, everything should be updated by then."
   (:require
    [clojure.string :as str]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p]
@@ -60,6 +60,13 @@
       (if (identical? m m')
         this
         (->SnakeHatingMap m'))))
+
+  clojure.lang.IKVReduce
+  (kvreduce [this f init]
+    (reduce-kv f init m))
+
+  clojure.lang.Counted
+  (count [this] (count m))
 
   pretty/PrettyPrintable
   (pretty [_this]

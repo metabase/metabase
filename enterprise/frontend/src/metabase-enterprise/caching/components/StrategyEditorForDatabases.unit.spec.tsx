@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { act, screen } from "__support__/ui";
 import type { SetupOpts } from "metabase/admin/performance/components/test-utils";
@@ -28,10 +27,6 @@ function setup(opts: SetupOpts = {}) {
 describe("StrategyEditorForDatabases", () => {
   beforeEach(() => {
     setup();
-  });
-
-  afterEach(() => {
-    fetchMock.restore();
   });
 
   it("lets user override root strategy on enterprise instance", async () => {
@@ -218,6 +213,7 @@ describe("StrategyEditorForDatabases", () => {
     const strategy: ScheduleStrategy = {
       type: "schedule",
       schedule: "0 0 * * * ?",
+      refresh_automatically: false,
     };
     const result = getShortStrategyLabel(strategy);
     expect(result).toBe("Scheduled: hourly");
@@ -228,6 +224,7 @@ describe("StrategyEditorForDatabases", () => {
       type: "duration",
       duration: 5,
       unit: CacheDurationUnit.Hours,
+      refresh_automatically: false,
     };
     const result = getShortStrategyLabel(strategy);
     expect(result).toBe("Duration: 5h");

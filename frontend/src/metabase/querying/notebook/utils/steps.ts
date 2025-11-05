@@ -32,7 +32,7 @@ const STEPS: NotebookStepDef[] = [
     clauseType: "data",
     valid: (_query, stageIndex) => stageIndex === 0,
     active: () => true,
-    revert: query => query,
+    revert: (query) => query,
     canRevert: () => false,
   },
   {
@@ -87,7 +87,11 @@ const STEPS: NotebookStepDef[] = [
   {
     type: "filter",
     clauseType: "filters",
-    valid: query => {
+    valid: (query, stageIndex) => {
+      if (hasAggregationWithoutBreakoutOnPrevStage(query, stageIndex)) {
+        return false;
+      }
+
       return hasData(query);
     },
     active: (query, stageIndex) => {
@@ -104,7 +108,11 @@ const STEPS: NotebookStepDef[] = [
     // NOTE: summarize is a combination of aggregate and breakout
     type: "summarize",
     clauseType: "aggregation",
-    valid: query => {
+    valid: (query, stageIndex) => {
+      if (hasAggregationWithoutBreakoutOnPrevStage(query, stageIndex)) {
+        return false;
+      }
+
       return hasData(query);
     },
     active: (query, stageIndex) => {
@@ -123,7 +131,7 @@ const STEPS: NotebookStepDef[] = [
         return Lib.removeClause(query, stageIndex, clause);
       }, query);
     },
-    canRevert: type => type !== "metric",
+    canRevert: (type) => type !== "metric",
   },
   {
     type: "sort",
@@ -200,9 +208,10 @@ export function getQuestionSteps(
     Boolean(database?.hasFeature("nested-queries")) &&
     question.type() !== "metric";
   const hasBreakouts = Lib.breakouts(query, -1).length > 0;
+  const hasAggregations = Lib.aggregations(query, -1).length > 0;
 
   // add a level of nesting, if valid
-  if (allowsNesting && hasBreakouts) {
+  if (allowsNesting && (hasBreakouts || hasAggregations)) {
     query = Lib.appendStage(query);
   }
 
@@ -271,7 +280,7 @@ function getStageSteps(
         Boolean(active || openSteps[id]),
       testID: getTestId(STEP, itemIndex),
       revert: STEP.canRevert(question.type())
-        ? query => STEP.revert(query, stageIndex, itemIndex ?? undefined)
+        ? (query) => STEP.revert(query, stageIndex, itemIndex ?? undefined)
         : null,
       // `actions`, `next` and `previous` will be set later
       actions: [],
@@ -282,11 +291,11 @@ function getStageSteps(
   }
 
   // get the currently visible steps, flattening "items"
-  const steps = STEPS.flatMap(STEP => {
+  const steps = STEPS.flatMap((STEP) => {
     if (STEP.subSteps) {
       // add 1 for the initial or next action button
       const itemIndexes = _.range(0, STEP.subSteps(query, stageIndex) + 1);
-      return itemIndexes.map(itemIndex => getStep(STEP, itemIndex));
+      return itemIndexes.map((itemIndex) => getStep(STEP, itemIndex));
     }
 
     return [getStep(STEP)];
@@ -327,4 +336,18 @@ function getStageSteps(
   }
 
   return { steps, actions };
+}
+
+function hasAggregationWithoutBreakoutOnPrevStage(
+  query: Lib.Query,
+  stageIndex: number,
+) {
+  if (stageIndex >= 1) {
+    const hasAggregations = Lib.aggregations(query, stageIndex - 1).length > 0;
+    const hasBreakouts = Lib.breakouts(query, stageIndex - 1).length > 0;
+
+    return hasAggregations && !hasBreakouts;
+  }
+
+  return false;
 }

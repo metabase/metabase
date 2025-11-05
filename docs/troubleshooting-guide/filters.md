@@ -26,21 +26,21 @@ If a dashboard filter is giving you no results or the wrong results:
 If a question filter is giving you no results or the wrong results:
 
 1. Make sure the question includes the column you want to filter on.
-2. Check that the column actually contains the value(s) you're filtering on. You can do this by:
+2. Check that the column contains the value(s) you're filtering on. You can do this by:
    - sorting number or date columns,
    - creating a "contains" filter for string columns, or
    - asking your database admin.
 3. Ask your Metabase admin to help you check if:
    - Metabase is [up to date](../databases/sync-scan.md) with your database,
-   - the column is [visible](../data-modeling/metadata-editing.md#column-visibility) in Metabase,
+   - the column is [visible](../data-modeling/metadata-editing.md#field-visibility) in Metabase,
    - you have the correct [data permissions](../permissions/data.md) to access the column.
 
 ### Special cases
 
 If you're having trouble filtering on a:
 
-- [Custom column](../questions/query-builder/introduction.md#creating-custom-columns): check if the custom expression is working as expected. For example, your custom expression might be returning blank values when you expect numbers.
-- [SQL field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type): make sure you're using the correct [field filter syntax](../questions/native-editor/sql-parameters.md#field-filter-syntax), then see [Troubleshooting SQL variables](./sql.md#sql-variables-and-field-filters).
+- [Custom column](../questions/query-builder/editor.md#custom-columns): check if the custom expression is working as expected. For example, your custom expression might be returning blank values when you expect numbers.
+- [SQL field filter](../questions/native-editor/field-filters.md): make sure you're using the correct [field filter syntax](../questions/native-editor/field-filters.md#field-filter-syntax), then see [Troubleshooting SQL variables](./sql.md#sql-variables-and-field-filters).
 
 **Explanation**
 
@@ -64,21 +64,21 @@ To debug dashboard and question filters that involve timestamps, UUIDs, or numer
    - the [Data reference](../exploration-and-organization/data-model-reference.md),
    - the [Table Metadata page](../data-modeling/metadata-editing.md) (admins only), or
    - directly from the database.
-2. Cast the column to a data type that matches the desired [filter type](../questions/query-builder/introduction.md#filter-types). You can:
-   - [cast strings or numbers to dates](../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Table Metadata page, or
+2. Cast the column to a data type that matches the desired [filter type](../questions/query-builder/filters.md#filter-types). You can:
+   - [cast strings or numbers to dates](../data-modeling/metadata-editing.md#cast-to-a-specific-data-type) from the Table Metadata page, or
    - change the data type of the column in your database, and [re-sync](../databases/sync-scan.md#manually-syncing-tables-and-columns) the database schema.
 
 If you're not a Metabase admin, you might have to ask your admin to help you with some of these steps.
 
 **Explanation**
 
-Metabase needs to know the data type of a column in order to present you with a curated selection of filter types. Sometimes these columns are mistyped---if a column stores your numbers as strings, Metabase will only show you text or category filters (with options like "is", "is not") instead of number filters (with options like "greater than", "less than").
+Metabase needs to know the data type of a column to present you with a curated selection of filter types. Sometimes these columns are mistyped---if a column stores your numbers as strings, Metabase will only show you text or category filters (with options like "is", "is not") instead of number filters (with options like "greater than", "less than").
 
 Timestamps, in particular, are the root of all evil, so please be patient with your Metabase admin (or yourself!) when trying to get the data type right.
 
 ## Field filters in BigQuery and Oracle
 
-If you are getting an error when using field filters with BigQuery or Oracle, make sure you use the correct syntax for the `FROM` clause. See [Field filters in BigQuery and Oracle](../questions/native-editor/sql-parameters.md#field-filters-in-bigquery-and-oracle).
+If you are getting an error when using field filters with BigQuery or Oracle, make sure you use the correct syntax for the `FROM` clause. See [Field filters in BigQuery and Oracle](../questions/native-editor/field-filters.md#field-filters-in-bigquery-and-oracle).
 
 ## Missing or incorrect filter values
 
@@ -86,14 +86,14 @@ If your filter dropdown menu displays the wrong values for a column:
 
 1. Go to **Admin settings** > **Table Metadata**.
 2. Find your database, table, and column.
-3. Click the **gear** icon at the right of a column’s settings box.
+3. Click the **gear** icon at the right of a column's settings box.
 4. Scroll to **Cached field values**.
 5. Optional: click **Discard cached field values**.
 6. Click **Re-scan this field**.
 
 **Explanation**
 
-Metabase [scans](../databases/sync-scan.md#how-database-scans-work) get the values for your filter dropdown menus by querying and caching the first 1,000 distinct records from a table. You might see outdated filter values if your tables are getting updated more frequently compared to your [scan schedule](../databases/sync-scan.md#scheduling-database-scans).
+Metabase [scans](../databases/sync-scan.md#how-database-scans-work) get the values for your filter dropdown menus by querying and caching the first 1,000 distinct records from a table. You might see outdated filter values if your tables are getting updated more frequently compared to your [scan schedule](../databases/sync-scan.md#scanning-for-filter-values).
 
 ## Related topics
 
@@ -105,7 +105,7 @@ Metabase [scans](../databases/sync-scan.md#how-database-scans-work) get the valu
 
 ## Are you still stuck?
 
-If you can’t solve your problem using the troubleshooting guides:
+If you can't solve your problem using the troubleshooting guides:
 
 - Search or ask the [Metabase community](https://discourse.metabase.com/).
 - Search for [known bugs or limitations](./known-issues.md).

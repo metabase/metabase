@@ -25,6 +25,7 @@ fullscreen dashboard mode
   display: flex;
   flex-direction: column;
   margin-right: 1em;
+  gap: 0.25rem;
 }
 
 .Legend.horizontal {
@@ -35,5 +36,7 @@ fullscreen dashboard mode
 }
 
 .DashCard.LegendItem {
-  font-size: 12px;
+  font-weight: normal;
+  color: var(--mb-color-text-primary);
+  font-size: 0.8125rem;
 }

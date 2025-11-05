@@ -1,7 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, queryIcon, screen } from "__support__/ui";
+import { getIcon, queryIcon, screen, within } from "__support__/ui";
 import type { CollectionType } from "metabase-types/api";
+import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 import { setup } from "./setup";
 
@@ -17,6 +18,14 @@ describe("Instance Analytics Collection Header", () => {
     // doesn't cause the following test block to fail
     tokenFeatures: { audit_app: true, official_collections: true },
   };
+
+  it("should not offer to create new collection for instance analytics collections", () => {
+    setup(defaultOptions);
+    const headerMenu = screen.getByTestId("collection-menu");
+    expect(
+      within(headerMenu).queryByLabelText("Create a new collection"),
+    ).not.toBeInTheDocument();
+  });
 
   it("should show an audit icon for instance analytics collections", () => {
     setup(defaultOptions);
@@ -65,7 +74,7 @@ describe("instance analytics custom reports collection", () => {
     collection: {
       name: "Custom Reports",
       can_write: true,
-      entity_id: "okNLSZKdSxaoG58JSQY54",
+      entity_id: createMockEntityId("okNLSZKdSxaoG58JSQY54"),
     },
     hasEnterprisePlugins: true,
     // 😬 this test needs the official_collections feature flag so that it
@@ -77,7 +86,7 @@ describe("instance analytics custom reports collection", () => {
   it("should not show move button", async () => {
     setup(defaultOptions);
     await userEvent.click(getIcon("ellipsis"));
-    await screen.findByRole("dialog");
+    await screen.findByRole("menu");
 
     expect(getIcon("lock")).toBeInTheDocument();
     expect(queryIcon("move")).not.toBeInTheDocument();
@@ -87,7 +96,7 @@ describe("instance analytics custom reports collection", () => {
   it("should not show archive button", async () => {
     setup(defaultOptions);
     await userEvent.click(getIcon("ellipsis"));
-    await screen.findByRole("dialog");
+    await screen.findByRole("menu");
 
     expect(getIcon("lock")).toBeInTheDocument();
     expect(queryIcon("archive")).not.toBeInTheDocument();
@@ -113,7 +122,7 @@ describe("Official Collections Header", () => {
     expect(
       await screen.findByText("Make collection official"),
     ).toBeInTheDocument();
-    expect(await getIcon("official_collection")).toBeInTheDocument();
+    expect(getIcon("official_collection")).toBeInTheDocument();
   });
 
   it("should not allow non-admin users to designate official collections", async () => {
@@ -125,7 +134,7 @@ describe("Official Collections Header", () => {
     expect(
       screen.queryByText("Make collection official"),
     ).not.toBeInTheDocument();
-    expect(await queryIcon("official_collection")).not.toBeInTheDocument();
+    expect(queryIcon("official_collection")).not.toBeInTheDocument();
   });
 
   it("should not allow admin users to designate read-only collections as official", async () => {
@@ -140,6 +149,6 @@ describe("Official Collections Header", () => {
     expect(
       screen.queryByText("Make collection official"),
     ).not.toBeInTheDocument();
-    expect(await queryIcon("official_collection")).not.toBeInTheDocument();
+    expect(queryIcon("official_collection")).not.toBeInTheDocument();
   });
 });

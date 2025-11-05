@@ -78,7 +78,7 @@
                          :display-name   "Ship time"
                          :base-type      :type/Time
                          :effective-type :type/Time
-                         :semantic-type  :type/Time)
+                         :semantic-type  nil)
         mp        (lib/composed-metadata-provider
                    (lib.tu/mock-metadata-provider {:fields [ship-time]})
                    meta/metadata-provider)
@@ -95,7 +95,7 @@
                          :display-name   "Expected arrival"
                          :base-type      :type/Date
                          :effective-type :type/Date
-                         :semantic-type  :type/Date)
+                         :semantic-type  nil)
         mp        (lib/composed-metadata-provider
                    (lib.tu/mock-metadata-provider {:fields [arrival]})
                    meta/metadata-provider)
@@ -134,7 +134,7 @@
                            (m/find-first #(= (:name %) "HOMEPAGE"))
                            (lib/column-extractions query))
           by-tag      (m/index-by :tag extractions)]
-      (is (=? #{:domain :subdomain :host} (set (keys by-tag))))
+      (is (=? #{:domain :subdomain :host :path} (set (keys by-tag))))
       (testing "to :domain"
         (is (=? [:domain {} [:field {} 9999001]]
                 (lib/extraction-expression (:domain by-tag))))
@@ -152,7 +152,13 @@
                 (lib/extraction-expression (:host by-tag))))
         (is (=? {:stages [{:expressions [[:host {:lib/expression-name "Host"}
                                           [:field {} 9999001]]]}]}
-                (lib/extract query -1 (:host by-tag))))))))
+                (lib/extract query -1 (:host by-tag)))))
+      (testing "to :path"
+        (is (=? [:path {} [:field {} 9999001]]
+                (lib/extraction-expression (:path by-tag))))
+        (is (=? {:stages [{:expressions [[:path {:lib/expression-name "Path"}
+                                          [:field {} 9999001]]]}]}
+                (lib/extract query -1 (:path by-tag))))))))
 
 (deftest ^:parallel extracting-from-urls-requires-regex-feature-test
   (let [query-regex    (lib/query (homepage-provider) (meta/table-metadata :people))
@@ -161,7 +167,8 @@
     (testing "when the database supports :regex URL extraction is available"
       (is (=? [{:tag :domain,    :display-name "Domain"}
                {:tag :subdomain, :display-name "Subdomain"}
-               {:tag :host,      :display-name "Host"}]
+               {:tag :host,      :display-name "Host"}
+               {:tag :path,      :display-name "Path"}]
               (->> (lib/returned-columns query-regex)
                    (m/find-first #(= (:name %) "HOMEPAGE"))
                    (lib/column-extractions query-regex)))))

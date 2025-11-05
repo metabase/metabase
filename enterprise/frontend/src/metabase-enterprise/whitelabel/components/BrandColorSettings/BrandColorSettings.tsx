@@ -1,9 +1,10 @@
+import Color from "color";
 import { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ColorPicker from "metabase/core/components/ColorPicker";
-import { useCurrentRef } from "metabase/hooks/use-current-ref";
+import ColorPicker from "metabase/common/components/ColorPicker";
+import { useCurrentRef } from "metabase/common/hooks/use-current-ref";
 import { color } from "metabase/lib/colors";
 
 import {
@@ -74,7 +75,7 @@ const BrandColorTable = ({
         </TableHeaderRow>
       </TableHeader>
       <TableBody>
-        {options.map(option => (
+        {options.map((option) => (
           <BrandColorRow
             key={option.name}
             color={colors[option.name]}
@@ -113,7 +114,7 @@ const BrandColorRow = memo(function BrandColorRow({
       <TableBodyCell>
         <ColorPicker
           value={color ?? originalColor}
-          placeholder={originalColor}
+          placeholder={Color(originalColor).hex()}
           onChange={handleChange}
         />
       </TableBodyCell>

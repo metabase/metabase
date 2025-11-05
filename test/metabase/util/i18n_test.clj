@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.util.i18n-test
+(ns metabase.util.i18n-test
   (:require
    [clojure.test :refer :all]
    [clojure.walk :as walk]
@@ -139,8 +139,8 @@
                    (f 2)))))))))
 
 (deftest ^:parallel localized-string?-test
-  (is (= true
-         (i18n/localized-string? (i18n/deferred-trs "WOW"))))
+  (is (true?
+       (i18n/localized-string? (i18n/deferred-trs "WOW"))))
   (is (= false
          (i18n/localized-string? "WOW"))))
 

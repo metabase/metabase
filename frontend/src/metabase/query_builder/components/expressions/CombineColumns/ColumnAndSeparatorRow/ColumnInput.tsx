@@ -56,10 +56,13 @@ export function ColumnInput({
   function handleButtonClick(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
     event.stopPropagation();
-    setOpen(open => !open);
+    setOpen((open) => !open);
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
     if (event.key === "Enter") {
       setOpen(true);
     }
@@ -74,7 +77,7 @@ export function ColumnInput({
           columnGroups={columnGroups}
           onSelect={onChange}
           onClose={handleClose}
-          checkIsColumnSelected={item => item.column === value}
+          checkIsColumnSelected={(item) => item.column === value}
           width="100%"
         />
       </div>
@@ -109,6 +112,7 @@ export function ColumnInput({
         closeOnClickOutside
         width="target"
         returnFocus
+        withinPortal={!open} // FIXME: portal situation not good
       >
         <Popover.Target>
           <Button
@@ -121,14 +125,12 @@ export function ColumnInput({
               root: classNames(styles.root, { [styles.open]: open }),
               inner: styles.button,
             }}
-            rightIcon={<Icon name="chevrondown" style={{ height: 14 }} />}
+            rightSection={<Icon name="chevrondown" style={{ height: 14 }} />}
           >
             {text}
           </Button>
         </Popover.Target>
-        <Popover.Dropdown setupSequencedCloseHandler={open}>
-          {dropdown}
-        </Popover.Dropdown>
+        <Popover.Dropdown>{dropdown}</Popover.Dropdown>
       </Popover>
     </Input.Wrapper>
   );

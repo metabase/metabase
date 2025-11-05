@@ -119,7 +119,7 @@ function setup({ step = createMockNotebookStep(), readOnly }: SetupOpts = {}) {
   function getNextBreakouts() {
     const query = getNextQuery();
     const breakouts = Lib.breakouts(query, 0);
-    return breakouts.map(breakout => Lib.displayInfo(query, 0, breakout));
+    return breakouts.map((breakout) => Lib.displayInfo(query, 0, breakout));
   }
 
   return {

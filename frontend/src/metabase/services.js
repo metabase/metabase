@@ -2,16 +2,17 @@ import _ from "underscore";
 
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
 
+const publicBase = "/api/public";
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 
 export const ActivityApi = {
-  recent_views: GET("/api/activity/recent_views"),
   most_recently_viewed_dashboard: GET(
     "/api/activity/most_recently_viewed_dashboard",
   ),
@@ -26,7 +27,6 @@ export const GTAPApi = {
 
 export const StoreApi = {
   tokenStatus: GET("/api/premium-features/token/status"),
-  billingInfo: GET("/api/ee/billing"),
 };
 
 // Pivot tables need extra data beyond what's described in the MBQL query itself.
@@ -36,10 +36,22 @@ export const StoreApi = {
 export function maybeUsePivotEndpoint(api, card, metadata) {
   const question = new Question(card, metadata);
 
+  // we need to pass pivot_rows, pivot_cols, and totals settings only for ad-hoc queries endpoints
+  // in other cases the BE extracts these options from the viz settings
   function wrap(api) {
     return (params, ...rest) => {
-      const { pivot_rows, pivot_cols } = getPivotOptions(question);
-      return api({ ...params, pivot_rows, pivot_cols }, ...rest);
+      const { pivot_rows, pivot_cols, show_row_totals, show_column_totals } =
+        getPivotOptions(question);
+      return api(
+        {
+          ...params,
+          pivot_rows,
+          pivot_cols,
+          show_row_totals,
+          show_column_totals,
+        },
+        ...rest,
+      );
     };
   }
 
@@ -53,22 +65,26 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   }
 
   const mapping = [
+    [MetabaseApi.dataset, MetabaseApi.dataset_pivot, { wrap: true }],
     [CardApi.query, CardApi.query_pivot],
     [DashboardApi.cardQuery, DashboardApi.cardQueryPivot],
-    [MetabaseApi.dataset, MetabaseApi.dataset_pivot],
     [PublicApi.cardQuery, PublicApi.cardQueryPivot],
     [PublicApi.dashboardCardQuery, PublicApi.dashboardCardQueryPivot],
     [EmbedApi.cardQuery, EmbedApi.cardQueryPivot],
     [EmbedApi.dashboardCardQuery, EmbedApi.dashboardCardQueryPivot],
   ];
-  for (const [from, to] of mapping) {
+  for (const [from, to, options = {}] of mapping) {
     if (api === from) {
-      return wrap(to);
+      return options.wrap ? wrap(to) : to;
     }
   }
   return api;
 }
 
+/**
+ * @param {*} question
+ * @param {object} param
+ */
 export async function runQuestionQuery(
   question,
   {
@@ -76,6 +92,8 @@ export async function runQuestionQuery(
     isDirty = false,
     ignoreCache = false,
     collectionPreview = false,
+    // Ability to override or add extra query params to the request, used by Embedding SDK
+    queryParamsOverride = {},
   } = {},
 ) {
   const canUseCardApiEndpoint = !isDirty && question.isSaved();
@@ -85,7 +103,7 @@ export async function runQuestionQuery(
   const card = question.card();
 
   if (canUseCardApiEndpoint) {
-    const { dashboardId, dashcardId } = card;
+    const { dashboardId, dashcardId } = question.getDashboardProps();
 
     const queryParams = {
       cardId: question.id(),
@@ -94,6 +112,7 @@ export async function runQuestionQuery(
       ignore_cache: ignoreCache,
       collection_preview: collectionPreview,
       parameters,
+      ...queryParamsOverride,
     };
 
     return [
@@ -107,7 +126,7 @@ export async function runQuestionQuery(
     ];
   }
 
-  const getDatasetQueryResult = datasetQuery => {
+  const getDatasetQueryResult = (datasetQuery) => {
     const datasetQueryWithParameters = { ...datasetQuery, parameters };
     return maybeUsePivotEndpoint(
       MetabaseApi.dataset,
@@ -129,67 +148,21 @@ export async function runQuestionQuery(
 }
 
 export const CardApi = {
-  list: GET("/api/card", (cards, { data }) =>
-    // HACK: support for the "q" query param until backend implements it
-    cards.filter(
-      card =>
-        !data.q || card.name.toLowerCase().indexOf(data.q.toLowerCase()) >= 0,
-    ),
-  ),
-  create: POST("/api/card"),
-  uploadCSV: POST("/api/card/from-csv", {
-    formData: true,
-    fetch: true,
-  }),
   get: GET("/api/card/:cardId"),
   update: PUT("/api/card/:id"),
-  delete: DELETE("/api/card/:id"),
-  persist: POST("/api/card/:id/persist"),
-  unpersist: POST("/api/card/:id/unpersist"),
-  refreshModelCache: POST("/api/card/:id/refresh"),
   query: POST("/api/card/:cardId/query"),
   query_pivot: POST("/api/card/pivot/:cardId/query"),
-  bookmark: {
-    create: POST("/api/card/:id/bookmark"),
-    delete: DELETE("/api/card/:id/bookmark"),
-  },
-  listPublic: GET("/api/card/public"),
-  listEmbeddable: GET("/api/card/embeddable"),
-  createPublicLink: POST("/api/card/:id/public_link"),
-  deletePublicLink: DELETE("/api/card/:id/public_link"),
   // related
-  related: GET("/api/card/:cardId/related"),
-  adHocRelated: POST("/api/card/related"),
   compatibleCards: GET("/api/card/:cardId/series"),
   parameterValues: GET("/api/card/:cardId/params/:paramId/values"),
   parameterSearch: GET("/api/card/:cardId/params/:paramId/search/:query"),
 };
 
-export const ModelIndexApi = {
-  list: GET("/api/model-index"),
-  get: GET("/api/model-index/:id"),
-  create: POST("/api/model-index"),
-  update: PUT("/api/model-index/:id"),
-  delete: DELETE("/api/model-index/:id"),
-};
-
 export const DashboardApi = {
-  // creates a new empty dashboard
-  create: POST("/api/dashboard"),
-  // saves a complete transient dashboard
-  save: POST("/api/dashboard/save"),
   get: GET("/api/dashboard/:dashId"),
-  update: PUT("/api/dashboard/:id"),
-  delete: DELETE("/api/dashboard/:dashId"),
   parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
   parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:query"),
   validFilterFields: GET("/api/dashboard/params/valid-filter-fields"),
-
-  listPublic: GET("/api/dashboard/public"),
-  listEmbeddable: GET("/api/dashboard/embeddable"),
-  createPublicLink: POST("/api/dashboard/:id/public_link"),
-  deletePublicLink: DELETE("/api/dashboard/:id/public_link"),
-
   cardQuery: POST(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
   ),
@@ -199,37 +172,34 @@ export const DashboardApi = {
 };
 
 export const CollectionsApi = {
-  list: GET("/api/collection"),
-  create: POST("/api/collection"),
   get: GET("/api/collection/:id"),
-  // Temporary route for getting things not in a collection
-  getRoot: GET("/api/collection/root"),
-  update: PUT("/api/collection/:id"),
   graph: GET("/api/collection/graph"),
   updateGraph: PUT("/api/collection/graph?skip-graph=true"),
 };
 
-const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
+const PIVOT_PUBLIC_PREFIX = `${publicBase}/pivot/`;
 
 export const PublicApi = {
-  action: GET("/api/public/action/:uuid"),
+  action: GET(`${publicBase}/action/:uuid`),
   executeDashcardAction: POST(
-    "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute",
+    `${publicBase}/dashboard/:dashboardId/dashcard/:dashcardId/execute`,
   ),
-  executeAction: POST("/api/public/action/:uuid/execute"),
-  card: GET("/api/public/card/:uuid"),
-  cardQuery: GET("/api/public/card/:uuid/query"),
+  executeAction: POST(`${publicBase}/action/:uuid/execute`),
+  card: GET(`${publicBase}/card/:uuid`),
+  cardQuery: GET(`${publicBase}/card/:uuid/query`),
   cardQueryPivot: GET(PIVOT_PUBLIC_PREFIX + "card/:uuid/query"),
-  dashboard: GET("/api/public/dashboard/:uuid"),
+  dashboard: GET(`${publicBase}/dashboard/:uuid`),
   dashboardCardQuery: GET(
-    "/api/public/dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
+    `${publicBase}/dashboard/:uuid/dashcard/:dashcardId/card/:cardId`,
   ),
   dashboardCardQueryPivot: GET(
     PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
   ),
   prefetchDashcardValues: GET(
-    "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute",
+    `${publicBase}/dashboard/:dashboardId/dashcard/:dashcardId/execute`,
   ),
+  document: GET(`/api/ee/public/document/:uuid`),
+  documentCardQuery: GET(`/api/ee/public/document/:uuid/card/:cardId`),
 };
 
 export const EmbedApi = {
@@ -252,62 +222,8 @@ export const AutoApi = {
   }),
 };
 
-export const EmailApi = {
-  updateSettings: PUT("/api/email"),
-  sendTest: POST("/api/email/test"),
-  clear: DELETE("/api/email"),
-};
-
-export const SlackApi = {
-  getManifest: GET("/api/slack/manifest"),
-  updateSettings: PUT("/api/slack/settings"),
-};
-
-export const LdapApi = {
-  updateSettings: PUT("/api/ldap/settings"),
-};
-
-export const SamlApi = {
-  updateSettings: PUT("/api/saml/settings"),
-};
-
-export const GoogleApi = {
-  updateSettings: PUT("/api/google/settings"),
-};
-
-export const TimelineApi = {
-  list: GET("/api/timeline"),
-  listForCollection: GET("/api/collection/:collectionId/timelines"),
-  get: GET("/api/timeline/:id"),
-  create: POST("/api/timeline"),
-  update: PUT("/api/timeline/:id"),
-};
-
-export const TimelineEventApi = {
-  list: GET("/api/timeline-event"),
-  get: GET("/api/timeline-event/:id"),
-  create: POST("/api/timeline-event"),
-  update: PUT("/api/timeline-event/:id"),
-};
-
 export const MetabaseApi = {
-  db_autocomplete_suggestions: GET(
-    "/api/database/:dbId/autocomplete_suggestions?:matchStyle=:query",
-  ),
-  db_card_autocomplete_suggestions: GET(
-    "/api/database/:dbId/card_autocomplete_suggestions",
-  ),
-  db_sync_schema: POST("/api/database/:dbId/sync_schema"),
-  db_dismiss_sync_spinner: POST("/api/database/:dbId/dismiss_spinner"),
-  db_persist: POST("/api/database/:dbId/persist"),
-  db_unpersist: POST("/api/database/:dbId/unpersist"),
   db_usage_info: GET("/api/database/:dbId/usage_info"),
-  table_list: GET("/api/table"),
-  table_get: GET("/api/table/:tableId"),
-  table_update: PUT("/api/table/:id"),
-  // table_fields:                GET("/api/table/:tableId/fields"),
-  table_fks: GET("/api/table/:tableId/fks"),
-  // table_reorder_fields:       POST("/api/table/:tableId/reorder"),
   tableAppendCSV: POST("/api/table/:tableId/append-csv", {
     formData: true,
     fetch: true,
@@ -316,12 +232,6 @@ export const MetabaseApi = {
     formData: true,
     fetch: true,
   }),
-  field_get: GET("/api/field/:fieldId"),
-  // field_summary:               GET("/api/field/:fieldId/summary"),
-  field_values: GET("/api/field/:fieldId/values"),
-  field_values_update: POST("/api/field/:fieldId/values"),
-  field_search: GET("/api/field/:fieldId/search/:searchFieldId"),
-  field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
   dataset_pivot: POST("/api/dataset/pivot"),
 
@@ -359,29 +269,14 @@ export const PulseUnsubscribeApi = {
   undo_unsubscribe: POST("/api/pulse/unsubscribe/undo"),
 };
 
-export const SegmentApi = {
-  list: GET("/api/segment"),
-  create: POST("/api/segment"),
-  get: GET("/api/segment/:segmentId"),
-  update: PUT("/api/segment/:id"),
-  delete: DELETE("/api/segment/:segmentId"),
-};
-
-export const MetricApi = {
-  list: GET("/api/legacy-metric"),
-  create: POST("/api/legacy-metric"),
-  get: GET("/api/legacy-metric/:metricId"),
-  update: PUT("/api/legacy-metric/:id"),
-  delete: DELETE("/api/legacy-metric/:metricId"),
-};
-
-export const RevisionApi = {
-  list: GET("/api/revision"),
-  revert: POST("/api/revision/revert"),
+// also unauthenticated
+export const NotificationUnsubscribeApi = {
+  unsubscribe: POST("/api/notification/unsubscribe"),
+  undo_unsubscribe: POST("/api/notification/unsubscribe/undo"),
 };
 
 export const RevisionsApi = {
-  get: GET("/api/:entity/:id/revisions"),
+  get: GET("/api/revision/:entity/:id"),
 };
 
 export const SessionApi = {
@@ -389,7 +284,6 @@ export const SessionApi = {
   createWithGoogleAuth: POST("/api/session/google_auth"),
   delete: DELETE("/api/session"),
   slo: POST("/auth/sso/logout"),
-  properties: GET("/api/session/properties"),
   forgot_password: POST("/api/session/forgot_password"),
   reset_password: POST("/api/session/reset_password"),
 };
@@ -401,24 +295,13 @@ export const SettingsApi = {
 };
 
 export const PermissionsApi = {
-  groups: GET("/api/permissions/group"),
-  groupDetails: GET("/api/permissions/group/:id"),
   graph: GET("/api/permissions/graph"),
   graphForGroup: GET("/api/permissions/graph/group/:groupId"),
   graphForDB: GET("/api/permissions/graph/db/:databaseId"),
   updateGraph: PUT("/api/permissions/graph"),
-  memberships: GET("/api/permissions/membership"),
-  createMembership: POST("/api/permissions/membership"),
-  deleteMembership: DELETE("/api/permissions/membership/:id"),
-  updateMembership: PUT("/api/permissions/membership/:id"),
-  clearGroupMembership: PUT("/api/permissions/membership/:id/clear"),
-  updateGroup: PUT("/api/permissions/group/:id"),
-  deleteGroup: DELETE("/api/permissions/group/:id"),
 };
 
 export const PersistedModelsApi = {
-  get: GET("/api/persist/:id"),
-  getForModel: GET("/api/persist/card/:id"),
   enablePersistence: POST("/api/persist/enable"),
   disablePersistence: POST("/api/persist/disable"),
   setRefreshSchedule: POST("/api/persist/set-refresh-schedule"),
@@ -426,7 +309,6 @@ export const PersistedModelsApi = {
 
 export const SetupApi = {
   create: POST("/api/setup"),
-  admin_checklist: GET("/api/setup/admin_checklist"),
   user_defaults: GET("/api/setup/user_defaults"),
 };
 
@@ -437,109 +319,85 @@ export const UserApi = {
 };
 
 export const UtilApi = {
-  password_check: POST("/api/util/password_check"),
+  password_check: POST("/api/session/password-check"),
   random_token: GET("/api/util/random_token"),
-  logs: GET("/api/util/logs"),
-  bug_report_details: GET("/api/util/bug_report_details"),
+  logs: GET("/api/logger/logs"),
+  bug_report_details: GET("/api/bug-reporting/details"),
   get_connection_pool_details_url: () => {
     // this one does not need an HTTP verb because it's opened as an external link
     // and it can be deployed at subpath
-    const path = "/api/util/diagnostic_info/connection_pool_info";
+    const path = "/api/bug-reporting/connection-pool-details";
     const { href } = new URL(api.basename + path, location.origin);
 
     return href;
   },
 };
 
-export const GeoJSONApi = {
-  load: GET("/api/geojson"),
-  get: GET("/api/geojson/:id"),
-};
-
-export const I18NApi = {
-  locale: GET("/app/locales/:locale.json"),
-};
-
 export function setPublicQuestionEndpoints(uuid) {
-  setCardEndpoints("/api/public/card/:uuid", { uuid });
+  const encodedUuid = encodeURIComponent(uuid);
+  setCardEndpoints({ base: publicBase, encodedUuid });
 }
 
 export function setPublicDashboardEndpoints(uuid) {
-  setDashboardEndpoints("/api/public/dashboard/:uuid", { uuid });
+  const encodedUuid = encodeURIComponent(uuid);
+  setDashboardEndpoints({ base: publicBase, encodedUuid });
 }
 
+/**
+ * @param token {string}
+ */
 export function setEmbedQuestionEndpoints(token) {
-  if (!IS_EMBED_PREVIEW) {
-    setCardEndpoints("/api/embed/card/:token", { token });
-  }
+  const encodedToken = encodeURIComponent(token);
+  setCardEndpoints({ base: embedBase, encodedToken });
+  PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
 
+/**
+ * @param token {string}
+ */
 export function setEmbedDashboardEndpoints(token) {
-  if (!IS_EMBED_PREVIEW) {
-    setDashboardEndpoints("/api/embed/dashboard/:token", { token });
-  } else {
-    setDashboardParameterValuesEndpoint(embedBase);
-  }
+  const encodedToken = encodeURIComponent(token);
+  setDashboardEndpoints({ base: embedBase, encodedToken });
+  PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
 
-function GET_with(url, params, omitKeys) {
-  return (data, options) =>
-    GET(url)({ ...params, ..._.omit(data, omitKeys) }, options);
+function GET_with(url, omitKeys) {
+  return (data, options) => GET(url)({ ..._.omit(data, omitKeys) }, options);
 }
 
-function setCardEndpoints(prefix, params) {
-  CardApi.parameterValues = GET_with(
-    `${prefix}/params/:paramId/values`,
-    params,
-    ["cardId"],
-  );
+function setCardEndpoints({ base, encodedUuid, encodedToken }) {
+  const prefix = `${base}/card/${encodedUuid ?? encodedToken}`;
+
+  // RTK query
+  PLUGIN_API.getRemappedCardParameterValueUrl = (_dashboardId, parameterId) =>
+    `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
+
+  // legacy API
+  CardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
+    "cardId",
+  ]);
   CardApi.parameterSearch = GET_with(
     `${prefix}/params/:paramId/search/:query`,
-    params,
     ["cardId"],
   );
-  MetabaseApi.field_values = GET_with(
-    `${prefix}/field/:fieldId/values`,
-    params,
-  );
-  MetabaseApi.field_search = GET_with(
-    `${prefix}/field/:fieldId/search/:searchFieldId`,
-    params,
-  );
-  MetabaseApi.field_remapping = GET_with(
-    `${prefix}/field/:fieldId/remapping/:remappedFieldId`,
-    params,
-  );
 }
 
-function setDashboardEndpoints(prefix, params) {
-  DashboardApi.parameterValues = GET_with(
-    `${prefix}/params/:paramId/values`,
-    params,
-    ["dashId"],
-  );
+function setDashboardEndpoints({ base, encodedUuid, encodedToken }) {
+  const prefix = `${base}/dashboard/${encodedUuid ?? encodedToken}`;
+
+  // RTK query
+  PLUGIN_API.getRemappedDashboardParameterValueUrl = (
+    _dashboardId,
+    parameterId,
+  ) => `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
+
+  // legacy API
+  DashboardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
+    "dashId",
+  ]);
   DashboardApi.parameterSearch = GET_with(
     `${prefix}/params/:paramId/search/:query`,
-    params,
     ["dashId"],
-  );
-  MetabaseApi.field_values = GET_with(
-    `${prefix}/field/:fieldId/values`,
-    params,
-  );
-  MetabaseApi.field_search = GET_with(
-    `${prefix}/dashboard/:dashId/field/:fieldId/search/:searchFieldId`,
-    params,
-  );
-  MetabaseApi.field_remapping = GET_with(
-    `${prefix}/field/:fieldId/remapping/:remappedFieldId`,
-    params,
-  );
-}
-
-function setDashboardParameterValuesEndpoint(prefix) {
-  DashboardApi.parameterValues = GET(
-    `${prefix}/dashboard/:dashId/params/:paramId/values`,
   );
 }
 
@@ -552,13 +410,6 @@ export const ActionsApi = {
   executeDashcardAction: POST(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
-};
-
-export const MetabotApi = {
-  modelPrompt: POST("/api/metabot/model/:modelId"),
-  databasePrompt: POST("/api/metabot/database/:databaseId"),
-  databasePromptQuery: POST("/api/metabot/database/:databaseId/query"),
-  sendFeedback: POST("/api/metabot/feedback"),
 };
 
 export const CacheConfigApi = {

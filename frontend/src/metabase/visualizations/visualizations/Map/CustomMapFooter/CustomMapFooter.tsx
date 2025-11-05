@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Link from "metabase/core/components/Link";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Link from "metabase/common/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -12,7 +12,7 @@ import { CustomMapContent } from "../Maps.styled";
 
 export function CustomMapFooter() {
   const isAdmin = useSelector(getUserIsAdmin);
-  const docsUrl = useSelector(state =>
+  const docsUrl = useSelector((state) =>
     getDocsUrl(state, { page: "configuring-metabase/custom-maps" }),
   );
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);

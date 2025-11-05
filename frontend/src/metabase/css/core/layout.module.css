@@ -94,3 +94,7 @@
 .stackingContext {
   transform: scale(1);
 }
+
+.verticalAlignMiddle {
+  vertical-align: middle;
+}

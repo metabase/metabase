@@ -1,11 +1,10 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.count-where-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.segment :refer [Segment]]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.test :as mt]))
 
 (deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
@@ -79,11 +78,14 @@
 
 (deftest ^:parallel segment-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
-    (t2.with-temp/with-temp [Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                       :definition {:source-table (mt/id :venues)
-                                                                    :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
+    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                      (mt/metadata-provider)
+                                      {:segments [{:id         1
+                                                   :table-id   (mt/id :venues)
+                                                   :definition {:source-table (mt/id :venues)
+                                                                :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]})
       (is (= 94
-             (->> {:aggregation [[:count-where [:segment segment-id]]]}
+             (->> {:aggregation [[:count-where [:segment 1]]]}
                   (mt/run-mbql-query venues)
                   mt/rows
                   ffirst
@@ -91,14 +93,17 @@
 
 (deftest ^:parallel metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
-    (t2.with-temp/with-temp [Card {metric-id :id} {:dataset_query (mt/mbql-query venues
-                                                                    {:aggregation [:count-where
-                                                                                   [:< $price 4]]
-                                                                     :source-table $$venues})
-                                                   :type :metric}]
+    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                      (mt/metadata-provider)
+                                      {:cards [{:id            1
+                                                :dataset-query (mt/mbql-query venues
+                                                                 {:aggregation  [:count-where
+                                                                                 [:< $price 4]]
+                                                                  :source-table $$venues})
+                                                :type          :metric}]})
       (is (= 94
-             (->> {:aggregation [[:metric metric-id]]
-                   :source-table (str "card__" metric-id)}
+             (->> {:aggregation  [[:metric 1]]
+                   :source-table "card__1"}
                   (mt/run-mbql-query venues)
                   mt/rows
                   ffirst

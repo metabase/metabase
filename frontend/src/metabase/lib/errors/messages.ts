@@ -1,5 +1,8 @@
 import type { GenericErrorResponse } from "./types";
 
+/**
+ * @deprecated Use `getErrorMessage` from `metabase/api/utils` instead.
+ */
 export function getResponseErrorMessage(error: unknown): string | undefined {
   const response = error as GenericErrorResponse | undefined;
 
@@ -25,4 +28,8 @@ export function getResponseErrorMessage(error: unknown): string | undefined {
   }
 
   return undefined;
+}
+
+export function isResourceNotFoundError(error: any) {
+  return error instanceof Object && "status" in error && error.status === 404;
 }

@@ -1,15 +1,20 @@
-import type fetchMock from "fetch-mock";
+import type { CallLog } from "fetch-mock";
 
 import { act, waitFor } from "./ui";
 
 export const getNextId = (() => {
   let id = 0;
-  return () => ++id;
+  return (startingId?: number) => {
+    if (startingId) {
+      id = startingId;
+    }
+    return ++id;
+  };
 })();
 
 export async function delay(duration: number) {
   await act(async () => {
-    await new Promise(resolve => setTimeout(resolve, duration));
+    await new Promise((resolve) => setTimeout(resolve, duration));
   });
 }
 
@@ -18,9 +23,7 @@ export async function delay(duration: number) {
  * better failure messages (request arrived but wrong details vs request never
  * arrived)
  */
-export const waitForRequest = async (
-  requestFn: () => fetchMock.MockCall | undefined,
-) => {
+export const waitForRequest = async (requestFn: () => CallLog | undefined) => {
   try {
     // try catch to make jest show the line where waitForRequest was originally called
     await waitFor(() => {

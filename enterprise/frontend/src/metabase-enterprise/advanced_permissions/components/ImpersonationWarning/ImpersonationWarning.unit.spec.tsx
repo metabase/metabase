@@ -1,7 +1,6 @@
-import { screen } from "@testing-library/react";
 import { Route } from "react-router";
 
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import Database from "metabase-lib/v1/metadata/Database";
 import type { Database as IDatabase } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
@@ -35,7 +34,7 @@ describe("ImpersonationWarning", () => {
 
     expect(screen.getByText(/edit settings/i)).toHaveAttribute(
       "href",
-      "/admin/databases/1",
+      "/admin/databases/1/edit",
     );
   });
 
@@ -57,7 +56,7 @@ describe("ImpersonationWarning", () => {
 
     expect(screen.getByText(/edit settings/i)).toHaveAttribute(
       "href",
-      "/admin/databases/1#user",
+      "/admin/databases/1/edit#user",
     );
   });
 });

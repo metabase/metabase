@@ -5,9 +5,9 @@ import { useSelector } from "metabase/lib/redux";
 import { ViewFooterDownloadWidget } from "metabase/query_builder/components/view/ViewFooter/ViewFooterDownloadWidget";
 import {
   getFirstQueryResult,
-  getIsObjectDetail,
   getIsTimeseries,
 } from "metabase/query_builder/selectors";
+import { getIsObjectDetail } from "metabase/query_builder/selectors/mode";
 import { Group } from "metabase/ui";
 
 import { ExecutionTime } from "../ExecutionTime";
@@ -15,13 +15,15 @@ import { QuestionLastUpdated } from "../QuestionLastUpdated/QuestionLastUpdated"
 import QuestionRowCount from "../QuestionRowCount";
 import QuestionTimelineWidget from "../QuestionTimelineWidget";
 
+import S from "./RightViewFooterButtonGroup.module.css";
+
 export const RightViewFooterButtonGroup = () => {
   const isTimeseries = useSelector(getIsTimeseries);
   const result = useSelector(getFirstQueryResult);
   const isObjectDetail = useSelector(getIsObjectDetail);
 
   return (
-    <Group noWrap>
+    <Group wrap="nowrap" justify="right" className={S.Root}>
       {QuestionRowCount.shouldRender({
         result,
         isObjectDetail,
@@ -29,7 +31,7 @@ export const RightViewFooterButtonGroup = () => {
       {ExecutionTime.shouldRender({ result }) && (
         <ExecutionTime time={result.running_time} />
       )}
-      <Group spacing="sm" noWrap>
+      <Group gap="sm" wrap="nowrap">
         {QuestionLastUpdated.shouldRender({ result }) && (
           <QuestionLastUpdated
             className={cx(CS.hide, CS.smShow)}

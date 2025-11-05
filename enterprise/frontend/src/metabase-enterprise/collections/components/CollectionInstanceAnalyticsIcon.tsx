@@ -12,10 +12,15 @@ interface Props extends Omit<IconProps, "name" | "tooltip"> {
 }
 
 const collectionIconTooltipNameMap = {
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   collection: t`collection`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   question: t`question`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   model: t`model`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   dashboard: t`dashboard`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   metric: t`metric`,
 };
 
@@ -33,6 +38,7 @@ export function CollectionInstanceAnalyticsIcon({
   return (
     <Icon
       {...iconProps}
+      flex="0 0 auto"
       name={collectionType.icon}
       tooltip={t`This is a read-only Usage Analytics ${collectionIconTooltipNameMap[entity]}.`}
       data-testid="instance-analytics-collection-marker"

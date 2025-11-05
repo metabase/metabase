@@ -1,7 +1,11 @@
 import { updateIn } from "icepick";
 import { t } from "ttag";
 
-import { actionApi, useGetActionQuery } from "metabase/api";
+import {
+  actionApi,
+  useGetActionQuery,
+  useListActionsQuery,
+} from "metabase/api";
 import {
   createEntity,
   entityCompatibleQuery,
@@ -120,6 +124,7 @@ const Actions = createEntity({
     getUseGetQuery: () => ({
       useGetQuery: useGetActionQuery,
     }),
+    useListQuery: useListActionsQuery,
   },
   api: {
     list: (entityQuery: ListActionsRequest, dispatch: Dispatch) =>
@@ -206,13 +211,13 @@ const Actions = createEntity({
     switch (type) {
       case CREATE_PUBLIC_LINK: {
         const { id, uuid } = payload;
-        return updateIn(state, [id], action => {
+        return updateIn(state, [id], (action) => {
           return { ...action, public_uuid: uuid };
         });
       }
       case DELETE_PUBLIC_LINK: {
         const { id } = payload;
-        return updateIn(state, [id], action => {
+        return updateIn(state, [id], (action) => {
           return { ...action, public_uuid: null };
         });
       }

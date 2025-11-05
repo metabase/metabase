@@ -49,7 +49,7 @@ const WithIconsTemplate = (args: ListProps) => {
 };
 
 export default {
-  title: "Typography/List",
+  title: "Components/Text/List",
   component: List,
   args,
   argTypes,

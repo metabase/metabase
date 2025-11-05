@@ -10,7 +10,7 @@ export const Pointer = ({ width, height, fill }: PointerProps) => {
     [width / 2, 0],
     [0, height],
   ]
-    .map(point => point.join(","))
+    .map((point) => point.join(","))
     .join(" ");
 
   return <polygon fill={fill} points={points} />;

@@ -60,7 +60,9 @@ function TimeseriesControls({
   );
 
   const breakoutColumn = useMemo(
-    () => breakout && Lib.breakoutColumn(query, stageIndex, breakout),
+    () =>
+      breakout &&
+      (Lib.breakoutColumn(query, stageIndex, breakout) ?? undefined),
     [query, stageIndex, breakout],
   );
 
@@ -102,12 +104,7 @@ function TimeseriesControls({
   }
 
   return (
-    <Group
-      p="md"
-      position="center"
-      spacing="sm"
-      data-testid="timeseries-chrome"
-    >
+    <Group p="md" justify="center" gap="sm" data-testid="timeseries-chrome">
       <Text>{t`View`}</Text>
       <TimeseriesFilterPicker
         query={query}

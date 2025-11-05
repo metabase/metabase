@@ -3,6 +3,10 @@ import type React from "react";
 import { useEffect, useMemo } from "react";
 import _ from "underscore";
 
+import {
+  EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
+  isEmbeddingSdk,
+} from "metabase/embedding-sdk/config";
 import { getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
@@ -15,6 +19,7 @@ import type { PieChartModel, SliceTreeNode } from "../pie/model/types";
 import { getArrayFromMapValues } from "../pie/util";
 
 export const TOOLTIP_POINTER_MARGIN = 10;
+export const ECHARTS_TOOLTIP_CONTAINER_CLASS = "echarts-tooltip-container";
 
 export const getTooltipPositionFn =
   (containerRef: React.RefObject<HTMLDivElement>) =>
@@ -65,20 +70,38 @@ export const getTooltipBaseOption = (
   containerRef: React.RefObject<HTMLDivElement>,
 ) => {
   return {
+    enterable: true,
     className: TooltipStyles.ChartTooltipRoot,
     appendTo: () => {
+      const echartsTooltipContainerSelector = `.${ECHARTS_TOOLTIP_CONTAINER_CLASS}`;
+      const containerSelector = !isEmbeddingSdk()
+        ? echartsTooltipContainerSelector
+        : `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID} ${echartsTooltipContainerSelector}`;
+
       let container = document.querySelector(
-        ".echarts-tooltip-container",
+        containerSelector,
       ) as HTMLDivElement;
+
       if (!container) {
         container = document.createElement("div");
-        container.classList.add("echarts-tooltip-container");
+        container.classList.add(ECHARTS_TOOLTIP_CONTAINER_CLASS);
         container.style.setProperty("overflow", "hidden");
-        container.style.setProperty("position", "absolute");
+        container.style.setProperty("position", "fixed");
         container.style.setProperty("inset", "0");
         container.style.setProperty("pointer-events", "none");
+        // Need to add 1 to z-index to ensure tooltips are visible when viz is rendered in a modal
+        container.style.setProperty(
+          "z-index",
+          "calc(var(--mb-overlay-z-index) + 1)",
+        );
 
-        document.body.append(container);
+        if (!isEmbeddingSdk()) {
+          document.body.append(container);
+        } else {
+          document
+            .getElementById(EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID)
+            ?.append(container);
+        }
       }
 
       return container;
@@ -98,7 +121,7 @@ export const useInjectSeriesColorsClasses = (hexColors: string[]) => {
     }
 
     return hexColors
-      .map(color => {
+      .map((color) => {
         const cssClassName = getMarkerColorClass(color);
         return `
     .${cssClassName} {
@@ -121,7 +144,7 @@ export const useInjectSeriesColorsClasses = (hexColors: string[]) => {
 
 export const useClickedStateTooltipSync = (
   chart?: EChartsType,
-  clicked?: ClickObject,
+  clicked?: ClickObject | null,
 ) => {
   useEffect(
     function toggleTooltip() {
@@ -138,7 +161,7 @@ export const useCartesianChartSeriesColorsClasses = (
 ) => {
   const hexColors = useMemo(() => {
     const seriesColors = chartModel.seriesModels
-      .map(seriesModel => seriesModel.color)
+      .map((seriesModel) => seriesModel.color)
       .filter(isNotNull);
 
     const settingColors = [
@@ -162,8 +185,8 @@ export const useSankeyChartColorsClasses = (chartModel: SankeyChartModel) => {
 };
 
 function getColorsFromSlices(slices: SliceTreeNode[]) {
-  const colors = slices.map(s => s.color);
-  slices.forEach(s =>
+  const colors = slices.map((s) => s.color);
+  slices.forEach((s) =>
     colors.push(...getColorsFromSlices(getArrayFromMapValues(s.children))),
   );
   return colors;
@@ -182,6 +205,10 @@ export const useCloseTooltipOnScroll = (
 ) => {
   useEffect(() => {
     const handleScroll = _.throttle(() => {
+      if (chartRef.current?.isDisposed()) {
+        return;
+      }
+
       chartRef.current?.dispatchAction({
         type: "hideTip",
       });
