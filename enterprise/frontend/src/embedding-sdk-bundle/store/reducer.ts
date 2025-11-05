@@ -3,12 +3,12 @@ import { createAction, createReducer } from "@reduxjs/toolkit";
 import type { SdkState } from "embedding-sdk-bundle/store/types";
 import type { SdkEventHandlersConfig } from "embedding-sdk-bundle/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
-import type { MetabaseFetchRequestTokenFn } from "embedding-sdk-bundle/types/refresh-token";
 import type {
   SdkErrorComponent,
   SdkLoadingError,
 } from "embedding-sdk-bundle/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
+import type { MetabaseFetchRequestTokenFn } from "metabase/embedding-sdk/types/refresh-token";
 
 import { initAuth, refreshTokenAsync } from "./auth";
 const SET_METABASE_INSTANCE_VERSION = "sdk/SET_METABASE_INSTANCE_VERSION";

@@ -7,7 +7,6 @@ import {
   connectToInstanceAuthSso,
   jwtDefaultRefreshTokenFunction,
   openSamlLoginPopup,
-  samlTokenStorage,
   validateSession,
 } from "embedding/auth-common";
 import * as MetabaseError from "embedding-sdk-bundle/errors";
@@ -22,9 +21,10 @@ import type {
   SdkStoreState,
 } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
-import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
+import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
+import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";

@@ -122,12 +122,6 @@ export type {
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
 
-export type {
-  UserBackendJwtResponse,
-  MetabaseFetchRequestTokenFn,
-  MetabaseEmbeddingSessionToken,
-} from "embedding-sdk-bundle/types/refresh-token";
-
 export type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 export type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";

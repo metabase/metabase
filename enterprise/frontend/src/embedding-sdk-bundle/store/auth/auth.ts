@@ -1,7 +1,7 @@
 import type { Dispatch } from "@reduxjs/toolkit";
 
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
-import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
+import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import { createAsyncThunk } from "metabase/lib/redux";
 
 // This is an SDK-only plugin and we co-locate it with its OSS usage for convenience and better three-shaking.
