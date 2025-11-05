@@ -49,6 +49,7 @@ const CypressBackend = {
         MB_DB_CONNECTION_URI: "", // ignore connection URI in favor of the db file
         MB_CONFIG_FILE_PATH: "__cypress__", // ignore config.yml
         MB_HTTP_CHANNEL_HOST_STRATEGY: "allow-all", // we use a local webhook service for testing
+        MB_IS_CYPRESS: "true", // custom flag so we can detect we're running in Cypress, used in tests.
       };
 
       /**

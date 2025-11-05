@@ -291,6 +291,10 @@
   "Does this instance support the new document entity."
   :documents)
 
+(define-premium-feature ^{:added "0.57.0"} enable-remote-sync?
+  "Does this instance support remote syncing collections."
+  :remote-sync)
+
 (define-premium-feature ^{:added "0.57.0"} enable-transforms?
   "Should we allow users to use transforms?"
   :transforms)
@@ -298,6 +302,10 @@
 (define-premium-feature ^{:added "0.57.0"} enable-python-transforms?
   "Should we allow users to use Python transforms?"
   :transforms-python)
+
+(define-premium-feature ^{:added "0.57.0"} enable-dependencies?
+  "Should we allow users to use dependency tracking?"
+  :dependencies)
 
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
@@ -316,6 +324,7 @@
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)
+   :dependencies                   (enable-dependencies?)
    :development_mode               (development-mode?)
    :disable_password_login         (can-disable-password-login?)
    :documents                      (enable-documents?)
@@ -332,6 +341,7 @@
    :offer_metabase_ai              (offer-metabase-ai?)
    :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)
+   :remote_sync                    (enable-remote-sync?)
    :sandboxes                      (enable-sandboxes?)
    :scim                           (enable-scim?)
    :semantic_search                (enable-semantic-search?)

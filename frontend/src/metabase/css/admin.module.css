@@ -92,7 +92,7 @@
 
 .AdminListItem.selected,
 .AdminListItem:hover {
-  background-color: white;
+  background-color: var(--mb-color-bg-white);
   border-color: var(--mb-color-border);
   margin-left: -0.5em;
   margin-right: -0.5em;

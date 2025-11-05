@@ -13,27 +13,18 @@ import { UpsellSdkLink } from "metabase/admin/upsells/UpsellSdkLink";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { useDispatch } from "metabase/lib/redux";
 import { isEEBuild } from "metabase/lib/utils";
 import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
-import {
-  Alert,
-  Box,
-  Button,
-  Flex,
-  Group,
-  HoverCard,
-  Icon,
-  Text,
-} from "metabase/ui";
+import { setOpenModalWithProps } from "metabase/redux/ui";
+import { Box, Button, Group, HoverCard, Icon, Stack, Text } from "metabase/ui";
 
-import { SettingHeader } from "../../SettingHeader";
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
-
-import S from "./EmbeddingSdkSettings.module.css";
-import { SdkSettingsCard } from "./SdkSettingsCard/SdkSettingsCard";
+import S from "../EmbeddingSettings.module.css";
+import { EmbeddingSettingsCard } from "../EmbeddingSettingsCard";
 
 const utmTags = {
   utm_source: "product",
@@ -43,6 +34,7 @@ const utmTags = {
 };
 
 export function EmbeddingSdkSettings() {
+  const dispatch = useDispatch();
   const isEE = isEEBuild();
 
   const isReactSdkEnabled = useSetting("enable-embedding-sdk");
@@ -139,23 +131,13 @@ export function EmbeddingSdkSettings() {
 
   return (
     <SettingsPageWrapper title={t`Modular embedding`}>
-      <SdkSettingsCard
+      <EmbeddingSettingsCard
         title={t`Embedded Analytics JS`}
         description={t`An easy-to-use library that lets you embed Metabase entities like charts, dashboards, or even the query builder into your own application using customizable components.`}
         settingKey="enable-embedding-simple"
         isFeatureEnabled={isSimpleEmbedFeatureAvailable}
         links={[
-          ...(isSimpleEmbedFeatureAvailable
-            ? [
-                {
-                  type: "button" as const,
-                  title: t`New embed`,
-                  to: "/embed-js",
-                },
-              ]
-            : []),
           {
-            type: "link",
             icon: "reference",
             title: t`Documentation`,
             href: embedJsDocumentationUrl?.url,
@@ -171,26 +153,40 @@ export function EmbeddingSdkSettings() {
             />
           ) : undefined
         }
+        actionButton={
+          isSimpleEmbedFeatureAvailable && (
+            <Button
+              variant="brand"
+              size="sm"
+              onClick={() => {
+                dispatch(setOpenModalWithProps({ id: "embed" }));
+              }}
+            >
+              {t`New embed`}
+            </Button>
+          )
+        }
+        testId="sdk-setting-card"
       />
 
-      <SdkSettingsCard
+      <EmbeddingSettingsCard
         title={t`SDK for React`}
         description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
         settingKey="enable-embedding-sdk"
         links={[
           {
-            type: "link",
             icon: "bolt",
             title: t`Quick start`,
             href: sdkQuickStartUrl,
           },
           {
-            type: "link",
             icon: "reference",
             title: t`Documentation`,
             href: sdkDocumentationUrl,
           },
         ]}
+        alertInfoText={apiKeyBannerText}
+        testId="sdk-setting-card"
       />
 
       <Box py="lg" px="xl" className={S.SectionCard}>
@@ -211,7 +207,7 @@ export function EmbeddingSdkSettings() {
                   </HoverCard.Target>
 
                   <HoverCard.Dropdown>
-                    <Box p="md" w={270}>
+                    <Box p="md" w={270} bg="white">
                       <Text lh="lg" c="text-medium">
                         {corsHintText}
                       </Text>
@@ -229,39 +225,31 @@ export function EmbeddingSdkSettings() {
       </Box>
 
       {isEmbeddingAvailable && isHosted && (
-        <Box>
-          <SettingHeader
-            id="version-pinning"
-            title={t`Version pinning`}
-            description={t`Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion.`}
-          />
-          <Button
-            size="compact-md"
-            variant="outline"
-            leftSection={<Icon size={12} name="mail" aria-hidden />}
-            component={ExternalLink}
-            fz="0.75rem"
-            href="mailto:help@metabase.com"
-          >{t`Request version pinning`}</Button>
+        <Box py="lg" px="xl" className={S.SectionCard}>
+          <Stack gap="xs">
+            <Text
+              htmlFor="version-pinning"
+              component="label"
+              c="text-primary"
+              fw="bold"
+              fz="lg"
+            >
+              {t`Version pinning`}
+            </Text>
+
+            <Text c="text-secondary" lh="lg" mb="sm">
+              {t`Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion.`}
+            </Text>
+
+            <ExternalLink href="mailto:help@metabase.com">
+              <Group gap="sm" fw="bold" w="fit-content">
+                <Icon name="mail" size={14} aria-hidden />
+                <span>{t`Request version pinning`}</span>
+              </Group>
+            </ExternalLink>
+          </Stack>
         </Box>
       )}
-
-      <Alert
-        data-testid="sdk-settings-alert-info"
-        px="xl"
-        bg="none"
-        bd="1px solid var(--mb-color-border)"
-      >
-        <Flex gap="sm">
-          <Box>
-            <Icon color="var(--mb-color-text-secondary)" name="info" mt="2px" />
-          </Box>
-
-          <Text c="text-medium" lh="lg">
-            {apiKeyBannerText}
-          </Text>
-        </Flex>
-      </Alert>
 
       <RelatedSettingsSection
         items={getModularEmbeddingRelatedSettingItems()}

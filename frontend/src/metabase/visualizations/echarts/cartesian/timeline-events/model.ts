@@ -1,5 +1,6 @@
 import type { OpUnitType } from "dayjs";
 import dayjs from "dayjs";
+import type { SupportedUnit } from "types/dayjs";
 import _ from "underscore";
 
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
@@ -29,7 +30,7 @@ const getIntervalWidth = (
 
 const groupEventsByUnitStart = (
   events: TimelineEvent[],
-  unit: string = "day",
+  unit: SupportedUnit = "day",
 ): TimelineEventGroup[] => {
   const groupedEvents = events.reduce<Map<string, TimelineEvent[]>>(
     (acc, event) => {
@@ -128,13 +129,12 @@ export const mergeOverlappingTimelineEventGroups = (
 const getTimelineEventsInsideRange = (
   timelineEvents: TimelineEvent[],
   range: DateRange,
+  unit: SupportedUnit,
 ) => {
   const [min, max] = range;
+
   return timelineEvents.filter((event) => {
-    return (
-      (min.isSame(event.timestamp) || min.isBefore(event.timestamp)) &&
-      (max.isSame(event.timestamp) || max.isAfter(event.timestamp))
-    );
+    return dayjs(event.timestamp).isBetween(min, max, unit, "[]");
   });
 };
 
@@ -156,6 +156,7 @@ export const getTimelineEventsModel = (
   const visibleTimelineEvents = getTimelineEventsInsideRange(
     timelineEvents,
     dimensionRange,
+    chartModel.xAxisModel.interval.unit,
   );
 
   const hasTimelineEvents = visibleTimelineEvents.length !== 0;
@@ -164,7 +165,7 @@ export const getTimelineEventsModel = (
   }
 
   const timelineEventsByUnitStart = groupEventsByUnitStart(
-    timelineEvents,
+    visibleTimelineEvents,
     chartModel.xAxisModel.interval.unit,
   );
 

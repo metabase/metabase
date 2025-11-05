@@ -5,8 +5,16 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { useSetting } from "metabase/common/hooks";
 
 export function PythonRunnerSettingsPage() {
+  const isHosted = useSetting("is-hosted?");
+
+  // Python Runner settings are managed by Metabase Cloud for hosted instances
+  if (isHosted) {
+    return null;
+  }
+
   return (
     <SettingsPageWrapper title={t`Python Runner`}>
       <SettingsSection title={t`Service Configuration`}>
@@ -16,6 +24,13 @@ export function PythonRunnerSettingsPage() {
           description={t`URL for the Python execution server that runs transform functions.`}
           placeholder="http://localhost:5001"
           inputType="text"
+        />
+        <AdminSettingInput
+          name="python-runner-timeout-seconds"
+          title={t`Python Script Execution Timeout`}
+          description={t`Timeout in seconds for Python script execution. Defaults to 30 minutes (1800 seconds).`}
+          placeholder="1800"
+          inputType="number"
         />
       </SettingsSection>
       <SettingsSection title={t`S3 Storage Configuration`}>

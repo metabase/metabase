@@ -1036,7 +1036,7 @@ describe("scenarios > admin > datamodel", () => {
           column: "New tax",
           values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
         });
-        verifyObjectDetailPreview({ index: 4, row: ["New tax", "2.07"] });
+        verifyObjectDetailPreview({ rowNumber: 4, row: ["New tax", "2.07"] });
 
         cy.log("verify viz");
         H.openOrdersTable();
@@ -1429,7 +1429,7 @@ describe("scenarios > admin > datamodel", () => {
           column: "New tax",
           values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
         });
-        verifyObjectDetailPreview({ index: 4, row: ["New tax", "2.07"] });
+        verifyObjectDetailPreview({ rowNumber: 4, row: ["New tax", "2.07"] });
 
         cy.log("verify viz");
         H.openOrdersTable();
@@ -1571,7 +1571,7 @@ describe("scenarios > admin > datamodel", () => {
           values: ["14", "123", "105", "94", "132"],
         });
         verifyObjectDetailPreview({
-          index: 2,
+          rowNumber: 2,
           row: ["Remapped Product ID", "14"],
         });
 
@@ -1669,7 +1669,7 @@ describe("scenarios > admin > datamodel", () => {
             ],
           });
           verifyObjectDetailPreview({
-            index: 4,
+            rowNumber: 4,
             row: ["Rating", "December 31, 1969, 4:00 PM"],
           });
 
@@ -1718,7 +1718,7 @@ describe("scenarios > admin > datamodel", () => {
             ],
           });
           verifyObjectDetailPreview({
-            index: 4,
+            rowNumber: 4,
             row: ["Rating", "December 31, 1969, 4:00 PM"],
           });
 
@@ -1989,8 +1989,8 @@ describe("scenarios > admin > datamodel", () => {
             values: ["2.07", "6.10", "2.90", "6.01", "7.03"],
           });
           verifyObjectDetailPreview({
-            index: 4,
-            row: ["Tax ($)", "$2.07"],
+            rowNumber: 4,
+            row: ["Tax ($)", "2.07"],
           });
 
           cy.log("change currency");
@@ -2009,8 +2009,8 @@ describe("scenarios > admin > datamodel", () => {
             values: ["2.07", "6.10", "2.90", "6.01", "7.03"],
           });
           verifyObjectDetailPreview({
-            index: 4,
-            row: ["Tax (CA$)", "CA$2.07"],
+            rowNumber: 4,
+            row: ["Tax (CA$)", "2.07"],
           });
 
           cy.log("verify viz");
@@ -2175,7 +2175,7 @@ describe("scenarios > admin > datamodel", () => {
             values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
           });
           verifyObjectDetailPreview({
-            index: 4,
+            rowNumber: 4,
             row: ["Tax", "2.07"],
           });
 
@@ -2293,7 +2293,7 @@ describe("scenarios > admin > datamodel", () => {
             .should("be.visible");
           cy.get("@dataset.all").should("have.length", 0);
           verifyObjectDetailPreview({
-            index: 4,
+            rowNumber: 4,
             row: ["Tax", "2.07"],
           });
 
@@ -2509,7 +2509,7 @@ describe("scenarios > admin > datamodel", () => {
             values: ["14", "123", "105", "94", "132"],
           });
           verifyObjectDetailPreview({
-            index: 2,
+            rowNumber: 2,
             row: ["Product ID", "14"],
           });
 
@@ -2529,7 +2529,7 @@ describe("scenarios > admin > datamodel", () => {
 
           cy.log("verify preview");
           verifyObjectDetailPreview({
-            index: 2,
+            rowNumber: 2,
             row: ["Product ID", "Awesome Concrete Shoes"],
           });
           verifyTablePreview({
@@ -2670,7 +2670,7 @@ describe("scenarios > admin > datamodel", () => {
           cy.log("verify preview");
           FieldSection.getPreviewButton().click();
           verifyObjectDetailPreview({
-            index: 2,
+            rowNumber: 2,
             row: ["Product ID", "Awesome Concrete Shoes"],
           });
           verifyTablePreview({
@@ -2755,7 +2755,7 @@ describe("scenarios > admin > datamodel", () => {
             ],
           });
           verifyObjectDetailPreview({
-            index: 3,
+            rowNumber: 3,
             row: ["Rating", "Perfecto"],
           });
 
@@ -2846,6 +2846,10 @@ describe("scenarios > admin > datamodel", () => {
               'You can only use custom mapping for numerical fields with filtering set to "A list of all values"',
             );
 
+          cy.log("close popover by clicking on element inside panel");
+          FieldSection.get().findByText("Field settings").click();
+
+          cy.log("open popover");
           FieldSection.getFilteringInput().click();
           H.popover().findByText("A list of all values").click();
           cy.wait("@updateField");
@@ -2898,7 +2902,7 @@ describe("scenarios > admin > datamodel", () => {
             ],
           });
           verifyObjectDetailPreview({
-            index: 1,
+            rowNumber: 1,
             row: ["User ID", "2023-10-07T01:34:35.462-07:00"],
           });
 
@@ -2952,7 +2956,7 @@ describe("scenarios > admin > datamodel", () => {
             values: ["10", "10"],
           });
           verifyObjectDetailPreview({
-            index: 1,
+            rowNumber: 1,
             row: ["Json → A", "10"],
           });
 
@@ -3107,7 +3111,7 @@ describe("scenarios > admin > datamodel", () => {
           values: ["200%", "300%", "200%", "600%", "500%"],
         });
         verifyObjectDetailPreview({
-          index: 8,
+          rowNumber: 8,
           row: ["Quantity", "200%"],
         });
       });
@@ -3177,7 +3181,7 @@ describe("scenarios > admin > datamodel", () => {
           values: ["about 2", "about 3", "about 2", "about 6", "about 5"],
         });
         verifyObjectDetailPreview({
-          index: 8,
+          rowNumber: 8,
           row: ["Quantity", "about 2"],
         });
 
@@ -3865,31 +3869,28 @@ function verifyTablePreview({
 }
 
 function verifyObjectDetailPreview({
-  index,
+  rowNumber,
   row,
 }: {
-  index: number;
+  rowNumber: number;
   row: [string, string];
 }) {
   const [label, value] = row;
-  const labelIndex = index * 2;
-  const valueIndex = labelIndex + 1;
 
   PreviewSection.getPreviewTypeInput().findByText("Detail").click();
   cy.wait("@dataset");
 
-  cy.findAllByTestId("object-details-table-cell").should((elements) => {
-    const index = [...elements].findIndex(
-      (element) => element.textContent?.trim() === label,
-    );
-    expect(index).to.eq(labelIndex);
-  });
+  cy.findAllByTestId("column-name").then(($els) => {
+    const foundRowIndex = $els
+      .toArray()
+      .findIndex((el) => el.textContent?.trim() === label);
 
-  cy.findAllByTestId("object-details-table-cell").should((elements) => {
-    const index = [...elements].findIndex(
-      (element) => element.textContent?.trim() === value,
-    );
-    expect(index).to.eq(valueIndex);
+    expect(rowNumber).to.eq(foundRowIndex);
+
+    cy.findAllByTestId("value")
+      .should("have.length.gte", foundRowIndex)
+      .eq(foundRowIndex)
+      .should("contain", value);
   });
 }
 

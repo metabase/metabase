@@ -8,8 +8,7 @@ import {
   setupListTransformTagsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import type { JobListParams } from "metabase-enterprise/transforms/types";
-import { getJobListUrl } from "metabase-enterprise/transforms/urls";
+import * as Urls from "metabase/lib/urls";
 import type {
   Transform,
   TransformJob,
@@ -33,7 +32,7 @@ type SetupOpts = {
   jobs?: TransformJob[];
   jobTransforms?: Map<TransformJobId, TransformListInfo>;
   tags?: TransformTag[];
-  params?: JobListParams;
+  params?: Urls.TransformJobListParams;
 };
 
 function setup({
@@ -55,21 +54,24 @@ function setup({
 
   renderWithProviders(
     <Route
-      path={getJobListUrl(params)}
+      path={Urls.transformJobList(params)}
       component={() => <JobList params={params} />}
     />,
-    { withRouter: true, initialRoute: getJobListUrl(params) },
+    { withRouter: true, initialRoute: Urls.transformJobList(params) },
   );
 }
 
 describe("JobList", () => {
   it("should show the last run status", async () => {
+    const jobId = 1;
     setup({
       jobs: [
         createMockTransformJob({
+          id: jobId,
           last_run: createMockTransformRun({ status: "started" }),
         }),
       ],
+      jobTransforms: new Map([[jobId, { data: [createMockTransform()] }]]),
     });
     expect(await screen.findByText("In progress")).toBeInTheDocument();
   });

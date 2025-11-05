@@ -1155,7 +1155,7 @@ describe("scenarios > organization > entity picker", () => {
       //Entity picker should grow
       cy.findByRole("dialog", { name: "Select a collection" })
         .should("have.css", "width")
-        .and("eq", "1095px");
+        .and("eq", "1097px");
 
       H.entityPickerModalItem(2, "Second collection").click();
 
@@ -1168,7 +1168,7 @@ describe("scenarios > organization > entity picker", () => {
       //Entity picker should not shrink if we go back in the collection tree
       cy.findByRole("dialog", { name: "Select a collection" })
         .should("have.css", "width")
-        .and("eq", "1200px");
+        .and("eq", "1198px");
     });
   });
 });
