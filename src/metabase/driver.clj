@@ -1660,3 +1660,13 @@
       (if (table-known-to-not-exist? driver e)
         false
         (throw e)))))
+
+(defmulti remove-inactive-fields?
+  "Some dbms queries work even with inactive fields. This method is used to decided whether
+  `remove-inactive-field-refs` should adjust a query for the driver. The driver in question when this method was added
+  is Mongo."
+  {:added "0.57.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod remove-inactive-fields? ::driver [_driver] true)

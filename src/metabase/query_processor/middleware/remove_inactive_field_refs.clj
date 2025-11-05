@@ -8,6 +8,7 @@
   columns are marked active = false."
   (:refer-clojure :exclude [empty? not-empty])
   (:require
+   [metabase.driver :as driver]
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -26,27 +27,29 @@
   We determine which direct database field references are referencing active fields and remove the others.
   Then we recursively remove references to the removed columns."
   [query :- ::lib.schema/query]
-  (lib.walk/walk-stages
-   query
-   (fn [_query stage-path stage]
-     (letfn [(resolve-field-ref [field-ref]
-               (when (= (first field-ref) :field)
-                 ;; resolve metadata in the ORIGINAL query so removing fields upstream doesn't mess up our metadata
-                 ;; resolution
-                 (lib.walk/apply-f-for-stage-at-path lib.field.resolution/resolve-field-ref query stage-path field-ref)))
-             (inactive-field-ref? [field-ref]
-               ;; optimization: if this is an ID ref we can just look up the field directly from the metadata provider
-               ;; and avoid the overhead of calculating a bunch of nonsense
-               (if (pos-int? (last field-ref))
-                 (let [id (last field-ref)]
-                   (false? (:active (lib.metadata/field query id))))
-                 (when-let [col (resolve-field-ref field-ref)]
-                   (or (false? (:active col))
-                       (when (and (nil? (:active col))
-                                  (:id col))
-                         (false? (:active (lib.metadata/field query (:id col)))))))))
-             (update-fields [fields]
-               (not-empty (into [] (remove inactive-field-ref?) fields)))]
-       (if (empty? (:fields stage))
-         stage
-         (u/assoc-dissoc stage :fields (update-fields (:fields stage))))))))
+  (if-not (not (driver/remove-inactive-fields? driver/*driver*))
+    query
+    (lib.walk/walk-stages
+     query
+     (fn [_query stage-path stage]
+       (letfn [(resolve-field-ref [field-ref]
+                 (when (= (first field-ref) :field)
+                   ;; resolve metadata in the ORIGINAL query so removing fields upstream doesn't mess up our metadata
+                   ;; resolution
+                   (lib.walk/apply-f-for-stage-at-path lib.field.resolution/resolve-field-ref query stage-path field-ref)))
+               (inactive-field-ref? [field-ref]
+                 ;; optimization: if this is an ID ref we can just look up the field directly from the metadata provider
+                 ;; and avoid the overhead of calculating a bunch of nonsense
+                 (if (pos-int? (last field-ref))
+                   (let [id (last field-ref)]
+                     (false? (:active (lib.metadata/field query id))))
+                   (when-let [col (resolve-field-ref field-ref)]
+                     (or (false? (:active col))
+                         (when (and (nil? (:active col))
+                                    (:id col))
+                           (false? (:active (lib.metadata/field query (:id col)))))))))
+               (update-fields [fields]
+                 (not-empty (into [] (remove inactive-field-ref?) fields)))]
+         (if (empty? (:fields stage))
+           stage
+           (u/assoc-dissoc stage :fields (update-fields (:fields stage)))))))))
