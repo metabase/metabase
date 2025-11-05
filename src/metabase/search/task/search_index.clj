@@ -16,7 +16,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private init-stem "metabase.task.search-index.init")
 (def ^:private reindex-stem "metabase.task.search-index.reindex")
 
 (def reindex-job-key
