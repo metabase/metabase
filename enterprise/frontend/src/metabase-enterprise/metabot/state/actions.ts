@@ -362,11 +362,9 @@ export const sendAgentRequest = createAsyncThunk<
 export const cancelInflightAgentRequests = createAsyncThunk(
   "metabase-enterprise/metabot/cancelInflightAgentRequests",
   (_args) => {
-    const reqs = getInflightRequestsForUrl(
-      "/api/ee/metabot-v3/agent-streaming",
+    getInflightRequestsForUrl("/api/ee/metabot-v3/agent-streaming").forEach(
+      (req) => req.abortController.abort(),
     );
-    reqs.forEach((req) => req.abortController.abort());
-    return { requestCount: reqs.length };
   },
 );
 

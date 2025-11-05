@@ -35,7 +35,7 @@ export function createMockReadableStream(
 
 export function mockEndpoint<T extends Response>(
   url: string,
-  endpointMock: () => Promise<T>,
+  endpointMock: (init?: RequestInit) => Promise<T>,
 ) {
   const originalFetch = global.fetch;
   const mockedFetch = jest.spyOn(global, "fetch");
@@ -47,7 +47,7 @@ export function mockEndpoint<T extends Response>(
       typeof fetchedUrl === "string" && fetchedUrl.includes(url);
 
     if (isRequestedUrl) {
-      return endpointMock();
+      return endpointMock(args?.[0]);
     } else {
       // remove calls that route to global fetch
       mockedFetch.mock.calls.pop();
@@ -75,15 +75,38 @@ export function mockStreamedEndpoint(
   url: string,
   { textChunks, stream, initialDelay = 0 }: MockStreamedEndpointParams,
 ) {
-  return mockEndpoint(url, async () => {
+  return mockEndpoint(url, async (init) => {
     await delay(initialDelay);
-    return {
-      status: 202,
-      ok: true,
-      body:
-        stream ||
-        (textChunks && createMockReadableStream(textChunks)) ||
-        undefined,
-    } as any;
+    const body =
+      stream ||
+      (textChunks && createMockReadableStream(textChunks)) ||
+      undefined;
+
+    // make stream abortable
+    if (body) {
+      let activeReader: ReadableStreamDefaultReader<any> | null = null;
+      const originalGetReader = body.getReader.bind(body);
+
+      body.getReader = function () {
+        activeReader = originalGetReader();
+        const originalRead = activeReader.read.bind(activeReader);
+
+        // Race the read with the abort promise
+        activeReader.read = async function () {
+          return Promise.race([
+            originalRead(),
+            new Promise<never>((_, reject) => {
+              init?.signal?.addEventListener("abort", () => {
+                reject(new DOMException("Stream aborted", "AbortError"));
+              });
+            }),
+          ]);
+        };
+
+        return activeReader;
+      };
+    }
+
+    return { status: 202, ok: true, body } as any;
   });
 }

@@ -56,14 +56,6 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
     const siteUrl = useSelector((state) => getSetting(state, "site-url"));
     const serializedRef = useRef(value);
 
-    // Use refs to avoid recreating the editor when callbacks change - not doing so prepends all characters
-    const onChangeRef = useRef(onChange);
-    const onSubmitRef = useRef(onSubmit);
-    useEffect(() => {
-      onChangeRef.current = onChange;
-      onSubmitRef.current = onSubmit;
-    });
-
     const extensions = [
       Document,
       Paragraph,
@@ -94,7 +86,7 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
       onUpdate: ({ editor }) => {
         const jsonContent = editor.getJSON();
         serializedRef.current = serializeTiptapToMetabotMessage(jsonContent);
-        onChangeRef.current(serializedRef.current);
+        onChange(serializedRef.current);
       },
       editorProps: {
         handleDOMEvents: {
@@ -142,7 +134,7 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
 
             if (!isModifiedKeyPress) {
               event.preventDefault();
-              onSubmitRef.current();
+              onSubmit();
               return true;
             }
           }
@@ -209,6 +201,9 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
             value.length === 0 && !isResponding && S.buttonHidden,
           )}
           onClick={isResponding ? onStop : onSubmit}
+          data-testid={
+            isResponding ? "metabot-stop-response" : "metabot-send-message"
+          }
         >
           {isResponding ? (
             <Icon className={S.stopIcon} name="stop" />
