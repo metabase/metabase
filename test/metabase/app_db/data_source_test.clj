@@ -106,6 +106,7 @@
               "jdbc:aws-wrapper:mysql://localhost:3306/metabase"
               {"user" "root"
                "wrapperPlugins" "iam"
+               "useSSL" true
                "sslMode" "VERIFY_CA"})
              (mdb.data-source/broken-out-details->DataSource :mysql {:host "localhost"
                                                                      :port 3306
@@ -120,6 +121,7 @@
               "jdbc:aws-wrapper:mysql://localhost:3306/metabase"
               {"user" "root"
                "wrapperPlugins" "iam"
+               "useSSL" true
                "trustServerCertificate" "true"})
              (mdb.data-source/broken-out-details->DataSource :mysql {:host "localhost"
                                                                      :port 3306
@@ -136,6 +138,7 @@
               {"user" "root"
                "wrapperPlugins" "iam"
                "sslMode" "VERIFY_CA"
+               "useSSL" true
                "serverSslCert" "/path/to/certificate.pem"})
              (mdb.data-source/broken-out-details->DataSource :mysql {:host "localhost"
                                                                      :port 3306
@@ -242,6 +245,7 @@
     (is (= (->DataSource
             "jdbc:aws-wrapper:mysql://metabase"
             {"user" "cam"
+             "useSSL" true
              "wrapperPlugins" "iam"})
            (mdb.data-source/raw-connection-string->DataSource "mysql://metabase" "cam" nil nil true)))))
 
