@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
-import type { Field } from "metabase-types/api";
+import type { DatasetColumn } from "metabase-types/api";
 
 export type ValidationResult = {
   isValid: boolean;
@@ -10,7 +10,7 @@ export type ValidationResult = {
 
 export function getValidationResult(
   query: Lib.Query,
-  resultMetadata: Field[] | null,
+  resultMetadata: DatasetColumn[] | null,
 ): ValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {

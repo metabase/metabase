@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { QueryEditor } from "metabase/querying/editor/components/QueryEditor";
 import type { QueryEditorUiState } from "metabase/querying/editor/types";
 import type * as Lib from "metabase-lib";
-import type { Field } from "metabase-types/api";
+import type { DatasetColumn } from "metabase-types/api";
 
 import { getEditorOptions } from "./utils";
 
@@ -12,7 +12,7 @@ type ModelEditorProps = {
   uiState: QueryEditorUiState;
   onChangeQuery: (newQuery: Lib.Query) => void;
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
-  onChangeResultMetadata?: (newResultMetadata: Field[] | null) => void;
+  onChangeResultMetadata?: (newResultMetadata: DatasetColumn[] | null) => void;
 };
 
 export function ModelQueryEditor({

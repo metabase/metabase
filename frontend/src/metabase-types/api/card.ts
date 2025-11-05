@@ -4,6 +4,7 @@ import type {
 } from "metabase/public/lib/types";
 import type { IconName } from "metabase/ui";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
+import type { DatasetColumn } from "metabase-types/api/dataset";
 
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type {
@@ -395,7 +396,7 @@ export interface CreateCardRequest {
   document_id?: DocumentId | null;
   dashboard_tab_id?: DashboardTabId;
   collection_position?: number;
-  result_metadata?: Field[] | null;
+  result_metadata?: Field[] | DatasetColumn[] | null;
   cache_ttl?: number;
 }
 
@@ -421,7 +422,7 @@ export interface UpdateCardRequest {
   dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
   collection_position?: number;
-  result_metadata?: Field[];
+  result_metadata?: Field[] | DatasetColumn[] | null;
   cache_ttl?: number;
   collection_preview?: boolean;
   delete_old_dashcards?: boolean;
