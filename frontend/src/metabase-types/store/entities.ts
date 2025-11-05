@@ -3,6 +3,7 @@ import type {
   NormalizedCollection,
   NormalizedDashboard,
   NormalizedDatabase,
+  NormalizedDocument,
   NormalizedField,
   NormalizedIndexedEntity,
   NormalizedNativeQuerySnippet,
@@ -16,6 +17,7 @@ export interface EntitiesState {
   actions: Record<string, NormalizedWritebackAction>;
   collections: Record<string, NormalizedCollection>;
   dashboards: Record<string, NormalizedDashboard>;
+  documents: Record<string, NormalizedDocument>;
   databases: Record<string, NormalizedDatabase>;
   schemas: Record<string, NormalizedSchema>;
   tables: Record<string, NormalizedTable>;

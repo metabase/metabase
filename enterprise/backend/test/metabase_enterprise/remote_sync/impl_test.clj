@@ -27,7 +27,7 @@
 ;; import! tests
 
 (deftest import!-with-no-source-configured-test
-  (testing "import! with no source configured"
+  (testing "import! with no snapshot configured"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
           result (impl/import! nil task-id)]
       (is (= :error (:status result)))
@@ -37,7 +37,7 @@
   (testing "import! successful without collections (imports all remote-synced)"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
       (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
-        (let [result (impl/import! (test-helpers/create-mock-source) task-id)]
+        (let [result (impl/import! (source.p/snapshot (test-helpers/create-mock-source)) task-id)]
           (is (= :success (:status result))))))))
 
 (deftest import!-with-branch-parameter-test
@@ -45,13 +45,13 @@
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
           custom-files {"custom-branch" {"collections/custom-collection.yaml"
                                          (test-helpers/generate-collection-yaml "custom-collection-idx" "Custom Collection")}}
-          result (impl/import! (test-helpers/create-mock-source :initial-files custom-files) task-id)]
+          result (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files custom-files)) task-id)]
       (is (= :success (:status result))))))
 
 (deftest import!-handles-network-errors-test
   (testing "import! handles network errors"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-          result (impl/import! (test-helpers/create-mock-source :fail-mode :network-error)
+          result (impl/import! (source.p/snapshot (test-helpers/create-mock-source :fail-mode :network-error))
                                task-id)]
       (is (= :error (:status result)))
       (is (re-find #"Network error" (:message result))))))
@@ -59,28 +59,28 @@
 (deftest import!-handles-authentication-errors-test
   (testing "import! handles authentication errors"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-          result (impl/import! (test-helpers/create-mock-source :fail-mode :auth-error) task-id)]
+          result (impl/import! (source.p/snapshot (test-helpers/create-mock-source :fail-mode :auth-error)) task-id)]
       (is (= :error (:status result)))
       (is (re-find #"Authentication failed" (:message result))))))
 
 (deftest import!-handles-repository-not-found-errors-test
   (testing "import! handles repository not found errors"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-          result (impl/import! (test-helpers/create-mock-source :fail-mode :repo-not-found) task-id)]
+          result (impl/import! (source.p/snapshot (test-helpers/create-mock-source :fail-mode :repo-not-found)) task-id)]
       (is (= :error (:status result)))
       (is (re-find #"Repository not found" (:message result))))))
 
 (deftest import!-handles-branch-errors-test
   (testing "import! handles branch errors"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-          result (impl/import! (test-helpers/create-mock-source :fail-mode :branch-error) task-id)]
+          result (impl/import! (source.p/snapshot (test-helpers/create-mock-source :fail-mode :branch-error)) task-id)]
       (is (= :error (:status result)))
       (is (re-find #"Branch error:" (:message result))))))
 
 (deftest import!-handles-generic-errors-test
   (testing "import! handles generic errors"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-          result (impl/import! (test-helpers/create-mock-source :fail-mode :list-files-error) task-id)]
+          result (impl/import! (source.p/snapshot (test-helpers/create-mock-source :fail-mode :list-files-error)) task-id)]
       (is (= :error (:status result)))
       (is (re-find #"Failed to reload from git repository" (:message result))))))
 
@@ -90,7 +90,7 @@
   (testing "import! skips import when source version matches last imported version and force? is false"
     (mt/with-model-cleanup [:model/RemoteSyncTask]
       (let [mock-source (test-helpers/create-mock-source)
-            source-version (source.p/version mock-source)
+            source-version (source.p/version (source.p/snapshot mock-source))
             task-defaults (mt/with-temp-defaults :model/RemoteSyncTask)]
         (t2/insert! :model/RemoteSyncTask (merge task-defaults
                                                  {:sync_task_type "import"
@@ -100,7 +100,7 @@
         (let [task-id-2 (t2/insert-returning-pk! :model/RemoteSyncTask (merge task-defaults
                                                                               {:sync_task_type "import"
                                                                                :initiated_by (mt/user->id :rasta)}))
-              result (impl/import! mock-source task-id-2 :force? false)]
+              result (impl/import! (source.p/snapshot mock-source) task-id-2 :force? false)]
           (is (= :success (:status result)))
           (is (= source-version (:version result)))
           (is (re-find #"Skipping import.*matches last imported version" (:message result))))))))
@@ -109,7 +109,7 @@
   (testing "import! proceeds with import when source version matches last imported version but force? is true"
     (mt/with-model-cleanup [:model/Collection :model/RemoteSyncTask]
       (let [mock-source (test-helpers/create-mock-source)
-            source-version (source.p/version mock-source)
+            source-version (source.p/version (source.p/snapshot mock-source))
             coll-defaults (mt/with-temp-defaults :model/Collection)
             task-defaults (mt/with-temp-defaults :model/RemoteSyncTask)]
         (t2/insert! :model/Collection (merge coll-defaults
@@ -125,7 +125,7 @@
         (let [task-id-2 (t2/insert-returning-pk! :model/RemoteSyncTask (merge task-defaults
                                                                               {:sync_task_type "import"
                                                                                :initiated_by (mt/user->id :rasta)}))
-              result (impl/import! mock-source task-id-2 :force? true)]
+              result (impl/import! (source.p/snapshot mock-source) task-id-2 :force? true)]
           (is (= :success (:status result)))
           (is (= source-version (:version result)))
           (is (= "Successfully reloaded from git repository" (:message result))))))))
@@ -147,7 +147,7 @@
         ;; Create a regular collection (not remote-synced) to verify it's not included
         (mt/with-temp [:model/Collection {_coll-id :id} {:name "Regular Collection" :type nil :location "/"}]
           (let [mock-source (test-helpers/create-mock-source)
-                result (impl/export! mock-source task-id "Test commit")]
+                result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
             (is (= :error (:status result)))
             (is (= "No remote-synced collections available to sync." (:message result)))))))))
 
@@ -157,7 +157,7 @@
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
         (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
           (let [mock-source (test-helpers/create-mock-source)
-                result (impl/export! mock-source task-id "Test commit message")]
+                result (impl/export! (source.p/snapshot mock-source) task-id "Test commit message")]
             (is (= :success (:status result)))))))))
 
 (deftest export!-handles-store-failure-test
@@ -166,7 +166,7 @@
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
         (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
           (let [mock-source (test-helpers/create-mock-source :fail-mode :store-error)
-                result (impl/export! mock-source task-id "Test commit message")]
+                result (impl/export! (source.p/snapshot mock-source) task-id "Test commit message")]
             (is (= :error (:status result)))
             (is (re-find #"Failed to export to git repository" (:message result)))))))))
 
@@ -176,7 +176,7 @@
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
         (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
           (let [mock-source (test-helpers/create-mock-source :fail-mode :network-error)
-                result (impl/export! mock-source task-id "Test commit message")]
+                result (impl/export! (source.p/snapshot mock-source) task-id "Test commit message")]
             (is (= :error (:status result)))
             (is (re-find #"Failed to export to git repository" (:message result)))))))))
 
@@ -189,7 +189,7 @@
                      :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}]
         (let [mock-main (test-helpers/create-mock-source :branch "test-branch")
               export-task (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
-              export-result (impl/export! mock-main (:id export-task) "Test export")]
+              export-result (impl/export! (source.p/snapshot mock-main) (:id export-task) "Test export")]
           (remote-sync.task/complete-sync-task! (:id export-task))
           (is (= :success (:status export-result)))
 
@@ -204,7 +204,7 @@
           (t2/delete! :model/RemoteSyncTask :id (:id export-task))
           ;; Then import - verify it succeeds and processes the exported files
           (let [import-task (t2/with-connection [_conn (app-db/app-db) (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})])
-                import-result (impl/import! mock-main (:id import-task))]
+                import-result (impl/import! (source.p/snapshot mock-main) (:id import-task))]
             (remote-sync.task/complete-sync-task! (:id import-task))
             (is (= :success (:status import-result)))
             (is (= "Successfully reloaded from git repository" (:message import-result)))
@@ -235,7 +235,7 @@
                                          "collections/test-collection-1xxxx-_/cards/test-card-1.yaml"
                                          (test-helpers/generate-card-yaml "test-card-1xxxxxxxxxx" "Test Card 1" "test-collection-1xxxx")}}
               mock-main (test-helpers/create-mock-source :initial-files test-files :branch "test-branch")
-              result (impl/import! mock-main (:id import-task))]
+              result (impl/import! (source.p/snapshot mock-main) (:id import-task))]
           (is (= :success (:status result)))
 
           ;; Verify the entities still exist (real cleanup would require more complex setup)
@@ -247,7 +247,7 @@
   (testing "error handling propagation through private functions"
     (let [mock-source (test-helpers/create-mock-source :fail-mode :network-error)
           task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-          result (impl/import! mock-source task-id)]
+          result (impl/import! (source.p/snapshot mock-source) task-id)]
       (is (= :error (:status result)))
       (is (re-find #"Network error" (:message result))))))
 
@@ -260,7 +260,7 @@
           (with-redefs [remote-sync.task/update-progress!
                         (fn [task-id progress]
                           (swap! progress-calls conj {:task-id task-id :progress progress}))]
-            (let [result (impl/import! mock-source task-id)]
+            (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
               (is (= :success (:status result)))
               ;; Verify progress was called with expected values
               (is (= 5 (count @progress-calls)))
@@ -285,7 +285,7 @@
               (with-redefs [remote-sync.task/update-progress!
                             (fn [task-id progress]
                               (swap! progress-calls conj {:task-id task-id :progress progress}))]
-                (let [result (impl/export! mock-source task-id "Test commit")]
+                (let [result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
                   (is (= :success (:status result)))
                   ;; Verify progress was called with expected values
                   (is (= 4 (count @progress-calls)))
@@ -309,7 +309,7 @@
                                     "collections/test-collection-1xxxx-_/cards/test-card-1.yaml"
                                     (test-helpers/generate-card-yaml "test-card-1xxxxxxxxxx" "Test Card" "test-collection-1xxxx")}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)
-                result (impl/import! mock-source task-id)]
+                result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result)))
             (let [entries (t2/select :model/RemoteSyncObject)]
               (is (= 2 (count entries)))
@@ -336,7 +336,7 @@
             (is (= "created" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id card-id))))
             (is (= "removed" (:status (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id dash-id))))
             (let [mock-source (test-helpers/create-mock-source)
-                  result (impl/export! mock-source task-id "Test commit message")]
+                  result (impl/export! (source.p/snapshot mock-source) task-id "Test commit message")]
               (is (= :success (:status result)))
               (let [entries (t2/select :model/RemoteSyncObject)]
                 (is (= 3 (count entries)))
@@ -375,7 +375,7 @@
                         impl/async-import! (fn [branch force? args]
                                              (reset! import-called? true)
                                              (reset! import-args {:branch branch :force? force? :args args})
-                                             123)
+                                             {:id 123})
                         collection/remote-synced-collection (constantly nil)]
             (let [task-id (impl/finish-remote-config!)]
               (is (= 123 task-id)
@@ -397,7 +397,7 @@
                                              remote-sync-branch "main"
                                              remote-sync-type :production]
             (with-redefs [source/source-from-settings (constantly mock-source)
-                          impl/async-import! (fn [& _args] (reset! import-called? true) 123)]
+                          impl/async-import! (fn [& _args] (reset! import-called? true) {:id 123})]
               (let [task-id (impl/finish-remote-config!)]
                 (is (= 123 task-id)
                     "Should return task ID from async-import!")

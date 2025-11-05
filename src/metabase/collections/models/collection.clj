@@ -132,7 +132,7 @@
   []
   (when-not (nil? (remote-synced-collection))
     (throw (ex-info "Remote-synced collection already exists" {})))
-  (t2/insert-returning-instance! :model/Collection {:name     "Library"
+  (t2/insert-returning-instance! :model/Collection {:name     "Synced Collection"
                                                     :type     remote-synced-collection-type
                                                     :location "/"}))
 
@@ -1114,8 +1114,9 @@
   Throws an ex-info object with non-remote-synced-dependencies and a 400 status code if dependencies are found."
   [model]
   (when-let [non-remote-synced-deps (not-empty (non-remote-synced-dependencies model))]
-    (throw (ex-info (str (deferred-tru "Model has non-remote-synced dependencies")) {:non-remote-synced-models non-remote-synced-deps
-                                                                                     :status-code 400})))
+    (throw (ex-info (str (deferred-tru "Uses content that is not remote synced."))
+                    {:non-remote-synced-models non-remote-synced-deps
+                     :status-code 400})))
   model)
 
 (defn check-remote-synced-dependents
@@ -1128,8 +1129,9 @@
   Throws an ex-info object with remote-synced-dependencies and a 400 status code if dependents are found."
   [original-collection-id model]
   (when-let [remote-synced-deps (not-empty (remote-synced-dependents original-collection-id model))]
-    (throw (ex-info (str (deferred-tru "Model has remote-synced dependents")) {:remote-synced-models remote-synced-deps
-                                                                               :status-code 400})))
+    (throw (ex-info (str (deferred-tru "Used by remote synced content."))
+                    {:remote-synced-models remote-synced-deps
+                     :status-code 400})))
   model)
 
 (defn- locations-do-not-share-top-level-parent

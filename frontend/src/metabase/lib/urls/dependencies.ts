@@ -11,10 +11,11 @@ export function dependencyGraph({
   entry,
   baseUrl = BASE_URL,
 }: DependencyGraphParams = {}) {
-  const params = new URLSearchParams();
+  const searchParams = new URLSearchParams();
   if (entry != null) {
-    params.set("id", String(entry.id));
-    params.set("type", entry.type);
+    searchParams.set("id", String(entry.id));
+    searchParams.set("type", entry.type);
   }
-  return params.size > 0 ? `${baseUrl}?${params}` : baseUrl;
+  const queryString = searchParams.toString();
+  return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
 }

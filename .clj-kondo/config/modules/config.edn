@@ -560,6 +560,7 @@
   {:team "Gadget"
    :api  #{metabase.glossary.api}
    :uses #{api
+           events
            models
            util}}
 
@@ -604,6 +605,7 @@
    :api  #{metabase.lib.binning
            metabase.lib.binning.util
            metabase.lib.card
+           metabase.lib.computed ; temporarily so that `qp.compile` can use it as lib memoization evolves
            metabase.lib.core
            metabase.lib.equality
            metabase.lib.field
@@ -1509,6 +1511,7 @@
    :uses #{actions
            api
            driver
+           events
            lib
            models
            query-processor
@@ -1645,6 +1648,7 @@
    :uses #{api
            events
            premium-features
+           store-api
            util
            enterprise/harbormaster}}
 
@@ -1733,6 +1737,7 @@
            lib-be
            models
            native-query-snippets
+           permissions
            premium-features
            queries
            query-processor
@@ -1901,7 +1906,7 @@
            query-processor
            util}}
 
- enterprise/remote-sync
+  enterprise/remote-sync
   {:team "UX West"
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
@@ -1914,8 +1919,8 @@
            models
            premium-features
            settings
-           startup
            task
+           task-history
            util
            enterprise/serialization}}
 

@@ -1083,7 +1083,7 @@
       (testing "Card with non-remote-synced source card dependency cannot be created in remote-synced collection"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Model has non-remote-synced dependencies"
+             #"Uses content that is not remote synced."
              (card/create-card!
               {:name "Card with non-remote-synced dependency"
                :display "table"
@@ -1115,7 +1115,7 @@
       (testing "Card with non-remote-synced dependencies cannot be moved to remote-synced collection"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Model has non-remote-synced dependencies"
+             #"Uses content that is not remote synced."
              (card/update-card!
               {:card-before-update card
                :card-updates {:collection_id remote-synced-coll-id}
@@ -1147,7 +1147,7 @@
       (testing "Cannot update remote-synced card to have non-remote-synced dependencies"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Model has non-remote-synced dependencies"
+             #"Uses content that is not remote synced."
              (card/update-card!
               {:card-before-update card
                :card-updates {:dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-source-id)})}
@@ -1166,7 +1166,7 @@
       (testing "Cannot move remote-synced card to regular collection when remote-synced dependents exist"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Model has remote-synced dependents"
+             #"Used by remote synced content."
              (card/update-card!
               {:card-before-update remote-synced-card
                :card-updates {:collection_id regular-coll-id}
@@ -1198,7 +1198,7 @@
       (testing "Cannot move remote-synced card when dependents reference it via parameters"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Model has remote-synced dependents"
+             #"Used by remote synced content."
              (card/update-card!
               {:card-before-update remote-synced-card
                :card-updates {:collection_id regular-coll-id}
@@ -1222,7 +1222,7 @@
       (testing "Cannot move remote-synced card when dependents reference it via template tags"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Model has remote-synced dependents"
+             #"Used by remote synced content."
              (card/update-card!
               {:card-before-update remote-synced-card
                :card-updates {:collection_id regular-coll-id}
