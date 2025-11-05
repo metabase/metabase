@@ -1,0 +1,9 @@
+created_at: '2025-11-05T17:34:01.946143Z'
+entity_id: cAGrIWAv42Lh6i9Jcpu0J
+name: Dark
+settings: {}
+updated_at: '2025-11-05T17:34:01.946143Z'
+serdes/meta:
+- id: cAGrIWAv42Lh6i9Jcpu0J
+  label: dark
+  model: EmbeddingTheme
