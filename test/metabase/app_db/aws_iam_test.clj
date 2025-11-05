@@ -7,12 +7,12 @@
   Required environment variables:
   - Postgres:
     - MB_POSTGRES_AWS_IAM_TEST_HOST
-    - MB_POSTGRES_AWS_IAM_TEST_PORT (optional, defaults to 5432)
+    - MB_POSTGRES_AWS_IAM_TEST_PORT
     - MB_POSTGRES_AWS_IAM_TEST_USER
     - MB_POSTGRES_AWS_IAM_TEST_DBNAME
   - MySQL:
     - MB_MYSQL_AWS_IAM_TEST_HOST
-    - MB_MYSQL_AWS_IAM_TEST_PORT (optional, defaults to 3306)
+    - MB_MYSQL_AWS_IAM_TEST_PORT
     - MB_MYSQL_AWS_IAM_TEST_USER
     - MB_MYSQL_AWS_IAM_TEST_DBNAME
     - MB_MYSQL_AWS_IAM_TEST_SSL_CERT (required, PEM certificate content/trust)"
@@ -37,18 +37,19 @@
         port   (config/config-int :mb-postgres-aws-iam-test-port)
         user   (config/config-str :mb-postgres-aws-iam-test-user)
         dbname (config/config-str :mb-postgres-aws-iam-test-dbname)
-        uri (format "postgres://%s:%d/%s?user=%s&trustServerCertificate=true" host port dbname user)]
+        uri (format "postgres://%s:%d/%s?user=%s" host port dbname user)]
     (if host
       (do
         (testing "Connection details are configured"
           (is (string? host))
           (is (string? user))
+          (is (int? port))
           (is (string? dbname)))
 
         (testing "using broken-out details"
           (testing "Can create DataSource with AWS IAM enabled"
             (let [details {:host     host
-                           :port     (or port 5432)
+                           :port     port
                            :user     user
                            :db       dbname
                            :aws-iam  true}
@@ -84,6 +85,7 @@
           (testing "Connection details are configured"
             (is (string? host))
             (is (string? user))
+            (is (int? port))
             (is (string? dbname)))
 
           (testing "SSL certificate is configured"
@@ -92,7 +94,7 @@
           (testing "using broken-out details"
             (testing "Can create DataSource with AWS IAM enabled"
               (let [details {:host     host
-                             :port     (or port 5432)
+                             :port     port
                              :user     user
                              :db       dbname
                              :ssl-cert ssl-cert
