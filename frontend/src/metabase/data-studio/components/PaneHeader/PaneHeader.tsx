@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import EditableText from "metabase/common/components/EditableText";
-import { Button, Group, Stack, Tooltip } from "metabase/ui";
+import { Box, Button, Group, Stack, Tooltip } from "metabase/ui";
 
 import S from "./PaneHeader.module.css";
 import type { PaneHeaderTab } from "./types";
@@ -42,6 +42,18 @@ export const PaneHeader = ({
     </Group>
   );
 };
+
+type PaneHeaderTitleProps = {
+  children?: ReactNode;
+};
+
+export function PanelHeaderTitle({ children }: PaneHeaderTitleProps) {
+  return (
+    <Box fw="bold" fz="h3" lh="h3">
+      {children}
+    </Box>
+  );
+}
 
 type PaneHeaderInputProps = {
   initialValue?: string;

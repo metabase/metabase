@@ -8,6 +8,7 @@ import {
   PaneHeaderInput,
   type PaneHeaderTab,
   PaneHeaderTabs,
+  PanelHeaderTitle,
 } from "metabase/data-studio/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -29,8 +30,14 @@ type ModelHeaderProps = {
 export function ModelHeader({ card, actions }: ModelHeaderProps) {
   return (
     <PaneHeader
-      title={<ModelNameInput card={card} />}
-      tabs={card != null && <ModelTabs card={card} />}
+      title={
+        card.can_write ? (
+          <ModelNameInput card={card} />
+        ) : (
+          <PanelHeaderTitle>{card.name}</PanelHeaderTitle>
+        )
+      }
+      tabs={<ModelTabs card={card} />}
       actions={actions}
     />
   );

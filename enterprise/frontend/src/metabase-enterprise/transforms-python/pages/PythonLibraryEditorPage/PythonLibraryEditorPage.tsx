@@ -4,7 +4,10 @@ import { t } from "ttag";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PaneHeader } from "metabase/data-studio/components/PaneHeader";
+import {
+  PaneHeader,
+  PanelHeaderTitle,
+} from "metabase/data-studio/components/PaneHeader";
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import type * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -122,7 +125,7 @@ export function LibraryEditorHeader({
 }) {
   return (
     <PaneHeader
-      title={<Box fw="bold" fz="h3" lh="h3">{t`Python library`}</Box>}
+      title={<PanelHeaderTitle>{t`Python library`}</PanelHeaderTitle>}
       actions={
         (isDirty || isSaving) && (
           <Group>

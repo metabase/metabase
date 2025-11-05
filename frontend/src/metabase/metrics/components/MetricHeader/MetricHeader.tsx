@@ -8,6 +8,7 @@ import {
   PaneHeaderInput,
   type PaneHeaderTab,
   PaneHeaderTabs,
+  PanelHeaderTitle,
 } from "metabase/data-studio/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -29,8 +30,14 @@ type MetricHeaderProps = {
 export function MetricHeader({ card, actions }: MetricHeaderProps) {
   return (
     <PaneHeader
-      title={<MetricNameInput card={card} />}
-      tabs={card != null && <MetricTabs card={card} />}
+      title={
+        card.can_write ? (
+          <MetricNameInput card={card} />
+        ) : (
+          <PanelHeaderTitle>{card.name}</PanelHeaderTitle>
+        )
+      }
+      tabs={<MetricTabs card={card} />}
       actions={actions}
     />
   );
