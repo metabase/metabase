@@ -12,14 +12,3 @@ export function getInitialQuery(metadata: Metadata) {
     metadata,
   }).query();
 }
-
-export function getInitialNativeQuery(metadata: Metadata) {
-  return Question.create({
-    DEPRECATED_RAW_MBQL_type: "native",
-    metadata,
-  }).query();
-}
-
-export function getDefaultValues(name: string) {
-  return { name };
-}

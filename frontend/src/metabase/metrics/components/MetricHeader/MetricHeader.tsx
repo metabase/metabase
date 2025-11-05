@@ -16,7 +16,7 @@ import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import type { CardId } from "metabase-types/api";
 
-import { NAME_MAX_LENGTH } from "../../constants";
+import { NAME_MAX_LENGTH } from "../../../models/constants";
 
 type MetricHeaderProps = {
   id?: CardId;

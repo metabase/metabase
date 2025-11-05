@@ -13,34 +13,23 @@ import * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
 
 import { MetricEditor } from "../../components/MetricEditor";
-import {
-  getDefaultValues,
-  getInitialNativeQuery,
-  getInitialQuery,
-  getQuery,
-} from "../shared";
 
 import { CreateMetricModal } from "./CreateMetricModal";
+import { getInitialQuery, getQuery } from "./utils";
 
 type NewMetricPageProps = {
-  initialName?: string;
-  initialQuery: Lib.Query;
   route: Route;
 };
 
-function NewMetricPage({
-  initialName = t`New metric`,
-  initialQuery,
-  route,
-}: NewMetricPageProps) {
-  const [name, setName] = useState(initialName);
+export function NewMetricPage({ route }: NewMetricPageProps) {
+  const metadata = useSelector(getMetadata);
+  const [name, setName] = useState(t`New metric`);
   const [datasetQuery, setDatasetQuery] = useState(() =>
-    Lib.toJsQuery(initialQuery),
+    Lib.toJsQuery(getInitialQuery(metadata)),
   );
   const [uiState, setUiState] = useState(getInitialUiState);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
-  const metadata = useSelector(getMetadata);
   const dispatch = useDispatch();
 
   const query = useMemo(
@@ -77,7 +66,7 @@ function NewMetricPage({
       {isModalOpened && (
         <CreateMetricModal
           query={query}
-          defaultValues={getDefaultValues(name)}
+          defaultValues={{ name }}
           onCreate={handleCreate}
           onClose={closeModal}
         />
@@ -85,27 +74,4 @@ function NewMetricPage({
       <LeaveRouteConfirmModal route={route} isEnabled={!isModalOpened} />
     </>
   );
-}
-
-type NewQueryMetricPageProps = {
-  route: Route;
-};
-
-export function NewQueryMetricPage({ route }: NewQueryMetricPageProps) {
-  const metadata = useSelector(getMetadata);
-  const initialQuery = useMemo(() => getInitialQuery(metadata), [metadata]);
-  return <NewMetricPage initialQuery={initialQuery} route={route} />;
-}
-
-type NewNativeMetricPageProps = {
-  route: Route;
-};
-
-export function NewNativeMetricPage({ route }: NewNativeMetricPageProps) {
-  const metadata = useSelector(getMetadata);
-  const initialQuery = useMemo(
-    () => getInitialNativeQuery(metadata),
-    [metadata],
-  );
-  return <NewMetricPage initialQuery={initialQuery} route={route} />;
 }

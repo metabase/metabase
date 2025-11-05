@@ -3,9 +3,10 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import EditableText from "metabase/common/components/EditableText";
-import { Button, Group, Stack } from "metabase/ui";
+import { Button, Group, Stack, Tooltip } from "metabase/ui";
 
 import S from "./PaneHeader.module.css";
+import type { PaneHeaderTab, PaneHeaderValidationResult } from "./types";
 
 interface PaneHeaderProps {
   title: ReactNode;
@@ -67,12 +68,6 @@ export function PaneHeaderInput({
   );
 }
 
-export type PaneHeaderTab = {
-  label: string;
-  to: string;
-  isSelected: boolean;
-};
-
 type PaneHeaderTabsProps = {
   tabs: PaneHeaderTab[];
 };
@@ -94,6 +89,42 @@ export function PaneHeaderTabs({ tabs }: PaneHeaderTabsProps) {
           {label}
         </Button>
       ))}
+    </Group>
+  );
+}
+
+type PaneHeaderActionsProps = {
+  validationResult: PaneHeaderValidationResult;
+  isDirty: boolean;
+  isSaving: boolean;
+  onSave: () => void;
+  onCancel: () => void;
+};
+
+export function PaneHeaderActions({
+  validationResult,
+  isDirty,
+  isSaving,
+  onSave,
+  onCancel,
+}: PaneHeaderActionsProps) {
+  const canSave = isDirty && !isSaving && validationResult.isValid;
+
+  if (!isDirty) {
+    return null;
+  }
+
+  return (
+    <Group>
+      <Button onClick={onCancel}>{t`Cancel`}</Button>
+      <Tooltip
+        label={validationResult.errorMessage}
+        disabled={validationResult.errorMessage == null}
+      >
+        <Button variant="filled" disabled={!canSave} onClick={onSave}>
+          {t`Save`}
+        </Button>
+      </Tooltip>
     </Group>
   );
 }

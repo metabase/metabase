@@ -1,11 +1,12 @@
 import { t } from "ttag";
 
+import type { PaneHeaderValidationResult } from "metabase/data-studio/components/PaneHeader/types";
 import type { QueryEditorUiOptions } from "metabase/querying/editor/types";
 import * as Lib from "metabase-lib";
 
-import type { ValidationResult } from "./EditorHeader/types";
-
-export function getValidationResult(query: Lib.Query): ValidationResult {
+export function getValidationResult(
+  query: Lib.Query,
+): PaneHeaderValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {
     const tags = Object.values(Lib.templateTags(query));

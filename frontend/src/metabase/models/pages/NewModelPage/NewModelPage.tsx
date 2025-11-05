@@ -13,14 +13,9 @@ import * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
 
 import { ModelEditor } from "../../components/ModelEditor";
-import {
-  getDefaultValues,
-  getInitialNativeQuery,
-  getInitialQuery,
-  getQuery,
-} from "../shared";
 
 import { CreateModelModal } from "./CreateModelModal";
+import { getInitialNativeQuery, getInitialQuery, getQuery } from "./utils";
 
 type NewModelPageProps = {
   initialName?: string;
@@ -77,7 +72,7 @@ function NewModelPage({
       {isModalOpened && (
         <CreateModelModal
           query={query}
-          defaultValues={getDefaultValues(name)}
+          defaultValues={{ name }}
           onCreate={handleCreate}
           onClose={closeModal}
         />

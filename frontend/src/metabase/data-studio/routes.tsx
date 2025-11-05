@@ -3,10 +3,8 @@ import { t } from "ttag";
 
 import { Route } from "metabase/hoc/Title";
 import { getDataStudioMetadataRoutes } from "metabase/metadata/routes";
-import {
-  getDataStudioMetricRoutes,
-  getDataStudioModelRoutes,
-} from "metabase/models/routes";
+import { getDataStudioMetricRoutes } from "metabase/metrics/routes";
+import { getDataStudioModelRoutes } from "metabase/models/routes";
 import { PLUGIN_DEPENDENCIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
 
 import { DataSectionLayout } from "./pages/DataSectionLayout";
