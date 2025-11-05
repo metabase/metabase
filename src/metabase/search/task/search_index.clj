@@ -19,10 +19,6 @@
 (def ^:private init-stem "metabase.task.search-index.init")
 (def ^:private reindex-stem "metabase.task.search-index.reindex")
 
-(def init-job-key
-  "Key used to define and trigger a job that ensures there is an active index."
-  (jobs/key (str init-stem ".job")))
-
 (def reindex-job-key
   "Key used to define and trigger a job that rebuilds the entire index from scratch."
   (jobs/key (str reindex-stem ".job")))
@@ -39,7 +35,7 @@
 (task/defjob ^{DisallowConcurrentExecution true
                :doc                        "Populate a new Search Index"}
   SearchIndexReindex [_ctx]
-  (search/reindex! {:async? false}))
+  (search/reindex!* {:async? false}))
 
 (defmethod startup/def-startup-logic! ::SearchIndexInit [_]
   (doto (Thread. ^Runnable init!) .start))
