@@ -16,7 +16,6 @@ import { hasChildren } from "../utils";
 
 import S from "./Results.module.css";
 
-
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32; // items can vary in size because of text wrapping
 const INDENT_OFFSET = 18;
@@ -49,7 +48,8 @@ export function TablePickerResults({
     getScrollElement: () => ref.current,
     overscan: VIRTUAL_OVERSCAN,
     estimateSize: () => ITEM_MIN_HEIGHT,
-    measureElement: (element) => element?.getBoundingClientRect().height ?? ITEM_MIN_HEIGHT,
+    measureElement: (element) =>
+      element?.getBoundingClientRect().height ?? ITEM_MIN_HEIGHT,
   });
 
   const virtualItems = virtual.getVirtualItems();
@@ -122,7 +122,8 @@ export function TablePickerResults({
               return;
             }
 
-            const isExpanding = hasChildren(type) && !isExpanded && open !== false;
+            const isExpanding =
+              hasChildren(type) && !isExpanded && open !== false;
 
             toggle?.(key, open);
 
@@ -230,7 +231,11 @@ export function TablePickerResults({
               onFocus={() => onSelectedIndexChange?.(index)}
             >
               <Box className={S.checkboxColumn}>
-                <ElementCheckbox item={item} onItemToggle={onItemToggle} disabled={disabled} />
+                <ElementCheckbox
+                  item={item}
+                  onItemToggle={onItemToggle}
+                  disabled={disabled}
+                />
               </Box>
 
               <Flex
@@ -242,7 +247,10 @@ export function TablePickerResults({
               >
                 <Flex align="flex-start" gap="xs" w="100%">
                   <Flex align="center" gap="xs">
-                    <Box className={S.chevronSlot} style={{ width: `${INDENT_OFFSET}px` }}>
+                    <Box
+                      className={S.chevronSlot}
+                      style={{ width: `${INDENT_OFFSET}px` }}
+                    >
                       {hasToggle && (
                         <Icon
                           name="chevronright"
@@ -272,9 +280,9 @@ export function TablePickerResults({
                       className={S.label}
                       c={
                         type === "table" &&
-                          item.table &&
-                          item.table.visibility_type != null &&
-                          !isActive
+                        item.table &&
+                        item.table.visibility_type != null &&
+                        !isActive
                           ? "text-secondary"
                           : undefined
                       }
@@ -307,6 +315,10 @@ function ElementCheckbox({
     return null;
   }
 
+  if (item.type === "field") {
+    return null;
+  }
+
   const indeterminate = item.isSelected === "some";
 
   const { isSelected } = item;
@@ -319,7 +331,8 @@ function ElementCheckbox({
       onClick={(event) => {
         event.stopPropagation();
       }}
-      onChange={() => {
+      onChange={(event) => {
+        event.stopPropagation();
         if (disabled) {
           return;
         }
