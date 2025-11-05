@@ -61,11 +61,7 @@
         (testing "using uri"
           (testing "Can create DataSource with AWS IAM enabled"
             (let [datasource (mdb.data-source/raw-connection-string->DataSource
-                              uri
-                              nil
-                              nil  ; no password for IAM auth
-                              nil  ; no Azure managed identity
-                              true)] ; enable AWS IAM
+                              uri nil nil nil true)]
               (is (instance? javax.sql.DataSource datasource))
 
               (testing "Can establish connection using AWS IAM"
@@ -79,7 +75,10 @@
           user     (config/config-str :mb-mysql-aws-iam-test-user)
           dbname   (config/config-str :mb-mysql-aws-iam-test-dbname)
           ssl-cert (config/config-str :mb-mysql-aws-iam-test-ssl-cert)
-          uri (format "mysql://%s:%d/%s?user=%s&trustServerCertificate=%s" host port dbname user ssl-cert)]
+          uri (format "mysql://%s:%d/%s?user=%s&%s" host port dbname user
+                      (if (= ssl-cert "trust")
+                        "trustServerCertificate=true"
+                        (str "?sslMode=VERIFY_CA&serverSslCert=" ssl-cert)))]
       (if (and host ssl-cert)
         (do
           (testing "Connection details are configured"
@@ -107,11 +106,7 @@
           (testing "using uri"
             (testing "Can create DataSource with AWS IAM enabled"
               (let [datasource (mdb.data-source/raw-connection-string->DataSource
-                                uri
-                                nil
-                                nil  ; no password for IAM auth
-                                nil  ; no Azure managed identity
-                                true)] ; enable AWS IAM
+                                uri nil nil nil true)]
                 (is (instance? javax.sql.DataSource datasource))
 
                 (testing "Can establish connection using AWS IAM"
