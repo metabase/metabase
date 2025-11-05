@@ -1,10 +1,10 @@
 (ns metabase.lib.util.match
   "Internal implementation of the MBQL `match` and `replace` macros. Don't use these directly."
-  (:refer-clojure :exclude [replace])
+  (:refer-clojure :exclude [every? run! some mapv replace empty?])
   (:require
    [clojure.core.match]
-   [clojure.walk :as walk]
    [metabase.lib.util.match.impl]
+   [metabase.util.performance :as perf :refer [every? run! some mapv empty?]]
    [net.cgrand.macrovich :as macros]))
 
 (defn- generate-pattern
@@ -35,7 +35,7 @@
 (defn- rewrite-recurs
   "Replace any `recur` forms with ones that include the implicit `&parents` arg."
   [fn-name result-form]
-  (walk/postwalk
+  (perf/postwalk
    (fn [form]
      (if (recur-form? form)
        ;; we *could* use plain `recur` here, but `core.match` cannot apply code size optimizations if a `recur` form
@@ -277,9 +277,19 @@
               (vswap! bindings conj [s `(metabase.lib.util.match.impl/map! ~value)])
               (run! (fn [[k v]] (process-pattern v (list `get s k) bindings conditions false)) (:map parsed)))
        :guard (let [s (:symbol parsed)
-                    bind (when-not (= s '_) s)]
+                    bind (when-not (= s '_) s)
+                    ;; Treat symbol, keyword, or set predicates as functions to be called, and thus transform them
+                    ;; into invocation snippets. Be careful that if user doesn't want to bind the value in the
+                    ;; guard (signified by `_`), we should pass the directly extracted value to the predicate,
+                    ;; otherwise the binding.
+                    predicate (if (or (symbol? predicate) (keyword? predicate) (set? predicate))
+                                (list predicate (or bind value))
+                                predicate)]
                 (when bind (vswap! bindings conj [bind value]))
-                (when (:predicate parsed)
+                (when predicate
+                  ;; Make sure that the predicate is an invocation snippet, not a lambda as in regular `match` syntax.
+                  (when (and (seq? predicate) ('#{fn fn*} (first predicate)))
+                    (throw (ex-info "match-lite :guard predicate must be an invocation form or a symbol, not a lambda" {:predicate predicate})))
                   (vswap! conditions conj (with-meta (if (and (seq? predicate) (not= (first predicate) 'fn*))
                                                        predicate
                                                        (list predicate (or bind value)))
@@ -351,7 +361,9 @@
                              (process-pattern pattern value-sym all-vectors?))
         {:keys [common-bindings common-conditions all-bindings all-conditions]}
         (collect-common processed-patterns)
-        same-result? (apply = (map second pairs))
+        same-result? (and (apply = (map second pairs))
+                          ;; Only allow extracting same result if there are no individual bindings in branches.
+                          (every? empty? all-bindings))
         value-binding (if (or (= value-sym value) recursive?)
                         [] [value-sym value])
         body `(let [~@value-binding
@@ -381,7 +393,10 @@
          (some? default) (conj default))))))
 
 (defmacro match-lite
-  "Pattern matching macro, simplified version of `clojure.core.match`.
+  "Pattern matching macro, simplified version of [[clojure.core.match]].
+
+  TODO (Cam 9/16/25) -- what exactly is the difference between this and [[match]]? It doesn't recurse? Someone please
+  write an explanation here.
 
   Usage:
   (match-lite value
@@ -393,14 +408,14 @@
   - symbol - binds the entire value
   - keyword - must match exactly
   - set - must be one of the set items
-  - (sym :guard pred :len size) - bind with predicate check. Can optionally check for collection length.
+  - (sym :guard pred :len size) - bind with predicate check. The predicate should either be a symbol denoting a function, keyword, set, or an invocation snippet (but not a lambda). Can optionally check for collection length.
   - vector - binds positional values inside a sequence against other patterns. Can have & to bind remaining elements."
   {:style/indent :defn}
   [value & clauses]
   (match-lite* value clauses false))
 
 (defmacro match-lite-recursive
-  "Like `match-lite`, but tries to match children recursively if the top-level match failed."
+  "Like [[match-lite]], but tries to match children recursively if the top-level match failed."
   {:style/indent :defn}
   [value & clauses]
   (match-lite* value clauses true))

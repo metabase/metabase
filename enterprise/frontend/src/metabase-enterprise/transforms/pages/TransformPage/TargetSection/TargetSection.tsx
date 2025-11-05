@@ -1,9 +1,14 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { skipToken, useGetDatabaseQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetDatabaseQuery,
+  useListDatabaseSchemasQuery,
+} from "metabase/api";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Button,
@@ -17,12 +22,8 @@ import {
 import type { Transform } from "metabase-types/api";
 
 import { SplitSection } from "../../../components/SplitSection";
-import {
-  getBrowseDatabaseUrl,
-  getBrowseSchemaUrl,
-  getQueryBuilderUrl,
-  getTableMetadataUrl,
-} from "../../../urls";
+import { sourceDatabaseId } from "../../../utils";
+import { isTransformRunning } from "../utils";
 
 import { UpdateTargetModal } from "./UpdateTargetModal";
 
@@ -54,15 +55,33 @@ type TargetInfoProps = {
 
 function TargetInfo({ transform }: TargetInfoProps) {
   const { source, target, table } = transform;
-  const { database: databaseId } = source.query;
-  const { data, isLoading } = useGetDatabaseQuery(
-    table == null && databaseId != null ? { id: databaseId } : skipToken,
-  );
-  const database = table?.db ?? data;
+  const databaseId = sourceDatabaseId(source);
+
+  const { data: databaseFromApi, isLoading: isDatabaseLoading } =
+    useGetDatabaseQuery(
+      table == null && databaseId != null ? { id: databaseId } : skipToken,
+    );
+
+  const { data: schemas, isLoading: isSchemasLoading } =
+    useListDatabaseSchemasQuery(
+      databaseId != null
+        ? {
+            id: databaseId,
+            include_hidden: true,
+          }
+        : skipToken,
+    );
+
+  const database = table?.db ?? databaseFromApi;
+  const isLoading = isDatabaseLoading || isSchemasLoading;
 
   if (isLoading) {
     return <Loader size="sm" />;
   }
+
+  const targetSchemaExists = schemas?.some(
+    (schemaFromApi) => schemaFromApi === target.schema,
+  );
 
   return (
     <Group gap="sm">
@@ -71,7 +90,7 @@ function TargetInfo({ transform }: TargetInfoProps) {
           <TargetItemLink
             label={database.name}
             icon="database"
-            to={getBrowseDatabaseUrl(database.id)}
+            to={Urls.dataModelDatabase(database.id)}
             data-testid="database-link"
           />
           <TargetItemDivider />
@@ -82,7 +101,16 @@ function TargetInfo({ transform }: TargetInfoProps) {
           <TargetItemLink
             label={target.schema}
             icon="folder"
-            to={getBrowseSchemaUrl(database.id, target.schema)}
+            to={
+              table || targetSchemaExists
+                ? Urls.dataModelSchema(database.id, target.schema)
+                : undefined
+            }
+            tooltip={
+              table?.schema != null || targetSchemaExists
+                ? undefined
+                : t`This schema will be created when the transform runs`
+            }
             data-testid="schema-link"
           />
           <TargetItemDivider />
@@ -92,7 +120,7 @@ function TargetInfo({ transform }: TargetInfoProps) {
         <TargetItemLink
           label={target.name}
           icon="table2"
-          to={table ? getQueryBuilderUrl(table.id, table.db_id) : undefined}
+          to={table ? Urls.queryBuilderTable(table.id, table.db_id) : undefined}
           data-testid="table-link"
         />
       </Group>
@@ -104,6 +132,7 @@ type TargetItemLinkProps = {
   label: string;
   icon: IconName;
   to?: string;
+  tooltip?: string;
   "data-testid"?: string;
 };
 
@@ -111,6 +140,7 @@ function TargetItemLink({
   label,
   icon,
   to,
+  tooltip,
   "data-testid": dataTestId,
 }: TargetItemLinkProps) {
   return (
@@ -119,6 +149,7 @@ function TargetItemLink({
       to={to ?? ""}
       disabled={to == null}
       data-testid={dataTestId}
+      tooltip={tooltip}
     >
       <Group gap="xs">
         <Icon name={icon} />
@@ -150,6 +181,7 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
     <>
       <Button
         leftSection={<Icon name="pencil_lines" aria-hidden />}
+        disabled={isTransformRunning(transform)}
         onClick={openModal}
       >
         {t`Change target`}
@@ -178,7 +210,7 @@ function EditMetadataButton({ transform }: EditMetadataButtonProps) {
   return (
     <Button
       component={Link}
-      to={getTableMetadataUrl(table.id, table.schema, table.db_id)}
+      to={Urls.dataModelTable(table.db_id, table.schema, table.id)}
       leftSection={<Icon name="label" aria-hidden />}
       data-testid="table-metadata-link"
     >

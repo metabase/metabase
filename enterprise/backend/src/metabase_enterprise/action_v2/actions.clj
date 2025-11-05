@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.action-v2.data-editing :as data-editing]
    [metabase-enterprise.action-v2.models.undo :as undo]
+   [metabase-enterprise.action-v2.validation :as validation]
    [metabase.actions.args :as actions.args]
    [metabase.actions.core :as actions]
    [metabase.driver.util :as driver.u]
@@ -33,7 +34,7 @@
 
 (defmethod actions/validate-inputs! :data-grid.row/common
   [_action inputs]
-  (let [target-dbs      (distinct (map :database inputs))
+  (let [target-dbs       (distinct (map :database inputs))
         unsupported-dbs (->> target-dbs
                              (map actions/cached-database)
                              (remove #(driver.u/supports? (:engine %) :actions/data-editing %)))]
@@ -69,17 +70,32 @@
         [op pretty-row] (map vector (map :op diffs) pretty-rows)]
     {:op op, :table-id table-id, :row pretty-row}))
 
+(defn- validate-inputs!
+  [inputs]
+  (let [table-id->inputs (group-by :table-id inputs)
+        errors (not-empty
+                (u/for-map [[table-id inputs] table-id->inputs
+                            :let [errors (seq (validation/validate-inputs table-id (map :row inputs)))]
+                            :when errors]
+                  [table-id errors]))]
+    (when errors
+      (throw (ex-info "Failed validation" {:errors      errors
+                                           :status-code 400
+                                           :error-code  ::invalid-input})))))
+
 (defn- coerce-inputs [inputs]
-  (let [input->coerced (u/for-map [[table-id inputs] (group-by :table-id inputs)
-                                   :let [coerced (data-editing/apply-coercions table-id (map :row inputs))]
-                                   input+row (map vector inputs coerced)]
-                         input+row)]
+  (let [table-id->inputs (group-by :table-id inputs)
+        input->coerced   (u/for-map [[table-id inputs] table-id->inputs
+                                     :let [coerced (data-editing/apply-coercions table-id (map :row inputs))]
+                                     input+row (map vector inputs coerced)]
+                           input+row)]
     (for [input inputs]
       (u/prog1 (assoc input :row (input->coerced input))
         (log/tracef "coerce row %s => %s" (:row input) (:row <>))))))
 
 (defn- perform-data-grid-action! [action-kw context inputs]
   (let [next-inputs (coerce-inputs inputs)]
+    (validate-inputs! next-inputs)
     (perform-table-row-action! action-kw context next-inputs
                                (if (= :table.row/delete action-kw)
                                  identity
@@ -103,10 +119,10 @@
 
 (defn- translate-undo-error [e]
   (case (:error (ex-data e))
-    :undo/none            (ex-info (tru "Nothing to do")                                         {:status-code 204} e)
-    :undo/cannot-undelete (ex-info (tru "You cannot undo your previous change.")                 {:status-code 405} e)
-    :undo/cannot-undo     (ex-info (tru "Your previous change cannot be undone")                 {:status-code 405} e)
-    :undo/conflict        (ex-info (tru "Your previous change has a conflict with another edit") {:status-code 409} e)
+    :undo/none (ex-info (tru "Nothing to do") {:status-code 204} e)
+    :undo/cannot-undelete (ex-info (tru "You cannot undo your previous change.") {:status-code 405} e)
+    :undo/cannot-undo (ex-info (tru "Your previous change cannot be undone") {:status-code 405} e)
+    :undo/conflict (ex-info (tru "Your previous change has a conflict with another edit") {:status-code 409} e)
     e))
 
 (methodical/defmethod actions/perform-action!* [:sql-jdbc :data-editing/undo]

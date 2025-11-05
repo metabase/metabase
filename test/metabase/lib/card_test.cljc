@@ -588,3 +588,41 @@
                   :lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_00028d48"
                   :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_00028d48"}]
                 (lib/returned-columns query 1)))))))
+
+(deftest ^:parallel card-returned-columns-propagate-inactive-test
+  (let [card-query (lib/query
+                    meta/metadata-provider
+                    (lib.tu.macros/mbql-query orders
+                      {:fields [$id $subtotal $tax $total $created-at $quantity]
+                       :joins  [{:source-table $$products
+                                 :alias        "Product"
+                                 :condition    [:=
+                                                $orders.product-id
+                                                [:field %products.id {:join-alias "Product"}]]
+                                 :fields       [[:field %products.id {:join-alias "Product"}]
+                                                [:field %products.title {:join-alias "Product"}]
+                                                [:field %products.vendor {:join-alias "Product"}]
+                                                [:field %products.price {:join-alias "Product"}]
+                                                [:field %products.rating {:join-alias "Product"}]]}]}))
+        mp         (-> meta/metadata-provider
+                       (lib.tu/mock-metadata-provider
+                        {:cards [{:id              1
+                                  :dataset-query   card-query
+                                  :result-metadata (lib/returned-columns card-query)}]})
+                       (lib.tu/merged-mock-metadata-provider
+                        {:fields (for [field-id [(meta/id :orders :tax) (meta/id :products :vendor)]]
+                                   {:id field-id, :active false})}))
+        query      (lib/query mp (lib.metadata/card mp 1))]
+    (is (= [["ID"              true]
+            ["SUBTOTAL"        true]
+            ["TAX"             false]
+            ["TOTAL"           true]
+            ["CREATED_AT"      true]
+            ["QUANTITY"        true]
+            ["Product__ID"     true]
+            ["Product__TITLE"  true]
+            ["Product__VENDOR" false]
+            ["Product__PRICE"  true]
+            ["Product__RATING" true]]
+           (map (juxt :lib/desired-column-alias :active)
+                (lib/returned-columns query))))))

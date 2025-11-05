@@ -5,6 +5,7 @@ import { getOriginalCard } from "metabase/query_builder/selectors";
 import { updateUserSetting } from "metabase/redux/settings";
 import type { Card } from "metabase-types/api";
 import type {
+  DatasetEditorTab,
   Dispatch,
   GetState,
   QueryBuilderMode,
@@ -31,7 +32,7 @@ export const setQueryBuilderMode =
       replaceState,
     }: {
       shouldUpdateUrl?: boolean;
-      datasetEditorTab?: "query" | "metadata";
+      datasetEditorTab?: DatasetEditorTab;
       replaceState?: boolean;
     } = {},
   ) =>

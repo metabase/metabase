@@ -1,15 +1,17 @@
 import type { StoryFn } from "@storybook/react";
 
-import ProgressBar, { type ProgressBarProps } from "./ProgressBar";
+import { StaticVisualization } from "../StaticVisualization";
+import type { StaticChartProps } from "../StaticVisualization/types";
+
 import { BELOW_GOAL, EXCEEDS_GOAL, REACHED_GOAL, ZERO } from "./stories-data";
 
 export default {
   title: "Viz/Static Viz/ProgressBar",
-  component: ProgressBar,
+  component: StaticVisualization,
 };
 
-const Template: StoryFn<ProgressBarProps> = (args) => {
-  return <ProgressBar {...args} />;
+const Template: StoryFn<StaticChartProps> = (args) => {
+  return <StaticVisualization {...args} />;
 };
 
 export const Default = {

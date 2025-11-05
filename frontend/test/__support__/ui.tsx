@@ -413,6 +413,23 @@ export function createMockClipboardData(
   return clipboardData as unknown as DataTransfer;
 }
 
+/**
+ * jsdom doesn't have MediaQueryList
+ */
+export const createMockMediaQueryList = (
+  opts?: Partial<MediaQueryList>,
+): MediaQueryList => ({
+  media: "",
+  matches: false,
+  onchange: jest.fn(),
+  dispatchEvent: jest.fn(),
+  addListener: jest.fn(),
+  addEventListener: jest.fn(),
+  removeListener: jest.fn(),
+  removeEventListener: jest.fn(),
+  ...opts,
+});
+
 const ThemeProviderWrapper = ({
   children,
   ...props

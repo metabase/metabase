@@ -18,7 +18,8 @@
   [done-channel]
   (proxy [AsyncListener] []
     (onComplete [_]
-      (a/>!! done-channel :done))))
+      (a/go
+        (a/>! done-channel :done)))))
 
 (defn- async-servlet-handler
   ^ServletHandler [status-code chan-start-handle chan-finish-handle]
@@ -31,7 +32,7 @@
           (.setStatus response status-code)
           (.setContentLength response 0)
           (.. response getOutputStream close)
-          (a/<!! chan-finish-handle)
+          (a/<! chan-finish-handle)
           (.complete async-context))
         (a/<!! chan-finish-handle)))))
 
@@ -79,8 +80,7 @@
     (.start connector)
     (thunk connector chan-start-handle chan-finish-handle chan-done-request)
     (.stop connector)
-    (.stop server)
-    (.join server)))
+    (.stop server)))
 
 (defmacro with-server
   [status-code async arguments & body]

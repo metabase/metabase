@@ -33,6 +33,7 @@ interface QuestionPickerProps {
   onInit: (item: QuestionPickerItem) => void;
   onItemSelect: (item: QuestionPickerItem) => void;
   onPathChange: (path: QuestionPickerStatePath) => void;
+  shouldDisableItem?: (item: QuestionPickerItem) => boolean;
 }
 
 export const QuestionPicker = ({
@@ -44,6 +45,7 @@ export const QuestionPicker = ({
   onInit,
   onItemSelect,
   onPathChange,
+  shouldDisableItem,
 }: QuestionPickerProps) => {
   const defaultPath = useMemo(() => {
     return getStateFromIdPath({ idPath: ["root"], models });
@@ -178,6 +180,7 @@ export const QuestionPicker = ({
       path={path}
       listResolver={CollectionItemPickerResolver}
       shouldShowItem={shouldShowItem}
+      shouldDisableItem={shouldDisableItem}
     />
   );
 };

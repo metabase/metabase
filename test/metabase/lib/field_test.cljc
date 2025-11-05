@@ -1,9 +1,10 @@
 (ns metabase.lib.field-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.convert.metadata-to-legacy :as lib.convert.metadata-to-legacy]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field :as lib.field]
@@ -29,8 +30,32 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(use-fixtures :each (fn [thunk]
-                      (thunk)))
+(deftest ^:parallel ref-test
+  (is (=? [:field
+           {:base-type      :type/DateTime
+            :effective-type :type/Integer
+            :temporal-unit  :year
+            :lib/uuid       string?}
+           "CREATED_AT"]
+          (lib/ref {:base-type                                  :type/DateTime
+                    :database-type                              "TIMESTAMP"
+                    :display-name                               "CREATED_AT: Year"
+                    :effective-type                             :type/DateTime
+                    :inherited-temporal-unit                    :year
+                    :name                                       "CREATED_AT_2"
+                    :remapped-from-index                        nil
+                    :remapping                                  nil
+                    :semantic-type                              :type/CreationTimestamp
+                    :lib/breakout?                              true
+                    :lib/card-id                                1
+                    :lib/deduplicated-name                      "CREATED_AT_2"
+                    :lib/desired-column-alias                   "CREATED_AT_2"
+                    :lib/original-name                          "CREATED_AT"
+                    :lib/source-column-alias                    "CREATED_AT"
+                    :lib/type                                   :metadata/column
+                    :metabase.lib.field/original-effective-type :type/DateTime
+                    :metabase.lib.field/original-temporal-unit  :year
+                    :metabase.lib.field/temporal-unit           :year}))))
 
 (defn grandparent-parent-child-id [field]
   (+ (meta/id :venues :id)
@@ -1284,8 +1309,10 @@
             col (lib/visible-columns query)
             :let [col-ref (lib/ref col)]]
       (testing (str "ref " col-ref " of " (symbol query-var))
-        (is (= (dissoc col :lib/source-uuid :lib/original-ref)
-               (dissoc (lib/find-visible-column-for-ref query col-ref) :lib/source-uuid :lib/original-ref)))))))
+        (is (= (-> col
+                   (dissoc :lib/source-uuid))
+               (-> (lib/find-visible-column-for-ref query col-ref)
+                   (dissoc :lib/source-uuid))))))))
 
 (deftest ^:parallel find-visible-column-for-ref-test-2
   (testing "reference by ID instead of name"
@@ -1764,11 +1791,9 @@
                    meta/metadata-provider
                    (lib.tu.macros/mbql-query products
                      {:joins  [{:source-query    q1
-                                :source-metadata (for [col (lib/returned-columns
-                                                            (lib/query meta/metadata-provider {:database (meta/id), :type :query, :query q1}))]
-                                                   (-> col
-                                                       (dissoc :lib/type)
-                                                       (update-keys u/->snake_case_en)))
+                                :source-metadata (map lib.convert.metadata-to-legacy/lib-metadata-column->legacy-metadata-column
+                                                      (lib/returned-columns
+                                                       (lib/query meta/metadata-provider {:database (meta/id), :type :query, :query q1})))
                                 :alias           "Question 54"
                                 :condition       [:= $id [:field %orders.id {:join-alias "Question 54"}]]
                                 :fields          [[:field %orders.id {:join-alias "Question 54"}]
@@ -2171,3 +2196,28 @@
                                               :when (not= col "TITLE")]
                                           [:field {} col])}]}]}
             (lib.field/remove-field query -1 b-title)))))
+
+(deftest ^:parallel find-stage-index-and-clause-by-uuid-test
+  (let [query {:database 1
+               :lib/type :mbql/query
+               :stages   [{:lib/type     :mbql.stage/mbql
+                           :source-table 2
+                           :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]]}
+                          {:lib/type :mbql.stage/mbql
+                           :filters  [[:=
+                                       {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
+                                       [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]
+                                       "wow"]]}]}]
+    (is (= [0 [:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]]
+           (#'lib.field/find-stage-index-and-clause-by-uuid query -1 "00000000-0000-0000-0000-000000000001")))
+    (is (= [0 [:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]]
+           (#'lib.field/find-stage-index-and-clause-by-uuid query 0 "00000000-0000-0000-0000-000000000001")))
+    (is (= [1 [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]]
+           (#'lib.field/find-stage-index-and-clause-by-uuid query 1 "1cb2a996-6ba1-45fb-8101-63dc3105c311")))
+    (is (= [1 [:=
+               {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
+               [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]
+               "wow"]]
+           (#'lib.field/find-stage-index-and-clause-by-uuid query -1 "a1898aa6-4928-4e97-837d-e440ce21085e")))
+    (is (nil? (#'lib.field/find-stage-index-and-clause-by-uuid query -1 "00000000-0000-0000-0000-000000000002")))
+    (is (nil? (#'lib.field/find-stage-index-and-clause-by-uuid query 0  "a1898aa6-4928-4e97-837d-e440ce21085e")))))

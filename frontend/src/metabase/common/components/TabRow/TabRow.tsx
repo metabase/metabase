@@ -14,6 +14,7 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useMergedRef } from "@mantine/hooks";
+import cx from "classnames";
 import {
   type ReactNode,
   type Ref,
@@ -114,6 +115,12 @@ const TabRowInner = forwardRef<HTMLDivElement, TabRowProps<unknown>>(
         onScroll={(event) => setScrollPosition(event.currentTarget.scrollLeft)}
         ref={mergedRef}
         {...props}
+        className={cx(
+          {
+            scrollable: showScrollLeft || showScrollRight,
+          },
+          props.className,
+        )}
       >
         <DndContext
           onDragEnd={onDragEnd}

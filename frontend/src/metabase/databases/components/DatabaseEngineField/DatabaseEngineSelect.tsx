@@ -1,25 +1,36 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import FormSelect from "metabase/common/components/FormSelect";
-import type { SelectChangeEvent } from "metabase/common/components/Select";
+import { getEngineLogo } from "metabase/databases/utils/engine";
+import { FormSelect } from "metabase/forms";
+import {
+  Group,
+  Icon,
+  SelectItem,
+  type SelectOption,
+  type SelectProps,
+} from "metabase/ui";
 
-import type { EngineOption } from "../../types";
+import { getSharedFieldStyleProps } from "../styles";
+
+const ICON_SIZE = 16;
 
 export interface DatabaseEngineSelectProps {
-  options: EngineOption[];
+  options: SelectOption[];
   disabled: boolean;
   onChange: (engine: string) => void;
+  engineKey: string | undefined;
 }
 
-const DatabaseEngineSelect = ({
+export const DatabaseEngineSelect = ({
   options,
   disabled,
   onChange,
+  engineKey,
 }: DatabaseEngineSelectProps): JSX.Element => {
   const handleChange = useCallback(
-    (event: SelectChangeEvent<string>) => {
-      onChange(event.target.value);
+    (value: string) => {
+      onChange(value);
     },
     [onChange],
   );
@@ -27,14 +38,40 @@ const DatabaseEngineSelect = ({
   return (
     <FormSelect
       name="engine"
-      title={t`Database type`}
+      label={t`Database type`}
       placeholder={t`Select a database`}
-      options={options}
+      data={options}
       disabled={disabled}
       onChange={handleChange}
+      searchable
+      leftSection={<DatabaseIcon engineKey={engineKey} />}
+      renderOption={renderSelectOption}
+      {...getSharedFieldStyleProps()}
     />
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseEngineSelect;
+function DatabaseIcon({ engineKey }: { engineKey: string | undefined }) {
+  const defaultIcon = <Icon name="database" size={ICON_SIZE} />;
+  if (!engineKey) {
+    return defaultIcon;
+  }
+
+  const logoSource = getEngineLogo(engineKey);
+
+  return logoSource ? (
+    <img src={logoSource} width={ICON_SIZE} height={ICON_SIZE} alt="" />
+  ) : (
+    defaultIcon
+  );
+}
+
+const renderSelectOption: SelectProps["renderOption"] = ({ option }) => {
+  return (
+    <SelectItem>
+      <Group gap="sm">
+        <DatabaseIcon engineKey={option.value} /> {option.label}
+      </Group>
+    </SelectItem>
+  );
+};

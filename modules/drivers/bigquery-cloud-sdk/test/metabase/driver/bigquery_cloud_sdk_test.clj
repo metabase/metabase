@@ -12,7 +12,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
@@ -874,10 +874,10 @@
               "`describe-fields` should see the fields in the table")
           (sync/sync-database! (mt/db) {:scan :schema})
           (testing "We should be able to run queries against the table"
-            (doseq [[col-nm param-v] [[:numeric_col (bigdec numeric-val)]
-                                      [:decimal_col (bigdec decimal-val)]
-                                      [:bignumeric_col (bigdec bignumeric-val)]
-                                      [:bigdecimal_col (bigdec bigdecimal-val)]]]
+            (doseq [[col-nm param-v] {"numeric_col"    (bigdec numeric-val)
+                                      "decimal_col"    (bigdec decimal-val)
+                                      "bignumeric_col" (bigdec bignumeric-val)
+                                      "bigdecimal_col" (bigdec bigdecimal-val)}]
               (testing (format "filtering against %s" col-nm))
               (is (= 1
                      (-> (mt/first-row
@@ -1327,3 +1327,22 @@
       (is (=? [["2024-12-11T16:23:55.123456Z" #"2024-12-11T16:23:55.123456.*"]]
               (-> (qp/process-query query)
                   mt/rows))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct BigQuery types"
+    (are [base-type expected] (= expected (driver/type->database-type :bigquery-cloud-sdk base-type))
+      :type/Array              [[:raw "JSON"]]
+      :type/Dictionary         [[:raw "JSON"]]
+      :type/Boolean            [[:raw "BOOL"]]
+      :type/Float              [[:raw "FLOAT64"]]
+      :type/Integer            [[:raw "INT"]]
+      :type/Number             [[:raw "INT"]]
+      :type/Text               [[:raw "STRING"]]
+      :type/TextLike           [[:raw "STRING"]]
+      :type/Date               [[:raw "DATE"]]
+      :type/DateTime           [[:raw "DATETIME"]]
+      :type/DateTimeWithTZ     [[:raw "TIMESTAMP"]]
+      :type/Time               [[:raw "TIME"]]
+      :type/JSON               [[:raw "JSON"]]
+      :type/SerializedJSON     [[:raw "JSON"]]
+      :type/Decimal            [[:raw "BIGDECIMAL"]])))

@@ -44,16 +44,11 @@
   [_searchable-documents _opts]
   (oss-semantic-search-error))
 
-(defenterprise reindex!
-  "Perform a full reindex of the semantic search engine."
+(defenterprise repair-index!
+  "Brings the semantic search index into consistency with the provided document set.
+  Does not promise a full reindex, but will add missing documents and remove stale ones."
   metabase-enterprise.semantic-search.core
-  [_searchable-documents _opts]
-  (oss-semantic-search-error))
-
-(defenterprise reset-tracking!
-  "Reset tracking for the semantic search engine."
-  metabase-enterprise.semantic-search.core
-  []
+  [_searchable-documents]
   (oss-semantic-search-error))
 
 ;; Search engine method implementations
@@ -101,21 +96,10 @@
       (throw e))))
 
 (defmethod search.engine/reindex! :search.engine/semantic
-  [_ opts]
-  (try
-    (log/info "Reindexing semantic search engine")
-    (reindex! (search.ingestion/searchable-documents) opts)
-    (catch Exception e
-      (log/error e "Error reindexing semantic search engine")
-      (throw e))))
-
-(comment
-  (def docs (vec (search.ingestion/searchable-documents)))
-  (init! docs {})
-  (reindex! docs {}))
+  [_ _opts]
+  (log/info "reindex! is not supported for semantic search engine")
+  nil)
 
 (defmethod search.engine/reset-tracking! :search.engine/semantic [_]
-  (try
-    (reset-tracking!)
-    (catch Exception e
-      (log/debug e "Error resetting tracking for semantic search engine"))))
+  (log/info "reset-tracking! is not supported for semantic search engine")
+  nil)

@@ -16,6 +16,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
@@ -33,9 +35,10 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
@@ -92,10 +95,11 @@
              :write
              :none))))
 
-(defn- card-database-supports-nested-queries? [{{database-id :database, :as database} :dataset_query, :as _card}]
+(defn- card-database-supports-nested-queries? [{{database-id :database, :as query} :dataset_query, :as _card}]
   (when database-id
     (when-let [driver (driver.u/database->driver database-id)]
-      (driver.u/supports? driver :nested-queries database))))
+      (when-let [database (some-> query not-empty lib.metadata/database)]
+        (driver.u/supports? driver :nested-queries database)))))
 
 (defn- card-has-ambiguous-columns?
   "We know a card has ambiguous columns if any of the columns that come back end in `_2` (etc.) because that's what
@@ -112,17 +116,18 @@
    would be ambiguous. Too many things break when attempting to use a query like this. In the future, this may be
    supported, but it will likely require rewriting the source SQL query to add appropriate aliases (this is even
    trickier if the source query uses `SELECT *`)."
-  [{result-metadata :result_metadata, dataset-query :dataset_query}]
-  (and (= (:type dataset-query) :native)
+  [{result-metadata :result_metadata, query :dataset_query, :as _card}]
+  (and (lib/native-only-query? query)
        (some (partial re-find #"_2$")
              (map (comp name :name) result-metadata))))
 
-(defn- card-uses-unnestable-aggregation?
+(mu/defn- card-uses-unnestable-aggregation?
   "Since cumulative count and cumulative sum aggregations are done in Clojure-land we can't use Cards that use queries
   with those aggregations as source queries. This function determines whether `card` is using one of those queries so
   we can filter it out in Clojure-land."
-  [{{{aggregations :aggregation} :query} :dataset_query}]
-  (lib.util.match/match aggregations #{:cum-count :cum-sum}))
+  [{query :dataset_query, :as _card} :- [:map
+                                         [:dataset_query ::queries.schema/query]]]
+  (lib.util.match/match (lib/aggregations query) #{:cum-count :cum-sum}))
 
 (defn card-can-be-used-as-source-query?
   "Does `card`'s query meet the conditions required for it to be used as a source query for another query?"
@@ -283,6 +288,9 @@
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
       include-only-uploadable?     (#(filter uploadable-db? %)))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Fetch all `Databases`.
 
@@ -300,9 +308,9 @@
   * `include_only_uploadable` will only include DBs into which Metabase can insert new data.
 
   Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in
-  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
-  in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
-  database details."
+  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for
+  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user
+  lacks permission to change the database details."
   [_route-params
    {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics
            router_database_id]}
@@ -405,6 +413,9 @@
     include-editable-data-model? check-db-data-model-perms
     (mi/can-write? db)           (assoc :can-manage true)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
   belonging to this database, or the Tables and Fields, respectively. If the requestor has write permissions for the
@@ -481,6 +492,8 @@
              [:in :table_id table-ids]
              always-false-hsql-expr)})
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/:id/usage_info"
   "Get usage info for a database.
   Returns a map with keys are models and values are the number of entities that use this database."
@@ -543,6 +556,9 @@
                             (filter :active tables))
                           identity)))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
@@ -661,6 +677,8 @@
         fields (readable-fields-only (autocomplete-fields db-id match-string limit))]
     (autocomplete-results tables fields limit)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/:id/autocomplete_suggestions"
   "Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but
   `substring` will have priority if both are present.
@@ -693,6 +711,12 @@
     (catch Throwable e
       (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+;;
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id/card_autocomplete_suggestions"
   "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
 
@@ -820,7 +844,7 @@
   "Add a new `Database`."
   [_route-params
    _query-params
-   {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]}
+   {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source provider_name]}
    :- [:map
        [:name              ms/NonBlankString]
        [:engine            DBEngineString]
@@ -830,7 +854,8 @@
        [:schedules         {:optional true}  [:maybe sync.schedules/ExpandedSchedulesMap]]
        [:auto_run_queries  {:optional true}  [:maybe :boolean]]
        [:cache_ttl         {:optional true}  [:maybe ms/PositiveInt]]
-       [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]]]
+       [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]
+       [:provider_name     {:optional true}  [:maybe :string]]]]
   (api/check-superuser)
   (when cache_ttl
     (api/check (premium-features/enable-cache-granular-controls?)
@@ -839,7 +864,7 @@
   (let [details-or-error (test-connection-details engine details)
         valid?           (not= (:valid details-or-error) false)]
     (if valid?
-      ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
+      ;; no error, proceed with creation. If record is inserted successfully, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
       (u/prog1 (api/check-500 (first (t2/insert-returning-instances!
                                       :model/Database
@@ -850,6 +875,7 @@
                                         :is_full_sync is_full_sync
                                         :is_on_demand is_on_demand
                                         :cache_ttl    cache_ttl
+                                        :provider_name provider_name
                                         :creator_id   api/*current-user-id*}
                                        (when schedules
                                          (sync.schedules/schedule-map->cron-strings schedules))
@@ -887,6 +913,8 @@
 
 ;;; --------------------------------------- POST /api/database/sample_database ----------------------------------------
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/sample_database"
   "Add the sample database as a new `Database`."
   []
@@ -915,18 +943,19 @@
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
-           auto_run_queries refingerprint cache_ttl settings]} :- [:map
-                                                                   [:name               {:optional true} [:maybe ms/NonBlankString]]
-                                                                   [:engine             {:optional true} [:maybe DBEngineString]]
-                                                                   [:refingerprint      {:optional true} [:maybe :boolean]]
-                                                                   [:details            {:optional true} [:maybe ms/Map]]
-                                                                   [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
-                                                                   [:description        {:optional true} [:maybe :string]]
-                                                                   [:caveats            {:optional true} [:maybe :string]]
-                                                                   [:points_of_interest {:optional true} [:maybe :string]]
-                                                                   [:auto_run_queries   {:optional true} [:maybe :boolean]]
-                                                                   [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
-                                                                   [:settings           {:optional true} [:maybe ms/Map]]]]
+           auto_run_queries refingerprint cache_ttl settings provider_name]} :- [:map
+                                                                                 [:name               {:optional true} [:maybe ms/NonBlankString]]
+                                                                                 [:engine             {:optional true} [:maybe DBEngineString]]
+                                                                                 [:refingerprint      {:optional true} [:maybe :boolean]]
+                                                                                 [:details            {:optional true} [:maybe ms/Map]]
+                                                                                 [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
+                                                                                 [:description        {:optional true} [:maybe :string]]
+                                                                                 [:caveats            {:optional true} [:maybe :string]]
+                                                                                 [:points_of_interest {:optional true} [:maybe :string]]
+                                                                                 [:auto_run_queries   {:optional true} [:maybe :boolean]]
+                                                                                 [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
+                                                                                 [:provider_name      {:optional true} [:maybe :string]]
+                                                                                 [:settings           {:optional true} [:maybe ms/Map]]]]
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (let [existing-database (api/write-check (t2/select-one :model/Database :id id))
         incoming-details  details
@@ -953,21 +982,22 @@
                         ;; TODO - is there really a reason to let someone change the engine on an existing database?
                         ;;       that seems like the kind of thing that will almost never work in any practical way
                         ;; TODO - this means one cannot unset the description. Does that matter?
-                        (m/remove-vals
-                         nil?
-                         (merge
-                          {:name               name
-                           :engine             engine
-                           :details            details
-                           :refingerprint      refingerprint
-                           :is_full_sync       full-sync?
-                           :is_on_demand       on-demand?
-                           :description        description
-                           :caveats            caveats
-                           :points_of_interest points_of_interest
-                           :auto_run_queries   auto_run_queries}
-                          (when (seq settings)
-                            {:settings pending-settings})))
+                        (u/select-keys-when
+                         {:name               name
+                          :engine             engine
+                          :details            details
+                          :refingerprint      refingerprint
+                          :is_full_sync       full-sync?
+                          :is_on_demand       on-demand?
+                          :description        description
+                          :caveats            caveats
+                          :points_of_interest points_of_interest
+                          :auto_run_queries   auto_run_queries
+                          :settings           (when (seq settings) pending-settings)
+                          :provider_name      provider_name}
+                         :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand
+                                    :description :caveats :points_of_interest :auto_run_queries :settings}
+                         :present #{:provider_name})
                         ;; cache_field_values_schedule can be nil
                         (when schedules
                           (sync.schedules/schedule-map->cron-strings schedules)))
@@ -1005,17 +1035,21 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/let-404 [db (t2/select-one :model/Database :id id)]
-    (api/check-403 (mi/can-write? db))
-    (t2/delete! :model/Database :router_database_id id)
-    (database-routing/delete-associated-database-router! id)
-    (t2/delete! :model/Database :id id)
-    (events/publish-event! :event/database-delete {:object db :user-id api/*current-user-id*}))
+  (t2/with-transaction [_conn]
+    (api/let-404 [db (t2/select-one :model/Database :id id)]
+      (api/check-403 (mi/can-write? db))
+      (t2/delete! :model/Database :router_database_id id)
+      (database-routing/delete-associated-database-router! id)
+      (t2/delete! :model/Database :id id)
+      (events/publish-event! :event/database-delete {:object db :user-id api/*current-user-id*})))
   api/generic-204-no-content)
 
 ;;; ------------------------------------------ POST /api/database/:id/sync_schema -------------------------------------------
 
 ;; Should somehow trigger sync-database/sync-database!
+;;
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Database`."
   [{:keys [id]} :- [:map
@@ -1041,6 +1075,8 @@
              (sync/analyze-db! db))))
         {:status :ok}))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/dismiss_spinner"
   "Manually set the initial sync status of the `Database` and corresponding
   tables to be `complete` (see #20863)"
@@ -1065,6 +1101,9 @@
   true)
 
 ;; Should somehow trigger cached-values/cache-field-values-for-database!
+;;
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
   [{:keys [id]} :- [:map
@@ -1094,6 +1133,9 @@
                                :where      [:= :t.db_id (u/the-id database-or-id)]}]}))
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
+;;
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/discard_values"
   "Discards all saved field values for this `Database`."
   [{:keys [id]} :- [:map
@@ -1125,6 +1167,8 @@
                                                 schema-name))
    (current-user-can-manage-schema-metadata? database-id schema-name)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/:id/syncable_schemas"
   "Returns a list of all syncable schemas found for the database `id`."
   [{:keys [id]} :- [:map
@@ -1164,6 +1208,9 @@
          distinct
          sort)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id/schemas"
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
   [{:keys [id]} :- [:map
@@ -1223,6 +1270,9 @@
          tables)
        (filter mi/can-read? tables)))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
   [{:keys [id schema]} :- [:map
@@ -1236,6 +1286,9 @@
                        include_hidden
                        include_editable_data_model))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id/schema/"
   "Return a list of Tables for a Database whose `schema` is `nil` or an empty string."
   [{:keys [id]} :- [:map
@@ -1279,3 +1332,55 @@
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
          (map schema.table/card->virtual-table))))
+
+;;; -------------------------------- GET /api/database/:id/settings-available ------------------------------------
+
+(defn- database-local-settings
+  "Return a sorted map of all database-local settings with their enabled status for the given database.
+   Settings that require unavailable premium features are omitted entirely."
+  [database]
+  (let [settings         @setting/registered-settings
+        driver           (driver.u/database->driver database)
+        driver-supports? (fn [feature] (driver.u/supports? driver feature database))]
+    (into (sorted-map)
+          (for [[setting-name {:keys [feature database-local driver-feature enabled?] :as setting-def}] settings
+                :when (and  (not= :never database-local)
+                            (or (nil? feature) (premium-features/has-feature? feature)))]
+            [setting-name
+             (let [reasons (cond-> []
+                             (and enabled? (not (enabled?)))
+                             (conj {:key     :setting-disabled
+                                    :type    :error
+                                    :message "This setting is disabled for all databases."})
+
+                             (and driver-feature (not (driver-supports? driver-feature)))
+                             (conj {:key     :driver-feature-missing
+                                    :type    :error
+                                    :message (format "The %s driver does not support the `%s` feature"
+                                                     (driver/display-name driver)
+                                                     (name driver-feature))})
+
+                             true
+                             (into (setting/disabled-for-db-reasons setting-def database)))
+                   enabled? (every? (comp #{:warning} :type) reasons)]
+               (if (empty? reasons)
+                 {:enabled enabled?}
+                 {:enabled enabled?, :reasons reasons}))]))))
+
+(mr/def ::available-settings
+  [:map-of
+   :keyword
+   [:map
+    [:enabled :boolean]
+    [:reasons {:optional true}
+     [:sequential [:map
+                   [:key :keyword]
+                   [:type [:enum :error :warning]]
+                   [:message [:or :string [:fn i18n/localized-string?]]]]]]]])
+
+(api.macros/defendpoint :get "/:id/settings-available" :- [:map [:settings ::available-settings]]
+  "Get all database-local settings and their availability for the given database."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (let [database (api/read-check (get-database id))]
+    {:settings (database-local-settings database)}))

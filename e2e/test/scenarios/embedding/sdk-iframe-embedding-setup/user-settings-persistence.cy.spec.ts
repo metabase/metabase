@@ -30,10 +30,10 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
 
     cy.log("1. change brand color to red");
-    cy.findByLabelText("#509EE3").click();
+    cy.findByTestId("brand-color-picker").findByRole("button").click();
 
     H.popover().within(() => {
-      cy.findByDisplayValue("#509EE3")
+      cy.findByDisplayValue("#509EE2")
         .should("be.visible")
         .clear()
         .type("rgb(255, 0, 0)")
@@ -46,9 +46,14 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       .should("have.css", "color", "rgb(255, 0, 0)");
 
     cy.log("2. reload the page");
-    waitAndReload();
+    cy.wait("@persistSettings");
 
     cy.log("3. brand color should be persisted");
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
     H.getSimpleEmbedIframeContent()
       .findAllByTestId("cell-data")
       .first()
@@ -74,13 +79,12 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
 
     cy.log("2. reload the page");
-    waitAndReload();
+    cy.wait("@persistSettings");
 
     cy.log("3. auth method should persist");
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
-      dismissEmbedTerms: false,
     });
 
     getEmbedSidebar().within(() => {
@@ -90,11 +94,3 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
   });
 });
-
-const waitAndReload = () => {
-  cy.wait("@persistSettings");
-
-  cy.reload();
-
-  H.waitForSimpleEmbedIframesToLoad();
-};

@@ -1,10 +1,9 @@
 (ns metabase.driver.impl
   "Internal implementation functions for [[metabase.driver]]. These functions live in a separate namespace to reduce the
   clutter in [[metabase.driver]] itself."
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
-   [metabase.classloader.impl :as classloader]
-   [metabase.lib.util :as lib.util]
+   [metabase.classloader.core :as classloader]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -45,21 +44,21 @@
      (finally
        (.. load-driver-lock writeLock unlock))))
 
-(defn registered?
+(mu/defn registered?
   "Is `driver` a valid registered driver?"
-  [driver]
+  [driver :- [:or :keyword :string]]
   (with-load-driver-read-lock
     (isa? hierarchy (keyword driver) :metabase.driver/driver)))
 
-(defn concrete?
+(mu/defn concrete?
   "Is `driver` registered, and non-abstract?"
-  [driver]
+  [driver :- [:or :keyword :string]]
   (isa? hierarchy (keyword driver) ::concrete))
 
-(defn abstract?
+(mu/defn abstract?
   "Is `driver` an abstract \"base class\"? i.e. a driver that you cannot use directly when adding a Database, such as
   `:sql` or `:sql-jdbc`."
-  [driver]
+  [driver :- [:or :keyword :string]]
   (not (concrete? driver)))
 
 ;;; -------------------------------------------- Loading Driver Namespace --------------------------------------------
@@ -80,7 +79,7 @@
         (log/error e "Error loading driver namespace")
         (throw (Exception. (tru "Could not load {0} driver." driver) e))))))
 
-(defn load-driver-namespace-if-needed!
+(mu/defn load-driver-namespace-if-needed!
   "Load the expected namespace for a `driver` if it has not already been registed. This only works for core Metabase
   drivers, whose namespaces follow an expected pattern; drivers provided by 3rd-party plugins are expected to register
   themselves in their plugin initialization code.
@@ -88,7 +87,7 @@
   You should almost never need to do this directly; it is handled automatically when dispatching on a driver and by
   `register!` below (for parent drivers) and by `driver.u/database->driver` for drivers that have not yet been
   loaded."
-  [driver]
+  [driver :- [:or :keyword :string]]
   (when-not *compile-files*
     (when-not (registered? driver)
       (with-load-driver-write-lock
@@ -234,4 +233,4 @@
    (truncate-alias s default-alias-max-length-bytes))
 
   (^String [^String s max-length-bytes]
-   (lib.util/truncate-alias s max-length-bytes)))
+   (lib/truncate-alias s max-length-bytes)))

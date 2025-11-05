@@ -3,29 +3,20 @@
    [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.api :as semantic.api]
-   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.search.ingestion :as search.ingestion]
-   [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test :as mt]))
 
-(use-fixtures :once (compose-fixtures
-                     (fixtures/initialize :db)
-                     #'semantic.tu/once-fixture))
-
-(defmacro with-mock-index-metadata!
-  [& body]
-  `(with-redefs [semantic.env/get-pgvector-datasource! (constantly semantic.tu/db)
-                 semantic.embedding/get-configured-model (constantly semantic.tu/mock-embedding-model)
-                 semantic.env/get-index-metadata (constantly semantic.tu/mock-index-metadata)]
-     ~@body))
+(use-fixtures :once #'semantic.tu/once-fixture)
 
 (deftest status-endpoint-test
   (testing "GET /api/ee/semantic-search/status"
     (mt/with-premium-features #{:semantic-search}
-      (with-mock-index-metadata!
+      (semantic.tu/with-test-db! {:mode :mock-initialized}
         (with-open [index-ref (semantic.tu/open-temp-index!)]
           (with-redefs [semantic.index-metadata/get-active-index-state (fn [_ _]
                                                                          {:index @index-ref
@@ -65,3 +56,41 @@
 
       (testing "regular users cannot access status endpoint"
         (mt/user-http-request :rasta :get 403 "ee/semantic-search/status")))))
+
+(deftest re-init-endpoint-test
+  (testing "POST /api/search/re-init with semantic search support"
+    (mt/with-premium-features #{:semantic-search}
+      (semantic.tu/with-test-db! {:mode :mock-indexed}
+        (let [original-index      semantic.tu/mock-index
+              original-table-name (:table-name original-index)
+              new-index           (with-redefs [semantic.index/model-table-suffix (constantly 345)]
+                                    (#'semantic.pgvector-api/fresh-index semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model :force-reset? true))
+              new-table-name      (:table-name new-index)
+              pgvector (semantic.env/get-pgvector-datasource!)]
+
+          (is (semantic.tu/table-exists-in-db? original-table-name))
+          (is (not (semantic.tu/table-exists-in-db? new-table-name)))
+
+          (let [best-index (semantic.index-metadata/find-compatible-index! pgvector semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model)]
+            (is (=? original-index (:index best-index)))
+            (is (:active best-index)))
+
+          (testing "re-init creates the new index"
+            (with-redefs [semantic.index/model-table-suffix (constantly 345)]
+              (let [response (mt/user-http-request :crowberto :post 200 "search/re-init")]
+                (is (contains? response :message))))
+
+            (is (not= original-table-name new-table-name))
+            (is (semantic.tu/table-exists-in-db? original-table-name))
+            (is (semantic.tu/table-exists-in-db? new-table-name))
+
+            (is (zero? (semantic.tu/index-count new-index))))
+
+          (let [best-index (semantic.index-metadata/find-compatible-index! pgvector semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model)]
+            (is (=? new-index (:index best-index)))
+            (is (:active best-index)))
+
+          (testing "Index can be populated after re-init"
+            (semantic.tu/upsert-index! (semantic.tu/mock-documents) :index new-index)
+
+            (is (pos? (semantic.tu/index-count new-index)))))))))

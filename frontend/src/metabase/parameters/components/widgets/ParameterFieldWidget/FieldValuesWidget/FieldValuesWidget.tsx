@@ -43,13 +43,11 @@ import {
   MultiAutocompleteOption,
   MultiAutocompleteValue,
 } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 import Field from "metabase-lib/v1/metadata/Field";
 import { getSourceType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   CardId,
-  Dashboard,
   DashboardId,
   FieldValue,
   Parameter,
@@ -111,10 +109,10 @@ export interface IFieldValuesWidgetProps {
   showOptionsInPopover?: boolean;
 
   parameter: Parameter;
-  parameters?: Parameter[];
+  parameters?: Parameter[]; // linked parameters with values
   fields: Field[];
-  dashboard?: Dashboard | null;
-  question?: Question;
+  dashboardId?: DashboardId;
+  cardId?: CardId;
 
   value: RowValue[];
   onChange: (value: RowValue[]) => void;
@@ -151,8 +149,8 @@ export const FieldValuesWidgetInner = forwardRef<
     parameter,
     parameters,
     fields,
-    dashboard,
-    question,
+    dashboardId,
+    cardId,
     value,
     onChange,
     multi,
@@ -206,11 +204,11 @@ export const FieldValuesWidgetInner = forwardRef<
     let newOptions: FieldValue[] = [];
     let hasMoreOptions = false;
     try {
-      if (canUseDashboardEndpoints(dashboard)) {
+      if (canUseDashboardEndpoints(dashboardId)) {
         const result = await dispatchFetchDashboardParameterValues(query);
         newOptions = result.values;
         hasMoreOptions = result.has_more_values;
-      } else if (canUseCardEndpoints(question)) {
+      } else if (canUseCardEndpoints(cardId)) {
         const result = await dispatchFetchCardParameterValues(query);
         newOptions = result.values;
         hasMoreOptions = result.has_more_values;
@@ -243,8 +241,6 @@ export const FieldValuesWidgetInner = forwardRef<
   };
 
   const dispatchFetchCardParameterValues = async (query?: string) => {
-    const cardId = question?.id();
-
     if (!isNotNull(cardId) || !parameter) {
       return { has_more_values: false, values: [] };
     }
@@ -259,8 +255,6 @@ export const FieldValuesWidgetInner = forwardRef<
   };
 
   const dispatchFetchDashboardParameterValues = async (query?: string) => {
-    const dashboardId = dashboard?.id;
-
     if (!isNotNull(dashboardId) || !parameter || !parameters) {
       return { has_more_values: false, values: [] };
     }
@@ -328,8 +322,8 @@ export const FieldValuesWidgetInner = forwardRef<
         formatOptions,
         value,
         parameter,
-        cardId: question?.id(),
-        dashboardId: dashboard?.id,
+        cardId,
+        dashboardId,
         autoLoad: true,
         compact: false,
         displayValue: option?.[1],
@@ -344,8 +338,8 @@ export const FieldValuesWidgetInner = forwardRef<
         formatOptions,
         value: option[0],
         parameter,
-        cardId: question?.id(),
-        dashboardId: dashboard?.id,
+        cardId,
+        dashboardId,
         autoLoad: false,
         displayValue: option[1],
       });
@@ -486,8 +480,8 @@ export const FieldValuesWidgetInner = forwardRef<
               <RemappedValue
                 parameter={parameter}
                 fields={fields}
-                dashboardId={dashboard?.id}
-                cardId={question?.id()}
+                dashboardId={dashboardId}
+                cardId={cardId}
                 value={isNumericParameter ? parseNumericValue(value) : value}
                 tc={tc}
               />

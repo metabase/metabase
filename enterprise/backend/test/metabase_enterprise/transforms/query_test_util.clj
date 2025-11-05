@@ -2,7 +2,6 @@
   "Shared utilities for building test queries in transform tests."
   (:require
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -30,7 +29,7 @@
 
    Returns an MLv2 query object."
   [& {:keys [source-table source-column filter-fn filter-values]}]
-  (let [mp     (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp     (mt/metadata-provider)
         table  (if (string? source-table)
                  (table-from-metadata mp source-table)
                  source-table)

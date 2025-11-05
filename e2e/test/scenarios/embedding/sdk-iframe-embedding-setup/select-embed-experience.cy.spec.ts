@@ -1,4 +1,7 @@
-import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 import {
   assertDashboard,
@@ -23,7 +26,9 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.intercept("GET", "/api/dashboard/*").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
+    cy.intercept("GET", "/api/activity/recents?context=selections*").as(
+      "recentActivity",
+    );
   });
 
   afterEach(() => {
@@ -37,7 +42,17 @@ H.describeWithSnowplow(suiteTitle, () => {
       visitNewEmbedPage();
       assertRecentItemName("dashboard", dashboardName);
 
+      H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
       H.waitForSimpleEmbedIframesToLoad();
+
+      getEmbedSidebar().within(() => {
+        cy.findByText("Next").click();
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_experience_completed",
+        event_detail: "default",
+      });
 
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("dashboard title is visible");
@@ -57,12 +72,16 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       visitNewEmbedPage();
       assertRecentItemName("card", questionName);
+      H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
 
-      getEmbedSidebar().findByText("Chart").click();
+      getEmbedSidebar().within(() => {
+        cy.findByText("Chart").click();
+        cy.findByText("Next").click();
+      });
 
       H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_experience_selected",
-        event_detail: "chart",
+        event: "embed_wizard_experience_completed",
+        event_detail: "custom=chart",
       });
 
       cy.wait("@cardQuery");
@@ -73,13 +92,17 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
     });
 
-    it.skip("shows exploration template when selected", () => {
+    it("shows exploration template when selected", { tags: "@skip" }, () => {
       visitNewEmbedPage();
-      getEmbedSidebar().findByText("Exploration").click();
+
+      getEmbedSidebar().within(() => {
+        cy.findByText("Exploration").click();
+        cy.findByText("Next").click();
+      });
 
       H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_experience_selected",
-        event_detail: "exploration",
+        event: "embed_wizard_experience_completed",
+        event_detail: "custom=exploration",
       });
 
       H.waitForSimpleEmbedIframesToLoad();
@@ -87,6 +110,31 @@ H.describeWithSnowplow(suiteTitle, () => {
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("data picker is visible");
         cy.findByText("Pick your starting data").should("be.visible");
+      });
+    });
+
+    it("shows browser template when selected", () => {
+      visitNewEmbedPage();
+
+      getEmbedSidebar().within(() => {
+        cy.findByText("Browser").click();
+        cy.findByText("Next").click();
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_experience_completed",
+        event_detail: "custom=browser",
+      });
+
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.log("collection is visible in breadcrumbs");
+        cy.findByTestId("sdk-breadcrumbs")
+          .findAllByText("Our analytics")
+          .first()
+          .should("be.visible");
+
+        cy.log("collection is visible in browser");
+        cy.findAllByText("Orders in a dashboard").should("be.visible");
       });
     });
   });
@@ -114,38 +162,65 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
     });
 
-    it.skip("shows question of id=1 when activity log is empty and chart is selected", () => {
-      visitNewEmbedPage();
-      cy.wait("@emptyRecentItems");
+    it(
+      "shows question of id=1 when activity log is empty and chart is selected",
+      { tags: "@skip" },
+      () => {
+        visitNewEmbedPage();
+        cy.wait("@emptyRecentItems");
 
-      getEmbedSidebar().findByText("Chart").click();
+        getEmbedSidebar().within(() => {
+          cy.findByText("Chart").click();
+          cy.findByText("Next").click();
+        });
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_experience_selected",
-        event_detail: "chart",
-      });
+        H.expectUnstructuredSnowplowEvent({
+          event: "embed_wizard_experience_completed",
+          event_detail: "custom=chart",
+        });
 
-      H.waitForSimpleEmbedIframesToLoad();
+        H.waitForSimpleEmbedIframesToLoad();
 
-      H.getSimpleEmbedIframeContent().within(() => {
-        cy.log("question title of id=1 is visible");
-        cy.findByText("Query log").should("be.visible");
-      });
-    });
+        H.getSimpleEmbedIframeContent().within(() => {
+          cy.log("question title of id=1 is visible");
+          cy.findByText("Query log").should("be.visible");
+        });
+      },
+    );
   });
 
-  // TODO: fix this flaky test
-  it.skip("localizes the iframe preview when ?locale is passed", () => {
-    visitNewEmbedPage({ locale: "fr" });
+  it("should show a fake loading indicator in embed preview", () => {
+    cy.visit(`/question/${ORDERS_QUESTION_ID}`);
 
-    // TODO: update this test once "Exploration" is localized in french.
-    getEmbedSidebar().findByText("Exploration").click();
+    H.openEmbedJsModal();
 
-    H.waitForSimpleEmbedIframesToLoad();
+    cy.get("#iframe-embed-container")
+      .findByTestId("preview-loading-indicator", { timeout: 20_000 })
+      .should("be.visible");
+
+    cy.get("[data-iframe-loaded]", { timeout: 20_000 }).should(
+      "have.length",
+      1,
+    );
+
+    cy.findByTestId("preview-loading-indicator").should("not.exist");
+  });
+
+  it("shows Metabot experience when selected", () => {
+    visitNewEmbedPage();
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Metabot").click();
+      cy.findByText("Next").click();
+    });
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_experience_completed",
+      event_detail: "custom=metabot",
+    });
 
     H.getSimpleEmbedIframeContent().within(() => {
-      cy.log("data picker is localized");
-      cy.findByText("Choisissez vos données de départ").should("be.visible");
+      cy.findByText("Ask questions to AI.").should("be.visible");
     });
   });
 });

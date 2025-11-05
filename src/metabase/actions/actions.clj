@@ -9,10 +9,12 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.store :as qp.store]
+   ;; legacy usage -- don't do things like this going forward
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
@@ -39,10 +41,10 @@
     (assoc (select-keys scope [:table-id]) :row :metabase-enterprise.action-v2.api/root)))
 
 (methodical/defmulti perform-action!*
-  "Multimethod for doing an Action. The specific `action` is a keyword like `:model.row/create` or `:table.row/create`; the shape
-  of each input depends on the action being performed. [[action-arg-map-schema]] returns the appropriate spec to use to
-  validate the inputs for a given action. When implementing a new action type, be sure to implement both this method
-  and [[action-arg-map-schema]].
+  "Multimethod for doing an Action. The specific `action` is a keyword like `:model.row/create` or `:table.row/create`;
+  the shape of each input depends on the action being performed. [[metabase.actions.args/action-arg-map-schema]]
+  returns the appropriate spec to use to validate the inputs for a given action. When implementing a new action type,
+  be sure to implement both this method and [[metabase.actions.args/action-arg-map-schema]].
 
   DON'T CALL THIS METHOD DIRECTLY TO PERFORM ACTIONS -- use [[perform-action!]] instead which does normalization,
   validation, and binds Database-local values."
@@ -112,14 +114,14 @@
 
 (defn check-actions-enabled-for-database!
   "Throws an appropriate error if actions are unsupported or disabled for a database, otherwise returns nil."
-  [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
+  [{db-id :id driver :engine db-name :name :as db}]
   (when-not (driver.u/supports? driver :actions db)
     (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
                               (u/qualified-name driver)
                               (format "%d %s" db-id (pr-str db-name)))
                     {:status-code 400, :database-id db-id})))
 
-  (setting/with-database-local-values db-settings
+  (setting/with-database db
     (when-not (actions.settings/database-enable-actions)
       (throw (ex-info (i18n/tru "Actions are not enabled.")
                       {:status-code 400, :database-id db-id}))))
@@ -128,14 +130,14 @@
 
 (defn check-data-editing-enabled-for-database!
   "Throws an appropriate error if editing is unsupported or disabled for a database, otherwise returns nil."
-  [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
+  [{db-id :id driver :engine db-name :name :as db}]
   (when-not (driver.u/supports? driver :actions/data-editing db)
     (throw (ex-info (i18n/tru "{0} Database {1} does not support data editing."
                               (u/qualified-name driver)
                               (format "%d %s" db-id (pr-str db-name)))
                     {:status-code 400, :database-id db-id})))
 
-  (setting/with-database-local-values db-settings
+  (setting/with-database db
     (when-not (actions.settings/database-enable-table-editing)
       (throw (ex-info (i18n/tru "Data editing is not enabled.")
                       {:status-code 400, :database-id db-id}))))
@@ -177,7 +179,7 @@
    ;; Since the inner map shape will depend on action-kw, we will need to dynamically validate it.
    inputs    :- [:sequential :map]
    & {:as _opts}]
-  (lib.metadata.jvm/with-metadata-provider-cache
+  (lib-be/with-metadata-provider-cache
     (let [invocation-id  (nano-id/nano-id)
           context-before (-> (assoc ctx :invocation-id invocation-id)
                              (update :invocation-stack u/conjv [action-kw invocation-id]))]
@@ -242,6 +244,20 @@
   (log/logf level "%s %s => %s" context before after)
   after)
 
+(mu/defn- check-permissions
+  [policy   :- :keyword
+   arg-maps :- [:sequential [:or
+                             ::actions.args/common
+                             [:= {:description "empty map"} {}]]]]
+  (when (#{:model-action :ad-hoc-invocation} policy)
+    (doseq [arg-map arg-maps
+            :when   (seq arg-map)
+            :let    [mp    (lib-be/application-database-metadata-provider (:database arg-map))
+                     query (if (:table-id arg-map)
+                             (lib/query mp (lib.metadata/table mp (:table-id arg-map)))
+                             (lib-be/normalize-query arg-map))]]
+      (qp.perms/check-query-action-permissions* query))))
+
 ;; TODO rename this to just perform-action! and rename the legacy entry point to clearly deprecate it.
 (mu/defn perform-action-v2!
   "Perform an *implicit* `action`. This is the main entry point that handles validation, permissions, and more.
@@ -256,7 +272,7 @@
   (log/with-context {:action action}
     (let [action-kw (keyword action)
           scope     (actions.scope/hydrate-scope scope)
-          arg-maps  (if (map? arg-map-or-maps) [arg-map-or-maps] arg-map-or-maps)
+          arg-maps  (u/one-or-many arg-map-or-maps)
           policy    (or policy
                         (cond
                           (:model-id scope)                         :model-action
@@ -284,7 +300,6 @@
                                        :database-ids (map :id dbs)})))
           db        (first dbs)
           driver    (:engine db)]
-
       ;; -- * Authorization* --
       ;; The action might not be database-centric (e.g., call a webhook)
       (when db
@@ -299,21 +314,9 @@
             (when-not (api/check-superuser)
               (throw (ex-info (i18n/tru "You don''t have permissions to do that.") {:status-code 403})))
             (check-data-editing-enabled-for-database! db))))
-
       (log/with-context {:db-id (:id db)}
         (binding [*misc-value-cache* (atom {:databases (zipmap (map :id dbs) dbs)})]
-          (when (= :model-action policy)
-            (doseq [arg-map arg-maps]
-              (qp.perms/check-query-action-permissions* arg-map)))
-          (when (= :ad-hoc-invocation policy)
-            (doseq [arg-map arg-maps]
-              (cond
-                (:query arg-map) (qp.perms/check-query-action-permissions* arg-map)
-                (:table-id arg-map) (qp.perms/check-query-action-permissions*
-                                     {:type     :query,
-                                      :database (:database arg-map)
-                                      :query    {:source-table (:table-id arg-map)}}))))
-
+          (check-permissions policy arg-maps)
           (let [result (let [context (-> existing-context
                                          ;; TODO fix tons of tests which execute without user scope
                                          (u/assoc-default :user-id (identity #_api/check-500

@@ -21,19 +21,22 @@
 
 (deftest ^:parallel already-native-test
   (testing "If query is already native, `compile` should still do stuff like parsing parameters"
-    (is (= {:query  "SELECT * FROM VENUES WHERE price = 3;"
-            :params []}
+    (is (= {:lib/type :mbql.stage/native
+            :query    "SELECT * FROM VENUES WHERE price = 3;"
+            :params   []}
            (qp.compile/compile
             {:database   (mt/id)
              :type       :native
              :native     {:query         "SELECT * FROM VENUES [[WHERE price = {{price}}]];"
                           :template-tags {"price" {:name "price", :display-name "Price", :type :number, :required false}}}
-             :parameters [{:type "category", :target [:variable [:template-tag "price"]], :value 3}]}))))
+             :parameters [{:type "category", :target [:variable [:template-tag "price"]], :value 3}]})))))
+
+(deftest ^:parallel already-native-test-2
   (testing "If query is already native, `compile` should not execute the query (metabase#13572)"
     ;; 1000,000,000 rows, no way this will finish in 2 seconds if executed
     (let [long-query "SELECT CHECKINS.* FROM CHECKINS LEFT JOIN CHECKINS C2 ON 1=1 LEFT JOIN CHECKINS C3 ON 1=1"]
       (u/with-timeout 2000
-        (is (= {:query long-query}
+        (is (= {:lib/type :mbql.stage/native, :query long-query}
                (qp.compile/compile
                 {:database (mt/id)
                  :type     :native

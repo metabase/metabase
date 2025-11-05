@@ -54,8 +54,22 @@
    [:title :string]
    [:parameters [:sequential ::describe-param]]])
 
+(defn- field-input-type-ignoring-semantics [create? field field-values]
+  (condp #(isa? %2 %1) (:base_type field)
+    :type/Boolean    :input/boolean
+    :type/Integer    :input/integer
+    :type/BigInteger :input/integer
+    :type/Float      :input/float
+    :type/Decimal    :input/float
+    :type/Date       :input/date
+    :type/DateTime   :input/datetime
+    :type/Time       :input/time
+    (if (and (not create?) (#{:list :auto-list :search} (:type field-values)))
+      :input/dropdown
+      :input/text)))
+
 (defn- field-input-type
-  [field field-values]
+  [create? field field-values]
   (condp #(isa? %2 %1) (:semantic_type field)
     :type/Name        :input/text
     :type/Title       :input/text
@@ -63,19 +77,12 @@
     :type/Description :input/textarea
     :type/Category    :input/dropdown
     :type/FK          :input/dropdown
-    :type/PK          :input/dropdown
-    (condp #(isa? %2 %1) (:base_type field)
-      :type/Boolean    :input/boolean
-      :type/Integer    :input/integer
-      :type/BigInteger :input/integer
-      :type/Float      :input/float
-      :type/Decimal    :input/float
-      :type/Date       :input/date
-      :type/DateTime   :input/datetime
-      :type/Time       :input/time
-      (if (#{:list :auto-list :search} (:type field-values))
-        :input/dropdown
-        :input/text))))
+    :type/PK (if create?
+               ;; Unless it's a compound PK, we need to provide a unique value for the column, so use the base_type
+               (field-input-type-ignoring-semantics create? field field-values)
+               ;; For updating and deleting, we must pick an existing row
+               :input/dropdown)
+    (field-input-type-ignoring-semantics create? field field-values)))
 
 (defn- describe-table-action
   [{:keys [action-kw
@@ -107,7 +114,8 @@
                                   param-setting          (get param-map (keyword (:name field)))
                                   ;; TODO get this from action configuration, when we add it, or inherit from table conf
                                   column-settings        nil
-                                  auto-inc?              (:database_is_auto_increment field pk?)]
+                                  auto-inc?              (:database_is_auto_increment field pk?)
+                                  create?                (contains? #{:table.row/create :data-grid.row/create} action-kw)]
                             :when (case action-kw
                                     ;; create does not take pk cols if auto increment, todo generated cols?
                                     (:table.row/create :data-grid.row/create) (not auto-inc?)
@@ -128,7 +136,7 @@
                           :display_name            (:display_name field)
                           :semantic_type           (:semantic_type field)
                           ;; TODO we are manually removing the namespace due to an issue with encoder/api not running
-                          :input_type              (strip-namespace-hack (field-input-type field field-values))
+                          :input_type              (strip-namespace-hack (field-input-type create? field field-values))
                           :field_id                (:id field)
                           :human_readable_field_id (-> field :dimensions first :human_readable_field_id)
                           :optional                (not required)

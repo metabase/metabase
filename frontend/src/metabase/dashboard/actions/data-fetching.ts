@@ -1,9 +1,9 @@
 import { createAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { automagicDashboardsApi, dashboardApi } from "metabase/api";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import {
@@ -25,8 +25,7 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
-import Dashboards from "metabase/entities/dashboards";
+import { entityCompatibleQuery } from "metabase/lib/entities";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
 import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
@@ -56,7 +55,8 @@ import type {
   DashboardCard,
   DashboardId,
   Dataset,
-  DatasetQuery,
+  JsonQuery,
+  ParameterValuesMap,
   QuestionDashboardCard,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
@@ -228,8 +228,13 @@ export const fetchCardDataAction = createAsyncThunk<
 
     const dashboardType = getDashboardType(dashcard.dashboard_id);
 
-    const { dashboardId, dashboards, parameterValues, dashcardData } =
-      getState().dashboard;
+    const {
+      dashboardId,
+      dashboards,
+      editingDashboard,
+      parameterValues,
+      dashcardData,
+    } = getState().dashboard;
 
     if (!dashboardId) {
       return;
@@ -237,10 +242,22 @@ export const fetchCardDataAction = createAsyncThunk<
 
     const dashboard = dashboards[dashboardId];
 
+    // if the dashboard is being edited, ignore parameters that do not exist in
+    // the saved dashboard to avoid query errors
+    const savedParameterIds = new Set(
+      editingDashboard?.parameters?.map((parameter) => parameter.id),
+    );
+    const savedParameters =
+      editingDashboard != null
+        ? dashboard.parameters?.filter((parameter) =>
+            savedParameterIds.has(parameter.id),
+          )
+        : dashboard.parameters;
+
     // if we have a parameter, apply it to the card query before we execute
     const datasetQuery = applyParameters(
       card,
-      dashboard.parameters,
+      savedParameters,
       parameterValues,
       dashcard?.parameter_mappings ?? undefined,
     );
@@ -270,8 +287,8 @@ export const fetchCardDataAction = createAsyncThunk<
     const hasParametersChanged =
       !lastResult ||
       !equals(
-        getDatasetQueryParams(lastResult.json_query).parameters,
-        getDatasetQueryParams(datasetQuery).parameters,
+        getDatasetQueryParams(lastResult.json_query),
+        getDatasetQueryParams(datasetQuery),
       );
 
     if (clearCache || hasParametersChanged) {
@@ -399,7 +416,10 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     }
 
-    setFetchCardDataCancel(card.id, dashcard.id, null);
+    // If the request was not previously cancelled, then clear the defer for the card
+    if (!cancelled) {
+      setFetchCardDataCancel(card.id, dashcard.id, null);
+    }
     clearTimeout(slowCardTimer);
 
     return {
@@ -579,34 +599,14 @@ export const clearCardData = createAction(
   (cardId, dashcardId) => ({ payload: { cardId, dashcardId } }),
 );
 
-function getDatasetQueryParams(datasetQuery: Partial<DatasetQuery> = {}) {
-  const parameters =
-    datasetQuery?.parameters
-      ?.map((parameter) => ({
-        ...parameter,
-        value: parameter.value ?? null,
-      }))
-      .sort(sortById) ?? [];
-
-  return match(datasetQuery)
-    .with({ type: "native" }, ({ native }) => ({
-      type: "native",
-      query: undefined,
-      native,
-      parameters,
+function getDatasetQueryParams(datasetQuery?: JsonQuery) {
+  const parameters = datasetQuery?.parameters ?? [];
+  return parameters
+    .map((parameter) => ({
+      ...parameter,
+      value: parameter.value ?? null,
     }))
-    .with({ type: "query" }, ({ query }) => ({
-      type: "query",
-      query,
-      native: undefined,
-      parameters,
-    }))
-    .otherwise(() => ({
-      type: undefined,
-      native: undefined,
-      query: undefined,
-      parameters: [],
-    }));
+    .sort(sortById);
 }
 
 function sortById(a: UiParameter, b: UiParameter) {
@@ -630,7 +630,7 @@ export const fetchDashboard = createAsyncThunk(
       options: { preserveParameters = false, clearCache = true } = {},
     }: {
       dashId: DashboardId;
-      queryParams: ParameterValues;
+      queryParams: ParameterValuesMap;
       options?: { preserveParameters?: boolean; clearCache?: boolean };
     },
     { getState, dispatch, rejectWithValue },
@@ -693,12 +693,14 @@ export const fetchDashboard = createAsyncThunk(
             { subPath, dashboard_load_id: dashboardLoadId },
             { cancelled: fetchDashboardCancellation.promise },
           ),
-          dispatch(
-            Dashboards.actions.fetchXrayMetadata({
+          entityCompatibleQuery(
+            {
               entity,
               entityId,
               dashboard_load_id: dashboardLoadId,
-            }),
+            },
+            dispatch,
+            automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
           ),
         ]);
         result = {
@@ -724,11 +726,11 @@ export const fetchDashboard = createAsyncThunk(
             { dashId: dashId, dashboard_load_id: dashboardLoadId },
             { cancelled: fetchDashboardCancellation.promise },
           ),
-          dispatch(
-            Dashboards.actions.fetchMetadata({
-              id: dashId,
-              dashboard_load_id: dashboardLoadId,
-            }),
+          entityCompatibleQuery(
+            { id: dashId, dashboard_load_id: dashboardLoadId },
+            dispatch,
+            dashboardApi.endpoints.getDashboardQueryMetadata,
+            { forceRefetch: false },
           ),
         ]);
         result = response;

@@ -5,17 +5,9 @@ import type {
   DatePickerUnit,
   RelativeDatePickerValue,
 } from "metabase/querying/filters/types";
-import {
-  Box,
-  Button,
-  Divider,
-  Group,
-  Icon,
-  NumberInput,
-  Select,
-  Text,
-} from "metabase/ui";
+import { Box, Button, Divider, Group, Icon, Select, Text } from "metabase/ui";
 
+import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue/NumberInputWithFallbackValue";
 import type { DatePickerSubmitButtonProps } from "../../types";
 import { renderDefaultSubmitButton } from "../../utils";
 import {
@@ -58,8 +50,8 @@ export function DateOffsetIntervalPicker({
   const directionText = getDirectionText(value);
   const dateRangeText = formatDateRange(value);
 
-  const handleIntervalChange = (inputValue: number | "") => {
-    if (inputValue !== "") {
+  const handleIntervalChange = (inputValue: number | string) => {
+    if (typeof inputValue === "number") {
       onChange(setInterval(value, inputValue));
     }
   };
@@ -71,8 +63,8 @@ export function DateOffsetIntervalPicker({
     }
   };
 
-  const handleOffsetIntervalChange = (inputValue: number | "") => {
-    if (inputValue !== "") {
+  const handleOffsetIntervalChange = (inputValue: number | string) => {
+    if (typeof inputValue === "number") {
       onChange(setOffsetInterval(value, inputValue));
     }
   };
@@ -97,7 +89,7 @@ export function DateOffsetIntervalPicker({
     <form onSubmit={handleSubmit}>
       <Box className={S.PickerGrid} p="md">
         <Text>{directionText}</Text>
-        <NumberInput
+        <NumberInputWithFallbackValue
           value={interval}
           aria-label={t`Interval`}
           w="4rem"
@@ -118,7 +110,7 @@ export function DateOffsetIntervalPicker({
         />
         <div />
         <Text>{t`Starting from`}</Text>
-        <NumberInput
+        <NumberInputWithFallbackValue
           value={offsetInterval}
           aria-label={t`Starting from interval`}
           w="4rem"

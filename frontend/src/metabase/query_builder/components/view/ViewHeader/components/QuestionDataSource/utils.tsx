@@ -162,9 +162,9 @@ function QuestionTableBadges({
           <span className={S.IconWrapper}>
             <TableInfoIcon
               table={table}
-              icon="info_filled"
-              size={12}
-              position="bottom"
+              icon="info"
+              size={16}
+              position="top"
               className={HeaderS.HeaderBadgeIcon}
             />
           </span>

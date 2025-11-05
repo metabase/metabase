@@ -31,19 +31,22 @@ export const setupSMTP = () => {
   clearInbox();
 };
 
-export const getInbox = () => {
-  return getInboxWithRetry();
+export const getInbox = (emailsCount) => {
+  return getInboxWithRetry(emailsCount);
 };
 
-const getInboxWithRetry = (timeout = INBOX_TIMEOUT) => {
+const getInboxWithRetry = (emailsCount, timeout = INBOX_TIMEOUT) => {
   return cy
     .request("GET", `http://localhost:${WEB_PORT}/email`)
     .then((response) => {
-      if (response.body.length) {
+      if (
+        response.body.length &&
+        (emailsCount == null || emailsCount === response.body.length)
+      ) {
         return cy.wrap(response);
       } else if (timeout > 0) {
         cy.wait(INBOX_INTERVAL);
-        return getInboxWithRetry(timeout - INBOX_INTERVAL);
+        return getInboxWithRetry(emailsCount, timeout - INBOX_INTERVAL);
       } else {
         throw new Error("Inbox retry timeout");
       }

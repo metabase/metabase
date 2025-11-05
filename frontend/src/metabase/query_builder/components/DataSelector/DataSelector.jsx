@@ -162,6 +162,7 @@ export class UnconnectedDataSelector extends Component {
     canSelectTable: PropTypes.bool,
     canSelectMetric: PropTypes.bool,
     canSelectSavedQuestion: PropTypes.bool,
+    databaseIsDisabled: PropTypes.func,
 
     // from search entity list loader
     allError: PropTypes.bool,
@@ -900,6 +901,7 @@ export class UnconnectedDataSelector extends Component {
       onBack: hasPreviousStep ? this.previousStep : null,
       hasFiltering: true,
       hasInitialFocus: true,
+      databaseIsDisabled: this.props.databaseIsDisabled,
     };
 
     switch (this.state.activeStep) {

@@ -45,12 +45,23 @@ const argTypes = {
   },
 };
 
+const Wrapper = (args: {
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}) => {
+  return (
+    <ReduxProvider>
+      <Flex justify="center" style={args.style}>
+        {args.children}
+      </Flex>
+    </ReduxProvider>
+  );
+};
+
 const DefaultTemplate = (args: UpsellCardProps) => (
-  <ReduxProvider>
-    <Flex justify="center">
-      <_UpsellCard {...args} />
-    </Flex>
-  </ReduxProvider>
+  <Wrapper>
+    <_UpsellCard {...args} />
+  </Wrapper>
 );
 
 export default {
@@ -74,11 +85,6 @@ export const WithoutImage = {
   args: { ...args, illustrationSrc: null },
 };
 
-export const LargeVariant = {
-  render: DefaultTemplate,
-  args: { ...args, large: true },
-};
-
 export const MaxWidth500Variant = {
   render: DefaultTemplate,
   args: { ...args, maxWidth: 500 },
@@ -89,12 +95,12 @@ export const FullWidthVariant = {
   args: { ...args, fullWidth: true },
 };
 
-export const LargeMaxWidth500Variant = {
+export const LargeVariant = {
   render: DefaultTemplate,
-  args: { ...args, large: true, maxWidth: 500 },
+  args: { ...args, large: true },
 };
 
 export const LargeFullWidthVariant = {
   render: DefaultTemplate,
-  args: { ...args, large: true, fullWidth: true },
+  args: { ...args, large: true, fullWidth: true, maxWidth: 800 },
 };

@@ -2,8 +2,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -14,7 +12,7 @@
 ;;; see also [[metabase.lib.field-test/model-self-join-test-display-name-test]]
 (deftest ^:parallel model-self-join-test
   (testing "Field references from model joined a second time can be resolved (#48639)"
-    (let [mp       (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp       (mt/metadata-provider)
           mp       (lib.tu/mock-metadata-provider
                     mp
                     {:cards [{:id            1
@@ -24,8 +22,7 @@
                                                                                 [(lib/=
                                                                                   (lib.metadata/field mp (mt/id :products :id))
                                                                                   (lib.metadata/field mp (mt/id :reviews :product_id)))])
-                                                               (lib/with-join-fields :all)))
-                                                 lib.convert/->legacy-MBQL)
+                                                               (lib/with-join-fields :all))))
                               :database-id   (mt/id)
                               :name          "Products+Reviews"
                               :type          :model}]})
@@ -41,8 +38,7 @@
                                                                                  (m/find-first (comp #{"Price"} :display-name)))))
                                                  (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
                                                                                     (lib/breakoutable-columns $q))
-                                                                      (lib/with-temporal-bucket :month)))
-                                                 (lib.convert/->legacy-MBQL $q)))
+                                                                      (lib/with-temporal-bucket :month)))))
                               :database-id   (mt/id)
                               :name          "Products+Reviews Summary"
                               :type          :model}]})

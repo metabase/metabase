@@ -51,14 +51,6 @@ describe("issue 14636", () => {
   const total = 57;
   const limit = 50;
 
-  function shouldNotBeDisabled(selector) {
-    cy.get(selector).should("be.enabled");
-  }
-
-  function shouldBeDisabled(selector) {
-    cy.get(selector).should("be.disabled");
-  }
-
   /**
    * @param {Object} payload
    * @param {(0|1)} payload.page
@@ -70,15 +62,14 @@ describe("issue 14636", () => {
     cy.intercept(
       "GET",
       `/api/task?limit=${limit}&offset=${offset}&sort_column=started_at&sort_direction=desc`,
-      (req) => {
-        req.reply((res) => {
-          res.body = {
-            data: stubPageRows(page),
-            limit,
-            offset,
-            total,
-          };
-        });
+      {
+        status: 200,
+        body: {
+          data: stubPageRows(page),
+          limit,
+          offset,
+          total,
+        },
       },
     ).as(alias);
   }
@@ -138,8 +129,6 @@ describe("issue 14636", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Troubleshooting logs");
-    cy.findByLabelText("Previous page").as("previous");
-    cy.findByLabelText("Next page").as("next");
 
     cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -147,10 +136,8 @@ describe("issue 14636", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("513");
 
-    shouldBeDisabled("@previous");
-    shouldNotBeDisabled("@next");
-
-    cy.get("@next").click();
+    cy.findByLabelText("Previous page").should("be.disabled");
+    cy.findByLabelText("Next page").should("not.be.disabled").click();
     cy.wait("@second");
 
     cy.location("search").should("eq", "?page=1");
@@ -164,10 +151,8 @@ describe("issue 14636", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("200");
 
-    shouldNotBeDisabled("@previous");
-    shouldBeDisabled("@next");
-
-    cy.get("@previous").click();
+    cy.findByLabelText("Next page").should("be.disabled");
+    cy.findByLabelText("Previous page").should("not.be.disabled").click();
 
     cy.location("search").should("eq", "");
 
@@ -378,14 +363,7 @@ describe("scenarios > admin > tools > logs", () => {
   }
 });
 
-// Quarantine the whole spec because it is most likely causing the H2 timeouts and the chained failures!
-// NOTE: it will be quarantined on PRs, but will still run on `master`!
-
-// UDATE:
-// We need to skip this completely! CI on `master` is almost constantly red.
-// TODO:
-// Once the underlying problem with H2 is solved, replace `describe.skip` with `describePremium`.
-describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
+describe("admin > tools > erroring questions ", () => {
   const TOOLS_ERRORS_URL = "/admin/tools/errors";
   // The filter is required but doesn't have a default value set
   const brokenQuestionDetails = {
@@ -406,8 +384,8 @@ describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
   };
 
   function fixQuestion(name) {
-    cy.visit("/collection/root");
-    cy.findByText(name).click();
+    cy.findByTestId("visualization-root").findByText(name).click();
+
     cy.findByText("Open Editor").click();
 
     cy.icon("variable").click();
@@ -428,7 +406,7 @@ describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
       });
   }
 
-  describe.skip("when feature enabled", () => {
+  describe("when feature enabled", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
@@ -438,23 +416,18 @@ describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
     });
 
     describe("without broken questions", () => {
-      it.skip('should render the "Tools" tab and navigate to the "Erroring Questions" by clicking on it', () => {
+      it('should render the "Tools" tab and navigate to the "Erroring Questions" by clicking on it', () => {
         // The sidebar has been taken out, because it looks awkward when there's only one elem on it: put it back in when there's more than one
         cy.visit("/admin");
 
         cy.get("nav").contains("Tools").click();
 
+        cy.findByRole("link", { name: /Erroring questions/ }).click();
         cy.location("pathname").should("eq", TOOLS_ERRORS_URL);
-        cy.findByRole("link", { name: "Erroring Questions" })
-          .should("have.attr", "href")
-          .and("eq", TOOLS_ERRORS_URL);
-      });
 
-      it("should disable search input fields (metabase#18050)", () => {
-        cy.visit(TOOLS_ERRORS_URL);
+        cy.log("test no results state");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("No results");
+        cy.findByTestId("visualization-root").findByText("No results");
         cy.button("Rerun Selected").should("be.disabled");
         cy.findByPlaceholderText("Error contents").should("be.disabled");
         cy.findByPlaceholderText("DB name").should("be.disabled");
@@ -481,8 +454,9 @@ describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
         cy.wait("@dataset");
 
         // The question is still there because we didn't fix it
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(brokenQuestionDetails.name);
+        cy.findByTestId("visualization-root").findByText(
+          brokenQuestionDetails.name,
+        );
         cy.button("Rerun Selected").should("be.disabled");
 
         cy.findByPlaceholderText("Error contents").should("not.be.disabled");
@@ -493,11 +467,10 @@ describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
 
         cy.wait("@dataset");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("No results");
-      });
+        cy.findByTestId("visualization-root").findByText("No results");
 
-      it("should remove fixed question on a rerun", () => {
+        cy.findByPlaceholderText("Collection name").clear();
+
         fixQuestion(brokenQuestionDetails.name);
 
         cy.visit(TOOLS_ERRORS_URL);
@@ -508,8 +481,7 @@ describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
 
         cy.wait("@dataset");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("No results");
+        cy.findByTestId("visualization-root").findByText("No results");
       });
     });
   });

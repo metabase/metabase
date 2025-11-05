@@ -28,7 +28,7 @@ GROUP BY
 {% endraw %}
 ```
 
-Like in all SQL groupings, you must include the parameter in both the `SELECT` and `GROUP BY` clauses. You can also use the `mb.time_grouping` function on different columns in the same query, like this:
+Like in all SQL groupings, you must include the parameter in both the `SELECT` and `GROUP BY` clauses. You can also group by multiple columns, like so:
 
 ```sql
 {% raw %}

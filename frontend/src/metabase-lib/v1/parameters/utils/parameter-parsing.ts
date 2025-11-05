@@ -1,5 +1,3 @@
-import type { Query } from "history";
-
 import {
   normalizeBooleanParameterValue,
   normalizeDateParameterValue,
@@ -14,31 +12,42 @@ import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-typ
 import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
-  ParameterId,
+  ParameterType,
   ParameterValue,
   ParameterValueOrArray,
+  ParameterValuesMap,
 } from "metabase-types/api";
 
 export function getParameterValueFromQueryParams(
   parameter: Parameter,
-  queryParams: Query,
-  lastUsedParametersValues?: Record<ParameterId, unknown>,
-) {
-  queryParams = queryParams || {};
-  lastUsedParametersValues = lastUsedParametersValues || {};
+  queryParams: ParameterValuesMap,
+  lastUsedParametersValues?: ParameterValuesMap,
+): ParameterValueOrArray | null {
+  const params: ParameterValuesMap = queryParams || {};
+  const lastUsedValues: ParameterValuesMap = lastUsedParametersValues || {};
 
-  const maybeParameterValue = queryParams[parameter.slug || parameter.id];
+  const maybeParameterValue = params[parameter.slug || parameter.id];
+  const hasQueryParams = Object.keys(params).length > 0;
 
   // don't use the default with "param=" because it indicates an unset/cleared parameter value
   if (maybeParameterValue === "") {
     return null;
   } else if (maybeParameterValue == null) {
-    // first try to use last used parameter value then try to use the default if
-    // the parameter is not present in the query params
-    return lastUsedParametersValues[parameter.id] ?? parameter.default ?? null;
+    // If there is a parameter with a value set in the URL, do not use last used
+    // parameter values (metabase#48524). This avoids a case where some
+    // parameters are set via the URL and some have values from the last run.
+    if (hasQueryParams) {
+      return parameter.default ?? null;
+    } else {
+      return lastUsedValues[parameter.id] ?? parameter.default ?? null;
+    }
   }
 
   const parsedValue = parseParameterValue(maybeParameterValue, parameter);
+
+  // @ts-expect-error: normalizeParameterValueForWidget returns more than just
+  // ParameterValueOrArray, which is probably a mistake.
+  // This case was previously hidden by an any type.
   return normalizeParameterValueForWidget(parsedValue, parameter);
 }
 
@@ -55,7 +64,7 @@ export function parseParameterValue(value: any, parameter: Parameter) {
   // TODO this casting should be removed as we tidy up Parameter types
   const { fields } = parameter as FieldFilterUiParameter;
   if (Array.isArray(fields) && fields.length > 0) {
-    return parseParameterValueForFields(coercedValue, fields);
+    return parseParameterValueForFields(type, coercedValue, fields);
   }
 
   // Note:
@@ -64,7 +73,7 @@ export function parseParameterValue(value: any, parameter: Parameter) {
   // We cannot properly deserialize their values by checking the parameter type only
   switch (type) {
     case "number":
-      return parseParameterValueForNumber(coercedValue);
+      return parseParameterValueForNumber(type, coercedValue);
     case "location":
       return normalizeStringParameterValue(coercedValue);
     case "date":
@@ -78,7 +87,10 @@ export function parseParameterValue(value: any, parameter: Parameter) {
   return coercedValue;
 }
 
-function parseParameterValueForNumber(value: ParameterValueOrArray) {
+function parseParameterValueForNumber(
+  type: ParameterType,
+  value: ParameterValueOrArray,
+) {
   // HACK to support multiple values for SQL parameters
   // https://github.com/metabase/metabase/issues/25374#issuecomment-1272520560
   if (typeof value === "string") {
@@ -98,16 +110,17 @@ function parseParameterValueForNumber(value: ParameterValueOrArray) {
     }
   }
 
-  return normalizeNumberParameterValue(value);
+  return normalizeNumberParameterValue(type, value);
 }
 
 function parseParameterValueForFields(
+  type: ParameterType,
   value: ParameterValueOrArray,
   fields: Field[],
 ): ParameterValueOrArray {
   // unix dates fields are numeric but query params shouldn't be parsed as numbers
   if (fields.every((f) => f.isNumeric() && !f.isDate())) {
-    return normalizeNumberParameterValue(value);
+    return normalizeNumberParameterValue(type, value);
   }
 
   if (fields.every((f) => f.isBoolean())) {
@@ -140,17 +153,16 @@ function normalizeParameterValueForWidget(
 
 export function getParameterValuesByIdFromQueryParams(
   parameters: Parameter[],
-  queryParams: Query,
-  lastUsedParametersValues?: Record<ParameterId, unknown>,
-) {
-  return Object.fromEntries(
-    parameters.map((parameter) => [
-      parameter.id,
-      getParameterValueFromQueryParams(
-        parameter,
-        queryParams,
-        lastUsedParametersValues,
-      ),
-    ]),
-  );
+  queryParams: ParameterValuesMap,
+  lastUsedParametersValues?: ParameterValuesMap,
+): ParameterValuesMap {
+  const result: ParameterValuesMap = {};
+  for (const parameter of parameters) {
+    result[parameter.id] = getParameterValueFromQueryParams(
+      parameter,
+      queryParams,
+      lastUsedParametersValues,
+    );
+  }
+  return result;
 }
