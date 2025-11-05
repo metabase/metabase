@@ -1,6 +1,6 @@
 import type { Location } from "history";
 
-import type { TransformListParams } from "metabase-enterprise/transforms/types";
+import type * as Urls from "metabase/lib/urls";
 
 import {
   parseInteger,
@@ -9,7 +9,7 @@ import {
   parseString,
 } from "../../utils";
 
-export function getParsedParams(location: Location): TransformListParams {
+export function getParsedParams(location: Location): Urls.TransformListParams {
   const { lastRunStartTime, lastRunStatuses, tagIds } = location.query;
 
   return {
@@ -19,7 +19,7 @@ export function getParsedParams(location: Location): TransformListParams {
   };
 }
 
-export function hasFilterParams(params: TransformListParams) {
+export function hasFilterParams(params: Urls.TransformListParams) {
   return (
     params.lastRunStartTime != null ||
     params.lastRunStatuses != null ||

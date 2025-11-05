@@ -2,24 +2,13 @@
   "Tests for the utility functions for dealing with parameters in `metabase.parameters.params`."
   (:require
    [clojure.test :refer :all]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.parameters.params :as params]
    [metabase.public-sharing.api-test :as public-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(deftest ^:parallel wrap-field-id-if-needed-test
-  (doseq [[x expected] {10                                      [:field 10 nil]
-                        [:field 10 nil]                         [:field 10 nil]
-                        [:field "name" {:base-type :type/Text}] [:field "name" {:base-type :type/Text}]}]
-    (testing x
-      (is (= expected
-             (mbql.u/wrap-field-id-if-needed x))))))
-
-;;; ---------------------------------------------- name_field hydration ----------------------------------------------
-
-(deftest ^:parallel hydrate-name-field-test
+(deftest hydrate-name-field-test
   (testing "make sure that we can hydrate the `name_field` property for PK Fields"
     (is (= {:name          "ID"
             :table_id      (mt/id :venues)
@@ -59,7 +48,21 @@
             :name_field    nil}
            (-> (t2/select-one [:model/Field :name :table_id :semantic_type], :id (mt/id :checkins :id))
                (t2/hydrate :name_field)
-               mt/derecordize)))))
+               mt/derecordize))))
+
+  (testing "Inactive Entity Name fields should not be hydrated (#65207)"
+    (let [name-field-id (mt/id :venues :name)]
+      (try
+        (t2/update! :model/Field name-field-id {:active false})
+        (is (= {:name          "ID"
+                :table_id      (mt/id :venues)
+                :semantic_type :type/PK
+                :name_field    nil}
+               (-> (t2/select-one [:model/Field :name :table_id :semantic_type], :id (mt/id :venues :id))
+                   (t2/hydrate :name_field)
+                   mt/derecordize)))
+        (finally
+          (t2/update! :model/Field name-field-id {:active true}))))))
 
 ;;; -------------------------------------------------- param_fields --------------------------------------------------
 

@@ -4,7 +4,7 @@ import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 
 import type { MetabaseAuthConfig } from "./auth-config";
 import type { SdkEventHandlersConfig } from "./events";
-import type { MetabasePluginsConfig } from "./plugins";
+import type { MetabaseGlobalPluginsConfig } from "./plugins";
 import type { SdkErrorComponent } from "./ui";
 
 /**
@@ -37,7 +37,7 @@ export interface MetabaseProviderProps {
   /**
    * See [Plugins](https://www.metabase.com/docs/latest/embedding/sdk/plugins).
    */
-  pluginsConfig?: MetabasePluginsConfig;
+  pluginsConfig?: MetabaseGlobalPluginsConfig;
 
   /**
    * See [Global event handlers](https://www.metabase.com/docs/latest/embedding/sdk/config#global-event-handlers).

@@ -40,7 +40,7 @@ import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: (builder) => {
-    const updateDashboardPropertyMutation = <
+    const updateDashboardPropertiesMutation = <
       Key extends keyof UpdateDashboardRequest,
     >() =>
       builder.mutation<Dashboard, UpdateDashboardPropertyRequest<Key>>({
@@ -201,10 +201,12 @@ export const dashboardApi = Api.injectEndpoints({
           listTag("embed-dashboard"),
         ],
       }),
-      updateDashboardEnableEmbedding:
-        updateDashboardPropertyMutation<"enable_embedding">(),
-      updateDashboardEmbeddingParams:
-        updateDashboardPropertyMutation<"embedding_params">(),
+      updateDashboardEnableEmbedding: updateDashboardPropertiesMutation<
+        "enable_embedding" | "embedding_type"
+      >(),
+      updateDashboardEmbeddingParams: updateDashboardPropertiesMutation<
+        "embedding_params" | "embedding_type"
+      >(),
       listPublicDashboards: builder.query<GetPublicDashboard[], void>({
         query: (params) => ({
           method: "GET",

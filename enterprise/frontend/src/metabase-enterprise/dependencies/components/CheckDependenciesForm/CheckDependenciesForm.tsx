@@ -22,7 +22,6 @@ import {
   Text,
 } from "metabase/ui";
 import visualizations from "metabase/visualizations";
-import { getTransformUrl } from "metabase-enterprise/transforms/urls";
 import type {
   Card as ApiCard,
   CheckDependenciesResponse,
@@ -157,7 +156,7 @@ function getItemLink(item: DependencyItem) {
     case "card":
       return Urls.question(item.card);
     default:
-      return getTransformUrl(item.transform.id);
+      return Urls.transform(item.transform.id);
   }
 }
 

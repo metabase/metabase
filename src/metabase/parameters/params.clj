@@ -14,18 +14,13 @@
    [malli.error :as me]
    [medley.core :as m]
    [metabase.app-db.core :as app-db]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -62,52 +57,37 @@
   checks (since there is no current User) and get *all* values."
   false)
 
-(mu/defn- template-tag->field-ref :- [:maybe :mbql.clause/field]
+(mu/defn- template-tag-name->field-id :- [:maybe ::lib.schema.id/field]
   "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
 
     (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
-  [[_template-tag tag] :- ::lib.schema.parameter/template-tag
-   card                :- :metabase.queries.schema/card]
-  (some-> card
-          :dataset_query
-          not-empty
-          lib-be/normalize-query
-          lib/all-template-tags-map
-          (get (u/qualified-name tag))
-          :dimension))
+  [template-tag-name :- :string
+   card              :- :metabase.queries.schema/card]
+  (or (some-> card
+              :dataset_query
+              not-empty
+              lib-be/normalize-query
+              lib/all-template-tags-map
+              (get template-tag-name)
+              :dimension
+              lib/field-ref-id)
+      (do
+        (log/warnf "Could not find matching Field ID for target: %s" (pr-str template-tag-name))
+        nil)))
 
 (mu/defn param-target->field-id :- [:maybe ::lib.schema.id/field]
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
-  [target :- ::lib.schema.parameter/target
+  [target
    ;; TODO (Cam 9/25/25) -- `card` should actually be required but I don't have all day to fix broken tests from
    ;; before I schematized this.
    card   :- [:maybe :metabase.queries.schema/card]]
-  (let [target (mbql.normalize/normalize target)]
-    (when (mbql.u/is-clause? :dimension target)
-      ;; MBQL 5 `:parameters` still use legacy field refs (for now), while `:template-tags` use MBQL 5 field refs. So
-      ;; we have to handle either one depending on where the `:field` ref actually lives.
-      (let [[_ dimension] target
-            field-ref    (cond
-                           (mbql.u/is-clause? :template-tag dimension)
-                           (when card
-                             (template-tag->field-ref dimension card))
-
-                           (mbql.u/is-clause? :field dimension)
-                           dimension)]
-        (cond
-          (not field-ref)
-          (log/errorf "Could not find matching field clause for target: %s" (pr-str target))
-
-          ;; Being extra safe here since we've got many reports on this cause loading dashboard to fail
-          ;; for unknown reasons. See #8917
-          (not (mr/validate [:or :mbql.clause/field ::mbql.s/field] field-ref))
-          (log/errorf "Template tag :dimension is not a valid MBQL 5 or legacy field ref, got %s" (pr-str field-ref))
-
-          :else
-          (lib.util.match/match-one field-ref
-            [:field _opts (id :guard pos-int?)] id
-            [:field (id :guard pos-int?) _opts] id))))))
+  (let [target (lib/normalize ::lib.schema.parameter/target target)]
+    (or
+     (when card
+       (when-let [template-tag-name (lib/parameter-target-template-tag-name target)]
+         (template-tag-name->field-id template-tag-name card)))
+     (lib/parameter-target-field-id target))))
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."
@@ -130,7 +110,8 @@
   (when-let [table-ids (seq (map :table_id fields))]
     (m/index-by :table_id (-> (t2/select Field:params-columns-only
                                          :table_id      [:in table-ids]
-                                         :semantic_type (app-db/isa :type/Name))
+                                         :semantic_type (app-db/isa :type/Name)
+                                         :active        true)
                               ;; run [[metabase.lib.field/infer-has-field-values]] on these Fields so their values of
                               ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                               ;; `:list` instead of `:auto-list`.)
@@ -228,15 +209,13 @@
         card-id            (or (get-in param-dashcard-info [:param-mapping :card_id])
                                (get-in param-dashcard-info [:dashcard :card :id]))
         filterable-columns (get-in ctx [:card-id->filterable-columns card-id stage-number])
-        [_ dimension]      (->> (mbql.normalize/normalize-tokens param-target :ignore-path)
-                                (mbql.u/check-clause :dimension))]
+        param-target       (lib/normalize ::lib.schema.parameter/target param-target)]
     (if-some [field-id (when (seq filterable-columns)
-                         (lib.util.match/match-one dimension
+                         (when (lib/parameter-target-field-name param-target)
                            ;; TODO it's basically a workaround for ignoring non-dimension parameter targets such as SQL variables
                            ;; TODO code is misleading; let's check for :dimension and drop the match call here
-                           [:field (field-name :guard string?) _]
                            (->> filterable-columns
-                                (lib/find-matching-column (lib/->pMBQL &match))
+                                (lib/find-matching-column (lib/parameter-target-field-ref param-target))
                                 :id)))]
       (-> ctx
           (update :param-id->field-ids #(merge {param-id #{}} %))

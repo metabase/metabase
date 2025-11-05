@@ -18,7 +18,7 @@
 
 (deftest ^:parallel dont-explode-on-way-out-from-db-test
   (testing "`segment-definition`s should avoid explosions coming out of the DB..."
-    (is (= nil
+    (is (= {:filter [:field 1000 nil]}
            ((:out @#'segment/transform-segment-definition)
             (json/encode
              {:filter 1000}))))
@@ -26,7 +26,7 @@
       (is (thrown?
            Exception
            ((:in @#'segment/transform-segment-definition)
-            {:filter 1000}))))))
+            {:filter "X"}))))))
 
 (deftest update-test
   (testing "Updating"

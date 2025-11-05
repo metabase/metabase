@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { isResourceNotFoundError } from "metabase/lib/errors";
+import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Divider, Group, Stack } from "metabase/ui";
 import {
@@ -12,15 +13,14 @@ import {
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import { trackTransformTriggerManualRun } from "metabase-enterprise/transforms/analytics";
-import { LogOutput } from "metabase-enterprise/transforms/components/LogOutput";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
+import { trackTransformTriggerManualRun } from "../../../analytics";
+import { LogOutput } from "../../../components/LogOutput";
 import { RunButton } from "../../../components/RunButton";
 import { RunStatus } from "../../../components/RunStatus";
 import { SplitSection } from "../../../components/SplitSection";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
-import { getRunListUrl } from "../../../urls";
 
 type RunSectionProps = {
   transform: Transform;
@@ -78,7 +78,7 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
           <Anchor
             key="link"
             component={Link}
-            to={getRunListUrl({ transformIds: [id] })}
+            to={Urls.transformRunList({ transformIds: [id] })}
           >
             {t`See all runs`}
           </Anchor>

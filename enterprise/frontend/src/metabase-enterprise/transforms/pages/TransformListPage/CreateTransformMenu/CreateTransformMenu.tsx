@@ -10,15 +10,13 @@ import {
   type QuestionPickerValueItem,
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Button, Center, Icon, Loader, Menu } from "metabase/ui";
-import { trackTransformCreate } from "metabase-enterprise/transforms/analytics";
-import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
 
-import {
-  getNewTransformFromCardUrl,
-  getNewTransformFromTypeUrl,
-} from "../../../urls";
+import { trackTransformCreate } from "../../../analytics";
+
+import { shouldDisableItem } from "./utils";
 
 export function CreateTransformMenu() {
   const dispatch = useDispatch();
@@ -34,7 +32,7 @@ export function CreateTransformMenu() {
   };
 
   const handlePickerChange = (item: QuestionPickerValueItem) => {
-    dispatch(push(getNewTransformFromCardUrl(item.id)));
+    dispatch(push(Urls.newCardTransform(item.id)));
   };
 
   const { data: databases, isLoading } = useListDatabasesQuery({
@@ -62,7 +60,7 @@ export function CreateTransformMenu() {
               <Menu.Label>{t`Create your transform with…`}</Menu.Label>
               <Menu.Item
                 component={ForwardRefLink}
-                to={getNewTransformFromTypeUrl("query")}
+                to={Urls.newQueryTransform()}
                 leftSection={<Icon name="notebook" />}
                 onClick={() => {
                   trackTransformCreate({
@@ -75,7 +73,7 @@ export function CreateTransformMenu() {
               </Menu.Item>
               <Menu.Item
                 component={ForwardRefLink}
-                to={getNewTransformFromTypeUrl("native")}
+                to={Urls.newNativeTransform()}
                 leftSection={<Icon name="sql" />}
                 onClick={() => {
                   trackTransformCreate({
@@ -86,7 +84,21 @@ export function CreateTransformMenu() {
               >
                 {t`SQL query`}
               </Menu.Item>
-              {PLUGIN_TRANSFORMS_PYTHON.getCreateTransformsMenuItems()}
+              {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
+                <Menu.Item
+                  component={ForwardRefLink}
+                  to={Urls.newPythonTransform()}
+                  leftSection={<Icon name="code_block" />}
+                  onClick={() => {
+                    trackTransformCreate({
+                      triggeredFrom: "transform-page-create-menu",
+                      creationType: "python",
+                    });
+                  }}
+                >
+                  {t`Python script`}
+                </Menu.Item>
+              )}
               <Menu.Item
                 leftSection={<Icon name="folder" />}
                 onClick={handleSavedQuestionClick}
@@ -103,25 +115,9 @@ export function CreateTransformMenu() {
           models={["card", "dataset"]}
           onChange={handlePickerChange}
           onClose={closePicker}
-          shouldDisableItem={(item: QuestionPickerItem) => {
-            if (
-              // Disable questions based on unsuppported databases
-              item.model === "card" ||
-              item.model === "dataset" ||
-              item.model === "metric"
-            ) {
-              const database = databases?.data.find(
-                (database) => database.id === item.database_id,
-              );
-              return !doesDatabaseSupportTransforms(database);
-            }
-
-            if (item.model === "dashboard") {
-              return true;
-            }
-
-            return false;
-          }}
+          shouldDisableItem={(item: QuestionPickerItem) =>
+            shouldDisableItem(item, databases?.data ?? [])
+          }
         />
       )}
     </>

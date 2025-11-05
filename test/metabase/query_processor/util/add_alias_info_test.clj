@@ -15,7 +15,6 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.lib.test-util.uuid-dogs-metadata-provider :as lib.tu.uuid-dogs-metadata-provider]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -1129,7 +1128,7 @@
           ;; this is a basically the same as Oracle's behavior for truncating aliases
           query                 (binding [add/*escape-alias-fn* (fn [_driver s]
                                                                   (let [s (str/replace s #"[\"\u0000]" "_")]
-                                                                    (lib.util/truncate-alias s 30)))]
+                                                                    (lib/truncate-alias s 30)))]
                                   (add-alias-info query))
           stage                 (-> query :stages first)
           stage-join            (-> stage :joins first)

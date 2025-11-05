@@ -26,13 +26,13 @@
                       :values          [["20th Century Cafe"] ["25°"] ["33 Taps"]]}
                      (custom-values/values-from-card
                       card
-                      (mt/$ids $venues.name)))))
+                      [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :venues :name)]))))
             (testing "case in-sensitve search test"
               (is (= {:has_more_values false
                       :values          [["Liguria Bakery"] ["Noe Valley Bakery"]]}
                      (custom-values/values-from-card
                       card
-                      (mt/$ids $venues.name)
+                      [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :venues :name)]
                       {:query-string "bakery"}))))))))))
 
 (deftest ^:parallel with-mbql-card-test-2
@@ -52,28 +52,29 @@
                     :values          [["American"] ["Artisan"] ["Asian"]]}
                    (custom-values/values-from-card
                     card
-                    [:field "NAME" {:base-type :type/Text}]))))
+                    [:field {:base-type :type/Text, :lib/uuid "00000000-0000-0000-0000-000000000000"} "NAME"]))))
           (testing "get values from aggregation column"
             (is (= {:has_more_values true
                     :values          [[1] [2] [3]]}
                    (custom-values/values-from-card
                     card
-                    [:field "sum" {:base-type :type/Float}]))))
+                    [:field {:base-type :type/Float, :lib/uuid "00000000-0000-0000-0000-000000000000"} "sum"]))))
           (testing "can search on aggregation column"
             (is (= {:has_more_values false
                     :values          [[2]]}
                    (custom-values/values-from-card
                     card
-                    [:field "sum" {:base-type :type/Float}]
+                    [:field {:base-type :type/Float, :lib/uuid "00000000-0000-0000-0000-000000000000"} "sum"]
                     {:query-string 2}))))
           (testing "doing case in-sensitve search on breakout columns"
             (is (= {:has_more_values false
                     :values          [["Bakery"]]}
                    (custom-values/values-from-card
                     card
-                    [:field "NAME" {:base-type :type/Text}]
-                    {:query-string "bakery"}))))))))
+                    [:field {:base-type :type/Text, :lib/uuid "00000000-0000-0000-0000-000000000000"} "NAME"]
+                    {:query-string "bakery"})))))))))
 
+(deftest ^:parallel with-mbql-card-test-2b
   (testing "source card is a question" ; Questions are transparent, so this can drop the aggregations and filter the original.
     (binding [custom-values/*max-rows* 3]
       (testing "has aggregation column"
@@ -90,13 +91,13 @@
                     :values          [["American"] ["Artisan"] ["Asian"]]}
                    (custom-values/values-from-card
                     card
-                    [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]))))
+                    [:field {:source-field (mt/id :venues :category_id), :lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :categories :name)]))))
           (testing "doing case in-sensitve search on breakout columns"
             (is (= {:has_more_values false
                     :values          [["Bakery"]]}
                    (custom-values/values-from-card
                     card
-                    [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]
+                    [:field {:source-field (mt/id :venues :category_id), :lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :categories :name)]
                     {:query-string "bakery"})))))))))
 
 (deftest ^:parallel with-mbql-card-test-3
@@ -117,13 +118,13 @@
                         :values          [[2] [3] [4]]}
                        (custom-values/values-from-card
                         card
-                        (mt/$ids $venues.category_id)))))
+                        [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :venues :category_id)]))))
               (testing "search with  the value, not remapped values"
                 (is (= {:has_more_values false
                         :values          [[2]]}
                        (custom-values/values-from-card
                         card
-                        (mt/$ids $venues.category_id)
+                        [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :venues :category_id)]
                         {:query-string 2})))))))))))
 
 (deftest ^:parallel with-mbql-card-test-4-explicit-fields
@@ -139,7 +140,7 @@
                   :values          [["Chez Jay"] ["Marlowe"] ["Musso & Frank Grill"]]}
                  (custom-values/values-from-card
                   card
-                  (mt/$ids $venues.name)))))))))
+                  [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :venues :name)]))))))))
 
 (deftest ^:parallel with-mbql-card-test-5-explicit-fields-in-join
   (testing "source card with explicit :fields on a join, and no aggregations or breakouts"
@@ -158,7 +159,7 @@
                   :values          [["Chez Jay"] ["Marlowe"] ["Musso & Frank Grill"]]}
                  (custom-values/values-from-card
                   card
-                  (mt/$ids $venues.name)))))))))
+                  [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :venues :name)]))))))))
 
 (deftest ^:parallel with-filter-stage-test
   (binding [custom-values/*max-rows* 3]
@@ -176,7 +177,7 @@
                   :has_more_values true}
                  (custom-values/values-from-card
                   card
-                  [:field "Categories__NAME" {:base-type :type/Text}]
+                  [:field {:base-type :type/Text, :lib/uuid "00000000-0000-0000-0000-000000000000"} "Categories__NAME"]
                   {:stage-number 1}))))))))
 
 (deftest ^:parallel with-mbql-card-test-6-expressions
@@ -191,7 +192,7 @@
                 :has_more_values true}
                (custom-values/values-from-card
                 card
-                [:expression "unit price" {:base_type :type/Float}]
+                [:expression {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Float} "unit price"]
                 {:stage-number 0})))))))
 
 (deftest ^:parallel with-native-card-test
@@ -209,13 +210,13 @@
                     :values          [["Fred 62"] ["Red Medicine"]]}
                    (custom-values/values-from-card
                     card
-                    [:field "NAME" {:base-type :type/Text}]))))
+                    [:field {:base-type :type/Text, :lib/uuid "00000000-0000-0000-0000-000000000000"} "NAME"]))))
           (testing "doing case in-sensitve search on breakout columns"
             (is (= {:has_more_values false
                     :values          [["Red Medicine"]]}
                    (custom-values/values-from-card
                     card
-                    [:field "NAME" {:base-type :type/Text}]
+                    [:field {:base-type :type/Text, :lib/uuid "00000000-0000-0000-0000-000000000000"} "NAME"]
                     {:query-string "medicine"})))))))))
 
 (deftest ^:parallel deduplicate-and-remove-non-empty-values-empty
@@ -229,13 +230,13 @@
                     :values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]}
                    (custom-values/values-from-card
                     card
-                    [:field "SOURCE" {:base-type :type/Text}]))))
+                    [:field {:base-type :type/Text, :lib/uuid "00000000-0000-0000-0000-000000000000"} "SOURCE"]))))
           (testing "doing case in-sensitve search on breakout columns"
             (is (= {:has_more_values false
                     :values          [["Facebook"] ["Google"]]}
                    (custom-values/values-from-card
                     card
-                    [:field "SOURCE" {:base-type :type/Text}]
+                    [:field {:base-type :type/Text, :lib/uuid "00000000-0000-0000-0000-000000000000"} "SOURCE"]
                     {:query-string "oo"})))))))))
 
 (deftest ^:parallel deduplicate-and-remove-non-empty-values-empty-2
@@ -249,13 +250,13 @@
                     :values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]}
                    (custom-values/values-from-card
                     card
-                    (mt/$ids $people.source)))))
+                    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :people :source)]))))
           (testing "doing case in-sensitve search on breakout columns"
             (is (= {:has_more_values false
                     :values          [["Facebook"] ["Google"]]}
                    (custom-values/values-from-card
                     card
-                    (mt/$ids $people.source)
+                    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :people :source)]
                     {:query-string "oo"})))))))))
 
 (deftest errors-test
@@ -337,7 +338,7 @@
                   :values          [["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]]}
                  (custom-values/values-from-card
                   card
-                  (mt/$ids $products.category)))))))))
+                  [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :products :category)]))))))))
 
 (deftest pk-of-fk-pk-field-ids-test
   (testing "single group"

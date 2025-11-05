@@ -1,6 +1,6 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:refer-clojure :exclude [some mapv])
+  (:refer-clojure :exclude [some mapv empty?])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -21,7 +21,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [some mapv]]
+   [metabase.util.performance :refer [some mapv empty?]]
    [taoensso.nippy :as nippy])
   (:import
    (com.mongodb.client MongoClient MongoDatabase)
@@ -427,6 +427,7 @@
                               :nested-queries                  true
                               :set-timezone                    true
                               :standard-deviation-aggregations true
+                              :test/create-table-without-data  false
                               :rename                          true
                               :test/jvm-timezone-setting       false
                               :identifiers-with-spaces         true

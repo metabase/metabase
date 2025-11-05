@@ -30,6 +30,7 @@ export type MetabaseCollectionItem = {
   type?:
     | "instance-analytics"
     | "trash"
+    | "remote-synced"
     | "model"
     | "question"
     | "metric"
