@@ -352,9 +352,8 @@ function TableLink({ table }: { table: Table }) {
 }
 
 function TransformLink({ table }: { table: Table }) {
-  // const shouldShowTransform =
-  //   table.transform_id != null && table.data_source === "metabase-transform";
-  const shouldShowTransform = true;
+  const shouldShowTransform =
+    table.transform_id != null && table.data_source === "metabase-transform";
 
   if (!shouldShowTransform) {
     return null;
