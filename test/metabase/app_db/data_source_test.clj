@@ -238,6 +238,7 @@
     (is (= (->DataSource
             "jdbc:aws-wrapper:postgresql://metabase"
             {"user" "cam"
+             "useSSL" true
              "wrapperPlugins" "iam"})
            (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" nil nil true)))))
 
