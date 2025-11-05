@@ -13,6 +13,7 @@ import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
 import type { DashboardId, QuestionDashboardCard } from "metabase-types/api";
+import type { StoreDashboard } from "metabase-types/store";
 
 export const useCommonDashboardParams = ({
   dashboardId,
@@ -47,7 +48,12 @@ export const useCommonDashboardParams = ({
       const state = store.getState();
       const metadata = getMetadata(state);
       const { dashboards, parameterValues } = state.dashboard;
-      const dashboard = dashboardId && dashboards[dashboardId];
+
+      if (dashboardId === null) {
+        return;
+      }
+
+      const dashboard = findDashboardById(dashboardId, dashboards);
 
       if (dashboard) {
         const url = getNewCardUrl({
@@ -89,4 +95,25 @@ export const useCommonDashboardParams = ({
     onEditQuestion,
     onNavigateToNewCardFromDashboard: handleNavigateToNewCardFromDashboard,
   };
+};
+
+const findDashboardById = (
+  dashboardId: DashboardId,
+  dashboards: Record<DashboardId, StoreDashboard>,
+): StoreDashboard | null => {
+  if (typeof dashboardId === "number") {
+    return dashboards[dashboardId] ?? null;
+  }
+
+  // Lookup via entity ids.
+  // Dashboards are a mapping of numeric id to dashboard.
+  if (typeof dashboardId === "string") {
+    return (
+      Object.values(dashboards).find(
+        (dashboard) => dashboard.entity_id === dashboardId,
+      ) ?? null
+    );
+  }
+
+  return null;
 };

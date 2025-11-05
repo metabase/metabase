@@ -8,6 +8,7 @@ import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { getDashboard } from "metabase/query_builder/selectors";
 import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
+import type { StoreDashboard } from "metabase-types/store";
 
 import DashboardBackButtonS from "./DashboardBackButton.module.css";
 
@@ -27,7 +28,12 @@ export function DashboardBackButton({
   dashboardOverride,
   ...actionIconProps
 }: DashboardBackButtonProps) {
-  const dashboardState = useSelector(getDashboard);
+  /**
+   * The previous signature was actually incorrect, it seems this selector
+   * can return undefined. But at this point, we will already have the dashboard
+   * ready.
+   */
+  const dashboardState = useSelector(getDashboard) as StoreDashboard;
   const dashboard = dashboardOverride ?? dashboardState;
   const dispatch = useDispatch();
 
