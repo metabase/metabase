@@ -1,5 +1,6 @@
 (ns metabase.embedding.api
   (:require
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.embedding.api.embed]
    [metabase.embedding.api.preview-embed]
