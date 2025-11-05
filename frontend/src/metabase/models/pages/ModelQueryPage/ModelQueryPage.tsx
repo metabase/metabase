@@ -24,7 +24,7 @@ import type { Card } from "metabase-types/api";
 import { ModelEditor } from "../../components/ModelEditor";
 
 type ModelQueryPageParams = {
-  modelId: string;
+  cardId: string;
 };
 
 type ModelQueryPageProps = {
@@ -33,14 +33,14 @@ type ModelQueryPageProps = {
 };
 
 export function ModelQueryPage({ params, route }: ModelQueryPageProps) {
-  const modelId = Urls.extractEntityId(params.modelId);
+  const cardId = Urls.extractEntityId(params.cardId);
   const {
-    data: model,
+    data: card,
     isLoading,
     error,
-  } = useGetCardQuery(modelId != null ? { id: modelId } : skipToken);
+  } = useGetCardQuery(cardId != null ? { id: cardId } : skipToken);
 
-  if (isLoading || error != null || model == null) {
+  if (isLoading || error != null || card == null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -48,16 +48,16 @@ export function ModelQueryPage({ params, route }: ModelQueryPageProps) {
     );
   }
 
-  return <ModelQueryPageBody model={model} route={route} />;
+  return <ModelQueryPageBody card={card} route={route} />;
 }
 
 type ModelQueryPageBodyProps = {
-  model: Card;
+  card: Card;
   route: Route;
 };
 
-function ModelQueryPageBody({ model, route }: ModelQueryPageBodyProps) {
-  const [datasetQuery, setDatasetQuery] = useState(model.dataset_query);
+function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
+  const [datasetQuery, setDatasetQuery] = useState(card.dataset_query);
   const [uiState, setUiState] = useState(getInitialUiState);
   const metadata = useSelector(getMetadata);
   const [updateCard, { isLoading: isSaving }] = useUpdateCardMutation();
@@ -68,8 +68,8 @@ function ModelQueryPageBody({ model, route }: ModelQueryPageBodyProps) {
   }, [datasetQuery, metadata]);
 
   const isDirty = useMemo(() => {
-    return !Lib.areLegacyQueriesEqual(datasetQuery, model.dataset_query);
-  }, [datasetQuery, model.dataset_query]);
+    return !Lib.areLegacyQueriesEqual(datasetQuery, card.dataset_query);
+  }, [datasetQuery, card.dataset_query]);
 
   const {
     checkData,
@@ -81,7 +81,7 @@ function ModelQueryPageBody({ model, route }: ModelQueryPageBodyProps) {
   } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
     onSave: async (question) => {
       const { error } = await updateCard({
-        id: model.id,
+        id: card.id,
         dataset_query: question.datasetQuery(),
       });
       if (error) {
@@ -101,23 +101,23 @@ function ModelQueryPageBody({ model, route }: ModelQueryPageBodyProps) {
   };
 
   const handleCancel = () => {
-    setDatasetQuery(model.dataset_query);
+    setDatasetQuery(card.dataset_query);
   };
 
   const handleResetRef = useLatest(() => {
-    setDatasetQuery(model.dataset_query);
+    setDatasetQuery(card.dataset_query);
     setUiState(getInitialUiState());
   });
 
   useLayoutEffect(() => {
     handleResetRef.current();
-  }, [model.id, handleResetRef]);
+  }, [card.id, handleResetRef]);
 
   return (
     <>
       <ModelEditor
-        id={model.id}
-        name={model.name}
+        id={card.id}
+        name={card.name}
         query={question.query()}
         uiState={uiState}
         isDirty={isDirty}

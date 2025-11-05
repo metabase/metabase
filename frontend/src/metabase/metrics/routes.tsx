@@ -12,10 +12,10 @@ export function getDataStudioMetricRoutes() {
   return (
     <Route path="metrics">
       <Route path="new" component={NewMetricPage} />
-      <Route path=":metricId" component={MetricOverviewPage} />
-      <Route path=":metricId/query" component={MetricQueryPage} />
+      <Route path=":cardId" component={MetricOverviewPage} />
+      <Route path=":cardId/query" component={MetricQueryPage} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route path=":metricId/dependencies" component={MetricDependenciesPage}>
+        <Route path=":cardId/dependencies" component={MetricDependenciesPage}>
           <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>
       )}

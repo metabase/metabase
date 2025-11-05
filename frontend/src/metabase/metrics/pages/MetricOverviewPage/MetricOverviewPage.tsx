@@ -8,7 +8,7 @@ import { MetricHeader } from "../../components/MetricHeader";
 import { MetricVisualization } from "./MetricVisualization";
 
 type MetricOverviewPageParams = {
-  metricId: string;
+  cardId: string;
 };
 
 type MetricOverviewPageProps = {
@@ -16,14 +16,14 @@ type MetricOverviewPageProps = {
 };
 
 export function MetricOverviewPage({ params }: MetricOverviewPageProps) {
-  const metricId = Urls.extractEntityId(params.metricId);
+  const cardId = Urls.extractEntityId(params.cardId);
   const {
-    data: metric,
+    data: card,
     isLoading,
     error,
-  } = useGetCardQuery(metricId != null ? { id: metricId } : skipToken);
+  } = useGetCardQuery(cardId != null ? { id: cardId } : skipToken);
 
-  if (isLoading || error != null || metric == null) {
+  if (isLoading || error != null || card == null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -33,8 +33,8 @@ export function MetricOverviewPage({ params }: MetricOverviewPageProps) {
 
   return (
     <Flex direction="column" h="100%">
-      <MetricHeader id={metric.id} name={metric.name} />
-      <MetricVisualization metric={metric} />
+      <MetricHeader id={card.id} name={card.name} />
+      <MetricVisualization card={card} />
     </Flex>
   );
 }

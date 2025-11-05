@@ -9,7 +9,7 @@ import { Center, Flex } from "metabase/ui";
 import { ModelHeader } from "../../components/ModelHeader";
 
 type ModelDependenciesPageParams = {
-  modelId: string;
+  cardId: string;
 };
 
 type ModelDependenciesPageProps = {
@@ -21,14 +21,14 @@ export function ModelDependenciesPage({
   params,
   children,
 }: ModelDependenciesPageProps) {
-  const modelId = Urls.extractEntityId(params.modelId);
+  const cardId = Urls.extractEntityId(params.cardId);
   const {
-    data: model,
+    data: card,
     isLoading,
     error,
-  } = useGetCardQuery(modelId != null ? { id: modelId } : skipToken);
+  } = useGetCardQuery(cardId != null ? { id: cardId } : skipToken);
 
-  if (isLoading || error != null || model == null) {
+  if (isLoading || error != null || card == null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -38,11 +38,11 @@ export function ModelDependenciesPage({
 
   return (
     <Flex direction="column" h="100%">
-      <ModelHeader id={model.id} name={model.name} />
+      <ModelHeader id={card.id} name={card.name} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
-          baseUrl: Urls.dataStudioModelDependencies(model.id),
-          defaultEntry: { id: model.id, type: "card" },
+          baseUrl: Urls.dataStudioModelDependencies(card.id),
+          defaultEntry: { id: card.id, type: "card" },
         }}
       >
         {children}

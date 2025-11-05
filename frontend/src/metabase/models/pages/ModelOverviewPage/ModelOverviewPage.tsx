@@ -8,7 +8,7 @@ import { ModelHeader } from "../../components/ModelHeader";
 import { ModelVisualization } from "./ModelVisualization";
 
 type ModelOverviewPageParams = {
-  modelId: string;
+  cardId: string;
 };
 
 type ModelOverviewPageProps = {
@@ -16,14 +16,14 @@ type ModelOverviewPageProps = {
 };
 
 export function ModelOverviewPage({ params }: ModelOverviewPageProps) {
-  const modelId = Urls.extractEntityId(params.modelId);
+  const cardId = Urls.extractEntityId(params.cardId);
   const {
-    data: model,
+    data: card,
     isLoading,
     error,
-  } = useGetCardQuery(modelId != null ? { id: modelId } : skipToken);
+  } = useGetCardQuery(cardId != null ? { id: cardId } : skipToken);
 
-  if (isLoading || error != null || model == null) {
+  if (isLoading || error != null || card == null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -33,8 +33,8 @@ export function ModelOverviewPage({ params }: ModelOverviewPageProps) {
 
   return (
     <Flex direction="column" h="100%">
-      <ModelHeader id={model.id} name={model.name} />
-      <ModelVisualization model={model} />
+      <ModelHeader id={card.id} name={card.name} />
+      <ModelVisualization card={card} />
     </Flex>
   );
 }

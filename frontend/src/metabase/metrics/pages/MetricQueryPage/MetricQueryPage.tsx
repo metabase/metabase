@@ -24,7 +24,7 @@ import type { Card } from "metabase-types/api";
 import { MetricEditor } from "../../components/MetricEditor";
 
 type MetricQueryPageParams = {
-  metricId: string;
+  cardId: string;
 };
 
 type MetricQueryPageProps = {
@@ -33,14 +33,14 @@ type MetricQueryPageProps = {
 };
 
 export function MetricQueryPage({ params, route }: MetricQueryPageProps) {
-  const metricId = Urls.extractEntityId(params.metricId);
+  const cardId = Urls.extractEntityId(params.cardId);
   const {
-    data: metric,
+    data: card,
     isLoading,
     error,
-  } = useGetCardQuery(metricId != null ? { id: metricId } : skipToken);
+  } = useGetCardQuery(cardId != null ? { id: cardId } : skipToken);
 
-  if (isLoading || error != null || metric == null) {
+  if (isLoading || error != null || card == null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -48,16 +48,16 @@ export function MetricQueryPage({ params, route }: MetricQueryPageProps) {
     );
   }
 
-  return <MetricQueryPageBody metric={metric} route={route} />;
+  return <MetricQueryPageBody card={card} route={route} />;
 }
 
 type MetricQueryPageBodyProps = {
-  metric: Card;
+  card: Card;
   route: Route;
 };
 
-function MetricQueryPageBody({ metric, route }: MetricQueryPageBodyProps) {
-  const [datasetQuery, setDatasetQuery] = useState(metric.dataset_query);
+function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
+  const [datasetQuery, setDatasetQuery] = useState(card.dataset_query);
   const [uiState, setUiState] = useState(getInitialUiState);
   const metadata = useSelector(getMetadata);
   const [updateCard, { isLoading: isSaving }] = useUpdateCardMutation();
@@ -68,8 +68,8 @@ function MetricQueryPageBody({ metric, route }: MetricQueryPageBodyProps) {
   }, [datasetQuery, metadata]);
 
   const isDirty = useMemo(() => {
-    return !Lib.areLegacyQueriesEqual(datasetQuery, metric.dataset_query);
-  }, [datasetQuery, metric.dataset_query]);
+    return !Lib.areLegacyQueriesEqual(datasetQuery, card.dataset_query);
+  }, [datasetQuery, card.dataset_query]);
 
   const {
     checkData,
@@ -82,7 +82,7 @@ function MetricQueryPageBody({ metric, route }: MetricQueryPageBodyProps) {
     onSave: async (question) => {
       const { display, settings } = Lib.defaultDisplay(question.query());
       const { error } = await updateCard({
-        id: metric.id,
+        id: card.id,
         dataset_query: question.datasetQuery(),
         display,
         visualization_settings: settings,
@@ -104,23 +104,23 @@ function MetricQueryPageBody({ metric, route }: MetricQueryPageBodyProps) {
   };
 
   const handleCancel = () => {
-    setDatasetQuery(metric.dataset_query);
+    setDatasetQuery(card.dataset_query);
   };
 
   const handleResetRef = useLatest(() => {
-    setDatasetQuery(metric.dataset_query);
+    setDatasetQuery(card.dataset_query);
     setUiState(getInitialUiState());
   });
 
   useLayoutEffect(() => {
     handleResetRef.current();
-  }, [metric.id, handleResetRef]);
+  }, [card.id, handleResetRef]);
 
   return (
     <>
       <MetricEditor
-        id={metric.id}
-        name={metric.name}
+        id={card.id}
+        name={card.name}
         query={question.query()}
         uiState={uiState}
         isDirty={isDirty}

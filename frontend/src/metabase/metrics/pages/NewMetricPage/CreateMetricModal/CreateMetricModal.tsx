@@ -26,7 +26,7 @@ const NEW_METRIC_SCHEMA = Yup.object({
 type CreateMetricModalProps = {
   query: Lib.Query;
   defaultValues: Partial<NewMetricValues>;
-  onCreate: (metric: Card) => void;
+  onCreate: (card: Card) => void;
   onClose: () => void;
 };
 
@@ -52,7 +52,7 @@ export function CreateMetricModal({
 type CreateMetricFormProps = {
   query: Lib.Query;
   defaultValues: Partial<NewMetricValues>;
-  onCreate: (metric: Card) => void;
+  onCreate: (card: Card) => void;
   onClose: () => void;
 };
 
@@ -71,8 +71,8 @@ function CreateMetricForm({
 
   const handleSubmit = async (values: NewMetricValues) => {
     const request = getCreateRequest(query, values);
-    const metric = await createCard(request).unwrap();
-    onCreate(metric);
+    const card = await createCard(request).unwrap();
+    onCreate(card);
   };
 
   return (

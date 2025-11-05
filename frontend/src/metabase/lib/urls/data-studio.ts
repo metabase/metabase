@@ -18,30 +18,30 @@ export function newDataStudioNativeModel() {
   return `${dataStudioModeling()}/models/new/native`;
 }
 
-export function dataStudioModel(modelId: CardId) {
-  return `${dataStudioModeling()}/models/${modelId}`;
+export function dataStudioModel(cardId: CardId) {
+  return `${dataStudioModeling()}/models/${cardId}`;
 }
 
-export function dataStudioModelQuery(modelId: CardId) {
-  return `${dataStudioModel(modelId)}/query`;
+export function dataStudioModelQuery(cardId: CardId) {
+  return `${dataStudioModel(cardId)}/query`;
 }
 
-export function dataStudioModelDependencies(modelId: CardId) {
-  return `${dataStudioModel(modelId)}/dependencies`;
+export function dataStudioModelDependencies(cardId: CardId) {
+  return `${dataStudioModel(cardId)}/dependencies`;
 }
 
 export function newDataStudioMetric() {
   return `${dataStudioModeling()}/metrics/new`;
 }
 
-export function dataStudioMetric(metricId: CardId) {
-  return `${dataStudioModeling()}/metrics/${metricId}`;
+export function dataStudioMetric(cardId: CardId) {
+  return `${dataStudioModeling()}/metrics/${cardId}`;
 }
 
-export function dataStudioMetricQuery(metricId: CardId) {
-  return `${dataStudioMetric(metricId)}/query`;
+export function dataStudioMetricQuery(cardId: CardId) {
+  return `${dataStudioMetric(cardId)}/query`;
 }
 
-export function dataStudioMetricDependencies(metricId: CardId) {
-  return `${dataStudioMetric(metricId)}/dependencies`;
+export function dataStudioMetricDependencies(cardId: CardId) {
+  return `${dataStudioMetric(cardId)}/dependencies`;
 }

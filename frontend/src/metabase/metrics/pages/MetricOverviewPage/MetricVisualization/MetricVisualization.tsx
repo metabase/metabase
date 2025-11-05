@@ -11,20 +11,20 @@ import type { Card } from "metabase-types/api";
 import S from "./MetricVisualization.module.css";
 
 type MetricVisualizationProps = {
-  metric: Card;
+  card: Card;
 };
 
-export function MetricVisualization({ metric }: MetricVisualizationProps) {
+export function MetricVisualization({ card }: MetricVisualizationProps) {
   const metadata = useSelector(getMetadata);
   const question = useMemo(
-    () => new Question(metric, metadata),
-    [metric, metadata],
+    () => new Question(card, metadata),
+    [card, metadata],
   );
 
-  const { data, isLoading } = useGetCardQueryQuery({ cardId: metric.id });
+  const { data, isLoading } = useGetCardQueryQuery({ cardId: card.id });
   const rawSeries = useMemo(
-    () => (data ? [{ card: metric, data: data.data }] : null),
-    [metric, data],
+    () => (data ? [{ card, data: data.data }] : null),
+    [card, data],
   );
 
   return (

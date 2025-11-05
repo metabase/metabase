@@ -9,7 +9,7 @@ import { Center, Flex } from "metabase/ui";
 import { MetricHeader } from "../../components/MetricHeader";
 
 type MetricDependenciesPageParams = {
-  metricId: string;
+  cardId: string;
 };
 
 type MetricDependenciesPageProps = {
@@ -21,14 +21,14 @@ export function MetricDependenciesPage({
   params,
   children,
 }: MetricDependenciesPageProps) {
-  const metricId = Urls.extractEntityId(params.metricId);
+  const cardId = Urls.extractEntityId(params.cardId);
   const {
-    data: metric,
+    data: card,
     isLoading,
     error,
-  } = useGetCardQuery(metricId != null ? { id: metricId } : skipToken);
+  } = useGetCardQuery(cardId != null ? { id: cardId } : skipToken);
 
-  if (isLoading || error != null || metric == null) {
+  if (isLoading || error != null || card == null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -38,11 +38,11 @@ export function MetricDependenciesPage({
 
   return (
     <Flex direction="column" h="100%">
-      <MetricHeader id={metric.id} name={metric.name} />
+      <MetricHeader id={card.id} name={card.name} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
-          baseUrl: Urls.dataStudioMetricDependencies(metric.id),
-          defaultEntry: { id: metric.id, type: "card" },
+          baseUrl: Urls.dataStudioMetricDependencies(card.id),
+          defaultEntry: { id: card.id, type: "card" },
         }}
       >
         {children}

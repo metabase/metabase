@@ -47,10 +47,10 @@ export function getDataStudioModelRoutes() {
     <Route path="models">
       <Route path="new/query" component={NewQueryModelPage} />
       <Route path="new/native" component={NewNativeModelPage} />
-      <Route path=":modelId" component={ModelOverviewPage} />
-      <Route path=":modelId/query" component={ModelQueryPage} />
+      <Route path=":cardId" component={ModelOverviewPage} />
+      <Route path=":cardId/query" component={ModelQueryPage} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route path=":modelId/dependencies" component={ModelDependenciesPage}>
+        <Route path=":cardId/dependencies" component={ModelDependenciesPage}>
           <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>
       )}

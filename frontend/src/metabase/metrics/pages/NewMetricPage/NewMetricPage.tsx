@@ -37,8 +37,8 @@ export function NewMetricPage({ route }: NewMetricPageProps) {
     [datasetQuery, metadata],
   );
 
-  const handleCreate = (metric: Card) => {
-    dispatch(push(Urls.dataStudioMetric(metric.id)));
+  const handleCreate = (card: Card) => {
+    dispatch(push(Urls.dataStudioMetric(card.id)));
   };
 
   const handleChangeQuery = (query: Lib.Query) => {

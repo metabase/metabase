@@ -26,7 +26,7 @@ const NEW_MODEL_SCHEMA = Yup.object({
 type CreateModelModalProps = {
   query: Lib.Query;
   defaultValues: Partial<NewModelValues>;
-  onCreate: (model: Card) => void;
+  onCreate: (card: Card) => void;
   onClose: () => void;
 };
 
@@ -52,7 +52,7 @@ export function CreateModelModal({
 type CreateModelFormProps = {
   query: Lib.Query;
   defaultValues: Partial<NewModelValues>;
-  onCreate: (model: Card) => void;
+  onCreate: (card: Card) => void;
   onClose: () => void;
 };
 
@@ -71,8 +71,8 @@ function CreateModelForm({
 
   const handleSubmit = async (values: NewModelValues) => {
     const request = getCreateRequest(query, values);
-    const model = await createCard(request).unwrap();
-    onCreate(model);
+    const card = await createCard(request).unwrap();
+    onCreate(card);
   };
 
   return (
