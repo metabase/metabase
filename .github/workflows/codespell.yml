@@ -16,3 +16,12 @@ jobs:
       - uses: codespell-project/actions-codespell@v1
         with:
           ignore_words_file: .codespellignore
+          path: >-
+            dev
+            docs
+            e2e
+            enterprise
+            frontend
+            modules/drivers
+            src
+            test
