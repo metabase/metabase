@@ -75,8 +75,8 @@ function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
   }, [datasetQuery, metadata, resultMetadata]);
 
   const validationResult = useMemo(
-    () => getValidationResult(question.query()),
-    [question],
+    () => getValidationResult(question.query(), resultMetadata),
+    [question, resultMetadata],
   );
 
   const isDirty = useMemo(() => {

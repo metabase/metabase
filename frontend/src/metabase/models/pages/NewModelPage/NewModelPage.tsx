@@ -52,7 +52,10 @@ function NewModelPage({
     [datasetQuery, metadata],
   );
 
-  const validationResult = useMemo(() => getValidationResult(query), [query]);
+  const validationResult = useMemo(
+    () => getValidationResult(query, resultMetadata),
+    [query, resultMetadata],
+  );
 
   const handleCreate = (card: Card) => {
     dispatch(push(Urls.dataStudioModel(card.id)));

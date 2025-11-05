@@ -70,7 +70,6 @@ export function NewJobPage({ route }: NewJobPageProps) {
         job={job}
         actions={
           <PaneHeaderActions
-            validationResult={{ isValid: true }}
             isDirty
             isSaving={isSaving}
             onSave={handleSave}

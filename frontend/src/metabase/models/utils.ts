@@ -1,13 +1,17 @@
 import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
+import type { Field } from "metabase-types/api";
 
 export type ValidationResult = {
   isValid: boolean;
   errorMessage?: string;
 };
 
-export function getValidationResult(query: Lib.Query): ValidationResult {
+export function getValidationResult(
+  query: Lib.Query,
+  resultMetadata: Field[] | null,
+): ValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {
     const tags = Object.values(Lib.templateTags(query));
@@ -15,6 +19,13 @@ export function getValidationResult(query: Lib.Query): ValidationResult {
       return {
         isValid: false,
         errorMessage: t`In models, you can use snippets and question or model references, but not variables.`,
+      };
+    }
+
+    if (resultMetadata == null) {
+      return {
+        isValid: false,
+        errorMessage: t`You must run the query before you can save this model.`,
       };
     }
   }
