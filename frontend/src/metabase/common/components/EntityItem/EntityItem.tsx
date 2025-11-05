@@ -1,9 +1,11 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { c, t } from "ttag";
 
 import { archiveAndTrack } from "metabase/archive/analytics";
+import { CreateLinkModal } from "metabase/collections/components/CreateLinkModal";
 import type {
   OnArchive,
   OnCopy,
@@ -151,9 +153,16 @@ function EntityItemMenu({
   const isParameterized = isFullyParameterized(item);
   const isModel = isItemModel(item);
   const isXrayShown = isModel && isXrayEnabled;
+  const [showLinkModal, { open: openLinkModal, close: closeLinkModal }] = useDisclosure(false);
 
   const actions = useMemo(() => {
     const result = [];
+
+    result.push({
+      title: t`Create shortcut`,
+      icon: "return",
+      action: openLinkModal,
+    });
 
     if (onPin) {
       result.push({
@@ -259,6 +268,7 @@ function EntityItemMenu({
     onToggleBookmark,
     onDeletePermanently,
     onRestore,
+    openLinkModal,
   ]);
   if (actions.length === 0) {
     return null;
@@ -272,6 +282,12 @@ function EntityItemMenu({
         triggerIcon="ellipsis"
         items={actions}
       />
+      {showLinkModal && (
+        <CreateLinkModal
+          target={item}
+          onClose={closeLinkModal}
+        />
+      )}
     </EntityMenuContainer>
   );
 }

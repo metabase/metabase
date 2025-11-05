@@ -25,6 +25,7 @@ import { FilterHeaderButton } from "../FilterHeaderButton";
 import { QuestionActions } from "../QuestionActions";
 import { QuestionNotebookButton } from "../QuestionNotebookButton";
 import { QuestionSummarizeWidget } from "../QuestionSummarizeWidget";
+import { SaveShortcutButton } from "../SaveShortcutButton";
 import { ToggleNativeQueryPreview } from "../ToggleNativeQueryPreview";
 
 interface ViewTitleHeaderRightSideProps {
@@ -160,6 +161,9 @@ export function ViewTitleHeaderRightSide({
       className={ViewTitleHeaderS.ViewHeaderActionPanel}
       data-testid="qb-header-action-panel"
     >
+      <SaveShortcutButton
+        question={question}
+      />
       {FilterHeaderButton.shouldRender({
         question,
         queryBuilderMode,

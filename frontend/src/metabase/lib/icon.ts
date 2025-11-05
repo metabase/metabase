@@ -31,6 +31,7 @@ export type ObjectWithModel = {
 };
 
 export const modelIconMap: Record<IconModel, IconName> = {
+  link: "return",
   collection: "folder",
   database: "database",
   table: "table",

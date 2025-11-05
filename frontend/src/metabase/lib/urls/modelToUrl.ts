@@ -21,6 +21,13 @@ export type UrlableModel = {
 
 export function modelToUrl(item: UrlableModel) {
   switch (item.model) {
+    case "link":
+      return modelToUrl({
+        id: item.target_id,
+        model: item.target_model,
+        name: item.name,
+        collection_id: item.collection_id,
+      });
     case "card":
       return question({
         ...item,
@@ -38,7 +45,7 @@ export function modelToUrl(item: UrlableModel) {
       if (item?.database?.id) {
         return tableRowsQuery(item.database.id, item.id);
       }
-      return null;
+      return `/table/${item.id}`;
     case "collection":
       return collection(item);
     case "document":
