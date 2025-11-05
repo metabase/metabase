@@ -4,8 +4,9 @@ import * as Urls from "metabase/lib/urls";
 import { Center, Flex } from "metabase/ui";
 
 import { ModelHeader } from "../../components/ModelHeader";
+import { SemanticEntityOverview } from "../../components/SemanticEntityOverview";
 
-import { ModelVisualization } from "./ModelVisualization";
+import S from "./ModelOverviewPage.module.css";
 
 type ModelOverviewPageParams = {
   cardId: string;
@@ -28,9 +29,9 @@ export function ModelOverviewPage({ params }: ModelOverviewPageProps) {
   }
 
   return (
-    <Flex direction="column" h="100%">
-      <ModelHeader card={card} />
-      <ModelVisualization card={card} />
+    <Flex direction="column" h="100%" bg="var(--mb-color-bg-light)">
+      <ModelHeader card={card} className={S.header} />
+      <SemanticEntityOverview card={card} />
     </Flex>
   );
 }

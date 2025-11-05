@@ -1,11 +1,12 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useLoadCardWithMetadata } from "metabase/data-studio/hooks/use-load-card-with-metadata";
 import * as Urls from "metabase/lib/urls";
+import { SemanticEntityOverview } from "metabase/models/components/SemanticEntityOverview";
 import { Center, Flex } from "metabase/ui";
 
 import { MetricHeader } from "../../components/MetricHeader";
 
-import { MetricVisualization } from "./MetricVisualization";
+import S from "./MetricOverviewPage.module.css";
 
 type MetricOverviewPageParams = {
   cardId: string;
@@ -28,9 +29,9 @@ export function MetricOverviewPage({ params }: MetricOverviewPageProps) {
   }
 
   return (
-    <Flex direction="column" h="100%">
-      <MetricHeader card={card} />
-      <MetricVisualization card={card} />
+    <Flex direction="column" h="100%" bg="var(--mb-color-bg-light)">
+      <MetricHeader card={card} className={S.header} />
+      <SemanticEntityOverview card={card} />
     </Flex>
   );
 }

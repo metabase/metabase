@@ -1,38 +1,44 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import EditableText from "metabase/common/components/EditableText";
-import { Box, Button, Group, Stack, Tooltip } from "metabase/ui";
+import type { GroupProps, IconName } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Tooltip } from "metabase/ui";
 
 import S from "./PaneHeader.module.css";
 import type { PaneHeaderTab } from "./types";
 
-interface PaneHeaderProps {
+interface PaneHeaderProps extends Omit<GroupProps, "title"> {
   title: ReactNode;
+  icon?: IconName;
   menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
-  "data-testid"?: string;
 }
 
 export const PaneHeader = ({
   title,
+  icon,
   menu,
   tabs,
   actions,
-  "data-testid": dataTestId,
+  className,
+  p = "md",
+  ...rest
 }: PaneHeaderProps) => {
   return (
     <Group
-      className={S.header}
-      p="md"
+      className={cx(S.header, className)}
+      p={p}
       justify="space-between"
       gap="sm"
-      data-testid={dataTestId}
+      {...rest}
     >
       <Stack gap="sm">
         <Group align="center" gap="xs">
+          {icon && <Icon name={icon} c="brand" size={20} />}
           {title}
           {menu}
         </Group>
@@ -95,7 +101,7 @@ export function PaneHeaderTabs({ tabs }: PaneHeaderTabsProps) {
           size="sm"
           radius="xl"
           c={isSelected ? "brand" : undefined}
-          bg={isSelected ? "brand-light" : undefined}
+          bg={isSelected ? "brand-light" : "transparent"}
           bd="none"
         >
           {label}

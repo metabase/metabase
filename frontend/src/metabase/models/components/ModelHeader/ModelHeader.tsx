@@ -25,11 +25,13 @@ import { NAME_MAX_LENGTH } from "../../constants";
 type ModelHeaderProps = {
   card: Card;
   actions?: ReactNode;
+  className?: string;
 };
 
-export function ModelHeader({ card, actions }: ModelHeaderProps) {
+export function ModelHeader({ card, actions, className }: ModelHeaderProps) {
   return (
     <PaneHeader
+      icon="model"
       title={
         card.can_write ? (
           <ModelNameInput card={card} />
@@ -39,6 +41,8 @@ export function ModelHeader({ card, actions }: ModelHeaderProps) {
       }
       tabs={<ModelTabs card={card} />}
       actions={actions}
+      className={className}
+      p="xl"
     />
   );
 }

@@ -25,11 +25,13 @@ import { NAME_MAX_LENGTH } from "../../constants";
 type MetricHeaderProps = {
   card: Card;
   actions?: ReactNode;
+  className?: string;
 };
 
-export function MetricHeader({ card, actions }: MetricHeaderProps) {
+export function MetricHeader({ card, actions, className }: MetricHeaderProps) {
   return (
     <PaneHeader
+      icon="metric"
       title={
         card.can_write ? (
           <MetricNameInput card={card} />
@@ -39,6 +41,8 @@ export function MetricHeader({ card, actions }: MetricHeaderProps) {
       }
       tabs={<MetricTabs card={card} />}
       actions={actions}
+      className={className}
+      p="xl"
     />
   );
 }
