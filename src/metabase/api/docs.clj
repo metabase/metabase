@@ -3,6 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [compojure.core :refer [GET]]
    [metabase.api.open-api :as open-api]
    [metabase.api.util.handlers :as handlers]
@@ -17,6 +18,15 @@
   "Path to the local OpenAPI specification file."
   "ts-types/openapi.json")
 
+(defn- sort-keys [data]
+  (walk/postwalk
+   (fn [x]
+     (cond
+       (map? x) (into (sorted-map) x)
+       (set? x) (into (sorted-set) x)
+       :else    x))
+   data))
+
 (defn write-openapi-spec-to-file!
   "Generate and write the OpenAPI specification to a local file.
   Takes the root handler and generates the complete OpenAPI spec, writing it to [[openapi-file-path]]."
@@ -30,7 +40,7 @@
       ;; Create parent directory if it doesn't exist
       (when-let [parent-dir (.getParentFile file)]
         (.mkdirs parent-dir))
-      (json/encode-to spec (io/writer file) {:pretty true})
+      (json/encode-to (sort-keys spec) (io/writer file))
       (log/info "OpenAPI specification written to" openapi-file-path))
     (catch Throwable e
       (log/error e "Failed to write OpenAPI specification to file"))))
@@ -114,3 +124,4 @@
    ;; don't generate a spec for these routes
    (fn [_prefix]
      nil)))
+
