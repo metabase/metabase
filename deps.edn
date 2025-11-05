@@ -166,14 +166,14 @@
   org.clojure/tools.namespace               {:mvn/version "1.5.0"}
   org.clojure/tools.reader                  {:mvn/version "1.5.2"}
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "12.0.24"}
-  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.0.25"}
-  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.0.24"}
-  org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.0.25"}
+  org.eclipse.jetty/jetty-server            {:mvn/version "12.1.3"}
+  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.1.3"}
+  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.1.3"}
+  org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.1.3"}
   org.eclipse.jgit/org.eclipse.jgit        {:mvn/version "7.3.0.202506031305-r"}; Java implementation of Git version control system
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
-  org.graalvm.polyglot/js-community         {:mvn/version "24.2.2" :extension "pom"} ; JavaScript engine
-  org.graalvm.polyglot/polyglot             {:mvn/version "24.2.2"}             ; GraalVM platform, required by JS engine
+  org.graalvm.polyglot/js-community         {:mvn/version "25.0.1" :extension "pom"} ; JavaScript engine
+  org.graalvm.polyglot/polyglot             {:mvn/version "25.0.1"}             ; GraalVM platform, required by JS engine
   org.jsoup/jsoup                           {:mvn/version "1.21.1"}             ; required by hickory
   org.liquibase/liquibase-core              {:mvn/version "4.33.0"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
@@ -691,7 +691,7 @@
   ;;
   ;; ./bin/mage cljfmt-all -h for more info
   :cljfmt
-  {:deps       {io.github.weavejester/cljfmt {:git/sha "7de286008766127128a156275b9add3bf443d7e5"}}
+  {:deps       {io.github.weavejester/cljfmt {:mvn/version "0.15.3"}}
    :ns-default cljfmt.tool
    :exec-fn    cljfmt.tool/fix}
 
