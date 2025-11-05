@@ -45,9 +45,9 @@
                                [:name     ms/NonBlankString]
                                [:settings :map]]]
   (api/check-superuser)
-  (first (t2/insert-returning-instances! :model/EmbeddingTheme
-                                         {:name name
-                                          :settings settings})))
+  (t2/insert-returning-instance! :model/EmbeddingTheme
+                                 {:name name
+                                  :settings settings}))
 
 (api.macros/defendpoint :put "/:id" :- ::EmbeddingTheme
   "Update an embedding theme."
