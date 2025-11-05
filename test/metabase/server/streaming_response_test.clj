@@ -151,7 +151,7 @@
                           (Thread/sleep (long wait))
                           (recur more))))))))))))
 
-(deftest canceling-response-2
+(deftest canceling-chan-is-not-working-test
   (let [cnt      (atom 30)
         canceled (atom nil)
         handler  (fn [req respond _raise]
@@ -185,8 +185,11 @@
         (.close ^java.io.Closeable (:body res)) ;; cancel the request
         (Thread/sleep 10)
         ;; it's been 28 when I tested this, if it every becomes flaky maybe decrease the number?
-        (is (< 20 @cnt) "SHOULD have stopped writing when channel closed")
-        (is (= :not-nice @canceled) "Request has been canceled, but at what cost?"))
+        (is (< 20 @cnt) "Stopped writing when channel closed")
+        #_(testing "canceled-chan is working"
+            (is (= :nice @canceled) "Request has been canceled by looking at `canceled-chan`"))
+        (testing "canceled-chan is not working"
+          (is (= :not-nice @canceled) "Request has been canceled, but at what cost?")))
       (finally
         (.stop server)))))
 

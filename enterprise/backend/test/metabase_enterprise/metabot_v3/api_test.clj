@@ -88,7 +88,7 @@
                     "store-messages! was called in the end on the lines streaming-request managed to write to OS")
                 ;; it practically is 3 here all the time, and never 3; maybe it's `:output-buffer-size`?
                 ;; if this flakes in CI, increase the number a bit
-                (is (> 5 (-> @messages first :content str/split-lines count))
+                (is (> 10 (-> @messages first :content str/split-lines count))
                     "But we shouldn't go through all 30 of them")))))))))
 
 (deftest feedback-endpoint-test

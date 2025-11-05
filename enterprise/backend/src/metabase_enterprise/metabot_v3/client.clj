@@ -162,7 +162,7 @@
                         {:request  (assoc options :body body)
                          :response response})))
       (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
-        ;; exiting with-open will underlying request
+        ;; exiting with-open will close underlying request
         (with-open [response-reader (io/reader (:body response))]
           (try
             ;; Response from the AI Service will send response parts separated by newline

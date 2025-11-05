@@ -30,20 +30,20 @@
 (defn mock-post! [^String body & [{:keys [delay-ms]
                                    :or   {delay-ms 0}}]]
   (fn [_url _opts]
-    (let [in  (PipedInputStream.)
-          out (PipedOutputStream. in)]
+    (let [ret  (PipedInputStream.)
+          pipe (PipedOutputStream. ret)]
       (future
         (try
           (doseq [^String line (str/split body #"\n")]
-            (.write out (.getBytes line "UTF-8"))
-            (.write out (.getBytes "\n" "UTF-8"))
-            (.flush out)
+            (.write pipe (.getBytes line "UTF-8"))
+            (.write pipe (.getBytes "\n" "UTF-8"))
+            (.flush pipe)
             (Thread/sleep ^long delay-ms))
           (finally
-            (.close out))))
+            (.close pipe))))
       {:status  200
        :headers {"content-type" "text/event-stream"}
-       :body    in})))
+       :body    ret})))
 
 (defn consume-streaming-response
   "Execute a StreamingResponse and capture its output"
