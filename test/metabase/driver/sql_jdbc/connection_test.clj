@@ -18,6 +18,7 @@
    [metabase.driver.sql-jdbc.connection.ssh-tunnel-test :as ssh-test]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync.core :as sync]
@@ -28,6 +29,7 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
+   [metabase.util.log :as log]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
   (:import
@@ -565,3 +567,55 @@
                   ;; check the query again; the tunnel should have been reestablished
                   (check-data))))
             (finally (.stop ^Server server))))))))
+
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest postgres-aws-iam-can-connect
+  (let [host   (config/config-str :mb-postgres-aws-iam-test-host)
+        port   (config/config-int :mb-postgres-aws-iam-test-port)
+        user   (config/config-str :mb-postgres-aws-iam-test-user)
+        dbname (config/config-str :mb-postgres-aws-iam-test-dbname)]
+    (if host
+      (with-redefs [premium-features/is-hosted? (constantly false)]
+        (testing "Connection details are configured"
+          (is (string? host))
+          (is (string? user))
+          (is (int? port))
+          (is (string? dbname)))
+
+        (is
+         (driver.u/can-connect-with-details? :postgres {:host   host
+                                                        :port   port
+                                                        :dbname dbname
+                                                        :user   user
+                                                        :use-auth-provider true
+                                                        :auth-provider :aws-iam
+                                                        :ssl true})))
+      (log/info "Skipping test: MB_POSTGRES_AWS_IAM_TEST_HOST not set"))))
+
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest mysql-aws-iam-can-connect
+  (let [host   (config/config-str :mb-postgres-aws-iam-test-host)
+        port   (config/config-int :mb-postgres-aws-iam-test-port)
+        user   (config/config-str :mb-postgres-aws-iam-test-user)
+        dbname (config/config-str :mb-postgres-aws-iam-test-dbname)
+        ssl-cert (config/config-str :mb-mysql-aws-iam-test-ssl-cert)]
+    (if (and host ssl-cert)
+      (with-redefs [premium-features/is-hosted? (constantly false)]
+        (testing "Connection details are configured"
+          (is (string? host))
+          (is (string? user))
+          (is (int? port))
+          (is (string? dbname)))
+
+        (is
+         (driver.u/can-connect-with-details? :mysql {:host   host
+                                                     :port   port
+                                                     :dbname dbname
+                                                     :user   user
+                                                     :additional-options (if (= ssl-cert "trust")
+                                                                           "trustServerCertificate=true"
+                                                                           (str "?sslMode=VERIFY_CA&serverSslCert=" ssl-cert))
+                                                     :use-auth-provider true
+                                                     :auth-provider :aws-iam
+                                                     :ssl true})))
+      (log/info "Skipping test: MB_MYSQL_AWS_IAM_TEST_HOST or MB_MYSQL_AWS_IAM_TEST_SSL_CERT not set"))))
