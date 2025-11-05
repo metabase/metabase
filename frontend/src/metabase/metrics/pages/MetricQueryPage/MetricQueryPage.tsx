@@ -20,7 +20,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Center, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { Card, DatasetColumn } from "metabase-types/api";
+import type { Card, DatasetColumn, Field } from "metabase-types/api";
 
 import { MetricHeader } from "../../components/MetricHeader";
 import { MetricQueryEditor } from "../../components/MetricQueryEditor";
@@ -63,9 +63,9 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
   const metadata = useSelector(getMetadata);
   const [datasetQuery, setDatasetQuery] = useState(card.dataset_query);
   const [uiState, setUiState] = useState(getInitialUiState);
-  const [resultMetadata, setResultMetadata] = useState<DatasetColumn[] | null>(
-    null,
-  );
+  const [resultMetadata, setResultMetadata] = useState<
+    Field[] | DatasetColumn[] | null
+  >(card.result_metadata);
   const [updateCard, { isLoading: isSaving }] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -124,7 +124,7 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
   const handleResetRef = useLatest(() => {
     setDatasetQuery(card.dataset_query);
     setUiState(getInitialUiState());
-    setResultMetadata(null);
+    setResultMetadata(card.result_metadata);
   });
 
   useLayoutEffect(() => {
