@@ -7,7 +7,6 @@ import cloud from "assets/img/metabot-cloud-96x96.svg?component";
 import happy from "assets/img/metabot-happy.svg?component";
 import sad from "assets/img/metabot-sad.svg?component";
 import cool from "assets/img/metabot-shades.svg?component";
-import { useSetting } from "metabase/common/hooks";
 
 import Styles from "./MetabotLogo.module.css";
 
@@ -32,14 +31,10 @@ export const MetabotLogo = forwardRef(function MetabotLogo(
   ref: Ref<any>,
 ) {
   const MetabotComponent = urlByVariant[variant];
-  const hasSetBrandColor = Boolean(useSetting("application-colors")?.brand);
 
   return (
     <MetabotComponent
-      className={cx(
-        hasSetBrandColor ? Styles.MetabotLogoGray : Styles.MetabotLogo,
-        className,
-      )}
+      className={cx(Styles.MetabotLogo, className)}
       {...rest}
       ref={ref}
       aria-label={t`Metabot`}
