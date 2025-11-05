@@ -13,6 +13,9 @@ import { DownloadsStatus } from "./DownloadsStatus";
 
 jest.mock("metabase/lib/dom", () => ({
   ...jest.requireActual("metabase/lib/dom"),
+  // For some reason, this is undefined. I think it's because we're requiring while mocking, but
+  // It's unclear.
+  isWithinIframe: () => false,
   openSaveDialog: jest.fn(),
 }));
 

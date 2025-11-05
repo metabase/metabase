@@ -1,6 +1,8 @@
 import querystring from "querystring";
 import _ from "underscore";
 
+import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isCypressActive, isStorybookActive } from "metabase/env";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -319,6 +321,12 @@ export function open(
 ) {
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
+  // In the react sdk, allow the host app to override how to open links
+  if (isEmbeddingSdk() && handleLinkSdkPlugin(url).handled) {
+    // Plugin handled the link, don't continue with default behavior
+    return;
+  }
+
   if (shouldOpenInBlankWindow(url, options)) {
     openInBlankWindow(url);
   } else if (isSameOrigin(url)) {
@@ -364,6 +372,10 @@ export function shouldOpenInBlankWindow(
     blankOnDifferentOrigin = true,
   } = {},
 ) {
+  if (isEmbeddingSdk()) {
+    // always open in new window in modular embedding (react SDK + EAJS)
+    return true;
+  }
   const isMetaKey = event && event.metaKey != null ? event.metaKey : metaKey;
   const isCtrlKey = event && event.ctrlKey != null ? event.ctrlKey : ctrlKey;
 
@@ -440,6 +452,10 @@ export function isSameOrSiteUrlOrigin(url) {
 }
 
 export function getUrlTarget(url) {
+  if (isEmbeddingSdk()) {
+    // always open in new window in modular embedding (react SDK + EAJS)
+    return "_blank";
+  }
   return isSameOrSiteUrlOrigin(url) ? "_self" : "_blank";
 }
 

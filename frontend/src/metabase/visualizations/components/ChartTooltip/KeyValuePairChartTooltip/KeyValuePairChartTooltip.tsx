@@ -84,7 +84,9 @@ const TooltipRow = ({
 }: TooltipRowProps) => (
   <tr>
     {name ? (
-      <TableCell className={cx(CS.textLight, CS.textRight)}>{name}:</TableCell>
+      <TableCell className={cx(CS.textTooltipSecondary, CS.textRight)}>
+        {name}:
+      </TableCell>
     ) : (
       <TableCell />
     )}

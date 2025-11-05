@@ -54,9 +54,15 @@ describe("StaticEmbeddingSettings", () => {
 
   it("should toggle static embedding on", async () => {
     await setup({ enabled: false });
-    const toggle = await screen.findByText("Enable static embedding");
+
+    await screen.findByText("Enable static embedding");
+
+    const toggle = screen.getByRole("switch", {
+      name: /Enable static embedding toggle/i,
+    });
 
     await userEvent.click(toggle);
+
     const puts = await findRequests("PUT");
     expect(puts).toHaveLength(1);
     const [{ url, body }] = puts;

@@ -1,20 +1,18 @@
 (ns metabase.query-processor.api
   "/api/dataset endpoints."
+  (:refer-clojure :exclude [not-empty])
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-      ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
-   ;; Lib soon
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.model-persistence.core :as model-persistence]
+   [metabase.models.interface :as mi]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
@@ -33,11 +31,10 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.util.malli.schema :as ms]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :refer [not-empty]]
    [steffan-westcott.clj-otel.api.trace.span :as span]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
@@ -47,7 +44,8 @@
   is a wrapper for the function of the same name in the QP util namespace; it adds additional permissions checking as
   well."
   [query]
-  (when-let [source-card-id (some-> query not-empty lib-be/normalize-query lib/source-card-id)]
+  (when-let [source-card-id (and ((complement #{:internal "internal"}) (:type query))
+                                 (some-> query not-empty lib-be/normalize-query lib/source-card-id))]
     (log/infof "Source query for this query is Card %s" (pr-str source-card-id))
     (api/read-check :model/Card source-card-id)
     source-card-id))
@@ -144,7 +142,7 @@
        [:format_rows            {:default false} ms/BooleanValue]
        [:pivot_results          {:default false} ms/BooleanValue]]]
   (let [viz-settings                  (-> visualization-settings
-                                          (update :table.columns mbql.normalize/normalize)
+                                          mi/normalize-visualization-settings
                                           mb.viz/norm->db)
         query                         (-> query
                                           (assoc :viz-settings viz-settings)
@@ -163,13 +161,16 @@
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/query_metadata"
   "Get all of the required query metadata for an ad-hoc query."
   [_route-params
    _query-params
    query :- [:map
              [:database ms/PositiveInt]]]
-  (queries/batch-fetch-query-metadata [query]))
+  (lib-be/with-metadata-provider-cache
+    (queries/batch-fetch-query-metadata [query])))
 
 (api.macros/defendpoint :post "/native"
   "Fetch a native version of an MBQL query."

@@ -20,6 +20,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
@@ -49,7 +51,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :test-users))
+(use-fixtures :once (fixtures/initialize :test-users :db :web-server))
 
 (deftest ^:parallel update-colvalmap-setting-test
   (testing "update-colvalmap-setting function with regex matching"
@@ -726,10 +728,10 @@
                                            :parameter_mappings [{:parameter_id "_TEXT_"
                                                                  :card_id      card-id
                                                                  :target       [:dimension [:template-tag "not-existed-filter"]]}]}]
-      (mt/with-log-messages-for-level [messages [metabase.parameters.params :error]]
+      (mt/with-log-messages-for-level [messages [metabase.parameters.params :warn]]
         (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))
-        (is (=? [{:level   :error
-                  :message "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"}]
+        (is (=? [{:level   :warn
+                  :message "Could not find matching Field ID for target: \"not-existed-filter\""}]
                 (messages)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -883,7 +885,7 @@
             ;; grant Permissions for only the *old* collection
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             ;; now make an API call to move collections. Should fail
-            (is (=? {:message "You do not have curate permissions for this Collection."}
+            (is (=? "You don't have permissions to do that."
                     (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dash))
                                           {:collection_id (u/the-id new-collection)})))))))))
 
@@ -1682,6 +1684,16 @@
                (api.dashboard/update-cards-for-copy dashcards
                                                     {1 {:id 1}}
                                                     nil
+                                                    nil)))))
+    (testing "Copies iframe cards"
+      (let [dashcards [{:card_id 1 :card {:id 1}}
+                       {:visualization_settings
+                        {:virtual_card {:display "iframe"}
+                         :iframe "<iframe src=\"https://www.youtube.com/embed/dQw4w9WgXcQ\" />"}}]]
+        (is (= dashcards
+               (api.dashboard/update-cards-for-copy dashcards
+                                                    {1 {:id 1}}
+                                                    nil
                                                     nil)))))))
 
 (deftest copy-dashboard-cards-test
@@ -2142,7 +2154,7 @@
                                                                    :parameter_mappings     [{:parameter_id "abc"
                                                                                              :card_id      123
                                                                                              :hash         "abc"
-                                                                                             :target       "foo"}]
+                                                                                             :target       [:dimension [:template-tag "foo"]]}]
                                                                    :visualization_settings {}}]
                                                       :tabs      []}))]
           ;; extra sure here because the dashcard we given has a negative id
@@ -2154,7 +2166,7 @@
                    :row                        4
                    :series                     []
                    :dashboard_tab_id           nil
-                   :parameter_mappings         [{:parameter_id "abc" :card_id 123, :hash "abc", :target "foo"}]
+                   :parameter_mappings         [{:parameter_id "abc" :card_id 123, :hash "abc", :target ["dimension" ["template-tag" "foo"]]}]
                    :visualization_settings     {}
                    :created_at                 true
                    :updated_at                 true
@@ -2168,7 +2180,7 @@
                    :size_y                 4
                    :col                    4
                    :row                    4
-                   :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
+                   :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target [:dimension [:template-tag "foo"]]}]
                    :visualization_settings {}}]
                  (map (partial into {})
                       (t2/select [:model/DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
@@ -2326,7 +2338,7 @@
                                                          :parameter_mappings     [{:parameter_id "abc"
                                                                                    :card_id      123
                                                                                    :hash         "abc"
-                                                                                   :target       "foo"}]
+                                                                                   :target       [:dimension [:template-tag "foo"]]}]
                                                          :visualization_settings {}}]
                                             :tabs      []}))))))
 
@@ -2647,60 +2659,64 @@
                      form))
                  x))
 
+(defn- fake-query [x]
+  (lib/native-query (lib.tu/mock-metadata-provider {:database (assoc meta/database :id 55001)})
+                    (format "SELECT %s" (pr-str x))))
+
 (deftest ^:parallel dashcard->query-hashes-test
   (doseq [[dashcard expected]
-          [[{:card {:dataset_query {:database 1}}}
-            ["k9Y1XOETkQ31kX+S9DXW/cbDPGF7v4uS5f6dZsXjMRs="
-             "I6mv3dlN4xat/6R+KQVTLDqNe8/B0oymcDnW/aKppwY="]]
+          [[{:card {:dataset_query (fake-query 1)}}
+            ["S7xKRDQIVA4k/rzNGAc6PyMCvMiYs2MTkAJK5gwBGHU="
+             "F2yzgei1xfnQhNcakBq9c/q3lg0K9QDtWUHYOKGpBsM="]]
 
-           [{:card   {:dataset_query {:database 2}}
-             :series [{:dataset_query {:database 3}}
-                      {:dataset_query {:database 4}}]}
-            ["WbWqdd3zu9zvVCVWh8X9ASWLqtaB1rZlU0gKLEuCK0I="
-             "ysJFZA3Gd0vKIlrZWJDYBLCIQBf10X6QjuFtV/8QzbE="
-             "pjdBPUgWnbVvMf0VsETyeB6smRC8SYejyTZIVPh2m3I="
-             "wf9reZSm1Pz+WDHRYtZXmfQ39U+17mq7u28MqPR8fQI="
-             "rP5XFvxpRDCPXeM0A2Z7uoUkH0zwV0Z0o22obH3c1Uk="
-             "r+C7dsdRXBN32GK+QHLA/n9pr1hzjteFzDCVezLzImQ="]]]]
+           [{:card   {:dataset_query (fake-query 2)}
+             :series [{:dataset_query (fake-query 3)}
+                      {:dataset_query (fake-query 4)}]}
+            ["Kwc08fDZ5ei23pNS0lwowiWGfBi10DWnTDWYy77Ytp8="
+             "Vr+1nZAZnqppFuXuxTZSo4tD4QbKzHXF/zeXsYMw8sg="
+             "LTCeTqzWT5nW1vzfopiEmat+O0dxfB493ufMf/XGRiU="
+             "uYWx5Pm/jhmibG/8+DM44fiPeWTSs5YXYN159yOr1Vs="
+             "SIMWVAbMGgvozr1bSIWol6uCKKUDEqCL469OsN4dlsI="
+             "thIvyA4Q/suKFAQiq0xJJLtSML2i5UHgw9WoTOdRGs4="]]]]
     (testing (pr-str dashcard)
       (is (= expected
              (base-64-encode-byte-arrays (#'api.dashboard/dashcard->query-hashes dashcard)))))))
 
 (deftest ^:parallel dashcards->query-hashes-test
-  (is (= ["k9Y1XOETkQ31kX+S9DXW/cbDPGF7v4uS5f6dZsXjMRs="
-          "I6mv3dlN4xat/6R+KQVTLDqNe8/B0oymcDnW/aKppwY="
-          "WbWqdd3zu9zvVCVWh8X9ASWLqtaB1rZlU0gKLEuCK0I="
-          "ysJFZA3Gd0vKIlrZWJDYBLCIQBf10X6QjuFtV/8QzbE="
-          "pjdBPUgWnbVvMf0VsETyeB6smRC8SYejyTZIVPh2m3I="
-          "wf9reZSm1Pz+WDHRYtZXmfQ39U+17mq7u28MqPR8fQI="
-          "rP5XFvxpRDCPXeM0A2Z7uoUkH0zwV0Z0o22obH3c1Uk="
-          "r+C7dsdRXBN32GK+QHLA/n9pr1hzjteFzDCVezLzImQ="]
+  (is (= ["S7xKRDQIVA4k/rzNGAc6PyMCvMiYs2MTkAJK5gwBGHU="
+          "F2yzgei1xfnQhNcakBq9c/q3lg0K9QDtWUHYOKGpBsM="
+          "Kwc08fDZ5ei23pNS0lwowiWGfBi10DWnTDWYy77Ytp8="
+          "Vr+1nZAZnqppFuXuxTZSo4tD4QbKzHXF/zeXsYMw8sg="
+          "LTCeTqzWT5nW1vzfopiEmat+O0dxfB493ufMf/XGRiU="
+          "uYWx5Pm/jhmibG/8+DM44fiPeWTSs5YXYN159yOr1Vs="
+          "SIMWVAbMGgvozr1bSIWol6uCKKUDEqCL469OsN4dlsI="
+          "thIvyA4Q/suKFAQiq0xJJLtSML2i5UHgw9WoTOdRGs4="]
          (base-64-encode-byte-arrays
           (#'api.dashboard/dashcards->query-hashes
-           [{:card {:dataset_query {:database 1}}}
-            {:card   {:dataset_query {:database 2}}
-             :series [{:dataset_query {:database 3}}
-                      {:dataset_query {:database 4}}]}])))))
+           [{:card {:dataset_query (fake-query 1)}}
+            {:card   {:dataset_query (fake-query 2)}
+             :series [{:dataset_query (fake-query 3)}
+                      {:dataset_query (fake-query 4)}]}])))))
 
-(deftest add-query-average-duration-to-dashcards-test
-  (is (= [{:card   {:dataset_query {:database 1}, :query_average_duration 111}
+(deftest ^:parallel add-query-average-duration-to-dashcards-test
+  (is (= [{:card   {:dataset_query (fake-query 1), :query_average_duration 111}
            :series []}
-          {:card   {:dataset_query {:database 2}, :query_average_duration 333}
-           :series [{:dataset_query {:database 3}, :query_average_duration 555}
-                    {:dataset_query {:database 4}, :query_average_duration 777}]}]
+          {:card   {:dataset_query (fake-query 2), :query_average_duration 333}
+           :series [{:dataset_query (fake-query 3), :query_average_duration 555}
+                    {:dataset_query (fake-query 4), :query_average_duration 777}]}]
          (#'api.dashboard/add-query-average-duration-to-dashcards
-          [{:card {:dataset_query {:database 1}}}
-           {:card   {:dataset_query {:database 2}}
-            :series [{:dataset_query {:database 3}}
-                     {:dataset_query {:database 4}}]}]
-          (into {} (for [[k v] {"k9Y1XOETkQ31kX+S9DXW/cbDPGF7v4uS5f6dZsXjMRs=" 111
-                                "K6A0F7tRxQ+2xa33kigBwIvUvU+F95UUccWjGTx8kuI=" 222
-                                "WbWqdd3zu9zvVCVWh8X9ASWLqtaB1rZlU0gKLEuCK0I=" 333
-                                "NzgQC4fjR52npCkZV7IiZDb9NfcmKbWHP4krFzkLPyA=" 444
-                                "pjdBPUgWnbVvMf0VsETyeB6smRC8SYejyTZIVPh2m3I=" 555
-                                "dEXUTWQI2L0Z/Bvrb2LTVVPl2Qg/56hKIPb+I2a4mG8=" 666
-                                "rP5XFvxpRDCPXeM0A2Z7uoUkH0zwV0Z0o22obH3c1Uk=" 777
-                                "Wn9nubTcKZX5862pHFaibkqqbsqAfGa3gVhN3D4FrJw=" 888}]
+          [{:card {:dataset_query (fake-query 1)}}
+           {:card   {:dataset_query (fake-query 2)}
+            :series [{:dataset_query (fake-query 3)}
+                     {:dataset_query (fake-query 4)}]}]
+          (into {} (for [[k v] {"S7xKRDQIVA4k/rzNGAc6PyMCvMiYs2MTkAJK5gwBGHU=" 111
+                                "F2yzgei1xfnQhNcakBq9c/q3lg0K9QDtWUHYOKGpBsM=" 222
+                                "Kwc08fDZ5ei23pNS0lwowiWGfBi10DWnTDWYy77Ytp8=" 333
+                                "Vr+1nZAZnqppFuXuxTZSo4tD4QbKzHXF/zeXsYMw8sg=" 444
+                                "LTCeTqzWT5nW1vzfopiEmat+O0dxfB493ufMf/XGRiU=" 555
+                                "uYWx5Pm/jhmibG/8+DM44fiPeWTSs5YXYN159yOr1Vs=" 666
+                                "SIMWVAbMGgvozr1bSIWol6uCKKUDEqCL469OsN4dlsI=" 777
+                                "thIvyA4Q/suKFAQiq0xJJLtSML2i5UHgw9WoTOdRGs4=" 888}]
                      [(mapv int (codec/base64-decode k)) v]))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -3093,61 +3109,63 @@
                 :values          [["African"] ["American"] ["Asian"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-values-url (:id dashboard) (:static-category param-keys)))))
-
         (is (= {:has_more_values false
                 :values          [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-values-url (:id dashboard) (:static-category-label param-keys))))))
-
       (testing "we could search the values"
         (is (= {:has_more_values false
                 :values          [["African"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-search-url (:id dashboard) (:static-category param-keys) "af"))))
-
         (is (= {:has_more_values false
                 :values          [["African" "Af"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-search-url (:id dashboard) (:static-category-label param-keys) "f")))))
-
       (testing "we could edit the values list"
-        ;; TODO add tests for schema check
         (let [dashboard (mt/user-http-request :rasta :put 200 (str "dashboard/" (:id dashboard))
-                                              {:parameters [{:name                  "Static Category"
-                                                             :slug                  "static_category"
-                                                             :id                    "_STATIC_CATEGORY_"
-                                                             :type                  "category"
-                                                             :values_query_type     "search"
-                                                             :values_source_type    "static-list"
+                                              {:parameters [{:name                 "Static Category"
+                                                             :slug                 "static_category"
+                                                             :id                   "_STATIC_CATEGORY_"
+                                                             :type                 "category"
+                                                             :values_query_type    "search"
+                                                             :values_source_type   "static-list"
                                                              :values_source_config {"values" ["BBQ" "Bakery" "Bar"]}}]})]
-          (is (= [{:name                  "Static Category"
-                   :slug                  "static_category"
-                   :id                    "_STATIC_CATEGORY_"
-                   :type                  "category"
-                   :values_query_type     "search"
-                   :values_source_type    "static-list"
+          (is (= [{:name                 "Static Category"
+                   :slug                 "static_category"
+                   :id                   "_STATIC_CATEGORY_"
+                   :type                 "category"
+                   :values_query_type    "search"
+                   :values_source_type   "static-list"
                    :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
-                 (:parameters dashboard))))))
+                 (:parameters dashboard))))))))
 
-    (testing "source-options must be a map and sourcetype must be `card` or `static-list` must be a string"
-      (is (= "nullable sequence of parameter must be a map with :id and :type keys"
+(deftest ^:parallel dashboard-with-static-list-parameters-test-2
+  (testing "A dashboard that has parameters that has static values"
+    (testing "`values_source_config` must be a map and `values_source_type` must be `card` or `static-list` must be a string"
+      (is (= {:values_source_type "nullable enum of :static-list, :card"}
              (get-in (mt/user-http-request :rasta :post 400 "dashboard"
                                            {:name       "a dashboard"
-                                            :parameters [{:id                    "_value_"
-                                                          :name                  "value"
-                                                          :type                  "category"
-                                                          :values_source_type    "random-type"
+                                            :parameters [{:id                   "_value_"
+                                                          :name                 "value"
+                                                          :type                 "category"
+                                                          :values_source_type   "random-type"
                                                           :values_source_config {"values" [1 2 3]}}]})
-                     [:errors :parameters])))
-      (is (= "nullable sequence of parameter must be a map with :id and :type keys"
-             (get-in (mt/user-http-request :rasta :post 400 "dashboard"
-                                           {:name       "a dashboard"
-                                            :parameters [{:id                    "_value_"
-                                                          :name                  "value"
-                                                          :type                  "category"
-                                                          :values_source_type    "static-list"
-                                                          :values_source_config []}]})
                      [:errors :parameters]))))))
+
+(deftest ^:parallel dashboard-with-static-list-parameters-test-2b
+  (testing "A dashboard that has parameters that has static values"
+    (testing "`values_source_config` must be a map and `values_source_type` must be `card` or `static-list` must be a string"
+      ;; actually, this works now because normalization will remove `values_source_config` when it's not a map.
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (is (=? {:parameters [{:values_source_config nil}]}
+                (mt/user-http-request :rasta :post 200 "dashboard"
+                                      {:name       "a dashboard"
+                                       :parameters [{:id                   "_value_"
+                                                     :name                 "value"
+                                                     :type                 "category"
+                                                     :values_source_type   "static-list"
+                                                     :values_source_config []}]})))))))
 
 (deftest native-query-get-params-test
   (testing "GET /api/dashboard/:id/params/:param-key/values works for native queries"
@@ -3163,7 +3181,7 @@
         (let [metadata (-> (:dataset_query native-card)
                            qp/process-query :data :results_metadata :columns)]
           (is (seq metadata) "Did not get metadata")
-          (t2/update! 'Card {:id model-id}
+          (t2/update! :model/Card {:id model-id}
                       {:result_metadata (assoc-in metadata [0 :id]
                                                   (mt/id :products :category))}))
         ;; ...so instead we create a question on top of this model (note that
@@ -3205,13 +3223,11 @@
             (is (= {:values          [["Bar"] ["Gay Bar"] ["Juice Bar"]]
                     :has_more_values false}
                    (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))
-
       (mt/let-url [url (chain-filter-search-url dashboard (:category-name param-keys) "house" (:price param-keys) 4)]
         (testing "\nShow me names of categories that include 'house' that have expensive venues (price = 4)"
           (is (= {:values          [["Steakhouse"]]
                   :has_more_values false}
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
-
       (testing "Should require a non-empty query"
         (doseq [query ["   " "\n"]]
           (mt/let-url [url (chain-filter-search-url dashboard (:category-name param-keys) query)]
@@ -3220,8 +3236,10 @@
         (doseq [query [nil ""]]
           (mt/let-url [url (chain-filter-search-url dashboard (:category-name param-keys) query)]
             (is (= "API endpoint does not exist."
-                   (mt/user-http-request :rasta :get 404 url)))))))
+                   (mt/user-http-request :rasta :get 404 url)))))))))
 
+(deftest chain-filter-search-test-2
+  (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
     (testing "Should require perms for the Dashboard"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection]
@@ -3235,7 +3253,6 @@
   (mt/with-temp [:model/Dashboard {dashboard-id :id}]
     (testing "GET /api/dashboard/:id/params/:param-key/values returns 400 if param not found"
       (mt/user-http-request :rasta :get 400 (format "dashboard/%d/params/non-existing-param/values" dashboard-id)))
-
     (testing "GET /api/dashboard/:id/params/:param-key/search/:query returns 400 if param not found"
       (mt/user-http-request :rasta :get 400 (format "dashboard/%d/params/non-existing-param/search/bar" dashboard-id)))))
 
@@ -3248,7 +3265,8 @@
                                            :card_id      (:id card)
                                            :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
                                           {:parameter_id "_PRICE_"
-                                           :card_id      (:id card)}]})
+                                           :card_id      (:id card)
+                                           :target       [:dimension [:template-tag "WOW"]]}]})
         (testing "Since the _PRICE_ param is not mapped to a valid Field, it should get ignored"
           (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_" "_PRICE_" 4)]
             (is (= {:values          [["African"] ["American"] ["Artisan"]]
@@ -3257,7 +3275,7 @@
 
 (deftest chain-filter-human-readable-values-remapping-test
   (testing "Chain filtering for Fields that have Human-Readable values\n"
-    (chain-filter-test/with-human-readable-values-remapping
+    (chain-filter-test/with-human-readable-values-remapping!
       (with-chain-filter-fixtures [{:keys [dashboard]}]
         (testing "GET /api/dashboard/:id/params/:param-key/values"
           (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_ID_" "_PRICE_" 4)]
@@ -3287,7 +3305,6 @@
                                     [16 "Pacific Dining Car - Santa Monica"]]
                   :has_more_values false}
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
-
       (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
         (mt/let-url [url (chain-filter-search-url dashboard "_ID_" "fish")]
           (is (= {:values          [[90 "Señor Fish"]]
@@ -3302,7 +3319,7 @@
 
 (deftest chain-filter-fk-field-to-field-remapping-test
   (testing "Chain filtering for Fields that have a FK Field -> Field remapping\n"
-    (chain-filter-test/with-fk-field-to-field-remapping
+    (chain-filter-test/with-fk-field-to-field-remapping!
       (with-chain-filter-fixtures [{:keys [dashboard]}]
         (testing "GET /api/dashboard/:id/params/:param-key/values"
           (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_ID_" "_PRICE_" 4)]
@@ -3316,7 +3333,7 @@
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
-(deftest chain-filter-multiple-test
+(deftest ^:parallel chain-filter-multiple-test
   (testing "Chain filtering works when a few filters are specified"
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
       (testing "GET /api/dashboard/:id/params/:param-key/values"
@@ -3324,12 +3341,22 @@
                                                   (:not-category-name param-keys) "American")]
           (is (= {:values          [["African"] ["Artisan"] ["Asian"]]
                   :has_more_values false}
-                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
+                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))
+
+(deftest ^:parallel chain-filter-multiple-test-2
+  (testing "Chain filtering works when a few filters are specified"
+    (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+      (testing "GET /api/dashboard/:id/params/:param-key/values"
         (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
                                                   (:category-contains param-keys) "m")]
           (is (= {:values          [["American"] ["Comedy Club"] ["Dim Sum"]]
                   :has_more_values false}
-                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
+                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))
+
+(deftest ^:parallel chain-filter-multiple-test-3
+  (testing "Chain filtering works when a few filters are specified"
+    (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+      (testing "GET /api/dashboard/:id/params/:param-key/values"
         (testing "contains is case insensitive"
           (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
                                                     (:not-category-name param-keys) "American"
@@ -3410,7 +3437,6 @@
                                                                                                   :value_field (mt/$ids $venues.name)}}]}]
             (mt/let-url [url (chain-filter-values-url dashboard "abc")]
               (is (= mock-chain-filter-result (mt/user-http-request :rasta :get 200 url))))))
-
         (testing "if card is archived"
           (mt/with-temp [:model/Card       {card-id :id} {:archived true}
                          :model/Dashboard  dashboard     {:parameters    [{:id                   "abc"
@@ -3508,7 +3534,7 @@
               (mt/let-url [url (chain-filter-values-url dash-id (:id param))]
                 (is (some? (mt/user-http-request :rasta :get 200 url))))))))))
 
-(deftest valid-filter-fields-test
+(deftest ^:parallel valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"
     (letfn [(result= [expected {:keys [filtered filtering]}]
               (testing (format "\nGET dashboard/params/valid-filter-fields")
@@ -3524,16 +3550,19 @@
                       %categories.name (sort [%venues.price %categories.name])}
                      {:filtered [%venues.price %categories.name], :filtering [%categories.name %venues.price]}))
           (testing "filtered-ids cannot be nil"
-            (is (= {:errors {:filtered "vector of value must be an integer greater than zero."}
+            (is (= {:errors {:filtered "vector of Valid Field ID"}
                     :specific-errors
                     {:filtered ["missing required key, received: nil"]}}
-                   (mt/user-http-request :rasta :get 400 "dashboard/params/valid-filter-fields" :filtering [%categories.name]))))))
-      (testing "should check perms for the Fields in question"
-        (mt/with-temp-copy-of-db
-          (perms.test-util/with-no-data-perms-for-all-users!
-            (is (= "You don't have permissions to do that."
-                   (mt/$ids (mt/user-http-request :rasta :get 403 "dashboard/params/valid-filter-fields"
-                                                  :filtered [%venues.price] :filtering [%categories.name]))))))))))
+                   (mt/user-http-request :rasta :get 400 "dashboard/params/valid-filter-fields" :filtering [%categories.name])))))))))
+
+(deftest valid-filter-fields-test-2
+  (testing "GET /api/dashboard/params/valid-filter-fields"
+    (testing "should check perms for the Fields in question"
+      (mt/with-temp-copy-of-db
+        (perms.test-util/with-no-data-perms-for-all-users!
+          (is (= "You don't have permissions to do that."
+                 (mt/$ids (mt/user-http-request :rasta :get 403 "dashboard/params/valid-filter-fields"
+                                                :filtered [%venues.price] :filtering [%categories.name])))))))))
 
 (deftest uuid-id-column-is-not-implicitly-remapped-test
   (mt/test-drivers
@@ -3607,7 +3636,6 @@
                 (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
                 (is (malli= (dashboard-card-query-expected-results-schema)
                             (mt/user-http-request :rasta :post 202 (url)))))))
-
           (testing "Validation"
             (testing "404s"
               (testing "Should return 404 if Dashboard doesn't exist"
@@ -3616,7 +3644,6 @@
               (testing "Should return 404 if Card doesn't exist"
                 (is (= "Not found."
                        (mt/user-http-request :rasta :post 404 (url :card-id Integer/MAX_VALUE))))))
-
             (testing "perms"
               (mt/with-temp [:model/Collection {collection-id :id}]
                 (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
@@ -3978,7 +4005,7 @@
                    {:query (format "insert into types (%s) values ({{%s}})"
                                    (u/upper-case-en field-name)
                                    field-name)
-                    :template-tags {field-name {:id field-name :name field-name :type :text :display_name field-name}}})})
+                    :template-tags {field-name {:id field-name, :name field-name, :type :text, :display-name field-name}}})})
 
 (deftest dashcard-action-execution-type-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :mysql)
@@ -5064,14 +5091,16 @@
       (is (not (t2/select-one-fn :archived :model/Dashboard dash-id)))
       (is (not (t2/select-one-fn :archived :model/Card card-id))))))
 
-(deftest dashboard-questions-are-archived-when-unused-and-vice-versa
+(deftest ^:parallel dashboard-questions-are-archived-when-unused-and-vice-versa
   (testing "The dashboard question is archived when it's removed from the dashboard"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:dashboard_id dash-id}
                    :model/DashboardCard _ {:card_id card-id :dashboard_id dash-id}]
       (mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id) {:dashcards []})
       (is (not (t2/exists? :model/DashboardCard :card_id card-id :dashboard_id dash-id)))
-      (is (t2/select-one-fn :archived :model/Card card-id))))
+      (is (t2/select-one-fn :archived :model/Card card-id)))))
+
+(deftest ^:parallel dashboard-questions-are-archived-when-unused-and-vice-versa-2
   (testing "The dashboard question is unarchived when it's re-added to the dashboard"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:dashboard_id dash-id}]
@@ -5083,13 +5112,15 @@
       (is (t2/exists? :model/DashboardCard :card_id card-id :dashboard_id dash-id))
       (is (not (t2/select-one-fn :archived :model/Card card-id))))))
 
-(deftest dashboard-items-works
+(deftest ^:parallel dashboard-items-works
   (testing "Dashboard items is empty when the dashboard is a normal dashboard w/o DQs"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:card_id card-id :dashboard_id dash-id}]
       (is (= {:total 0 :data [] :models [] :limit nil :offset nil}
-             (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))))))
+             (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items")))))))
+
+(deftest ^:parallel dashboard-items-works-2
   (testing "Dashboard items is present when the dashboard has DQs"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:dashboard_id dash-id}
@@ -5101,7 +5132,9 @@
               :models ["card"]}
              (update (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))
                      :data
-                     #(map (fn [card] (select-keys card [:id])) %))))))
+                     #(map (fn [card] (select-keys card [:id])) %)))))))
+
+(deftest ^:parallel dashboard-items-works-3
   (testing "DQs don't appear twice even if they appear multiple times in the dashboard"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:dashboard_id dash-id}
@@ -5116,7 +5149,7 @@
                      :data
                      #(map (fn [card] (select-keys card [:id])) %)))))))
 
-(deftest dashboard-items-is-the-same-as-collection-items
+(deftest ^:parallel dashboard-items-is-the-same-as-collection-items
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Dashboard {dash-id :id} {}
                  :model/Card _ {:collection_id coll-id}
@@ -5382,6 +5415,25 @@
                                           :size_y  4}]})
       (is (not (nil? (t2/select-one :model/PulseCard :card_id new-card-id)))))))
 
+(deftest update-dashboard-embedding-type-to-nil-test
+  (testing "PUT /api/dashboard/:id"
+    (testing "Admin should be able to set embedding_type to nil to clear it"
+      (mt/with-temporary-setting-values [enable-embedding-static true]
+        (mt/with-temp [:model/Dashboard dashboard {:enable_embedding true
+                                                   :embedding_type "static-legacy"}]
+          (with-dashboards-in-writeable-collection! [dashboard]
+            (testing "Verify initial state has embedding_type set"
+              (is (= "static-legacy"
+                     (t2/select-one-fn :embedding_type :model/Dashboard :id (u/the-id dashboard)))))
+            (testing "Setting embedding_type to nil should clear it"
+              (let [response (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard))
+                                                   {:embedding_type nil})]
+                (testing "Response should contain nil embedding_type"
+                  (is (= nil (:embedding_type response))))
+                (testing "Database should contain nil embedding_type"
+                  (is (= nil
+                         (t2/select-one-fn :embedding_type :model/Dashboard :id (u/the-id dashboard)))))))))))))
+
 (deftest save-dashboard-test
   (let [response (mt/user-http-request :crowberto :post 200 "dashboard/save" {:auto_apply_filters true,
                                                                               :name               "Test Dashboard",
@@ -5390,3 +5442,114 @@
                                                                               })]
     (is (partial= {:name       "Test Dashboard"
                    :creator_id (mt/user->id :crowberto)} response))))
+
+(deftest param-mapped-SAME-fields-filtered-cards-test
+  (testing "Values for param mapped to _same_ field in _different_ cards containing filters are computed correctly (#41684)"
+    (let [mp (mt/metadata-provider)
+          param-key "p"
+          base-queries [(-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                            (lib/filter (lib/in (lib.metadata/field mp (mt/id :categories :name))
+                                                "African" "Artisan" "Bakery")))
+
+                        (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                            (lib/filter (lib/in (lib.metadata/field mp (mt/id :categories :name))
+                                                "African" "Artisan")))]
+          tests [{:test-case "single level queries"
+                  :queries base-queries
+                  :expectations [["African"] ["Artisan"] ["Bakery"]]}
+
+                 {:test-case "nested filters"
+                  :queries (mapv (fn [query]
+                                   ;; dummy stage
+                                   (-> (lib/append-stage query)
+                                       (lib/expression "e" (lib/concat (lib.metadata/field mp (mt/id :categories :name))
+                                                                       "XXX"))))
+                                 base-queries)
+                  :expectations [["African"] ["Artisan"] ["Bakery"]]}]]
+      (doseq [{:keys [test-case queries expectations]} tests]
+        (mt/with-temp
+          [:model/Card
+           c1
+           {:dataset_query (queries 0)}
+
+           :model/Card
+           c2
+           {:dataset_query (queries 1)}
+
+           :model/Dashboard
+           d
+           {:parameters [{:id param-key
+                          :name "filtered names filter"
+                          :slug param-key
+                          :type "string/="
+                          :sectionId "string"}]}
+
+           :model/DashboardCard
+           _
+           {:dashboard_id (:id d)
+            :card_id (:id c1)
+            :parameter_mappings [{:card_id (:id c1)
+                                  :parameter_id param-key
+                                  :target ["dimension" ["field" (mt/id :categories :name) nil]]}]}
+
+           :model/DashboardCard
+           _
+           {:dashboard_id (:id d)
+            :card_id (:id c2)
+            :parameter_mappings [{:card_id (:id c2)
+                                  :parameter_id param-key
+                                  :target ["dimension" ["field" (mt/id :categories :name) nil]]}]}]
+
+          (testing test-case
+            (is (=? {:values expectations}
+                    (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values"
+                                                                      (:id d) param-key))))))))))
+
+(deftest param-mapped-DIFFERENT-fields-filtered-cards-test
+  (testing "Values for param mapped to different fields in cards containing filters are computed correctly (#41684)"
+    (let [mp (mt/metadata-provider)
+          param-key "p"]
+      (mt/with-temp
+        [:model/Card
+         c1
+         {:dataset_query  (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                              (lib/filter (lib/in (lib.metadata/field mp (mt/id :categories :name))
+                                                  "African" "Artisan" "Bakery")))}
+
+         :model/Card
+         c2
+         {:dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                             (lib/filter (lib/in (lib.metadata/field mp (mt/id :venues :name))
+                                                 "Red Medicine" "Krua Siri"))
+                             (lib/append-stage)
+                             (lib/expression "e" (lib/concat (lib.metadata/field mp (mt/id :categories :name))
+                                                             "XXX")))}
+
+         :model/Dashboard
+         d
+         {:parameters [{:id param-key
+                        :name "filtered names filter"
+                        :slug param-key
+                        :type "string/="
+                        :sectionId "string"}]}
+
+         :model/DashboardCard
+         _
+         {:dashboard_id (:id d)
+          :card_id (:id c1)
+          :parameter_mappings [{:card_id (:id c1)
+                                :parameter_id param-key
+                                :target ["dimension" ["field" (mt/id :categories :name) nil]]}]}
+
+         :model/DashboardCard
+         _
+         {:dashboard_id (:id d)
+          :card_id (:id c2)
+          :parameter_mappings [{:card_id (:id c2)
+                                :parameter_id param-key
+                                :target ["dimension" ["field" (mt/id :venues :name) nil]]}]}]
+
+        (testing "Param mapped to different fields with different filters"
+          (is (=? {:values [["African"] ["Artisan"] ["Bakery"] ["Krua Siri"] ["Red Medicine"]]}
+                  (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values"
+                                                                    (:id d) param-key)))))))))

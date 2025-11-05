@@ -110,7 +110,9 @@
       "https://example.com"     {:protocol "https" :domain "example.com" :port nil}
       "http://example.com:8080" {:protocol "http" :domain "example.com" :port "8080"}
       "example.com:80"          {:protocol nil :domain "example.com" :port "80"}
-      "example.com:*"           {:protocol nil :domain "example.com" :port "*"}))
+      "example.com:*"           {:protocol nil :domain "example.com" :port "*"}
+      "app://localhost"         {:protocol "app" :domain "localhost" :port nil}
+      "capacitor://localhost"   {:protocol "capacitor" :domain "localhost" :port nil}))
   (testing "Should return nil for invalid urls"
     (are [url] (nil? (mw.security/parse-url url))
       "ftp://example.com"
@@ -141,9 +143,11 @@
     (is (mw.security/approved-protocol? "http" "http"))
     (is (mw.security/approved-protocol? "https" "https"))
     (is (not (mw.security/approved-protocol? "http" "https"))))
-  (testing "Nil reference should allow any protocol"
+  (testing "Nil reference should allow only http/https"
     (is (mw.security/approved-protocol? "http" nil))
-    (is (mw.security/approved-protocol? "https" nil))))
+    (is (mw.security/approved-protocol? "https" nil))
+    (is (not (mw.security/approved-protocol? "app" nil)))
+    (is (not (mw.security/approved-protocol? "capacitor" nil)))))
 
 (deftest ^:parallel test-approved-port?
   (testing "Exact port match"
@@ -184,10 +188,11 @@
       (is (mw.security/approved-origin? "https://example3.com" approved))))
   (testing "Different protocol should fail"
     (is (not (mw.security/approved-origin? "https://example1.com" "http://example1.com"))))
-  (testing "Origins without protocol should accept both http and https"
+  (testing "Origins without protocol should accept only http and https"
     (let [approved "example.com"]
       (is (mw.security/approved-origin? "http://example.com" approved))
-      (is (mw.security/approved-origin? "https://example.com" approved))))
+      (is (mw.security/approved-origin? "https://example.com" approved))
+      (is (not (mw.security/approved-origin? "app://example.com" approved)))))
   (testing "Different ports should fail"
     (is (not (mw.security/approved-origin? "http://example.com:3000" "http://example.com:3003"))))
   (testing "Should allow anything with *"

@@ -1,7 +1,6 @@
 import cx from "classnames";
 import _ from "underscore";
 
-import ColorS from "metabase/css/core/colors.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard";
@@ -9,7 +8,6 @@ import { DashboardHeaderButtonRow } from "metabase/dashboard/components/Dashboar
 import { useDashboardContext } from "metabase/dashboard/context";
 import { SetTitle } from "metabase/hoc/Title";
 import { isWithinIframe } from "metabase/lib/dom";
-import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
@@ -22,7 +20,6 @@ export function PublicOrEmbeddedDashboardView() {
     setParameterValueToDefault,
     dashboard,
     isFullscreen,
-    isNightMode,
     selectedTabId,
     parameters,
     headerParameters,
@@ -89,9 +86,6 @@ export function PublicOrEmbeddedDashboardView() {
       <FullWidthContainer
         className={cx({
           [DashboardS.DashboardFullscreen]: isFullscreen,
-          [DashboardS.DashboardNight]: isNightMode,
-          [ParametersS.DashboardNight]: isNightMode,
-          [ColorS.DashboardNight]: isNightMode,
         })}
         mt={isCompactHeader ? "xs" : "sm"}
       >

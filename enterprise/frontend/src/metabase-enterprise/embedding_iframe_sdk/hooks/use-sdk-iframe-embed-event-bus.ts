@@ -8,6 +8,7 @@ import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/em
 import type {
   SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
+  SdkIframeEmbedTagMessage,
 } from "../types/embed";
 
 type Handler = (event: MessageEvent<SdkIframeEmbedMessage>) => void;
@@ -17,13 +18,15 @@ type UsageAnalytics = {
   embedHostUrl: string;
 };
 
+const sendMessage = (message: SdkIframeEmbedTagMessage) => {
+  window.parent.postMessage(message, "*");
+};
+
 export function useSdkIframeEmbedEventBus({
   onSettingsChanged,
 }: {
   onSettingsChanged?: (settings: SdkIframeEmbedSettings) => void;
-}): {
-  embedSettings: SdkIframeEmbedSettings | null;
-} {
+}) {
   const [embedSettings, setEmbedSettings] =
     useState<SdkIframeEmbedSettings | null>(null);
   const [usageAnalytics, setUsageAnalytics] = useState<UsageAnalytics | null>(
@@ -52,7 +55,7 @@ export function useSdkIframeEmbedEventBus({
     window.addEventListener("message", messageHandler);
 
     // notify embed.js that the iframe is ready
-    window.parent.postMessage({ type: "metabase.embed.iframeReady" }, "*");
+    sendMessage({ type: "metabase.embed.iframeReady" });
 
     return () => {
       window.removeEventListener("message", messageHandler);
@@ -71,7 +74,7 @@ export function useSdkIframeEmbedEventBus({
     }
   }, [embedSettings?.instanceUrl, usageAnalytics]);
 
-  return { embedSettings };
+  return { sendMessage, embedSettings };
 }
 
 export function isMetabaseInstance(instanceUrl: string, embedHostUrl: string) {

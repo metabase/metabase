@@ -91,7 +91,7 @@ export const getAxisNameDefaultOption = (
   nameLocation: "middle",
   nameRotate: rotate,
   nameTextStyle: {
-    color: getColor("text-dark"),
+    color: getColor("text-primary"),
     fontSize: theme.cartesian.label.fontSize,
     fontWeight: CHART_STYLE.axisName.weight,
     fontFamily,
@@ -105,7 +105,7 @@ export const getTicksDefaultOption = ({
 }: RenderingContext) => {
   return {
     hideOverlap: true,
-    color: getColor("text-dark"),
+    color: getColor("text-primary"),
     fontSize: theme.cartesian.label.fontSize,
     fontWeight: CHART_STYLE.axisTicks.weight,
     fontFamily,
@@ -187,6 +187,7 @@ const getCommonDimensionAxisOptions = (
         : undefined,
     ),
     mainType: "xAxis" as const,
+    nameMoveOverlap: false,
     axisTick: {
       show: false,
     },
@@ -398,6 +399,7 @@ export const buildMetricAxis = (
 
   return {
     show: true,
+    nameMoveOverlap: false,
     scale: !!settings["graph.y_axis.unpin_from_zero"],
     type: "value",
     splitNumber: axisModel.splitNumber,

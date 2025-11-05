@@ -5,7 +5,16 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import type { UtmProps } from "metabase/selectors/settings";
-import { Card, Flex, Group, Icon, Stack, Stepper, Text } from "metabase/ui";
+import {
+  Card,
+  Flex,
+  Grid,
+  Group,
+  Icon,
+  Stack,
+  Stepper,
+  Text,
+} from "metabase/ui";
 
 import { DocsLink } from "../DocsLink";
 
@@ -80,7 +89,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
             className={cx(S.step, isDone && S.stepDone)}
             icon={isDone ? <Icon name="check" /> : undefined}
             description={
-              <Group align="stretch">
+              <Grid>
                 {step.cards.map((card) => {
                   const onClick =
                     card.clickAction?.type === "click"
@@ -90,94 +99,97 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                   const isNextCard = nextCard && nextCard.id === card.id;
 
                   return (
-                    <CardAction card={card} key={card.id}>
-                      <Card
-                        className={cx(S.stepCard, {
-                          [S.requiredStepCard]: !card.optional,
-                          [S.optionalStepCard]: card.optional,
-                          [S.lockedStepCard]: card.locked,
-                          [S.nextStepCard]: isNextCard,
-                        })}
-                        component={onClick ? "button" : undefined}
-                        onClick={onClick}
-                        disabled={card.locked}
-                        data-testid={`step-card-${card.id}`}
-                        data-next-step={isNextCard}
-                      >
-                        <Stack justify="space-between" h="100%">
-                          <Stack gap="xs" h="100%">
-                            <Text
-                              size={card.optional ? "md" : "lg"}
-                              fw="bold"
-                              c={
-                                card.done
-                                  ? "var(--mb-color-text-secondary)"
-                                  : "var(--mb-color-text-primary)"
-                              }
-                            >
-                              {card.title}
-                            </Text>
+                    <Grid.Col
+                      span={{ xs: 12, md: card.optional ? 4 : 8 }}
+                      key={card.id}
+                    >
+                      <CardAction card={card}>
+                        <Card
+                          className={cx(S.stepCard, {
+                            [S.lockedStepCard]: card.locked,
+                            [S.nextStepCard]: isNextCard,
+                          })}
+                          component={onClick ? "button" : undefined}
+                          onClick={onClick}
+                          disabled={card.locked}
+                          data-testid={`step-card-${card.id}`}
+                          data-next-step={isNextCard}
+                        >
+                          <Stack justify="space-between" h="100%">
+                            <Stack gap="xs" h="100%">
+                              <Text
+                                size={card.optional ? "md" : "lg"}
+                                fw="bold"
+                                c={
+                                  card.done
+                                    ? "var(--mb-color-text-secondary)"
+                                    : "var(--mb-color-text-primary)"
+                                }
+                              >
+                                {card.title}
+                              </Text>
 
-                            <Text
-                              c="var(--mb-color-text-secondary)"
-                              size="sm"
-                              lh="lg"
-                            >
-                              {card.description}
-                            </Text>
-                          </Stack>
+                              <Text
+                                c="var(--mb-color-text-secondary)"
+                                size="sm"
+                                lh="lg"
+                              >
+                                {card.description}
+                              </Text>
+                            </Stack>
 
-                          {(card.optional || card.done || card.locked) && (
-                            <Flex justify="flex-end">
-                              {match(card)
-                                .with({ done: true }, () => (
-                                  <Group gap="xs">
-                                    <Icon
-                                      name="check"
-                                      c="var(--mb-color-success-darker)"
-                                      size={12}
-                                    />
+                            {(card.optional || card.done || card.locked) && (
+                              <Flex justify="flex-end">
+                                {match(card)
+                                  .with({ done: true }, () => (
+                                    <Group gap="xs">
+                                      <Icon
+                                        name="check"
+                                        c="var(--mb-color-success-darker)"
+                                        size={12}
+                                      />
+                                      <Text
+                                        size="sm"
+                                        c="var(--mb-color-success-darker)"
+                                      >
+                                        {t`Done`}
+                                      </Text>
+                                    </Group>
+                                  ))
+                                  .with({ locked: true }, () => (
+                                    <Group gap="xs">
+                                      <Icon
+                                        name="lock"
+                                        c="var(--mb-color-text-secondary)"
+                                        size={12}
+                                      />
+
+                                      <Text
+                                        c="var(--mb-color-text-secondary)"
+                                        fz={12}
+                                      >
+                                        {t`Complete the other steps to unlock`}
+                                      </Text>
+                                    </Group>
+                                  ))
+                                  .with({ optional: true }, () => (
                                     <Text
                                       size="sm"
-                                      c="var(--mb-color-success-darker)"
-                                    >
-                                      {t`Done`}
-                                    </Text>
-                                  </Group>
-                                ))
-                                .with({ locked: true }, () => (
-                                  <Group gap="xs">
-                                    <Icon
-                                      name="lock"
                                       c="var(--mb-color-text-secondary)"
-                                      size={12}
-                                    />
-
-                                    <Text
-                                      c="var(--mb-color-text-secondary)"
-                                      fz={12}
                                     >
-                                      {t`Complete the other steps to unlock`}
+                                      {t`Optional`}
                                     </Text>
-                                  </Group>
-                                ))
-                                .with({ optional: true }, () => (
-                                  <Text
-                                    size="sm"
-                                    c="var(--mb-color-text-secondary)"
-                                  >
-                                    {t`Optional`}
-                                  </Text>
-                                ))
-                                .otherwise(() => null)}
-                            </Flex>
-                          )}
-                        </Stack>
-                      </Card>
-                    </CardAction>
+                                  ))
+                                  .otherwise(() => null)}
+                              </Flex>
+                            )}
+                          </Stack>
+                        </Card>
+                      </CardAction>
+                    </Grid.Col>
                   );
                 })}
-              </Group>
+              </Grid>
             }
             data-done={isDone}
           ></Stepper.Step>
