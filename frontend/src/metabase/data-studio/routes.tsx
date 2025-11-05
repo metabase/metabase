@@ -1,4 +1,4 @@
-import { IndexRedirect } from "react-router";
+import { IndexRedirect, IndexRoute } from "react-router";
 import { t } from "ttag";
 
 import { Route } from "metabase/hoc/Title";
@@ -14,6 +14,7 @@ import { DataStudioLayout } from "./pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./pages/DependenciesSectionLayout";
 import { ModelingSectionLayout } from "./pages/ModelingSectionLayout";
 import { ModelingCollectionView } from "./pages/ModelingSectionLayout/ModelingCollectionView";
+import { ModelingEmptyPage } from "./pages/ModelingSectionLayout/ModelingEmptyPage";
 import { ModelingGlossary } from "./pages/ModelingSectionLayout/ModelingGlossary";
 
 export function getDataStudioRoutes() {
@@ -37,6 +38,7 @@ export function getDataStudioRoutes() {
         path="modeling"
         component={ModelingSectionLayout}
       >
+        <IndexRoute component={ModelingEmptyPage} />
         <Route
           path="collections/:collectionId"
           component={ModelingCollectionView}
