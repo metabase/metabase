@@ -59,6 +59,7 @@
     :model/Database
     :model/User
     :model/Setting
+    :model/EmbeddingTheme
     :model/Table
     :model/Field
     :model/FieldValues
