@@ -113,9 +113,8 @@ export function EditTableMetadata() {
               order={4}
               c="text-dark"
               style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-              pl="sm"
             >
-              <Icon flex="0 0 auto" name="table2" size={20} />
+              <Icon name="table2" size={20} />
               {jt`${selectedItemsCount} item${selectedItemsCount === 1 ? "" : "s"} selected`}
             </Title>
           </Group>
