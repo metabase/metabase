@@ -56,7 +56,7 @@
         staging-token-check-url "https://token-check.staging.metabase.com"]
     ;; only enable changing the token check url during dev because we don't want people switching it out in production!
     ;; additionally, we want to be able to run e2e tests against a staging server.
-    (if (config/is-prod?)
+    (if config/is-prod?
       prod-token-check-url
       (or dev-server-url staging-token-check-url))))
 
