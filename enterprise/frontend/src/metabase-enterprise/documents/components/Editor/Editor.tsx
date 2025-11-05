@@ -1,5 +1,4 @@
 import Image from "@tiptap/extension-image";
-import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -25,6 +24,7 @@ import {
 } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/CommandExtension";
 import { CommandSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/CommandSuggestion";
+import { CustomLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CustomLink/CustomLink";
 import { CustomStarterKit } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase-enterprise/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
 import { FlexContainer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
@@ -123,7 +123,7 @@ export const Editor: React.FC<EditorProps> = ({
         },
         siteUrl,
       }),
-      Link.configure({
+      CustomLink.configure({
         HTMLAttributes: {
           class: cx(CS.link, PLAIN_LINK_CLASS),
         },
