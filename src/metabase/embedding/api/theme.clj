@@ -27,14 +27,12 @@
                                       [:updated_at  (ms/InstanceOfClass java.time.temporal.Temporal)]]]
   "Fetch a list of all embedding themes."
   []
-  (api/check-superuser)
   (t2/select :model/EmbeddingTheme {:order-by [[:created_at :desc]]
                                     :select [:id :entity_id :name :created_at :updated_at]}))
 
 (api.macros/defendpoint :get "/:id" :- ::EmbeddingTheme
   "Fetch a single embedding theme by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
   (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
   (t2/select-one :model/EmbeddingTheme :id id))
 
@@ -45,7 +43,6 @@
    {:keys [name settings]} :- [:map
                                [:name     ms/NonBlankString]
                                [:settings :map]]]
-  (api/check-superuser)
   (t2/insert-returning-instance! :model/EmbeddingTheme
                                  {:name name
                                   :settings settings}))
@@ -57,7 +54,6 @@
    {:keys [name settings]} :- [:map
                                [:name {:optional true} [:maybe ms/NonBlankString]]
                                [:settings {:optional true} [:maybe :map]]]]
-  (api/check-superuser)
   (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
   (t2/update! :model/EmbeddingTheme id
               (cond-> {}
@@ -68,7 +64,6 @@
 (api.macros/defendpoint :delete "/:id"
   "Delete an embedding theme."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
   (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
   (t2/delete! :model/EmbeddingTheme :id id)
   api/generic-204-no-content)

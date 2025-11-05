@@ -19,4 +19,4 @@
 
 (def ^{:arglists '([request respond raise])} theme-routes
   "`/api/embed-theme` routes"
-  (api.macros/ns-handler 'metabase.embedding.api.theme))
+  (api.macros/ns-handler 'metabase.embedding.api.theme api/+check-superuser))
