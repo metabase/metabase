@@ -2006,7 +2006,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-045
-      validCheckSum: 8:7a9cabf1c693de8b0c9555f7deb072a4
+      validCheckSum: ANY
       author: calherries
       comment: Added 0.46.0 -- add public_uuid to action.
       changes:
@@ -2082,7 +2082,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-055
-      validCheckSum: 8:48a516459b84a21e9edbdbfe1bffd671
+      validCheckSum: ANY
       author: calherries
       comment: Added 0.46.0 -- add made_public_by_id
       changes:

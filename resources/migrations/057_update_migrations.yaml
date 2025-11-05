@@ -909,6 +909,7 @@ databaseChangeLog:
       id: v57.2025-08-22T00:12:00
       author: william
       comment: Create transform_job_run table in app database to track transform job execution
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: transform_job_run
