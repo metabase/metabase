@@ -10,28 +10,33 @@ const LOCAL_GIT_URL = "file://" + H.LOCAL_GIT_PATH + "/.git";
 
 const REMOTE_QUESTION_NAME = "Remote Sync Test Question";
 
-describe("Remote Sync", () => {
+H.describeWithSnowplowEE("Remote Sync", () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.setupGitSync();
     H.interceptTask();
   });
 
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
   describe("Development Mode", () => {
     it("can push and pull changes", () => {
       H.configureGit("development");
-      H.wrapLibraryCollection();
+      H.wrapSyncedCollection();
       const UPDATED_REMOTE_QUESTION_NAME = "Updated Question Name";
 
-      cy.get("@library").then((libraryCollection) => {
+      cy.get("@syncedCollection").then((syncedCollection) => {
         H.createQuestion({
           name: REMOTE_QUESTION_NAME,
           query: {
             "source-table": PRODUCTS_ID,
           },
-          collection_id: (libraryCollection as unknown as Collection)
+          collection_id: (syncedCollection as unknown as Collection)
             .id as number,
         });
       });
@@ -41,7 +46,7 @@ describe("Remote Sync", () => {
       // Ensure that status icon is present
       H.getSyncStatusIndicators().should("have.length.greaterThan", 0);
       H.navigationSidebar()
-        .findByRole("link", { name: /Library/ })
+        .findByRole("link", { name: /Synced Collection/ })
         .click();
 
       H.collectionTable().findByText(REMOTE_QUESTION_NAME).should("exist");
@@ -55,9 +60,13 @@ describe("Remote Sync", () => {
         .click();
 
       H.waitForTask({ taskName: "export" });
+      H.expectUnstructuredSnowplowEvent({
+        event: "remote_sync_push_changes",
+        triggered_from: "sidebar",
+      });
 
       H.navigationSidebar()
-        .findByRole("link", { name: /Library/ })
+        .findByRole("link", { name: /Synced Collection/ })
         .findByTestId("remote-sync-status")
         .should("not.exist");
 
@@ -76,15 +85,19 @@ describe("Remote Sync", () => {
         .click();
 
       H.waitForTask({ taskName: "import" });
+      H.expectUnstructuredSnowplowEvent({
+        event: "remote_sync_pull_changes",
+        triggered_from: "sidebar",
+      });
 
       H.collectionTable()
         .findByText(UPDATED_REMOTE_QUESTION_NAME)
         .should("exist");
     });
 
-    it("should not allow you to move content to the library that references non library items", () => {
+    it("should not allow you to move content to the Synced Collection that references non Synced Collection items", () => {
       H.configureGit("development");
-      H.wrapLibraryCollection();
+      H.wrapSyncedCollection();
       cy.intercept("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
         "updateDashboard",
       );
@@ -98,7 +111,7 @@ describe("Remote Sync", () => {
 
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab("Collections").click();
-        H.entityPickerModalItem(1, "Library").click();
+        H.entityPickerModalItem(1, "Synced Collection").click();
         cy.button("Move").click();
       });
 
@@ -115,7 +128,7 @@ describe("Remote Sync", () => {
 
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab("Browse").click();
-        H.entityPickerModalItem(1, "Library").click();
+        H.entityPickerModalItem(1, "Synced Collection").click();
         cy.button("Move").click();
       });
 
@@ -124,15 +137,15 @@ describe("Remote Sync", () => {
 
     it("should show a warning modal when you try to push but are out of date", () => {
       const NEW_BRANCH = `new-branch-${Date.now()}`;
-      H.copyLibraryFixture();
-      H.commitToLibrary();
+      H.copySyncedCollectionFixture();
+      H.commitToRepo();
       H.configureGit("development");
-      H.wrapLibraryCollection();
+      H.wrapSyncedCollection();
 
       cy.visit("/collection/root");
 
       // Make a change in metabase
-      H.moveCollectionItemToLibrary("Orders");
+      H.moveCollectionItemToSyncedCollection("Orders");
 
       // Make a change outside metabase
       H.updateRemoteQuestion((doc) => {
@@ -162,12 +175,12 @@ describe("Remote Sync", () => {
       H.navigationSidebar()
         .findByTestId("branch-picker-button")
         .should("contain.text", NEW_BRANCH);
-      H.goToLibrary();
+      H.goToSyncedCollection();
 
       H.collectionTable().within(() => {
         // Question we just moved
         cy.findByText("Orders");
-        // Question we previously had in the library
+        // Question we previously had in the Synced Collection
         cy.findByText("Remote Sync Test Question");
       });
 
@@ -183,7 +196,14 @@ describe("Remote Sync", () => {
     });
 
     describe("Branching", () => {
+      let branchCount = 0;
+
+      beforeEach(() => {
+        branchCount = 0;
+      });
+
       const createNewBranch = (newBranchName: string) => {
+        branchCount++;
         H.navigationSidebar().findByTestId("branch-picker-button").click();
         H.popover()
           .findByPlaceholderText("Find or create a branch...")
@@ -191,6 +211,14 @@ describe("Remote Sync", () => {
         H.popover()
           .findByRole("option", { name: /Create branch/ })
           .click();
+
+        H.expectUnstructuredSnowplowEvent(
+          {
+            event: "remote_sync_branch_created",
+            triggered_from: "branch-picker",
+          },
+          branchCount,
+        );
 
         H.navigationSidebar()
           .findByTestId("branch-picker-button")
@@ -223,7 +251,7 @@ describe("Remote Sync", () => {
 
       it("should allow you to create new branches and switch between them", () => {
         H.configureGit("development");
-        H.wrapLibraryCollection();
+        H.wrapSyncedCollection();
 
         const NEW_BRANCH_1 = `new-branch-${Date.now()}`;
         const NEW_BRANCH_2 = `new-branch-${Date.now() + 1}`;
@@ -231,24 +259,24 @@ describe("Remote Sync", () => {
         cy.visit("/collection/root");
 
         H.navigationSidebar()
-          .findByRole("treeitem", { name: /Library/ })
+          .findByRole("treeitem", { name: /Synced Collection/ })
           .click();
 
-        // Synced Library starts empty
+        // Synced Synced Collection starts empty
         H.collectionTable().should("not.exist");
         cy.findByTestId("collection-empty-state").should("exist");
 
         createNewBranch(NEW_BRANCH_1);
 
-        // Move something into Library for the new branch
-        H.moveCollectionItemToLibrary("Orders, Count");
+        // Move something into Synced Collection for the new branch
+        H.moveCollectionItemToSyncedCollection("Orders, Count");
 
         pushUpdates();
 
         // Go back to the main branch
         createNewBranch(NEW_BRANCH_2);
 
-        H.moveCollectionItemToLibrary("Orders Model");
+        H.moveCollectionItemToSyncedCollection("Orders Model");
 
         H.collectionTable().findByText("Orders, Count").should("exist");
         H.collectionTable().findByText("Orders Model").should("exist");
@@ -256,6 +284,11 @@ describe("Remote Sync", () => {
 
         // Go back to the first branch
         switchToExistingBranch(NEW_BRANCH_1);
+
+        H.expectUnstructuredSnowplowEvent({
+          event: "remote_sync_branch_switched",
+          triggered_from: "sidebar",
+        });
 
         H.collectionTable().findByText("Orders, Count").should("exist");
         // The second item should not exist in the first branch
@@ -270,17 +303,17 @@ describe("Remote Sync", () => {
         cy.visit("/collection/root");
 
         H.navigationSidebar()
-          .findByRole("treeitem", { name: /Library/ })
+          .findByRole("treeitem", { name: /Synced Collection/ })
           .click();
 
-        // Synced Library starts empty
+        // Synced Synced Collection starts empty
         H.collectionTable().should("not.exist");
         cy.findByTestId("collection-empty-state").should("exist");
 
         createNewBranch(NEW_BRANCH);
 
-        // Move something into Library for the new branch
-        H.moveCollectionItemToLibrary("Orders, Count");
+        // Move something into Synced Collection for the new branch
+        H.moveCollectionItemToSyncedCollection("Orders, Count");
 
         // Attempt to go back to main
         switchToExistingBranch("main");
@@ -316,17 +349,17 @@ describe("Remote Sync", () => {
 
     describe("unsynced changes", () => {
       beforeEach(() => {
-        H.copyLibraryFixture();
-        H.commitToLibrary();
+        H.copySyncedCollectionFixture();
+        H.commitToRepo();
         H.configureGit("development");
-        H.wrapLibraryCollection();
+        H.wrapSyncedCollection();
 
         cy.visit("/collection/root");
 
         // Make a change in metabase
-        H.moveCollectionItemToLibrary("Orders");
+        H.moveCollectionItemToSyncedCollection("Orders");
 
-        H.goToLibrary();
+        H.goToSyncedCollection();
         H.navigationSidebar()
           .findByRole("button", { name: "Pull from Git" })
           .click();
@@ -422,6 +455,12 @@ describe("Remote Sync", () => {
         .type(LOCAL_GIT_URL);
       cy.findByTestId("admin-layout-content").findByText("Development").click();
       cy.button("Set up Remote Sync").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "remote_sync_settings_changed",
+        triggered_from: "admin-settings",
+      });
+
       cy.findByTestId("admin-layout-content")
         .findByText("Success")
         .should("exist");
@@ -435,17 +474,19 @@ describe("Remote Sync", () => {
           "exist",
         );
         cy.findByTestId("branch-picker-button").should("contain.text", "main");
-        cy.findByRole("treeitem", { name: /library/i }).should("exist");
+        cy.findByRole("treeitem", { name: /Synced Collection/i }).should(
+          "exist",
+        );
       });
     });
 
     it("can set up production mode", () => {
-      // Set up a library to connect to, otherwise production mode will be empty
+      // Set up a Synced Collection to connect to, otherwise production mode will be empty
       // Copy some files
-      H.copyLibraryFixture();
+      H.copySyncedCollectionFixture();
 
       // Commit those files to the main branch
-      H.commitToLibrary();
+      H.commitToRepo();
 
       cy.visit("/admin/settings/remote-sync");
       cy.findByLabelText(/repository url/i)
@@ -467,7 +508,7 @@ describe("Remote Sync", () => {
         );
         cy.findByTestId("branch-picker-button").should("not.exist");
 
-        cy.findByRole("treeitem", { name: /Library/ }).click();
+        cy.findByRole("treeitem", { name: /Synced Collection/ }).click();
       });
     });
 
@@ -491,8 +532,8 @@ describe("Remote Sync", () => {
     });
 
     it("can deactivate remote sync", () => {
-      H.copyLibraryFixture();
-      H.commitToLibrary();
+      H.copySyncedCollectionFixture();
+      H.commitToRepo();
       H.configureGit("development");
 
       cy.visit("/admin/settings/remote-sync");
@@ -510,13 +551,18 @@ describe("Remote Sync", () => {
         cy.button("Disable").click();
       });
 
+      H.expectUnstructuredSnowplowEvent({
+        event: "remote_sync_deactivated",
+        triggered_from: "admin-settings",
+      });
+
       cy.findByTestId("admin-layout-content")
         .findByText("Enabled")
         .should("not.exist");
 
       cy.findByTestId("exit-admin").click();
 
-      ensureLibraryCollectionIsVisible();
+      ensureSyncedCollectionIsVisible();
     });
   });
 
@@ -531,19 +577,19 @@ describe("Remote Sync", () => {
     it("can change branches", () => {
       const UPDATED_REMOTE_QUESTION_NAME = "New Name";
 
-      H.copyLibraryFixture();
-      H.commitToLibrary();
+      H.copySyncedCollectionFixture();
+      H.commitToRepo();
       H.configureGit("production");
 
       cy.visit("/");
 
       H.navigationSidebar()
-        .findByRole("treeitem", { name: /Library/ })
+        .findByRole("treeitem", { name: /Synced Collection/ })
         .click();
       H.collectionTable().findByText(REMOTE_QUESTION_NAME);
 
       // Make a change, and commit it to the branch
-      H.checkoutLibraryBranch("test");
+      H.checkoutSyncedCollectionBranch("test");
       H.updateRemoteQuestion((doc) => {
         doc.name = UPDATED_REMOTE_QUESTION_NAME;
         return doc;
@@ -568,15 +614,15 @@ describe("Remote Sync", () => {
       cy.visit("/");
 
       H.navigationSidebar()
-        .findByRole("treeitem", { name: /Library/ })
+        .findByRole("treeitem", { name: /Synced Collection/ })
         .click();
       H.collectionTable().findByText(UPDATED_REMOTE_QUESTION_NAME);
     });
   });
 });
 
-const ensureLibraryCollectionIsVisible = () => {
+const ensureSyncedCollectionIsVisible = () => {
   H.navigationSidebar().within(() => {
-    cy.findByRole("treeitem", { name: /Library/ }).should("exist");
+    cy.findByRole("treeitem", { name: /Synced Collection/ }).should("exist");
   });
 };

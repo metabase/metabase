@@ -206,6 +206,9 @@ describe("scenarios > models list view", () => {
       cy.findByTestId("list-view-preview").as("listPreview");
       cy.findByTestId("sidebar-right").as("sidebarRight");
 
+      cy.log("Check that used column is not present in unused columns list.");
+      cy.get("@sidebarRight").findByText("PRODUCT_ID").should("not.exist");
+
       cy.get("@rightColumns").within(() => {
         cy.get("input").type("{Backspace}{Backspace}");
       });
@@ -213,6 +216,7 @@ describe("scenarios > models list view", () => {
       cy.log(
         "Find a draggable element with 'SUBTOTAL' text in sidebarRight panel and drag it into @rightColumns input",
       );
+
       cy.get("@sidebarRight").within(() => {
         cy.findByText("SUBTOTAL").should("be.visible");
       });

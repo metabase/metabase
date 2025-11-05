@@ -4,8 +4,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.metabot-v3.api :as api]
+   [metabase-enterprise.metabot-v3.client :as client]
    [metabase-enterprise.metabot-v3.client-test :as client-test]
    [metabase-enterprise.metabot-v3.util :as metabot.u]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -21,10 +24,10 @@
           question           {:role "user" :content "Test streaming question"}
           historical-message {:role "user" :content "previous message"}
           ai-requests        (atom [])]
-      (mt/with-dynamic-fn-redefs [http/post (fn [url opts]
-                                              (swap! ai-requests conj (-> (String. ^bytes (:body opts) "UTF-8")
-                                                                          json/decode+kw))
-                                              ((client-test/mock-post! mock-response) url opts))]
+      (mt/with-dynamic-fn-redefs [client/post! (fn [url opts]
+                                                 (swap! ai-requests conj (-> (String. ^bytes (:body opts) "UTF-8")
+                                                                             json/decode+kw))
+                                                 ((client-test/mock-post! mock-response) url opts))]
         (testing "Streaming request"
           (doseq [metabot-id [nil (str (random-uuid))]]
             (mt/with-model-cleanup [:model/MetabotMessage
@@ -58,6 +61,35 @@
                           :role         :assistant
                           :data         [{:role "assistant" :content "Hello from streaming!"}]}]
                         messages))))))))))
+
+(deftest closing-connection-test
+  (let [mock-response (client-test/make-mock-stream-response
+                       (mapv #(str "msg-" % "\n") (range 30))
+                       {"some-model" {:prompt 12 :completion 3}})
+        messages      (atom [])]
+    (mt/test-helpers-set-global-values!
+      (search.tu/with-index-disabled
+        (mt/with-premium-features #{:metabot-v3}
+          (with-redefs [client/post!       (client-test/mock-post! mock-response {:delay-ms 5})
+                        api/store-message! (fn [_conv-id _prof-id msgs]
+                                             (reset! messages msgs))]
+            (testing "Closing body stream drops connection"
+              (let [body  (mt/user-real-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
+                                                {:request-options {:as              :stream
+                                                                   :decompress-body false}}
+                                                {:message         "Test closure"
+                                                 :context         {}
+                                                 :conversation_id (str (random-uuid))
+                                                 :history         []
+                                                 :state           {}})]
+                (.close body) ;; don't even need to read, it'll push first 3 lines immediately
+                (Thread/sleep 20) ;; no idea if this is enough to not flake, but let's see
+                (is (= "assistant" (:role (first @messages)))
+                    "store-messages! was called in the end on the lines streaming-request managed to write to OS")
+                ;; it practically is 3 here all the time, and never 3; maybe it's `:output-buffer-size`?
+                ;; if this flakes in CI, increase the number a bit
+                (is (> 10 (-> @messages first :content str/split-lines count))
+                    "But we shouldn't go through all 30 of them")))))))))
 
 (deftest feedback-endpoint-test
   (mt/with-premium-features #{:metabot-v3}

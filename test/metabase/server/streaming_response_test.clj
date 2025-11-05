@@ -3,8 +3,10 @@
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.test :refer :all]
+   [compojure.response]
    [metabase.driver :as driver]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.server.instance :as server.instance]
    [metabase.server.protocols :as server.protocols]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
@@ -139,15 +141,57 @@
                                                           nil)
                   futur         (http/post url (assoc request :async? true) identity (fn [e] (throw e)))]
               (is (future? futur))
-             ;; wait a little while for the query to start running -- this should usually happen fairly quickly
+              ;; wait a little while for the query to start running -- this should usually happen fairly quickly
               (mt/wait-for-result start-chan (u/seconds->ms 15))
               (future-cancel futur)
-             ;; check every 10ms, up to 1000ms, whether `canceled?` is now `true`
+              ;; check every 10ms, up to 1000ms, whether `canceled?` is now `true`
               (is (loop [[wait & more] (repeat 10 100)]
                     (or @canceled?
                         (when wait
                           (Thread/sleep (long wait))
                           (recur more))))))))))))
+
+(deftest canceling-chan-is-not-working-test
+  (let [cnt      (atom 30)
+        canceled (atom nil)
+        handler  (fn [req respond _raise]
+                   (respond
+                    (compojure.response/render
+                     (streaming-response/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
+                       (try
+                         (loop []
+                           (.write os (.getBytes (str "msg-" @cnt)))
+                           (.write os (.getBytes "\n"))
+                           (.flush os)
+                           (swap! cnt dec)
+                           (Thread/sleep 1)
+                           ;; NOTE: we never get anything in there because `do-f*`, which puts stuff on canceled-chan,
+                           ;; reacts to an exception which you get when you try to write to a closed OutputStream. So
+                           ;; the body is interrupted.
+                           (when (a/poll! canceled-chan)
+                             (reset! canceled :nice))
+                           (when (or (pos? @cnt) (nil? @canceled))
+                             (recur)))
+                         (catch Exception _e
+                           (reset! canceled :not-nice))))
+                     req)))
+        server   (doto (server.instance/create-server handler {:port 0 :join? false})
+                   .start)
+        url      (str "http://localhost:" (.. server getURI getPort))]
+    (try
+      (let [res   (http/request {:method :post :url url
+                                 :as :stream
+                                 :decompress-body false})]
+        (.close ^java.io.Closeable (:body res)) ;; cancel the request
+        (Thread/sleep 10)
+        ;; it's been 28 when I tested this, if it every becomes flaky maybe decrease the number?
+        (is (< 20 @cnt) "Stopped writing when channel closed")
+        #_(testing "canceled-chan is working"
+            (is (= :nice @canceled) "Request has been canceled by looking at `canceled-chan`"))
+        (testing "canceled-chan is not working"
+          (is (= :not-nice @canceled) "Request has been canceled, but at what cost?")))
+      (finally
+        (.stop server)))))
 
 (def ^:private ^:dynamic *number-of-cans* nil)
 
