@@ -10,7 +10,7 @@ on:
 jobs:
 
   codespell:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: codespell-project/actions-codespell@v1
