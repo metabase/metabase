@@ -2,7 +2,8 @@ import type { MetabaseUsersApiUser } from "metabase-types/openapi";
 
 import type { CollectionId } from "./collection";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-// import type { User } from "metabase-types/api";
+
+export type User = MetabaseUsersApiUser;
 
 export type UserId = number;
 export type UserAttributeKey = string;
@@ -56,8 +57,6 @@ export interface BaseUser {
 //     dashboard_id: DashboardId;
 //   } | null;
 // }
-
-export type User = MetabaseUsersApiUser;
 
 export interface UserListResult {
   id: UserId;

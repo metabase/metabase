@@ -71,7 +71,7 @@
   [:map {:closed false}
    [:id pos-int?]
    [:email ms/Email]
-   [:first_name  {:optional true} [:maybe string?]]
+   [:first_name  {:optional true} [:maybe :string]]
   ;;  [:middle_name  {:optional true} [:maybe string?]]
    [:last_name {:optional true} [:maybe string?]]
    [:common_name {:optional true} [:maybe string?]]

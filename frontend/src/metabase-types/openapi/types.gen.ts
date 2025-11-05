@@ -4613,6 +4613,21 @@ export type MetabaseUsersApiPaginatedUsers = {
 };
 
 /**
+ * Schema for password update response.
+ */
+export type MetabaseUsersApiPasswordUpdateResponse = {
+    session_id?: string;
+    success?: true;
+};
+
+/**
+ * Schema for simple success responses.
+ */
+export type MetabaseUsersApiSuccessResponse = {
+    success: true;
+};
+
+/**
  * Schema for a User object returned by the API.
  */
 export type MetabaseUsersApiUser = {
@@ -20930,6 +20945,321 @@ export type GetApiUserResponses = {
 };
 
 export type GetApiUserResponse = GetApiUserResponses[keyof GetApiUserResponses];
+
+export type PostApiUserData = {
+    body?: {
+        /**
+         * value must be a valid email address.
+         */
+        email: string;
+        first_name?: string;
+        last_name?: string;
+        /**
+         * login attribute keys must be a keyword or string
+         */
+        login_attributes?: {
+            [key: string]: unknown;
+        };
+        source?: string;
+        user_group_memberships?: Array<MetabaseUsersApiUserGroupMembership>;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/user/';
+};
+
+export type PostApiUserErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PostApiUserResponses = {
+    /**
+     * Schema for a User object returned by the API.
+     */
+    '2XX': MetabaseUsersApiUser;
+};
+
+export type PostApiUserResponse = PostApiUserResponses[keyof PostApiUserResponses];
+
+export type GetApiUserCurrentData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/user/current';
+};
+
+export type GetApiUserCurrentErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type GetApiUserCurrentResponses = {
+    /**
+     * Schema for a User object returned by the API.
+     */
+    '2XX': MetabaseUsersApiUser;
+};
+
+export type GetApiUserCurrentResponse = GetApiUserCurrentResponses[keyof GetApiUserCurrentResponses];
+
+export type GetApiUserRecipientsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/user/recipients';
+};
+
+export type GetApiUserRecipientsErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type GetApiUserRecipientsResponses = {
+    /**
+     * Schema for paginated user list responses.
+     */
+    '2XX': MetabaseUsersApiPaginatedUsers;
+};
+
+export type GetApiUserRecipientsResponse = GetApiUserRecipientsResponses[keyof GetApiUserRecipientsResponses];
+
+export type DeleteApiUserByIdData = {
+    body?: never;
+    path: {
+        /**
+         * value must be an integer greater than zero.
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/api/user/{id}';
+};
+
+export type DeleteApiUserByIdErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type DeleteApiUserByIdResponses = {
+    /**
+     * Schema for simple success responses.
+     */
+    '2XX': MetabaseUsersApiSuccessResponse;
+};
+
+export type DeleteApiUserByIdResponse = DeleteApiUserByIdResponses[keyof DeleteApiUserByIdResponses];
+
+export type GetApiUserByIdData = {
+    body?: never;
+    path: {
+        /**
+         * value must be an integer greater than zero.
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/api/user/{id}';
+};
+
+export type GetApiUserByIdErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type GetApiUserByIdResponses = {
+    /**
+     * Schema for a User object returned by the API.
+     */
+    '2XX': MetabaseUsersApiUser;
+};
+
+export type GetApiUserByIdResponse = GetApiUserByIdResponses[keyof GetApiUserByIdResponses];
+
+export type PutApiUserByIdData = {
+    body?: {
+        /**
+         * value must be a valid email address.
+         */
+        email?: string;
+        first_name?: string;
+        is_group_manager?: boolean;
+        is_superuser?: boolean;
+        last_name?: string;
+        /**
+         * String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.
+         */
+        locale?: string;
+        /**
+         * login attribute keys must be a keyword or string
+         */
+        login_attributes?: {
+            [key: string]: unknown;
+        };
+        user_group_memberships?: Array<MetabaseUsersApiUserGroupMembership>;
+    };
+    path: {
+        /**
+         * value must be an integer greater than zero.
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/api/user/{id}';
+};
+
+export type PutApiUserByIdErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PutApiUserByIdResponses = {
+    /**
+     * Schema for a User object returned by the API.
+     */
+    '2XX': MetabaseUsersApiUser;
+};
+
+export type PutApiUserByIdResponse = PutApiUserByIdResponses[keyof PutApiUserByIdResponses];
+
+export type PutApiUserByIdModalByModalData = {
+    body?: never;
+    path: {
+        /**
+         * value must be an integer greater than zero.
+         */
+        id: number;
+        modal: string;
+    };
+    query?: never;
+    url: '/api/user/{id}/modal/{modal}';
+};
+
+export type PutApiUserByIdModalByModalErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PutApiUserByIdModalByModalResponses = {
+    /**
+     * Schema for simple success responses.
+     */
+    '2XX': MetabaseUsersApiSuccessResponse;
+};
+
+export type PutApiUserByIdModalByModalResponse = PutApiUserByIdModalByModalResponses[keyof PutApiUserByIdModalByModalResponses];
+
+export type PutApiUserByIdPasswordData = {
+    body?: {
+        old_password?: string;
+        /**
+         * password is too common.
+         */
+        password: string;
+    };
+    path: {
+        /**
+         * value must be an integer greater than zero.
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/api/user/{id}/password';
+};
+
+export type PutApiUserByIdPasswordErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PutApiUserByIdPasswordResponses = {
+    /**
+     * Schema for password update response.
+     */
+    '2XX': MetabaseUsersApiPasswordUpdateResponse;
+};
+
+export type PutApiUserByIdPasswordResponse = PutApiUserByIdPasswordResponses[keyof PutApiUserByIdPasswordResponses];
+
+export type PutApiUserByIdReactivateData = {
+    body?: never;
+    path: {
+        /**
+         * value must be an integer greater than zero.
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/api/user/{id}/reactivate';
+};
+
+export type PutApiUserByIdReactivateErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PutApiUserByIdReactivateResponses = {
+    /**
+     * Schema for a User object returned by the API.
+     */
+    '2XX': MetabaseUsersApiUser;
+};
+
+export type PutApiUserByIdReactivateResponse = PutApiUserByIdReactivateResponses[keyof PutApiUserByIdReactivateResponses];
 
 export type GetApiUtilRandomTokenData = {
     body?: never;
