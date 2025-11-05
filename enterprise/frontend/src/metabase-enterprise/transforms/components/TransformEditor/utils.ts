@@ -31,6 +31,7 @@ export function getValidationResult(query: Lib.Query): ValidationResult {
 
 export function getEditorOptions(databases: Database[]): QueryEditorUiOptions {
   return {
+    canConvertToNative: true,
     convertToNativeTitle: t`SQL for this transform`,
     convertToNativeButtonLabel: t`Convert this transform to SQL`,
     shouldDisableDatabasePickerItem: (item) => {

@@ -24,6 +24,7 @@ export function getValidationResult(
 export function getEditorOptions(): QueryEditorUiOptions {
   return {
     cardType: "model",
+    canConvertToNative: true,
     convertToNativeTitle: t`SQL for this model`,
     convertToNativeButtonLabel: t`Convert this model to SQL`,
   };

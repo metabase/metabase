@@ -119,7 +119,7 @@ export function QueryEditor({
             onRunQuery={runQuery}
             onCancelQuery={cancelQuery}
           />
-          {!isNative && (
+          {!isNative && uiOptions?.canConvertToNative && (
             <NativeQueryPreviewSidebarToggle
               isNativeQueryPreviewSidebarOpen={
                 uiState.sidebarType === "native-query"

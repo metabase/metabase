@@ -43,6 +43,7 @@ export type QueryEditorUiOptions = {
   cardType?: CardType;
   cardDisplay?: CardDisplayType;
   cardVizSettings?: VisualizationSettings;
+  canConvertToNative?: boolean;
   convertToNativeTitle?: string;
   convertToNativeButtonLabel?: string;
   shouldDisableDataPickerItem?: (item: QueryEditorDataPickerItem) => boolean;
