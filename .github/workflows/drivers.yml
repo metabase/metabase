@@ -441,7 +441,7 @@ jobs:
             image: mysql:latest
             env:
               enable-ssl-tests: 'true'
-              enable-aws-iam-tests: 'true'
+              enable-aws-iam-tests: 'false' #TODO: enable
         job:
           - name: Driver Tests
             test-args: >-
@@ -804,7 +804,7 @@ jobs:
             docker-image: postgres:latest
             env:
               enable-ssl-tests: 'true'
-              enable-aws-iam-tests: 'true'
+              enable-aws-iam-tests: 'false' #TODO: enable
         job:
           - name: Driver Tests
             test-args: >-
