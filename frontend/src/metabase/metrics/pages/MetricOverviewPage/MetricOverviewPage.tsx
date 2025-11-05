@@ -1,5 +1,5 @@
-import { skipToken, useGetCardQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useLoadCardWithMetadata } from "metabase/data-studio/hooks/use-load-card-with-metadata";
 import * as Urls from "metabase/lib/urls";
 import { Center, Flex } from "metabase/ui";
 
@@ -17,11 +17,7 @@ type MetricOverviewPageProps = {
 
 export function MetricOverviewPage({ params }: MetricOverviewPageProps) {
   const cardId = Urls.extractEntityId(params.cardId);
-  const {
-    data: card,
-    isLoading,
-    error,
-  } = useGetCardQuery(cardId != null ? { id: cardId } : skipToken);
+  const { card, isLoading, error } = useLoadCardWithMetadata(cardId);
 
   if (isLoading || error != null || card == null) {
     return (
