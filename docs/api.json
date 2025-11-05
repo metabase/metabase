@@ -11676,6 +11676,9 @@
                   "parameter_mappings" : {
                     "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
                   },
+                  "embedding_type" : {
+                    "type" : "string"
+                  },
                   "name" : {
                     "type" : "string",
                     "minLength" : 1
@@ -13833,6 +13836,9 @@
                   "width" : {
                     "type" : "string",
                     "enum" : [ "fixed", "full" ]
+                  },
+                  "embedding_type" : {
+                    "type" : "string"
                   },
                   "show_in_getting_started" : {
                     "type" : "boolean"
