@@ -341,7 +341,9 @@ export const sendAgentRequest = createAsyncThunk<
             (tc) => tc.state === "call",
           ),
           history: [...getHistory(getState() as any), ...response.history],
-          state,
+          // state object comes at the end, so we may not have recieved it
+          // so fallback to the state used when the request was issued
+          state: Object.keys(state).length === 0 ? body.state : state,
         });
       }
 

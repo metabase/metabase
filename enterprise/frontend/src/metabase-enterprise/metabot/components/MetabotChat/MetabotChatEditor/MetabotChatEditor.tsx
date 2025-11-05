@@ -147,6 +147,12 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
             }
           }
 
+          if (event.key === "Escape") {
+            event.preventDefault();
+            onStop();
+            return true;
+          }
+
           return false;
         },
         clipboardTextSerializer: (content) => {

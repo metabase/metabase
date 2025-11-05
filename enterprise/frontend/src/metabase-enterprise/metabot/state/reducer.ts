@@ -346,6 +346,7 @@ export const metabot = createSlice({
         state.isProcessing = false;
       })
       .addCase(sendAgentRequest.rejected, (state, action) => {
+        // aborted requests needs special state adjustments
         if (action.payload?.type === "abort") {
           state.state = { ...(action.payload?.state ?? {}) };
           state.history = action.payload?.history?.slice() ?? [];
@@ -357,7 +358,6 @@ export const metabot = createSlice({
                 role: "tool" as const,
                 content: "Tool execution interrupted by user",
                 tool_call_id: tc.toolCallId,
-                is_error: true,
               }));
             state.history.push(...syntheticToolResults);
 
@@ -371,6 +371,7 @@ export const metabot = createSlice({
             });
           }
         }
+
         state.activeToolCalls = [];
         state.isProcessing = false;
       });
