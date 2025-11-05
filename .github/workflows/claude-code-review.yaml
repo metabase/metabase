@@ -2,18 +2,23 @@ name: "Claude Code Review"
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types:
+      - closed
+      - synchronize
+      - labeled
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-claude-code-review
   cancel-in-progress: true
 
-env:
-  EXCLUDED_PR_AUTHORS: '["kamilmielnik", "romeovs"]'
-
 jobs:
   review:
-    if: github.event.pull_request.draft == false && !contains(fromJSON(env.EXCLUDED_PR_AUTHORS), github.event.pull_request.user.login) }}
+    if: |
+      (
+        github.event.action == 'closed' &&
+        github.event.pull_request.merged == true
+      ) ||
+      contains(github.event.pull_request.labels.*.name, 'Claude Code Review')
     runs-on: ubuntu-latest
     permissions:
       contents: read

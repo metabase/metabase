@@ -22,7 +22,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.o11y :refer [with-span]]))
+   [metabase.util.o11y :refer [with-span]])
+  (:import
+   (org.eclipse.jetty.io EofException)))
 
 (set! *warn-on-reflection* true)
 
@@ -155,26 +157,29 @@
                      (atom []))]
       (metabot-v3.context/log (:body response) :llm.log/llm->be)
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
-      (if (= (:status response) 200)
-        ;; TODO: handle canceled-chan here?
-        (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
-          ;; Response from the AI Service will send response parts separated by newline
-          (with-open [response-reader (io/reader (:body response))]
+      (when-not (= (:status response) 200)
+        (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
+                        {:request  (assoc options :body body)
+                         :response response})))
+      (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
+        ;; exiting with-open will close underlying request
+        (with-open [response-reader (io/reader (:body response))]
+          (try
+            ;; Response from the AI Service will send response parts separated by newline
             (doseq [^String line (line-seq response-reader)]
               (when on-complete
                 (swap! lines conj line))
               (doto os
-                ;; Line we read from response will lack newline at the end, but FE will be confused without that, so
-                ;; we need to append it.
+                ;; `line-seq` strips newlines, so we need to append it back.
                 (.write (.getBytes line "UTF-8"))
                 (.write (.getBytes "\n"))
                 ;; Immediately flush so it feels fluid on the frontend
-                (.flush))))
-          (when on-complete
-            (on-complete @lines)))
-        (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
-                        {:request  (assoc options :body body)
-                         :response response}))))
+                (.flush)))
+            ;; request was interrupted
+            (catch EofException _ nil)
+            (catch InterruptedException _ nil)))
+        (when on-complete
+          (on-complete @lines))))
     (catch Throwable e
       (throw (ex-info (format "Error in request to AI Proxy: %s" (ex-message e)) {} e)))))
 
@@ -326,7 +331,7 @@
   [:and
    [:map
     [:name :string]
-    [:type [:enum :number, :string, :date, :datetime, :time, :boolean, :null]]
+    [:type [:enum :number, :string, :date, :datetime, :time, :boolean, nil]]
     [:description {:optional true} [:maybe :string]]
     [:table-reference {:optional true} :string]]
    [:map {:encode/ai-service-request #(set/rename-keys % {:table-reference :table_reference})}]])

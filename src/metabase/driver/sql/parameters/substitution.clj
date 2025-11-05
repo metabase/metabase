@@ -6,6 +6,7 @@
      :replacement-snippet     \"= ?\"
      ;; ; any prepared statement args (values for `?` placeholders) needed for the replacement snippet
      :prepared-statement-args [#t \"2017-01-01\"]}"
+  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
@@ -17,7 +18,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [not-empty]])
   (:import
    (clojure.lang IPersistentVector Keyword)
    (java.time.temporal Temporal)
@@ -261,14 +263,16 @@
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
-(defn- field->clause
+(mu/defn- field->clause :- driver-api/mbql.schema.field
   [field other-opts]
-  [:field
-   (:id field)
-   (merge {:base-type                     (:base-type field)
-           driver-api/qp.add.source-table (:table-id field)
-           ::compiling-field-filter?      true}
-          other-opts)])
+  (driver-api/normalize
+   driver-api/mbql.schema.field
+   [:field
+    (:id field)
+    (merge {:base-type                     (:base-type field)
+            driver-api/qp.add.source-table (:table-id field)
+            ::compiling-field-filter?      true}
+           other-opts)]))
 
 (mu/defn- field->field-filter-clause :- driver-api/mbql.schema.field
   [driver     :- :keyword

@@ -8,10 +8,12 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   isExamplesCollection,
   isRootTrashCollection,
+  isSyncedCollection,
 } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
+import type { CollectionTreeItem } from "metabase/entities/collections";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
@@ -20,15 +22,9 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import {
-  ActionIcon,
-  Flex,
-  Icon,
-  type IconName,
-  type IconProps,
-  Tooltip,
-} from "metabase/ui";
-import type { Bookmark, Collection } from "metabase-types/api";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
+import type { Bookmark } from "metabase-types/api";
 
 import {
   PaddedSidebarLink,
@@ -49,10 +45,6 @@ import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
 
-interface CollectionTreeItem extends Collection {
-  icon: IconName | IconProps;
-  children: CollectionTreeItem[];
-}
 type Props = {
   isAdmin: boolean;
   isOpen: boolean;
@@ -88,6 +80,7 @@ export function MainNavbarView({
   );
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
+  const showSyncGroup = useSetting("remote-sync-type") === "development";
 
   const [
     addDataModalOpened,
@@ -119,16 +112,39 @@ export function MainNavbarView({
     [isAtHomepageDashboard, onItemSelect],
   );
 
-  const [regularCollections, trashCollection, examplesCollection] =
-    useMemo(() => {
+  const [
+    regularCollections,
+    trashCollection,
+    examplesCollection,
+    syncedCollections,
+  ] = useMemo(() => {
+    const synced = collections.filter(isSyncedCollection);
+
+    const normalCollections = collections.filter((c) => {
+      const isNormalCollection =
+        !isRootTrashCollection(c) && !isExamplesCollection(c);
+      return isNormalCollection && !isSyncedCollection(c);
+    });
+
+    if (!showSyncGroup && synced.length > 0 && normalCollections.length > 0) {
+      const [root, ...rest] = normalCollections;
+      const reordered = [root, ...synced, ...rest];
+
       return [
-        collections.filter(
-          (c) => !isRootTrashCollection(c) && !isExamplesCollection(c),
-        ),
+        reordered,
         collections.find(isRootTrashCollection),
         collections.find(isExamplesCollection),
+        synced,
       ];
-    }, [collections]);
+    }
+
+    return [
+      normalCollections,
+      collections.find(isRootTrashCollection),
+      collections.find(isExamplesCollection),
+      synced,
+    ];
+  }, [collections, showSyncGroup]);
 
   const isNewInstance = useSelector(getIsNewInstance);
   const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
@@ -193,6 +209,14 @@ export function MainNavbarView({
             </SidebarSection>
           )}
 
+          {showSyncGroup && (
+            <PLUGIN_REMOTE_SYNC.SyncedCollectionsSidebarSection
+              onItemSelect={onItemSelect}
+              selectedId={collectionItem?.id}
+              syncedCollections={syncedCollections}
+            />
+          )}
+
           <SidebarSection>
             <ErrorBoundary>
               <CollectionSectionHeading
@@ -243,7 +267,9 @@ export function MainNavbarView({
             </TrashSidebarSection>
           )}
         </div>
-        <WhatsNewNotification />
+        <div>
+          <WhatsNewNotification />
+        </div>
       </SidebarContentRoot>
 
       <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />

@@ -1,6 +1,6 @@
 (ns metabase.lib.join
   "Functions related to manipulating EXPLICIT joins in MBQL."
-  (:refer-clojure :exclude [mapv run! some])
+  (:refer-clojure :exclude [mapv run! some empty? not-empty #?(:clj for)])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -31,11 +31,12 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv run! some]]))
+   [metabase.util.performance :refer [mapv run! some empty? not-empty #?(:clj for)]]))
 
 (defn- join? [x]
   (= (lib.dispatch/dispatch-value x) :mbql/join))
@@ -611,7 +612,7 @@
       condition)))
 
 (defn- generate-unique-name [base-name taken-names]
-  (let [generator (lib.util/unique-name-generator)]
+  (let [generator (lib.util.unique-name-generator/unique-name-generator)]
     (run! generator taken-names)
     (generator base-name)))
 

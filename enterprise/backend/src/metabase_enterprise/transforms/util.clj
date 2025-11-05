@@ -4,11 +4,12 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.transforms.canceling :as canceling]
+   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.parameters.dates :as params.dates]
@@ -42,10 +43,29 @@
   [transform]
   (= :query (-> transform :source :type keyword)))
 
+(defn native-query-transform?
+  "Check if this is a native query transform"
+  [transform]
+  (when (query-transform? transform)
+    (let [query (-> transform :source :query)]
+      (lib/native-only-query? query))))
+
 (defn python-transform?
   "Check if this is a Python transform."
   [transform]
   (= :python (-> transform :source :type keyword)))
+
+(defn transform-source-type
+  "Returns the type of a transform's source: :python, :native, or :mbql.
+  Throws if the source type cannot be detected."
+  [source]
+  (case (keyword (:type source))
+    :python :python
+    :query  (if (lib/native-only-query? (:query source))
+              :native
+              :mbql)
+    (throw (ex-info (str "Unknown transform source type: " (:type source))
+                    {:source source}))))
 
 (defn check-feature-enabled
   "Checking whether we have proper feature flags for using a given transform."
@@ -105,17 +125,10 @@
    (log/info "Syncing target" (pr-str target) "for transform")
    (activate-table-and-mark-computed! database target)))
 
-(mu/defn target-database-id :- ::lib.schema.id/database
-  "Return the target database id of a transform"
-  [transform]
-  (if (python-transform? transform)
-    (-> transform :target :database)
-    (-> transform :source :query :database)))
-
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
   [{:keys [target] :as transform}]
-  (let [db-id (target-database-id transform)
+  (let [db-id (transforms.i/target-db-id transform)
         {driver :engine :as database} (t2/select-one :model/Database db-id)]
     (driver/table-exists? driver database target)))
 
@@ -157,7 +170,7 @@
   [{:keys [id target], :as transform}]
   (when target
     (let [target (update target :type keyword)
-          database-id (target-database-id transform)
+          database-id (transforms.i/target-db-id transform)
           {driver :engine :as database} (t2/select-one :model/Database database-id)]
       (driver/drop-transform-target! driver database target)
       (log/info "Deactivating  target " (pr-str target) "for transform" id)
@@ -234,15 +247,15 @@
    database-id :- pos-int?
    table-schema :- ::table-definition]
   (let [{:keys [columns] table-name :name} table-schema
-        column-definitions (into {} (map (fn [{:keys [name type database-type]}]
-                                           (let [db-type (if database-type
-                                                           [[:raw database-type]]
-                                                           (try
-                                                             (driver/type->database-type driver type)
-                                                             (catch IllegalArgumentException _
-                                                               (log/warnf "Couldn't determine database type for type %s, fallback to Text" type)
-                                                               (driver/type->database-type driver :type/Text))))]
-                                             [name db-type])))
+        column-definitions (mapv (fn [{:keys [name type database-type]}]
+                                   (let [db-type (if database-type
+                                                   [[:raw database-type]]
+                                                   (try
+                                                     (driver/type->database-type driver type)
+                                                     (catch IllegalArgumentException _
+                                                       (log/warnf "Couldn't determine database type for type %s, fallback to Text" type)
+                                                       (driver/type->database-type driver :type/Text))))]
+                                     [name db-type]))
                                  columns)
         primary-key-opts (select-keys table-schema [:primary-key])]
     (log/infof "Creating table %s with %d columns" table-name (count columns))

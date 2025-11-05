@@ -60,8 +60,11 @@
   [card]
   (assoc card :parameters (qp.card/combined-parameters-and-template-tags card)))
 
-(defn- remove-card-non-public-columns
-  "Remove everyting from public `card` that shouldn't be visible to the general public."
+(defn remove-card-non-public-columns
+  "Remove everything from public `card` that shouldn't be visible to the general public.
+
+  This function is used by both OSS (for public cards) and EE (for cards in public documents) to ensure
+  consistent filtering of sensitive fields across all public sharing endpoints."
   [card]
   ;; We need to check this to resolve params - we set `request/as-admin` there
   (if qp.perms/*param-values-query*
@@ -92,8 +95,7 @@
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (u/prog1 (card-with-uuid uuid)
-    (events/publish-event! :event/card-read {:object-id (:id <>), :user-id api/*current-user-id*, :context :question})))
+  (card-with-uuid uuid))
 
 (defmulti ^:private transform-qp-result
   "Transform results to be suitable for a public endpoint"
@@ -177,6 +179,9 @@
                             [:parameters {:optional true} [:maybe ms/JSONString]]]]
   (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
   credentials. Public sharing must be enabled."
@@ -294,13 +299,12 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
-    (u/prog1 (process-query-for-dashcard
-              :dashboard-id  dashboard-id
-              :card-id       card-id
-              :dashcard-id   dashcard-id
-              :export-format :api
-              :parameters    parameters)
-      (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard}))))
+    (process-query-for-dashcard
+     :dashboard-id  dashboard-id
+     :card-id       card-id
+     :dashcard-id   dashcard-id
+     :export-format :api
+     :parameters    parameters)))
 
 (api.macros/defendpoint :post ["/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
                                :export-format qp.schema/export-formats-regex]
@@ -516,14 +520,13 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
-    (u/prog1 (process-query-for-dashcard
-              :dashboard-id  dashboard-id
-              :card-id       card-id
-              :dashcard-id   dashcard-id
-              :export-format :api
-              :parameters    parameters
-              :qp            qp.pivot/run-pivot-query)
-      (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard}))))
+    (process-query-for-dashcard
+     :dashboard-id  dashboard-id
+     :card-id       card-id
+     :dashcard-id   dashcard-id
+     :export-format :api
+     :parameters    parameters
+     :qp            qp.pivot/run-pivot-query)))
 
 (def ^:private action-execution-throttle
   "Rate limit at 10 actions per 1000 ms on a per action basis.

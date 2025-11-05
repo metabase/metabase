@@ -36,6 +36,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.quick-task :as quick-task]
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses.api :as api.database]
@@ -687,7 +688,10 @@
                                                              :database_required false
                                                              ;; Index sync is turned off across the application as it is not used ATM.
                                                              #_#_:database_indexed  true
-                                                             :database_is_auto_increment true})
+                                                             :database_is_auto_increment true
+                                                             :database_is_generated      false
+                                                             :database_is_nullable       false
+                                                             :database_is_pk             true})
                                                            (merge
                                                             (field-details (t2/select-one :model/Field :id (mt/id :categories :name)))
                                                             {:table_id          (mt/id :categories)
@@ -703,7 +707,10 @@
                                                              :database_required true
                                                              ;; Index sync is turned off across the application as it is not used ATM.
                                                              #_#_:database_indexed  false
-                                                             :database_is_auto_increment false})]
+                                                             :database_is_auto_increment false
+                                                             :database_is_generated      false
+                                                             :database_is_nullable       false
+                                                             :database_is_pk             nil})]
                                      :segments     []
                                      :metrics      []
                                      :id           (mt/id :categories)
@@ -1417,9 +1424,9 @@
 ;; Five minutes
 (def ^:private long-timeout (* 5 60 1000))
 
-(defn- deliver-when-db [promise-to-deliver expected-db]
+(defn- deliver-when-db [promise-to-deliver expected-db-id]
   (fn [db]
-    (when (= (u/the-id db) (u/the-id expected-db))
+    (when (= (u/the-id db) expected-db-id)
       (deliver promise-to-deliver true))))
 
 (deftest trigger-metadata-sync-for-db-test
@@ -1427,11 +1434,13 @@
     (let [sync-called?    (promise)
           analyze-called? (promise)]
       (mt/with-premium-features #{:audit-app}
-        (mt/with-temp [:model/Database {db-id :id :as db} {:engine "h2", :details (:details (mt/db))}]
-          (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db)
-                        analyze/analyze-db!             (deliver-when-db analyze-called? db)]
+        (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}]
+          ;; redefine quick-task/submit-task! so as not to depend on the capacity of the quick-task executor
+          (with-redefs [quick-task/submit-task!         future-call
+                        sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db-id)
+                        analyze/analyze-db!             (deliver-when-db analyze-called? db-id)]
             (snowplow-test/with-fake-snowplow-collector
-              (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (u/the-id db)))
+              (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id))
               ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
               ;; however if something went wrong, don't hang forever, eventually timeout and fail
               (testing "sync called?"
