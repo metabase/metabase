@@ -14,15 +14,15 @@
    [:id       ms/PositiveInt]
    [:name     ms/NonBlankString]
    [:settings :map]
-   [:created_at  :any]
-   [:updated_at  :any]])
+   [:created_at  (ms/InstanceOfClass java.time.temporal.Temporal)]
+   [:updated_at  (ms/InstanceOfClass java.time.temporal.Temporal)]])
 
 (api.macros/defendpoint :get "/" :- [:sequential
                                      [:map
                                       [:id          ms/PositiveInt]
                                       [:name        ms/NonBlankString]
-                                      [:created_at  :any]
-                                      [:updated_at  :any]]]
+                                      [:created_at  (ms/InstanceOfClass java.time.temporal.Temporal)]
+                                      [:updated_at  (ms/InstanceOfClass java.time.temporal.Temporal)]]]
   "Fetch a list of all embedding themes."
   []
   (api/check-superuser)
