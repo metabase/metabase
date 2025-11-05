@@ -1,4 +1,5 @@
 import { useLayoutEffect, useMemo, useState } from "react";
+import type { Route } from "react-router";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -7,6 +8,7 @@ import {
   useGetCardQuery,
   useUpdateCardMutation,
 } from "metabase/api";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -27,9 +29,10 @@ type MetricQueryPageParams = {
 
 type MetricQueryPageProps = {
   params: MetricQueryPageParams;
+  route: Route;
 };
 
-export function MetricQueryPage({ params }: MetricQueryPageProps) {
+export function MetricQueryPage({ params, route }: MetricQueryPageProps) {
   const metricId = Urls.extractEntityId(params.metricId);
   const {
     data: metric,
@@ -45,14 +48,15 @@ export function MetricQueryPage({ params }: MetricQueryPageProps) {
     );
   }
 
-  return <MetricQueryPageBody metric={metric} />;
+  return <MetricQueryPageBody metric={metric} route={route} />;
 }
 
 type MetricQueryPageBodyProps = {
   metric: Card;
+  route: Route;
 };
 
-function MetricQueryPageBody({ metric }: MetricQueryPageBodyProps) {
+function MetricQueryPageBody({ metric, route }: MetricQueryPageBodyProps) {
   const [datasetQuery, setDatasetQuery] = useState(metric.dataset_query);
   const [uiState, setUiState] = useState(getInitialUiState);
   const metadata = useSelector(getMetadata);
@@ -131,6 +135,10 @@ function MetricQueryPageBody({ metric }: MetricQueryPageBodyProps) {
           onClose={handleCloseConfirmation}
         />
       )}
+      <LeaveRouteConfirmModal
+        route={route}
+        isEnabled={isDirty && !isSaving && !isCheckingDependencies}
+      />
     </>
   );
 }

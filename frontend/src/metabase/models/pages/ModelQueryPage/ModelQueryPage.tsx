@@ -1,4 +1,5 @@
 import { useLayoutEffect, useMemo, useState } from "react";
+import type { Route } from "react-router";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -7,6 +8,7 @@ import {
   useGetCardQuery,
   useUpdateCardMutation,
 } from "metabase/api";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -27,9 +29,10 @@ type ModelQueryPageParams = {
 
 type ModelQueryPageProps = {
   params: ModelQueryPageParams;
+  route: Route;
 };
 
-export function ModelQueryPage({ params }: ModelQueryPageProps) {
+export function ModelQueryPage({ params, route }: ModelQueryPageProps) {
   const modelId = Urls.extractEntityId(params.modelId);
   const {
     data: model,
@@ -45,14 +48,15 @@ export function ModelQueryPage({ params }: ModelQueryPageProps) {
     );
   }
 
-  return <ModelQueryPageBody model={model} />;
+  return <ModelQueryPageBody model={model} route={route} />;
 }
 
 type ModelQueryPageBodyProps = {
   model: Card;
+  route: Route;
 };
 
-function ModelQueryPageBody({ model }: ModelQueryPageBodyProps) {
+function ModelQueryPageBody({ model, route }: ModelQueryPageBodyProps) {
   const [datasetQuery, setDatasetQuery] = useState(model.dataset_query);
   const [uiState, setUiState] = useState(getInitialUiState);
   const metadata = useSelector(getMetadata);
@@ -131,6 +135,10 @@ function ModelQueryPageBody({ model }: ModelQueryPageBodyProps) {
           onClose={handleCloseConfirmation}
         />
       )}
+      <LeaveRouteConfirmModal
+        route={route}
+        isEnabled={isDirty && !isSaving && !isCheckingDependencies}
+      />
     </>
   );
 }
