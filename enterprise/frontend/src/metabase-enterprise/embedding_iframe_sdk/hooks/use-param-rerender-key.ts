@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 
-import { sortObject } from "metabase-lib/v1/utils";
+import { stableStringify } from "metabase/lib/objects";
 
 import type { SdkIframeEmbedSettings } from "../../embedding_iframe_sdk/types/embed";
 
@@ -25,6 +25,3 @@ export const useParamRerenderKey = (settings: SdkIframeEmbedSettings) =>
         .otherwise(() => null),
     [settings],
   );
-
-// Stringify with sorted keys to ensure stable orders.
-const stableStringify = <T>(obj: T): string => JSON.stringify(sortObject(obj));
