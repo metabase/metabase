@@ -1,6 +1,7 @@
 import type * as Lib from "metabase-lib";
 
 import type {
+  DATE_PICKER_DIRECTIONS,
   DATE_PICKER_EXTRACTION_UNITS,
   DATE_PICKER_SHORTCUTS,
   DATE_PICKER_TRUNCATION_UNITS,
@@ -74,11 +75,12 @@ export type DatePickerValue =
 
 export type DatePickerValueType = DatePickerValue["type"];
 
-export type RelativeIntervalDirection = "last" | "current" | "next";
+export type RelativeIntervalDirection = (typeof DATE_PICKER_DIRECTIONS)[number];
 
 export interface ShortcutOption {
   label: string;
   shortcut: DatePickerShortcut;
+  direction: RelativeIntervalDirection;
   value: RelativeDatePickerValue;
 }
 

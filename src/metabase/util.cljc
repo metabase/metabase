@@ -1,7 +1,7 @@
 #_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:refer-clojure :exclude [group-by last])
+  (:refer-clojure :exclude [group-by last #?(:clj for)])
   (:require
    #?@(:clj ([clojure.core.protocols]
              [clojure.math.numeric-tower :as math]
@@ -29,7 +29,7 @@
    [metabase.util.memoize :as memoize]
    [metabase.util.namespaces :as u.ns]
    [metabase.util.number :as u.number]
-   [metabase.util.performance :as perf]
+   [metabase.util.performance :as perf :refer [#?(:clj for)]]
    [metabase.util.polyfills]
    [nano-id.core :as nano-id]
    [net.cgrand.macrovich :as macros]
@@ -440,9 +440,12 @@
 (defn real-number?
   "Is `x` a real number (i.e. not a `NaN` or an `Infinity`)?"
   [x]
-  (and (number? x)
-       (not (NaN? x))
-       (not (infinite? x))))
+  ;; Check for BigDec explicitly. BigDec cannot be nan or infinite, but using those predicates on bigdec with higher
+  ;; precision may allocate.
+  (or #?(:clj (decimal? x) :default false)
+      (and (number? x)
+           (not (NaN? x))
+           (not (infinite? x)))))
 
 (defn remove-diacritical-marks
   "Return a version of `s` with diacritical marks removed."
@@ -496,11 +499,18 @@
    (slugify s {}))
   (^String [s {:keys [max-length unicode?]}]
    (when (seq s)
-     (let [slug (str/join (for [c (remove-diacritical-marks (lower-case-en s))]
-                            (slugify-char c (not unicode?))))]
-       (if max-length
-         (str/join (take max-length slug))
-         slug)))))
+     (cond->> (remove-diacritical-marks (lower-case-en s))
+       true (map #(slugify-char % (not unicode?)))
+       max-length (reduce (fn [cur-slug next-slug]
+                            (if (<= (+ (count cur-slug)
+                                       (if (char? next-slug)
+                                         1
+                                         (count next-slug)))
+                                    max-length)
+                              (str cur-slug next-slug)
+                              (reduced cur-slug)))
+                          "")
+       true str/join))))
 
 (defn id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
@@ -750,7 +760,7 @@
                2 :magenta
                3 :yellow) "%s%s took %s"
              (if (pos? *profile-level*)
-               (str (str/join (repeat (dec *profile-level*) "  ")) " ⮦ ")
+               (str "┌" (str/join (repeat (dec *profile-level*) "─")) "─> ")
                "")
              (message-thunk)
              (u.format/format-nanoseconds (- #?(:cljs (* 1000000 (js/performance.now))
@@ -970,8 +980,11 @@
     (let [item        (first to-traverse)
           found       (traverse-fn (key item))
           traversed   (conj traversed item)
-          to-traverse (into (dissoc to-traverse (key item))
-                            (apply dissoc found (keys traversed)))]
+          ;; `merge-with into` allows us to not lose dependency info if an entity was required from a few different
+          ;; locations
+          to-traverse (merge-with into
+                                  (dissoc to-traverse (key item))
+                                  (apply dissoc found (keys traversed)))]
       (if (empty? to-traverse)
         traversed
         (recur to-traverse traversed)))))
@@ -1219,7 +1232,11 @@
        (coll-reduce [_ f init]
          (let [acc1 (reduce f init r1)
                acc2 (reduce f acc1 r2)]
-           acc2)))
+           acc2))
+
+       ;; The only reason to implement Seqable is to make it properly renderable by CIDER (and other IDEs, probably).
+       clojure.lang.Seqable
+       (seq [_] (concat (seq r1) (seq r2))))
      :cljs
      (reify IReduce
        (-reduce [_ f]

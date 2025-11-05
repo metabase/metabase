@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { push } from "react-router-redux";
 
 import {
+  setupDatabaseListEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -48,6 +50,15 @@ const setup = ({ isAdmin = true } = {}) => {
   );
 
   setupSearchEndpoints([]);
+  setupDatabaseListEndpoint([]);
+
+  // Additional query param variant for uploadable databases
+  fetchMock.get({
+    url: "path:/api/database",
+    query: { include_only_uploadable: true },
+    response: { data: [], total: 0 },
+  });
+  fetchMock.get("path:/api/ee/embedding-hub/checklist", {});
 
   return renderWithProviders(<EmbeddingHub />, { storeInitialState: state });
 };
@@ -57,10 +68,10 @@ describe("EmbeddingHub", () => {
     mockPush.mockClear();
   });
 
-  it("opens AddDataModal when 'Add data' is clicked", async () => {
+  it("opens AddDataModal when 'Connect a database' is clicked", async () => {
     setup();
 
-    await userEvent.click(screen.getByText("Add data"));
+    await userEvent.click(screen.getByText("Connect a database"));
 
     await waitFor(() => {
       const dialog = within(screen.getByRole("dialog"));
@@ -70,10 +81,10 @@ describe("EmbeddingHub", () => {
     });
   });
 
-  it("opens DataPickerModal when 'Generate a dashboard' is clicked", async () => {
+  it("opens DataPickerModal when 'Create a dashboard' is clicked", async () => {
     setup();
 
-    await userEvent.click(screen.getByText("Generate a dashboard"));
+    await userEvent.click(screen.getByText("Create a dashboard"));
 
     const dialog = await screen.findByTestId("entity-picker-modal");
     expect(dialog).toBeInTheDocument();

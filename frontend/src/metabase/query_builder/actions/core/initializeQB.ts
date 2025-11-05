@@ -79,7 +79,11 @@ function getCardForBlankQuestion(
   const tableId = options.table ? parseInt(options.table) : undefined;
   const segmentId = options.segment ? parseInt(options.segment) : undefined;
 
-  let question = Question.create({ databaseId, tableId, metadata });
+  let question = Question.create({
+    DEPRECATED_RAW_MBQL_databaseId: databaseId,
+    DEPRECATED_RAW_MBQL_tableId: tableId,
+    metadata,
+  });
 
   if (databaseId && tableId) {
     if (typeof segmentId === "number") {
@@ -329,6 +333,17 @@ async function handleQBInit(
   let question = new Question(card, metadata);
   const query = question.query();
   const { isNative, isEditable } = Lib.queryDisplayInfo(query);
+
+  // For unsaved native queries, ensure template tags are parsed from query text
+  // This handles cases like AI-generated queries with model references {{#1}}
+  if (isNative && !question.isSaved()) {
+    question = question.setQuery(
+      Lib.withNativeQuery(
+        question.query(),
+        Lib.rawNativeQuery(question.query()),
+      ),
+    );
+  }
 
   if (question.isSaved()) {
     const type = question.type();

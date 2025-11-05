@@ -1,5 +1,6 @@
 import cx from "classnames";
 
+import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
@@ -43,20 +44,27 @@ export function formatUrl(value: string, options: OptionsType = {}) {
     const text = getLinkText(value, options);
     const className = cx(CS.link, CS.linkWrappable);
 
-    // (metabase#51099) prevent url from being rendered as a link when in sdk
-    if (isEmbeddingSdk()) {
-      return url;
-    }
-
-    if (isSameOrSiteUrlOrigin(url)) {
+    // on the react sdk we treat all user provided urls as external links
+    if (isSameOrSiteUrlOrigin(url) && !isEmbeddingSdk()) {
       return (
         <Link className={className} to={url}>
           {text}
         </Link>
       );
     }
+
+    const onClickCaptureInSdk = isEmbeddingSdk()
+      ? {
+          onClickCapture: (e: React.MouseEvent<HTMLAnchorElement>) => {
+            if (handleLinkSdkPlugin(url).handled) {
+              e.preventDefault();
+            }
+          },
+        }
+      : {};
+
     return (
-      <ExternalLink className={className} href={url}>
+      <ExternalLink className={className} href={url} {...onClickCaptureInSdk}>
         {text}
       </ExternalLink>
     );

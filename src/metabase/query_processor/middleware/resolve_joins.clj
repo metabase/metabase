@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.resolve-joins
   "Middleware that fetches tables that will need to be joined, referred to by `:field` clauses with `:source-field`
   options, and adds information to the query about what joins should be done and how they should be performed."
-  (:refer-clojure :exclude [alias])
+  (:refer-clojure :exclude [alias every? mapv empty?])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -10,7 +10,8 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.walk :as lib.walk]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? mapv empty?]]))
 
 (mu/defn- merge-defaults :- ::lib.schema.join/join
   [join]
@@ -33,8 +34,6 @@
     ;; bucketed in different ways in previous stages; joins thus ought to be using field name refs; but this ends up
     ;; breaking a ton of stuff, especially `lib.equality`... #63109 was my attempt to make this stuff work when using
     ;; field name refs for joins but it's a long way off from landing.
-    ;;
-    ;; NOCOMMIT
     (for [{field-id :id, :as col} cols
           :let                    [[_tag opts id-or-name, :as field-ref] (lib/ref col)
                                    force-id-ref?         (and (string? id-or-name)

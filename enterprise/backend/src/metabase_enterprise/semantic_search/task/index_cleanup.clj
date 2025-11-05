@@ -8,10 +8,9 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
-   [metabase.premium-features.core :as premium-features]
+   [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -165,11 +164,12 @@
 
 (defn- cleanup-stale-indexes-and-gate-tombstones!
   []
-  (let [pgvector             (semantic.env/get-pgvector-datasource!)
-        index-metadata       (semantic.env/get-index-metadata)]
-    (cleanup-stale-indexes! pgvector index-metadata)
-    (cleanup-old-gate-tombstones! pgvector index-metadata)
-    (cleanup-orphan-repair-tables! pgvector)))
+  (when (semantic.u/semantic-search-available?)
+    (let [pgvector             (semantic.env/get-pgvector-datasource!)
+          index-metadata       (semantic.env/get-index-metadata)]
+      (cleanup-stale-indexes! pgvector index-metadata)
+      (cleanup-old-gate-tombstones! pgvector index-metadata)
+      (cleanup-orphan-repair-tables! pgvector))))
 
 (def ^:private cleanup-job-key (jobs/key "metabase.task.semantic-index-cleanup.job"))
 (def ^:private cleanup-trigger-key (triggers/key "metabase.task.semantic-index-cleanup.trigger"))
@@ -180,8 +180,7 @@
   (cleanup-stale-indexes-and-gate-tombstones!))
 
 (defmethod task/init! ::SemanticIndexCleanup [_]
-  (when (and (string? (not-empty semantic.db.datasource/db-url))
-             (premium-features/has-feature? :semantic-search))
+  (when (semantic.u/semantic-search-available?)
     (let [job (jobs/build
                (jobs/of-type SemanticIndexCleanup)
                (jobs/with-identity cleanup-job-key))

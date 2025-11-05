@@ -3,7 +3,7 @@ import type { Transform, TransformRunStatus } from "metabase-types/api";
 
 import { formatStatus } from "../../utils";
 import { RunCancelButton } from "../RunCancelButton/RunCancelButton";
-import { RunErrorInfo } from "../RunErrorInfo";
+import { RunInfo } from "../RunInfo";
 
 import S from "./RunStatusInfo.module.css";
 
@@ -26,7 +26,7 @@ export function RunStatusInfo({
     <Group gap="xs" className={S.runStatusInfo} wrap="nowrap">
       <Box c={isError ? "error" : undefined}>{formatStatus(status)}</Box>
       {isError && message != null && (
-        <RunErrorInfo message={message} endTime={endTime} />
+        <RunInfo status={status} message={message} endTime={endTime} />
       )}
       <RunCancelButton transform={transform} status={status} />
     </Group>

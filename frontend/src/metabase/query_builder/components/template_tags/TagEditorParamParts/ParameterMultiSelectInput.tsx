@@ -56,7 +56,7 @@ function ParameterMultiSelectHelpInfo() {
       <HoverCard.Target>
         <Icon
           c="text-secondary"
-          name="info_filled"
+          name="info"
           data-testid="multi-select-info-icon"
         />
       </HoverCard.Target>

@@ -1,12 +1,17 @@
 import { screen } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+import {
+  setupCurrentUserEndpoint,
+  setupPropertiesEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { defineMetabaseAuthConfig } from "embedding-sdk-package/lib/public/define-metabase-auth-config";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 
 import {
   MOCK_INSTANCE_URL,
@@ -125,9 +130,32 @@ describe("Auth Flow - JWT", () => {
     );
   });
 
+  it('should not render usage problem popover saying JWT is missing "exp" claim when then token is being fetched', async () => {
+    const customFetchFunction = jest.fn().mockImplementation(() => ({
+      jwt: MOCK_VALID_JWT_RESPONSE,
+    }));
+
+    const authConfig = defineMetabaseAuthConfig({
+      metabaseInstanceUrl: MOCK_INSTANCE_URL,
+      preferredAuthMethod: "jwt",
+      fetchRequestToken: customFetchFunction,
+    });
+
+    setup({ authConfig });
+
+    expect(
+      screen.queryByTestId("sdk-usage-problem-indicator"),
+    ).not.toBeInTheDocument();
+  });
+
   it("should include the subpath when requesting the SSO endpoint", async () => {
     // we can't use the usual mocks here as they use mocks that don't expect the subpath
     const instanceUrlWithSubpath = `${MOCK_INSTANCE_URL}/subpath`;
+
+    // Set up base URL mocks FIRST, before subpath-specific mocks
+    // This test doesn't use the shared setup() function, so it needs its own mocks
+    setupCurrentUserEndpoint(createMockUser());
+    setupPropertiesEndpoints(createMockSettings());
 
     fetchMock.get(`${instanceUrlWithSubpath}/auth/sso`, {
       status: 200,
@@ -151,6 +179,16 @@ describe("Auth Flow - JWT", () => {
         },
       },
     );
+
+    fetchMock.get(`${instanceUrlWithSubpath}/api/user/current`, {
+      status: 200,
+      body: createMockUser(),
+    });
+
+    fetchMock.get(`${instanceUrlWithSubpath}/api/session/properties`, {
+      status: 200,
+      body: createMockSettings(),
+    });
 
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: instanceUrlWithSubpath,

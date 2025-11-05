@@ -1,5 +1,6 @@
 import { match } from "ts-pattern";
 
+import { openSharingMenu } from "e2e/support/helpers/e2e-sharing-helpers";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 import type { CreateApiKeyResponse } from "metabase-types/api";
 
@@ -24,6 +25,7 @@ export interface BaseEmbedTestPageOptions {
     instanceUrl?: string;
     apiKey?: string;
     useExistingUserSession?: boolean;
+    fetchRequestToken?: () => Promise<{ jwt: string }>;
     theme?: MetabaseTheme;
     preferredAuthMethod?: "jwt" | "saml";
     locale?: string;
@@ -39,7 +41,7 @@ export interface BaseEmbedTestPageOptions {
     afterEmbed?: string;
   };
 
-  onVisitPage?(): void;
+  onVisitPage?(win: Cypress.AUTWindow): void;
 }
 
 export interface MetabaseElement {
@@ -92,9 +94,10 @@ export const getSimpleEmbedIframeContent = (iframeIndex = 0) => {
  */
 export function loadSdkIframeEmbedTestPage({
   origin = "",
+  selector,
   onVisitPage,
   ...options
-}: BaseEmbedTestPageOptions) {
+}: BaseEmbedTestPageOptions & { selector?: string }) {
   const testPageSource = getSdkIframeEmbedHtml(options);
 
   const testPageUrl = `${origin}/sdk-iframe-test-page`;
@@ -107,7 +110,7 @@ export function loadSdkIframeEmbedTestPage({
   cy.visit(testPageUrl, { onLoad: onVisitPage });
   cy.title().should("include", "Metabase Embed Test");
 
-  return getIframeBody();
+  return getIframeBody(selector);
 }
 
 /**
@@ -267,14 +270,7 @@ export const getNewEmbedConfigurationScript = ({
   useExistingUserSession,
   preferredAuthMethod,
   locale,
-}: {
-  instanceUrl?: string;
-  theme?: MetabaseTheme;
-  apiKey?: string;
-  useExistingUserSession?: boolean;
-  preferredAuthMethod?: "jwt" | "saml";
-  locale?: string;
-} = {}) => {
+}: BaseEmbedTestPageOptions["metabaseConfig"] = {}) => {
   const config = {
     instanceUrl,
     apiKey,
@@ -344,3 +340,9 @@ export const mockEmbedJsToDevServer = () => {
     }
   });
 };
+
+export function openEmbedJsModal() {
+  openSharingMenu("Embed");
+
+  cy.findByText("Embedded Analytics JS").click();
+}

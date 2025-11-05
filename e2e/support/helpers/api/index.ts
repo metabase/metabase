@@ -38,4 +38,4 @@ export { getCurrentUser } from "./getCurrentUser";
 export { remapDisplayValueToFK } from "./remapDisplayValueToFK";
 export { updateComment } from "./updateComment";
 export { updateDashboardCards } from "./updateDashboardCards";
-export { updateSetting } from "./updateSetting";
+export { updateSetting, updateEnterpriseSetting } from "./updateSetting";
