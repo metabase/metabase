@@ -5,18 +5,21 @@ import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { CollectionItemModel } from "metabase-types/api";
 
-import { DelayedLoadingSpinner, NestedItemPicker } from "../../../EntityPicker";
-import { useEnsureCollectionSelected } from "../../CollectionPicker";
-import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
-import { getPathLevelForItem } from "../../CollectionPicker/utils";
-import { useGetInitialContainer } from "../../hooks";
-import { getCollectionIdPath, getStateFromIdPath } from "../../utils";
+import {
+  DelayedLoadingSpinner,
+  NestedItemPicker,
+} from "../../../../EntityPicker";
+import { useEnsureCollectionSelected } from "../../../CollectionPicker";
+import { CollectionItemPickerResolver } from "../../../CollectionPicker/components/CollectionItemPickerResolver";
+import { getPathLevelForItem } from "../../../CollectionPicker/utils";
+import { useGetInitialContainer } from "../../../hooks";
+import { getCollectionIdPath, getStateFromIdPath } from "../../../utils";
 import type {
   QuestionPickerItem,
   QuestionPickerOptions,
   QuestionPickerStatePath,
-} from "../types";
-import { getQuestionPickerValueModel, isFolder } from "../utils";
+} from "../../types";
+import { getQuestionPickerValueModel, isFolder } from "../../utils";
 
 export const defaultOptions: QuestionPickerOptions = {
   showPersonalCollections: true,
@@ -61,6 +64,7 @@ export const QuestionPicker = ({
         idPath: getCollectionIdPath(folder, userPersonalCollectionId),
         models,
       });
+
       onItemSelect(folder);
       onPathChange(newPath);
     },
@@ -97,6 +101,8 @@ export const QuestionPicker = ({
             ...currentDashboard,
             model: "dashboard",
             location,
+            is_tenant_dashboard:
+              currentDashboard?.collection?.type === "shared-tenant-collection",
           },
           userPersonalCollectionId,
         );

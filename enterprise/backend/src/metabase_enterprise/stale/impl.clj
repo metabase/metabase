@@ -47,7 +47,7 @@
            [:= :report_card.archived false]
            [:<= :report_card.last_used_at (-> args :cutoff-date)]
            ;; find things only in regular collections, not the `instance-analytics` collection.
-           [:= :collection.type nil]
+           [:or [:= :collection.type nil] [:= :collection.type "shared-tenant-collection"]]
            (when (embed.settings/some-embedding-enabled?)
              [:= :report_card.enable_embedding false])
            (when (setting/get :enable-public-sharing)
@@ -79,7 +79,7 @@
            [:= :report_dashboard.archived false]
            [:<= :report_dashboard.last_viewed_at (-> args :cutoff-date)]
            ;; find things only in regular collections, not the `instance-analytics` collection.
-           [:= :collection.type nil]
+           [:or [:= :collection.type nil] [:= :collection.type "shared-tenant-collection"]]
            (when (embed.settings/some-embedding-enabled?)
              [:= :report_dashboard.enable_embedding false])
            (when (setting/get :enable-public-sharing)

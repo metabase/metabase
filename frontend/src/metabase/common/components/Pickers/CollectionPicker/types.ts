@@ -1,6 +1,7 @@
 import type {
   CardId,
   CollectionId,
+  CollectionItem,
   CollectionItemModel,
   DashboardId,
   ListCollectionItemsRequest,
@@ -33,7 +34,8 @@ export type CollectionPickerItem = TypeWithModel<
   CollectionItemId,
   CollectionPickerModel
 > &
-  Pick<Partial<SearchResult>, "description" | "can_write"> & {
+  Pick<Partial<SearchResult>, "description" | "can_write"> &
+  Pick<CollectionItem, "is_tenant_collection" | "is_tenant_dashboard"> & {
     location?: string | null;
     effective_location?: string | null;
     is_personal?: boolean;

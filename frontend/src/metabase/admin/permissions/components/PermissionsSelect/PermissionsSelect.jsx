@@ -1,10 +1,9 @@
 import PropTypes from "prop-types";
 import { Fragment, memo, useState } from "react";
 
-import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
 import Toggle from "metabase/common/components/Toggle";
 import { lighten } from "metabase/lib/colors";
-import { Icon, Tooltip } from "metabase/ui";
+import { Icon, Popover, Tooltip } from "metabase/ui";
 
 import {
   ActionsList,
@@ -50,6 +49,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   isHighlighted,
 }) {
   const [toggleState, setToggleState] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const selectedOption = options.find((option) => option.value === value);
   const selectableOptions = hasChildren
     ? options
@@ -60,6 +60,8 @@ export const PermissionsSelect = memo(function PermissionsSelect({
       isDisabled={isDisabled}
       aria-haspopup="listbox"
       data-testid="permissions-select"
+      aria-disabled={isDisabled}
+      onClick={() => setPopoverOpen((v) => !v)}
     >
       {isDisabled ? (
         <DisabledPermissionOption
@@ -91,14 +93,18 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   const hasActions = actionsForCurrentValue.length > 0;
 
   return (
-    <PopoverWithTrigger
+    <Popover
       disabled={isDisabled}
-      triggerElement={selectedOptionValue}
-      onClose={() => setToggleState(false)}
+      onClose={() => {
+        setToggleState(false);
+      }}
+      onChange={() => setPopoverOpen((v) => !v)}
+      opened={popoverOpen}
       targetOffsetX={16}
       targetOffsetY={8}
     >
-      {({ onClose }) => (
+      <Popover.Target>{selectedOptionValue}</Popover.Target>
+      <Popover.Dropdown>
         <Fragment>
           <OptionsList role="listbox">
             {selectableOptions.map((option) => (
@@ -106,8 +112,8 @@ export const PermissionsSelect = memo(function PermissionsSelect({
                 role="option"
                 key={option.value}
                 onClick={() => {
-                  onClose();
                   onChange(option.value, toggleLabel ? toggleState : null);
+                  setPopoverOpen(false);
                 }}
               >
                 <PermissionsSelectOption {...option} />
@@ -121,8 +127,8 @@ export const PermissionsSelect = memo(function PermissionsSelect({
                   key={index}
                   role="option"
                   onClick={() => {
-                    onClose();
                     onAction(action);
+                    setPopoverOpen(false);
                   }}
                 >
                   <PermissionsSelectOption {...action} />
@@ -138,8 +144,8 @@ export const PermissionsSelect = memo(function PermissionsSelect({
             </ToggleContainer>
           )}
         </Fragment>
-      )}
-    </PopoverWithTrigger>
+      </Popover.Dropdown>
+    </Popover>
   );
 });
 

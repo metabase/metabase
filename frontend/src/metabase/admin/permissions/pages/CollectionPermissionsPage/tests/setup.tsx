@@ -17,6 +17,7 @@ import type {
 } from "metabase-types/api";
 import {
   createMockCollection,
+  createMockGroup,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
@@ -55,10 +56,38 @@ const collectionTwo = createMockCollection({
   children: [nestedCollectionTwo],
 });
 
+const sharedTenantSubCollectionOne = createMockCollection({
+  id: 5,
+  name: "Shared Tenant Sub Collection One",
+  type: "shared-tenant-collection",
+  children: [],
+});
+
+const sharedTenantSubCollectionTwo = createMockCollection({
+  id: 6,
+  name: "Shared Tenant Sub Collection Two",
+  type: "shared-tenant-collection",
+  children: [],
+});
+
+const sharedTenantCollection = createMockCollection({
+  id: 7,
+  name: "Shared Tenant Collection",
+  type: "shared-tenant-collection",
+  children: [sharedTenantSubCollectionOne, sharedTenantSubCollectionTwo],
+});
+
 export const defaultCollections = [
   collectionOne,
   collectionTwo,
   personalCollection,
+];
+
+export const defaultCollectionWithTenants = [
+  ...defaultCollections,
+  sharedTenantCollection,
+  sharedTenantSubCollectionOne,
+  sharedTenantSubCollectionTwo,
 ];
 
 export const defaultRootCollection = createMockCollection({
@@ -76,6 +105,17 @@ export const defaultPermissionGroups: GroupInfo[] = [
   },
   { id: 2, name: "Administrators", member_count: 2, magic_group_type: "admin" },
   { id: 3, name: "Other Users", member_count: 33, magic_group_type: null },
+];
+
+const externalUsersGroup = createMockGroup({
+  id: 4,
+  name: "All External Users",
+  magic_group_type: "all-external-users",
+});
+
+export const defaultPermissionGroupsWithTenants = [
+  ...defaultPermissionGroups,
+  externalUsersGroup,
 ];
 
 export const defaultPermissionsGraph: CollectionPermissionsGraph = {
@@ -104,6 +144,56 @@ export const defaultPermissionsGraph: CollectionPermissionsGraph = {
       3: "none", // nested one
       4: "none", // nested two
       root: "read",
+    },
+  },
+};
+
+export const defaultPermissionsGraphWithTenants: CollectionPermissionsGraph = {
+  ...defaultPermissionsGraph,
+  groups: {
+    1: {
+      // all users
+      1: "write", // one
+      2: "write", // two
+      3: "read", // nested one
+      4: "none", // nested two
+      5: "write", // tenant collection
+      6: "write", // tenant nested one
+      7: "write", // tenant nested two
+      root: "read",
+    },
+    2: {
+      // Administrators
+      1: "write", // one
+      2: "write", // two
+      3: "write", // nested one
+      4: "write", // nested two
+      5: "write", // tenant collection
+      6: "write", // tenant nested one
+      7: "write", // tenant nested two
+      root: "write",
+    },
+    3: {
+      // Other users
+      1: "read", // one
+      2: "read", // two
+      3: "none", // nested one
+      4: "none", // nested two
+      5: "none", // tenant collection
+      6: "none", // tenant nested one
+      7: "none", // tenant nested two
+      root: "read",
+    },
+    4: {
+      // External users
+      1: "none", // one
+      2: "none", // two
+      3: "none", // nested one
+      4: "none", // nested two
+      5: "read", // tenant collection
+      6: "read", // tenant nested one
+      7: "read", // tenant nested two
+      root: "none",
     },
   },
 };

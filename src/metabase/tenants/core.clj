@@ -2,7 +2,8 @@
   "Shim namespace for `metabase-enterprise.tenants.core`"
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.collections.models.collection :as collection]))
 
 (defenterprise login-attributes
   "OSS version of `login-attributes`"

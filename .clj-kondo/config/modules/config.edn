@@ -1220,7 +1220,8 @@
   tenants
   {:team "Admin Webapp"
    :api #{metabase.tenants.core}
-   :uses #{premium-features
+   :uses #{collections
+           premium-features
            util}}
 
   testing-api
@@ -1848,11 +1849,16 @@
    :uses #{api
            audit-app
            events
+           collections
            models
+           permissions
            premium-features
            request
+<<<<<<< HEAD
            settings
            tenants
+=======
+>>>>>>> 27982629b14 (Tenant Collections)
            util}}
 
   enterprise/upload-management

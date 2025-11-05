@@ -124,7 +124,7 @@ describe("Admin > CollectionPermissionsPage", () => {
       expect(within(otherUsersRow).getByText("Other Users")).toBeVisible();
       await userEvent.click(within(otherUsersRow).getByText("View"));
 
-      const popover = await screen.findByTestId("popover");
+      const popover = await screen.findByRole("dialog");
       await userEvent.click(within(popover).getByRole("switch")); // propagate switch
       await userEvent.click(within(popover).getByText("Curate"));
 

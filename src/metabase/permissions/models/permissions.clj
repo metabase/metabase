@@ -429,9 +429,8 @@
   ((requiring-resolve 'metabase.collections.models.collection/is-trash-or-descendant?) collection))
 
 (defn- is-tenant-collection?
-  [_collection]
-  ;; for now...
-  false)
+  [collection]
+  ((requiring-resolve 'metabase.collections.models.collection/is-tenant-collection?) collection))
 
 (defn- ^:private collection-or-id->collection
   [collection-or-id]
