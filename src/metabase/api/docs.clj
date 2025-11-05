@@ -16,7 +16,7 @@
 
 (def openapi-file-path
   "Path to the local OpenAPI specification file."
-  "ts-types/openapi.json")
+  "resources/openapi/openapi.json")
 
 (defn- sort-keys [data]
   (walk/postwalk
@@ -40,7 +40,7 @@
       ;; Create parent directory if it doesn't exist
       (when-let [parent-dir (.getParentFile file)]
         (.mkdirs parent-dir))
-      (json/encode-to (sort-keys spec) (io/writer file))
+      (json/encode-to (sort-keys spec) (io/writer file) {:pretty true})
       (log/info "OpenAPI specification written to" openapi-file-path))
     (catch Throwable e
       (log/error e "Failed to write OpenAPI specification to file"))))
