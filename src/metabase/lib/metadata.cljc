@@ -1,5 +1,5 @@
 (ns metabase.lib.metadata
-  (:refer-clojure :exclude [every? #?(:clj doseq) #?(:clj for)])
+  (:refer-clojure :exclude [every? empty? #?(:clj doseq) #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -11,7 +11,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? #?(:clj doseq) #?(:clj for)]]))
+   [metabase.util.performance :refer [every? empty? #?(:clj doseq) #?(:clj for)]]))
 
 ;;; TODO -- deprecate all the schemas below, and just use the versions in [[lib.schema.metadata]] instead.
 

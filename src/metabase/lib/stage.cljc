@@ -1,6 +1,6 @@
 (ns metabase.lib.stage
   "Method implementations for a stage of a query."
-  (:refer-clojure :exclude [mapv some #?(:clj for)])
+  (:refer-clojure :exclude [mapv some not-empty #?(:clj for)])
   (:require
    [clojure.string :as str]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -25,7 +25,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]
-   [metabase.util.performance :refer [mapv some #?(:clj for)]]))
+   [metabase.util.performance :refer [mapv some not-empty #?(:clj for)]]))
 
 (comment metabase.lib.stage.util/keep-me)
 
