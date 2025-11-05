@@ -3,21 +3,19 @@ import { t } from "ttag";
 import { ActionIcon, Card, Group, Icon, Menu, Text } from "metabase/ui";
 import type { EmbeddingTheme } from "metabase-types/api/embedding-theme";
 
-import { EmbeddingPreviewPlaceholderCard } from "./EmbeddingPreviewPlaceholderCard";
-
-interface EmbeddingThemeCardProps {
-  theme: Omit<EmbeddingTheme, "settings">;
-  onEdit: (id: number) => void;
-  onDuplicate: (id: number) => void;
-  onDelete: (id: number) => void;
-}
+import { EmbeddingThemeCardPreview } from "./EmbeddingThemeCardPreview";
 
 export function EmbeddingThemeCard({
   theme,
   onEdit,
   onDuplicate,
   onDelete,
-}: EmbeddingThemeCardProps) {
+}: {
+  theme: Omit<EmbeddingTheme, "settings">;
+  onEdit: (id: number) => void;
+  onDuplicate: (id: number) => void;
+  onDelete: (id: number) => void;
+}) {
   return (
     <Card
       p={0}
@@ -25,7 +23,7 @@ export function EmbeddingThemeCard({
       onClick={() => onEdit(theme.id)}
       style={{ cursor: "pointer" }}
     >
-      <EmbeddingPreviewPlaceholderCard />
+      <EmbeddingThemeCardPreview />
 
       <Group align="center" justify="space-between" px="md" py="sm">
         <Text fz="lg">{theme.name}</Text>
