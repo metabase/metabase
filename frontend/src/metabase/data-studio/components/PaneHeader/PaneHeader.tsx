@@ -112,7 +112,7 @@ export function PaneHeaderActions({
 }: PaneHeaderActionsProps) {
   const canSave = isDirty && !isSaving && isValid;
 
-  if (!isDirty || !isSaving) {
+  if (!isDirty && !isSaving) {
     return null;
   }
 
