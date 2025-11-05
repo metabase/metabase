@@ -30,12 +30,8 @@ export function dataStudioModelDependencies(modelId: CardId) {
   return `${dataStudioModel(modelId)}/dependencies`;
 }
 
-export function newDataStudioQueryMetric() {
-  return `${dataStudioModeling()}/metrics/new/query`;
-}
-
-export function newDataStudioNativeMetric() {
-  return `${dataStudioModeling()}/metrics/new/native`;
+export function newDataStudioMetric() {
+  return `${dataStudioModeling()}/metrics/new`;
 }
 
 export function dataStudioMetric(metricId: CardId) {

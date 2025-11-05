@@ -80,9 +80,12 @@ function MetricQueryPageBody({ metric, route }: MetricQueryPageBodyProps) {
     handleCloseConfirmation,
   } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
     onSave: async (question) => {
+      const { display, settings } = Lib.defaultDisplay(question.query());
       const { error } = await updateCard({
         id: metric.id,
         dataset_query: question.datasetQuery(),
+        display,
+        visualization_settings: settings,
       });
       if (error) {
         sendErrorToast(t`Failed to update metric query`);

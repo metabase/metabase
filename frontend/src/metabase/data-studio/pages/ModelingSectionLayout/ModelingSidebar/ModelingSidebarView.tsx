@@ -45,12 +45,7 @@ export function ModelingSidebarView({
 
   const handleCreateMetricNotebook = useCallback(() => {
     setIsCreateMenuOpen(false);
-    dispatch(push(Urls.newDataStudioQueryMetric()));
-  }, [dispatch]);
-
-  const handleCreateMetricNative = useCallback(() => {
-    setIsCreateMenuOpen(false);
-    dispatch(push(Urls.newDataStudioNativeMetric()));
+    dispatch(push(Urls.newDataStudioMetric()));
   }, [dispatch]);
 
   return (
@@ -121,12 +116,6 @@ export function ModelingSidebarView({
                   onClick={handleCreateMetricNotebook}
                 >
                   {t`Notebook`}
-                </Menu.Item>
-                <Menu.Item
-                  leftSection={<Icon name="sql" />}
-                  onClick={handleCreateMetricNative}
-                >
-                  {t`Native query`}
                 </Menu.Item>
               </Menu.Sub.Dropdown>
             </Menu.Sub>
