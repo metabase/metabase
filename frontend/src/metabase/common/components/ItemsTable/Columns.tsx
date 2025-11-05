@@ -10,10 +10,12 @@ import EntityItem from "metabase/common/components/EntityItem";
 import Markdown from "metabase/common/components/Markdown";
 import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { modelToUrl } from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { IconProps } from "metabase/ui";
 import { Tooltip } from "metabase/ui";
+import { getUrl } from "metabase-lib/v1/urls";
 import type {
   CollectionItem,
   ListCollectionItemsSortColumn,
@@ -52,7 +54,7 @@ const ItemLinkComponent = ({
     return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
   return (
-    <ItemLink to={item.getUrl()} onClick={() => onClick?.(item)}>
+    <ItemLink to={modelToUrl(item)} onClick={() => onClick?.(item)}>
       {children}
     </ItemLink>
   );
