@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/common/components/Button";
-import { color } from "metabase/lib/colors";
+import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
 import { getRelativeTime } from "metabase/lib/time-dayjs";
 import type { RevisionOrModerationEvent } from "metabase/plugins";
 import { Icon, Tooltip } from "metabase/ui";
@@ -65,9 +65,11 @@ export function Timeline({
                   </Tooltip>
                 )}
               </EventHeader>
-              <Timestamp dateTime={timestamp}>
-                {getRelativeTime(timestamp)}
-              </Timestamp>
+              <Tooltip position="bottom" label={getFormattedTime(timestamp)}>
+                <Timestamp dateTime={timestamp}>
+                  {getRelativeTime(timestamp)}
+                </Timestamp>
+              </Tooltip>
               {revision?.has_multiple_changes && <div>{description}</div>}
             </EventBody>
           </TimelineEvent>
@@ -82,7 +84,7 @@ function EventIcon({ icon }: { icon: RevisionOrModerationEvent["icon"] }) {
     return null;
   }
   if (_.isObject(icon)) {
-    return <Icon name={icon.name} color={color(icon.color)} size={16} />;
+    return <Icon name={icon.name} c={icon.color} size={16} />;
   }
-  return <Icon name={icon} color={color("text-light")} size={16} />;
+  return <Icon name={icon} c="text-light" size={16} />;
 }

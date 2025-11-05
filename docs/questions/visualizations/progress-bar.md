@@ -12,7 +12,7 @@ redirect_from:
 
 ## When to use a progress bar
 
-Progress bars are useful when you want to show the movement of a metric toward a goal, like assessing performance of a KPI, or tracking the percentage of of completion on a project.
+Progress bars are useful when you want to show the movement of a metric toward a goal, like assessing performance of a KPI, or tracking the percentage of completion on a project.
 
 Progress bars give you an option to set up an alert whenever the result of a question reaches the goal set in the progress bar settings. See [Progress bar alerts](../alerts.md#progress-bar-alerts).
 
@@ -75,6 +75,8 @@ If you're using the query builder, you might need to compute both the metric and
 For example, if you want to build a progress bar comparing count of orders this year (the metric) vs count of orders last year (the goal) you can make use of [`CountIf()`](../query-builder/expressions/countif.md) to build a query returning conditional counts based on years:
 
 ![Conditional counts as metric and goal](../images/progress-conditional-count.png)
+
+Note that both columns are computed fields here, one for 2024 and one for the current year.
 
 Once you have a column that you want to use, set it as a goal:
 

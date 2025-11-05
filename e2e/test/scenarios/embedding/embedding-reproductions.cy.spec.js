@@ -957,24 +957,23 @@ describe("issue 40660", () => {
     });
   });
 
-  it(
-    "static dashboard content shouldn't overflow its container (metabase#40660)",
-    { tags: "@flaky" },
-    () => {
-      H.openStaticEmbeddingModal({
-        activeTab: "parameters",
-        previewMode: "preview",
-      });
+  it("static dashboard content shouldn't overflow its container (metabase#40660)", () => {
+    H.openStaticEmbeddingModal({
+      activeTab: "parameters",
+      previewMode: "preview",
+    });
 
-      H.getIframeBody().within(() => {
-        cy.findByTestId("embed-frame").scrollTo("bottom");
+    H.getIframeBody().within(() => {
+      cy.findByText(dashboardDetails.name).should("be.visible");
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findAllByText("1018947080336").should("have.length", 3);
+      cy.findByTestId("embed-frame").scrollTo("bottom");
 
-        cy.findByRole("link", { name: "Powered by Metabase" }).should(
-          "be.visible",
-        );
-      });
-    },
-  );
+      cy.findByRole("link", { name: "Powered by Metabase" })
+        .scrollIntoView()
+        .should("be.visible");
+    });
+  });
 });
 
 // Skipped since it does not make sense when CSP is disabled
@@ -1417,7 +1416,7 @@ describe("issue 51934 (EMB-189)", () => {
         "have.css",
         "background-color",
         // brand color
-        "rgb(80, 158, 227)",
+        "rgb(80, 158, 226)",
       );
       cy.findByRole("menuitem", { name: QUESTION_IN_COLLECTION_NAME })
         .should("be.visible")
@@ -1446,7 +1445,7 @@ describe("issue 51934 (EMB-189)", () => {
         "have.css",
         "background-color",
         // brand color
-        "rgb(80, 158, 227)",
+        "rgb(80, 158, 226)",
       );
       cy.findByRole("menuitem", { name: MODEL_IN_COLLECTION_NAME })
         .should("be.visible")
@@ -1468,7 +1467,7 @@ describe("issue 51934 (EMB-189)", () => {
         "have.css",
         "background-color",
         // brand color
-        "rgb(80, 158, 227)",
+        "rgb(80, 158, 226)",
       );
       cy.findByRole("menuitem", { name: MODEL_IN_ROOT_NAME }).should(
         "be.visible",

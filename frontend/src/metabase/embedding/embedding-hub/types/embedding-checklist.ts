@@ -43,6 +43,11 @@ interface EmbeddingHubAction {
   /** Internal link to a Metabase route. */
   to?: string;
 
+  /**
+   * Click handler
+   */
+  onClick?: () => void;
+
   /** Path of the documentation page, e.g. `embedding/embedded-analytics-js` */
   docsPath?: string;
 

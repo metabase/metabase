@@ -98,7 +98,7 @@ export interface DatasetData {
 }
 
 export type JsonQuery = DatasetQuery & {
-  parameters?: unknown[];
+  parameters?: Parameter[];
   "cache-strategy"?: CacheStrategy & {
     /** An ISO 8601 date */
     "invalidated-at"?: string;
@@ -177,7 +177,7 @@ export type SingleSeries = {
    * COLUMN_2, etc.) to their original values (count, avg, etc.).
    */
   columnValuesMapping?: Record<string, VisualizerColumnValueSource[]>;
-} & Pick<Dataset, "error" | "started_at" | "data">;
+} & Pick<Dataset, "error" | "started_at" | "data" | "json_query">;
 
 export type SingleSeriesWithTranslation = SingleSeries & {
   data: Dataset["data"] & {

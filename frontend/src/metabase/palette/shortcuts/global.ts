@@ -142,4 +142,24 @@ export const globalShortcuts = {
     shortcut: ["c e"],
     shortcutGroup: "global" as const,
   },
+
+  "toggle-dark-mode": {
+    get name() {
+      return t`Toggle dark mode`;
+    },
+
+    shortcut: ["$mod+Shift+KeyL"],
+    shortcutGroup: "global" as const,
+  },
+
+  "toggle-dark-mode-2": {
+    get name() {
+      return t`Toggle dark mode`;
+    },
+    shortcutGroup: "global" as const,
+    hide: true,
+    shortcut: [
+      "ArrowUp ArrowUp ArrowDown ArrowDown ArrowLeft ArrowRight ArrowLeft ArrowRight B A",
+    ],
+  },
 };

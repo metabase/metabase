@@ -4,7 +4,7 @@
    [metabase.util.log :as log])
   (:import
    (clojure.lang IDeref)
-   (java.io Closeable File)
+   (java.io Closeable File InputStream)
    (java.net URI)
    (java.time Duration)
    (software.amazon.awssdk.auth.credentials AwsBasicCredentials StaticCredentialsProvider)
@@ -183,19 +183,22 @@
   (let [^PutObjectRequest request (put-object-request bucket-name key)]
     (.putObject s3-client request (RequestBody/fromFile file))))
 
-;; TODO optimize our ingestion to stream the data. reading a string will not work in any case for binary files.
+(defn open-object
+  "Get back the contents of the given key as a InputStream."
+  ^InputStream [^S3Client s3-client ^String bucket-name ^String key]
+  (try
+    (let [^GetObjectRequest request (get-object-request bucket-name key)]
+      (.getObject s3-client request))
+    (catch NoSuchKeyException _ nil)))
+
 (defn read-to-string
   "Get back the contents of the given key as a string."
-  ([s3-client bucket-name key] (read-to-string s3-client bucket-name key ::throw))
+  ([s3-client bucket-name key] (read-to-string s3-client bucket-name key nil))
   ([^S3Client s3-client ^String bucket-name ^String key not-found]
-   (try
-     (let [^GetObjectRequest request (get-object-request bucket-name key)
-           response                  (.getObject s3-client request)]
-       (slurp response))
-     (catch NoSuchKeyException e
-       (if (identical? ::throw not-found)
-         (throw e)
-         not-found)))))
+   (if-some [in (open-object s3-client bucket-name key)]
+     (with-open [ret in]
+       (slurp ret))
+     not-found)))
 
 (defn delete
   ;; TODO better error handling

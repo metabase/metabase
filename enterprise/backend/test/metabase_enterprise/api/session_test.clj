@@ -36,6 +36,7 @@
                               :offer-metabase-ai
                               :official-collections
                               :query-reference-validation
+                              :remote-sync
                               :sandboxes
                               :scim
                               :semantic-search
@@ -80,6 +81,7 @@
             :offer_metabase_ai              true
             :official_collections           true
             :query_reference_validation     true
+            :remote_sync                    true
             :sandboxes                      true
             :scim                           true
             :semantic_search                true
@@ -99,5 +101,6 @@
             :database_routing               true
             :cloud_custom_smtp              true
             :etl_connections                false
-            :etl_connections_pg             false}
+            :etl_connections_pg             false
+            :dependencies                   false}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

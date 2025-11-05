@@ -4,7 +4,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms-python.execute :as transforms.execute]
+   [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
@@ -29,21 +29,22 @@
   "Execute a Python transform with the given code and tables"
   [{:keys [code tables]}]
   (with-open [shared-storage-ref (s3/open-shared-storage! (or tables {}))]
-    (let [server-url (transforms-python.settings/python-runner-url)
-          cancel-chan (a/promise-chan)
-          table-name->id (or tables {})
-          _ (python-runner/copy-tables-to-s3! {:run-id test-id
-                                               :shared-storage @shared-storage-ref
-                                               :table-name->id table-name->id
-                                               :cancel-chan cancel-chan})
-          response (python-runner/execute-python-code-http-call! {:server-url server-url
-                                                                  :code code
-                                                                  :run-id test-id
-                                                                  :table-name->id table-name->id
-                                                                  :shared-storage @shared-storage-ref})
-          {:keys [output output-manifest events]} (python-runner/read-output-objects @shared-storage-ref)]
+    (let [server-url      (transforms-python.settings/python-runner-url)
+          cancel-chan     (a/promise-chan)
+          table-name->id  (or tables {})
+          _               (python-runner/copy-tables-to-s3! {:run-id         test-id
+                                                             :shared-storage @shared-storage-ref
+                                                             :table-name->id table-name->id
+                                                             :cancel-chan    cancel-chan})
+          response        (python-runner/execute-python-code-http-call! {:server-url     server-url
+                                                                         :code           code
+                                                                         :run-id         test-id
+                                                                         :table-name->id table-name->id
+                                                                         :shared-storage @shared-storage-ref})
+          events          (python-runner/read-events @shared-storage-ref)
+          output-manifest (python-runner/read-output-manifest @shared-storage-ref)]
       (merge (:body response)
-             {:output output
+             {:output (when-some [in (python-runner/open-output @shared-storage-ref)] (with-open [in in] (slurp in)))
               :output-manifest output-manifest
               :stdout (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
               :stderr (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))}))))
@@ -64,7 +65,7 @@
                        :target target}]
     (with-transform-cleanup! [_target target]
       (mt/with-temp [:model/Transform transform transform-def]
-        (transforms.execute/execute-python-transform! transform {:run-method :manual})
+        (transforms-python.execute/execute-python-transform! transform {:run-method :manual})
         (let [table (transforms.tu/wait-for-table table-name 10000)
               columns (t2/select :model/Field :table_id (:id table) {:order-by [:position]})
               column-names (filterv (fn [x] (not= x "_id")) ;; for mongo

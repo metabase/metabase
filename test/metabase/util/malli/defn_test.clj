@@ -174,14 +174,12 @@
     (testing "returns a simple fn*"
       (mt/with-dynamic-fn-redefs [mu.fn/instrument-ns? (constantly false)]
         (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
-          (is (= '(def f
-                    "Inputs: []\n  Return: :int" (clojure.core/fn [] "foo"))
+          (is (= '(def f (clojure.core/fn [] "foo"))
                  (deanon-fn-names expansion))))))
     (testing "returns an instrumented fn"
       (mt/with-dynamic-fn-redefs [mu.fn/instrument-ns? (constantly true)]
         (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
           (is (= '(def f
-                    "Inputs: []\n  Return: :int"
                     (clojure.core/let
                      [&f (clojure.core/fn f [] "foo")]
                       (clojure.core/fn

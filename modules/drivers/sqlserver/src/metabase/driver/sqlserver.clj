@@ -18,30 +18,21 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql.parameters.substitution
-    :as sql.params.substitution]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [mapv]])
   (:import
-   (java.sql
-    Connection
-    DatabaseMetaData
-    PreparedStatement
-    ResultSet
-    Time)
-   (java.time
-    LocalDate
-    LocalDateTime
-    LocalTime
-    OffsetDateTime
-    OffsetTime
-    ZonedDateTime)
+   (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.util UUID)
    (net.sf.jsqlparser.schema Table)
@@ -67,12 +58,15 @@
                               :metadata/table-existence-check         true
                               :transforms/python                      true
                               :transforms/table                       true
-                              :jdbc/statements                        false}]
+                              :jdbc/statements                        false
+                              :describe-default-expr                  true
+                              :describe-is-nullable                   true
+                              :describe-is-generated                  true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
-(defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
-  [_ _ db]
-  (let [major-version (get-in db [:dbms_version :semantic-version 0] 0)]
+(mu/defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
+  [_ _ db :- ::lib.schema.metadata/database]
+  (let [major-version (get-in db [:dbms-version :semantic-version 0] 0)]
     (when (zero? major-version)
       (log/warn "Unable to determine sqlserver's dbms major version. Fallback to 0."))
     (>= major-version 16)))
@@ -348,12 +342,60 @@
   [_ hsql-form amount unit]
   (date-add unit amount hsql-form))
 
+;; The second argument to DATEADD() gets casted to a 32-bit integer. BIGINT is 64 bites, so we tend to run into
+;; integer overflow errors (especially for millisecond timestamps).
+;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
+;;
+;; NOTE: In SQL Server 2025 (17.x) + this is no longer
+;; true (https://learn.microsoft.com/en-us/sql/t-sql/functions/dateadd-transact-sql?view=sql-server-ver17):
+;;
+;; > In SQL Server 2025 (17.x) Preview, Azure SQL Database, Azure SQL Managed Instance and SQL database in Microsoft
+;; > Fabric Preview, number can be expressed as a bigint. This feature is in preview.
+
+(defn- supports-bigint-date-add? []
+  (some-> (driver-api/metadata-provider)
+          driver-api/database
+          :dbms-version
+          :semantic-version
+          first
+          (>= 17)))
+
+(def ^:private nineteen-seventy (h2x/cast :datetime2 (h2x/literal "1970-01-01 00:00:00.000")))
+
+(defn- unix-timestamp->honeysql [expr unit num-per-minute]
+  (if (supports-bigint-date-add?)
+    (date-add unit expr nineteen-seventy)
+    (->> nineteen-seventy
+         (date-add :minute (h2x// expr num-per-minute))
+         (date-add unit (h2x/mod expr num-per-minute)))))
+
 (defmethod sql.qp/unix-timestamp->honeysql [:sqlserver :seconds]
-  [_ _ expr]
-  ;; The second argument to DATEADD() gets casted to a 32-bit integer. BIGINT is 64 bites, so we tend to run into
-  ;; integer overflow errors (especially for millisecond timestamps).
-  ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
-  (date-add :minute (h2x// expr 60) (h2x/literal "1970-01-01")))
+  [_driver _precision expr]
+  (unix-timestamp->honeysql expr :second 60))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlserver :milliseconds]
+  [_driver _precision expr]
+  (unix-timestamp->honeysql expr :millisecond (* 60 1000)))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlserver :microseconds]
+  [_driver _precision expr]
+  (unix-timestamp->honeysql expr :microsecond (* 60 1000 1000)))
+
+;;; 60 ✕ 10^9 is still larger than `Integer/MAX_VALUE` (i.e., the max value for a 32-bit integer) so it STILL results
+;;; in integer overflows even if we modulo by the number per minute... we actually have to split this up into three
+;;; parts to avoid the overflow.
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlserver :nanoseconds]
+  [_driver _precision expr]
+  (if (supports-bigint-date-add?)
+    (date-add :nanosecond expr nineteen-seventy)
+    (let [num-per-minute (* 60 1000 1000 1000)
+          num-per-second (* 1000 1000 1000)]
+      (->> nineteen-seventy
+           (date-add :minute (h2x// expr num-per-minute))
+           (date-add :second (-> expr
+                                 (h2x/mod num-per-minute)
+                                 (h2x// num-per-second)))
+           (date-add :nanosecond (h2x/mod expr num-per-second))))))
 
 (defmethod sql.qp/float-dbtype :sqlserver
   [_]
@@ -392,7 +434,8 @@
 (defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [expr            (sql.qp/->honeysql driver arg)
-        datetimeoffset? (h2x/is-of-type? expr "datetimeoffset")]
+        datetimeoffset? (or (sql.qp.u/field-with-tz? arg)
+                            (h2x/is-of-type? expr "datetimeoffset"))]
     (sql.u/validate-convert-timezone-args datetimeoffset? target-timezone source-timezone)
     (-> (if datetimeoffset?
           expr

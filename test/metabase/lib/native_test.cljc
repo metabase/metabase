@@ -239,6 +239,22 @@
          (-> (lib.tu/venues-query)
              (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")}))))))
 
+(deftest ^:parallel with-template-tags-update-map-order-test
+  ;; yes, I know template tags are sorted as a map, but for small maps we should preserve the order passed in by the
+  ;; FE. See
+  ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759974826834279?thread_ts=1759289751.539169&cid=C0645JP1W81
+  (testing "it should be possible to reorder template tags with with-template-tags"
+    (let [query         (lib/native-query meta/metadata-provider "{{x}} {{y}} {{z}}")
+          original-tags (lib/template-tags query)]
+      (is (=? {"x" {}, "y" {}, "z" {}}
+              original-tags))
+      (is (= ["x" "y" "z"]
+             (keys original-tags)))
+      (let [updated-tags {"y" (get original-tags "y"), "x" (get original-tags "x")}
+            query'       (lib/with-template-tags query updated-tags)]
+        (is (= ["y" "x" "z"]
+               (keys (lib/template-tags query'))))))))
+
 (defn ^:private metadata-provider-requiring-collection []
   (meta/updated-metadata-provider update :features conj :native-requires-specified-collection))
 
@@ -448,3 +464,129 @@
               :display-name "Price"
               :lib/source   :source/card}]
             (lib/returned-columns query)))))
+
+(deftest ^:parallel add-parameters-text-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7",
+           :type   :string/=,
+           :value  ["foo"],
+           :target ["variable" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag" {:type :text,
+                                               :name "mytag",
+                                               :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                               :display-name "My Tag"}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-number-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7",
+           :type   :number/=,
+           :value  ["0"],
+           :target ["variable" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :number}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-date-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7",
+           :type   :date/single,
+           :value  "1970-01-01",
+           :target ["variable" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :date}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-boolean-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7",
+           :type   :boolean/=,
+           :value  [false],
+           :target ["variable" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :boolean}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-string-dimension-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7",
+           :type   :string/=,
+           :value  ["foo"],
+           :target ["dimension" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:dimension [:field
+                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
+                                                   (meta/id :products :category)]
+                                       :display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :dimension
+                                       :widget-type :date/range}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-number-dimension-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7",
+           :type   :number/=,
+           :value  ["0"],
+           :target ["dimension" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:dimension [:field
+                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
+                                                   (meta/id :orders :total)]
+                                       :display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :dimension
+                                       :widget-type :date/range}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-date-dimension-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7",
+           :type   :date/single,
+           :value  "2025-01-01",
+           :target ["dimension" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:dimension [:field
+                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
+                                                   (meta/id :orders :created-at)]
+                                       :display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :dimension
+                                       :widget-type :date/range}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-temporal-unit-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7",
+           :type   :temporal-unit,
+           :value  "week",
+           :target ["dimension" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:dimension [:field
+                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
+                                                   (meta/id :orders :created-at)]
+                                       :display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :temporal-unit}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
