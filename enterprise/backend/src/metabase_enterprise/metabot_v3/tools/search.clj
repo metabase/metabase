@@ -119,7 +119,7 @@
   "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.
   Abstracted from the API endpoint logic."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot-id search-native-query]}]
+           entity-types limit metabot-id search-native-query search-weights]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:term-queries term-queries
               :semantic-queries semantic-queries
@@ -129,7 +129,8 @@
               :entity-types entity-types
               :limit limit
               :metabot-id metabot-id
-              :search-native-query search-native-query})
+              :search-native-query search-native-query
+              :search-weights search-weights})
   (let [search-models (if (seq entity-types)
                         (set (distinct (keep entity-type->search-model entity-types)))
                         metabot-search-models)
@@ -163,7 +164,9 @@
                                            (when search-native-query
                                              {:search-native-query (boolean search-native-query)})
                                            (when use-verified-content?
-                                             {:verified true})))
+                                             {:verified true})
+                                           (when search-weights
+                                             {:weight-overrides search-weights})))
                           _ (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
                                        query (:models search-context))
                           search-results (search/search search-context)

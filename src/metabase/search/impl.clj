@@ -286,7 +286,8 @@
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
    [:non-temporal-dim-ids                {:optional true} [:maybe ms/NonBlankString]]
    [:has-temporal-dim                    {:optional true} [:maybe :boolean]]
-   [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]])
+   [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]
+   [:weight-overrides                    {:optional true} [:maybe [:map-of :keyword number?]]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -317,7 +318,8 @@
            table-db-id
            verified
            non-temporal-dim-ids
-           has-temporal-dim]} :- ::search-context.input]
+           has-temporal-dim
+           weight-overrides]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
@@ -356,7 +358,8 @@
                  (seq ids)                                   (assoc :ids ids)
                  (some? non-temporal-dim-ids)                (assoc :non-temporal-dim-ids non-temporal-dim-ids)
                  (some? has-temporal-dim)                    (assoc :has-temporal-dim has-temporal-dim)
-                 (seq display-type)                          (assoc :display-type display-type))]
+                 (seq display-type)                          (assoc :display-type display-type)
+                 (some? weight-overrides)                    (assoc :weight-overrides weight-overrides))]
     (when (and (seq ids)
                (not= (count models) 1))
       (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))

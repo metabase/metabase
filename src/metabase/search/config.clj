@@ -187,17 +187,25 @@
 
 ;; This gets called *a lot* during a search request, so we'll almost certainly need to optimize it. Maybe just TTL.
 (defn weights
-  "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
-  [context]
-  (let [context   (or context :default)
-        overrides (search.settings/experimental-search-weight-overrides)]
+  "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence.
+
+  Weight precedence (highest to lowest):
+  1. Per-request weight overrides from search-ctx (:weight-overrides key)
+  2. Global setting overrides (experimental-search-weight-overrides)
+  3. Context-specific static weights (e.g., :metabot, :command-palette)
+  4. Default static weights (:default)"
+  [search-ctx]
+  (let [context          (or (:context search-ctx) :default)
+        weight-overrides (:weight-overrides search-ctx)
+        overrides        (search.settings/experimental-search-weight-overrides)]
     (if (= :all context)
-      (merge-with merge static-weights overrides)
+      (merge-with merge static-weights overrides (when weight-overrides {:default weight-overrides}))
       (merge (get static-weights :default)
              ;; Not sure which of the next two should have precedence, arguments for both "¯\_(ツ)_/¯"
              (get overrides :default)
              (get static-weights context)
-             (get overrides context)))))
+             (get overrides context)
+             weight-overrides))))
 
 (defn weight
   "The relative strength the corresponding score has in influencing the total score."
@@ -268,7 +276,8 @@
    [:include-dashboard-questions?        {:optional true} :boolean]
    [:include-metadata?                   {:optional true} :boolean]
    [:non-temporal-dim-ids                {:optional true} ms/NonBlankString]
-   [:has-temporal-dim                    {:optional true} :boolean]])
+   [:has-temporal-dim                    {:optional true} :boolean]
+   [:weight-overrides                    {:optional true} [:map-of :keyword number?]]])
 
 (defmulti column->string
   "Turn a complex column into a string"
