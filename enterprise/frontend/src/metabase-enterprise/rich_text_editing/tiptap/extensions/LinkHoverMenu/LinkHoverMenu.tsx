@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { ActionIcon, Box, Card, FixedSizeIcon, Flex } from "metabase/ui";
-import { PLAIN_LINK_CLASS } from "metabase-enterprise/documents/components/Editor/constants";
+
+import S from "../PlainLink/PlainLink.module.css";
 
 const HOVER_TIMEOUT_MS = 150;
 
@@ -38,10 +39,7 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
 
     const handleMouseOver = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (
-        target.tagName === "A" &&
-        target.classList.contains(PLAIN_LINK_CLASS)
-      ) {
+      if (target.tagName === "A" && target.classList.contains(S.plainLink)) {
         const targetRect = target.getBoundingClientRect();
         const editorRect = editor.view.dom.getBoundingClientRect();
         clearHoverTimeout();
@@ -55,10 +53,7 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
 
     const handleMouseOut = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (
-        target.tagName === "A" &&
-        target.classList.contains(PLAIN_LINK_CLASS)
-      ) {
+      if (target.tagName === "A" && target.classList.contains(S.plainLink)) {
         startHoverTimeout();
       }
     };

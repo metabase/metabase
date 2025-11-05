@@ -9,7 +9,6 @@ import { useLatest, usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
-import CS from "metabase/css/core/index.css";
 import { useSelector, useStore } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
@@ -24,7 +23,6 @@ import {
 } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/CommandExtension";
 import { CommandSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/CommandSuggestion";
-import { CustomLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CustomLink/CustomLink";
 import { CustomStarterKit } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase-enterprise/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
 import { FlexContainer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
@@ -38,12 +36,12 @@ import {
 } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotEmbed";
 import { MetabotMentionExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
 import { MetabotMentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestion";
+import { PlainLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/PlainLink/PlainLink";
 import { ResizeNode } from "metabase-enterprise/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/suggestionRenderer";
 
 import S from "./Editor.module.css";
-import { PLAIN_LINK_CLASS } from "./constants";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
 
@@ -123,11 +121,7 @@ export const Editor: React.FC<EditorProps> = ({
         },
         siteUrl,
       }),
-      CustomLink.configure({
-        HTMLAttributes: {
-          class: cx(CS.link, PLAIN_LINK_CLASS),
-        },
-      }),
+      PlainLink,
       Placeholder.configure({
         placeholder: t`Start writing, type "/" to list commands, or "@" to mention an item...`,
       }),

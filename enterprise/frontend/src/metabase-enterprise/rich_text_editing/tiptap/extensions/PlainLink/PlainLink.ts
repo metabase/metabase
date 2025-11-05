@@ -5,8 +5,12 @@ import {
   markPasteRule,
 } from "@tiptap/core";
 import { Link } from "@tiptap/extension-link";
+import cx from "classnames";
 
+import CS from "metabase/css/core/index.css";
 import { processUrl } from "metabase-enterprise/documents/utils/processUrl";
+
+import S from "./PlainLink.module.css";
 
 // Adapted from https://github.com/ueberdosis/tiptap/discussions/1865#discussioncomment-2568739
 
@@ -73,7 +77,18 @@ function linkPasteRule(config: Parameters<typeof markPasteRule>[0]) {
  * rules for converting the Markdown link syntax [Doist](https://doist.com) into links. This
  * extension also adds support for the `title` attribute.
  */
-export const CustomLink = Link.extend({
+export const PlainLink = Link.extend({
+  addOptions() {
+    const base = this.parent?.();
+    return {
+      ...base,
+      HTMLAttributes: {
+        ...base?.HTMLAttributes,
+        class: cx(CS.link, S.plainLink, base?.HTMLAttributes?.class),
+      },
+    };
+  },
+
   addAttributes() {
     return {
       ...this.parent?.(),
