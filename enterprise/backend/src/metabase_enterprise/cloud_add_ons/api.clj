@@ -95,12 +95,12 @@
                                   [:terms_of_service {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (cond
+    (not (premium-features/is-hosted?))
+    response-not-hosted
+
     (and (= product-type "metabase-ai")
          (not terms_of_service))
     response-terms-not-accepted
-
-    (not (premium-features/is-hosted?))
-    response-not-hosted
 
     (and (= product-type "metabase-ai")
          (not (premium-features/offer-metabase-ai?)))
