@@ -199,7 +199,7 @@ export const submitInput = createAsyncThunk<
 
       const result = await sendMessageRequestPromise;
 
-      if (isRejected(result)) {
+      if (isRejected(result) && result.payload?.type === "error") {
         dispatch(stopProcessingAndNotify(result.payload?.errorMessage));
         return {
           prompt: data.message,
@@ -218,12 +218,19 @@ export const submitInput = createAsyncThunk<
   },
 );
 
+type SendAgentRequestError =
+  | ({ type: "error" } & PromptErrorOutcome)
+  | ({
+      type: "abort";
+      unresolved_tool_calls: { toolCallId: string; toolName: string }[];
+    } & MetabotAgentResponse);
+
 export const sendAgentRequest = createAsyncThunk<
-  Omit<MetabotAgentResponse, "reactions">,
+  MetabotAgentResponse,
   Omit<MetabotAgentRequest, "conversation_id">,
-  { rejectValue: PromptErrorOutcome }
+  { rejectValue: SendAgentRequestError }
 >(
-  "metabase-enterprise/metabot/sendStreamedAgentRequest",
+  "metabase-enterprise/metabot/sendAgentRequest",
   async (
     req,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
@@ -326,6 +333,18 @@ export const sendAgentRequest = createAsyncThunk<
         throw error;
       }
 
+      if (response.aborted) {
+        return rejectWithValue({
+          type: "abort",
+          conversation_id: body.conversation_id,
+          unresolved_tool_calls: response.toolCalls.filter(
+            (tc) => tc.state === "call",
+          ),
+          history: [...getHistory(getState() as any), ...response.history],
+          state,
+        });
+      }
+
       return fulfillWithValue({
         conversation_id: body.conversation_id,
         history: [...getHistory(getState() as any), ...response.history],
@@ -333,7 +352,7 @@ export const sendAgentRequest = createAsyncThunk<
       });
     } catch (error) {
       console.error(error);
-      return rejectWithValue(handleResponseError(error));
+      return rejectWithValue({ type: "error", ...handleResponseError(error) });
     }
   },
 );
@@ -341,9 +360,11 @@ export const sendAgentRequest = createAsyncThunk<
 export const cancelInflightAgentRequests = createAsyncThunk(
   "metabase-enterprise/metabot/cancelInflightAgentRequests",
   (_args) => {
-    getInflightRequestsForUrl("/api/ee/metabot-v3/agent-streaming").forEach(
-      (req) => req.abortController.abort(),
+    const reqs = getInflightRequestsForUrl(
+      "/api/ee/metabot-v3/agent-streaming",
     );
+    reqs.forEach((req) => req.abortController.abort());
+    return { requestCount: reqs.length };
   },
 );
 
