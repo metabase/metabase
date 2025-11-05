@@ -55,9 +55,9 @@
                                               {:terms_of_service true})))))
             (testing "succeeds"
               (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))
-                    {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy premium-features/clear-cache)]
-                (with-redefs [hm.client/call               store-api-proxy
-                              premium-features/clear-cache clear-token-cache-proxy]
+                    {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy premium-features/clear-cache!)]
+                (with-redefs [hm.client/call                store-api-proxy
+                              premium-features/clear-cache! clear-token-cache-proxy]
                   (is (=? {}
                           (mt/user-http-request user :post 200 "ee/cloud-add-ons/metabase-ai"
                                                 {:terms_of_service true})))

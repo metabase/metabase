@@ -2666,31 +2666,31 @@
 (deftest ^:parallel dashcard->query-hashes-test
   (doseq [[dashcard expected]
           [[{:card {:dataset_query (fake-query 1)}}
-            ["RNcJA21084AYlVPIqlxDxMILKsyU6iE9hiUDMYBIrUw="
-             "GsfPch7sQZ60fotaEuN6fghF82iX3dUHLlvWtkJXOU0="]]
+            ["S7xKRDQIVA4k/rzNGAc6PyMCvMiYs2MTkAJK5gwBGHU="
+             "F2yzgei1xfnQhNcakBq9c/q3lg0K9QDtWUHYOKGpBsM="]]
 
            [{:card   {:dataset_query (fake-query 2)}
              :series [{:dataset_query (fake-query 3)}
                       {:dataset_query (fake-query 4)}]}
-            ["LyJKZ0rm2YyPWGXIfP/V6SFcHlRvdalSDD55qn/Avng="
-             "zYehm4Huu7AD/0GP6XpMhav7+/ystaIeKjax4fqSHUg="
-             "nDuISCLB6o8sToOR4GHQ/Po6X3A3nE7oPj+e1g2kfCE="
-             "/yzJQIPSdxWHnREe9F2orYWDbPS5ns8WOaIf6fGix1k="
-             "oqG69TgkGdzPFaxDFymLAVnb9iuyGnvlX0aiiL1Eojc="
-             "GKQrcQTNICx7QOYDQVHW7BIi7gB3/oBUWVel+AvOq0Q="]]]]
+            ["Kwc08fDZ5ei23pNS0lwowiWGfBi10DWnTDWYy77Ytp8="
+             "Vr+1nZAZnqppFuXuxTZSo4tD4QbKzHXF/zeXsYMw8sg="
+             "LTCeTqzWT5nW1vzfopiEmat+O0dxfB493ufMf/XGRiU="
+             "uYWx5Pm/jhmibG/8+DM44fiPeWTSs5YXYN159yOr1Vs="
+             "SIMWVAbMGgvozr1bSIWol6uCKKUDEqCL469OsN4dlsI="
+             "thIvyA4Q/suKFAQiq0xJJLtSML2i5UHgw9WoTOdRGs4="]]]]
     (testing (pr-str dashcard)
       (is (= expected
              (base-64-encode-byte-arrays (#'api.dashboard/dashcard->query-hashes dashcard)))))))
 
 (deftest ^:parallel dashcards->query-hashes-test
-  (is (= ["RNcJA21084AYlVPIqlxDxMILKsyU6iE9hiUDMYBIrUw="
-          "GsfPch7sQZ60fotaEuN6fghF82iX3dUHLlvWtkJXOU0="
-          "LyJKZ0rm2YyPWGXIfP/V6SFcHlRvdalSDD55qn/Avng="
-          "zYehm4Huu7AD/0GP6XpMhav7+/ystaIeKjax4fqSHUg="
-          "nDuISCLB6o8sToOR4GHQ/Po6X3A3nE7oPj+e1g2kfCE="
-          "/yzJQIPSdxWHnREe9F2orYWDbPS5ns8WOaIf6fGix1k="
-          "oqG69TgkGdzPFaxDFymLAVnb9iuyGnvlX0aiiL1Eojc="
-          "GKQrcQTNICx7QOYDQVHW7BIi7gB3/oBUWVel+AvOq0Q="]
+  (is (= ["S7xKRDQIVA4k/rzNGAc6PyMCvMiYs2MTkAJK5gwBGHU="
+          "F2yzgei1xfnQhNcakBq9c/q3lg0K9QDtWUHYOKGpBsM="
+          "Kwc08fDZ5ei23pNS0lwowiWGfBi10DWnTDWYy77Ytp8="
+          "Vr+1nZAZnqppFuXuxTZSo4tD4QbKzHXF/zeXsYMw8sg="
+          "LTCeTqzWT5nW1vzfopiEmat+O0dxfB493ufMf/XGRiU="
+          "uYWx5Pm/jhmibG/8+DM44fiPeWTSs5YXYN159yOr1Vs="
+          "SIMWVAbMGgvozr1bSIWol6uCKKUDEqCL469OsN4dlsI="
+          "thIvyA4Q/suKFAQiq0xJJLtSML2i5UHgw9WoTOdRGs4="]
          (base-64-encode-byte-arrays
           (#'api.dashboard/dashcards->query-hashes
            [{:card {:dataset_query (fake-query 1)}}
@@ -2709,14 +2709,14 @@
            {:card   {:dataset_query (fake-query 2)}
             :series [{:dataset_query (fake-query 3)}
                      {:dataset_query (fake-query 4)}]}]
-          (into {} (for [[k v] {"RNcJA21084AYlVPIqlxDxMILKsyU6iE9hiUDMYBIrUw=" 111
-                                "GsfPch7sQZ60fotaEuN6fghF82iX3dUHLlvWtkJXOU0=" 222
-                                "LyJKZ0rm2YyPWGXIfP/V6SFcHlRvdalSDD55qn/Avng=" 333
-                                "zYehm4Huu7AD/0GP6XpMhav7+/ystaIeKjax4fqSHUg=" 444
-                                "nDuISCLB6o8sToOR4GHQ/Po6X3A3nE7oPj+e1g2kfCE=" 555
-                                "/yzJQIPSdxWHnREe9F2orYWDbPS5ns8WOaIf6fGix1k=" 666
-                                "oqG69TgkGdzPFaxDFymLAVnb9iuyGnvlX0aiiL1Eojc=" 777
-                                "GKQrcQTNICx7QOYDQVHW7BIi7gB3/oBUWVel+AvOq0Q=" 888}]
+          (into {} (for [[k v] {"S7xKRDQIVA4k/rzNGAc6PyMCvMiYs2MTkAJK5gwBGHU=" 111
+                                "F2yzgei1xfnQhNcakBq9c/q3lg0K9QDtWUHYOKGpBsM=" 222
+                                "Kwc08fDZ5ei23pNS0lwowiWGfBi10DWnTDWYy77Ytp8=" 333
+                                "Vr+1nZAZnqppFuXuxTZSo4tD4QbKzHXF/zeXsYMw8sg=" 444
+                                "LTCeTqzWT5nW1vzfopiEmat+O0dxfB493ufMf/XGRiU=" 555
+                                "uYWx5Pm/jhmibG/8+DM44fiPeWTSs5YXYN159yOr1Vs=" 666
+                                "SIMWVAbMGgvozr1bSIWol6uCKKUDEqCL469OsN4dlsI=" 777
+                                "thIvyA4Q/suKFAQiq0xJJLtSML2i5UHgw9WoTOdRGs4=" 888}]
                      [(mapv int (codec/base64-decode k)) v]))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -5415,6 +5415,25 @@
                                           :size_y  4}]})
       (is (not (nil? (t2/select-one :model/PulseCard :card_id new-card-id)))))))
 
+(deftest update-dashboard-embedding-type-to-nil-test
+  (testing "PUT /api/dashboard/:id"
+    (testing "Admin should be able to set embedding_type to nil to clear it"
+      (mt/with-temporary-setting-values [enable-embedding-static true]
+        (mt/with-temp [:model/Dashboard dashboard {:enable_embedding true
+                                                   :embedding_type "static-legacy"}]
+          (with-dashboards-in-writeable-collection! [dashboard]
+            (testing "Verify initial state has embedding_type set"
+              (is (= "static-legacy"
+                     (t2/select-one-fn :embedding_type :model/Dashboard :id (u/the-id dashboard)))))
+            (testing "Setting embedding_type to nil should clear it"
+              (let [response (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard))
+                                                   {:embedding_type nil})]
+                (testing "Response should contain nil embedding_type"
+                  (is (= nil (:embedding_type response))))
+                (testing "Database should contain nil embedding_type"
+                  (is (= nil
+                         (t2/select-one-fn :embedding_type :model/Dashboard :id (u/the-id dashboard)))))))))))))
+
 (deftest save-dashboard-test
   (let [response (mt/user-http-request :crowberto :post 200 "dashboard/save" {:auto_apply_filters true,
                                                                               :name               "Test Dashboard",
@@ -5423,3 +5442,114 @@
                                                                               })]
     (is (partial= {:name       "Test Dashboard"
                    :creator_id (mt/user->id :crowberto)} response))))
+
+(deftest param-mapped-SAME-fields-filtered-cards-test
+  (testing "Values for param mapped to _same_ field in _different_ cards containing filters are computed correctly (#41684)"
+    (let [mp (mt/metadata-provider)
+          param-key "p"
+          base-queries [(-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                            (lib/filter (lib/in (lib.metadata/field mp (mt/id :categories :name))
+                                                "African" "Artisan" "Bakery")))
+
+                        (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                            (lib/filter (lib/in (lib.metadata/field mp (mt/id :categories :name))
+                                                "African" "Artisan")))]
+          tests [{:test-case "single level queries"
+                  :queries base-queries
+                  :expectations [["African"] ["Artisan"] ["Bakery"]]}
+
+                 {:test-case "nested filters"
+                  :queries (mapv (fn [query]
+                                   ;; dummy stage
+                                   (-> (lib/append-stage query)
+                                       (lib/expression "e" (lib/concat (lib.metadata/field mp (mt/id :categories :name))
+                                                                       "XXX"))))
+                                 base-queries)
+                  :expectations [["African"] ["Artisan"] ["Bakery"]]}]]
+      (doseq [{:keys [test-case queries expectations]} tests]
+        (mt/with-temp
+          [:model/Card
+           c1
+           {:dataset_query (queries 0)}
+
+           :model/Card
+           c2
+           {:dataset_query (queries 1)}
+
+           :model/Dashboard
+           d
+           {:parameters [{:id param-key
+                          :name "filtered names filter"
+                          :slug param-key
+                          :type "string/="
+                          :sectionId "string"}]}
+
+           :model/DashboardCard
+           _
+           {:dashboard_id (:id d)
+            :card_id (:id c1)
+            :parameter_mappings [{:card_id (:id c1)
+                                  :parameter_id param-key
+                                  :target ["dimension" ["field" (mt/id :categories :name) nil]]}]}
+
+           :model/DashboardCard
+           _
+           {:dashboard_id (:id d)
+            :card_id (:id c2)
+            :parameter_mappings [{:card_id (:id c2)
+                                  :parameter_id param-key
+                                  :target ["dimension" ["field" (mt/id :categories :name) nil]]}]}]
+
+          (testing test-case
+            (is (=? {:values expectations}
+                    (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values"
+                                                                      (:id d) param-key))))))))))
+
+(deftest param-mapped-DIFFERENT-fields-filtered-cards-test
+  (testing "Values for param mapped to different fields in cards containing filters are computed correctly (#41684)"
+    (let [mp (mt/metadata-provider)
+          param-key "p"]
+      (mt/with-temp
+        [:model/Card
+         c1
+         {:dataset_query  (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                              (lib/filter (lib/in (lib.metadata/field mp (mt/id :categories :name))
+                                                  "African" "Artisan" "Bakery")))}
+
+         :model/Card
+         c2
+         {:dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                             (lib/filter (lib/in (lib.metadata/field mp (mt/id :venues :name))
+                                                 "Red Medicine" "Krua Siri"))
+                             (lib/append-stage)
+                             (lib/expression "e" (lib/concat (lib.metadata/field mp (mt/id :categories :name))
+                                                             "XXX")))}
+
+         :model/Dashboard
+         d
+         {:parameters [{:id param-key
+                        :name "filtered names filter"
+                        :slug param-key
+                        :type "string/="
+                        :sectionId "string"}]}
+
+         :model/DashboardCard
+         _
+         {:dashboard_id (:id d)
+          :card_id (:id c1)
+          :parameter_mappings [{:card_id (:id c1)
+                                :parameter_id param-key
+                                :target ["dimension" ["field" (mt/id :categories :name) nil]]}]}
+
+         :model/DashboardCard
+         _
+         {:dashboard_id (:id d)
+          :card_id (:id c2)
+          :parameter_mappings [{:card_id (:id c2)
+                                :parameter_id param-key
+                                :target ["dimension" ["field" (mt/id :venues :name) nil]]}]}]
+
+        (testing "Param mapped to different fields with different filters"
+          (is (=? {:values [["African"] ["Artisan"] ["Bakery"] ["Krua Siri"] ["Red Medicine"]]}
+                  (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values"
+                                                                    (:id d) param-key)))))))))

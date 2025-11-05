@@ -2,6 +2,10 @@ name: "Claude Code Review"
 
 on:
   pull_request:
+    types:
+      - closed
+      - synchronize
+      - labeled
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-claude-code-review
@@ -9,7 +13,12 @@ concurrency:
 
 jobs:
   review:
-    if: github.event.pull_request.draft == false
+    if: |
+      (
+        github.event.action == 'closed' &&
+        github.event.pull_request.merged == true
+      ) ||
+      contains(github.event.pull_request.labels.*.name, 'Claude Code Review')
     runs-on: ubuntu-latest
     permissions:
       contents: read

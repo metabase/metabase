@@ -6,13 +6,13 @@ import { getScheduleExplanation } from "metabase/lib/cron";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
 import { useRunTransformJobMutation } from "metabase-enterprise/api";
-import { trackTransformJobTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 import type {
   ScheduleDisplayType,
   ScheduleSettings,
   ScheduleType,
 } from "metabase-types/api";
 
+import { trackTransformJobTriggerManualRun } from "../../../analytics";
 import { RunButton } from "../../../components/RunButton";
 import { RunStatus } from "../../../components/RunStatus";
 import { SplitSection } from "../../../components/SplitSection";
