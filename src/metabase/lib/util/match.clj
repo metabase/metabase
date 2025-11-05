@@ -1,10 +1,10 @@
 (ns metabase.lib.util.match
   "Internal implementation of the MBQL `match` and `replace` macros. Don't use these directly."
-  (:refer-clojure :exclude [every? run! some mapv replace])
+  (:refer-clojure :exclude [every? run! some mapv replace empty?])
   (:require
    [clojure.core.match]
    [metabase.lib.util.match.impl]
-   [metabase.util.performance :as perf :refer [every? run! some mapv]]
+   [metabase.util.performance :as perf :refer [every? run! some mapv empty?]]
    [net.cgrand.macrovich :as macros]))
 
 (defn- generate-pattern

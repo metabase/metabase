@@ -107,7 +107,7 @@ Allowed iframe hosts.
 - Default: `true`
 - [Configuration file name](./config-file.md): `anon-tracking-enabled`
 
-Enable the collection of anonymous usage data in order to help Metabase improve.
+Enable the collection of anonymous usage data to help Metabase improve.
 
 ### `MB_API_KEY`
 
@@ -365,7 +365,7 @@ Whether dashboards should default to a user's last used parameters on load.
 - Type: integer
 - Default: `10000`
 
-Consider metabase.driver/can-connect? / can-connect-with-details? to have failed if they were not able to
+Consider metabase.driver/can-connect? / can-connect-with-details? to have failed if they were unable to
   successfully connect after this many milliseconds. By default, this is 10 seconds.
 
 Timeout in milliseconds for connecting to databases, both Metabase application database and data connections.
@@ -444,7 +444,7 @@ The name you want to use for the sender of emails.
 - [Configuration file name](./config-file.md): `email-max-recipients-per-second`
 
 The maximum number of recipients, summed across emails, that can be sent per second.
-                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients.
+                Note that the final email sent before reaching the limit can exceed it, if it has multiple recipients.
 
 ### `MB_EMAIL_REPLY_TO`
 
@@ -1058,6 +1058,14 @@ Should we sync user attributes when someone logs in via LDAP?
 
 Comma-separated list of user attributes to skip syncing for LDAP users.
 
+### `MB_LDAP_TIMEOUT_SECONDS`
+
+- Type: double
+- Default: `15.0`
+- [Configuration file name](./config-file.md): `ldap-timeout-seconds`
+
+Maximum time, in seconds, to wait for LDAP server before falling back to local authentication.
+
 ### `MB_LDAP_USER_BASE`
 
 - Type: string
@@ -1229,7 +1237,7 @@ Indicates whether Metabase is running behind a proxy that sets the source-addres
 By default "Site Url" is used in notification links, but can be overridden.
 
 The base URL where dashboard notitification links will point to instead of the Metabase base URL.
-        Only applicable for users who utilize interactive embedding and subscriptions.
+        Only applicable for users who use interactive embedding and subscriptions.
 
 ### `MB_NOTIFICATION_SYSTEM_EVENT_THREAD_POOL_SIZE`
 
@@ -1658,7 +1666,7 @@ When enabled, we show users a button to authenticate with Google to import data 
 - [Exported as](../installation-and-operation/serialization.md): `show-homepage-data`.
 - [Configuration file name](./config-file.md): `show-homepage-data`
 
-Whether or not to display data on the homepage. Admins might turn this off in order to direct users to better content than raw data.
+Whether or not to display data on the homepage. Admins might turn this off to direct users to better content than raw data.
 
 ### `MB_SHOW_HOMEPAGE_XRAYS`
 
@@ -2120,7 +2128,7 @@ Type: integer<br>
 Default: `600000`<br>
 Since: v35.0
 
-Timeout of Jetty async threads, defined in milliseconds. The default is 10 minutes. Very few things might reach that timeout, since they return some type of data before, but things like CSV downloads might.
+Timeout of Jetty async threads, defined in milliseconds. The default is 10 minutes. Few things might reach that timeout, since they return some type of data before, but things like CSV downloads might.
 
 ### `MB_JETTY_DAEMON`
 

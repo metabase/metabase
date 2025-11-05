@@ -254,6 +254,10 @@ export const queryBuilderFooter = () => {
   return cy.findByTestId("view-footer");
 };
 
+export const queryBuilderFooterDisplayToggle = () => {
+  return cy.findByTestId("query-display-tabular-toggle");
+};
+
 export const closeQuestionActions = () => {
   queryBuilderHeader().click();
 };
@@ -629,4 +633,12 @@ export function waitForLoaderToBeRemoved() {
 
 export function leaveConfirmationModal() {
   return cy.findByTestId("leave-confirmation");
+}
+
+export function ensureParameterColumnValue({ columnName, columnValue }) {
+  tableInteractiveBody().within(() => {
+    cy.get(`[data-column-id="${columnName}"]`).each((cell) => {
+      cy.wrap(cell).should("have.text", columnValue);
+    });
+  });
 }

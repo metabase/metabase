@@ -1,6 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:refer-clojure :exclude [select-keys])
+  (:refer-clojure :exclude [select-keys not-empty])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
@@ -23,6 +23,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.util :as u]
@@ -31,7 +32,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [select-keys]]
+   [metabase.util.performance :refer [select-keys not-empty]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -60,6 +61,10 @@
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :describe-fields                        false
+                              :describe-default-expr                  true
+                              ;; JDBC driver always provides "NO" for the IS_GENERATEDCOLUMN JDBC metadata
+                              :describe-is-generated                  false
+                              :describe-is-nullable                   true
                               :expression-literals                    true
                               :expressions/integer                    true
                               :expressions/text                       true
@@ -571,7 +576,8 @@
 (defmethod sql.qp/->honeysql [:snowflake :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [hsql-form    (sql.qp/->honeysql driver arg)
-        timestamptz? (h2x/is-of-type? hsql-form "timestamptz")]
+        timestamptz? (or (sql.qp.u/field-with-tz? arg)
+                         (h2x/is-of-type? hsql-form "timestamptz"))]
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           [:convert_timezone target-timezone hsql-form]

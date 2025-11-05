@@ -34,6 +34,7 @@
    :id              (str id)
    :name            name
    :searchable_text name
+   :embeddable_text name
    :updated_at      (t/instant)
    :creator_id      1})
 

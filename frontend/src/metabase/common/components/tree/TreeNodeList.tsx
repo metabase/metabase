@@ -15,6 +15,7 @@ interface TreeNodeListProps {
   onToggleExpand: (id: ITreeNodeItem["id"]) => void;
   onSelect?: (item: ITreeNodeItem) => void;
   TreeNode: TreeNodeComponent;
+  rightSection?: (item: ITreeNodeItem) => React.ReactNode;
 }
 
 function BaseTreeNodeList({
@@ -27,6 +28,7 @@ function BaseTreeNodeList({
   onSelect,
   onToggleExpand,
   TreeNode,
+  rightSection,
 }: TreeNodeListProps) {
   const selectedRef = useScrollOnMount();
 
@@ -52,6 +54,7 @@ function BaseTreeNodeList({
               isExpanded={isExpanded}
               hasChildren={hasChildren}
               depth={depth}
+              rightSection={rightSection}
             />
             {isExpanded && (
               <BaseTreeNodeList
@@ -62,6 +65,7 @@ function BaseTreeNodeList({
                 onSelect={onSelect}
                 onToggleExpand={onToggleExpand}
                 TreeNode={TreeNode}
+                rightSection={rightSection}
               />
             )}
           </Fragment>

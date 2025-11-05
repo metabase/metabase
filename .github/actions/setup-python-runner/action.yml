@@ -1,0 +1,14 @@
+name: Setup Python Runner
+description: Setup python-runner for tests
+inputs:
+  metabase-automation-token:
+    description: Token for accessing the python-runner repository
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Setup python-runner
+      run: ./.github/scripts/setup-python-runner.sh
+      shell: bash
+      env:
+        METABASE_AUTOMATION_USER_TOKEN: ${{ inputs.metabase-automation-token }}

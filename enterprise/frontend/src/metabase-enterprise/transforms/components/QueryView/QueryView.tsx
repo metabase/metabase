@@ -3,14 +3,13 @@ import { useMemo } from "react";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { CodeMirrorEditor as Editor } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor";
+import { useQueryMetadata } from "metabase/querying/editor/hooks/use-query-metadata";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Center, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
-
-import { useQueryMetadata } from "../../hooks/use-query-metadata";
 
 type QueryViewProps = {
   query: DatasetQuery;
@@ -23,10 +22,10 @@ export function QueryView({ query }: QueryViewProps) {
     [query, metadata],
   );
   const { isNative } = Lib.queryDisplayInfo(question.query());
-  const { isInitiallyLoaded } = useQueryMetadata(question);
+  const { isLoading } = useQueryMetadata(question);
   const reportTimezone = useSetting("report-timezone-long");
 
-  if (!isInitiallyLoaded) {
+  if (isLoading) {
     return (
       <Center>
         <Loader />

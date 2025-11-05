@@ -91,9 +91,7 @@ export function DetailViewSidesheet({
     error,
     isLoading,
   } = useGetAdhocQueryQuery(
-    query != null && rowFromProps == null
-      ? Lib.toLegacyQuery(query)
-      : skipToken,
+    query != null && rowFromProps == null ? Lib.toJsQuery(query) : skipToken,
   );
   const { columns, row } = useMemo(
     () => extractData(dataset, columnsFromProp, columnSettings, rowFromProps),
@@ -352,7 +350,7 @@ export function DetailViewSidesheet({
 
           <Group pb={rem(48)} pt="xl" px={rem(56)}>
             <Stack gap={rem(64)} h="100%" maw={rem(900)} w="100%">
-              {columns.length - headerColumns.length > 0 && (
+              {columns.length > 0 && (
                 <DetailsGroup
                   columns={columns}
                   columnsSettings={columnsSettings}
@@ -374,11 +372,8 @@ export function DetailViewSidesheet({
                 py={rem(48)}
               >
                 <Relationships
-                  columns={columns}
-                  row={row}
                   rowId={rowId}
                   rowName={rowName}
-                  table={table}
                   tableForeignKeys={tableForeignKeys}
                   onClick={onClose}
                 />

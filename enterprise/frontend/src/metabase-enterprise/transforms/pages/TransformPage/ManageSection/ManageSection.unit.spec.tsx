@@ -1,9 +1,11 @@
 import { Route } from "react-router";
 
+import { setupAdhocQueryMetadataEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { getTransformUrl } from "metabase-enterprise/transforms/urls";
+import * as Urls from "metabase/lib/urls";
 import type { Transform } from "metabase-types/api";
 import {
+  createMockCardQueryMetadata,
   createMockTransform,
   createMockTransformRun,
 } from "metabase-types/api/mocks";
@@ -15,12 +17,14 @@ type SetupOpts = {
 };
 
 function setup({ transform = createMockTransform() }: SetupOpts) {
+  setupAdhocQueryMetadataEndpoint(createMockCardQueryMetadata());
+
   renderWithProviders(
     <Route
-      path={getTransformUrl(transform.id)}
+      path={Urls.transform(transform.id)}
       component={() => <ManageSection transform={transform} />}
     />,
-    { withRouter: true, initialRoute: getTransformUrl(transform.id) },
+    { withRouter: true, initialRoute: Urls.transform(transform.id) },
   );
 }
 

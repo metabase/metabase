@@ -38,6 +38,7 @@
     :model/DataPermissions                   metabase.permissions.models.data-permissions
     :model/Database                          metabase.warehouses.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model
+    :model/Dependency                        metabase-enterprise.dependencies.models.dependency
     :model/Dimension                         metabase.warehouse-schema.models.dimension
     :model/Document                          metabase-enterprise.documents.models.document
     :model/DocumentBookmark                  metabase-enterprise.bookmarks.models.bookmark
@@ -80,6 +81,8 @@
     :model/QueryField                        metabase.queries.models.query-field
     :model/QueryTable                        metabase.queries.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
+    :model/RemoteSyncObject                  metabase-enterprise.remote-sync.models.remote-sync-object
+    :model/RemoteSyncTask                    metabase-enterprise.remote-sync.models.remote-sync-task
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.secrets.models.secret

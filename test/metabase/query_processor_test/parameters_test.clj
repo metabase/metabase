@@ -16,7 +16,6 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]))
@@ -48,11 +47,11 @@
      :parameters [{:type :text, :target [:variable [:template-tag \"name\"]], :value \"Tempest\"}]}"
   [table field param-type param-value {:keys [defaults?]}]
   (let [query (mt/native-query
-                (assoc (mt/count-with-template-tag-query driver/*driver* table field param-type)
-                       :template-tags {(name field) {:name         (name field)
-                                                     :display-name (name field)
-                                                     :type         (or (namespace param-type)
-                                                                       (name param-type))}}))]
+               (assoc (mt/count-with-template-tag-query driver/*driver* table field param-type)
+                      :template-tags {(name field) {:name         (name field)
+                                                    :display-name (name field)
+                                                    :type         (keyword (or (namespace param-type)
+                                                                               (name param-type)))}}))]
     (if defaults?
       (query-with-default-parameter-value query field param-value)
       (assoc query :parameters [{:type   param-type
@@ -253,30 +252,32 @@
 
 (deftest ^:parallel filter-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)
-    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                      (mt/metadata-provider)
-                                      {:cards [{:id            1
-                                                :dataset-query (mt/native-query (qp.compile/compile (mt/mbql-query checkins)))}]})
-      (let [date  (lib.metadata/field (qp.store/metadata-provider) (mt/id :checkins :date))
-            query (assoc (mt/mbql-query nil
-                           {:source-table "card__1", :limit 5})
-                         :parameters [{:type   :date/all-options
-                                       :target [:dimension [:field (:name date) {:base-type :type/Date}]]
-                                       :value  "2014-01-06"}])]
-        (testing "We should be able to apply filters to queries that use native queries with parameters as their source (#9802)"
+    (let [mp (lib.tu/mock-metadata-provider
+              (mt/metadata-provider)
+              {:cards [{:id            1
+                        :dataset-query (mt/native-query (qp.compile/compile (mt/mbql-query checkins)))}]})
+          date  (lib.metadata/field mp (mt/id :checkins :date))
+          query (lib/query
+                 mp
+                 (assoc (mt/mbql-query nil
+                          {:source-table "card__1", :limit 5})
+                        :parameters [{:type   :date/all-options
+                                      :target [:dimension [:field (:name date) {:base-type :type/Date}]]
+                                      :value  "2014-01-06"}]))]
+      (testing "We should be able to apply filters to queries that use native queries with parameters as their source (#9802)"
+        (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
+               (mt/formatted-rows
+                :checkins
+                (qp/process-query query)))))
+      (testing "We should be able to apply filters explicitly targeting nested native stages (#48258)"
+        (let [query' (assoc-in query [:parameters 0 :target 2 :stage-number] 0)]
+          (is (=? {:parameters [{:target [:dimension [:field (:name date) {:base-type :type/Date}] {:stage-number 0}]
+                                 :value "2014-01-06"}]}
+                  query'))
           (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
                  (mt/formatted-rows
                   :checkins
-                  (qp/process-query query)))))
-        (testing "We should be able to apply filters explicitly targeting nested native stages (#48258)"
-          (let [query' (assoc-in query [:parameters 0 :target 2 :stage-number] 0)]
-            (is (=? {:parameters [{:target [:dimension [:field (:name date) {:base-type :type/Date}] {:stage-number 0}]
-                                   :value "2014-01-06"}]}
-                    query'))
-            (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
-                   (mt/formatted-rows
-                    :checkins
-                    (qp/process-query query'))))))))))
+                  (qp/process-query query')))))))))
 
 (deftest ^:parallel string-escape-test
   ;; test `:sql` drivers that support native parameters
@@ -521,12 +522,13 @@
   (testing "Legacy queries with parameters that don't specify `:widget-type` should still work (#20643)"
     (mt/dataset test-data
       (let [query (mt/native-query
-                    {:query         "SELECT count(*) FROM products WHERE {{cat}};"
-                     :template-tags {"cat" {:id           "__MY_CAT__"
-                                            :name         "cat"
-                                            :display-name "Cat"
-                                            :type         :dimension
-                                            :dimension    [:field (mt/id :products :category) nil]}}})]
+                   {:query         "SELECT count(*) FROM products WHERE {{cat}};"
+                    :template-tags {"cat" {:id           "__MY_CAT__"
+                                           :name         "cat"
+                                           :display-name "Cat"
+                                           :type         :dimension
+                                           :widget-type  :number
+                                           :dimension    [:field (mt/id :products :category) nil]}}})]
         (is (= [200]
                (mt/first-row (qp/process-query query))))))))
 
@@ -540,23 +542,23 @@
           query      (lib/query
                       mp
                       (mt/native-query
-                        {:query         (str/join \newline
-                                                  [(format "WITH exclude_products AS {{%s}}" param-name)
-                                                   "SELECT count(*)"
-                                                   "FROM orders"
-                                                   "[[WHERE {{created_at}}]]"])
-                         :template-tags {param-name   {:type         :card
-                                                       :card-id      1
-                                                       :display-name param-name
-                                                       :id           "__source__"
-                                                       :name         param-name}
-                                         "created_at" {:type         :dimension
-                                                       :default      nil
-                                                       :dimension    [:field (mt/id :orders :created_at) nil]
-                                                       :display-name "Created At"
-                                                       :id           "__created_at__"
-                                                       :name         "created_at"
-                                                       :widget-type  :date/all-options}}}))]
+                       {:query         (str/join \newline
+                                                 [(format "WITH exclude_products AS {{%s}}" param-name)
+                                                  "SELECT count(*)"
+                                                  "FROM orders"
+                                                  "[[WHERE {{created_at}}]]"])
+                        :template-tags {param-name   {:type         :card
+                                                      :card-id      1
+                                                      :display-name param-name
+                                                      :id           "__source__"
+                                                      :name         param-name}
+                                        "created_at" {:type         :dimension
+                                                      :default      nil
+                                                      :dimension    [:field (mt/id :orders :created_at) nil]
+                                                      :display-name "Created At"
+                                                      :id           "__created_at__"
+                                                      :name         "created_at"
+                                                      :widget-type  :date/all-options}}}))]
       (testing "With no parameters"
         (mt/with-native-query-testing-context query
           (is (= [[18760]]
@@ -671,11 +673,11 @@
                        {card-2-id :id, :as card-2}
                        {:collection_id collection-2-id
                         :dataset_query (mt/native-query
-                                         {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
-                                          :template-tags {"card" {:name         "card"
-                                                                  :display-name "card"
-                                                                  :type         :card
-                                                                  :card-id      card-1-id}}})}]
+                                        {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
+                                         :template-tags {"card" {:name         "card"
+                                                                 :display-name "card"
+                                                                 :type         :card
+                                                                 :card-id      card-1-id}}})}]
           (testing (format "\nCollection 1 ID = %d, Card 1 ID = %d; Collection 2 ID = %d, Card 2 ID = %d"
                            collection-1-id card-1-id collection-2-id card-2-id)
             (mt/with-test-user :rasta
@@ -693,13 +695,14 @@
                           (qp/process-query {:database (mt/id)
                                              :type     :native
                                              :native   (dissoc (qp.compile/compile (:dataset_query card-2))
+                                                               :lib/type
                                                                :query-permissions/referenced-card-ids)}))))))
               (let [query (mt/native-query
-                            {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
-                             :template-tags {"card" {:name         "card"
-                                                     :display-name "card"
-                                                     :type         :card
-                                                     :card-id      card-2-id}}})]
+                           {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
+                            :template-tags {"card" {:name         "card"
+                                                    :display-name "card"
+                                                    :type         :card
+                                                    :card-id      card-2-id}}})]
                 (testing "SHOULD NOT be able to run native query with Card ID template tag"
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo

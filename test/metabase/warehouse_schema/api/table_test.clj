@@ -83,7 +83,8 @@
    (select-keys
     field
     [:created_at :fingerprint :fingerprint_version :fk_target_field_id :id :last_analyzed :updated_at
-     :database_required :database_is_auto_increment :entity_id])))
+     :database_required :database_is_auto_increment :database_is_pk :database_is_generated :database_is_nullable
+     :entity_id])))
 
 (deftest ^:parallel list-table-test
   (testing "GET /api/table"
@@ -889,7 +890,10 @@
                                      :database_id    (mt/id)
                                      :name           "Venues metric"
                                      :type           "metric"
-                                     :dataset_query  metric-query
+                                     :dataset_query  {:database (mt/id)
+                                                      :lib/type "mbql/query"
+                                                      :stages   [{:source-card (:id model)
+                                                                  :aggregation [["count" {}]]}]}
                                      :id             (:id metric)}]}
                     (mt/user-http-request :crowberto :get 200
                                           (format "table/card__%d/query_metadata" (u/the-id model))))))

@@ -96,6 +96,7 @@ function CategoryHeader({
 function Emoji({ emoji, ref, ...props }: EmojiPickerListEmojiProps) {
   return (
     <ActionIcon
+      c="text-primary"
       component="button"
       w="2rem"
       fz="1.25rem"

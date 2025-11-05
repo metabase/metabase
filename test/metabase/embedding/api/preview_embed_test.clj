@@ -367,7 +367,8 @@
       (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
                                                        :type     :native
                                                        :native   {:query         "SELECT {{num}} AS num"
-                                                                  :template-tags {:num {:name         "num"
+                                                                  :template-tags {:num {:id           "X"
+                                                                                        :name         "num"
                                                                                         :display_name "Num"
                                                                                         :type         "number"
                                                                                         :required     true
@@ -488,15 +489,15 @@
     (mt/dataset test-data
       (embed-test/with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Card {card-id :id, :as card} {:dataset_query    (mt/native-query
-                                                                                {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
-                                                                                 :template-tags {"NAME"
-                                                                                                 {:name         "NAME"
-                                                                                                  :display-name "Name"
-                                                                                                  :id           "_name_"
-                                                                                                  :type         :dimension
-                                                                                                  :dimension    [:field (mt/id :people :name) nil]
-                                                                                                  :widget-type  :string/=
-                                                                                                  :default      nil}}})
+                                                                               {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                                                                                :template-tags {"NAME"
+                                                                                                {:name         "NAME"
+                                                                                                 :display-name "Name"
+                                                                                                 :id           "_name_"
+                                                                                                 :type         :dimension
+                                                                                                 :dimension    [:field (mt/id :people :name) nil]
+                                                                                                 :widget-type  :string/=
+                                                                                                 :default      nil}}})
                                                             :enable_embedding true
                                                             :embedding_params {"NAME" "enabled"}}]
           (testing "Card"

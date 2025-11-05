@@ -49,4 +49,4 @@ Metabase also has a paid version that ships with all of the bells and whistles (
 - [Metabase Pro](https://www.metabase.com/product/pro)
 - [Metabase Enterprise](https://www.metabase.com/product/enterprise)
 
-You can self-host this paid version, or have have us host it for you on Metabase Cloud for no additional cost. We don't charge more because we believe you'll have such a better experience that it'll be easier for us to support you.
+You can self-host this paid version, or have us host it for you on Metabase Cloud for no additional cost. We don't charge more because we believe you'll have such a better experience that it'll be easier for us to support you.

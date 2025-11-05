@@ -1106,3 +1106,30 @@
     [:aggregation 0]                              [:aggregation 0]
     [:aggregation 0 {::namespaced true}]          [:aggregation 0]
     [:aggregation 0 {::namespaced true, :a 1}]    [:aggregation 0 {:a 1}]))
+
+(deftest ^:parallel always-include-desired-column-alias-test
+  (testing "Populate source and desired column aliases for native queries without stage metadata"
+    (let [query        (lib/native-query meta/metadata-provider "SELECT 1;")
+          initial-cols [{:base-type :type/Integer, :name "x"}
+                        {:base-type :type/Integer, :name "y"}
+                        {:base-type :type/Integer, :name "z"}
+                        {:base-type :type/Integer, :name "x"}
+                        ;; do not truncate really long aliases coming back from native queries, if the native query
+                        ;; returned it then presumably it's ok with the database that ran the query and we need to use
+                        ;; the original name to refer back to it in subsequent stages.
+                        {:base-type :type/Integer, :name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}
+                        {:base-type :type/Integer, :name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}]]
+      (is (=? [{:lib/source-column-alias  "x"
+                :lib/desired-column-alias "x"}
+               {:lib/source-column-alias  "y"
+                :lib/desired-column-alias "y"}
+               {:lib/source-column-alias  "z"
+                :lib/desired-column-alias "z"}
+               {:lib/source-column-alias  "x"
+                :lib/desired-column-alias "x_2"}
+               {:lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}
+               {:lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count_2"}]
+              (map #(select-keys % [:lib/source-column-alias :lib/desired-column-alias])
+                   (result-metadata/returned-columns query initial-cols)))))))

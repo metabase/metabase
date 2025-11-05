@@ -17,6 +17,7 @@
    [metabase.session.models.session :as session]
    [metabase.sso.core :as sso]
    [metabase.users.models.user :as user]
+   [metabase.users.schema :as users.schema]
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -168,21 +169,32 @@
   [clauses]
   (dissoc clauses :order-by :limit :offset))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Fetch a list of `Users` for admins or group managers.
-  By default returns only active users for admins and only active users within groups that the group manager is managing for group managers.
+  By default returns only active users for admins and only active users within groups that the group manager is
+  managing for group managers.
 
    - If `status` is `deactivated`, include deactivated users only.
+
    - If `status` is `all`, include all users (active and inactive).
-   - Also supports `include_deactivated`, which if true, is equivalent to `status=all`; If is false, is equivalent to `status=active`.
-   `status` and `include_deactivated` requires superuser permissions.
-   - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised to use `status` for better support and flexibility.
+
+   - Also supports `include_deactivated`, which if true, is equivalent to `status=all`; If is false, is equivalent to
+     `status=active`. `status` and `include_deactivated` requires superuser permissions.
+
+   - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised
+     to use `status` for better support and flexibility.
+
    If both params are passed, `status` takes precedence.
 
   For users with segmented permissions, return only themselves.
 
   Takes `limit`, `offset` for pagination.
+
   Takes `query` for filtering on first name, last name, email.
+
   Also takes `group_id`, which filters on group id."
   [_route-params
    {:keys [status query group_id include_deactivated]}
@@ -392,7 +404,7 @@
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
-            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]
+            [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
             [:source                 {:optional true, :default "admin"} [:maybe ms/NonBlankString]]]]
   (invite-user body))
 
@@ -436,7 +448,7 @@
        [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
        [:is_superuser           {:optional true} [:maybe :boolean]]
        [:is_group_manager       {:optional true} [:maybe :boolean]]
-       [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]
+       [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
        [:locale                 {:optional true} [:maybe ms/ValidLocale]]]]
   (try
     (check-self-or-superuser id)
