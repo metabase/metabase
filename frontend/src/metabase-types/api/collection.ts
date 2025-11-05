@@ -127,7 +127,6 @@ export interface CollectionItem {
   database_id?: DatabaseId;
   moderated_status?: string;
   type?: CollectionType | CardType;
-  collection_type?: CollectionType;
   here?: CollectionItemModel[];
   below?: CollectionItemModel[];
   can_write?: boolean;

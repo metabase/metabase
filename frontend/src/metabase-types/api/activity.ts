@@ -1,4 +1,4 @@
-import type { CollectionId, CollectionType } from "./collection";
+import type { CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { ModerationReviewStatus } from "./moderation";
@@ -63,7 +63,6 @@ export type RecentCollectionItem = BaseRecentItem & {
     authority_level?: "official" | null;
   };
   authority_level?: "official" | null; // for collections
-  collection_type?: CollectionType; // for collections
   moderated_status?: "verified" | null; // for cards / models / dashboards
   display?: CardDisplayType; // for questions
   dashboard?: {
