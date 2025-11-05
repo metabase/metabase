@@ -54,4 +54,5 @@ runs:
         junit-paths: ${{ inputs.input-path }}
         variant: ${{ inputs.variant || inputs.output-name }}
         org-slug: metabase
+        dry-run: ${{ github.event.pull_request.draft == true }} # quarantine, but do not upload results
         token: ${{ inputs.trunk-api-token }}
