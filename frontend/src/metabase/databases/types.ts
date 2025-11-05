@@ -44,3 +44,5 @@ export interface DatabaseFormConfig {
 export type ContinueWithoutDataComponent = (props: {
   onCancel?: () => void;
 }) => JSX.Element;
+
+export type FieldType = EngineFieldType | ComponentType<EngineFieldProps>;

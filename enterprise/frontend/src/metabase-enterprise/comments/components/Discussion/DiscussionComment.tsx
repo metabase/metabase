@@ -22,8 +22,8 @@ import { DiscussionReactions } from "./DiscussionReactions";
 type DiscussionCommentProps = {
   canResolve?: boolean;
   comment: Comment;
-  onResolve?: (comment: Comment) => void;
-  onReopen?: (comment: Comment) => void;
+  onResolve: (comment: Comment) => void;
+  onReopen: (comment: Comment) => void;
   onReaction?: (comment: Comment, emoji: string) => void;
   onReactionRemove?: (comment: Comment, emoji: string) => void;
   onDelete?: (comment: Comment) => void;
@@ -85,11 +85,12 @@ export function DiscussionComment({
           {t`This comment was deleted.`}
         </Text>
         <DiscussionActionPanel
-          canResolve={canResolve}
           canReact={false}
+          canResolve={canResolve}
           comment={comment}
-          onResolve={onResolve}
           onCopyLink={onCopyLink}
+          onReopen={onReopen}
+          onResolve={onResolve}
         />
       </Timeline.Item>
     );
@@ -111,12 +112,12 @@ export function DiscussionComment({
         <DiscussionActionPanel
           canResolve={canResolve}
           comment={comment}
-          onResolve={onResolve}
-          onReopen={onReopen}
-          onReaction={onReaction}
+          onCopyLink={onCopyLink}
           onDelete={isCurrentUsersComment ? onDelete : undefined}
           onEdit={isCurrentUsersComment ? handleEditClick : undefined}
-          onCopyLink={onCopyLink}
+          onReaction={onReaction}
+          onReopen={onReopen}
+          onResolve={onResolve}
         />
       )}
 

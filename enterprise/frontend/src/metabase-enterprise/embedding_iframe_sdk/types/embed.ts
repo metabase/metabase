@@ -1,7 +1,10 @@
 import type { MetabaseError } from "embedding-sdk-bundle/errors";
 import type { MetabaseErrorCode } from "embedding-sdk-bundle/errors/error-code";
 import type { MetabaseAuthMethod } from "embedding-sdk-bundle/types";
-import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
+import type {
+  MetabaseEmbeddingSessionToken,
+  MetabaseFetchRequestTokenFn,
+} from "embedding-sdk-bundle/types/refresh-token";
 import type {
   CollectionBrowserListColumns,
   EmbeddingEntityType,
@@ -39,7 +42,10 @@ export type SdkIframeEmbedMessage =
     }
   | {
       type: "metabase.embed.reportAnalytics";
-      data: EmbeddedAnalyticsJsEventSchema;
+      data: {
+        usageAnalytics: EmbeddedAnalyticsJsEventSchema;
+        embedHostUrl: string;
+      };
     };
 
 // --- Embed Option Interfaces ---
@@ -74,6 +80,7 @@ export interface QuestionEmbedOptions {
 
   // parameters
   initialSqlParameters?: SqlParameterValues;
+  hiddenParameters?: string[];
 
   // incompatible options
   template?: never;
@@ -125,6 +132,18 @@ export interface BrowserEmbedOptions {
   dashboardId?: never;
 }
 
+export interface MetabotEmbedOptions {
+  componentName: "metabase-metabot";
+
+  /** Layout mode for the metabot interface */
+  layout?: "auto" | "sidebar" | "stacked";
+
+  // incompatible options
+  template?: never;
+  questionId?: never;
+  dashboardId?: never;
+}
+
 type CollectionBrowserEntityTypes =
   | "collection"
   | "dashboard"
@@ -137,6 +156,7 @@ export type SdkIframeEmbedBaseSettings = {
   theme?: MetabaseTheme;
   locale?: string;
   preferredAuthMethod?: MetabaseAuthMethod;
+  fetchRequestToken?: MetabaseFetchRequestTokenFn;
 
   /** Whether we should use the existing user session (i.e. admin user's cookie) */
   useExistingUserSession?: boolean;
@@ -149,10 +169,14 @@ export type SdkIframeEmbedTemplateSettings =
   | DashboardEmbedOptions
   | QuestionEmbedOptions
   | ExplorationEmbedOptions
-  | BrowserEmbedOptions;
+  | BrowserEmbedOptions
+  | MetabotEmbedOptions;
 
 /** Settings used by the sdk embed route */
-export type SdkIframeEmbedSettings = SdkIframeEmbedBaseSettings &
+export type SdkIframeEmbedSettings = Omit<
+  SdkIframeEmbedBaseSettings,
+  "fetchRequestToken"
+> &
   SdkIframeEmbedTemplateSettings;
 
 export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &
@@ -161,6 +185,7 @@ export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &
     | QuestionEmbedOptions
     | (Omit<ExplorationEmbedOptions, "questionId"> & { questionId: "new" })
     | BrowserEmbedOptions
+    | MetabotEmbedOptions
   );
 
 export type SdkIframeEmbedEvent = { type: "ready" };
@@ -173,4 +198,5 @@ export type SdkIframeEmbedSettingKey =
   | keyof DashboardEmbedOptions
   | keyof QuestionEmbedOptions
   | keyof ExplorationEmbedOptions
-  | keyof BrowserEmbedOptions;
+  | keyof BrowserEmbedOptions
+  | keyof MetabotEmbedOptions;

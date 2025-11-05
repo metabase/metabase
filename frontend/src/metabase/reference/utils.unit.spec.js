@@ -1,6 +1,8 @@
 import { createMockMetadata } from "__support__/metadata";
 import { separateTablesBySchema } from "metabase/reference/databases/TableList";
 import { getQuestion } from "metabase/reference/utils";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import {
   createMockDatabase,
   createMockField,
@@ -9,6 +11,8 @@ import {
 } from "metabase-types/api/mocks";
 
 describe("Reference utils.js", () => {
+  const stageIndex = 0;
+
   describe("tablesToSchemaSeparatedTables()", () => {
     it("should add schema separator to appropriate locations and sort tables by name", () => {
       const tables = {
@@ -56,79 +60,43 @@ describe("Reference utils.js", () => {
     const database = createMockDatabase({ id: dbId, tables: [table] });
     const metadata = createMockMetadata({ databases: [database] });
 
-    const getNewQuestion = ({
-      display = "table",
-      aggregation,
-      breakout,
-      filter,
-    } = {}) => {
-      const card = {
-        name: undefined,
-        collection_id: undefined,
-        display,
-        visualization_settings: {},
-        dataset_query: {
-          database: database.id,
-          type: "query",
-          query: {
-            "source-table": tableId,
-          },
-        },
-      };
-      if (aggregation != null) {
-        card.dataset_query.query.aggregation = aggregation;
-      }
-      if (breakout != null) {
-        card.dataset_query.query.breakout = breakout;
-      }
-      if (filter != null) {
-        card.dataset_query.query.filter = filter;
-      }
-      return card;
-    };
-
     it("should generate correct question for table raw data", () => {
-      const question = getQuestion({
+      const card = getQuestion({
         dbId,
         tableId,
         metadata,
       });
 
-      expect(question).toMatchObject(getNewQuestion());
+      const query = new Question(card).query();
+      expect(Lib.sourceTableOrCardId(query)).toBe(tableId);
     });
 
     it("should generate correct question for table counts", () => {
-      const question = getQuestion({
+      const card = getQuestion({
         dbId,
         tableId,
         getCount: true,
         metadata,
       });
 
-      expect(question).toMatchObject(
-        getNewQuestion({
-          aggregation: [["count"]],
-        }),
-      );
+      const query = new Question(card).query();
+      expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
     });
 
     it("should generate correct question for field raw data", () => {
-      const question = getQuestion({
+      const card = getQuestion({
         dbId,
         tableId,
         fieldId,
         metadata,
       });
 
-      expect(question).toMatchObject(
-        getNewQuestion({
-          breakout: [["field", fieldId, { "base-type": "type/Text" }]],
-        }),
-      );
+      const query = new Question(card).query();
+      expect(Lib.breakouts(query, stageIndex)).toHaveLength(1);
     });
 
     it("should generate correct question for field group by bar chart", () => {
-      const question = getQuestion({
+      const card = getQuestion({
         dbId,
         tableId,
         fieldId,
@@ -137,17 +105,14 @@ describe("Reference utils.js", () => {
         metadata,
       });
 
-      expect(question).toMatchObject(
-        getNewQuestion({
-          display: "bar",
-          breakout: [["field", fieldId, { "base-type": "type/Text" }]],
-          aggregation: [["count"]],
-        }),
-      );
+      const query = new Question(card).query();
+      expect(card.display).toBe("bar");
+      expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
+      expect(Lib.breakouts(query, stageIndex)).toHaveLength(1);
     });
 
     it("should generate correct question for field group by pie chart", () => {
-      const question = getQuestion({
+      const card = getQuestion({
         dbId,
         tableId,
         fieldId,
@@ -156,32 +121,26 @@ describe("Reference utils.js", () => {
         metadata,
       });
 
-      expect(question).toMatchObject(
-        getNewQuestion({
-          display: "pie",
-          breakout: [["field", fieldId, { "base-type": "type/Text" }]],
-          aggregation: [["count"]],
-        }),
-      );
+      const query = new Question(card).query();
+      expect(card.display).toBe("pie");
+      expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
+      expect(Lib.breakouts(query, stageIndex)).toHaveLength(1);
     });
 
     it("should generate correct question for segment raw data", () => {
-      const question = getQuestion({
+      const card = getQuestion({
         dbId,
         tableId,
         segmentId,
         metadata,
       });
 
-      expect(question).toMatchObject(
-        getNewQuestion({
-          filter: ["segment", segmentId],
-        }),
-      );
+      const query = new Question(card).query();
+      expect(Lib.filters(query, stageIndex)).toHaveLength(1);
     });
 
     it("should generate correct question for segment counts", () => {
-      const question = getQuestion({
+      const card = getQuestion({
         dbId,
         tableId,
         segmentId,
@@ -189,12 +148,9 @@ describe("Reference utils.js", () => {
         metadata,
       });
 
-      expect(question).toMatchObject(
-        getNewQuestion({
-          aggregation: [["count"]],
-          filter: ["segment", segmentId],
-        }),
-      );
+      const query = new Question(card).query();
+      expect(Lib.filters(query, stageIndex)).toHaveLength(1);
+      expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
     });
   });
 });

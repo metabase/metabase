@@ -6,25 +6,29 @@ import { AdminContentTable } from "metabase/common/components/AdminContentTable"
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { Card, FixedSizeIcon, Flex, Loader } from "metabase/ui";
 import {
   useListTransformJobTransformsQuery,
   useListTransformJobsQuery,
   useListTransformTagsQuery,
 } from "metabase-enterprise/api";
-import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
-import type { JobListParams } from "metabase-enterprise/transforms/types";
 import type { TransformJob, TransformJobId } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
+import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
-import { getJobUrl } from "../../../urls";
+import { TimezoneIndicator } from "../../../components/TimezoneIndicator";
 import { parseTimestampWithTimezone } from "../../../utils";
 import { hasFilterParams } from "../utils";
 
 import S from "./JobList.module.css";
 
-export function JobList({ params }: { params: JobListParams }) {
+type JobListProps = {
+  params: Urls.TransformJobListParams;
+};
+
+export function JobList({ params }: JobListProps) {
   const systemTimezone = useSetting("system-timezone");
   const {
     data: jobs = [],
@@ -32,8 +36,9 @@ export function JobList({ params }: { params: JobListParams }) {
     error: jobsError,
   } = useListTransformJobsQuery({
     last_run_start_time: params.lastRunStartTime,
+    last_run_statuses: params.lastRunStatuses,
     next_run_start_time: params.nextRunStartTime,
-    transform_tag_ids: params.transformTagIds,
+    tag_ids: params.tagIds,
   });
   const {
     data: tags = [],
@@ -45,7 +50,7 @@ export function JobList({ params }: { params: JobListParams }) {
   const dispatch = useDispatch();
 
   const handleRowClick = (job: TransformJob) => {
-    dispatch(push(getJobUrl(job.id)));
+    dispatch(push(Urls.transformJob(job.id)));
   };
 
   if (isLoading || error != null) {
@@ -68,8 +73,11 @@ export function JobList({ params }: { params: JobListParams }) {
             <span className={S.nowrap}>{t`Last run at`}</span>{" "}
             <TimezoneIndicator />
           </Flex>,
+          <span key="last-run-status" className={S.nowrap}>
+            {t`Last run status`}
+          </span>,
           <Flex align="center" gap="xs" key="next-run">
-            <span className={S.nowrap}>{t`Next run`}</span>{" "}
+            <span className={S.nowrap}>{t`Next run at`}</span>{" "}
             <TimezoneIndicator />
           </Flex>,
           t`Transforms`,
@@ -90,6 +98,22 @@ export function JobList({ params }: { params: JobListParams }) {
                     systemTimezone,
                   ).format("lll")
                 : null}
+            </td>
+            <td className={S.nowrap}>
+              {job.last_run != null ? (
+                <RunStatusInfo
+                  status={job.last_run.status}
+                  message={job.last_run.message}
+                  endTime={
+                    job.last_run.end_time != null
+                      ? parseTimestampWithTimezone(
+                          job.last_run.end_time,
+                          systemTimezone,
+                        ).toDate()
+                      : null
+                  }
+                />
+              ) : null}
             </td>
             <td className={S.nowrap}>
               {job.next_run?.start_time

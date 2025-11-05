@@ -578,8 +578,9 @@ describe("scenarios > question > native", () => {
     cy.button("Preview the query").click();
     cy.wait("@datasetNative");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/where CATEGORY='Gadget'/).should("be.visible");
+    H.modal().within(() => {
+      H.codeMirrorValue().should("contain", "CATEGORY = 'Gadget'");
+    });
   });
 
   it("should show errors when previewing a query", () => {

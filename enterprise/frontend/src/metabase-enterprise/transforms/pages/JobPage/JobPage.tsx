@@ -10,6 +10,7 @@ import {
   useUpdateTransformJobMutation,
 } from "metabase-enterprise/api";
 import type {
+  ScheduleDisplayType,
   TransformJob,
   TransformJobId,
   TransformTagId,
@@ -103,10 +104,14 @@ function JobPageBody({ job }: JobPageBodyProps) {
     }
   };
 
-  const handleScheduleChange = async (schedule: string) => {
+  const handleScheduleChange = async (
+    schedule: string,
+    uiDisplayType: ScheduleDisplayType,
+  ) => {
     const { error } = await updateJob({
       id: job.id,
       schedule,
+      ui_display_type: uiDisplayType,
     });
 
     if (error) {

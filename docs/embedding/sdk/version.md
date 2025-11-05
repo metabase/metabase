@@ -30,8 +30,7 @@ Metabase Cloud upgrades your instance automatically as new versions roll out. Bu
 
 To manually pin your version of Metabase:
 
-1. Go to **Admin settings > Settings > Embedding**.
-2. Go to the Embedded analytics SDK card.
-3. Scroll to **Version pinning** and click **Request version pinning**.
+1. Go to **Admin > Embedding > Modular**.
+2. Scroll to **Version pinning** and click **Request version pinning**.
 
 This will open a mailto link to our support team.
