@@ -26,6 +26,8 @@ export function EmbeddingThemeListingApp() {
   const handleCreateTheme = async () => {
     await createTheme({
       name: t`Untitled theme`,
+
+      // TODO(EMB-962): Add default theme colors based on instance's appearance settings
       settings: {},
     }).unwrap();
 
