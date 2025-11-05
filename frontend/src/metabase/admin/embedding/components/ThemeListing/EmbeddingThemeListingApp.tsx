@@ -67,7 +67,9 @@ export function EmbeddingThemeListingApp() {
             <EmbeddingThemeCard
               key={theme.id}
               theme={theme}
+              // TODO(EMB-946): navigate to visual editor
               onEdit={() => {}}
+              // TODO(EMB-944): add ability to duplicate and delete named themes
               onDuplicate={() => {}}
               onDelete={() => {}}
             />
