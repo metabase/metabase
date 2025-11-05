@@ -415,16 +415,19 @@ const GaugeArc = ({
 };
 
 const GaugeNeedle = ({ angle, isAnimated = true }) => (
-  <path
-    d={`M-${ARROW_BASE} 0 L0 -${ARROW_HEIGHT} L${ARROW_BASE} 0 Z`}
-    transform={`translate(0,-${INNER_RADIUS}) rotate(${degrees(
-      angle,
-    )}, 0, ${INNER_RADIUS})`}
+  <g
+    transform={`rotate(${degrees(angle)})`}
     style={isAnimated ? { transition: "transform 1.5s ease-in-out" } : null}
-    stroke={getArrowStrokeColor()}
-    strokeWidth={ARROW_STROKE_THICKNESS}
-    fill={getArrowFillColor()}
-  />
+  >
+    <path
+      d={`M-${ARROW_BASE} 0 L0 -${ARROW_HEIGHT} L${ARROW_BASE} 0 Z`}
+      transform={`translate(0,-${INNER_RADIUS})`}
+      style={isAnimated ? { transition: "transform 1.5s ease-in-out" } : null}
+      stroke={getArrowStrokeColor()}
+      strokeWidth={ARROW_STROKE_THICKNESS}
+      fill={getArrowFillColor()}
+    />
+  </g>
 );
 
 const GaugeSegmentLabel = ({ position: [x, y], style = {}, children }) => (
