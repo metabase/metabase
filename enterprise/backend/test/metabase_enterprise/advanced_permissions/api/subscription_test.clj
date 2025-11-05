@@ -1,5 +1,5 @@
 (ns metabase-enterprise.advanced-permissions.api.subscription-test
-  "Permisisons tests for API that needs to be enforced by Application Permissions to create and edit alerts/subscriptions."
+  "Permissions tests for API that needs to be enforced by Application Permissions to create and edit alerts/subscriptions."
   (:require
    [clojure.test :refer :all]
    [metabase.permissions.core :as perms]

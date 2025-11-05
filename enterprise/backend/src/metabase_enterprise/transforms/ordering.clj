@@ -107,7 +107,7 @@
   "Get a cycle if it exists (otherwise `nil`). Cycle consists of:
 
   ```
-  {:cycle-str \"transform-1 => tranform-2\"
+  {:cycle-str \"transform-1 => transform-2\"
    :cycle [1 2]}
   ```
 "

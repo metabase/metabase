@@ -36,13 +36,13 @@
 ;;
 ;;  <hr />
 ;;
-;; ## How does defendpoint coersion work?
+;; ## How does defendpoint coercion work?
 ;;
 ;; The `defendpoint` macro uses the `auto-coerce` function to generate a let code which binds args to their decoded
 ;; values. Values are decoded by their corresponding malli schema. n.b.: Only symbols in the arg->schema map will be
 ;; coerced; additional aliases (eg. after the :as key) will not automatically be coerced.
 ;;
-;; The exact coersion function [[mc/decode]], and uses the [[metabase.api.common.internal/defendpoint-transformer]],
+;; The exact coercion function [[mc/decode]], and uses the [[metabase.api.common.internal/defendpoint-transformer]],
 ;; and gets called with the schema, value, and transformer. see: https://github.com/metosin/malli#value-transformation
 ;;
 ;; ### Here's an example repl session showing how it works:

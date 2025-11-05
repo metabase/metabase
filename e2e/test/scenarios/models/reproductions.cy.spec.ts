@@ -314,7 +314,7 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
       .should("have.length", 2);
   });
 
-  it("allows custom columns with the same name as the aggregation column from the souce model (metabase#39150-2)", () => {
+  it("allows custom columns with the same name as the aggregation column from the source model (metabase#39150-2)", () => {
     H.createQuestion({
       name: "Source Model",
       type: "model",

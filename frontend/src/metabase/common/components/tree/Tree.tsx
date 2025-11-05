@@ -15,7 +15,7 @@ interface TreeProps {
   initiallyExpanded?: boolean;
   onSelect?: (item: ITreeNodeItem) => void;
   rightSection?: (item: ITreeNodeItem) => React.ReactNode;
-  TreeNode?: any; // This was previously set to TreeNodeComponent, but after upgrading to react 18, the type no longer played nice with forward ref compontents, including styled components
+  TreeNode?: any; // This was previously set to TreeNodeComponent, but after upgrading to react 18, the type no longer played nice with forward ref components, including styled components
 }
 
 function BaseTree({

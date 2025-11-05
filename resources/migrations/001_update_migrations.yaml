@@ -2016,7 +2016,7 @@ databaseChangeLog:
               - column:
                   name: public_uuid
                   type: char(36)
-                  remarks: 'Unique UUID used to in publically-accessible links to this Action.'
+                  remarks: 'Unique UUID used to in publicly-accessible links to this Action.'
                   constraints:
                     unique: true
 
@@ -2092,7 +2092,7 @@ databaseChangeLog:
               - column:
                   name: made_public_by_id
                   type: int
-                  remarks: 'The ID of the User who first publically shared this Action.'
+                  remarks: 'The ID of the User who first publicly shared this Action.'
 
   - changeSet:
       id: v46.00-056
@@ -2323,7 +2323,7 @@ databaseChangeLog:
       id: v46.00-088
       validCheckSum: 8:ff9defc19920960db55ef71e4d32b4ea
       author: noahmoss
-      comment: Added 0.46.5 -- backfill `permission_id` values in `sandboxes`. This is a fixed verison of v46.00-066
+      comment: Added 0.46.5 -- backfill `permission_id` values in `sandboxes`. This is a fixed version of v46.00-066
                which has been removed, since it had a bug that blocked a customer from upgrading.
       changes:
         - sql: >-
@@ -2833,7 +2833,7 @@ databaseChangeLog:
       id: v47.00-024
       validCheckSum: 8:3079db8d91e54ff2b41050f7dab27936
       author: dpsutton
-      comment: Added 0.47.0 -- model_index foriegn key to report_card
+      comment: Added 0.47.0 -- model_index foreign key to report_card
       changes:
         - addForeignKeyConstraint:
             baseTableName: model_index
@@ -2848,7 +2848,7 @@ databaseChangeLog:
       id: v47.00-025
       validCheckSum: 8:6889e314a2016c9bc017a358b81ed24e
       author: dpsutton
-      comment: Added 0.47.0 -- model_index_value foriegn key to model_index
+      comment: Added 0.47.0 -- model_index_value fgoreign key to model_index
       changes:
         - addForeignKeyConstraint:
             baseTableName: model_index_value
@@ -4392,7 +4392,7 @@ databaseChangeLog:
   - changeSet:
       id: v49.00-000
       author: qnkhuat
-      comment: Remove leagcy pulses
+      comment: Remove legacy pulses
       changes:
         - sql: DELETE FROM pulse where dashboard_id is null and alert_condition is null;
       # pulse has been deprecated in v38(~2.5 years ago), even the UI to view it is broken

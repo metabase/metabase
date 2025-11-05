@@ -818,7 +818,7 @@ describe("scenarios > question > custom column", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.addCustomColumn();
 
-    H.CustomExpressionEditor.type("coalesc{tab}[Tax]{tab}[User ID]", {
+    H.CustomExpressionEditor.type("coalesc{tab}[Tax]{tab}[User ID]", { // codespell:ignore
       delay: 50,
     });
     H.CustomExpressionEditor.value().should(
@@ -831,7 +831,7 @@ describe("scenarios > question > custom column", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.addCustomColumn();
 
-    H.CustomExpressionEditor.type("coalesc{tab}", { delay: 50 });
+    H.CustomExpressionEditor.type("coalesc{tab}", { delay: 50 }); // codespell:ignore
 
     H.CustomExpressionEditor.type("[Tax]{tab}[User ID]", {
       focus: false,
@@ -2050,7 +2050,7 @@ describe("scenarios > question > custom column > aggregation", () => {
     H.CustomExpressionEditor.nameInput().type("Final");
     H.popover().button("Done").click();
 
-    cy.log("Both the secound Count and Final should reference the first Count");
+    cy.log("Both the second Count and Final should reference the first Count");
     H.visualize();
     H.assertTableData({
       columns: ["Count", "Count", "Final"],

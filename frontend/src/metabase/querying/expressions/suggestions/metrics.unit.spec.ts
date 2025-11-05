@@ -106,7 +106,7 @@ describe("suggestMetrics", () => {
 
     it("should not suggest metrics", () => {
       const complete = setup({ expressionMode });
-      const results = complete("Fo|");
+      const results = complete("Fo|"); // codespell:ignore
       expect(results).toBe(null);
     });
   });
@@ -116,7 +116,7 @@ describe("suggestMetrics", () => {
 
     it("should not suggest metrics", () => {
       const complete = setup({ expressionMode });
-      const results = complete("Fo|");
+      const results = complete("Fo|"); // codespell:ignore
       expect(results).toBe(null);
     });
   });
@@ -126,7 +126,7 @@ describe("suggestMetrics", () => {
 
     it("should suggest metrics", () => {
       const complete = setup({ expressionMode });
-      const results = complete("FO|");
+      const results = complete("FO|"); // codespell:ignore
       expect(results).toEqual({
         from: 0,
         to: 2,

@@ -63,7 +63,7 @@ GRANT analytics TO metabase;
 -- GRANT SELECT ON "your_table" IN SCHEMA "your_schema" TO analytics;
 ```
 
-Depending on how you use Metabase, you can also additonally grant:
+Depending on how you use Metabase, you can also additionally grant:
 
 - `TEMPORARY` privileges to create temp tables.
 - `EXECUTE` privileges to use stored procedures or user-defined functions.

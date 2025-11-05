@@ -73,7 +73,7 @@ describe("issue 21532", () => {
 
 describe("issue 41765", { tags: "@external" }, () => {
   // In this test we are testing the in-browser cache that metabase uses,
-  // so we need to navigate by clicking trough the UI without reloading the page.
+  // so we need to navigate by clicking through the UI without reloading the page.
 
   const WRITABLE_DB_DISPLAY_NAME = "Writable Postgres12";
 

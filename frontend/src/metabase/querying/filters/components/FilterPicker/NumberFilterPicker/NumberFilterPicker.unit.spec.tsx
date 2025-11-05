@@ -525,7 +525,7 @@ describe("NumberFilterPicker", () => {
       expect(getNextFilterColumnName()).toBe("Total");
     });
 
-    it("should re-use values when changing an operator", async () => {
+    it("should reuse values when changing an operator", async () => {
       setup(createQueryWithNumberFilter({ operator: "=", values: [10, 20] }));
       const updateButton = screen.getByRole("button", {
         name: "Update filter",

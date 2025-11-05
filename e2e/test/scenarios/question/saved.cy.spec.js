@@ -541,7 +541,7 @@ describe("scenarios > question > saved", () => {
       });
     });
 
-    it("should show questions with a watermark when in dev mode whereever we show visualizations", () => {
+    it("should show questions with a watermark when in dev mode wherever we show visualizations", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
       cy.findByTestId("development-watermark").should("exist");

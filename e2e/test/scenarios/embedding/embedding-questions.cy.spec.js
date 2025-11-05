@@ -89,7 +89,7 @@ describe("scenarios > embedding > questions", () => {
       cy.findByText("Math");
       // Question settings: Renamed column
       cy.findByText("Billed");
-      // Question settings: Column formating
+      // Question settings: Column formatting
       cy.findByText("€39.72");
       // Question settings: Abbreviated date, day enabled, 24H clock with seconds
       cy.findByText("Tue, Feb 11, 2025, 21:40:27");
@@ -247,7 +247,7 @@ describe("scenarios [EE] > embedding > questions", () => {
 
     cy.wait("@deLocale");
 
-    H.main().findByText("Februar 11, 2025, 9:40 PM");
+    H.main().findByText("Februar 11, 2025, 9:40 PM"); // codespell:ignore
     cy.findByRole("button", { name: "Ergebnis downloaden" }).should("exist");
     cy.url().should("include", "locale=de");
   });

@@ -369,7 +369,7 @@ describe("scenarios > dashboard", () => {
         H.sidebar().findByText("Orders, Count").click();
         cy.findByTestId("dashboard-header").icon("add").click();
 
-        cy.log("create a tab to access emtpy state again");
+        cy.log("create a tab to access empty state again");
         H.createNewTab();
         cy.findByTestId("dashboard-empty-state")
           .findByText("Add a chart")

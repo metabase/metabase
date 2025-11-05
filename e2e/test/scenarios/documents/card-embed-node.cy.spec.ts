@@ -430,7 +430,7 @@ describe("documents card embed node custom logic", () => {
   });
 
   describe("deleting a cardEmbed", () => {
-    it("should allow you to remove a card if it is the first item in a docuemnt (UXW-2169)", () => {
+    it("should allow you to remove a card if it is the first item in a document (UXW-2169)", () => {
       cy.visit("/document/new");
 
       H.documentContent().click();

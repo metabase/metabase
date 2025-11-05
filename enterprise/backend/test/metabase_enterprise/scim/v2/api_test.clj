@@ -110,7 +110,7 @@
                 :meta     {:resourceType "User"}}
                response)))))
 
-    (testing "404 is returned when fetching a non-existant user"
+    (testing "404 is returned when fetching a non-existent user"
       (scim-client :get 404 (format "ee/scim/v2/Users/%s" (random-uuid))))))
 
 (deftest list-users-test
@@ -141,7 +141,7 @@
         (is (= 1 (get response :totalResults)))
         (is (= 1 (count (get response :Resources))))))
 
-    (testing "Fetch non-existant user by email"
+    (testing "Fetch non-existent user by email"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?filter=%s"
                                                    (codec/url-encode "userName eq \"newuser@metabase.com\"")))]
         (is (malli= scim-api/SCIMUserList response))
@@ -382,7 +382,7 @@
                   (is (= 1 (get response :totalResults)))
                   (is (= 1 (count (get response :Resources))))))
 
-              (testing "Fetch non-existant group by name"
+              (testing "Fetch non-existent group by name"
                 (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
                                                              (codec/url-encode "displayName eq \"Fake Group\"")))]
                   (is (malli= scim-api/SCIMUserList response))
@@ -410,7 +410,7 @@
                     :meta        {:resourceType "Group"}}
                    response)))))
 
-        (testing "404 is returned when fetching a non-existant group"
+        (testing "404 is returned when fetching a non-existent group"
           (scim-client :get 404 (format "ee/scim/v2/Groups/%s" (random-uuid))))
 
         (testing "404 is returned when fetching the Admin or All Users group"

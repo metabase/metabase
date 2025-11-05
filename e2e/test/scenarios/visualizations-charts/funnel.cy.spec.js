@@ -65,7 +65,7 @@ describe("scenarios > visualizations > funnel chart", () => {
     cy.findAllByTestId("funnel-chart-header").should("have.length", 5);
   });
 
-  it("should handle row items being filterd out and returned gracefully", () => {
+  it("should handle row items being filtered out and returned gracefully", () => {
     H.moveDnDKitElement(H.getDraggableElements().first(), { vertical: 100 });
 
     H.getDraggableElements()

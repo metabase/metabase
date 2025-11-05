@@ -89,7 +89,7 @@ const mongoKeywords = {
     "$bitsAnyClear",
     "$bitsAnySet",
     "$bottom",
-    "$bottomN",
+    "$bottomN", // codespell:ignore
     "$bsonSize",
     "$bucket",
     "$bucketAuto",
@@ -206,7 +206,7 @@ const mongoKeywords = {
     "$ne",
     "$near",
     "$nearSphere",
-    "$nin",
+    "$nin", // codespell:ignore
     "$nor",
     "$not",
     "$objectToArray",

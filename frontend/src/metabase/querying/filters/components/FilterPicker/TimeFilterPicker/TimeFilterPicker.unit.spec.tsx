@@ -461,7 +461,7 @@ describe("TimeFilterPicker", () => {
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
-    it("should re-use values when changing an operator", async () => {
+    it("should reuse values when changing an operator", async () => {
       setup(
         createQueryWithTimeFilter({
           operator: "between",

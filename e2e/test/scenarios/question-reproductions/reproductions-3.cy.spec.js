@@ -1236,7 +1236,7 @@ describe("issue 43294", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
     H.queryBuilderFooter().findByLabelText("Switch to data").click();
 
-    // TODO: reenable this test when we reenable the "Compare to the past" components.
+    // TODO: re-enable this test when we re-enable the "Compare to the past" components.
     // cy.log("compare action");
     // cy.button("Add column").click();
     // popover().findByText("Compare to the past").click();
@@ -1390,7 +1390,7 @@ describe("issue 19894", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should show all columns when using the join column selecter (metabase#19894)", () => {
+  it("should show all columns when using the join column selector (metabase#19894)", () => {
     H.createQuestion(
       {
         name: "Q1",

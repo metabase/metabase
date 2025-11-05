@@ -171,7 +171,7 @@ describe("scenarios > visualizations > progress chart", () => {
     });
   });
 
-  it("should be backwards compatibile", () => {
+  it("should be backwards compatible", () => {
     // A question with numeric `progress.goal` and no `progress.value` should render a progress bar with the goal value
     const questionDetails = {
       name: "Backwards Compat Test",

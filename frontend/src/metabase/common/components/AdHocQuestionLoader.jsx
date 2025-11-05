@@ -95,8 +95,8 @@ export class AdHocQuestionLoader extends Component {
       const card = deserializeCardFromUrl(questionHash);
       // pass the decoded card to load any necessary metadata
       // (tables, source db, segments, etc) into
-      // the redux store, the resulting metadata will be avaliable as metadata on the
-      // component props once it's avaliable
+      // the redux store, the resulting metadata will be available as metadata on the
+      // component props once it's available
       await this.props.loadMetadataForCard(card);
 
       // instantiate a new question object using the metadata and saved question

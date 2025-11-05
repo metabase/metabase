@@ -38,7 +38,7 @@ describe("visualization_settings", () => {
         "day-of-week",
         "month-of-year",
         "quarter-of-year",
-        // arguably histogram but diabled for now
+        // arguably histogram but disabled for now
         "minute-of-hour",
         "hour-of-day",
         "day-of-month",
@@ -57,7 +57,7 @@ describe("visualization_settings", () => {
         });
       });
 
-      describe("histgram units", () => {
+      describe("histogram units", () => {
         HISTOGRAM_UNITS.forEach((unit) => {
           it(`should default ${unit} to true`, () => {
             const settings = getComputedSettingsForSeries(

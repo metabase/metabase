@@ -600,7 +600,7 @@ describe("CoordinateFilterPicker", () => {
       expect(getNextFilterColumnNames().column).toBe("User → Latitude");
     });
 
-    it("should re-use values when changing an operator", async () => {
+    it("should reuse values when changing an operator", async () => {
       setup(
         createQueryWithCoordinateFilter({ operator: "=", values: [-100, 200] }),
       );

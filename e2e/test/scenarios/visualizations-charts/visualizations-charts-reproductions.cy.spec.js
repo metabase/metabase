@@ -659,7 +659,7 @@ describe("issue 21665", () => {
     cy.wait("@getDashboard");
   });
 
-  it("multi-series cards shouldnt cause frontend to reload (metabase#21665)", () => {
+  it("multi-series cards shouldn't cause frontend to reload (metabase#21665)", () => {
     cy.get("@questionId").then((questionId) => {
       editQ2NativeQuery("select order by --", questionId);
     });

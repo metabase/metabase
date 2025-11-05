@@ -128,7 +128,7 @@ describe("scenarios > admin > embedding > static embedding> content translation"
       it("rejects a CSV upload that provides two translations for the same string", () => {
         uploadTranslationDictionary(stringTranslatedTwice);
         cy.findAllByRole("alert")
-          .contains(/couldn.*t upload the file/)
+          .contains(/couldn.*t upload the file/) // codespell:ignore
           .should("exist");
         cy.findAllByRole("alert")
           .contains(
@@ -142,7 +142,7 @@ describe("scenarios > admin > embedding > static embedding> content translation"
       it("rejects a CSV upload with invalid locale in one row", () => {
         uploadTranslationDictionary(invalidLocaleXX);
         cy.findAllByRole("alert")
-          .contains(/couldn.*t upload the file/)
+          .contains(/couldn.*t upload the file/) // codespell:ignore
           .should("exist");
         cy.findAllByRole("alert")
           .contains(/Row 2: Invalid locale: xx/)
@@ -168,7 +168,7 @@ describe("scenarios > admin > embedding > static embedding> content translation"
       it("rejects a CSV upload with invalid locales in multiple rows", () => {
         uploadTranslationDictionary(multipleInvalidLocales);
         cy.findAllByRole("alert")
-          .contains(/couldn.*t upload the file/)
+          .contains(/couldn.*t upload the file/) // codespell:ignore
           .should("exist");
         cy.log("The first error is in row 2 (the first row is the header)");
         cy.findAllByRole("alert")

@@ -17,7 +17,7 @@ Cypress.Commands.add(
       const { name, schema, db_id } = tables.find(
         (table) => table.id === table_id,
       );
-      const attr = Object.keys(attribute_remappings).join(", "); // Account for the possiblity of passing multiple user attributes
+      const attr = Object.keys(attribute_remappings).join(", "); // Account for the possibility of passing multiple user attributes
 
       cy.log(`Sandbox "${name}" table on "${attr}"`);
       cy.updatePermissionsGraph({

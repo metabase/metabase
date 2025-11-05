@@ -96,7 +96,7 @@
   [;; will be better if we could use after-insert to get the inserted id, but toucan2 doesn't define a multimethod for after-insert
    [#'t2.before-insert/before-insert :after :insert ::t2.before-insert/before-insert]
    [#'t2.before-update/before-update :after :update ::t2.before-update/before-update]
-   ;; we do :before aux-method instead of :after for delete bacause the after method has input is number of affected rows
+   ;; we do :before aux-method instead of :after for delete because the after method has input is number of affected rows
    [#'t2.before-delete/before-delete :before :delete ::t2.before-delete/before-delete]])
 
 (defn- track-one!

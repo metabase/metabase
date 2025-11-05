@@ -98,7 +98,7 @@
 (defmethod sql.tx/qualified-name-components :redshift [& args]
   (apply tx/single-db-qualified-name-components (unique-session-schema) args))
 
-;; don't use the Postgres implementation of `drop-db-ddl-statements` because it adds an extra statment to kill all
+;; don't use the Postgres implementation of `drop-db-ddl-statements` because it adds an extra statement to kill all
 ;; open connections to that DB, which doesn't work with Redshift
 (defmethod ddl/drop-db-ddl-statements :redshift
   [& args]

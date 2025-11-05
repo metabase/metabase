@@ -1221,7 +1221,7 @@ describe("issue 49577", () => {
       cy.findByText("bar").should("not.exist");
       cy.findByText("baz").should("not.exist");
 
-      cy.findByPlaceholderText("Search").should("be.visible").type("fo");
+      cy.findByPlaceholderText("Search").should("be.visible").type("fo"); // codespell:ignore
 
       cy.findByText("foo").should("be.visible");
     });

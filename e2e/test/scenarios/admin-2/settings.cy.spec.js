@@ -46,7 +46,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
 
     cy.visit("/admin/settings/general");
 
-    // Needed to strip down the protocol from URL to accomodate our UI (<select> PORT | <input> DOMAIN_AND_PORT)
+    // Needed to strip down the protocol from URL to accommodate our UI (<select> PORT | <input> DOMAIN_AND_PORT)
     cy.findByDisplayValue(DOMAIN_AND_PORT) // findByDisplayValue comes from @testing-library/cypress
       .click()
       .type("foo", { delay: 100 })
@@ -699,7 +699,7 @@ describe("scenarios > admin > localization", () => {
   });
 
   it("should correctly apply start of the week to a bar chart (metabase#13516)", () => {
-    // programatically create and save a question based on Orders table
+    // programmatically create and save a question based on Orders table
     // filter: created before June 1st, 2022
     // summarize: Count by CreatedAt: Week
 

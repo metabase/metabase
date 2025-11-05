@@ -211,7 +211,7 @@ describe("LicenseAndBilling", () => {
         format: "unsupported-format",
         display: "value",
       };
-      // mocking some future diplay that doesn't exist yet
+      // mocking some future display that doesn't exist yet
       const unsupportedDisplay: any = {
         name: "Unsupported display",
         value: "Unsupported display",

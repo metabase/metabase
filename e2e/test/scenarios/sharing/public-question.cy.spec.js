@@ -262,7 +262,7 @@ describe("scenarios [EE] > public > question", () => {
 
     cy.wait("@deLocale");
 
-    H.main().findByText("Februar 11, 2025");
+    H.main().findByText("Februar 11, 2025"); // codespell:ignore
 
     cy.url().should("include", "locale=de");
   });

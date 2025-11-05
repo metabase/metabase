@@ -144,7 +144,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   });
 
   describe("branding", () => {
-    const questionName = "Fourty Two";
+    const questionName = "Forty Two";
 
     it("should include branding for OSS instances", { tags: "@OSS" }, () => {
       sendTestAlertForQuestion(questionName);

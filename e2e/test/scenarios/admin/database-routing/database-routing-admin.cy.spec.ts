@@ -268,7 +268,7 @@ describe("admin > database > database routing", () => {
         );
       });
 
-      cy.log("shoudl not see database in data reference");
+      cy.log("should not see database in data reference");
       H.startNewNativeQuestion();
       cy.findByTestId("sidebar-header").icon("chevronleft").click();
       cy.findByTestId("sidebar-header-title").should(

@@ -153,7 +153,7 @@ describe("collection permissions", () => {
 
                   it("archiving sub-collection should redirect to its parent", () => {
                     cy.request("GET", "/api/collection").then((xhr) => {
-                      // We need to obtain the ID programatically
+                      // We need to obtain the ID programmatically
                       const { id: THIRD_COLLECTION_ID } = xhr.body.find(
                         (collection) => collection.slug === "third_collection",
                       );

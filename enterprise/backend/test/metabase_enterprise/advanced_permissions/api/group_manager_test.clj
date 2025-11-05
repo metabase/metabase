@@ -1,5 +1,5 @@
 (ns metabase-enterprise.advanced-permissions.api.group-manager-test
-  "Permisisons tests for API that needs to be enforced by Group Manager permisisons."
+  "Permissions tests for API that needs to be enforced by Group Manager permissions."
   (:require
    [clojure.set :refer [subset?]]
    [clojure.test :refer :all]
@@ -127,7 +127,7 @@
        set))
 
 (deftest memebership-apis-permissions-test
-  (testing "/api/permissions/memebership"
+  (testing "/api/permissions/membership"
     (mt/with-user-in-groups
       [group  {:name "New Group"}
        user   [group]]
@@ -176,7 +176,7 @@
               (clear-memberships! user-2 204 group-2))))))))
 
 (deftest memebership-apis-edge-cases-test
-  (testing "/api/permissions/memebership"
+  (testing "/api/permissions/membership"
     (mt/with-user-in-groups
       [group {:name "New Group"}
        user  [group]]
@@ -199,12 +199,12 @@
             (testing "non-admin user can only view groups that are manager of"
               (is (= #{(:id group)} (membership->groups-ids (get-membership user 200))))))
 
-          (testing "admin cant be group manager"
+          (testing "admin can't be group manager"
             (mt/with-temp [:model/User                       new-user {:is_superuser true}
                            :model/PermissionsGroupMembership _        {:user_id          (:id new-user)
                                                                        :group_id         (:id group)
                                                                        :is_group_manager false}]
-              (is (= "Admin cant be a group manager."
+              (is (= "Admin can't be a group manager."
                      (mt/user-http-request user :post 400 "permissions/membership"
                                            {:group_id         (:id group)
                                             :user_id          (:id new-user)

@@ -25,7 +25,7 @@ H.describeWithSnowplow(
     it("opening the example dashboard from the button should send the 'embedding_homepage_example_dashboard_click' event", () => {
       cy.visit("/");
 
-      // the example-dashboard-id is mocked, it's normal that we'll get to a permision error page
+      // the example-dashboard-id is mocked, it's normal that we'll get to a permission error page
       H.main().findByText("Embed an example dashboard").click();
 
       H.expectUnstructuredSnowplowEvent({

@@ -13,7 +13,7 @@ import {
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import type { GroupsPermissions } from "metabase-types/api";
 
-// permission that do not have a nested shemas/native key
+// permission that do not have a nested schemas/native key
 const flatPermissions = new Set([
   DataPermission.DETAILS,
   DataPermission.VIEW_DATA,

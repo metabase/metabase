@@ -533,7 +533,7 @@ describe("version-helpers", () => {
     });
   });
 
-  describe("verisonSort", () => {
+  describe("versionSort", () => {
     it("should sort major versions", () => {
       const diff1 = versionSort("v0.50.9", "v0.48.1");
       expect(diff1).toBeGreaterThan(0);

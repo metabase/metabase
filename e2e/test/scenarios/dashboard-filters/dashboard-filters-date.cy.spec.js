@@ -174,7 +174,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
     H.saveDashboard({
       buttonLabel: "Sauvegarder",
-      editBarText: "Vous êtes en train d'éditer ce tableau de bord.",
+      editBarText: "Vous êtes en train d'éditer ce tableau de bord.", // codespell:ignore
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

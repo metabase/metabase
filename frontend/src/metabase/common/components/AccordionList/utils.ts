@@ -196,7 +196,7 @@ function searchStrategy<TItem extends Item, TSection extends Section<TItem>>({
 
 /**
  * alwaysMatch is a SearchStrategy that returns all the items with a score of 0.
- * It performs no work to see if an item acutally matches the search text.
+ * It performs no work to see if an item actually matches the search text.
  */
 const alwaysMatch = function <TItem extends Item>(): ItemScores<TItem> {
   return {
@@ -286,7 +286,7 @@ function sortAndFilterItems<TItem extends Item>(
  *
  * This basically acts as a LRU cache with just one cache entry.
  *
- * We use this over _.memoize because we rely on object identiy to memoize
+ * We use this over _.memoize because we rely on object identity to memoize
  * the search index, and _.memoize use string hashing for equality.
  */
 function memoize<T extends object, R>(fn: (t: T) => R): (t: T) => R {

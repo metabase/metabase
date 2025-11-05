@@ -134,7 +134,7 @@ describe("suggestSegments", () => {
 
   it("should suggest segments in an open [", () => {
     const complete = setup();
-    const results = complete("[Fo|");
+    const results = complete("[Fo|"); // codespell:ignore
     expect(results).toEqual({ ...RESULTS, to: 3 });
   });
 
@@ -146,7 +146,7 @@ describe("suggestSegments", () => {
 
   it("should suggest segments inside []", () => {
     const complete = setup();
-    const results = complete("[Fo|]");
+    const results = complete("[Fo|]"); // codespell:ignore
     expect(results).toEqual({ ...RESULTS, to: 4 });
   });
 

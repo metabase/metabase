@@ -182,7 +182,7 @@ const CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE = [
   "count",
 ];
 
-// TODO: reenable test when we reenable the "Compare to the past" components.
+// TODO: re-enable test when we re-enable the "Compare to the past" components.
 describe("scenarios > question", { tags: "@skip" }, () => {
   H.describeWithSnowplow("column compare", () => {
     beforeEach(() => {
@@ -1835,7 +1835,7 @@ function verifyPresets(presets: string[] = []) {
 
 function selectCustomOffset() {
   // This is broken up because the dashboard sometimes rerenders while clicking
-  // Cypress recommends this as a workaround for flakyness.
+  // Cypress recommends this as a workaround for flakiness.
   cy.findByText("Custom...").as("btn").should("be.visible");
   cy.get("@btn").click();
 }

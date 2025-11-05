@@ -83,7 +83,7 @@ describe("processChatResponse", () => {
     ).rejects.toBeTruthy();
   });
 
-  it("should error if a tool result is returned without a preceeding tool call", async () => {
+  it("should error if a tool result is returned without a preceding tool call", async () => {
     const mockStream = createMockReadableStream([
       `a:{"toolCallId":"x","result":""}`,
       `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,

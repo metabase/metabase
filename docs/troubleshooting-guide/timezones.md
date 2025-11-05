@@ -40,7 +40,7 @@ Once you think you have identified a problem, drill down to understand exactly w
 
 ## Is the Report Time Zone set incorrectly?
 
-**Root cause:** Wrong numbers in questions or charts can be caused by a mis-match in the time zone being used by Metabase and the time zone being used by the data warehouse.
+**Root cause:** Wrong numbers in questions or charts can be caused by a mismatch in the time zone being used by Metabase and the time zone being used by the data warehouse.
 
 **Steps to take:**
 

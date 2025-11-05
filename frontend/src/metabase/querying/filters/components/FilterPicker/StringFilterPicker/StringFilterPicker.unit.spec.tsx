@@ -517,7 +517,7 @@ describe("StringFilterPicker", () => {
       expect(getNextFilterColumnName()).toBe("Product → Description");
     });
 
-    it("should re-use values when changing an operator", async () => {
+    it("should reuse values when changing an operator", async () => {
       const query = createQuery();
       setup(
         createQueryWithStringFilter({

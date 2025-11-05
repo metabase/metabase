@@ -107,7 +107,7 @@ describe("ChartSettingInputNumber", () => {
     expect(onChange).toHaveBeenCalledWith(5400);
   });
 
-  it("rounds decimals and makes them postiive when `isInteger` and `isNonNegative` are `true`", async () => {
+  it("rounds decimals and makes them positive when `isInteger` and `isNonNegative` are `true`", async () => {
     const { input, onChange } = setup({
       options: { isInteger: true, isNonNegative: true },
     });

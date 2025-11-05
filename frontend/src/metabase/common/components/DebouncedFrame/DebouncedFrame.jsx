@@ -10,7 +10,7 @@ const DEBOUNCE_PERIOD = 300;
 
 /**
  * This component prevents children elements from being rerendered while it's being resized (currently hard-coded debounce period of 250ms)
- * Useful for rendering components that maybe take a long time to render but you still wnat to allow their container to be resized fluidly
+ * Useful for rendering components that maybe take a long time to render but you still want to allow their container to be resized fluidly
  * We also fade the component out and block mouse events while it's transitioning
  */
 

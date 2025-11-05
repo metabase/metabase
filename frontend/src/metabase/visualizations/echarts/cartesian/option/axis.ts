@@ -38,7 +38,7 @@ const getCustomAxisRange = (
   const [extentMin, extentMax] = axisExtent;
 
   // If this is a normalized range, respect custom min & max
-  // This also accomodates non-normalized custom min & max values
+  // This also accommodates non-normalized custom min & max values
   // Allows users to supply e.g. 10 for 10% min as opposed to 0.1
   if (isNormalized) {
     return {

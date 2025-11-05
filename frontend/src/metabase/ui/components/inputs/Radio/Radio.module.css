@@ -13,7 +13,7 @@
     }
   }
 
-  /* Need the aditional specificy to override global focus outline rule */
+  /* Need the additional specificity to override global focus outline rule */
   .radio:focus {
     outline: none;
   }

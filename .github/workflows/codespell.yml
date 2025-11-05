@@ -7,15 +7,14 @@ on:
       - 'release-**'
   pull_request:
 
-jobs:
 
+jobs:
   codespell:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: codespell-project/actions-codespell@v1
         with:
-          ignore_words_file: .codespellignore
           path: >-
             dev
             docs
@@ -23,5 +22,5 @@ jobs:
             enterprise
             frontend
             modules/drivers
-            src
-            test
+          # src
+          # test

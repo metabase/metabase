@@ -13,7 +13,7 @@ export default {
       },
     },
     disabled: {
-      constrol: {
+      control: {
         type: "boolean",
       },
     },

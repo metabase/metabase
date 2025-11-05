@@ -79,7 +79,7 @@
 ;;; having two routes with the same method and param that only differ by regex patterns. It makes using this stuff more
 ;;; annoying
 (mr/def ::unique-key
-  "Unique indentifier for an api endpoint. `(:api/endpoints (meta a-namespace))` is a map of `::unique-key` => `::info`"
+  "Unique identifier for an api endpoint. `(:api/endpoints (meta a-namespace))` is a map of `::unique-key` => `::info`"
   [:tuple
    #_method ::method
    #_route  string?

@@ -261,7 +261,7 @@ describe("user > settings", () => {
       H.popover().findByText("Light").click();
       assertLightMode();
 
-      //Need to take focus off the inpout
+      //Need to take focus off the input
       H.navigationSidebar().findByRole("link", { name: /Home/ }).click();
       cy.realPress([metaKey, "Shift", "L"]);
       assertDarkMode();
@@ -269,8 +269,8 @@ describe("user > settings", () => {
   });
 });
 
-// I wanted to examine the value of a color vairable, but it's hard to inspect hsla colors between local and CI.
-// sometimes the alpha is a decimal value, sometimes it isnt...
+// I wanted to examine the value of a color variable, but it's hard to inspect hsla colors between local and CI.
+// sometimes the alpha is a decimal value, sometimes it isn't...
 const assertLightMode = () =>
   cy.get("body").should("have.css", "background-color", "rgb(249, 249, 250)");
 

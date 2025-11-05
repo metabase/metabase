@@ -126,7 +126,7 @@ export function ColumnValue({
       }
       break;
     // Not using `isCategory` because it incorrectly gives false positive
-    // for many other category subtypes, like Name / Title / City (which we dont' want here).
+    // for many other category subtypes, like Name / Title / City (which we don't want here).
     case column.semantic_type === TYPE.Category:
       return (
         <Badge

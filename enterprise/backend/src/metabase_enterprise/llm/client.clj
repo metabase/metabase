@@ -148,7 +148,7 @@
             (catch Exception e
               (throw
                (do
-                 (log/warnf "Unparseable JSON string: %s" response)
+                 (log/warnf "Unparsable JSON string: %s" response)
                  (ex-info
                   (.getMessage e)
                   {:message     (.getMessage e)

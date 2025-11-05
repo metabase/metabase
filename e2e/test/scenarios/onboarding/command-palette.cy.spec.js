@@ -267,7 +267,7 @@ describe("command palette", () => {
       });
     });
 
-    it("should not render any links to settings or admin pages for non-admins without privledged access", () => {
+    it("should not render any links to settings or admin pages for non-admins without privileged access", () => {
       cy.signInAsNormalUser();
       cy.visit("/");
       cy.findByTestId("home-page")
@@ -296,7 +296,7 @@ describe("command palette", () => {
 
         H.commandPaletteInput().type("data");
         H.commandPaletteAction("Databases").should("not.exist");
-        H.commandPaletteInput().clear().type("tabl");
+        H.commandPaletteInput().clear().type("tabl"); // codespell:ignore
         H.commandPaletteAction("Table Metadata").should("not.exist");
       });
     });
@@ -355,7 +355,7 @@ describe("command palette", () => {
 
           H.commandPaletteInput().type("data");
           H.commandPaletteAction("Databases").should("exist");
-          H.commandPaletteInput().clear().type("tabl");
+          H.commandPaletteInput().clear().type("tabl"); // codespell:ignore
           H.commandPaletteAction("Table Metadata").should("exist");
           H.commandPaletteInput().clear();
 

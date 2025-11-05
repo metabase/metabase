@@ -174,7 +174,7 @@ You'll almost certainly be running your database in a local Docker container. Ra
 
 Tells Metabase to look for the environment variable `MB_MYSQL_TEST_USER`; if not found, default to `"root"`. The name of the environment variable follows the pattern `MB_<driver>_TEST_<property>`, as passed into the function as first and second args, respectively. You don't need to specify a default value for `tx/db-test-env-var`; perhaps `user` is an optional parameter; and if `MB_MYSQL_TEST_USER` isn't specified, you don't need to specify it in the connection details.
 
-But what about properties you want to require, but do not have sane defaults? In those cases, you can use `tx/db-test-env-var-or-throw`. It the corresponding enviornment variable isn't set, these will throw an Exception, ultimately causing tests to fail.
+But what about properties you want to require, but do not have sane defaults? In those cases, you can use `tx/db-test-env-var-or-throw`. It the corresponding environment variable isn't set, these will throw an Exception, ultimately causing tests to fail.
 
 ```clj
 ;; If MB_SQLSERVER_TEST_USER is unset, the test suite will quit with a message saying something like

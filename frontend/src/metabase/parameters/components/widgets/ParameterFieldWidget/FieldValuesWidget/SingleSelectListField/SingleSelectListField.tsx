@@ -74,9 +74,9 @@ const SingleSelectListField = ({
       // If no options have translations, rely on the sorting that was already
       // done in the backend
       optionsHaveSomeTranslations
-        ? augmentedOptions.toSorted((optionA, optionB) =>
+        ? augmentedOptions.toSorted((optionA, optionB) => // codespell:ignore
             sortByTranslation(
-              getOptionDisplayName(optionA),
+              getOptionDisplayName(optionA), // codespell:ignore
               getOptionDisplayName(optionB),
             ),
           )

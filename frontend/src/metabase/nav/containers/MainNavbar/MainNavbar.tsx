@@ -53,7 +53,7 @@ function mapStateToProps(state: State, props: MainNavbarOwnProps) {
   return {
     // Can't use dashboard entity loader instead.
     // The dashboard page uses DashboardsApi.get directly,
-    // so we can't re-use data between these components.
+    // so we can't reuse data between these components.
     dashboard: getDashboard(state),
 
     questionId: maybeGetQuestionId(state, props),

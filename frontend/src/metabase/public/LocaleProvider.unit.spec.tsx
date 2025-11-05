@@ -118,7 +118,7 @@ describe("LocaleProvider", () => {
 
     // `waitFor` to ensure the component has time to re-render
     await waitFor(() => {
-      expect(screen.getByText("Januar 2020")).toBeInTheDocument();
+      expect(screen.getByText("Januar 2020")).toBeInTheDocument(); // codespell:ignore
     });
   });
 

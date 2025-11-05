@@ -60,7 +60,7 @@ export const BASE_POSTGRES_DESTINATION_DB_INFO = {
 };
 
 export const DB_ROUTER_USERS = {
-  userA: {
+  userA: { // codespell:ignore
     first_name: "Don",
     last_name: "RouterA",
     email: "routerA@metabase.test",

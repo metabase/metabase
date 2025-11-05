@@ -444,7 +444,7 @@ describe("issue 32750", () => {
     cy.visit("/");
   });
 
-  it("modal do not dissapear on viewport change", () => {
+  it("modal do not disappear on viewport change", () => {
     H.startNewAction();
     cy.viewport(320, 800);
     cy.findByTestId("action-creator").should("be.visible");

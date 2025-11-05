@@ -127,7 +127,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
         .should("not.contain", "destination_two");
 
       cy.log("User A");
-      signInAs(DB_ROUTER_USERS.userA);
+      signInAs(DB_ROUTER_USERS.userA); // codespell:ignore
       H.visitQuestion(questionId);
       cy.get('[data-column-id="name"]').should("contain", "destination_one");
       cy.get('[data-column-id="name"]').should(
@@ -180,7 +180,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
         .should("not.contain", "destination_one")
         .should("not.contain", "destination_two");
 
-      signInAs(DB_ROUTER_USERS.userA);
+      signInAs(DB_ROUTER_USERS.userA); // codespell:ignore
       H.visitQuestion(questionId);
       cy.get('[data-column-id="name"]').should("contain", "destination_one");
       cy.get('[data-column-id="name"]').should(
@@ -235,7 +235,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
       cy.request("GET", `api/cache?model=question&id=${questionId}`);
 
       cy.log("User A");
-      signInAs(DB_ROUTER_USERS.userA);
+      signInAs(DB_ROUTER_USERS.userA); // codespell:ignore
       H.visitQuestion(questionId);
       cy.get('[data-column-id="name"]').should("contain", "destination_one");
       cy.get('[data-column-id="name"]').should(
@@ -273,7 +273,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
         },
       });
 
-      signInAs(DB_ROUTER_USERS.userA);
+      signInAs(DB_ROUTER_USERS.userA); // codespell:ignore
       H.visitQuestion(questionId);
       cy.get('[data-column-id="name"]').should("contain", "destination_one");
       cy.get('[data-column-id="color"]').should("contain", "blue");
@@ -301,7 +301,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
         },
       });
 
-      signInAs(DB_ROUTER_USERS.userA);
+      signInAs(DB_ROUTER_USERS.userA); // codespell:ignore
       H.visitQuestion(questionId);
       cy.get('[data-column-id="name"]').should("contain", "destination_one");
       cy.get('[data-column-id="color"]').should("contain", "blue");
@@ -323,7 +323,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
           group_id: COLLECTION_GROUP,
           card_id: redColorQuestionId,
         });
-        signInAs(DB_ROUTER_USERS.userA);
+        signInAs(DB_ROUTER_USERS.userA); // codespell:ignore
         H.visitQuestion(questionId);
         cy.get('[data-column-id="name"]').should("contain", "destination_one");
         cy.get('[data-column-id="color"]').should("contain", "red");
@@ -359,7 +359,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
         ],
       );
 
-      signInAs(DB_ROUTER_USERS.userA);
+      signInAs(DB_ROUTER_USERS.userA); // codespell:ignore
       H.visitQuestion(questionId);
       cy.get('[data-column-id="name"]').should("contain", "destination_one");
       cy.get('[data-column-id="color"]').should("contain", "blue");
@@ -395,7 +395,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
         },
       });
 
-      signInAs(DB_ROUTER_USERS.userA);
+      signInAs(DB_ROUTER_USERS.userA); // codespell:ignore
       H.visitQuestion(questionId);
       cy.get('[data-column-id="name"]').should("contain", "destination_one");
       cy.get('[data-column-id="color"]').should("contain", "blue");

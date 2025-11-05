@@ -87,7 +87,13 @@
   {:doc      "Check for misspellings in the source code."
    :examples [["./bin/mage codespell"]]
    :requires [[mage.codespell]]
-   :taks     (task! (mage.codespell/codespell (:arguments parsed)))}
+   :task     (task! (mage.codespell/codespell (:arguments parsed)))}
+
+  codespell-interactive
+  {:doc      "Check for misspellings in the source code, and interactively prompt to fix them."
+   :examples [["./bin/mage codespell-interactive"]]
+   :requires [[mage.codespell]]
+   :task     (task! (mage.codespell/codespell-interactive (:arguments parsed)))}
 
   start-maildev
   {:doc      "Start Maildev"

@@ -154,7 +154,7 @@
         (is (< 52 (liquibase/latest-applied-major-version conn (.getDatabase liquibase))))))))
 
 (deftest extract-numbers-special-case-test
-  (testing "when specific migration verison is passed reports different major version"
+  (testing "when specific migration version is passed reports different major version"
     (is (= 55 (first (#'liquibase/extract-numbers "v56.2025-06-05T16:48:48"))))
     (is (= 55 (first (#'liquibase/extract-numbers "v56.2025-05-19T16:48:48"))))))
 

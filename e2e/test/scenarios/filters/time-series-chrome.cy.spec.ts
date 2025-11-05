@@ -39,7 +39,7 @@ describe("time-series chrome filter widget", () => {
       ];
 
       cy.log(
-        "should display 'All time' as the initialy selected operator (metabase#22247)",
+        "should display 'All time' as the initially selected operator (metabase#22247)",
       );
       cy.findByTestId("timeseries-filter-button")
         .should("have.text", "All time")

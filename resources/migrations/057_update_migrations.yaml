@@ -957,7 +957,7 @@ databaseChangeLog:
               - column:
                   name: end_time
                   type: ${timestamp_type}
-                  remarks: "When the tranform job completed (null if still running)"
+                  remarks: "When the transform job completed (null if still running)"
                   constraints:
                     nullable: true
               - column:

@@ -389,7 +389,7 @@
   (set-parameter-to-local-date-time driver prepared-statement index object))
 
 ;;
-;; `set-parameter` is implmented also for LocalTime and OffsetTime, even though Databricks does not support time types.
+;; `set-parameter` is implemented also for LocalTime and OffsetTime, even though Databricks does not support time types.
 ;; It enables creation of `attempted-murders` dataset, hence making the driver compatible with more of existing tests.
 ;;
 
@@ -416,12 +416,12 @@
 
   ;; byte array as object
   ;; Ingests toString of reference and tests fail with
-  ;; [CANNOT_PARSE_TIMESTAMP] Unparseable date: "[B@3b56756d".
+  ;; [CANNOT_PARSE_TIMESTAMP] Unparsable date: "[B@3b56756d".
   #_(.setObject prepared-statement index object)
 
   ;; byte array as object with jdbc type BINARY
   ;; Ingests toString of reference and tests fail with
-  ;; [CANNOT_PARSE_TIMESTAMP] Unparseable date: "[B@3b56756d".
+  ;; [CANNOT_PARSE_TIMESTAMP] Unparsable date: "[B@3b56756d".
   #_(.setObject prepared-statement index object Types/BINARY)
 
   ;; byte array as object with jdbc type BINARY

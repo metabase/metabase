@@ -62,7 +62,7 @@
 ;; We need to sync the attached datawarehouse to make sure that the data from the Google Drive folder is available to
 ;; the user in Metabase. Once the gdrive connection's status is set to 'active' by HM, they will call MB's
 ;; `api/notify/db/attached_datawarehouse` endpoint to trigger a sync. The data from the Google Drive folder is already
-;; availiable in the attached datawarehouse, and when MB finishes the sync (and puts an item into :model/TaskHistory
+;; available in the attached datawarehouse, and when MB finishes the sync (and puts an item into :model/TaskHistory
 ;; saying so), the user can start using their Google Sheets data in Metabase.
 ;;
 ;; ## Why do we check for multiple gdrive connections in the delete endpoint? We check for multiple gdrive connections

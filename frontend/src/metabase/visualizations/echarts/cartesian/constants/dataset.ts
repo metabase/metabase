@@ -36,7 +36,7 @@ export const INDEX_KEY = `${NULL_CHAR}_index` as const;
 // months, we want to show monthly ticks.
 export const TICKS_INTERVAL_THRESHOLD = 3;
 
-// ECharts replaces null valeus with empty strings which makes it impossible to
+// ECharts replaces null values with empty strings which makes it impossible to
 // distinguish between null and empty string so we have to use another special
 // value for nulls.
 export const ECHARTS_CATEGORY_AXIS_NULL_VALUE = `${NULL_CHAR}_NULL` as const;

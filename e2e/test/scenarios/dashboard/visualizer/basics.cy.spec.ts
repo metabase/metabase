@@ -504,7 +504,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.tooltip().findByText("Updated description").should("exist");
   });
 
-  it("should start in a pristine state and update dirtyness accordingly", () => {
+  it("should start in a pristine state and update dirtiness accordingly", () => {
     createDashboardWithVisualizerDashcards();
     H.editDashboard();
 

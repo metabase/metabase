@@ -37,7 +37,7 @@ describe("scenarios > admin > people", () => {
   });
 
   describe("user management", () => {
-    it("should be possible to switch beteween 'People' and 'Groups' tabs and to add/remove users to groups (metabase-enterprise#210, metabase#12693, metabase#21521)", () => {
+    it("should be possible to switch between 'People' and 'Groups' tabs and to add/remove users to groups (metabase-enterprise#210, metabase#12693, metabase#21521)", () => {
       cy.visit("/admin/people");
 
       assertTableRowsCount(TOTAL_USERS);

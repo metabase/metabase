@@ -230,7 +230,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
         H.visitModel(id);
       });
 
-      // it's important that we do this manually, as this will only reproduce if theres no page load
+      // it's important that we do this manually, as this will only reproduce if there's no page load
       cy.findByTestId("app-bar").icon("gear").click();
       H.popover().findByText("Admin settings").click();
       cy.findByLabelText("Navigation bar").findByText("Permissions").click();
