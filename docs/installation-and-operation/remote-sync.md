@@ -30,7 +30,7 @@ We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-t
 - **Development mode**: For creating and editing content. You can push changes to Git, pull changes from others, create branches, and work on feature branches. Multiple Metabase instances can be in Development mode, each working on different branches.
 - **Production mode**: For serving approved, read-only content to users. Production instances only pull changes from Git (typically from your main branch) and don't allow direct editing of synced content. You can set up auto-sync to automatically pull approved changes every five minutes.
 
-**Synced collections**: Special collections that are tracked in Git. When you connect a Metabase instance in Development mode, it creates a "Library" collection by default (though you can rename it). Everything inside a synced collection is versioned and synchronized with your Git repository.
+**Synced collections**: Special collections that are tracked in Git. When you connect a Metabase instance in Development mode, it creates a collection called "Synced Collection" (though you can rename it). Everything inside a synced collection is versioned and synchronized with your Git repository.
 
 **Synced collections must be self-contained.** Everything a dashboard or question needs must be inside the synced collections for Remote Sync to work properly. This includes questions that reference models, dashboards with questions, click behaviors linking to other content, and @ mentions in documents. Exception: questions that reference snippets can't be synced, since snippets live outside collections.
 
@@ -93,15 +93,15 @@ Copy the token immediately after generating it—you'll need to paste it into yo
 
 ### 4. Add an item to your synced collection
 
-When you first connect in Development mode, Metabase automatically creates a special collection called "Library" that's synced with your Git repository. This is a **synced collection**—any content you add to it will be tracked in Git and can be pushed to your repository.
+When you first connect in Development mode, Metabase automatically creates a special collection called "Synced Collection" that's synced with your Git repository. This is a **synced collection**—any content you add to it will be tracked in Git and can be pushed to your repository.
 
-You can rename the Library collection if you want, and you can add sub-collections within it to organize your content.
+You can rename the Synced Collection if you want, and you can add sub-collections within it to organize your content.
 
-1. Navigate to the "Library" collection in your synced collections section (look for it in the left sidebar).
+1. Navigate to the "Synced Collection" in your synced collections section (look for it in the left sidebar).
 
-2. Create or move content into the Library collection:
-   - **Create new content:** Click "New" and choose a dashboard, question, or document. Save it to the Library collection.
-   - **Move existing content:** Drag and drop items from other collections into the Library collection, or use the move option in the item's menu.
+2. Create or move content into the Synced Collection:
+   - **Create new content:** Click "New" and choose a dashboard, question, or document. Save it to the Synced Collection.
+   - **Move existing content:** Drag and drop items from other collections into the Synced Collection, or use the move option in the item's menu.
 
 [Items in synced collections can't depend on items outside of synced collections](#items-in-synced-collections-cant-depend-on-items-outside-of-the-synced-collection). For example, if you try to add a question that references a model, make sure the model is also in a synced collection.
 
@@ -109,9 +109,9 @@ You can rename the Library collection if you want, and you can add sub-collectio
 
 ![Push your changes](./images/push-changes.png)
 
-Once you've added content, you'll see a yellow dot on your Library collection indicating uncommitted changes.
+Once you've added content, you'll see a yellow dot on your Synced Collection indicating uncommitted changes.
 
-1. Click the up arrow (push) icon next to the Library collection in the left sidebar.
+1. Click the up arrow (push) icon next to the Synced Collection in the left sidebar.
 
 2. Enter a commit message describing your changes (e.g., "Added dashboard on mammoth populations").
 
@@ -153,7 +153,7 @@ In Production mode, synced collections appear in the regular collections list wi
 
 ![Production Metabase](./images/production-view.png)
 
-At this point, you should be all set up. Exit Admin settings, then reload your browser. You should see your synced Library collection in your production Metabase.
+At this point, you should be all set up. Exit Admin settings, then reload your browser. You should see your synced collection in your production Metabase.
 
 ## An example dev-to-production workflow
 
@@ -200,7 +200,7 @@ Synced collections are special collections that are tracked in Git. Content in s
 
 ### Synced collections in the UI
 
-When you first connect a Metabase to an initialized repository in Development mode, Metabase automatically creates a default synced collection called "Library". You can add items to that synced collection, including sub-collections.
+When you first connect a Metabase to an initialized repository in Development mode, Metabase automatically creates a default synced collection called "Synced Collection". You can add items to that synced collection, including sub-collections.
 
 In Development mode, your synced collection shows its current state with visual indicators:
 
@@ -217,26 +217,26 @@ Content in other Metabases that depended on this item may break since the depend
 
 ### Making sub-collections appear at the top level
 
-If you're using Metabase for embedding, you might want synced content to appear at the top level of your navigation rather than nested under the Library collection. Since all synced content must be in sub-collections of the Library, you can use permissions to control how the collection hierarchy appears to different groups.
+If you're using Metabase for embedding, you might want synced content to appear at the top level of your navigation rather than nested under the Synced Collection. Since all synced content must be in sub-collections of the Synced Collection, you can use permissions to control how the collection hierarchy appears to different groups.
 
-1. In your development Metabase, **Organize content in sub-collections of your Library collection**. For example, you might have `Library/Mammoth Statistics` and `Library/Giant Sloth Statistics`.
+1. In your development Metabase, **Organize content in sub-collections of your Synced Collection**. For example, you might have `Synced Collection/Mammoth Statistics` and `Synced Collection/Giant Sloth Statistics`.
 
 2. In your production Metabase, **Set up permissions for embedded groups:** Groups should have:
-   - **No view access** to the Library collection itself
-   - **View access** to specific sub-collections within the Library
+   - **No view access** to the Synced Collection itself
+   - **View access** to specific sub-collections within the Synced Collection
 
-For groups with these permissions, the sub-collections they can access will appear at the top level of navigation, as if they were root-level collections. They won't see the top-level Library collection that you have in your development Metabase.
+For groups with these permissions, the sub-collections they can access will appear at the top level of navigation, as if they were root-level collections. They won't see the top-level Synced Collection that you have in your development Metabase.
 
 What you see in Development mode:
 
 ```
 Collections
-└── Library
+└── Synced Collection
     ├── Mammoth Statistics
     ├── Giant Sloth Statistics
 ```
 
-What embedding groups see in Production mode (with no access to Library, but access to Mammoth Statistics and Giant Sloth Statistics):
+What embedding groups see in Production mode (with no access to Synced Collection, but access to Mammoth Statistics and Giant Sloth Statistics):
 
 ```
 Collections
