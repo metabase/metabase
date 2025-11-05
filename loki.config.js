@@ -15,7 +15,6 @@ module.exports = {
     "^Components/overlays/Tooltip",
     "^Components/Documents",
     "^Components/Feedback/Alert",
-    "^App/MetabotLogo",
     "^App/Palette",
   ].join("|"),
   configurations: {

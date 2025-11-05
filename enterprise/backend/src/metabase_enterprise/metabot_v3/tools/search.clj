@@ -30,7 +30,7 @@
   [{:keys [verified moderated_status collection] :as result}]
   (let [model (:model result)
         verified? (or (boolean verified) (= moderated_status "verified"))
-        collection-info (select-keys collection [:name :authority_level])
+        collection-info (select-keys collection [:id :name :authority_level])
         common-fields {:id          (:id result)
                        :type        (search-model->result-type model)
                        :name        (:name result)
@@ -62,6 +62,22 @@
              {:database_id (:database_id result)
               :verified    verified?
               :collection  collection-info}))))
+
+(defn- enrich-with-collection-descriptions
+  "Fetch and merge collection descriptions for all search results that have collection IDs."
+  [results]
+  (let [collection-ids (->> results
+                            (keep #(get-in % [:collection :id]))
+                            distinct
+                            seq)]
+    (if-not collection-ids
+      results
+      (let [descriptions (t2/select-pk->fn :description :model/Collection :id [:in collection-ids])]
+        (mapv (fn [result]
+                (if-let [coll-id (get-in result [:collection :id])]
+                  (assoc-in result [:collection :description] (get descriptions coll-id))
+                  result))
+              results)))))
 
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
@@ -159,4 +175,6 @@
         futures (mapv #(future (search-fn %)) all-queries)
         result-lists (mapv deref futures)
         fused-results (take limit (reciprocal-rank-fusion result-lists))]
-    (map postprocess-search-result fused-results)))
+    (->> fused-results
+         (map postprocess-search-result)
+         enrich-with-collection-descriptions)))
