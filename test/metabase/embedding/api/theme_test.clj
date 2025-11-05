@@ -17,7 +17,7 @@
               response   (mt/user-http-request :crowberto :post 200 "embed-theme"
                                                {:name     theme-name
                                                 :settings settings})]
-          (is (= #{:id :name :settings :created_at :updated_at}
+          (is (= #{:id :entity_id :name :settings :created_at :updated_at}
                  (set (keys response))))
           (is (= theme-name (:name response)))
           (is (= settings (:settings response)))
@@ -53,7 +53,7 @@
                                :settings {:color {:brand "#00FF00"}}})
         (let [themes (mt/user-http-request :crowberto :get 200 "embed-theme")]
           (is (= 2 (count themes)))
-          (is (= #{:id :name :created_at :updated_at}
+          (is (= #{:id :entity_id :name :created_at :updated_at}
                  (set (keys (first themes)))))
           (testing "themes are ordered by newest first"
             (is (= ["Theme 2" "Theme 1"]
@@ -72,7 +72,7 @@
                                               :settings settings})
               theme-id (:id created)
               response (mt/user-http-request :crowberto :get 200 (format "embed-theme/%s" theme-id))]
-          (is (= #{:id :name :settings :created_at :updated_at}
+          (is (= #{:id :entity_id :name :settings :created_at :updated_at}
                  (set (keys response))))
           (is (= "Test Theme" (:name response)))
           (is (= settings (:settings response))))))

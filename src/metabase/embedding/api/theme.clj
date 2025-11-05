@@ -11,8 +11,9 @@
 
 (mr/def ::EmbeddingTheme
   [:map
-   [:id       ms/PositiveInt]
-   [:name     ms/NonBlankString]
+   [:id        ms/PositiveInt]
+   [:entity_id ms/NonBlankString]
+   [:name      ms/NonBlankString]
    [:settings :map]
    [:created_at  (ms/InstanceOfClass java.time.temporal.Temporal)]
    [:updated_at  (ms/InstanceOfClass java.time.temporal.Temporal)]])
@@ -20,6 +21,7 @@
 (api.macros/defendpoint :get "/" :- [:sequential
                                      [:map
                                       [:id          ms/PositiveInt]
+                                      [:entity_id ms/NonBlankString]
                                       [:name        ms/NonBlankString]
                                       [:created_at  (ms/InstanceOfClass java.time.temporal.Temporal)]
                                       [:updated_at  (ms/InstanceOfClass java.time.temporal.Temporal)]]]
@@ -27,7 +29,7 @@
   []
   (api/check-superuser)
   (t2/select :model/EmbeddingTheme {:order-by [[:created_at :desc]]
-                                    :select [:id :name :created_at :updated_at]}))
+                                    :select [:id :entity_id :name :created_at :updated_at]}))
 
 (api.macros/defendpoint :get "/:id" :- ::EmbeddingTheme
   "Fetch a single embedding theme by ID."
