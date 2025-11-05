@@ -4,38 +4,41 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import EditableText from "metabase/common/components/EditableText";
-import { Button, Group, Stack, Tooltip } from "metabase/ui";
+import type { GroupProps, IconName } from "metabase/ui";
+import { Button, Group, Icon, Stack, Tooltip } from "metabase/ui";
 
 import S from "./PaneHeader.module.css";
 import type { PaneHeaderTab } from "./types";
 
-interface PaneHeaderProps {
+interface PaneHeaderProps extends Omit<GroupProps, "title"> {
   title: ReactNode;
+  icon?: IconName;
   menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
-  className?: string;
-  "data-testid"?: string;
 }
 
 export const PaneHeader = ({
   title,
+  icon,
   menu,
   tabs,
   actions,
   className,
-  "data-testid": dataTestId,
+  p = "md",
+  ...rest
 }: PaneHeaderProps) => {
   return (
     <Group
       className={cx(S.header, className)}
-      p="md"
+      p={p}
       justify="space-between"
       gap="sm"
-      data-testid={dataTestId}
+      {...rest}
     >
       <Stack gap="sm">
         <Group align="center" gap="xs">
+          {icon && <Icon name={icon} c="brand" size={20} />}
           {title}
           {menu}
         </Group>

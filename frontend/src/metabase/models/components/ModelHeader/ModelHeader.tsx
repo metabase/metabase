@@ -30,10 +30,12 @@ type ModelHeaderProps = {
 export function ModelHeader({ card, actions, className }: ModelHeaderProps) {
   return (
     <PaneHeader
+      icon="model"
       title={<ModelNameInput card={card} />}
       tabs={card != null && <ModelTabs card={card} />}
       actions={actions}
       className={className}
+      p="xl"
     />
   );
 }

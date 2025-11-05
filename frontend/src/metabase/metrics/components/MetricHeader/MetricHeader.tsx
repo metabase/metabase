@@ -30,10 +30,12 @@ type MetricHeaderProps = {
 export function MetricHeader({ card, actions, className }: MetricHeaderProps) {
   return (
     <PaneHeader
+      icon="metric"
       title={<MetricNameInput card={card} />}
       tabs={card != null && <MetricTabs card={card} />}
       actions={actions}
       className={className}
+      p="xl"
     />
   );
 }

@@ -7,17 +7,15 @@ import type { Card } from "metabase-types/api";
 import { SemanticLayerVisualization } from "../SemanticLayerVisualization";
 
 import S from "./SemanticEntityOverview.module.css";
-import { useTablePath } from "./hooks";
+import { TablePath } from "./TablePath";
 
 interface SemanticEntityOverviewProps {
   card: Card;
 }
 
 export function SemanticEntityOverview({ card }: SemanticEntityOverviewProps) {
-  const tablePath = useTablePath(card.table_id);
-
   return (
-    <Flex p="lg" flex={1} className={S.root}>
+    <Flex p="xl" pt={0} flex={1} className={S.root}>
       <Flex direction="column" flex={1} mah={700}>
         <SemanticLayerVisualization card={card} className={S.visualization} />
       </Flex>
@@ -34,14 +32,16 @@ export function SemanticEntityOverview({ card }: SemanticEntityOverviewProps) {
           </Flex>
         )}
         {card.description && <Text>{card.description}</Text>}
-        {tablePath && (
+        {card.table_id != null ? (
           <Stack gap={2}>
             <Text size="sm" fw={700}>
               {t`Based on`}
             </Text>
-            <Text>{tablePath}</Text>
+            <Text>
+              <TablePath tableId={card.table_id} />
+            </Text>
           </Stack>
-        )}
+        ) : null}
         {card.updated_at && (
           <Text>
             {t`Last edited:`}{" "}
