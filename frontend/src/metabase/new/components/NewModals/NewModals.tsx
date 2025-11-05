@@ -7,6 +7,7 @@ import ActionCreator from "metabase/actions/containers/ActionCreator";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import Modal from "metabase/common/components/Modal";
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
+import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -91,6 +92,10 @@ export const NewModals = withRouter((props: WithRouterProps) => {
           onClose={handleModalClose}
         />
       );
+    }
+    case STATIC_LEGACY_EMBEDDING_TYPE: {
+      // Do nothing, we trigger the modal from `use-sharing-modal.ts` hook and render it in `SharingMenu/SharingModals.tsx`
+      return null;
     }
     default:
       return (

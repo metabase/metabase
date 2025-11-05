@@ -1,3 +1,5 @@
+import type { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
+
 export type EmbedModalType = "question-embed" | "dashboard-embed";
 export type PublicLinkModalType =
   | "question-public-link"
@@ -5,10 +7,12 @@ export type PublicLinkModalType =
 
 export type QuestionSharingModalType =
   | "question-public-link"
-  | "question-embed";
+  | "question-embed"
+  | typeof STATIC_LEGACY_EMBEDDING_TYPE;
 
 export type DashboardSharingModalType =
   | "dashboard-public-link"
-  | "dashboard-embed";
+  | "dashboard-embed"
+  | typeof STATIC_LEGACY_EMBEDDING_TYPE;
 
 export type SharingModalType = PublicLinkModalType | EmbedModalType;

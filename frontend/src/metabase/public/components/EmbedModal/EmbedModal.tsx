@@ -14,6 +14,7 @@ import { EmbedModalHeader } from "./EmbedModal.styled";
 
 interface EmbedModalProps {
   isOpen?: boolean;
+  initialEmbedType?: EmbedModalStep;
   onClose: () => void;
   children: ({
     embedType,
@@ -26,11 +27,18 @@ interface EmbedModalProps {
   }) => JSX.Element;
 }
 
-export const EmbedModal = ({ children, isOpen, onClose }: EmbedModalProps) => {
+export const EmbedModal = ({
+  children,
+  initialEmbedType,
+  isOpen,
+  onClose,
+}: EmbedModalProps) => {
   const shouldShowEmbedTerms = useSelector((state) =>
     getSetting(state, "show-static-embed-terms"),
   );
-  const [embedType, setEmbedType] = useState<EmbedModalStep>(null);
+  const [embedType, setEmbedType] = useState<EmbedModalStep>(
+    initialEmbedType ?? null,
+  );
   const applicationName = useSelector(getApplicationName);
 
   const isEmbeddingSetupStage = embedType === null;

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
@@ -13,6 +12,8 @@ import {
 import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
+import { useSharingModal } from "../../hooks/use-sharing-modal";
+
 import { EmbedMenuItem } from "./MenuItems/EmbedMenuItem";
 import { PublicLinkMenuItem } from "./MenuItems/PublicLinkMenuItem";
 import { SharingButton, SharingMenu } from "./SharingMenu";
@@ -21,9 +22,8 @@ import type { QuestionSharingModalType } from "./types";
 
 export function QuestionSharingMenu({ question }: { question: Question }) {
   const dispatch = useDispatch();
-  const [modalType, setModalType] = useState<QuestionSharingModalType | null>(
-    null,
-  );
+  const { modalType, setModalType } =
+    useSharingModal<QuestionSharingModalType>();
   const hasPublicLink = !!question?.publicUUID?.();
   const isModel = question.type() === "model";
   const isArchived = question.isArchived();

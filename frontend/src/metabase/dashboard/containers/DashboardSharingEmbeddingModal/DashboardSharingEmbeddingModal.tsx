@@ -12,12 +12,14 @@ import {
   EmbedModal,
   EmbedModalContent,
 } from "metabase/public/components/EmbedModal";
+import type { EmbedModalStep } from "metabase/public/lib/types";
 import type { Dashboard } from "metabase-types/api";
 
 export type DashboardSharingEmbeddingModalProps = {
   className?: string;
   dashboard: Dashboard;
   isOpen: boolean;
+  initialEmbedType?: EmbedModalStep;
   onClose: () => void;
 };
 
@@ -25,6 +27,7 @@ export const DashboardSharingEmbeddingModal = ({
   className,
   dashboard,
   isOpen,
+  initialEmbedType,
   onClose,
 }: DashboardSharingEmbeddingModalProps) => {
   const parameters = useSelector(getParameters);
@@ -39,7 +42,11 @@ export const DashboardSharingEmbeddingModal = ({
   const getPublicUrl = (publicUuid: string) => Urls.publicDashboard(publicUuid);
 
   return (
-    <EmbedModal isOpen={isOpen} onClose={onClose}>
+    <EmbedModal
+      isOpen={isOpen}
+      initialEmbedType={initialEmbedType}
+      onClose={onClose}
+    >
       {({ embedType, goToNextStep }) => (
         <EmbedModalContent
           embedType={embedType}

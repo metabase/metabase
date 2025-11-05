@@ -12,6 +12,7 @@ import {
   EmbedModal,
   EmbedModalContent,
 } from "metabase/public/components/EmbedModal";
+import type { EmbedModalStep } from "metabase/public/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { Card } from "metabase-types/api";
@@ -19,10 +20,11 @@ import type { Card } from "metabase-types/api";
 type QuestionEmbedWidgetProps = {
   className?: string;
   card: Card;
+  initialEmbedType?: EmbedModalStep;
   onClose: () => void;
 };
 export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
-  const { className, card, onClose } = props;
+  const { className, card, initialEmbedType, onClose } = props;
 
   const metadata = useSelector(getMetadata);
 
@@ -37,7 +39,7 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
   ) => publicQuestion({ uuid: publicUuid, type: extension });
 
   return (
-    <EmbedModal onClose={onClose}>
+    <EmbedModal initialEmbedType={initialEmbedType} onClose={onClose}>
       {({ embedType, goToNextStep }) => (
         <EmbedModalContent
           embedType={embedType}
