@@ -1428,6 +1428,7 @@
            api
            app-db
            audit-app
+           collections
            database-routing
            driver
            events
@@ -1437,6 +1438,7 @@
            parameters
            permissions
            premium-features
+           queries
            query-processor
            request
            search

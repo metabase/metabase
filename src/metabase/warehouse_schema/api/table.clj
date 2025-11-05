@@ -19,7 +19,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
-   [metabase.queries.models.card :as card]
+   [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
@@ -331,7 +331,7 @@
                                              ;; and it's gonna be expensive if we're doing this for lots of tables.
                                              ;; maybe we should an option to skip it
                                              (mapv (fn [table]
-                                                     (card/create-card! (table->model table api/*current-user-id* (:id target-collection)) @api/*current-user*))
+                                                     (queries/create-card! (table->model table api/*current-user-id* (:id target-collection)) @api/*current-user*))
                                                    batch))))
                                   (t2/reducible-select :model/Table :active true {:where where})))]
     {:created_count     (count created-models)
@@ -352,17 +352,17 @@
           queries          (map :dataset_query cards)
           table            (t2/select-one [:model/Table :db_id :display_name] table-id)
           user             (t2/select-one :model/User api/*current-user-id*)
-          model            (card/create-card! {:type          :model
-                                               :display       :table
-                                               :name          (:display_name table)
-                                               :collection_id collection_id
-                                               :database_id   (:db_id table)
-                                               :table_id      table-id
-                                               :visualization_settings {}
-                                               :dataset_query {:type     :query
-                                                               :database (:db_id table)
-                                                               :query    {:source-table table-id}}}
-                                              user)
+          model            (queries/create-card! {:type          :model
+                                                  :display       :table
+                                                  :name          (:display_name table)
+                                                  :collection_id collection_id
+                                                  :database_id   (:db_id table)
+                                                  :table_id      table-id
+                                                  :visualization_settings {}
+                                                  :dataset_query {:type     :query
+                                                                  :database (:db_id table)
+                                                                  :query    {:source-table table-id}}}
+                                                 user)
           matching-stage?  (fn [x] (and (map? x) (= table-id (:source-table x))))
           stage-sub        (fn [stage] (-> stage (dissoc :source-table) (assoc :source-card (:id model))))
           stage-subs-xf    (comp (filter matching-stage?) (map (juxt identity stage-sub)))
@@ -378,9 +378,9 @@
       (doseq [card cards
               :let [{:keys [dataset_query]} card]
               :when (not (lib.query/native? dataset_query))]
-        (card/update-card! {:card-before-update card
-                            :card-updates       {:dataset_query (walk/postwalk-replace all-subs dataset_query)}
-                            :actor              user}))
+        (queries/update-card! {:card-before-update card
+                               :card-updates       {:dataset_query (walk/postwalk-replace all-subs dataset_query)}
+                               :actor              user}))
       {:model model})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
