@@ -20,10 +20,12 @@
 
 ;;;; serialization
 
-(defmethod serdes/hash-fields :model/EmbeddingTheme [_embedding-theme]
+(defmethod serdes/hash-fields :model/EmbeddingTheme
+  [_embedding-theme]
   [:name :created_at])
 
-(defmethod serdes/make-spec "EmbeddingTheme" [_model-name _opts]
+(defmethod serdes/make-spec "EmbeddingTheme"
+  [_model-name _opts]
   {:copy      [:entity_id :name :settings]
    :skip      []
    :transform {:created_at (serdes/date)
