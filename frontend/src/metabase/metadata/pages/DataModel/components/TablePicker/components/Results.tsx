@@ -3,15 +3,7 @@ import cx from "classnames";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 
-import {
-  Box,
-  Checkbox,
-  type CheckboxProps,
-  Flex,
-  Icon,
-  Skeleton,
-  rem,
-} from "metabase/ui";
+import { Box, Checkbox, Flex, Icon, Skeleton, rem } from "metabase/ui";
 
 import { useSelection } from "../../../contexts/SelectionContext";
 import { getUrl } from "../../../utils";
@@ -280,12 +272,6 @@ export function Results({
   );
 }
 
-// workaround to use indeterminate icon from the Checkbox component before
-// this fixed is released https://github.com/mantinedev/mantine/pull/8385
-const CheckboxDashIcon: CheckboxProps["icon"] = ({ ...others }) => (
-  <Icon name="dash" {...others} />
-);
-
 function ElementCheckbox({
   item,
   onItemToggle,
@@ -297,6 +283,8 @@ function ElementCheckbox({
     return null;
   }
 
+  const indeterminate = item.isSelected === "some";
+
   const { isSelected } = item;
   return (
     <Checkbox
@@ -305,11 +293,10 @@ function ElementCheckbox({
       onClick={(event) => {
         event.stopPropagation();
       }}
-      icon={isSelected === "some" ? CheckboxDashIcon : undefined}
       onChange={() => {
         onItemToggle?.(item);
       }}
-      // indeterminate={indeterminate}
+      indeterminate={indeterminate}
     />
   );
 }
