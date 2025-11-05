@@ -2275,7 +2275,7 @@ msgstr "업로드된 테이블"
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/lib/loading-message.ts:8
 #: frontend/src/metabase/plugins/index.ts:260
 msgid "Doing science..."
-msgstr "과학을 하다..."
+msgstr "결과를 기다리는 중..."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/lib/loading-message.ts:8
 #: frontend/src/metabase/plugins/index.ts:260
@@ -5809,7 +5809,7 @@ msgstr "당신의 질문이 준비됐습니다!"
 
 #: frontend/src/metabase/query_builder/actions/querying.ts:180
 msgid "Still Here..."
-msgstr "아직도 여기에..."
+msgstr "결과가 지연되고 있습니다. 조금만 더 기다려 주세요."
 
 #: frontend/src/metabase/query_builder/components/ImpossibleToCreateModelModal/ImpossibleToCreateModelModal.tsx:20
 msgid "SQL snippets"
