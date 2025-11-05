@@ -16,13 +16,11 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
-  ActionIcon,
   Box,
   Button,
   Group,
   Icon,
   Loader,
-  Menu,
   Stack,
   Text,
   Tooltip,
@@ -65,7 +63,6 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     showButtonLabel,
     setDoneButtonWidth,
     setSortingButtonWidth,
-    setSyncButtonWidth,
   } = useResponsiveButtons({
     hasFields,
     isSorting,
@@ -172,31 +169,29 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           nameIcon="table2"
           nameMaxLength={254}
           namePlaceholder={t`Give this table a name`}
-          nameRightSection={
-            <Group>
-              <TransformLink table={table} />
-              <Tooltip label={t`Go to this table`} position="top">
-                <ActionIcon
-                  component={Link}
-                  to={getQueryBuilderUrl(table)}
-                  variant="subtle"
-                  color="text-light"
-                  size="sm"
-                  mr="sm"
-                  aria-label={t`Go to this table`}
-                >
-                  <Icon name="external" size={16} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-          }
           onNameChange={handleNameChange}
           onDescriptionChange={handleDescriptionChange}
         />
       </Box>
 
       <Box px="xl">
-        <Group justify="flex-start" gap="sm">
+        <Group justify="stretch" gap="sm">
+          <Box style={{ flexGrow: 1 }}>
+            <TableLink table={table} />
+          </Box>
+          {!isSorting && (
+            <Box style={{ flexGrow: 1 }}>
+              <Tooltip label={t`Sync options`}>
+                <Button
+                  leftSection={<Icon name="gear_settings_filled" />}
+                  onClick={onSyncOptionsClick}
+                  style={{
+                    width: "100%",
+                  }}
+                />
+              </Tooltip>
+            </Box>
+          )}
           <Button
             component={Link}
             onClick={(event) => {
@@ -211,27 +206,33 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
               </Tooltip>
             }
             style={{
-              width: 40,
               backgroundColor: "var(--mb-color-accent-gray-light)",
+              flexGrow: 1,
             }}
           />
-          <Button
-            onClick={() => setIsCreateModelsModalOpen(true)}
-            p="sm"
-            leftSection={
-              <Tooltip label={t`Create model`}>
-                <Icon name="model" />
-              </Tooltip>
-            }
-            style={{
-              width: 40,
-            }}
-          />
+          <Box style={{ flexGrow: 1 }}>
+            <Tooltip label={t`Create model`}>
+              <Button
+                onClick={() => setIsCreateModelsModalOpen(true)}
+                p="sm"
+                leftSection={<Icon name="model" />}
+                style={{
+                  width: "100%",
+                }}
+              />
+            </Tooltip>
+          </Box>
         </Group>
       </Box>
 
-      <Box px="xl" pb="xl">
-        <TableMetadataSection table={table} />
+      <Box px="xl">
+        <TransformLink table={table} />
+      </Box>
+
+      <Box px="xl">
+        <Box className={S.box}>
+          <TableMetadataSection table={table} />
+        </Box>
       </Box>
 
       <Box
@@ -273,15 +274,6 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
                 onClick={() => setIsSorting(true)}
                 onRequestWidth={setSortingButtonWidth}
               >{t`Sorting`}</ResponsiveButton>
-            )}
-
-            {!isSorting && (
-              <ResponsiveButton
-                icon="gear_settings_filled"
-                showLabel={showButtonLabel}
-                onClick={onSyncOptionsClick}
-                onRequestWidth={setSyncButtonWidth}
-              >{t`Sync options`}</ResponsiveButton>
             )}
 
             {isSorting && (
@@ -341,9 +333,28 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   );
 };
 
+function TableLink({ table }: { table: Table }) {
+  return (
+    <Tooltip label={t`Go to this table`} position="top">
+      <Box>
+        <Button
+          component={Link}
+          to={getQueryBuilderUrl(table)}
+          aria-label={t`Go to this table`}
+          leftSection={<Icon name="external" size={16} />}
+          style={{
+            width: "100%",
+          }}
+        />
+      </Box>
+    </Tooltip>
+  );
+}
+
 function TransformLink({ table }: { table: Table }) {
-  const shouldShowTransform =
-    table.transform_id != null && table.data_source === "metabase-transform";
+  // const shouldShowTransform =
+  //   table.transform_id != null && table.data_source === "metabase-transform";
+  const shouldShowTransform = true;
 
   if (!shouldShowTransform) {
     return null;
@@ -353,27 +364,27 @@ function TransformLink({ table }: { table: Table }) {
     <Box
       component={Link}
       to={`/admin/transforms?id=${table.transform_id}`}
-      bg="var(--mb-color-accent-gray-light)"
       p="sm"
       style={{
         borderRadius: 4,
-        display: "flex",
+        display: "inline-flex",
         alignItems: "center",
         gap: 2,
         cursor: "pointer",
         textDecoration: "none",
+        backgroundColor: "rgba(5, 114, 210, 0.07)",
       }}
     >
       <Text
         size="sm"
         fw="bold"
-        c="brand"
+        c="text-dark"
         style={{
           fontSize: 12,
           lineHeight: "16px",
         }}
       >
-        {t`via transform`}
+        {t`Generated by a transform`}
       </Text>
     </Box>
   );
