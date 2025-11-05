@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-938-crud-api-for-named-themes-on-the-backend",
-    "hash": "78d4c3881d341038c4305ae4b09845b6908bd3c5"
+    "hash": "1155bddb37e75cd2a07b92081385da18a426176e"
   },
   "upstream": {
     "branch": "emb-941-scaffold-theme-listing-page-in-embedding-admin-settings"
