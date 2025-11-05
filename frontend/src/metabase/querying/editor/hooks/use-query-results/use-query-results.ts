@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { useLazyGetAdhocQueryQuery } from "metabase/api";
 import * as Lib from "metabase-lib";
@@ -48,12 +48,13 @@ export function useQueryResults(
   }, [question, data, lastRunQuery]);
 
   const runQuery = async () => {
-    const result = runAdhocQuery({
+    const action = runAdhocQuery({
       ...question.datasetQuery(),
       parameters: normalizeParameters(question.parameters()),
     });
-    abortRef.current = result.abort;
-    await result;
+    abortRef.current = action.abort;
+    await action;
+    abortRef.current = undefined;
     onChangeUiState({ ...uiState, lastRunQuery: question.datasetQuery() });
   };
 
@@ -61,6 +62,10 @@ export function useQueryResults(
     abortRef.current?.();
     abortRef.current = undefined;
   };
+
+  useEffect(() => {
+    return () => abortRef.current?.();
+  }, []);
 
   return {
     result,
