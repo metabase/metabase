@@ -89,7 +89,7 @@ export function useQueryResults(
   };
 
   const setQuestionWithResultMetadata = (newQuestion: Question) => {
-    onChangeQuestion(question);
+    onChangeQuestion(newQuestion);
     setQueryResultState(
       result,
       newQuestion.datasetQuery(),

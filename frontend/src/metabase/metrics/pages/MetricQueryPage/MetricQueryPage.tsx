@@ -70,11 +70,10 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const question = useMemo(() => {
-    return Question.create({
-      dataset_query: datasetQuery,
-      metadata,
-    }).setResultsMetadata({ columns: resultMetadata });
-  }, [datasetQuery, metadata, resultMetadata]);
+    return new Question(card, metadata)
+      .setDatasetQuery(datasetQuery)
+      .setResultsMetadata({ columns: resultMetadata });
+  }, [card, metadata, datasetQuery, resultMetadata]);
 
   const validationResult = useMemo(
     () => getValidationResult(question.query()),
@@ -100,6 +99,7 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
         dataset_query: question.datasetQuery(),
         display,
         visualization_settings: settings,
+        result_metadata: resultMetadata,
       });
       if (error) {
         sendErrorToast(t`Failed to update metric query`);
@@ -124,6 +124,7 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
   const handleResetRef = useLatest(() => {
     setDatasetQuery(card.dataset_query);
     setUiState(getInitialUiState());
+    setResultMetadata(null);
   });
 
   useLayoutEffect(() => {
