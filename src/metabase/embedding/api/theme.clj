@@ -33,9 +33,8 @@
   "Fetch a single embedding theme by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [theme (t2/select-one :model/EmbeddingTheme :id id)]
-    (api/check-404 theme)
-    theme))
+  (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
+  (t2/select-one :model/EmbeddingTheme :id id))
 
 (api.macros/defendpoint :post "/" :- ::EmbeddingTheme
   "Create a new embedding theme."
@@ -57,19 +56,17 @@
                                [:name {:optional true} [:maybe ms/NonBlankString]]
                                [:settings {:optional true} [:maybe :map]]]]
   (api/check-superuser)
-  (let [theme (t2/select-one :model/EmbeddingTheme :id id)]
-    (api/check-404 theme)
-    (t2/update! :model/EmbeddingTheme id
-                (cond-> {}
-                  name (assoc :name name)
-                  settings (assoc :settings settings)))
-    (t2/select-one :model/EmbeddingTheme :id id)))
+  (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
+  (t2/update! :model/EmbeddingTheme id
+              (cond-> {}
+                name (assoc :name name)
+                settings (assoc :settings settings)))
+  (t2/select-one :model/EmbeddingTheme :id id))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete an embedding theme."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [theme (t2/select-one :model/EmbeddingTheme :id id)]
-    (api/check-404 theme)
-    (t2/delete! :model/EmbeddingTheme :id id))
+  (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
+  (t2/delete! :model/EmbeddingTheme :id id)
   api/generic-204-no-content)
