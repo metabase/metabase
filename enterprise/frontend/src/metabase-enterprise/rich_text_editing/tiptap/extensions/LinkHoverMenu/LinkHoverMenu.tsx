@@ -111,7 +111,7 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
                   from: pos,
                   to: pos + (hoveredLink.textContent?.length || 0),
                 });
-                editor.emit("openLinkPopup", href);
+                editor.emit("openLinkEditor", href);
                 setHoveredLink(null);
               }}
             >

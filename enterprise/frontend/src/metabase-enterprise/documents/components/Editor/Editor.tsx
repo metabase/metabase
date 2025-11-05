@@ -259,7 +259,7 @@ export const Editor: React.FC<EditorProps> = ({
           />
         )}
         <Box pos="absolute" top={0} left={0} w="100%">
-          <Box className={S.editorWrapper} pos="relative" p={0}>
+          <Box className={S.editorContentWrapper} pos="relative">
             <LinkHoverMenu editor={editor} editable={editable} />
           </Box>
         </Box>

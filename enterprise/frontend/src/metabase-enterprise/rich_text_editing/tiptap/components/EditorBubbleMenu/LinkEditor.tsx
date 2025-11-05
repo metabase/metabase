@@ -17,7 +17,7 @@ interface LinkPopupProps {
   onCancel: () => void;
 }
 
-export const LinkPopup = ({
+export const LinkEditor = ({
   initialUrl,
   onSubmit,
   onCancel,
@@ -31,7 +31,7 @@ export const LinkPopup = ({
     if (!input) {
       return;
     }
-    // TODO: There's gotta be a better way to do this
+    // Something strange happens in BubbleMenu. select() doesn't take unless you put it in an IntersectionObserver.
     const observer = new IntersectionObserver(() => input.select());
     observer.observe(input);
     return () => observer.disconnect();
@@ -58,7 +58,6 @@ export const LinkPopup = ({
           size="sm"
           miw="18rem"
           onKeyDown={(e) => {
-            // TODO: We should be able to use a form element here
             if (e.key === "Enter") {
               handleSubmit();
             } else if (e.key === "Escape") {

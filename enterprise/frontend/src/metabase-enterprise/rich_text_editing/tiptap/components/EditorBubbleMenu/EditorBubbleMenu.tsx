@@ -14,12 +14,12 @@ import { Flex } from "metabase/ui";
 import { FormatButton } from "../FormatButton/FormatButton";
 
 import S from "./EditorBubbleMenu.module.css";
-import { LinkPopup } from "./LinkPopup";
+import { LinkEditor } from "./LinkEditor";
 import type { FormattingOptions } from "./types";
 
 declare module "@tiptap/core" {
   interface EditorEvents {
-    openLinkPopup: string; // The href of the link
+    openLinkEditor: string; // The href of the link
   }
 }
 
@@ -78,12 +78,12 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
   useEffect(() => {
     editor.on("selectionUpdate", forceUpdate);
     editor.on("update", forceUpdate);
-    editor.on("openLinkPopup", setInitialLinkUrl);
+    editor.on("openLinkEditor", setInitialLinkUrl);
 
     return () => {
       editor.off("selectionUpdate", forceUpdate);
       editor.off("update", forceUpdate);
-      editor.off("openLinkPopup", setInitialLinkUrl);
+      editor.off("openLinkEditor", setInitialLinkUrl);
     };
   }, [editor, forceUpdate]);
 
@@ -140,7 +140,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
         data-testid="document-formatting-menu"
       >
         {initialLinkUrl != null ? (
-          <LinkPopup
+          <LinkEditor
             initialUrl={initialLinkUrl}
             onSubmit={handleLinkSubmit}
             onCancel={handleLinkCancel}
