@@ -570,11 +570,11 @@
 
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest postgres-aws-iam-can-connect
-  (let [host   (config/config-str :mb-postgres-aws-iam-test-host)
-        port   (config/config-int :mb-postgres-aws-iam-test-port)
-        user   (config/config-str :mb-postgres-aws-iam-test-user)
-        dbname (config/config-str :mb-postgres-aws-iam-test-dbname)]
-    (if host
+  (if (config/config-bool :mb-postgres-aws-iam-test)
+    (let [host   (config/config-str :mb-postgres-aws-iam-test-host)
+          port   (config/config-int :mb-postgres-aws-iam-test-port)
+          user   (config/config-str :mb-postgres-aws-iam-test-user)
+          dbname (config/config-str :mb-postgres-aws-iam-test-dbname)]
       (with-redefs [premium-features/is-hosted? (constantly false)]
         (testing "Connection details are configured"
           (is (string? host))
@@ -582,40 +582,43 @@
           (is (int? port))
           (is (string? dbname)))
 
-        (is
-         (driver.u/can-connect-with-details? :postgres {:host   host
-                                                        :port   port
-                                                        :dbname dbname
-                                                        :user   user
-                                                        :use-auth-provider true
-                                                        :auth-provider :aws-iam
-                                                        :ssl true})))
-      (log/info "Skipping test: MB_POSTGRES_AWS_IAM_TEST_HOST not set"))))
+        (mt/with-temporary-setting-values [db-connection-timeout-ms 10000]
+          (is
+           (driver.u/can-connect-with-details? :postgres {:host   host
+                                                          :port   port
+                                                          :dbname dbname
+                                                          :user   user
+                                                          :use-auth-provider true
+                                                          :auth-provider :aws-iam
+                                                          :ssl true})))))
+    (log/info "Skipping test: MB_POSTGRES_AWS_IAM_TEST not set")))
 
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest mysql-aws-iam-can-connect
-  (let [host   (config/config-str :mb-postgres-aws-iam-test-host)
-        port   (config/config-int :mb-postgres-aws-iam-test-port)
-        user   (config/config-str :mb-postgres-aws-iam-test-user)
-        dbname (config/config-str :mb-postgres-aws-iam-test-dbname)
-        ssl-cert (config/config-str :mb-mysql-aws-iam-test-ssl-cert)]
-    (if (and host ssl-cert)
+  (if (config/config-bool :mb-mysql-aws-iam-test)
+    (let [host   (config/config-str :mb-mysql-aws-iam-test-host)
+          port   (config/config-int :mb-mysql-aws-iam-test-port)
+          user   (config/config-str :mb-mysql-aws-iam-test-user)
+          dbname (config/config-str :mb-mysql-aws-iam-test-dbname)
+          ssl-cert (config/config-str :mb-mysql-aws-iam-test-ssl-cert)]
       (with-redefs [premium-features/is-hosted? (constantly false)]
         (testing "Connection details are configured"
           (is (string? host))
           (is (string? user))
           (is (int? port))
-          (is (string? dbname)))
+          (is (string? dbname))
+          (is (string? ssl-cert)))
 
-        (is
-         (driver.u/can-connect-with-details? :mysql {:host   host
-                                                     :port   port
-                                                     :dbname dbname
-                                                     :user   user
-                                                     :additional-options (if (= ssl-cert "trust")
-                                                                           "trustServerCertificate=true"
-                                                                           (str "?sslMode=VERIFY_CA&serverSslCert=" ssl-cert))
-                                                     :use-auth-provider true
-                                                     :auth-provider :aws-iam
-                                                     :ssl true})))
-      (log/info "Skipping test: MB_MYSQL_AWS_IAM_TEST_HOST or MB_MYSQL_AWS_IAM_TEST_SSL_CERT not set"))))
+        (mt/with-temporary-setting-values [db-connection-timeout-ms 10000]
+          (is
+           (driver.u/can-connect-with-details? :mysql {:host   host
+                                                       :port   port
+                                                       :dbname dbname
+                                                       :user   user
+                                                       :additional-options (if (= ssl-cert "trust")
+                                                                             "trustServerCertificate=true"
+                                                                             (str "serverSslCert=" ssl-cert))
+                                                       :use-auth-provider true
+                                                       :auth-provider :aws-iam
+                                                       :ssl true})))))
+    (log/info "Skipping test: MB_MYSQL_AWS_IAM_TEST not set")))
