@@ -22,7 +22,7 @@ export function ModelFieldList({
   onDescriptionChange,
 }: ModelFieldListProps) {
   return (
-    <Flex className={S.section} direction="column">
+    <Flex className={S.section} flex={1} direction="column">
       <Group
         className={S.header}
         pos="sticky"

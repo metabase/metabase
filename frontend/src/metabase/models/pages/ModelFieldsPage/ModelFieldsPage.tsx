@@ -8,6 +8,7 @@ import type { Card, Field } from "metabase-types/api";
 import { ModelHeader } from "../../components/ModelHeader";
 import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";
 
+import { ModelFieldInfo } from "./ModelFieldInfo";
 import { ModelFieldList } from "./ModelFieldList";
 
 type ModelFieldsPageParams = {
@@ -44,6 +45,7 @@ function ModelFieldsPageBody({ card }: ModelFieldsPageBodyProps) {
   const activeFieldIndex = fields.findIndex(
     (field) => field.name === activeFieldName,
   );
+  const activeField = fields[activeFieldIndex];
 
   const handleSelect = (field: Field) => {
     setActiveFieldName(field.name);
@@ -56,13 +58,22 @@ function ModelFieldsPageBody({ card }: ModelFieldsPageBodyProps) {
   return (
     <Flex direction="column" h="100%" bg="bg-light">
       <ModelHeader card={card} />
-      <ModelFieldList
-        fields={fields}
-        activeFieldIndex={activeFieldIndex}
-        onSelect={handleSelect}
-        onNameChange={handleNameChange}
-        onDescriptionChange={handleDescriptionChange}
-      />
+      <Flex flex={1} mih={0}>
+        <ModelFieldList
+          fields={fields}
+          activeFieldIndex={activeFieldIndex}
+          onSelect={handleSelect}
+          onNameChange={handleNameChange}
+          onDescriptionChange={handleDescriptionChange}
+        />
+        {activeField != null && (
+          <ModelFieldInfo
+            field={activeField}
+            onNameChange={handleNameChange}
+            onDescriptionChange={handleDescriptionChange}
+          />
+        )}
+      </Flex>
     </Flex>
   );
 }
