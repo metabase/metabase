@@ -124,24 +124,37 @@ export function EmbeddingThemeListingApp() {
         </Stack>
       )}
 
-      {/* Delete confirmation modal */}
-      <Modal
-        opened={themeToDelete !== null}
-        onClose={() => setThemeToDelete(null)}
-        title={t`Delete theme`}
-      >
-        <Stack>
-          <Text>{t`Are you sure you want to delete this theme? This action cannot be undone.`}</Text>
-          <Flex justify="flex-end" gap="md">
-            <Button variant="subtle" onClick={() => setThemeToDelete(null)}>
-              {t`Cancel`}
-            </Button>
-            <Button variant="filled" color="error" onClick={handleDeleteTheme}>
-              {t`Delete`}
-            </Button>
-          </Flex>
-        </Stack>
-      </Modal>
+      <DeleteThemeModal
+        isOpen={themeToDelete !== null}
+        onCancel={() => setThemeToDelete(null)}
+        onDelete={handleDeleteTheme}
+      />
     </Stack>
   );
 }
+
+const DeleteThemeModal = ({
+  isOpen,
+  onCancel,
+  onDelete,
+}: {
+  isOpen: boolean;
+  onCancel: () => void;
+  onDelete: () => void;
+}) => (
+  <Modal opened={isOpen} onClose={onCancel} title={t`Delete theme`}>
+    <Stack>
+      <Text>{t`Are you sure you want to delete this theme? This action cannot be undone.`}</Text>
+
+      <Flex justify="flex-end" gap="md">
+        <Button variant="subtle" onClick={onCancel}>
+          {t`Cancel`}
+        </Button>
+
+        <Button variant="filled" color="error" onClick={onDelete}>
+          {t`Delete`}
+        </Button>
+      </Flex>
+    </Stack>
+  </Modal>
+);
