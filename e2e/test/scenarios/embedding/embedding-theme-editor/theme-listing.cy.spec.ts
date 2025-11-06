@@ -64,6 +64,10 @@ describe(
           const { name, settings } = interception.request.body;
 
           expect(name).to.eq("Untitled theme");
+
+          // We capture a snapshot of the current white-labeled colors when creating themes.
+          // The internal BI's whitelabeled colors may be different from the embedding colors,
+          // so this white-labeled color will stay the same as the appearance settings changes.
           expect(settings.colors?.brand).to.eq(whitelabelColors.brand);
           expect(settings.colors?.filter).to.eq(whitelabelColors.filter);
           expect(settings.colors?.summarize).to.eq(whitelabelColors.summarize);
