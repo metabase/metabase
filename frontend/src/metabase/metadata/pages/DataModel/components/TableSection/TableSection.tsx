@@ -92,7 +92,7 @@ const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
       <Box
         className={S.header}
         bg="accent-gray-light"
-        px="xl"
+        px="lg"
         mt="xl"
         pos="sticky"
         top={0}
@@ -109,7 +109,7 @@ const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
         />
       </Box>
 
-      <Box px="xl">
+      <Box px="lg">
         <Group justify="stretch" gap="sm">
           <Button
             flex="1"
@@ -155,11 +155,11 @@ const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
 
       <TransformLink table={table} />
 
-      <Box px="xl">
+      <Box px="lg">
         <TableSectionGroup title={t`Metadata`}>TODO</TableSectionGroup>
       </Box>
 
-      <Box px="xl">
+      <Box px="lg">
         <TableMetadataSettings table={table} />
       </Box>
 
@@ -231,7 +231,7 @@ function TransformLink({ table }: { table: Table }) {
       py="sm"
       px="xl"
       style={{
-        borderRadius: 4,
+        borderRadilg: 4,
         display: "inline-flex",
         alignItems: "center",
         gap: 2,
