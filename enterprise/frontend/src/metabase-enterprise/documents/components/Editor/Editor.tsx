@@ -121,7 +121,9 @@ export const Editor: React.FC<EditorProps> = ({
         },
         siteUrl,
       }),
-      PlainLink,
+      PlainLink.configure({
+        defaultProtocol: "https",
+      }),
       Placeholder.configure({
         placeholder: t`Start writing, type "/" to list commands, or "@" to mention an item...`,
       }),
