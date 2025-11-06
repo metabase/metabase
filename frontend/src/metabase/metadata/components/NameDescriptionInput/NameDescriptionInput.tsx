@@ -9,29 +9,29 @@ import S from "./NameDescriptionInput.module.css";
 import { Textarea } from "./Textarea";
 
 interface Props {
-  description: string;
-  descriptionPlaceholder: string;
   name: string;
   nameIcon: IconName;
   nameMaxLength?: number;
   namePlaceholder: string;
   namePrefix?: string;
   nameRightSection?: ReactNode;
-  onDescriptionChange: (description: string) => void;
+  description: string;
+  descriptionPlaceholder: string;
   onNameChange: (name: string) => void;
+  onDescriptionChange: (description: string) => void;
 }
 
 export const NameDescriptionInput = ({
-  description,
-  descriptionPlaceholder,
   name,
   nameIcon,
   nameMaxLength,
   namePlaceholder,
   namePrefix,
   nameRightSection,
-  onDescriptionChange,
+  description,
+  descriptionPlaceholder,
   onNameChange,
+  onDescriptionChange,
 }: Props) => {
   const { ref, width } = useElementSize();
   const { ref: sectionRef, width: sectionWidth } = useElementSize();
