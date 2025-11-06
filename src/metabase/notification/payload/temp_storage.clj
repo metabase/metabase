@@ -111,9 +111,9 @@
                        ;; Streaming format - read until EOF
                        (loop [rows (transient [])]
                          (let [row-read (try
-                                           (nippy/thaw-from-in! is)
-                                           (catch java.io.EOFException _
-                                             ::eof))]
+                                          (nippy/thaw-from-in! is)
+                                          (catch java.io.EOFException _
+                                            ::eof))]
                            (if (= row-read ::eof)
                              (persistent! rows)
                              (recur (conj! rows row-read)))))
