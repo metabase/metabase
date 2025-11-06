@@ -77,6 +77,8 @@ Copy the token immediately after generating it — you'll need to paste it into 
 
 ![Development settings](./images/development-settings.png)
 
+In the Metabase instance that you use for development:
+
 1. Go to **Admin settings** > **Settings** > **Remote sync**.
 
 2. Enter your repository URL:
@@ -119,7 +121,7 @@ Once you've added content, you'll see a yellow dot on your Synced Collection ind
 
 3. Click "Continue" to commit and push your changes to your repository.
 
-Check your repository—you should see the collection with your content in it.
+Check your repository — you should see the collection with your content in it.
 
 **About branches:** By default, you're pushing to your repository's main branch. However, you can choose which branch to push your development work to, allowing you to open pull requests for review before merging to the branch that your production Metabase pulls from. See [Branch management](#branch-management) for details on creating and switching branches.
 
@@ -132,6 +134,7 @@ Now that you have content in your repository, you can set up your production Met
 ### 7. Connect your production Metabase to your repository
 
 ![Production settings](./images/production-settings.png)
+In your production Metabase instance:
 
 1. Go to **Admin settings** > **Settings** > **Remote sync**.
 
@@ -327,9 +330,9 @@ If changes don't appear after switching modes: Hard refresh your browser (Cmd/Ct
 
 You can only push changes in a Metabase with Remote Sync set to Development mode.
 
-### Committing your changes
+### Committing and pushing your changes
 
-When you make changes to items in the synced collection, a yellow dot appears on your synced collection (indicating uncommitted changes). To commit your changes:
+When you make changes to items in the synced collection, a yellow dot appears on your synced collection (indicating uncommitted changes). To commit and push your changes:
 
 1. Click the up arrow (push) icon next to the synced collection name in the left sidebar.
 2. Enter a descriptive commit message explaining your changes.
