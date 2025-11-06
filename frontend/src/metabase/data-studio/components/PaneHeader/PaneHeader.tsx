@@ -5,13 +5,14 @@ import { t } from "ttag";
 
 import EditableText from "metabase/common/components/EditableText";
 import type { GroupProps, IconName } from "metabase/ui";
-import { Box, Button, Group, Icon, Stack, Tooltip } from "metabase/ui";
+import { Box, Button, Flex, Group, Icon, Stack, Tooltip } from "metabase/ui";
 
 import S from "./PaneHeader.module.css";
 import type { PaneHeaderTab } from "./types";
 
 interface PaneHeaderProps extends Omit<GroupProps, "title"> {
   title: ReactNode;
+  description?: ReactNode;
   icon?: IconName;
   menu?: ReactNode;
   tabs?: ReactNode;
@@ -20,6 +21,7 @@ interface PaneHeaderProps extends Omit<GroupProps, "title"> {
 
 export const PaneHeader = ({
   title,
+  description,
   icon,
   menu,
   tabs,
@@ -39,7 +41,10 @@ export const PaneHeader = ({
       <Stack gap="sm">
         <Group align="center" gap="xs">
           {icon && <Icon name={icon} c="brand" size={20} />}
-          {title}
+          <Flex direction="column" gap="xs" align="flex-start">
+            {title}
+            {description}
+          </Flex>
           {menu}
         </Group>
         {tabs}

@@ -1,4 +1,4 @@
-import type { CardId } from "metabase-types/api";
+import type { CardId, CollectionId } from "metabase-types/api";
 
 const ROOT_URL = "/data-studio";
 
@@ -44,4 +44,20 @@ export function dataStudioMetricQuery(cardId: CardId) {
 
 export function dataStudioMetricDependencies(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/dependencies`;
+}
+
+export function dataStudioGlossary() {
+  return `${dataStudioModeling()}/glossary`;
+}
+
+export function dataStudioCollection(collectionId: CollectionId) {
+  return `${dataStudioModeling()}/collections/${collectionId}`;
+}
+
+export function dataStudioSnippet(snippetId: number) {
+  return `${dataStudioModeling()}/snippets/${snippetId}`;
+}
+
+export function newDataStudioSnippet() {
+  return `${dataStudioModeling()}/snippets/new`;
 }
