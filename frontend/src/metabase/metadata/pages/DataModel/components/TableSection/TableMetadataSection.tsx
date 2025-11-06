@@ -33,7 +33,7 @@ interface Props {
   table: Table;
 }
 
-export function TableMetadataSection({ table }: Props) {
+export function TableMetadataSettings({ table }: Props) {
   const [updateTable] = useUpdateTableMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();

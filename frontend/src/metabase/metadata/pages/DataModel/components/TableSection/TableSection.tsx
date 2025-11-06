@@ -35,7 +35,7 @@ import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal
 import { SubstituteModelModal } from "../TablePicker/components/SubstituteModelModal";
 
 import { FieldList } from "./FieldList";
-import { TableMetadataSection } from "./TableMetadataSection";
+import { TableMetadataSettings } from "./TableMetadataSection";
 import { TableModels } from "./TableModels";
 import S from "./TableSection.module.css";
 import { useResponsiveButtons } from "./hooks";
@@ -232,14 +232,10 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
       </Box>
 
       <Box px="xl">
-        <TableMetadataSection table={table} />
+        <TableMetadataSettings table={table} />
       </Box>
 
-      <Box px="xl">
-        <TableSectionGroup title={t`This table has been published as a model`}>
-          <TableModels table={table} />
-        </TableSectionGroup>
-      </Box>
+      <TableModels table={table} />
 
       <Box
         bd="1px solid var(--mb-color-border)"
