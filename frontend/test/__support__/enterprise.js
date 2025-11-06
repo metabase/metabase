@@ -34,7 +34,7 @@ export function setupEnterpriseTest() {
 }
 
 export function setupEnterprisePlugins() {
-  const { initializePlugins } = require(`metabase-enterprise`);
+  const { initializePlugins } = require(`metabase-enterprise/plugins`);
   initializePlugins?.();
 }
 
