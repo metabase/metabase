@@ -151,33 +151,3 @@
           (is (= (-> qp-results :data :rows)
                  (-> temp-file-results :data :rows deref)))
           (-> temp-file-results :data :rows temp-storage/cleanup!))))))
-
-(comment
-  (mt/set-test-drivers! #{:postgres})
-  (time
-   (mt/test-driver :postgres
-     (select-keys (mt/process-query (mt/native-query {:query "SELECT
-    row_num AS id,
-    -- Random Integer between 1 and 100000
-    floor(random() * 100000 + 1)::INTEGER AS random_int,
-    -- Random Float
-    (random() * 1000)::NUMERIC(10, 4) AS random_float,
-    -- Random Date within the last 5 years
-    (current_date - (random() * 5 * 365)::INTEGER)::DATE AS random_date,
-    -- Random Timestamp within the last 30 days
-    (NOW() - (random() * 30 * '1 day'::interval)) AS random_timestamp,
-    -- Random String: Generates a random alphanumeric string about 1000 characters long
-    (
-        SELECT string_agg(
-            chr(
-                (CASE WHEN random() < 0.5 THEN 65 ELSE 97 END) + (random() * 25)::INTEGER
-            ),
-            ''
-        )
-        FROM generate_series(1, 1000)
-    ) AS random_string
-FROM
-    generate_series(1, 500000) AS row_num;"})
-                        (temp-storage/notification-rff 2000 :testing))
-                  [:row_count :status :data.rows-file-size :notification/truncated?])))
-  )
