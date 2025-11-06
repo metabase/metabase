@@ -277,7 +277,7 @@
                                             {:size              (:size file)
                                              :continue-on-error continue-on-error?
                                              :full-stacktrace   full-stacktrace?
-                                             :reindex-search?   reindex-search?})
+                                             :reindex?          reindex-search?})
           imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
       (analytics/track-event! :snowplow/serialization
                               {:event         :serialization
