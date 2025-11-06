@@ -1,15 +1,12 @@
-import { t } from "ttag";
-
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
-import { FieldList } from "metabase/metadata/pages/DataModel/components/FieldList";
-import { Box, Button, Center, Flex, Group, Icon } from "metabase/ui";
+import { Center, Flex } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
 import { ModelHeader } from "../../components/ModelHeader";
 import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";
 
-import S from "./ModelFieldsPage.module.css";
+import { ModelFieldList } from "./ModelFieldList";
 
 type ModelFieldsPageParams = {
   cardId: string;
@@ -48,27 +45,11 @@ function ModelFieldsPageBody({ card }: ModelFieldsPageBodyProps) {
   return (
     <Flex direction="column" h="100%" bg="bg-light">
       <ModelHeader card={card} />
-      <Flex className={S.fields} direction="column">
-        <Group
-          className={S.fieldsHeader}
-          pos="sticky"
-          top={0}
-          p="md"
-          justify="end"
-          bg="bg-light"
-        >
-          <Button size="sm" leftSection={<Icon name="sort_arrows" />}>
-            {t`Sorting`}
-          </Button>
-        </Group>
-        <Box px="md" pb="md">
-          <FieldList
-            fields={fields}
-            onNameChange={handleNameChange}
-            onDescriptionChange={handleDescriptionChange}
-          />
-        </Box>
-      </Flex>
+      <ModelFieldList
+        fields={fields}
+        onNameChange={handleNameChange}
+        onDescriptionChange={handleDescriptionChange}
+      />
     </Flex>
   );
 }

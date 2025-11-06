@@ -1,9 +1,9 @@
-.fields {
+.section {
   overflow: auto;
   min-width: 20rem;
   max-width: 50rem;
 }
 
-.fieldsHeader {
+.header {
   z-index: 1;
 }
