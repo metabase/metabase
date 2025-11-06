@@ -204,20 +204,21 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
               >{t`Publish`}</Button>
             </Tooltip>
           </Box>
-          <Button
-            component={Link}
-            to={getDependencyGraphUrl(table)}
-            p="sm"
-            leftSection={
-              <Tooltip label={t`Dependency graph`}>
-                <Icon name="network" />
-              </Tooltip>
-            }
-            style={{
-              flexGrow: 0,
-              width: 40,
-            }}
-          />
+          <Tooltip label={t`Dependency graph`}>
+            <Box /* wrapping with a Box because Tooltip does not work for <Button component={Link} /> */
+            >
+              <Button
+                component={Link}
+                to={getDependencyGraphUrl(table)}
+                p="sm"
+                leftSection={<Icon name="network" />}
+                style={{
+                  flexGrow: 0,
+                  width: 40,
+                }}
+              />
+            </Box>
+          </Tooltip>
           <Box style={{ flexGrow: 0, width: 40 }}>
             <TableLink table={table} />
           </Box>
