@@ -94,16 +94,13 @@ function getTabs(card: Card, metadata: Metadata): PaneHeaderTab[] {
     },
   ];
 
-  if (card.can_write) {
-    const query = Lib.fromJsQueryAndMetadata(metadata, card.dataset_query);
-    const queryInfo = Lib.queryDisplayInfo(query);
-
-    if (queryInfo.isEditable) {
-      tabs.push({
-        label: t`Query`,
-        to: Urls.dataStudioModelQuery(card.id),
-      });
-    }
+  const query = Lib.fromJsQueryAndMetadata(metadata, card.dataset_query);
+  const queryInfo = Lib.queryDisplayInfo(query);
+  if (queryInfo.isEditable) {
+    tabs.push({
+      label: t`Query`,
+      to: Urls.dataStudioModelQuery(card.id),
+    });
   }
 
   tabs.push({
