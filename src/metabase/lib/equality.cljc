@@ -1,6 +1,6 @@
 (ns metabase.lib.equality
   "Logic for determining whether two pMBQL queries are equal."
-  (:refer-clojure :exclude [= every? some mapv #?(:clj for)])
+  (:refer-clojure :exclude [= every? some mapv empty? not-empty #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
@@ -21,7 +21,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? some mapv #?(:clj for)]]))
+   [metabase.util.performance :refer [every? some mapv empty? not-empty #?(:clj for)]]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -201,7 +201,7 @@
                       source-field-join-alias]} _ref-id] :- ::lib.schema.ref/ref
    column                                                :- ::lib.schema.metadata/column]
   (if source-field
-    (and (clojure.core/= source-field (:fk-field-id column))
+    (and (clojure.core/= source-field ((some-fn :fk-field-id :lib/original-fk-field-id) column))
          ;; `source-field-name` is not available on old refs
          (or (nil? source-field-name) (clojure.core/= source-field-name (:fk-field-name column)))
          (clojure.core/= source-field-join-alias (:fk-join-alias column)))

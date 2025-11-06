@@ -24,6 +24,7 @@ import {
 import {
   Badge,
   Box,
+  Button,
   Flex,
   Radio,
   Stack,
@@ -40,6 +41,11 @@ import type {
   SettingDefinition,
 } from "metabase-types/api";
 
+import {
+  trackBranchSwitched,
+  trackRemoteSyncDeactivated,
+  trackRemoteSyncSettingsChanged,
+} from "../../analytics";
 import {
   AUTO_IMPORT_KEY,
   BRANCH_KEY,
@@ -69,6 +75,11 @@ export const RemoteSyncAdminSettings = () => {
   } = useConfirmation();
   const [sendToast] = useToast();
 
+  const {
+    show: showDisableConfirmation,
+    modalContent: disableConfirmationModal,
+  } = useConfirmation();
+
   const handleSubmit = useCallback(
     async (values: RemoteSyncConfigurationSettings) => {
       const didBranchChange =
@@ -76,6 +87,19 @@ export const RemoteSyncAdminSettings = () => {
       const saveSettings = async (values: RemoteSyncConfigurationSettings) => {
         try {
           await updateRemoteSyncSettings(values).unwrap();
+
+          trackRemoteSyncSettingsChanged();
+
+          if (
+            didBranchChange &&
+            settingValues?.[BRANCH_KEY] &&
+            values[BRANCH_KEY]
+          ) {
+            trackBranchSwitched({
+              triggeredFrom: "admin-settings",
+            });
+          }
+
           sendToast({ message: t`Settings saved successfully`, icon: "check" });
         } catch (error) {
           sendToast({
@@ -117,6 +141,31 @@ export const RemoteSyncAdminSettings = () => {
       showChangeBranchConfirmation,
     ],
   );
+
+  const handleDisable = useCallback(async () => {
+    showDisableConfirmation({
+      title: t`Disable Remote Sync?`,
+      message: t`This will clear all remote sync settings. Any changes made to the Library collection after disabling can be overwritten if you enable sync again.`,
+      confirmButtonText: t`Disable`,
+      confirmButtonProps: {
+        variant: "filled",
+        color: "danger",
+      },
+      onConfirm: async () => {
+        try {
+          await updateRemoteSyncSettings({ [URL_KEY]: "" }).unwrap();
+          trackRemoteSyncDeactivated();
+          sendToast({ message: t`Remote Sync disabled`, icon: "check" });
+        } catch (error) {
+          console.error(error);
+          sendToast({
+            message: t`Failed to disable Remote Sync`,
+            icon: "warning",
+          });
+        }
+      },
+    });
+  }, [updateRemoteSyncSettings, sendToast, showDisableConfirmation]);
 
   const initialValues = useMemo(() => {
     const values = REMOTE_SYNC_SCHEMA.cast(settingValues, {
@@ -249,6 +298,11 @@ export const RemoteSyncAdminSettings = () => {
 
                   <Flex justify="end" align="center" gap="md">
                     <FormErrorMessage />
+                    {isRemoteSyncEnabled && (
+                      <Button onClick={handleDisable}>
+                        {t`Disable Remote Sync`}
+                      </Button>
+                    )}
                     <FormSubmitButton
                       label={
                         isRemoteSyncEnabled
@@ -268,6 +322,7 @@ export const RemoteSyncAdminSettings = () => {
       </SettingsSection>
 
       {changeBranchConfirmationModal}
+      {disableConfirmationModal}
     </SettingsPageWrapper>
   );
 };

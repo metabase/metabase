@@ -46,7 +46,7 @@
   com.github.blagerweij/liquibase-sessionlock {:mvn/version "1.6.9"}            ; session lock for liquibase migrations
   com.github.jknack/handlebars              ^:antq/exclude                      ; 4.4.0 requires java 17+
                                             {:mvn/version "4.3.1"}              ; templating engine
-  com.github.oliyh/martian-clj-http         {:mvn/version "0.1.31"}             ; openapi client
+  com.github.oliyh/martian-clj-http         {:mvn/version "0.2.1"}             ; openapi client
   com.github.pangloss/transducers           {:git/sha "c91d39046c8c64dc31b84ebb27154a8084fcda4c" ; like medley for transducers
                                              :git/url "https://github.com/pangloss/transducers"}
   com.github.seancorfield/honeysql          {:mvn/version "2.7.1340"}           ; Honey SQL 2. SQL generation from Clojure data maps
@@ -56,7 +56,7 @@
   com.google.guava/guava                    {:mvn/version "33.4.8-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.h2database/h2                         ^:antq/exclude                      ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
                                             {:mvn/version "2.1.214"}            ; embedded SQL database
-  com.ibm.icu/icu4j                         {:mvn/version "77.1"}               ; Used to transliterate Unicode characters into Latin characters
+  com.ibm.icu/icu4j                         {:mvn/version "78.1"}               ; Used to transliterate Unicode characters into Latin characters
   com.knuddels/jtokkit                      {:mvn/version "1.1.0"}              ; Java tokenizer library for OpenAI models, used for token counting in semantic search
   com.mchange/c3p0                          {:mvn/version "0.11.2"}             ; DB connection pool
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
@@ -78,7 +78,7 @@
                                              :exclusions  [ring/ring-codec]}
   crypto-random/crypto-random               {:mvn/version "1.2.1"}              ; library for generating cryptographically secure random bytes and strings
   diehard/diehard                           {:mvn/version "0.12.0"}
-  dk.ative/docjure                          {:mvn/version "1.21.0"              ; excel export
+  dk.ative/docjure                          {:mvn/version "1.22.0"              ; excel export
                                              :exclusions  [org.apache.poi/poi
                                                            org.apache.poi/poi-ooxml]}
   environ/environ                           {:mvn/version "1.2.0"}              ; env vars/Java properties abstraction
@@ -135,7 +135,7 @@
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
   org.apache.poi/poi-ooxml-full             {:mvn/version "5.4.1"}
-  org.apache.sshd/sshd-core                 {:mvn/version "2.16.0"              ; ssh tunneling and test server
+  org.apache.sshd/sshd-core                 {:mvn/version "3.0.0-M2"              ; ssh tunneling and test server
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
   org.apache.tika/tika-core                 {:mvn/version "3.2.2"}
@@ -147,7 +147,7 @@
   org.clj-commons/hickory                   {:mvn/version "0.7.7"               ; Parse HTML into Clojure data structures
                                              :exclusions [org.jsoup/jsoup]}
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
-  org.clojure/clojure                       {:mvn/version "1.12.2"}
+  org.clojure/clojure                       {:mvn/version "1.12.3"}
   org.clojure/core.async                    {:mvn/version "1.7.701"
                                              :exclusions  [org.clojure/tools.reader]}
   org.clojure/core.logic                    {:mvn/version "1.1.0"}              ; optimized pattern matching library for Clojure
@@ -166,14 +166,14 @@
   org.clojure/tools.namespace               {:mvn/version "1.5.0"}
   org.clojure/tools.reader                  {:mvn/version "1.5.2"}
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "12.0.24"}
-  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.0.25"}
-  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.0.24"}
-  org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.0.25"}
+  org.eclipse.jetty/jetty-server            {:mvn/version "12.1.3"}
+  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.1.3"}
+  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.1.3"}
+  org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.1.3"}
   org.eclipse.jgit/org.eclipse.jgit        {:mvn/version "7.3.0.202506031305-r"}; Java implementation of Git version control system
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
-  org.graalvm.polyglot/js-community         {:mvn/version "24.2.2" :extension "pom"} ; JavaScript engine
-  org.graalvm.polyglot/polyglot             {:mvn/version "24.2.2"}             ; GraalVM platform, required by JS engine
+  org.graalvm.polyglot/js-community         {:mvn/version "25.0.1" :extension "pom"} ; JavaScript engine
+  org.graalvm.polyglot/polyglot             {:mvn/version "25.0.1"}             ; GraalVM platform, required by JS engine
   org.jsoup/jsoup                           {:mvn/version "1.21.1"}             ; required by hickory
   org.liquibase/liquibase-core              {:mvn/version "4.33.0"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
@@ -199,8 +199,9 @@
                                                            org.eclipse.jetty.ee9/jetty-ee9-servlet
                                                            org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server]}
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
-  software.amazon.awssdk/s3                 {:mvn/version "2.33.0"}             ; AWS SDK v2 for S3
-  software.amazon.awssdk/sts                {:mvn/version "2.33.0"}             ; Required for S3 client to use service account
+  software.amazon.awssdk/s3                 {:mvn/version "2.36.2"}             ; AWS SDK v2 for S3
+  software.amazon.awssdk/sts                {:mvn/version "2.36.2"}             ; Required for S3 client to use service account
+  software.amazon.jdbc/aws-advanced-jdbc-wrapper {:mvn/version "2.6.5"}        ; AWS JDBC wrapper for IAM authentication
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
   user-agent/user-agent                     {:mvn/version "0.1.1"}              ; User-Agent string parser, for Login History page & elsewhere
   weavejester/dependency                    {:mvn/version "1.0.0"}              ; Dependency graphs and topological sorting
@@ -245,7 +246,7 @@
   ;;    (dev/start!)
   :dev
   {:extra-deps
-   {cider/cider-nrepl            {:mvn/version "0.57.0"}                    ; nREPL server for CIDER
+   {cider/cider-nrepl            {:mvn/version "0.58.0"}                    ; nREPL server for CIDER
     clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
     clj-kondo/clj-kondo          {:mvn/version "2025.07.28"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
@@ -256,7 +257,7 @@
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
-    djblue/portal                {:mvn/version "0.61.0"}                    ; ui for inspecting values
+    djblue/portal                {:mvn/version "0.62.0"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
     io.github.metabase/hawk      {:mvn/version "1.0.13"}                    ; test runner
     jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
@@ -264,7 +265,7 @@
                                   [org.ow2.asm/asm-all]}
     lambdaisland/deep-diff2      {:mvn/version "2.12.219"}                  ; way better diffs
     net.solovyov/hashp           {:mvn/version "0.4.0-1"}                   ; debugging/spying utility
-    nrepl/nrepl                  {:mvn/version "1.4.0"}                     ; nREPL server
+    nrepl/nrepl                  {:mvn/version "1.5.1"}                     ; nREPL server
     peridot/peridot              {:git/url "https://github.com/piranha/peridot.git"
                                   :sha "db627c627db3b527a63caf472f0422e4cbfdf574"} ; mocking Ring requests; waiting for upstream release of commit 0fc7c01 (explicit charset)
     pjstadig/humane-test-output  {:mvn/version "0.11.0"}
@@ -410,8 +411,8 @@
   {:extra-paths ["test"]
    :extra-deps
    {binaryage/devtools                 {:mvn/version "1.0.7"}
-    cider/cider-nrepl                  {:mvn/version "0.57.0"}
-    cider/piggieback                   {:mvn/version "0.6.0"}
+    cider/cider-nrepl                  {:mvn/version "0.58.0"}
+    cider/piggieback                   {:mvn/version "0.6.1"}
     cljs-bean/cljs-bean                {:mvn/version "1.9.0"}
     com.lambdaisland/glogi             {:mvn/version "1.3.169"}
     io.github.metabase/hawk            {:mvn/version "1.0.13"}
@@ -691,7 +692,7 @@
   ;;
   ;; ./bin/mage cljfmt-all -h for more info
   :cljfmt
-  {:deps       {io.github.weavejester/cljfmt {:git/sha "7de286008766127128a156275b9add3bf443d7e5"}}
+  {:deps       {io.github.weavejester/cljfmt {:mvn/version "0.15.3"}}
    :ns-default cljfmt.tool
    :exec-fn    cljfmt.tool/fix}
 
@@ -706,7 +707,7 @@
    {com.bhauman/spell-spec            {:mvn/version "0.1.2"}                    ; used to find misspellings in YAML files
     expound/expound                   {:mvn/version "0.9.0"}                    ; better output of spec validation errors
     io.github.borkdude/grasp          {:mvn/version "0.1.4"}
-    io.github.clojure/tools.build     {:mvn/version "0.10.10"}
+    io.github.clojure/tools.build     {:mvn/version "0.10.11"}
     io.github.seancorfield/build-uber-log4j2-handler
     {:git/tag "v2.25.1" :git/sha "1cfab45"}                                     ; collect binary files for log4j2
     org.clojure/data.xml              {:mvn/version "0.2.0-alpha9"}
@@ -807,7 +808,7 @@
   ;;
   ;; clojure -M:dev:nrepl (etc.)
   :nrepl
-  {:extra-deps {nrepl/nrepl {:mvn/version "1.4.0"}}
+  {:extra-deps {nrepl/nrepl {:mvn/version "1.5.1"}}
    :main-opts  ["-m" "nrepl.cmdline" "-p" "50605"]}
 
   ;; - start a Socket REPL on port 50505 that you can connect your editor to:
@@ -821,7 +822,7 @@
   ;;
   ;;    clojure -M:liquibase dbDoc target/liquibase
   :liquibase
-  {:extra-deps  {ch.qos.logback/logback-classic {:mvn/version "1.5.18"}}
+  {:extra-deps  {ch.qos.logback/logback-classic {:mvn/version "1.5.20"}}
    :extra-paths ["dev/src"]
    :main-opts   ["-m" "dev.liquibase"]}
 

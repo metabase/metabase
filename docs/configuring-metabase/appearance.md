@@ -30,7 +30,13 @@ Appearance settings are split across different tabs:
 
 ## Dark mode
 
-People can display their Metabase in dark mode in their [account settings](../people-and-groups/account-settings.md#theme). Dark mode is a user-level setting, not an instance-level setting. Currently, there's no way to change the theme to dark mode for the entire instance, but you can edit some [user interface colors](#user-interface-colors).
+People can display their Metabase in dark mode in their [account settings](../people-and-groups/account-settings.md#theme). Options are:
+
+ - System default (which is also the default setting). Metabase will switch between light and dark mode when the system switches without having to reload the page.
+ - Always use dark mode.
+ - Always use light mode. 
+
+Dark mode is a user-level setting, not an instance-level setting. Currently, there's no way to change the theme to dark mode for the entire instance, but you can edit some [user interface colors](#user-interface-colors).
 
 ## Branding
 
@@ -74,7 +80,7 @@ Custom colors are unavailable for:
 
 ## Logo
 
-You can replace Metabase’s familiar, tasteful, inspired-yet-not-threateningly-avant-garde dotted M logo with your very own logo. For things to work best, the logo you upload should be an SVG file that looks good when it’s around 60px tall. (In other words, ask the nearest designer for help.)
+You can replace Metabase's familiar, tasteful, inspired-yet-not-threateningly-avant-garde dotted M logo with your very own logo. For things to work best, the logo you upload should be an SVG file that looks good when it's around 60px tall. (In other words, ask the nearest designer for help.)
 
 ## Font
 

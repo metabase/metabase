@@ -1,11 +1,13 @@
 (ns metabase.lib.validate
   "Checks and validation for queries."
+  (:refer-clojure :exclude [not-empty])
   (:require
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.walk :as lib.walk]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [not-empty]]))
 
 (mu/defn find-bad-refs :- [:maybe [:sequential ::lib.schema.mbql-clause/clause]]
   "Returns a list of bad `:field` refs on this query.

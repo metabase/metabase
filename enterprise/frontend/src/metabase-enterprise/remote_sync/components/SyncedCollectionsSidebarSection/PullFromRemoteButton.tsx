@@ -9,6 +9,7 @@ import {
   parseSyncError,
 } from "metabase-enterprise/remote_sync/utils";
 
+import { trackPullChanges } from "../../analytics";
 import type { SyncConflictVariant } from "../SyncConflictModal";
 
 interface PushChangesButtonProps {
@@ -26,6 +27,12 @@ export const PullFromRemoteButton = (props: PushChangesButtonProps) => {
   const handleClick = async () => {
     try {
       await importChanges({ branch }).unwrap();
+
+      trackPullChanges({
+        triggeredFrom: "sidebar",
+        force: false,
+      });
+
       sendToast({
         message: t`Your branch is now up to date with remote`,
         icon: "check",

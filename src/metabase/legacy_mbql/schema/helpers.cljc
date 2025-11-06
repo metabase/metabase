@@ -1,12 +1,12 @@
 (ns metabase.legacy-mbql.schema.helpers
-  (:refer-clojure :exclude [distinct #?(:clj for)])
+  (:refer-clojure :exclude [distinct not-empty #?(:clj for)])
   (:require
-   #?(:clj [metabase.util.performance :refer [for]])
    [clojure.string :as str]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
    [metabase.types.core]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [not-empty #?(:clj for)]]))
 
 (comment metabase.types.core/keep-me)
 

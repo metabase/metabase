@@ -29,6 +29,8 @@ export type EmbedResourceDownloadOptions = {
   results?: boolean;
 };
 
+export type EmbeddingType = "static-legacy";
+
 export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
 
 export type EmbeddingParameters = Record<string, EmbeddingParameterVisibility>;

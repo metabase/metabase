@@ -1795,27 +1795,27 @@
                                              :where  [:= :engine "clickhouse"]}))))
 
 ;; This migration is purely to avoid breaking stats/dev instances that have existing transforms without a `type` field.
-;; TODO (noahmoss 10/27/25): this should be removed prior to the 57 release.
+;; This was commented out before the 57 release since this was a migration purely to avoid any breakages internally.
 (define-migration BackfillTransformSourceType
   ;; Copied logic from metabase-enterprise.transforms.models.transform, aside from query normalization
-  (let [parse-transform-source (fn [source-json]
-                                 (-> source-json
-                                     (json-out true)
-                                     (m/update-existing :type keyword)))
-        ;; Copied from metabase.lib.schema/native-only-query?
-        native-only-query?     (fn [query]
-                                 (and (map? query)
-                                      (= (count (:stages query)) 1)
-                                      (= (get-in query [:stages 0 :lib/type]) "mbql.stage/native")))
-        transforms             (t2/query {:select [:id :source]
-                                          :from   [:transform]})]
-    (doseq [{:keys [id source]} transforms]
-      (let [parsed-source  (parse-transform-source source)
-            source-type    (:type parsed-source)
-            query          (:query parsed-source)
-            transform-type (case source-type
-                             :python "python"
-                             :query  (if (native-only-query? query) "native" "mbql")
-                             (throw (ex-info (str "Unable to categorize transform with unknown source type: " source-type)
-                                             {:transform-id id :source-type source-type})))]
-        (t2/update! :transform id {:source_type transform-type})))))
+  #_(let [parse-transform-source (fn [source-json]
+                                   (-> source-json
+                                       (json-out true)
+                                       (m/update-existing :type keyword)))
+          ;; Copied from metabase.lib.schema/native-only-query?
+          native-only-query?     (fn [query]
+                                   (and (map? query)
+                                        (= (count (:stages query)) 1)
+                                        (= (get-in query [:stages 0 :lib/type]) "mbql.stage/native")))
+          transforms             (t2/query {:select [:id :source]
+                                            :from   [:transform]})]
+      (doseq [{:keys [id source]} transforms]
+        (let [parsed-source  (parse-transform-source source)
+              source-type    (:type parsed-source)
+              query          (:query parsed-source)
+              transform-type (case source-type
+                               :python "python"
+                               :query  (if (native-only-query? query) "native" "mbql")
+                               (throw (ex-info (str "Unable to categorize transform with unknown source type: " source-type)
+                                               {:transform-id id :source-type source-type})))]
+          (t2/update! :transform id {:source_type transform-type})))))
