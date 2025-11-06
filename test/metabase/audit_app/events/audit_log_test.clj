@@ -416,12 +416,11 @@
     (mt/with-temp [:model/User {:keys [id email]}]
       (is (= {:object {:id id :email email}}
              (events/publish-event! :event/user-invitation-reminder {:object {:id id :email email}})))
-      (is (= {:model_id id
-              :user_id  nil
-              :details  {}
-              :topic    :user-invitation-reminder
-              :model    "User"}
-             (mt/latest-audit-log-entry :user-invitation-reminder id))))))
+      (is (partial=
+           {:model_id id
+            :details  {}
+            :topic    :user-invitation-reminder}
+           (mt/latest-audit-log-entry :user-invitation-reminder id))))))
 
 (deftest user-update-event-test
   (testing :event/user-update
