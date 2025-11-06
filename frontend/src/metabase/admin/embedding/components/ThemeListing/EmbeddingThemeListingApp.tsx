@@ -40,7 +40,7 @@ export function EmbeddingThemeListingApp() {
 
         // TODO(EMB-962): Add default theme colors based on instance's appearance settings
         settings: {},
-      }).unwrap();
+      });
 
       // TODO(EMB-946): Navigate to the theme editor to edit the newly created theme.
     } catch (error) {
@@ -51,7 +51,7 @@ export function EmbeddingThemeListingApp() {
 
   const handleDuplicateTheme = async (themeId: number) => {
     try {
-      await duplicateTheme(themeId).unwrap();
+      await duplicateTheme(themeId);
       sendToast({ message: t`Theme duplicated successfully`, icon: "check" });
     } catch (error) {
       console.error("Failed to duplicate theme:", error);
@@ -65,7 +65,7 @@ export function EmbeddingThemeListingApp() {
     }
 
     try {
-      await deleteTheme(themeToDelete).unwrap();
+      await deleteTheme(themeToDelete);
       sendToast({ message: t`Theme deleted successfully`, icon: "check" });
       setThemeToDelete(null);
     } catch (error) {
