@@ -69,7 +69,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   document_id?: DocumentId;
   dashboard_count: number | null;
 
-  result_metadata: Field[];
+  result_metadata: Field[] | null;
   moderation_reviews?: ModerationReview[];
   persisted?: boolean;
 
