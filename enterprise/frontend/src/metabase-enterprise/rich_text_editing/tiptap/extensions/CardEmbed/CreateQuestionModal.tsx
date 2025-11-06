@@ -118,7 +118,13 @@ export const CreateQuestionModal = ({
 
   if (questionType === "notebook") {
     return (
-      <Modal opened onClose={onClose}>
+      <Modal
+        opened
+        onClose={onClose}
+        size="80%"
+        title={t`Create new question`}
+        padding="lg"
+      >
         <Box h="70vh" className={MS.notebookContainer}>
           <Notebook
             question={modifiedQuestion}
