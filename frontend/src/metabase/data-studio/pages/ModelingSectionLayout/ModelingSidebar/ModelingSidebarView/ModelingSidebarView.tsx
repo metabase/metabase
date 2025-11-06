@@ -9,8 +9,9 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Box, Button, Icon, Menu, Stack } from "metabase/ui";
 
-import { ModelingSidebarSection } from "./ModelingSidebarSection";
-import { ModelingSidebarTreeNode } from "./ModelingSidebarTreeNode";
+import { ModelingSidebarSection } from "../ModelingSidebarSection";
+import { ModelingSidebarTreeNode } from "../ModelingSidebarTreeNode";
+
 import S from "./ModelingSidebarView.module.css";
 import { useSnippetPlugins } from "./useSnippetPlugins";
 import { buildSnippetTree } from "./utils";

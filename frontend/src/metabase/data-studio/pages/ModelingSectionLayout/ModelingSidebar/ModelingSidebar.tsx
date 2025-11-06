@@ -19,17 +19,17 @@ import { getUser } from "metabase/selectors/user";
 
 import { ModelingSidebarView } from "./ModelingSidebarView";
 
-interface ModelingSidebarContainerProps {
+interface ModelingSidebarProps {
   collectionId?: string;
   snippetId?: string;
   isGlossaryActive: boolean;
 }
 
-export function ModelingSidebarContainer({
+export function ModelingSidebar({
   collectionId,
   snippetId,
   isGlossaryActive,
-}: ModelingSidebarContainerProps) {
+}: ModelingSidebarProps) {
   const currentUser = useSelector(getUser);
 
   const { data: databaseData, isLoading: isLoadingDatabases } =
