@@ -433,7 +433,7 @@ const COMMON_COLUMN_SETTINGS = {
         settings["column_title"] || displayNameForColumn(column);
       const headerUnit = settings["_header_unit"];
       if (headerUnit) {
-        columnTitle += ` (${headerUnit})`;
+        columnTitle += ` (${headerUnit})`;;;
       }
       return columnTitle;
     },
@@ -458,7 +458,7 @@ export function getSettingDefinitionsForColumn(series, column) {
     return {
       ...extraColumnSettings,
       ...NUMBER_COLUMN_SETTINGS,
-      ...COMMON_COLUMN_SETTINGS,
+      ...COMMON_COLUMN_SETTINGS[99],
     };
   } else {
     return {
