@@ -8,6 +8,7 @@ import type { Card, Field } from "metabase-types/api";
 import { ModelHeader } from "../../components/ModelHeader";
 import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";
 
+import { ModelFieldEmptyState } from "./ModelFieldEmptyState";
 import { ModelFieldInfo } from "./ModelFieldInfo";
 import { ModelFieldList } from "./ModelFieldList";
 
@@ -62,12 +63,14 @@ function ModelFieldsPageBody({ card }: ModelFieldsPageBodyProps) {
           onNameChange={handleNameChange}
           onDescriptionChange={handleDescriptionChange}
         />
-        {activeField != null && (
+        {activeField != null ? (
           <ModelFieldInfo
             field={activeField}
             onNameChange={handleNameChange}
             onDescriptionChange={handleDescriptionChange}
           />
+        ) : (
+          <ModelFieldEmptyState />
         )}
       </Flex>
     </Flex>
