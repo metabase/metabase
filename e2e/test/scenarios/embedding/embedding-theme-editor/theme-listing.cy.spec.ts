@@ -45,7 +45,7 @@ describe(
         cy.log("create a theme");
         cy.findByRole("button", { name: /New theme/ }).click();
         cy.findByText("Untitled theme").should("be.visible");
-        cy.findByLabelText("More actions").click();
+        cy.findByLabelText("Duplicate and delete").click();
       });
 
       cy.log("duplicate a theme");
@@ -67,7 +67,7 @@ describe(
         cy.log("create a theme");
         cy.findByRole("button", { name: /New theme/ }).click();
         cy.findByText("Untitled theme").should("be.visible");
-        cy.findByLabelText("More actions").click();
+        cy.findByLabelText("Duplicate and delete").click();
       });
 
       cy.log("delete a theme");
@@ -88,7 +88,7 @@ describe(
       H.main().within(() => {
         cy.log("theme should still exist");
         cy.findByText("Untitled theme").should("be.visible");
-        cy.findByLabelText("More actions").click();
+        cy.findByLabelText("Duplicate and delete").click();
       });
 
       cy.log("confirm deletion");

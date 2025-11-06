@@ -1,6 +1,14 @@
 import { t } from "ttag";
 
-import { ActionIcon, Card, Group, Icon, Menu, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Card,
+  Group,
+  Icon,
+  Menu,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import type { EmbeddingTheme } from "metabase-types/api/embedding-theme";
 
 import { EmbeddingThemeCardPreview } from "./EmbeddingThemeCardPreview";
@@ -50,13 +58,15 @@ const EmbeddingThemeActionMenu = ({
   return (
     <Menu position="bottom-end">
       <Menu.Target>
-        <ActionIcon
-          aria-label={t`More actions`}
+        <Tooltip
+          label={t`Duplicate and delete`}
           {/** This avoids triggering the card's onEdit when we click on the ellipsis menu. */}
           onClick={(e) => e.stopPropagation()}
         >
-          <Icon name="ellipsis" />
-        </ActionIcon>
+          <ActionIcon aria-label={t`Duplicate and delete`}>
+            <Icon name="ellipsis" />
+          </ActionIcon>
+        </Tooltip>
       </Menu.Target>
 
       <Menu.Dropdown>
