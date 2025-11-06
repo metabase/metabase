@@ -582,6 +582,9 @@ export interface SimpleDataPickerProps {
 
 export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
+  onBeforeRequestHandlers: {
+    getOrRefreshSessionHandler: async () => {},
+  },
 };
 
 export const PLUGIN_EMBEDDING_IFRAME_SDK = {
