@@ -10,7 +10,7 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/ui/utils/colors";
-import { ChartSettingGaugeSegments } from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
+import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
   getDefaultSize,
@@ -131,7 +131,7 @@ export default class Gauge extends Component {
           { min: value, max: value * 2, color: color("success"), label: "" },
         ];
       },
-      widget: ChartSettingGaugeSegments,
+      widget: ChartSettingSegmentsEditor,
       persistDefault: true,
       noPadding: true,
     },

@@ -9,16 +9,16 @@ import { color } from "metabase/lib/colors";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import { Box, Button, Icon, NumberInput, TextInput } from "metabase/ui";
 
-import S from "./ChartSettingGaugeSegments.module.css";
+import S from "./ChartSettingSegmentsEditor.module.css";
 
-type Segment = {
+export type Segment = {
   min: number;
   max: number;
   color: string;
   label?: string;
 };
 
-export const ChartSettingGaugeSegments = ({
+export const ChartSettingSegmentsEditor = ({
   value: _segments,
   onChange,
 }: {
