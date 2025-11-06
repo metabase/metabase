@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import type { Route } from "react-router";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -80,6 +81,7 @@ function ModelFieldsPageBody({
 }: ModelFieldsPageBodyProps) {
   const [fields, setFields] = useState(card.result_metadata ?? []);
   const [activeFieldName, setActiveFieldName] = useState<string>();
+  const [isSorting, setIsSorting] = useState(false);
   const [updateCard, { isLoading: isSaving }] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -119,6 +121,16 @@ function ModelFieldsPageBody({
     setFields(card.result_metadata ?? []);
   };
 
+  const resetRef = useLatest(() => {
+    setFields(card.result_metadata ?? []);
+    setActiveFieldName(undefined);
+    setIsSorting(false);
+  });
+
+  useLayoutEffect(() => {
+    resetRef.current();
+  }, [card.id, resetRef]);
+
   return (
     <>
       <Flex direction="column" h="100%" bg="bg-light">
@@ -137,8 +149,11 @@ function ModelFieldsPageBody({
           <ModelFieldList
             fields={fields}
             activeFieldName={activeFieldName}
+            isSorting={isSorting}
             onSelectField={handleSelectField}
             onChangeField={handleChangeField}
+            onChangeSorting={setFields}
+            onToggleSorting={setIsSorting}
           />
           {activeField != null ? (
             <ModelFieldDetails

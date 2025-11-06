@@ -15,7 +15,7 @@ interface Props<T extends number | string> {
   fields: Field[];
   activeFieldKey?: FieldId;
   getFieldKey: (field: Field) => T;
-  onChange: (fieldOrder: FieldId[]) => void;
+  onChange: (fieldOrder: T[]) => void;
 }
 
 export function SortableFieldList<T extends number | string>({
@@ -33,8 +33,7 @@ export function SortableFieldList<T extends number | string>({
   const isDragDisabled = fields.length <= 1;
 
   const handleSortEnd = ({ itemIds }: DragEndEvent) => {
-    // in this context field id will never be a string because it's a raw table field, so it's ok to cast
-    onChange(itemIds as FieldId[]);
+    onChange(itemIds as T[]);
   };
 
   return (
@@ -52,6 +51,7 @@ export function SortableFieldList<T extends number | string>({
             <SortableFieldItem
               key={key}
               field={field}
+              fieldKey={key}
               parent={parent}
               active={getFieldKey(field) === activeFieldKey}
               disabled={isDragDisabled}
