@@ -3306,3 +3306,16 @@
         (is (= [false false false] (map :can_delete (collection/can-delete [non-archived-collection
                                                                             non-archived-dash
                                                                             non-archived-card]))))))))
+
+(deftest create-library
+  (mt/with-discard-model-updates! [:model/Collection]
+    (testing "Can create a library if none exist"
+      (t2/update! :model/Collection :type collection/library-collection-type {:type nil})
+      (let [library (collection/create-library-collection!)]
+        (is (= "Library" (:name library)))
+        (is (= ["Semantic Layer"] (map :name (collection/descendants library))))
+        (is (= ["Metrics" "Models"] (sort (map :name (collection/descendants (first (collection/descendants library)))))))))
+    (testing "Creating a library when one already exists throws an exception"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Library collection already exists" (collection/create-library-collection!))))
+    ;;cleanup created libraries
+    (t2/delete! :model/Collection :type collection/library-collection-type)))

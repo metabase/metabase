@@ -68,9 +68,9 @@
   "The value of the `:type` field for remote-synced collections."
   "remote-synced")
 
-(def ^:constant library-entity-id
-  "The remote-synced collection's entity ID"
-  "librarylibrarylibrary")
+(def ^:constant library-collection-type
+  "The value of the `:type` field for library collections."
+  "library")
 
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
@@ -143,6 +143,41 @@
   []
   (binding [*clearing-remote-sync* true]
     (t2/update! :model/Collection :type remote-synced-collection-type {:type nil})))
+
+(defn library-collection?
+  "Is this a library collection?"
+  [collection-or-id]
+  (let [type (:type collection-or-id ::not-found)]
+    (if (identical? type ::not-found)
+      ;; If no :type field, it's probably an ID - fetch from DB
+      (some->> collection-or-id u/the-id (t2/select-one-fn :type :model/Collection :id) (= remote-synced-collection-type))
+      ;; If :type field exists, compare directly
+      (= type library-collection-type))))
+
+(defn library-collection
+  "Get the library collection, if it exists."
+  []
+  (t2/select-one :model/Collection :type library-collection-type :location "/"))
+
+(defn create-library-collection!
+  "Create the library collection. Returns root library collection"
+  []
+  (when-not (nil? (library-collection))
+    (throw (ex-info "Library collection already exists" {})))
+  (u/prog1 (t2/insert-returning-instance! :model/Collection {:name     "Library"
+                                                             :type     library-collection-type
+                                                             :location "/"})
+    (let [library-location        (str "/" (:id <>) "/")
+          semantic-layer-id       (t2/insert-returning-pk! :model/Collection {:name     "Semantic Layer"
+                                                                              :type     library-collection-type
+                                                                              :location library-location})
+          semantic-layer-location (str library-location semantic-layer-id "/")]
+      (t2/insert! :model/Collection {:name     "Models"
+                                     :type     library-collection-type
+                                     :location semantic-layer-location})
+      (t2/insert! :model/Collection {:name     "Metrics"
+                                     :type     library-collection-type
+                                     :location semantic-layer-location}))))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
