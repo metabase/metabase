@@ -120,13 +120,11 @@ function ModelFieldsPageBody({
 
   const handleCancel = () => {
     setFields(card.result_metadata ?? []);
-  };
-
-  const resetRef = useLatest(() => {
-    setFields(card.result_metadata ?? []);
     setActiveFieldName(undefined);
     setIsSorting(false);
-  });
+  };
+
+  const resetRef = useLatest(handleCancel);
 
   useLayoutEffect(() => {
     resetRef.current();
