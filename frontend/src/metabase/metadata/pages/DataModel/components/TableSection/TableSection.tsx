@@ -111,29 +111,27 @@ const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
 
       <Box px="xl">
         <Group justify="stretch" gap="sm">
-          <Box style={{ flexGrow: 1 }}>
+          <Button
+            flex="1"
+            leftSection={<Icon name="settings" />}
+            onClick={onSyncOptionsClick}
+            style={{
+              width: "100%",
+            }}
+          >
+            {t`Sync settings`}
+          </Button>
+          <Tooltip label={t`Create model and publish to a collection`}>
             <Button
-              leftSection={<Icon name="settings" />}
-              onClick={onSyncOptionsClick}
+              flex="1"
+              onClick={() => setIsCreateModelsModalOpen(true)}
+              p="sm"
+              leftSection={<Icon name="add_folder" />}
               style={{
                 width: "100%",
               }}
-            >
-              {t`Sync settings`}
-            </Button>
-          </Box>
-          <Box style={{ flexGrow: 1 }}>
-            <Tooltip label={t`Create model and publish to a collection`}>
-              <Button
-                onClick={() => setIsCreateModelsModalOpen(true)}
-                p="sm"
-                leftSection={<Icon name="add_folder" />}
-                style={{
-                  width: "100%",
-                }}
-              >{t`Publish`}</Button>
-            </Tooltip>
-          </Box>
+            >{t`Publish`}</Button>
+          </Tooltip>
           <Tooltip label={t`Dependency graph`}>
             <Box /* wrapping with a Box because Tooltip does not work for <Button component={Link} /> */
             >
