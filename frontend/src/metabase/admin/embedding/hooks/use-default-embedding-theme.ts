@@ -75,7 +75,7 @@ export function useDefaultEmbeddingTheme(): MetabaseTheme {
     for (const sdkColorKey of SDK_COLORS_TO_PERSIST) {
       // Map the chart colors from appearance settings & default colors.
       if (sdkColorKey === "charts") {
-        mappedColors[sdkColorKey] = WHITELABEL_CHART_COLOR_NAMES.map(
+        mappedColors.charts = WHITELABEL_CHART_COLOR_NAMES.map(
           (colorName) =>
             whitelabelColors?.[colorName] ?? sourceColors[colorName],
         );
