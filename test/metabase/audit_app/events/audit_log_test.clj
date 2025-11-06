@@ -411,6 +411,18 @@
                 :model    "User"}
                (mt/latest-audit-log-entry :user-invited id))))))))
 
+(deftest user-invitation-reminder-event-test
+  (testing :event/user-invitation-reminder
+    (mt/with-temp [:model/User {:keys [id email]}]
+      (is (= {:object {:id id :email email}}
+             (events/publish-event! :event/user-invitation-reminder {:object {:id id :email email}})))
+      (is (= {:model_id id
+              :user_id  nil
+              :details  {}
+              :topic    :user-invitation-reminder
+              :model    "User"}
+             (mt/latest-audit-log-entry :user-invitation-reminder id))))))
+
 (deftest user-update-event-test
   (testing :event/user-update
     (mt/with-current-user (mt/user->id :rasta)
