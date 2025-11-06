@@ -66,7 +66,7 @@ Before you connect Metabase to your Git repository, create a [new GitHub reposit
 
 ### 2. Create a personal access token for development
 
-Create a [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) for your repository with these permissions:
+Create a [Github fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) for your repository with these permissions:
 
 - **Contents:** Read and write
 - **Metadata:** Read-only (required)
