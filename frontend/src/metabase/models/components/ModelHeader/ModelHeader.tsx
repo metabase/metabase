@@ -115,6 +115,12 @@ function getTabs(
     }
   }
 
+  tabs.push({
+    label: t`Fields`,
+    to: Urls.dataStudioModelFields(card.id),
+    isSelected: Urls.dataStudioModelFields(card.id) === pathname,
+  });
+
   if (PLUGIN_DEPENDENCIES.isEnabled) {
     tabs.push({
       label: t`Dependencies`,

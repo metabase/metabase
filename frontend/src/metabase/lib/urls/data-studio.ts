@@ -26,6 +26,10 @@ export function dataStudioModelQuery(cardId: CardId) {
   return `${dataStudioModel(cardId)}/query`;
 }
 
+export function dataStudioModelFields(cardId: CardId) {
+  return `${dataStudioModel(cardId)}/fields`;
+}
+
 export function dataStudioModelDependencies(cardId: CardId) {
   return `${dataStudioModel(cardId)}/dependencies`;
 }
