@@ -1648,6 +1648,7 @@
    :uses #{api
            events
            premium-features
+           store-api
            util
            enterprise/harbormaster}}
 
@@ -1905,7 +1906,7 @@
            query-processor
            util}}
 
- enterprise/remote-sync
+  enterprise/remote-sync
   {:team "UX West"
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
