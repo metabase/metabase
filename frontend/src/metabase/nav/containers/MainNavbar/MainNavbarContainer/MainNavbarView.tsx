@@ -13,6 +13,7 @@ import {
 import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
+import type { CollectionTreeItem } from "metabase/entities/collections";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
@@ -22,15 +23,8 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import {
-  ActionIcon,
-  Flex,
-  Icon,
-  type IconName,
-  type IconProps,
-  Tooltip,
-} from "metabase/ui";
-import type { Bookmark, Collection } from "metabase-types/api";
+import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
+import type { Bookmark } from "metabase-types/api";
 
 import {
   PaddedSidebarLink,
@@ -51,10 +45,6 @@ import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
 
-export interface CollectionTreeItem extends Collection {
-  icon: IconName | IconProps;
-  children: CollectionTreeItem[];
-}
 type Props = {
   isAdmin: boolean;
   isOpen: boolean;
@@ -221,9 +211,9 @@ export function MainNavbarView({
 
           {showSyncGroup && (
             <PLUGIN_REMOTE_SYNC.SyncedCollectionsSidebarSection
-              syncedCollections={syncedCollections}
-              collectionItem={collectionItem}
               onItemSelect={onItemSelect}
+              selectedId={collectionItem?.id}
+              syncedCollections={syncedCollections}
             />
           )}
 
