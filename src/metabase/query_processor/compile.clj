@@ -1,5 +1,5 @@
 (ns metabase.query-processor.compile
-  (:refer-clojure :exclude [compile])
+  (:refer-clojure :exclude [compile empty?])
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
@@ -13,7 +13,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [empty?]]))
 
 (mr/def ::compiled
   "Compiled query and parameters (SQL or whatever native query language)."

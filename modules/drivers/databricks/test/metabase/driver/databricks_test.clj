@@ -264,14 +264,8 @@
     (testing "Connections with UserAgentEntry"
       (sql-jdbc.conn/with-connection-spec-for-testing-connection
        [spec [:databricks (:details (mt/db))]]
-        (is (= [{:a 1}] (jdbc/query spec ["select 1 as a"]))))
-      (with-redefs [config/mb-version-info {:tag "invalid agent"}]
-        (sql-jdbc.conn/with-connection-spec-for-testing-connection
-         [spec [:databricks (:details (mt/db))]]
-          (is (thrown-with-msg?
-               Exception
-               #"Incorrect format for User-Agent entry"
-               (jdbc/query spec ["select 1 as a"]))))))
+        (is (= (str "Metabase/" (:tag config/mb-version-info)) (:UserAgentEntry spec)))
+        (is (= [{:a 1}] (jdbc/query spec ["select 1 as a"])))))
     (testing "Additional options are added to :subname key of generated spec"
       (is (re-find #";IgnoreTransactions=0$"
                    (->> {:http-path "p/a/t/h",
