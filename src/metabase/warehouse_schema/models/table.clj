@@ -8,6 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -382,6 +383,27 @@
   "Efficiently hydrate the Fields for a collection of `tables`"
   [tables]
   (with-fields tables))
+
+(methodical/defmethod t2/batched-hydrate [:model/Table :published_as_model]
+  [_model k tables]
+  (cond
+    (empty? tables)                                     tables
+    (not-every? :id tables)                             tables
+    (not (premium-features/has-feature? :dependencies)) tables
+    :else
+    (let [table-ids          (sort (set (map :id tables)))
+          ;; todo temporary: this logic is not well defined, seek clarity on what it means to be a model
+          ;; tested at api level but unsure about that or hydration as implementation
+          ;; archived? collection archived? permission / visibility
+          ;; open question on how best to achieve delivery of this data to client, work in progress
+          published-as-model (t2/select-fn-set :to_entity_id
+                                               [:model/Dependency :to_entity_id]
+                                               :to_entity_type "table"
+                                               :to_entity_id [:in table-ids]
+                                               :from_entity_type "card"
+                                               {:join [[:report_card :card] [:= :dependency.from_entity_id :card.id]]
+                                                :where [:= "model" :card.type]})]
+      (map #(assoc % :published_as_model (contains? published-as-model (:id %))) tables))))
 
 ;;; ------------------------------------------------ Convenience Fns -------------------------------------------------
 

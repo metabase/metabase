@@ -96,9 +96,10 @@
                                          ;; TODO: Ngoc (31/10/2025) we are not sure whether to exclude transform here
                                          ;; let's circle back before merging bulk editing
                                          [:not= :d.from_entity_type "transform"]]]
-                            :where     [:and where [:= :d.id nil]]))]
+                            :where     [:and where [:= :d.id nil]]))
+        hydrations (cond-> [:db] (premium-features/has-feature? :dependencies) (conj :published_as_model))]
     (as-> (t2/select :model/Table query) tables
-      (t2/hydrate tables :db)
+      (apply t2/hydrate tables hydrations)
       (into [] (comp (filter mi/can-read?)
                      (map schema.table/present-table))
             tables))))

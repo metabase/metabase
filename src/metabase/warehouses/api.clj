@@ -1250,25 +1250,28 @@
    (when-not include_editable_data_model
      (api/read-check :model/Database db-id)
      (api/check-403 (can-read-schema? db-id schema)))
-   (let [tables (if include_hidden
-                  (t2/select :model/Table
-                             :db_id db-id
-                             :schema schema
-                             :active true
-                             {:order-by [[:display_name :asc]]})
-                  (t2/select :model/Table
-                             :db_id db-id
-                             :schema schema
-                             :active true
-                             :visibility_type nil
-                             {:order-by [[:display_name :asc]]}))]
-     (if include_editable_data_model
-       (if-let [f (when config/ee-available?
-                    (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                    (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
-         (f tables)
-         tables)
-       (filter mi/can-read? tables)))))
+   (let [candidate-tables (if include_hidden
+                            (t2/select :model/Table
+                                       :db_id db-id
+                                       :schema schema
+                                       :active true
+                                       {:order-by [[:display_name :asc]]})
+                            (t2/select :model/Table
+                                       :db_id db-id
+                                       :schema schema
+                                       :active true
+                                       :visibility_type nil
+                                       {:order-by [[:display_name :asc]]}))
+         filtered-tables  (if include_editable_data_model
+                            (if-let [f (when config/ee-available?
+                                         (classloader/require 'metabase-enterprise.advanced-permissions.common)
+                                         (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
+                              (f candidate-tables)
+                              candidate-tables)
+                            (filter mi/can-read? candidate-tables))]
+     (if (premium-features/has-feature? :dependencies)
+       (t2/hydrate filtered-tables :published_as_model)
+       filtered-tables))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
