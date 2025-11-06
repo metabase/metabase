@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import {
   FieldVisibilityPicker,
+  LabeledValue,
   NameDescriptionInput,
   SemanticTypeAndTargetPicker,
   TitledSection,
@@ -79,6 +80,12 @@ export function ModelFieldDetails({
         />
       </Box>
       <Flex direction="column" p="md" gap="md">
+        <TitledSection title={t`Data`}>
+          <LabeledValue label={t`Field name`}>{field.name}</LabeledValue>
+          <LabeledValue label={t`Data type`}>
+            {field.database_type}
+          </LabeledValue>
+        </TitledSection>
         <TitledSection title={t`Metadata`}>
           <SemanticTypeAndTargetPicker
             label={t`Semantic type`}
