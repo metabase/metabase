@@ -6,9 +6,11 @@ import { useGetCardQuery, useGetTableQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Anchor, Stack, Title } from "metabase/ui";
+import { Group, Stack, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Card, CardId, TableId } from "metabase-types/api";
+
+import S from "./QuerySourceInfo.module.css";
 
 type QuerySourceInfoProps = {
   card: Card;
@@ -145,19 +147,19 @@ type SourcePathProps = {
 
 function SourcePath({ parts }: SourcePathProps) {
   return (
-    <div>
+    <Group gap="xs">
       {parts.map((part, index) => (
         <Fragment key={index}>
           {index > 0 && " / "}
           {part.url ? (
-            <Anchor component={Link} to={part.url}>
+            <Link className={S.link} to={part.url}>
               {part.name}
-            </Anchor>
+            </Link>
           ) : (
             <span>{part.name}</span>
           )}
         </Fragment>
       ))}
-    </div>
+    </Group>
   );
 }

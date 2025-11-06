@@ -2,8 +2,8 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import * as Urls from "metabase/lib/urls";
 import { Center, Flex } from "metabase/ui";
 
+import { CardOverview } from "../../components/CardOverview";
 import { ModelHeader } from "../../components/ModelHeader";
-import { SemanticEntityOverview } from "../../components/SemanticEntityOverview";
 import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";
 
 import S from "./ModelOverviewPage.module.css";
@@ -31,7 +31,7 @@ export function ModelOverviewPage({ params }: ModelOverviewPageProps) {
   return (
     <Flex direction="column" h="100%" bg="var(--mb-color-bg-light)">
       <ModelHeader card={card} className={S.header} />
-      <SemanticEntityOverview card={card} />
+      <CardOverview card={card} />
     </Flex>
   );
 }

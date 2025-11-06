@@ -8,17 +8,17 @@ import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
-import S from "./SemanticLayerVisualization.module.css";
+import S from "./CardOverviewVisualization.css";
 
-type SemanticLayerVisualizationProps = {
+type CardOverviewVisualizationProps = {
   card: Card;
   className?: string;
 };
 
-export function SemanticLayerVisualization({
+export function CardOverviewVisualization({
   card,
   className,
-}: SemanticLayerVisualizationProps) {
+}: CardOverviewVisualizationProps) {
   const metadata = useSelector(getMetadata);
   const question = useMemo(
     () => new Question(card, metadata),

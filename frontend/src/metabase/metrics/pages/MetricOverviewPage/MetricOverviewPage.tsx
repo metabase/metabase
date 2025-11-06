@@ -1,9 +1,9 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
-import { SemanticEntityOverview } from "metabase/models/components/SemanticEntityOverview";
 import { useLoadCardWithMetadata } from "metabase/models/hooks/use-load-card-with-metadata";
 import { Center, Flex } from "metabase/ui";
 
+import { CardOverview } from "../../../models/components/CardOverview";
 import { MetricHeader } from "../../components/MetricHeader";
 
 import S from "./MetricOverviewPage.module.css";
@@ -31,7 +31,7 @@ export function MetricOverviewPage({ params }: MetricOverviewPageProps) {
   return (
     <Flex direction="column" h="100%" bg="var(--mb-color-bg-light)">
       <MetricHeader card={card} className={S.header} />
-      <SemanticEntityOverview card={card} />
+      <CardOverview card={card} />
     </Flex>
   );
 }
