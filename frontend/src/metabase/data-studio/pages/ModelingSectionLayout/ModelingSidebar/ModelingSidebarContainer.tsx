@@ -1,6 +1,4 @@
-import type { LocationDescriptor } from "history";
 import { useMemo } from "react";
-import { withRouter } from "react-router";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import {
@@ -19,12 +17,14 @@ import { ModelingSidebarView } from "./ModelingSidebarView";
 
 interface ModelingSidebarContainerProps {
   collectionId?: string;
-  location: LocationDescriptor;
+  snippetId?: string;
+  isGlossaryActive: boolean;
 }
 
-function ModelingSidebarContainerComponent({
+export function ModelingSidebarContainer({
   collectionId,
-  location,
+  snippetId,
+  isGlossaryActive,
 }: ModelingSidebarContainerProps) {
   const currentUser = useSelector(getUser);
 
@@ -70,11 +70,7 @@ function ModelingSidebarContainerComponent({
     return collectionId === "root" ? "root" : parseInt(collectionId, 10);
   }, [collectionId]);
 
-  const isGlossaryActive = useMemo(() => {
-    const pathname =
-      typeof location === "string" ? location : location.pathname || "";
-    return pathname.includes("/modeling/glossary");
-  }, [location]);
+  const selectedSnippetId = snippetId ? parseInt(snippetId, 10) : undefined;
 
   if (isLoading || !currentUser) {
     return null;
@@ -85,10 +81,7 @@ function ModelingSidebarContainerComponent({
       collections={collectionTree}
       selectedCollectionId={selectedCollectionId}
       isGlossaryActive={isGlossaryActive}
+      selectedSnippetId={selectedSnippetId}
     />
   );
 }
-
-export const ModelingSidebarContainer = withRouter(
-  ModelingSidebarContainerComponent,
-);

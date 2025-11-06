@@ -22,6 +22,7 @@ import { ModelingSectionLayout } from "./pages/ModelingSectionLayout";
 import { ModelingCollectionView } from "./pages/ModelingSectionLayout/ModelingCollectionView";
 import { ModelingEmptyPage } from "./pages/ModelingSectionLayout/ModelingEmptyPage";
 import { ModelingGlossary } from "./pages/ModelingSectionLayout/ModelingGlossary";
+import { SnippetEditorPage } from "./pages/ModelingSectionLayout/SnippetEditorPage";
 
 export function getDataStudioRoutes(
   store: Store<State>,
@@ -58,6 +59,7 @@ export function getDataStudioRoutes(
           component={ModelingCollectionView}
         />
         <Route path="glossary" component={ModelingGlossary} />
+        <Route path="snippets/:snippetId" component={SnippetEditorPage} />
         {getDataStudioModelRoutes()}
         {getDataStudioMetricRoutes()}
       </Route>

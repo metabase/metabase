@@ -291,10 +291,46 @@ export type IllustrationValue = {
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
 
 // snippet sidebar
-export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS = [];
+type SnippetSidebarMenuOption = {
+  icon: IconName;
+  name?: string;
+  label?: string;
+  onClick: () => void;
+};
+
+type SnippetSidebarComponentRef = {
+  state?: {
+    modalSnippetCollection?: unknown;
+    permissionsModalCollectionId?: unknown;
+  };
+  setState: (state: {
+    modalSnippetCollection?: unknown;
+    permissionsModalCollectionId?: unknown;
+  }) => void;
+  props: {
+    snippetCollection: { id: number | string | null };
+  };
+};
+
+export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS: Array<
+  (componentRef: SnippetSidebarComponentRef) => SnippetSidebarMenuOption
+> = [];
+
 export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS = {};
-export const PLUGIN_SNIPPET_SIDEBAR_MODALS = [];
+
+export const PLUGIN_SNIPPET_SIDEBAR_MODALS: Array<
+  (componentRef: SnippetSidebarComponentRef) => JSX.Element | null
+> = [];
+
 export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
+
+export const PLUGIN_SNIPPET_COLLECTION_PICKER_MODAL = {
+  Component: null as ComponentType<{
+    isOpen: boolean;
+    onSelect: (collectionId: number | string | null) => void;
+    onClose: () => void;
+  }> | null,
+};
 
 interface PluginDashboardSubscriptionParametersSectionOverride {
   Component?: ComponentType<{

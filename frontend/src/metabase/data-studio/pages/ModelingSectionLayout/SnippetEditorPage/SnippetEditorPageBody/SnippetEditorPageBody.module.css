@@ -1,0 +1,8 @@
+.editorContainer {
+  overflow: hidden;
+}
+
+.editor {
+  height: 100%;
+  background-color: var(--mb-color-bg-light);
+}
