@@ -34,14 +34,7 @@ export function ModelFieldList({
 
   return (
     <Flex className={S.section} flex={1} direction="column">
-      <Group
-        className={S.header}
-        pos="sticky"
-        top={0}
-        p="md"
-        justify="end"
-        bg="bg-light"
-      >
+      <Group className={S.header} p="md" justify="end">
         <Button size="sm" leftSection={<Icon name="sort_arrows" />}>
           {t`Sorting`}
         </Button>

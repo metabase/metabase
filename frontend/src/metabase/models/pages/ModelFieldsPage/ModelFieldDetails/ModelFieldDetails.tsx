@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
@@ -8,8 +9,14 @@ import {
   TitledSection,
 } from "metabase/metadata/components";
 import { Box, Flex } from "metabase/ui";
+import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
+import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import * as Lib from "metabase-lib";
-import type { Field, FieldVisibilityType } from "metabase-types/api";
+import type {
+  Field,
+  FieldFormattingSettings,
+  FieldVisibilityType,
+} from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../../constants";
 import type { FieldPatch } from "../types";
@@ -27,6 +34,16 @@ export function ModelFieldDetails({
   idFields,
   onChangeField,
 }: ModelFieldDetailsProps) {
+  const denyList = useMemo(() => {
+    return Lib.isCurrency(Lib.legacyColumnTypeInfo(field))
+      ? new Set(["column_title", "number_style"])
+      : new Set(["column_title"]);
+  }, [field]);
+
+  const inheritedSettings = useMemo(() => {
+    return getGlobalSettingsForColumn();
+  }, []);
+
   const handleChange = (patch: FieldPatch) => {
     onChangeField(field, patch);
   };
@@ -41,6 +58,10 @@ export function ModelFieldDetails({
 
   const handleVisibilityChange = (visibility: FieldVisibilityType) => {
     onChangeField(field, { visibility_type: visibility });
+  };
+
+  const handleSettingsChange = (settings: FieldFormattingSettings) => {
+    onChangeField(field, { settings });
   };
 
   return (
@@ -73,6 +94,17 @@ export function ModelFieldDetails({
             description={t`Where this field should be displayed`}
             value={field.visibility_type}
             onChange={handleVisibilityChange}
+          />
+        </TitledSection>
+        <TitledSection title={t`Formatting`}>
+          <ColumnSettings
+            value={field.settings ?? {}}
+            column={field}
+            denylist={denyList}
+            extraData={{ forAdminSettings: true }}
+            inheritedSettings={inheritedSettings}
+            style={{ maxWidth: undefined }}
+            onChange={handleSettingsChange}
           />
         </TitledSection>
       </Flex>
