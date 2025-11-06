@@ -69,7 +69,7 @@
          (content-type/content-type-response {:uri "index.html"})
          ;; Better would be to append this to our CSP, but there is no good way right now and it's just a single page.
          ;; Necessary for Scalar to work, script injects styles in runtime.
-         (assoc-in [:headers "Content-Security-Policy"] "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net"))))
+         (assoc-in [:headers "Content-Security-Policy"] "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net"))))
 
   ([request respond raise]
    (try

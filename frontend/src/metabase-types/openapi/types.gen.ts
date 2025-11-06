@@ -630,12 +630,12 @@ export type MetabaseEnterpriseActionV2ApiApiActionIdOrExpression = MetabaseEnter
  * Schema for an instance of a `:model/Card` (everything is optional to support updates).
  */
 export type MetabaseEnterpriseDependenciesApiCardBody = {
-    dataset_query?: MetabaseQueriesSchemaQuery;
-    id?: MetabaseLibSchemaIdCard;
-    parameter_mappings?: MetabaseParametersSchemaParameterMappings;
-    parameters?: MetabaseParametersSchemaParameters;
-    result_metadata?: MetabaseAnalyzeQueryResultsResultsMetadata;
-    type?: MetabaseLibSchemaMetadataCardType;
+    dataset_query?: MetabaseQueriesSchemaQuery | null;
+    id?: MetabaseLibSchemaIdCard | null;
+    parameter_mappings?: MetabaseParametersSchemaParameterMappings | null;
+    parameters?: MetabaseParametersSchemaParameters | null;
+    result_metadata?: MetabaseAnalyzeQueryResultsResultsMetadata | null;
+    type?: MetabaseLibSchemaMetadataCardType | null;
 };
 
 export type MetabaseEnterpriseDependenciesApiTransformBody = {
@@ -647,24 +647,21 @@ export type MetabaseEnterpriseDependenciesApiTransformBody = {
     source?: {
         query?: MetabaseQueriesSchemaQuery;
         type?: string;
-    };
-    /**
-     * Value must be a map.
-     */
+    } | null;
     target?: {
         [key: string]: unknown;
-    };
+    } | null;
 };
 
 export type MetabaseEnterpriseMetabotV3ClientSchemaMessage = {
-    content?: string;
+    content?: string | null;
     role: MetabaseEnterpriseMetabotV3ClientSchemaRole;
-    tool_call_id?: string;
+    tool_call_id?: string | null;
     tool_calls?: Array<{
         arguments: string;
         id: string;
         name: string;
-    }>;
+    }> | null;
 };
 
 export type MetabaseEnterpriseMetabotV3ClientSchemaMessages = Array<MetabaseEnterpriseMetabotV3ClientSchemaMessage>;
@@ -686,7 +683,7 @@ export type MetabaseEnterpriseMetabotV3ToolsApiAggregation = {
     bucket?: MetabaseEnterpriseMetabotV3ToolsApiBucket;
     field_id: string;
     function: 'avg' | 'count' | 'count-distinct' | 'max' | 'min' | 'sum';
-    sort_order?: 'asc' | 'desc';
+    sort_order?: 'asc' | 'desc' | null;
 } & {
     [key: string]: unknown;
 };
@@ -710,8 +707,8 @@ export type MetabaseEnterpriseMetabotV3ToolsApiAnswerSourcesResult = {
 };
 
 export type MetabaseEnterpriseMetabotV3ToolsApiBasicMetric = {
-    default_time_dimension_field_id?: string;
-    description?: string;
+    default_time_dimension_field_id?: string | null;
+    description?: string | null;
     id: number;
     name: string;
     type: 'metric';
@@ -742,12 +739,12 @@ export const MetabaseEnterpriseMetabotV3ToolsApiBucket = {
 export type MetabaseEnterpriseMetabotV3ToolsApiBucket = typeof MetabaseEnterpriseMetabotV3ToolsApiBucket[keyof typeof MetabaseEnterpriseMetabotV3ToolsApiBucket];
 
 export type MetabaseEnterpriseMetabotV3ToolsApiColumn = {
-    description?: string;
+    description?: string | null;
     field_id: string;
     field_values?: MetabaseEnterpriseMetabotV3ToolsApiFieldValues;
     name: string;
-    semantic_type?: string;
-    type?: MetabaseEnterpriseMetabotV3ToolsApiFieldType;
+    semantic_type?: string | null;
+    type: MetabaseEnterpriseMetabotV3ToolsApiFieldType | null;
 };
 
 export type MetabaseEnterpriseMetabotV3ToolsApiColumns = Array<MetabaseEnterpriseMetabotV3ToolsApiColumn>;
@@ -826,7 +823,7 @@ export type MetabaseEnterpriseMetabotV3ToolsApiFieldValuesArguments = {
     entity_id: number;
     entity_type: 'table' | 'model' | 'metric';
     field_id: string;
-    limit?: number;
+    limit?: number | null;
 } & {
     [key: string]: unknown;
 };
@@ -834,8 +831,8 @@ export type MetabaseEnterpriseMetabotV3ToolsApiFieldValuesArguments = {
 export type MetabaseEnterpriseMetabotV3ToolsApiFieldValuesResult = {
     structured_output: {
         field_id: string;
-        statistics?: MetabaseEnterpriseMetabotV3ToolsApiStatistics;
-        values?: Array<unknown>;
+        statistics?: MetabaseEnterpriseMetabotV3ToolsApiStatistics | null;
+        values?: Array<unknown> | null;
     };
 } | {
     output: string;
@@ -904,8 +901,8 @@ export type MetabaseEnterpriseMetabotV3ToolsApiFindOutliersResult = {
 };
 
 export type MetabaseEnterpriseMetabotV3ToolsApiFullMetric = {
-    default_time_dimension_field_id?: string;
-    description?: string;
+    default_time_dimension_field_id?: string | null;
+    description?: string | null;
     id: number;
     name: string;
     queryable_dimensions?: MetabaseEnterpriseMetabotV3ToolsApiColumns;
@@ -1004,7 +1001,7 @@ export type MetabaseEnterpriseMetabotV3ToolsApiGetReportDetailsArguments = {
 
 export type MetabaseEnterpriseMetabotV3ToolsApiGetReportDetailsResult = {
     structured_output: {
-        description?: string;
+        description?: string | null;
         id: number;
         name: string;
         result_columns: MetabaseEnterpriseMetabotV3ToolsApiColumns;
@@ -1064,7 +1061,7 @@ export type MetabaseEnterpriseMetabotV3ToolsApiGetTablesResult = {
 };
 
 export type MetabaseEnterpriseMetabotV3ToolsApiGroupBy = {
-    field_granularity?: 'day' | 'week' | 'month' | 'quarter' | 'year';
+    field_granularity?: 'day' | 'week' | 'month' | 'quarter' | 'year' | null;
     field_id: string;
 } & {
     [key: string]: unknown;
@@ -1081,52 +1078,52 @@ export type MetabaseEnterpriseMetabotV3ToolsApiNumericFilter = {
 export type MetabaseEnterpriseMetabotV3ToolsApiProportion = number;
 
 export type MetabaseEnterpriseMetabotV3ToolsApiQueryDatasourceArguments = {
-    aggregations?: Array<MetabaseEnterpriseMetabotV3ToolsApiAggregation>;
-    fields?: Array<MetabaseEnterpriseMetabotV3ToolsApiField>;
-    filters?: Array<MetabaseEnterpriseMetabotV3ToolsApiFilter>;
-    group_by?: Array<MetabaseEnterpriseMetabotV3ToolsApiGroupBy>;
-    limit?: number;
+    aggregations?: Array<MetabaseEnterpriseMetabotV3ToolsApiAggregation> | null;
+    fields?: Array<MetabaseEnterpriseMetabotV3ToolsApiField> | null;
+    filters?: Array<MetabaseEnterpriseMetabotV3ToolsApiFilter> | null;
+    group_by?: Array<MetabaseEnterpriseMetabotV3ToolsApiGroupBy> | null;
+    limit?: number | null;
     model_id?: number;
     order_by?: Array<{
         direction: 'asc' | 'desc';
         field: MetabaseEnterpriseMetabotV3ToolsApiField;
-    }>;
+    }> | null;
     table_id?: number;
 } & {
     [key: string]: unknown;
 };
 
 export type MetabaseEnterpriseMetabotV3ToolsApiQueryMetricArguments = {
-    filters?: Array<MetabaseEnterpriseMetabotV3ToolsApiFilter>;
-    group_by?: Array<MetabaseEnterpriseMetabotV3ToolsApiGroupBy>;
+    filters?: Array<MetabaseEnterpriseMetabotV3ToolsApiFilter> | null;
+    group_by?: Array<MetabaseEnterpriseMetabotV3ToolsApiGroupBy> | null;
     metric_id: number;
 } & {
     [key: string]: unknown;
 };
 
 export type MetabaseEnterpriseMetabotV3ToolsApiQueryModelArguments = {
-    aggregations?: Array<MetabaseEnterpriseMetabotV3ToolsApiAggregation>;
-    fields?: Array<MetabaseEnterpriseMetabotV3ToolsApiField>;
-    filters?: Array<MetabaseEnterpriseMetabotV3ToolsApiFilter>;
-    group_by?: Array<MetabaseEnterpriseMetabotV3ToolsApiGroupBy>;
-    limit?: number;
+    aggregations?: Array<MetabaseEnterpriseMetabotV3ToolsApiAggregation> | null;
+    fields?: Array<MetabaseEnterpriseMetabotV3ToolsApiField> | null;
+    filters?: Array<MetabaseEnterpriseMetabotV3ToolsApiFilter> | null;
+    group_by?: Array<MetabaseEnterpriseMetabotV3ToolsApiGroupBy> | null;
+    limit?: number | null;
     model_id: number;
     order_by?: Array<{
         direction: 'asc' | 'desc';
         field: MetabaseEnterpriseMetabotV3ToolsApiField;
-    }>;
+    }> | null;
 } & {
     [key: string]: unknown;
 };
 
 export type MetabaseEnterpriseMetabotV3ToolsApiSearchArguments = {
-    created_at?: string;
-    database_id?: number;
-    entity_types?: Array<'table' | 'model' | 'question' | 'dashboard' | 'metric' | 'database'>;
-    last_edited_at?: string;
+    created_at?: string | null;
+    database_id?: number | null;
+    entity_types?: Array<'table' | 'model' | 'question' | 'dashboard' | 'metric' | 'database'> | null;
+    last_edited_at?: string | null;
     limit?: number;
-    semantic_queries?: Array<string>;
-    term_queries?: Array<string>;
+    semantic_queries?: Array<string> | null;
+    term_queries?: Array<string> | null;
 } & {
     [key: string]: unknown;
 };
@@ -1145,38 +1142,38 @@ export type MetabaseEnterpriseMetabotV3ToolsApiSearchResult = {
  */
 export type MetabaseEnterpriseMetabotV3ToolsApiSearchResultItem = {
     collection?: {
-        authority_level?: string;
-        name?: string;
-    };
-    created_at?: string;
-    database_id?: number;
-    database_schema?: string;
-    description?: string;
-    display_name?: string;
+        authority_level?: string | null;
+        name?: string | null;
+    } | null;
+    created_at?: string | null;
+    database_id?: number | null;
+    database_schema?: string | null;
+    description?: string | null;
+    display_name?: string | null;
     id: number;
     name: string;
     type: 'table' | 'model' | 'dashboard' | 'question' | 'metric' | 'database';
-    updated_at?: string;
-    verified?: boolean;
+    updated_at?: string | null;
+    verified?: boolean | null;
 };
 
 export type MetabaseEnterpriseMetabotV3ToolsApiStatistics = {
-    average_length?: number;
-    avg?: number;
-    distinct_count?: MetabaseEnterpriseMetabotV3ToolsApiCount;
-    earliest?: string;
-    latest?: string;
-    max?: number;
-    min?: number;
-    percent_email?: MetabaseEnterpriseMetabotV3ToolsApiProportion;
-    percent_json?: MetabaseEnterpriseMetabotV3ToolsApiProportion;
-    percent_null?: MetabaseEnterpriseMetabotV3ToolsApiProportion;
-    percent_state?: MetabaseEnterpriseMetabotV3ToolsApiProportion;
-    percent_url?: MetabaseEnterpriseMetabotV3ToolsApiProportion;
-    q1?: number;
-    q3?: number;
-    sd?: number;
-    values?: MetabaseEnterpriseMetabotV3ToolsApiFieldValues;
+    average_length?: number | null;
+    avg?: number | null;
+    distinct_count?: MetabaseEnterpriseMetabotV3ToolsApiCount | null;
+    earliest?: string | null;
+    latest?: string | null;
+    max?: number | null;
+    min?: number | null;
+    percent_email?: MetabaseEnterpriseMetabotV3ToolsApiProportion | null;
+    percent_json?: MetabaseEnterpriseMetabotV3ToolsApiProportion | null;
+    percent_null?: MetabaseEnterpriseMetabotV3ToolsApiProportion | null;
+    percent_state?: MetabaseEnterpriseMetabotV3ToolsApiProportion | null;
+    percent_url?: MetabaseEnterpriseMetabotV3ToolsApiProportion | null;
+    q1?: number | null;
+    q3?: number | null;
+    sd?: number | null;
+    values?: MetabaseEnterpriseMetabotV3ToolsApiFieldValues | null;
 };
 
 export type MetabaseEnterpriseMetabotV3ToolsApiStringFilter = {
@@ -1206,8 +1203,8 @@ export type MetabaseEnterpriseMetabotV3ToolsApiSubscriptionSchedule = ({
 
 export type MetabaseEnterpriseMetabotV3ToolsApiTableResult = {
     database_id: number;
-    database_schema?: string;
-    description?: string;
+    database_schema?: string | null;
+    description?: string | null;
     display_name: string;
     fields: MetabaseEnterpriseMetabotV3ToolsApiColumns;
     id: number;
@@ -1289,15 +1286,15 @@ export type MetabaseEnterpriseTransformsApiTransformTarget = {
  */
 export type MetabaseActionsSchemaActionForInsert = {
     archived?: boolean;
-    description?: string;
+    description?: string | null;
     model_id: MetabaseLibSchemaIdCard;
     name: string;
-    parameter_mappings?: MetabaseParametersSchemaParameterMappings;
-    parameters?: MetabaseParametersSchemaParameters;
+    parameter_mappings?: MetabaseParametersSchemaParameterMappings | null;
+    parameters?: MetabaseParametersSchemaParameters | null;
     type: MetabaseActionsSchemaType;
     visualization_settings?: {
         [key: string]: unknown;
-    };
+    } | null;
 } & (MetabaseActionsSchemaHttpAction | MetabaseActionsSchemaImplicitAction | MetabaseActionsSchemaQueryAction | {
     [key: string]: unknown;
 });
@@ -1307,16 +1304,16 @@ export type MetabaseActionsSchemaActionForInsert = {
  */
 export type MetabaseActionsSchemaActionForUpdate = {
     archived?: boolean;
-    description?: string;
+    description?: string | null;
     id?: MetabaseActionsSchemaId;
     model_id?: MetabaseLibSchemaIdCard;
     name?: string;
-    parameter_mappings?: MetabaseParametersSchemaParameterMappings;
-    parameters?: MetabaseParametersSchemaParameters;
+    parameter_mappings?: MetabaseParametersSchemaParameterMappings | null;
+    parameters?: MetabaseParametersSchemaParameters | null;
     type?: MetabaseActionsSchemaType;
     visualization_settings?: {
         [key: string]: unknown;
-    };
+    } | null;
 } & (MetabaseActionsSchemaHttpAction | MetabaseActionsSchemaImplicitAction | MetabaseActionsSchemaQueryAction | {
     [key: string]: unknown;
 });
@@ -1327,10 +1324,10 @@ export type MetabaseActionsSchemaActionForUpdate = {
 export type MetabaseActionsSchemaHttpActionJsonQuery = string;
 
 export type MetabaseActionsSchemaHttpActionTemplate = {
-    body?: string;
-    headers?: string;
+    body?: string | null;
+    headers?: string | null;
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-    parameters?: MetabaseParametersSchemaParameters;
+    parameters?: MetabaseParametersSchemaParameters | null;
     url: string;
 };
 
@@ -1357,31 +1354,28 @@ export type MetabaseActionsSchemaImplicitActionKind = typeof MetabaseActionsSche
 export type MetabaseActionsSchemaAction = {
     archived?: boolean;
     created_at?: unknown;
-    creator_id?: MetabaseLibSchemaIdUser;
-    description?: string;
+    creator_id?: MetabaseLibSchemaIdUser | null;
+    description?: string | null;
     id: MetabaseActionsSchemaId;
-    made_public_by_id?: MetabaseLibSchemaIdUser;
+    made_public_by_id?: MetabaseLibSchemaIdUser | null;
     model_id?: MetabaseLibSchemaIdCard;
     name?: string;
-    parameter_mappings?: MetabaseParametersSchemaParameterMappings;
-    parameters?: MetabaseParametersSchemaParameters;
-    /**
-     * value must be a valid UUID.
-     */
-    public_uuid?: string;
+    parameter_mappings?: MetabaseParametersSchemaParameterMappings | null;
+    parameters?: MetabaseParametersSchemaParameters | null;
+    public_uuid?: string | null;
     type?: MetabaseActionsSchemaType;
     updated_at?: unknown;
     visualization_settings?: {
         [key: string]: unknown;
-    };
+    } | null;
 } & (MetabaseActionsSchemaHttpAction | MetabaseActionsSchemaImplicitAction | MetabaseActionsSchemaQueryAction | {
     [key: string]: unknown;
 });
 
 export type MetabaseActionsSchemaHttpAction = {
-    error_handle?: MetabaseActionsSchemaHttpActionJsonQuery;
-    response_handle?: MetabaseActionsSchemaHttpActionJsonQuery;
-    template?: MetabaseActionsSchemaHttpActionTemplate;
+    error_handle?: MetabaseActionsSchemaHttpActionJsonQuery | null;
+    response_handle?: MetabaseActionsSchemaHttpActionJsonQuery | null;
+    template?: MetabaseActionsSchemaHttpActionTemplate | null;
 };
 
 /**
@@ -1390,12 +1384,12 @@ export type MetabaseActionsSchemaHttpAction = {
 export type MetabaseActionsSchemaId = number;
 
 export type MetabaseActionsSchemaImplicitAction = {
-    kind?: MetabaseActionsSchemaImplicitActionKind;
+    kind?: MetabaseActionsSchemaImplicitActionKind | null;
 };
 
 export type MetabaseActionsSchemaQueryAction = {
-    database_id?: MetabaseLibSchemaIdDatabase;
-    dataset_query?: MetabaseQueriesSchemaQuery;
+    database_id?: MetabaseLibSchemaIdDatabase | null;
+    dataset_query?: MetabaseQueriesSchemaQuery | null;
 };
 
 /**
@@ -1449,7 +1443,7 @@ export type MetabaseActionsTypesScopeRaw = {
 /**
  * value must be an array of valid results column metadata maps.
  */
-export type MetabaseAnalyzeQueryResultsResultsMetadata = Array<MetabaseLegacyMbqlSchemaLegacyColumnMetadata>;
+export type MetabaseAnalyzeQueryResultsResultsMetadata = Array<MetabaseLegacyMbqlSchemaLegacyColumnMetadata> | null;
 
 /**
  * Masked string like 'mb_1234**********'.
@@ -1491,13 +1485,13 @@ export type MetabaseCacheApiCacheStrategyEeDuration = {
      * value must be an integer greater than zero.
      */
     duration: number;
-    refresh_automatically?: boolean;
+    refresh_automatically?: boolean | null;
     type: 'duration';
     unit: 'hours' | 'minutes' | 'seconds' | 'days';
 };
 
 export type MetabaseCacheApiCacheStrategyEeSchedule = {
-    refresh_automatically?: boolean;
+    refresh_automatically?: boolean | null;
     schedule: MetabaseUtilCronCronScheduleString;
     type: 'schedule';
 };
@@ -1530,7 +1524,7 @@ export type MetabaseCacheApiCacheStrategy = MetabaseCacheApiCacheStrategyEe | Me
  */
 export type MetabaseChannelModelsChannelChannel = {
     active?: boolean;
-    description?: string;
+    description?: string | null;
     details: {
         [key: string]: unknown;
     };
@@ -1559,11 +1553,11 @@ export type MetabaseChannelModelsChannelChannelTemplateEmailDetails = {
 };
 
 export type MetabaseCollectionsApiDashboardQuestionCandidate = {
-    description?: string;
+    description: string | null;
     id: number;
     name: string;
     sole_dashboard_info: {
-        description?: string;
+        description: string | null;
         id: number;
         name: string;
     };
@@ -1721,7 +1715,7 @@ export type MetabaseLegacyMbqlSchemaDatetimeExpression = MetabaseLegacyMbqlSchem
 
 export type MetabaseLegacyMbqlSchemaEmptyable = MetabaseLegacyMbqlSchemaStringExpressionArg | MetabaseLegacyMbqlSchemaFieldOrExpressionRef;
 
-export type MetabaseLegacyMbqlSchemaEqualityComparable = boolean | number | string | MetabaseLegacyMbqlSchemaTemporalLiteral | MetabaseLegacyMbqlSchemaRelativeDatetime | MetabaseLegacyMbqlSchemaFieldOrExpressionRef | MetabaseLegacyMbqlSchemaExpressionArg | MetabaseLegacyMbqlSchemaValue;
+export type MetabaseLegacyMbqlSchemaEqualityComparable = boolean | number | string | MetabaseLegacyMbqlSchemaTemporalLiteral | MetabaseLegacyMbqlSchemaRelativeDatetime | MetabaseLegacyMbqlSchemaFieldOrExpressionRef | MetabaseLegacyMbqlSchemaExpressionArg | MetabaseLegacyMbqlSchemaValue | null;
 
 export type MetabaseLegacyMbqlSchemaExpressionArg = number | boolean | MetabaseLegacyMbqlSchemaBooleanExpression | MetabaseLegacyMbqlSchemaNumericExpression | MetabaseLegacyMbqlSchemaDatetimeExpression | MetabaseLegacyMbqlSchemaAggregation | string | MetabaseLegacyMbqlSchemaStringExpression | MetabaseLegacyMbqlSchemaValue | MetabaseLegacyMbqlSchemaFieldOrExpressionRef;
 
@@ -1740,21 +1734,21 @@ export const MetabaseLegacyMbqlSchemaExtractWeekMode = {
 export type MetabaseLegacyMbqlSchemaExtractWeekMode = typeof MetabaseLegacyMbqlSchemaExtractWeekMode[keyof typeof MetabaseLegacyMbqlSchemaExtractWeekMode];
 
 export type MetabaseLegacyMbqlSchemaFieldOptions = {
-    'base-type'?: MetabaseLibSchemaCommonBaseType;
+    'base-type'?: MetabaseLibSchemaCommonBaseType | null;
     /**
      * Replaces `binning-strategy`.
      *
      * Using binning requires the driver to support the `:binning` feature.
      */
-    binning?: MetabaseLibSchemaBinningBinning;
-    'inherited-temporal-unit'?: MetabaseLegacyMbqlSchemaDateTimeUnit;
+    binning?: MetabaseLibSchemaBinningBinning | null;
+    'inherited-temporal-unit'?: MetabaseLegacyMbqlSchemaDateTimeUnit | null;
     /**
      * Replaces `joined-field`.
      *
      * `:join-alias` is used to refer to a FieldOrExpression from a different Table/nested query that you are EXPLICITLY
      * JOINING against.
      */
-    'join-alias'?: MetabaseLibSchemaJoinAlias;
+    'join-alias'?: MetabaseLibSchemaJoinAlias | null;
     /**
      * Replaces `fk->`.
      *
@@ -1784,7 +1778,7 @@ export type MetabaseLegacyMbqlSchemaFieldOptions = {
      * `:field` clauses elsewhere will not be automatically bucketed, so drivers still need to make sure they do any
      * special datetime handling for plain `:field` clauses when their FieldOrExpression derives from `:type/DateTime`.
      */
-    'temporal-unit'?: MetabaseLegacyMbqlSchemaDateTimeUnit;
+    'temporal-unit'?: MetabaseLegacyMbqlSchemaDateTimeUnit | null;
 } & MetabaseLegacyMbqlSchemaValidateTemporalUnit & MetabaseLegacyMbqlSchemaNoBinningOptionsAtTopLevel;
 
 /**
@@ -1854,12 +1848,12 @@ export type MetabaseLegacyMbqlSchemaJoin = {
      *
      * Don't set this information yourself. It will have no effect.
      */
-    'fk-field-id'?: MetabaseLibSchemaIdField;
+    'fk-field-id'?: MetabaseLibSchemaIdField | null;
     /**
      * Metadata about the source query being used, if pulled in from a Card via the
      * `:source-table "card__id"` syntax. added automatically by the `resolve-card-id-source-tables` middleware.
      */
-    'source-metadata'?: Array<MetabaseLegacyMbqlSchemaLegacyColumnMetadata>;
+    'source-metadata'?: Array<MetabaseLegacyMbqlSchemaLegacyColumnMetadata> | null;
     'source-query'?: MetabaseLegacyMbqlSchemaSourceQuery;
     /**
      * *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where
@@ -1895,13 +1889,13 @@ export type MetabaseLegacyMbqlSchemaMbqlQuery = {
      * Info about the columns of the source query. Added in automatically by middleware. This metadata is
      * primarily used to let power things like binning when used with Field Literals instead of normal Fields.
      */
-    'source-metadata'?: Array<MetabaseLegacyMbqlSchemaLegacyColumnMetadata>;
+    'source-metadata'?: Array<MetabaseLegacyMbqlSchemaLegacyColumnMetadata> | null;
     'source-query'?: MetabaseLegacyMbqlSchemaSourceQuery;
     'source-table'?: MetabaseLibSchemaIdTable | string;
 } & unknown;
 
 export type MetabaseLegacyMbqlSchemaNativeSourceQuery = {
-    collection?: MetabaseLibSchemaCommonNonBlankString;
+    collection?: MetabaseLibSchemaCommonNonBlankString | null;
     native: unknown;
     'template-tags'?: MetabaseLegacyMbqlSchemaTemplateTagMap;
 } & unknown;
@@ -1920,28 +1914,28 @@ export type MetabaseLegacyMbqlSchemaOrderBys = Array<MetabaseLegacyMbqlSchemaOrd
 export type MetabaseLegacyMbqlSchemaOrderComparable = MetabaseLegacyMbqlSchemaValue | number | string | MetabaseLegacyMbqlSchemaTemporalLiteral | MetabaseLegacyMbqlSchemaExpressionArg | MetabaseLegacyMbqlSchemaRelativeDatetime | MetabaseLegacyMbqlSchemaFieldOrExpressionRef;
 
 export type MetabaseLegacyMbqlSchemaQuery = {
-    constraints?: MetabaseLibSchemaConstraintsConstraints;
-    'create-row'?: MetabaseLibSchemaActionsRow;
+    constraints?: MetabaseLibSchemaConstraintsConstraints | null;
+    'create-row'?: MetabaseLibSchemaActionsRow | null;
     database?: MetabaseLegacyMbqlSchemaDatabaseId;
     /**
      * Used when recording info about this run in the QueryExecution log; things like context query was
      * ran in and User who ran it.
      */
-    info?: MetabaseLibSchemaInfoInfo;
-    middleware?: MetabaseLibSchemaMiddlewareOptionsMiddlewareOptions;
+    info?: MetabaseLibSchemaInfoInfo | null;
+    middleware?: MetabaseLibSchemaMiddlewareOptionsMiddlewareOptions | null;
     native?: {
-        collection?: MetabaseLibSchemaCommonNonBlankString;
+        collection?: MetabaseLibSchemaCommonNonBlankString | null;
         query: unknown;
         'template-tags'?: MetabaseLegacyMbqlSchemaTemplateTagMap;
     } & unknown;
-    parameters?: MetabaseLibSchemaParameterParameters;
+    parameters?: MetabaseLibSchemaParameterParameters | null;
     query?: MetabaseLegacyMbqlSchemaMbqlQuery;
-    settings?: MetabaseLibSchemaSettingsSettings;
+    settings?: MetabaseLibSchemaSettingsSettings | null;
     /**
      * Type of query. `:query` = MBQL; `:native` = native.
      */
     type: 'query' | 'native';
-    'update-row'?: MetabaseLibSchemaActionsRow;
+    'update-row'?: MetabaseLibSchemaActionsRow | null;
 } & MetabaseLegacyMbqlSchemaCheckKeysForQueryType & MetabaseLegacyMbqlSchemaCheckQueryDoesNotHaveSourceMetadata & unknown;
 
 export type MetabaseLegacyMbqlSchemaReference = MetabaseLegacyMbqlSchemaAggregation2 | MetabaseLegacyMbqlSchemaExpression | MetabaseLegacyMbqlSchemaField;
@@ -2015,7 +2009,7 @@ export type MetabaseLegacyMbqlSchemaTemplateTag_FieldFilter = {
      */
     options?: {
         [key: string]: unknown;
-    };
+    } | null;
     required?: boolean;
     type: 'dimension';
     /**
@@ -2141,11 +2135,11 @@ export type MetabaseLegacyMbqlSchemaUnnamedAggregation = MetabaseLegacyMbqlSchem
  * Type info about a value in a `:value` clause. Added automatically by `wrap-value-literals` middleware to values in filter clauses based on the Field in the clause.
  */
 export type MetabaseLegacyMbqlSchemaValueTypeInfo = {
-    base_type?: MetabaseLibSchemaCommonBaseType;
-    database_type?: MetabaseLibSchemaCommonNonBlankString;
-    name?: MetabaseLibSchemaCommonNonBlankString;
-    semantic_type?: MetabaseLibSchemaCommonSemanticOrRelationType;
-    unit?: MetabaseLegacyMbqlSchemaDateTimeUnit;
+    base_type?: MetabaseLibSchemaCommonBaseType | null;
+    database_type?: MetabaseLibSchemaCommonNonBlankString | null;
+    name?: MetabaseLibSchemaCommonNonBlankString | null;
+    semantic_type?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
+    unit?: MetabaseLegacyMbqlSchemaDateTimeUnit | null;
 };
 
 /**
@@ -2431,17 +2425,17 @@ export type MetabaseLegacyMbqlSchemaIsNull = unknown;
  */
 export type MetabaseLegacyMbqlSchemaLegacyColumnMetadata = {
     base_type: MetabaseLibSchemaCommonBaseType;
-    converted_timezone?: MetabaseLibSchemaExpressionTemporalTimezoneId;
+    converted_timezone?: MetabaseLibSchemaExpressionTemporalTimezoneId | null;
     display_name: string;
     effective_type?: MetabaseLibSchemaCommonBaseType;
-    field_ref?: MetabaseLegacyMbqlSchemaReference;
-    fingerprint?: MetabaseLibSchemaMetadataFingerprintFingerprint;
-    id?: MetabaseLibSchemaIdField;
+    field_ref?: MetabaseLegacyMbqlSchemaReference | null;
+    fingerprint?: MetabaseLibSchemaMetadataFingerprintFingerprint | null;
+    id?: MetabaseLibSchemaIdField | null;
     name: string;
-    semantic_type?: MetabaseLibSchemaCommonSemanticOrRelationType;
-    source?: MetabaseLibSchemaMetadataColumnLegacySource;
-    unit?: MetabaseLibSchemaTemporalBucketingUnit;
-    visibility_type?: MetabaseLibSchemaMetadataColumnVisibilityType;
+    semantic_type?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
+    source?: MetabaseLibSchemaMetadataColumnLegacySource | null;
+    unit?: MetabaseLibSchemaTemporalBucketingUnit | null;
+    visibility_type?: MetabaseLibSchemaMetadataColumnVisibilityType | null;
 };
 
 /**
@@ -2711,8 +2705,8 @@ export type MetabaseLibSchemaStageNative = {
     'lib/type': 'mbql.stage/native';
     native?: unknown;
     parameters?: MetabaseLibSchemaParameterParameters;
-    params?: Array<MetabaseLibSchemaLiteralLiteral | unknown>;
-    'query-permissions/referenced-card-ids'?: Array<MetabaseLibSchemaIdCard>;
+    params?: Array<MetabaseLibSchemaLiteralLiteral | unknown> | null;
+    'query-permissions/referenced-card-ids'?: Array<MetabaseLibSchemaIdCard> | null;
     'template-tags'?: MetabaseLibSchemaTemplateTagTemplateTagMap;
 } & unknown;
 
@@ -2788,13 +2782,13 @@ export type MetabaseLibSchemaCommonKebabCasedMap = unknown;
 export type MetabaseLibSchemaCommonNonBlankString = string;
 
 export type MetabaseLibSchemaCommonOptions = {
-    'base-type'?: MetabaseLibSchemaCommonBaseType;
-    'database-type'?: MetabaseLibSchemaCommonNonBlankString;
-    'display-name'?: MetabaseLibSchemaCommonNonBlankString;
-    'effective-type'?: MetabaseLibSchemaCommonBaseType;
+    'base-type'?: MetabaseLibSchemaCommonBaseType | null;
+    'database-type'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'display-name'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'effective-type'?: MetabaseLibSchemaCommonBaseType | null;
     'lib/uuid': MetabaseLibSchemaCommonUuid;
-    name?: MetabaseLibSchemaCommonNonBlankString;
-    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType;
+    name?: MetabaseLibSchemaCommonNonBlankString | null;
+    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
 };
 
 export type MetabaseLibSchemaCommonPositiveNumber = unknown;
@@ -2836,9 +2830,9 @@ export type MetabaseLibSchemaExpressionArithmeticTemporalDifferenceSchema = unkn
 
 export type MetabaseLibSchemaExpressionBoolean = MetabaseLibSchemaMbqlClauseClause | MetabaseLibSchemaLiteralLiteral;
 
-export type MetabaseLibSchemaExpressionEqualityComparable = MetabaseLibSchemaMbqlClauseClause | MetabaseLibSchemaLiteralLiteral;
+export type MetabaseLibSchemaExpressionEqualityComparable = MetabaseLibSchemaMbqlClauseClause | MetabaseLibSchemaLiteralLiteral | null;
 
-export type MetabaseLibSchemaExpressionExpression = MetabaseLibSchemaMbqlClauseClause | MetabaseLibSchemaLiteralLiteral;
+export type MetabaseLibSchemaExpressionExpression = MetabaseLibSchemaMbqlClauseClause | MetabaseLibSchemaLiteralLiteral | null;
 
 /**
  * The `:expressions` definition map as found as a top-level key in an MBQL stage.
@@ -2861,12 +2855,12 @@ export type MetabaseLibSchemaExpressionTemporalAbsoluteDatetimeBaseType = Metaba
 
 export type MetabaseLibSchemaExpressionTemporalAbsoluteDatetimeOptions = {
     'base-type'?: MetabaseLibSchemaCommonBaseType;
-    'database-type'?: MetabaseLibSchemaCommonNonBlankString;
-    'display-name'?: MetabaseLibSchemaCommonNonBlankString;
-    'effective-type'?: MetabaseLibSchemaCommonBaseType;
+    'database-type'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'display-name'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'effective-type'?: MetabaseLibSchemaCommonBaseType | null;
     'lib/uuid': MetabaseLibSchemaCommonUuid;
-    name?: MetabaseLibSchemaCommonNonBlankString;
-    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType;
+    name?: MetabaseLibSchemaCommonNonBlankString | null;
+    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
 };
 
 export type MetabaseLibSchemaExpressionTemporalRelativeDatetimeAmount = 'current' | number;
@@ -3046,19 +3040,19 @@ export type MetabaseLibSchemaInfoHash = string;
  * like [[metabase.query-processor/userland-query]] some of these keys (e.g. `:context`) are in fact required
  */
 export type MetabaseLibSchemaInfoInfo = {
-    'action-id'?: MetabaseLibSchemaIdAction;
-    'card-id'?: MetabaseLibSchemaIdCard;
-    'card-name'?: MetabaseLibSchemaCommonNonBlankString;
-    context?: MetabaseLibSchemaInfoContext;
-    'dashboard-id'?: MetabaseLibSchemaIdDashboard;
-    'executed-by'?: MetabaseLibSchemaIdUser;
-    'metadata/model-metadata'?: Array<MetabaseLibSchemaMetadataLibOrLegacyColumn>;
+    'action-id'?: MetabaseLibSchemaIdAction | null;
+    'card-id'?: MetabaseLibSchemaIdCard | null;
+    'card-name'?: MetabaseLibSchemaCommonNonBlankString | null;
+    context?: MetabaseLibSchemaInfoContext | null;
+    'dashboard-id'?: MetabaseLibSchemaIdDashboard | null;
+    'executed-by'?: MetabaseLibSchemaIdUser | null;
+    'metadata/model-metadata'?: Array<MetabaseLibSchemaMetadataLibOrLegacyColumn> | null;
     'pivot/original-query'?: {
         [key: string]: unknown;
-    };
-    'pivot/result-metadata'?: 'none' | Array<MetabaseLibSchemaMetadataColumn>;
-    'pulse-id'?: MetabaseLibSchemaIdPulse;
-    'query-hash'?: MetabaseLibSchemaInfoHash;
+    } | null;
+    'pivot/result-metadata'?: 'none' | Array<MetabaseLibSchemaMetadataColumn> | null;
+    'pulse-id'?: MetabaseLibSchemaIdPulse | null;
+    'query-hash'?: MetabaseLibSchemaInfoHash | null;
 };
 
 /**
@@ -3136,14 +3130,14 @@ export type MetabaseLibSchemaLiteralStringYearMonth = string;
 export type MetabaseLibSchemaLiteralStringZoneOffset = string;
 
 export type MetabaseLibSchemaLiteralValueOptions = {
-    'base-type'?: MetabaseLibSchemaCommonBaseType;
-    'database-type'?: MetabaseLibSchemaCommonNonBlankString;
-    'display-name'?: MetabaseLibSchemaCommonNonBlankString;
+    'base-type'?: MetabaseLibSchemaCommonBaseType | null;
+    'database-type'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'display-name'?: MetabaseLibSchemaCommonNonBlankString | null;
     'effective-type': string;
     'lib/uuid': MetabaseLibSchemaCommonUuid;
-    name?: MetabaseLibSchemaCommonNonBlankString;
-    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType;
-    unit?: MetabaseLibSchemaTemporalBucketingUnit;
+    name?: MetabaseLibSchemaCommonNonBlankString | null;
+    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
+    unit?: MetabaseLibSchemaTemporalBucketingUnit | null;
 };
 
 export type MetabaseLibSchemaLiteralDate = unknown | MetabaseLibSchemaLiteralStringDate;
@@ -3331,51 +3325,51 @@ export type MetabaseLibSchemaMetadataColumnVisibilityType = typeof MetabaseLibSc
 export type MetabaseLibSchemaMetadataColumn = {
     active?: boolean;
     'base-type': MetabaseLibSchemaCommonBaseType;
-    'database-type'?: string;
-    'display-name'?: string;
-    'effective-type'?: MetabaseLibSchemaCommonBaseType;
-    'field-ref'?: MetabaseLegacyMbqlSchemaReference;
-    fingerprint?: MetabaseLibSchemaMetadataFingerprintFingerprint;
-    'fk-field-id'?: MetabaseLibSchemaIdField;
-    'fk-field-name'?: string;
-    'fk-join-alias'?: MetabaseLibSchemaJoinAlias;
-    'fk-target-field-id'?: MetabaseLibSchemaIdField;
-    'has-field-values'?: MetabaseLibSchemaMetadataColumnHasFieldValues;
-    id?: MetabaseLibSchemaIdField;
-    'inherited-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
-    'lib/breakout?'?: boolean;
-    'lib/card-id'?: MetabaseLibSchemaIdCard;
+    'database-type'?: string | null;
+    'display-name'?: string | null;
+    'effective-type'?: MetabaseLibSchemaCommonBaseType | null;
+    'field-ref'?: MetabaseLegacyMbqlSchemaReference | null;
+    fingerprint?: MetabaseLibSchemaMetadataFingerprintFingerprint | null;
+    'fk-field-id'?: MetabaseLibSchemaIdField | null;
+    'fk-field-name'?: string | null;
+    'fk-join-alias'?: MetabaseLibSchemaJoinAlias | null;
+    'fk-target-field-id'?: MetabaseLibSchemaIdField | null;
+    'has-field-values'?: MetabaseLibSchemaMetadataColumnHasFieldValues | null;
+    id?: MetabaseLibSchemaIdField | null;
+    'inherited-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit | null;
+    'lib/breakout?'?: boolean | null;
+    'lib/card-id'?: MetabaseLibSchemaIdCard | null;
     'lib/deduplicated-name'?: MetabaseLibSchemaMetadataDeduplicatedName;
-    'lib/desired-column-alias'?: MetabaseLibSchemaMetadataDesiredColumnAlias;
-    'lib/expression-name'?: MetabaseLibSchemaCommonNonBlankString;
-    'lib/external-remap'?: MetabaseLibSchemaMetadataColumnRemappingExternal;
-    'lib/internal-remap'?: MetabaseLibSchemaMetadataColumnRemappingInternal;
-    'lib/model-display-name'?: string;
-    'lib/original-binning'?: MetabaseLibSchemaBinningBinning;
-    'lib/original-display-name'?: string;
-    'lib/original-expression-name'?: MetabaseLibSchemaCommonNonBlankString;
-    'lib/original-join-alias'?: MetabaseLibSchemaJoinAlias;
+    'lib/desired-column-alias'?: MetabaseLibSchemaMetadataDesiredColumnAlias | null;
+    'lib/expression-name'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'lib/external-remap'?: MetabaseLibSchemaMetadataColumnRemappingExternal | null;
+    'lib/internal-remap'?: MetabaseLibSchemaMetadataColumnRemappingInternal | null;
+    'lib/model-display-name'?: string | null;
+    'lib/original-binning'?: MetabaseLibSchemaBinningBinning | null;
+    'lib/original-display-name'?: string | null;
+    'lib/original-expression-name'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'lib/original-join-alias'?: MetabaseLibSchemaJoinAlias | null;
     'lib/original-name'?: MetabaseLibSchemaMetadataOriginalName;
-    'lib/ref-display-name'?: string;
-    'lib/ref-name'?: string;
-    'lib/source'?: MetabaseLibSchemaMetadataColumnSource;
-    'lib/source-column-alias'?: MetabaseLibSchemaMetadataSourceColumnAlias;
-    'lib/source-uuid'?: MetabaseLibSchemaCommonUuid;
+    'lib/ref-display-name'?: string | null;
+    'lib/ref-name'?: string | null;
+    'lib/source'?: MetabaseLibSchemaMetadataColumnSource | null;
+    'lib/source-column-alias'?: MetabaseLibSchemaMetadataSourceColumnAlias | null;
+    'lib/source-uuid'?: MetabaseLibSchemaCommonUuid | null;
     'lib/type': 'metadata/column';
-    'metabase.lib.field/binning'?: MetabaseLibSchemaBinningBinning;
-    'metabase.lib.field/temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
-    'metabase.lib.join/join-alias'?: MetabaseLibSchemaJoinAlias;
+    'metabase.lib.field/binning'?: MetabaseLibSchemaBinningBinning | null;
+    'metabase.lib.field/temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit | null;
+    'metabase.lib.join/join-alias'?: MetabaseLibSchemaJoinAlias | null;
     name: string;
-    'nfc-path'?: Array<string>;
-    'qp/implicit-field?'?: boolean;
+    'nfc-path'?: Array<string> | null;
+    'qp/implicit-field?'?: boolean | null;
     'selected?'?: boolean;
-    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType;
+    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
     settings?: {
         [key: string]: unknown;
-    };
-    source?: MetabaseLibSchemaMetadataColumnLegacySource;
-    'source-alias'?: MetabaseLibSchemaCommonNonBlankString;
-    'visibility-type'?: MetabaseLibSchemaMetadataColumnVisibilityType;
+    } | null;
+    source?: MetabaseLibSchemaMetadataColumnLegacySource | null;
+    'source-alias'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'visibility-type'?: MetabaseLibSchemaMetadataColumnVisibilityType | null;
 } & MetabaseLibSchemaCommonKebabCasedMap & MetabaseLibSchemaMetadataColumnValidateForSource;
 
 /**
@@ -3384,7 +3378,7 @@ export type MetabaseLibSchemaMetadataColumn = {
  * by [[metabase.lib.middleware.result-metadata]]). This just adds suffixes to column names e.g. `ID` and `ID` become
  * `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name.
  */
-export type MetabaseLibSchemaMetadataDeduplicatedName = string;
+export type MetabaseLibSchemaMetadataDeduplicatedName = string | null;
 
 /**
  * Name we should use as a column alias for a column in this stage of a query. The desired column alias in stage N
@@ -3399,38 +3393,38 @@ export type MetabaseLibSchemaMetadataDesiredColumnAlias = string;
  */
 export type MetabaseLibSchemaMetadataFingerprintFingerprintGlobal = {
     'distinct-count'?: number;
-    'nil%'?: MetabaseLibSchemaMetadataFingerprintPercent;
+    'nil%'?: MetabaseLibSchemaMetadataFingerprintPercent | null;
 };
 
 /**
  * Schema for fingerprint information for Fields deriving from `:type/Number`.
  */
 export type MetabaseLibSchemaMetadataFingerprintFingerprintNumber = {
-    avg?: number;
-    max?: number;
-    min?: number;
-    q1?: number;
-    q3?: number;
-    sd?: number;
+    avg?: number | null;
+    max?: number | null;
+    min?: number | null;
+    q1?: number | null;
+    q3?: number | null;
+    sd?: number | null;
 };
 
 /**
  * Schema for fingerprint information for Fields deriving from `:type/Temporal`.
  */
 export type MetabaseLibSchemaMetadataFingerprintFingerprintTemporal = {
-    earliest?: string;
-    latest?: string;
+    earliest?: string | null;
+    latest?: string | null;
 };
 
 /**
  * Schema for fingerprint information for Fields deriving from `:type/Text`.
  */
 export type MetabaseLibSchemaMetadataFingerprintFingerprintText = {
-    'average-length'?: number;
-    'percent-email'?: MetabaseLibSchemaMetadataFingerprintPercent;
-    'percent-json'?: MetabaseLibSchemaMetadataFingerprintPercent;
-    'percent-state'?: MetabaseLibSchemaMetadataFingerprintPercent;
-    'percent-url'?: MetabaseLibSchemaMetadataFingerprintPercent;
+    'average-length'?: number | null;
+    'percent-email'?: MetabaseLibSchemaMetadataFingerprintPercent | null;
+    'percent-json'?: MetabaseLibSchemaMetadataFingerprintPercent | null;
+    'percent-state'?: MetabaseLibSchemaMetadataFingerprintPercent | null;
+    'percent-url'?: MetabaseLibSchemaMetadataFingerprintPercent | null;
 };
 
 /**
@@ -3471,51 +3465,51 @@ export type MetabaseLibSchemaMetadataFingerprintPercent = number;
 export type MetabaseLibSchemaMetadataLibOrLegacyColumn = ({
     active?: boolean;
     'base-type': MetabaseLibSchemaCommonBaseType;
-    'database-type'?: string;
-    'display-name'?: string;
-    'effective-type'?: MetabaseLibSchemaCommonBaseType;
-    'field-ref'?: MetabaseLegacyMbqlSchemaReference;
-    fingerprint?: MetabaseLibSchemaMetadataFingerprintFingerprint;
-    'fk-field-id'?: MetabaseLibSchemaIdField;
-    'fk-field-name'?: string;
-    'fk-join-alias'?: MetabaseLibSchemaJoinAlias;
-    'fk-target-field-id'?: MetabaseLibSchemaIdField;
-    'has-field-values'?: MetabaseLibSchemaMetadataColumnHasFieldValues;
-    id?: MetabaseLibSchemaIdField;
-    'inherited-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
-    'lib/breakout?'?: boolean;
-    'lib/card-id'?: MetabaseLibSchemaIdCard;
+    'database-type'?: string | null;
+    'display-name'?: string | null;
+    'effective-type'?: MetabaseLibSchemaCommonBaseType | null;
+    'field-ref'?: MetabaseLegacyMbqlSchemaReference | null;
+    fingerprint?: MetabaseLibSchemaMetadataFingerprintFingerprint | null;
+    'fk-field-id'?: MetabaseLibSchemaIdField | null;
+    'fk-field-name'?: string | null;
+    'fk-join-alias'?: MetabaseLibSchemaJoinAlias | null;
+    'fk-target-field-id'?: MetabaseLibSchemaIdField | null;
+    'has-field-values'?: MetabaseLibSchemaMetadataColumnHasFieldValues | null;
+    id?: MetabaseLibSchemaIdField | null;
+    'inherited-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit | null;
+    'lib/breakout?'?: boolean | null;
+    'lib/card-id'?: MetabaseLibSchemaIdCard | null;
     'lib/deduplicated-name'?: MetabaseLibSchemaMetadataDeduplicatedName;
-    'lib/desired-column-alias'?: MetabaseLibSchemaMetadataDesiredColumnAlias;
-    'lib/expression-name'?: MetabaseLibSchemaCommonNonBlankString;
-    'lib/external-remap'?: MetabaseLibSchemaMetadataColumnRemappingExternal;
-    'lib/internal-remap'?: MetabaseLibSchemaMetadataColumnRemappingInternal;
-    'lib/model-display-name'?: string;
-    'lib/original-binning'?: MetabaseLibSchemaBinningBinning;
-    'lib/original-display-name'?: string;
-    'lib/original-expression-name'?: MetabaseLibSchemaCommonNonBlankString;
-    'lib/original-join-alias'?: MetabaseLibSchemaJoinAlias;
+    'lib/desired-column-alias'?: MetabaseLibSchemaMetadataDesiredColumnAlias | null;
+    'lib/expression-name'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'lib/external-remap'?: MetabaseLibSchemaMetadataColumnRemappingExternal | null;
+    'lib/internal-remap'?: MetabaseLibSchemaMetadataColumnRemappingInternal | null;
+    'lib/model-display-name'?: string | null;
+    'lib/original-binning'?: MetabaseLibSchemaBinningBinning | null;
+    'lib/original-display-name'?: string | null;
+    'lib/original-expression-name'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'lib/original-join-alias'?: MetabaseLibSchemaJoinAlias | null;
     'lib/original-name'?: MetabaseLibSchemaMetadataOriginalName;
-    'lib/ref-display-name'?: string;
-    'lib/ref-name'?: string;
-    'lib/source'?: MetabaseLibSchemaMetadataColumnSource;
-    'lib/source-column-alias'?: MetabaseLibSchemaMetadataSourceColumnAlias;
-    'lib/source-uuid'?: MetabaseLibSchemaCommonUuid;
+    'lib/ref-display-name'?: string | null;
+    'lib/ref-name'?: string | null;
+    'lib/source'?: MetabaseLibSchemaMetadataColumnSource | null;
+    'lib/source-column-alias'?: MetabaseLibSchemaMetadataSourceColumnAlias | null;
+    'lib/source-uuid'?: MetabaseLibSchemaCommonUuid | null;
     'lib/type': 'metadata/column';
-    'metabase.lib.field/binning'?: MetabaseLibSchemaBinningBinning;
-    'metabase.lib.field/temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
-    'metabase.lib.join/join-alias'?: MetabaseLibSchemaJoinAlias;
+    'metabase.lib.field/binning'?: MetabaseLibSchemaBinningBinning | null;
+    'metabase.lib.field/temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit | null;
+    'metabase.lib.join/join-alias'?: MetabaseLibSchemaJoinAlias | null;
     name: string;
-    'nfc-path'?: Array<string>;
-    'qp/implicit-field?'?: boolean;
+    'nfc-path'?: Array<string> | null;
+    'qp/implicit-field?'?: boolean | null;
     'selected?'?: boolean;
-    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType;
+    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
     settings?: {
         [key: string]: unknown;
-    };
-    source?: MetabaseLibSchemaMetadataColumnLegacySource;
-    'source-alias'?: MetabaseLibSchemaCommonNonBlankString;
-    'visibility-type'?: MetabaseLibSchemaMetadataColumnVisibilityType;
+    } | null;
+    source?: MetabaseLibSchemaMetadataColumnLegacySource | null;
+    'source-alias'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'visibility-type'?: MetabaseLibSchemaMetadataColumnVisibilityType | null;
 } & MetabaseLibSchemaCommonKebabCasedMap & MetabaseLibSchemaMetadataColumnValidateForSource) | MetabaseLegacyMbqlSchemaLegacyColumnMetadata;
 
 /**
@@ -3529,7 +3523,7 @@ export type MetabaseLibSchemaMetadataMetadataProvider = MetabaseLibMetadataProto
  * usage of the column.
  * Allowed to be blank because some databases like SQL Server allow blank column names.
  */
-export type MetabaseLibSchemaMetadataOriginalName = string;
+export type MetabaseLibSchemaMetadataOriginalName = string | null;
 
 /**
  * Name for a column as returned/projected by the previous stage of the query or source Table/source Card. The
@@ -3582,7 +3576,7 @@ export type MetabaseLibSchemaMiddlewareOptionsMiddlewareOptions = {
      * although the functions that ultimately power most API endpoints tend to set this to `true`. See
      * `add-constraints` middleware for more details.
      */
-    'add-default-userland-constraints?'?: boolean;
+    'add-default-userland-constraints?'?: boolean | null;
     /**
      * Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware. If true,
      * this will override the `:max-results` and `:max-results-bare-rows` values in `Constraints`.
@@ -3604,7 +3598,7 @@ export type MetabaseLibSchemaMiddlewareOptionsMiddlewareOptions = {
      * incorporated into an export. Used by `metabase.query-processor.middleware.visualization-settings`; default
      * `false`.
      */
-    'process-viz-settings?'?: boolean;
+    'process-viz-settings?'?: boolean | null;
     /**
      * Should we skip adding `results_metadata` to query results after running the query? Used by
      * `metabase.query-processor.middleware.results-metadata`; default `false`. (Note: we may change the name of this
@@ -3616,7 +3610,7 @@ export type MetabaseLibSchemaMiddlewareOptionsMiddlewareOptions = {
      * certain userland-only middleware for such queries -- results are returned in a slightly different format, and
      * QueryExecution entries are normally saved, unless you pass `:no-save` as the option.
      */
-    'userland-query?'?: boolean;
+    'userland-query?'?: boolean | null;
 };
 
 export type MetabaseLibSchemaOrderByOrderBy = MbqlClauseAsc | MbqlClauseDesc;
@@ -3789,13 +3783,13 @@ export type MetabaseLibSchemaQuery = {
 } & MetabaseLibSchemaUtilUniqueUuids & unknown;
 
 export type MetabaseLibSchemaRefExpressionOptions = {
-    'base-type'?: MetabaseLibSchemaCommonBaseType;
-    'database-type'?: MetabaseLibSchemaCommonNonBlankString;
-    'display-name'?: MetabaseLibSchemaCommonNonBlankString;
-    'effective-type'?: MetabaseLibSchemaCommonBaseType;
+    'base-type'?: MetabaseLibSchemaCommonBaseType | null;
+    'database-type'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'display-name'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'effective-type'?: MetabaseLibSchemaCommonBaseType | null;
     'lib/uuid': MetabaseLibSchemaCommonUuid;
-    name?: MetabaseLibSchemaCommonNonBlankString;
-    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType;
+    name?: MetabaseLibSchemaCommonNonBlankString | null;
+    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
     'temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
 };
 
@@ -3814,48 +3808,48 @@ export type MetabaseLibSchemaRefFieldLiteral = [
 export type MetabaseLibSchemaRefFieldLiteralOptions = {
     'base-type': string;
     binning?: MetabaseLibSchemaBinningBinning;
-    'database-type'?: MetabaseLibSchemaCommonNonBlankString;
-    'display-name'?: MetabaseLibSchemaCommonNonBlankString;
-    'effective-type'?: MetabaseLibSchemaCommonBaseType;
+    'database-type'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'display-name'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'effective-type'?: MetabaseLibSchemaCommonBaseType | null;
     'inherited-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
     'join-alias'?: MetabaseLibSchemaJoinAlias;
     'lib/original-binning'?: MetabaseLibSchemaBinningBinning;
     'lib/uuid': MetabaseLibSchemaCommonUuid;
     'metabase.lib.field/original-effective-type'?: MetabaseLibSchemaCommonBaseType;
     'metabase.lib.field/original-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
-    name?: MetabaseLibSchemaCommonNonBlankString;
-    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType;
+    name?: MetabaseLibSchemaCommonNonBlankString | null;
+    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
     'source-field'?: MetabaseLibSchemaIdField;
     'temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
 };
 
 export type MetabaseLibSchemaRefFieldOptions = {
-    'base-type'?: MetabaseLibSchemaCommonBaseType;
+    'base-type'?: MetabaseLibSchemaCommonBaseType | null;
     binning?: MetabaseLibSchemaBinningBinning;
-    'database-type'?: MetabaseLibSchemaCommonNonBlankString;
-    'display-name'?: MetabaseLibSchemaCommonNonBlankString;
-    'effective-type'?: MetabaseLibSchemaCommonBaseType;
+    'database-type'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'display-name'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'effective-type'?: MetabaseLibSchemaCommonBaseType | null;
     'inherited-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
     'join-alias'?: MetabaseLibSchemaJoinAlias;
     'lib/original-binning'?: MetabaseLibSchemaBinningBinning;
     'lib/uuid': MetabaseLibSchemaCommonUuid;
     'metabase.lib.field/original-effective-type'?: MetabaseLibSchemaCommonBaseType;
     'metabase.lib.field/original-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
-    name?: MetabaseLibSchemaCommonNonBlankString;
-    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType;
+    name?: MetabaseLibSchemaCommonNonBlankString | null;
+    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
     'source-field'?: MetabaseLibSchemaIdField;
     'temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
 };
 
 export type MetabaseLibSchemaRefAggregationOptions = {
-    'base-type'?: MetabaseLibSchemaCommonBaseType;
-    'database-type'?: MetabaseLibSchemaCommonNonBlankString;
+    'base-type'?: MetabaseLibSchemaCommonBaseType | null;
+    'database-type'?: MetabaseLibSchemaCommonNonBlankString | null;
     'display-name'?: string;
-    'effective-type'?: MetabaseLibSchemaCommonBaseType;
+    'effective-type'?: MetabaseLibSchemaCommonBaseType | null;
     'lib/source-name'?: MetabaseLibSchemaCommonNonBlankString;
     'lib/uuid': MetabaseLibSchemaCommonUuid;
     name?: string;
-    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType;
+    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
 };
 
 export type MetabaseLibSchemaRefRef = MetabaseLibSchemaMbqlClauseClause;
@@ -3914,7 +3908,7 @@ export type MetabaseLibSchemaTemplateTagFieldFilter = {
     'display-name': MetabaseLibSchemaCommonNonBlankString;
     id?: MetabaseLibSchemaTemplateTagId;
     name: MetabaseLibSchemaCommonNonBlankString;
-    options?: MetabaseLibSchemaTemplateTagFieldFilterOptions;
+    options?: MetabaseLibSchemaTemplateTagFieldFilterOptions | null;
     required?: boolean;
     type: 'dimension';
     'widget-type': MetabaseLibSchemaTemplateTagWidgetType;
@@ -4145,25 +4139,19 @@ export type MetabaseLoggerApiTimeUnit = typeof MetabaseLoggerApiTimeUnit[keyof t
 export type MetabaseNotificationModelsFullyHydratedNotification = {
     creator?: {
         [key: string]: unknown;
-    };
+    } | null;
     handlers?: Array<{
-        active?: boolean;
-        channel?: MetabaseChannelModelsChannelChannel;
-        /**
-         * value must be an integer greater than zero.
-         */
-        channel_id?: number;
+        active?: boolean | null;
+        channel?: MetabaseChannelModelsChannelChannel | null;
+        channel_id?: number | null;
         channel_type: unknown;
         /**
          * value must be an integer greater than zero.
          */
         notification_id?: number;
         recipients?: Array<MetabaseNotificationModelsNotificationRecipient>;
-        template?: MetabaseChannelModelsChannelChannelTemplate;
-        /**
-         * value must be an integer greater than zero.
-         */
-        template_id?: number;
+        template?: MetabaseChannelModelsChannelChannelTemplate | null;
+        template_id?: number | null;
     }>;
     payload: MetabaseNotificationModelsNotificationCard;
     payload_id?: null;
@@ -4172,25 +4160,19 @@ export type MetabaseNotificationModelsFullyHydratedNotification = {
 } | {
     creator?: {
         [key: string]: unknown;
-    };
+    } | null;
     handlers?: Array<{
-        active?: boolean;
-        channel?: MetabaseChannelModelsChannelChannel;
-        /**
-         * value must be an integer greater than zero.
-         */
-        channel_id?: number;
+        active?: boolean | null;
+        channel?: MetabaseChannelModelsChannelChannel | null;
+        channel_id?: number | null;
         channel_type: unknown;
         /**
          * value must be an integer greater than zero.
          */
         notification_id?: number;
         recipients?: Array<MetabaseNotificationModelsNotificationRecipient>;
-        template?: MetabaseChannelModelsChannelChannelTemplate;
-        /**
-         * value must be an integer greater than zero.
-         */
-        template_id?: number;
+        template?: MetabaseChannelModelsChannelChannelTemplate | null;
+        template_id?: number | null;
     }>;
     payload_id?: null;
     payload_type: 'notification/dashboard' | 'notification/system-event' | 'notification/testing' | 'notification/card';
@@ -4198,26 +4180,20 @@ export type MetabaseNotificationModelsFullyHydratedNotification = {
 } | {
     creator?: {
         [key: string]: unknown;
-    };
+    } | null;
     creator_id?: number;
     handlers?: Array<{
-        active?: boolean;
-        channel?: MetabaseChannelModelsChannelChannel;
-        /**
-         * value must be an integer greater than zero.
-         */
-        channel_id?: number;
+        active?: boolean | null;
+        channel?: MetabaseChannelModelsChannelChannel | null;
+        channel_id?: number | null;
         channel_type: unknown;
         /**
          * value must be an integer greater than zero.
          */
         notification_id?: number;
         recipients?: Array<MetabaseNotificationModelsNotificationRecipient>;
-        template?: MetabaseChannelModelsChannelChannelTemplate;
-        /**
-         * value must be an integer greater than zero.
-         */
-        template_id?: number;
+        template?: MetabaseChannelModelsChannelChannelTemplate | null;
+        template_id?: number | null;
     }>;
     payload: MetabaseNotificationModelsNotificationCard;
     payload_id?: number;
@@ -4226,26 +4202,20 @@ export type MetabaseNotificationModelsFullyHydratedNotification = {
 } | {
     creator?: {
         [key: string]: unknown;
-    };
+    } | null;
     creator_id?: number;
     handlers?: Array<{
-        active?: boolean;
-        channel?: MetabaseChannelModelsChannelChannel;
-        /**
-         * value must be an integer greater than zero.
-         */
-        channel_id?: number;
+        active?: boolean | null;
+        channel?: MetabaseChannelModelsChannelChannel | null;
+        channel_id?: number | null;
         channel_type: unknown;
         /**
          * value must be an integer greater than zero.
          */
         notification_id?: number;
         recipients?: Array<MetabaseNotificationModelsNotificationRecipient>;
-        template?: MetabaseChannelModelsChannelChannelTemplate;
-        /**
-         * value must be an integer greater than zero.
-         */
-        template_id?: number;
+        template?: MetabaseChannelModelsChannelChannelTemplate | null;
+        template_id?: number | null;
     }>;
     payload_id?: number;
     payload_type: 'notification/dashboard' | 'notification/system-event' | 'notification/testing' | 'notification/card';
@@ -4253,50 +4223,38 @@ export type MetabaseNotificationModelsFullyHydratedNotification = {
 } | {
     creator?: {
         [key: string]: unknown;
-    };
+    } | null;
     handlers?: Array<{
-        active?: boolean;
-        channel?: MetabaseChannelModelsChannelChannel;
-        /**
-         * value must be an integer greater than zero.
-         */
-        channel_id?: number;
+        active?: boolean | null;
+        channel?: MetabaseChannelModelsChannelChannel | null;
+        channel_id?: number | null;
         channel_type: unknown;
         /**
          * value must be an integer greater than zero.
          */
         notification_id?: number;
         recipients?: Array<MetabaseNotificationModelsNotificationRecipient>;
-        template?: MetabaseChannelModelsChannelChannelTemplate;
-        /**
-         * value must be an integer greater than zero.
-         */
-        template_id?: number;
+        template?: MetabaseChannelModelsChannelChannelTemplate | null;
+        template_id?: number | null;
     }>;
     payload: MetabaseNotificationModelsNotificationCard;
     subscriptions?: Array<MetabaseNotificationModelsNotificationSubscription>;
 } | {
     creator?: {
         [key: string]: unknown;
-    };
+    } | null;
     handlers?: Array<{
-        active?: boolean;
-        channel?: MetabaseChannelModelsChannelChannel;
-        /**
-         * value must be an integer greater than zero.
-         */
-        channel_id?: number;
+        active?: boolean | null;
+        channel?: MetabaseChannelModelsChannelChannel | null;
+        channel_id?: number | null;
         channel_type: unknown;
         /**
          * value must be an integer greater than zero.
          */
         notification_id?: number;
         recipients?: Array<MetabaseNotificationModelsNotificationRecipient>;
-        template?: MetabaseChannelModelsChannelChannelTemplate;
-        /**
-         * value must be an integer greater than zero.
-         */
-        template_id?: number;
+        template?: MetabaseChannelModelsChannelChannelTemplate | null;
+        template_id?: number | null;
     }>;
     subscriptions?: Array<MetabaseNotificationModelsNotificationSubscription>;
 };
@@ -4316,7 +4274,7 @@ export type MetabaseNotificationModelsNotification = {
 export type MetabaseNotificationModelsNotificationCard = {
     card?: {
         [key: string]: unknown;
-    };
+    } | null;
     /**
      * value must be an integer greater than zero.
      */
@@ -4326,20 +4284,14 @@ export type MetabaseNotificationModelsNotificationCard = {
 };
 
 export type MetabaseNotificationModelsNotificationHandler = {
-    active?: boolean;
-    /**
-     * value must be an integer greater than zero.
-     */
-    channel_id?: number;
+    active?: boolean | null;
+    channel_id?: number | null;
     channel_type: unknown;
     /**
      * value must be an integer greater than zero.
      */
     notification_id?: number;
-    /**
-     * value must be an integer greater than zero.
-     */
-    template_id?: number;
+    template_id?: number | null;
 };
 
 /**
@@ -4405,7 +4357,7 @@ export type MetabaseNotificationModelsNotificationSubscription = {
     cron_schedule: string;
     event_name?: null;
     type: 'notification-subscription/cron' | 'notification-subscription/system-event';
-    ui_display_type?: 'cron/raw' | 'cron/builder';
+    ui_display_type?: 'cron/raw' | 'cron/builder' | null;
 };
 
 export type MetabaseParametersSchemaLegacyRef = MetabaseLegacyMbqlSchemaExpression | MetabaseLegacyMbqlSchemaField;
@@ -4415,25 +4367,25 @@ export type MetabaseParametersSchemaLegacyRef = MetabaseLegacyMbqlSchemaExpressi
  */
 export type MetabaseParametersSchemaParameter = {
     default?: unknown;
-    filteringParameters?: Array<MetabaseLibSchemaCommonNonBlankString>;
+    filteringParameters?: Array<MetabaseLibSchemaCommonNonBlankString> | null;
     id: MetabaseLibSchemaCommonNonBlankString;
-    mappings?: Array<MetabaseParametersSchemaParameterMapping> | Array<MetabaseParametersSchemaParameterMapping>;
+    mappings?: Array<MetabaseParametersSchemaParameterMapping> | Array<MetabaseParametersSchemaParameterMapping> | null;
     name?: string;
     sectionId?: MetabaseLibSchemaCommonNonBlankString;
     slug?: string;
     target?: MetabaseLibSchemaParameterTarget;
-    temporal_units?: Array<MetabaseLibSchemaTemporalBucketingUnit>;
+    temporal_units?: Array<MetabaseLibSchemaTemporalBucketingUnit> | null;
     type: MetabaseLibSchemaParameterType;
-    values_query_type?: MetabaseParametersSchemaValuesQueryType;
-    values_source_config?: MetabaseParametersSchemaValuesSourceConfig;
-    values_source_type?: MetabaseParametersSchemaValuesSourceType;
+    values_query_type?: MetabaseParametersSchemaValuesQueryType | null;
+    values_source_config?: MetabaseParametersSchemaValuesSourceConfig | null;
+    values_source_type?: MetabaseParametersSchemaValuesSourceType | null;
 };
 
 /**
  * parameter_mapping must be a map with :parameter_id and :target keys
  */
 export type MetabaseParametersSchemaParameterMapping = {
-    card_id?: MetabaseLibSchemaIdCard;
+    card_id?: MetabaseLibSchemaIdCard | null;
     dashcard?: {
         [key: string]: unknown;
     };
@@ -4474,11 +4426,11 @@ export type MetabaseParametersSchemaValuesSourceType = typeof MetabaseParameters
  * Schema for an instance of a `:model/Card` (everything is optional to support updates).
  */
 export type MetabaseQueriesSchemaCard = {
-    dataset_query?: MetabaseQueriesSchemaQuery;
-    id?: MetabaseLibSchemaIdCard;
-    parameter_mappings?: MetabaseParametersSchemaParameterMappings;
-    parameters?: MetabaseParametersSchemaParameters;
-    type?: MetabaseLibSchemaMetadataCardType;
+    dataset_query?: MetabaseQueriesSchemaQuery | null;
+    id?: MetabaseLibSchemaIdCard | null;
+    parameter_mappings?: MetabaseParametersSchemaParameterMappings | null;
+    parameters?: MetabaseParametersSchemaParameters | null;
+    type?: MetabaseLibSchemaMetadataCardType | null;
 };
 
 export type MetabaseQueriesSchemaCardType = MetabaseLibSchemaMetadataCardType;
@@ -4573,7 +4525,7 @@ export type MetabaseSessionApiAvailableLocales = Array<MetabaseSessionApiAvailab
  * value must be a valid map of schedule maps for a DB.
  */
 export type MetabaseSyncSchedulesExpandedSchedulesMap = {
-    cache_field_values?: MetabaseUtilCronScheduleMap;
+    cache_field_values?: MetabaseUtilCronScheduleMap | null;
     metadata_sync?: MetabaseUtilCronScheduleMap;
 };
 
@@ -4607,8 +4559,8 @@ export type MetabaseTimelineApiTimelineInclude = typeof MetabaseTimelineApiTimel
  */
 export type MetabaseUsersApiPaginatedUsers = {
     data: Array<MetabaseUsersApiUser>;
-    limit?: number;
-    offset?: number;
+    limit: number | null;
+    offset: number | null;
     total: number;
 };
 
@@ -4616,8 +4568,8 @@ export type MetabaseUsersApiPaginatedUsers = {
  * Schema for password update response.
  */
 export type MetabaseUsersApiPasswordUpdateResponse = {
-    session_id?: string;
-    success?: true;
+    session_id?: string | null;
+    success: true | null;
 };
 
 /**
@@ -4631,53 +4583,44 @@ export type MetabaseUsersApiSuccessResponse = {
  * Schema for a User object returned by the API.
  */
 export type MetabaseUsersApiUser = {
-    common_name?: string;
+    common_name?: string | null;
     custom_homepage?: {
         dashboard_id: number;
-    };
+    } | null;
     date_joined: unknown;
     /**
      * value must be a valid email address.
      */
     email: string;
-    first_login?: unknown;
-    first_name?: string;
-    group_ids?: Array<number>;
-    has_invited_second_user?: boolean;
-    has_model?: boolean;
-    has_question_and_dashboard?: boolean;
+    first_login?: unknown | null;
+    first_name: string;
+    group_ids?: Array<number> | null;
+    has_invited_second_user?: boolean | null;
+    has_model?: boolean | null;
+    has_question_and_dashboard?: boolean | null;
     id: number;
     is_active: boolean;
-    is_datasetnewb?: boolean;
-    is_installer?: boolean;
+    is_datasetnewb?: boolean | null;
+    is_installer?: boolean | null;
     is_qbnewb?: boolean;
     is_superuser: boolean;
-    /**
-     * login attribute keys must be a keyword or string
-     */
     jwt_attributes?: {
         [key: string]: unknown;
-    };
-    last_login?: unknown;
-    last_name?: string;
-    /**
-     * String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.
-     */
-    locale?: string;
-    /**
-     * login attribute keys must be a keyword or string
-     */
+    } | null;
+    last_login: unknown | null;
+    last_name: string | null;
+    locale?: string | null;
     login_attributes?: {
         [key: string]: unknown;
-    };
-    personal_collection_id?: number;
-    sso_source?: 'google' | 'ldap' | 'jwt' | 'saml';
+    } | null;
+    personal_collection_id?: number | null;
+    sso_source?: 'google' | 'ldap' | 'jwt' | 'saml' | null;
     structured_attributes?: {
         [key: string]: unknown;
-    };
-    tenant_id?: number;
+    } | null;
+    tenant_id?: number | null;
     updated_at?: unknown;
-    user_group_memberships?: Array<MetabaseUsersApiUserGroupMembership>;
+    user_group_memberships?: Array<MetabaseUsersApiUserGroupMembership> | null;
 };
 
 /**
@@ -4708,10 +4651,10 @@ export type MetabaseUtilCronCronScheduleString = string;
  * value must be a valid schedule map. See schema in metabase.util.cron for details.
  */
 export type MetabaseUtilCronScheduleMap = {
-    schedule_day?: 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
-    schedule_frame?: 'first' | 'mid' | 'last';
-    schedule_hour?: MetabaseUtilCronCronHour;
-    schedule_minute?: MetabaseUtilCronCronMinute;
+    schedule_day?: 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | null;
+    schedule_frame?: 'first' | 'mid' | 'last' | null;
+    schedule_hour?: MetabaseUtilCronCronHour | null;
+    schedule_minute?: MetabaseUtilCronCronMinute | null;
     schedule_type: 'hourly' | 'daily' | 'weekly' | 'monthly';
 };
 
@@ -4769,7 +4712,7 @@ export type GetApiActionData = {
     body?: never;
     path?: never;
     query?: {
-        'model-id'?: MetabaseLibSchemaIdCard;
+        'model-id'?: MetabaseLibSchemaIdCard | null;
     };
     url: '/api/action/';
 };
@@ -4976,8 +4919,8 @@ export type PostApiActionByIdExecuteData = {
     body?: {
         parameters?: {
             [key: string]: unknown;
-        };
-    };
+        } | null;
+    } | null;
     path: {
         id: MetabaseActionsSchemaId;
     };
@@ -5137,7 +5080,7 @@ export type GetApiActivityRecentsData = {
     path?: never;
     query: {
         context: Array<'selections' | 'views'>;
-        include_metadata?: boolean;
+        include_metadata: boolean | null;
     };
     url: '/api/activity/recents';
 };
@@ -5195,12 +5138,9 @@ export type PostApiActivityRecentsResponses = {
 export type GetApiAlertData = {
     body?: never;
     path?: never;
-    query?: {
-        archived?: boolean;
-        /**
-         * value must be an integer greater than zero.
-         */
-        user_id?: number;
+    query: {
+        archived: boolean | null;
+        user_id?: number | null;
     };
     url: '/api/alert/';
 };
@@ -5415,11 +5355,8 @@ export type DeleteApiApiKeyByIdResponses = {
 
 export type PutApiApiKeyByIdData = {
     body?: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        group_id?: number;
-        name?: MetabaseApiKeysSchemaName;
+        group_id?: number | null;
+        name?: MetabaseApiKeysSchemaName | null;
     };
     path: {
         /**
@@ -5548,7 +5485,7 @@ export type GetApiAutomagicDashboardsByEntityByEntityIdOrQueryData = {
         'entity-id-or-query': MetabaseXraysApiAutomagicDashboardsEntityIdOrQuery;
     };
     query?: {
-        show?: 'all' | number;
+        show?: 'all' | number | null;
     };
     url: '/api/automagic-dashboards/{entity}/{entity-id-or-query}';
 };
@@ -5582,7 +5519,7 @@ export type GetApiAutomagicDashboardsByEntityByEntityIdOrQueryCellByCellQueryDat
         /**
          * invalid show value
          */
-        show?: 'all' | number;
+        show?: 'all' | number | null;
     };
     url: '/api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}';
 };
@@ -5621,7 +5558,7 @@ export type GetApiAutomagicDashboardsByEntityByEntityIdOrQueryCellByCellQueryCom
         /**
          * invalid show value
          */
-        show?: 'all' | number;
+        show?: 'all' | number | null;
     };
     url: '/api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}/compare/{comparison-entity}/{comparison-entity-id-or-query}';
 };
@@ -5660,7 +5597,7 @@ export type GetApiAutomagicDashboardsByEntityByEntityIdOrQueryCellByCellQueryRul
         /**
          * invalid show value
          */
-        show?: 'all' | number;
+        show?: 'all' | number | null;
     };
     url: '/api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}/rule/{prefix}/{dashboard-template}';
 };
@@ -5704,7 +5641,7 @@ export type GetApiAutomagicDashboardsByEntityByEntityIdOrQueryCellByCellQueryRul
         /**
          * invalid show value
          */
-        show?: 'all' | number;
+        show?: 'all' | number | null;
     };
     url: '/api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}/rule/{prefix}/{dashboard-template}/compare/{comparison-entity}/{comparison-entity-id-or-query}';
 };
@@ -5742,7 +5679,7 @@ export type GetApiAutomagicDashboardsByEntityByEntityIdOrQueryCompareByCompariso
         /**
          * invalid show value
          */
-        show?: 'all' | number;
+        show?: 'all' | number | null;
     };
     url: '/api/automagic-dashboards/{entity}/{entity-id-or-query}/compare/{comparison-entity}/{comparison-entity-id-or-query}';
 };
@@ -5808,7 +5745,7 @@ export type GetApiAutomagicDashboardsByEntityByEntityIdOrQueryRuleByPrefixByDash
         /**
          * invalid show value
          */
-        show?: 'all' | number;
+        show?: 'all' | number | null;
     };
     url: '/api/automagic-dashboards/{entity}/{entity-id-or-query}/rule/{prefix}/{dashboard-template}';
 };
@@ -5851,7 +5788,7 @@ export type GetApiAutomagicDashboardsByEntityByEntityIdOrQueryRuleByPrefixByDash
         /**
          * invalid show value
          */
-        show?: 'all' | number;
+        show?: 'all' | number | null;
     };
     url: '/api/automagic-dashboards/{entity}/{entity-id-or-query}/rule/{prefix}/{dashboard-template}/compare/{comparison-entity}/{comparison-entity-id-or-query}';
 };
@@ -6083,11 +6020,11 @@ export type GetApiCacheData = {
         /**
          * Collection id to filter results. Returns everything if not supplied.
          */
-        collection?: number;
+        collection?: number | null;
         /**
          * Model id to get configuration for.
          */
-        id?: number;
+        id?: number | null;
     };
     url: '/api/cache/';
 };
@@ -6149,19 +6086,19 @@ export type PostApiCacheInvalidateData = {
         /**
          * All cache configuration overrides should invalidate cache too
          */
-        include?: 'overrides';
+        include?: 'overrides' | null;
         /**
          * A list of database ids
          */
-        database?: Array<number>;
+        database?: Array<number> | null;
         /**
          * A list of dashboard ids
          */
-        dashboard?: Array<number>;
+        dashboard?: Array<number> | null;
         /**
          * A list of question ids
          */
-        question?: Array<number>;
+        question?: Array<number> | null;
     };
     url: '/api/cache/invalidate';
 };
@@ -6189,10 +6126,7 @@ export type GetApiCardData = {
     path?: never;
     query: {
         f: 'archived' | 'table' | 'using_model' | 'bookmarked' | 'using_segment' | 'all' | 'mine' | 'database';
-        /**
-         * value must be an integer greater than zero.
-         */
-        model_id?: number;
+        model_id?: number | null;
     };
     url: '/api/card/';
 };
@@ -6217,40 +6151,25 @@ export type GetApiCardResponses = {
 
 export type PostApiCardData = {
     body?: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        cache_ttl?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_id?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_position?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        dashboard_id?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        dashboard_tab_id?: number;
+        cache_ttl?: number | null;
+        collection_id?: number | null;
+        collection_position?: number | null;
+        dashboard_id?: number | null;
+        dashboard_tab_id?: number | null;
         /**
          * Value must be a map.
          */
         dataset_query: {
             [key: string]: unknown;
         };
-        description?: string;
+        description?: string | null;
         display: string;
-        entity_id?: string;
+        entity_id?: string | null;
         name: string;
-        parameter_mappings?: MetabaseParametersSchemaParameterMappings;
-        parameters?: MetabaseParametersSchemaParameters;
-        result_metadata?: MetabaseAnalyzeQueryResultsResultsMetadata;
-        type?: MetabaseLibSchemaMetadataCardType;
+        parameter_mappings?: MetabaseParametersSchemaParameterMappings | null;
+        parameters?: MetabaseParametersSchemaParameters | null;
+        result_metadata?: MetabaseAnalyzeQueryResultsResultsMetadata | null;
+        type?: MetabaseLibSchemaMetadataCardType | null;
         /**
          * Value must be a map.
          */
@@ -6284,10 +6203,7 @@ export type PostApiCardResponses = {
 export type PostApiCardCollectionsData = {
     body?: {
         card_ids: Array<number>;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_id?: number;
+        collection_id?: number | null;
     };
     path?: never;
     query?: never;
@@ -6339,7 +6255,7 @@ export type GetApiCardEmbeddableResponses = {
 
 export type PostApiCardPivotByCardIdQueryData = {
     body?: {
-        ignore_cache?: boolean;
+        ignore_cache?: boolean | null;
     };
     path: {
         /**
@@ -6519,11 +6435,8 @@ export type PostApiCardByCardIdPublicLinkResponses = {
 
 export type PostApiCardByCardIdQueryData = {
     body?: {
-        collection_preview?: boolean;
-        /**
-         * value must be an integer greater than zero.
-         */
-        dashboard_id?: number;
+        collection_preview?: boolean | null;
+        dashboard_id?: number | null;
         ignore_cache: boolean;
     };
     path: {
@@ -6556,7 +6469,7 @@ export type PostApiCardByCardIdQueryByExportFormatData = {
         format_rows: boolean;
         parameters?: Array<{
             [key: string]: unknown;
-        }>;
+        }> | null;
         pivot_results: boolean;
     };
     path: {
@@ -6624,9 +6537,9 @@ export type GetApiCardByIdData = {
         id: number | string;
     };
     query?: {
-        ignore_view?: boolean;
-        context?: 'collection';
-        'legacy-mbql'?: boolean;
+        ignore_view?: boolean | null;
+        context?: 'collection' | null;
+        'legacy-mbql'?: boolean | null;
     };
     url: '/api/card/{id}';
 };
@@ -6651,54 +6564,30 @@ export type GetApiCardByIdResponses = {
 
 export type PutApiCardByIdData = {
     body?: {
-        archived?: boolean;
-        /**
-         * value must be an integer greater than zero.
-         */
-        cache_ttl?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_id?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_position?: number;
-        collection_preview?: boolean;
-        /**
-         * value must be an integer greater than zero.
-         */
-        dashboard_id?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        dashboard_tab_id?: number;
-        /**
-         * Value must be a map.
-         */
+        archived?: boolean | null;
+        cache_ttl?: number | null;
+        collection_id?: number | null;
+        collection_position?: number | null;
+        collection_preview?: boolean | null;
+        dashboard_id?: number | null;
+        dashboard_tab_id?: number | null;
         dataset_query?: {
             [key: string]: unknown;
-        };
-        description?: string;
-        display?: string;
-        /**
-         * value must be a valid embedding params map.
-         */
+        } | null;
+        description?: string | null;
+        display?: string | null;
         embedding_params?: {
             [key: string]: 'disabled' | 'enabled' | 'locked';
-        };
-        enable_embedding?: boolean;
-        name?: string;
-        parameter_mappings?: MetabaseParametersSchemaParameterMappings;
-        parameters?: MetabaseParametersSchemaParameters;
-        result_metadata?: MetabaseAnalyzeQueryResultsResultsMetadata;
-        type?: MetabaseLibSchemaMetadataCardType;
-        /**
-         * Value must be a map.
-         */
+        } | null;
+        enable_embedding?: boolean | null;
+        name?: string | null;
+        parameter_mappings?: MetabaseParametersSchemaParameterMappings | null;
+        parameters?: MetabaseParametersSchemaParameters | null;
+        result_metadata?: MetabaseAnalyzeQueryResultsResultsMetadata | null;
+        type?: MetabaseLibSchemaMetadataCardType | null;
         visualization_settings?: {
             [key: string]: unknown;
-        };
+        } | null;
     };
     path: {
         /**
@@ -6707,7 +6596,7 @@ export type PutApiCardByIdData = {
         id: number;
     };
     query?: {
-        delete_old_dashcards?: boolean;
+        delete_old_dashcards?: boolean | null;
     };
     url: '/api/card/{id}';
 };
@@ -6853,12 +6742,9 @@ export type GetApiCardByIdSeriesData = {
         id: number;
     };
     query?: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        last_cursor?: number;
-        query?: string;
-        exclude_ids?: unknown;
+        last_cursor?: number | null;
+        query?: string | null;
+        exclude_ids?: unknown | null;
     };
     url: '/api/card/{id}/series';
 };
@@ -6911,14 +6797,8 @@ export type PostApiCardsDashboardsResponses = {
 export type PostApiCardsMoveData = {
     body?: {
         card_ids: Array<number>;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_id?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        dashboard_id?: number;
+        collection_id?: number | null;
+        dashboard_id?: number | null;
     };
     path?: never;
     query?: never;
@@ -6945,7 +6825,7 @@ export type PostApiCardsMoveResponses = {
 
 export type GetApiChannelData = {
     body?: {
-        include_inactive?: boolean;
+        include_inactive?: boolean | null;
     };
     path?: never;
     query?: never;
@@ -6972,8 +6852,8 @@ export type GetApiChannelResponses = {
 
 export type PostApiChannelData = {
     body?: {
-        active?: boolean;
-        description?: string;
+        active?: boolean | null;
+        description?: string | null;
         details: {
             [key: string]: unknown;
         };
@@ -7071,16 +6951,13 @@ export type GetApiChannelByIdResponses = {
 
 export type PutApiChannelByIdData = {
     body?: {
-        active?: boolean;
-        description?: string;
+        active?: boolean | null;
+        description?: string | null;
         details?: {
             [key: string]: unknown;
-        };
-        name?: string;
-        /**
-         * Must be a namespaced channel. E.g: channel/http
-         */
-        type?: unknown;
+        } | null;
+        name?: string | null;
+        type?: unknown | null;
     };
     path: {
         /**
@@ -7188,11 +7065,11 @@ export type PutApiCloudMigrationCancelResponses = {
 export type GetApiCollectionData = {
     body?: never;
     path?: never;
-    query?: {
-        archived?: boolean;
-        'exclude-other-user-collections'?: boolean;
-        namespace?: string;
-        'personal-only'?: boolean;
+    query: {
+        archived: boolean | null;
+        'exclude-other-user-collections': boolean | null;
+        namespace?: string | null;
+        'personal-only': boolean | null;
     };
     url: '/api/collection/';
 };
@@ -7217,14 +7094,11 @@ export type GetApiCollectionResponses = {
 
 export type PostApiCollectionData = {
     body?: {
-        authority_level?: 'official';
-        description?: string;
+        authority_level?: 'official' | null;
+        description?: string | null;
         name: string;
-        namespace?: string;
-        /**
-         * value must be an integer greater than zero.
-         */
-        parent_id?: number;
+        namespace?: string | null;
+        parent_id?: number | null;
     };
     path?: never;
     query?: never;
@@ -7253,7 +7127,7 @@ export type GetApiCollectionGraphData = {
     body?: never;
     path?: never;
     query?: {
-        namespace?: string;
+        namespace?: string | null;
     };
     url: '/api/collection/graph';
 };
@@ -7281,16 +7155,13 @@ export type PutApiCollectionGraphData = {
         groups: {
             [key: string]: unknown;
         };
-        namespace?: string;
-        /**
-         * value must be an integer.
-         */
-        revision?: number;
+        namespace?: string | null;
+        revision?: number | null;
     };
     path?: never;
-    query?: {
-        force?: boolean;
-        'skip-graph'?: boolean;
+    query: {
+        force: boolean | null;
+        'skip-graph': boolean | null;
     };
     url: '/api/collection/graph';
 };
@@ -7317,7 +7188,7 @@ export type GetApiCollectionRootData = {
     body?: never;
     path?: never;
     query?: {
-        namespace?: string;
+        namespace?: string | null;
     };
     url: '/api/collection/root';
 };
@@ -7370,16 +7241,16 @@ export type GetApiCollectionRootDashboardQuestionCandidatesResponse = GetApiColl
 export type GetApiCollectionRootItemsData = {
     body?: never;
     path?: never;
-    query?: {
-        models?: Array<'dashboard' | 'dataset' | 'no_models' | 'timeline' | 'snippet' | 'collection' | 'document' | 'pulse' | 'metric' | 'card'>;
-        include_can_run_adhoc_query?: boolean;
-        archived?: boolean;
-        namespace?: string;
-        pinned_state?: 'is_not_pinned' | 'is_pinned' | 'all';
-        sort_column?: 'model' | 'name' | 'last_edited_by' | 'last_edited_at';
-        sort_direction?: 'desc' | 'asc';
-        official_collections_first?: boolean;
-        show_dashboard_questions?: boolean;
+    query: {
+        models?: Array<'dashboard' | 'dataset' | 'no_models' | 'timeline' | 'snippet' | 'collection' | 'document' | 'pulse' | 'metric' | 'card'> | null;
+        include_can_run_adhoc_query: boolean | null;
+        archived: boolean | null;
+        namespace?: string | null;
+        pinned_state?: 'is_not_pinned' | 'is_pinned' | 'all' | null;
+        sort_column?: 'model' | 'name' | 'last_edited_by' | 'last_edited_at' | null;
+        sort_direction?: 'desc' | 'asc' | null;
+        official_collections_first?: boolean | null;
+        show_dashboard_questions?: boolean | null;
     };
     url: '/api/collection/root/items';
 };
@@ -7405,7 +7276,7 @@ export type GetApiCollectionRootItemsResponses = {
 export type PostApiCollectionRootMoveDashboardQuestionCandidatesData = {
     body?: {
         card_ids?: Array<number>;
-    };
+    } | null;
     path?: never;
     query?: never;
     url: '/api/collection/root/move-dashboard-question-candidates';
@@ -7459,15 +7330,12 @@ export type GetApiCollectionTrashResponses = {
 export type GetApiCollectionTreeData = {
     body?: never;
     path?: never;
-    query?: {
-        'exclude-archived'?: boolean;
-        'exclude-other-user-collections'?: boolean;
-        namespace?: string;
-        shallow?: boolean;
-        /**
-         * value must be an integer greater than zero.
-         */
-        'collection-id'?: number;
+    query: {
+        'exclude-archived': boolean | null;
+        'exclude-other-user-collections': boolean | null;
+        namespace?: string | null;
+        shallow: boolean | null;
+        'collection-id'?: number | null;
     };
     url: '/api/collection/tree';
 };
@@ -7549,14 +7417,11 @@ export type GetApiCollectionByIdResponses = {
 
 export type PutApiCollectionByIdData = {
     body?: {
-        archived?: boolean;
-        authority_level?: 'official';
-        description?: string;
-        name?: string;
-        /**
-         * value must be an integer greater than zero.
-         */
-        parent_id?: number;
+        archived: boolean | null;
+        authority_level?: 'official' | null;
+        description?: string | null;
+        name?: string | null;
+        parent_id?: number | null;
     };
     path: {
         /**
@@ -7623,15 +7488,15 @@ export type GetApiCollectionByIdItemsData = {
     path: {
         id: number | string;
     };
-    query?: {
-        models?: Array<'dashboard' | 'dataset' | 'no_models' | 'timeline' | 'snippet' | 'collection' | 'document' | 'pulse' | 'metric' | 'card'>;
-        archived?: boolean;
-        include_can_run_adhoc_query?: boolean;
-        pinned_state?: 'is_not_pinned' | 'is_pinned' | 'all';
-        sort_column?: 'model' | 'name' | 'last_edited_by' | 'last_edited_at';
-        sort_direction?: 'desc' | 'asc';
-        official_collections_first?: boolean;
-        show_dashboard_questions?: boolean;
+    query: {
+        models?: Array<'dashboard' | 'dataset' | 'no_models' | 'timeline' | 'snippet' | 'collection' | 'document' | 'pulse' | 'metric' | 'card'> | null;
+        archived: boolean | null;
+        include_can_run_adhoc_query: boolean | null;
+        pinned_state?: 'is_not_pinned' | 'is_pinned' | 'all' | null;
+        sort_column?: 'model' | 'name' | 'last_edited_by' | 'last_edited_at' | null;
+        sort_direction?: 'desc' | 'asc' | null;
+        official_collections_first?: boolean | null;
+        show_dashboard_questions: boolean | null;
     };
     url: '/api/collection/{id}/items';
 };
@@ -7657,7 +7522,7 @@ export type GetApiCollectionByIdItemsResponses = {
 export type PostApiCollectionByIdMoveDashboardQuestionCandidatesData = {
     body?: {
         card_ids?: Array<number>;
-    };
+    } | null;
     path: {
         /**
          * value must be an integer greater than zero.
@@ -7692,7 +7557,7 @@ export type GetApiDashboardData = {
     body?: never;
     path?: never;
     query?: {
-        f?: 'all' | 'mine' | 'archived';
+        f?: 'all' | 'mine' | 'archived' | null;
     };
     url: '/api/dashboard/';
 };
@@ -7717,21 +7582,12 @@ export type GetApiDashboardResponses = {
 
 export type PostApiDashboardData = {
     body?: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        cache_ttl?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_id?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_position?: number;
-        description?: string;
+        cache_ttl?: number | null;
+        collection_id?: number | null;
+        collection_position?: number | null;
+        description?: string | null;
         name: string;
-        parameters?: MetabaseParametersSchemaParameters;
+        parameters?: MetabaseParametersSchemaParameters | null;
     };
     path?: never;
     query?: never;
@@ -7786,7 +7642,7 @@ export type GetApiDashboardParamsValidFilterFieldsData = {
     path?: never;
     query: {
         filtered: Array<MetabaseLibSchemaIdField>;
-        filtering?: Array<MetabaseLibSchemaIdField>;
+        filtering?: Array<MetabaseLibSchemaIdField> | null;
     };
     url: '/api/dashboard/params/valid-filter-fields';
 };
@@ -7811,14 +7667,11 @@ export type GetApiDashboardParamsValidFilterFieldsResponses = {
 
 export type PostApiDashboardPivotByDashboardIdDashcardByDashcardIdCardByCardIdQueryData = {
     body?: {
-        /**
-         * value must be a parameter map with an 'id' key
-         */
         parameters?: Array<{
             id: string;
         } & {
             [key: string]: unknown;
-        }>;
+        }> | null;
     };
     path: {
         /**
@@ -7938,15 +7791,12 @@ export type PostApiDashboardSaveCollectionByParentCollectionIdResponses = {
 
 export type PostApiDashboardByDashboardIdDashcardByDashcardIdCardByCardIdQueryData = {
     body?: {
-        dashboard_load_id?: string;
-        /**
-         * value must be a parameter map with an 'id' key
-         */
+        dashboard_load_id?: string | null;
         parameters?: Array<{
             id: string;
         } & {
             [key: string]: unknown;
-        }>;
+        }> | null;
     };
     path: {
         /**
@@ -7991,7 +7841,7 @@ export type PostApiDashboardByDashboardIdDashcardByDashcardIdCardByCardIdQueryBy
             id: string;
         } & {
             [key: string]: unknown;
-        }> | string;
+        }> | string | null;
         pivot_results: boolean;
     };
     path: {
@@ -8074,7 +7924,7 @@ export type PostApiDashboardByDashboardIdDashcardByDashcardIdExecuteData = {
     body?: {
         parameters?: {
             [key: string]: unknown;
-        };
+        } | null;
     };
     path: {
         /**
@@ -8170,17 +8020,11 @@ export type PostApiDashboardByDashboardIdPublicLinkResponses = {
 
 export type PostApiDashboardByFromDashboardIdCopyData = {
     body?: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_id?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_position?: number;
-        description?: string;
-        is_deep_copy?: boolean;
-        name?: string;
+        collection_id?: number | null;
+        collection_position?: number | null;
+        description?: string | null;
+        is_deep_copy: boolean | null;
+        name?: string | null;
     };
     path: {
         /**
@@ -8269,38 +8113,26 @@ export type GetApiDashboardByIdResponses = {
 
 export type PutApiDashboardByIdData = {
     body?: {
-        archived?: boolean;
-        /**
-         * value must be an integer greater than zero.
-         */
-        cache_ttl?: number;
-        caveats?: string;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_id?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_position?: number;
-        /**
-         * value must be seq of maps in which ids are unique
-         */
+        archived?: boolean | null;
+        cache_ttl?: number | null;
+        caveats?: string | null;
+        collection_id?: number | null;
+        collection_position?: number | null;
         dashcards?: Array<{
             /**
              * value must be an integer greater or equal to than zero.
              */
             col: number;
             id: number;
-            inline_parameters?: Array<string>;
-            parameter_mappings?: MetabaseParametersSchemaParameterMappings;
+            inline_parameters?: Array<string> | null;
+            parameter_mappings?: MetabaseParametersSchemaParameterMappings | null;
             /**
              * value must be an integer greater or equal to than zero.
              */
             row: number;
             series?: Array<{
                 [key: string]: unknown;
-            }>;
+            }> | null;
             /**
              * value must be an integer greater than zero.
              */
@@ -8309,33 +8141,24 @@ export type PutApiDashboardByIdData = {
              * value must be an integer greater than zero.
              */
             size_y: number;
-        }>;
-        description?: string;
-        /**
-         * value must be a valid embedding params map.
-         */
+        }> | null;
+        description?: string | null;
         embedding_params?: {
             [key: string]: 'disabled' | 'enabled' | 'locked';
-        };
-        enable_embedding?: boolean;
-        name?: string;
-        parameters?: MetabaseParametersSchemaParameters;
-        points_of_interest?: string;
-        /**
-         * value must be an integer greater than zero.
-         */
-        position?: number;
-        show_in_getting_started?: boolean;
-        /**
-         * value must be seq of maps in which ids are unique
-         */
+        } | null;
+        enable_embedding?: boolean | null;
+        name?: string | null;
+        parameters?: MetabaseParametersSchemaParameters | null;
+        points_of_interest?: string | null;
+        position?: number | null;
+        show_in_getting_started?: boolean | null;
         tabs?: Array<{
             /**
              * value must be an integer.
              */
             id: number;
             name: string;
-        }>;
+        }> | null;
         width?: 'fixed' | 'full';
     };
     path: {
@@ -8377,15 +8200,15 @@ export type PutApiDashboardByIdCardsData = {
              */
             col: number;
             id: number;
-            inline_parameters?: Array<string>;
-            parameter_mappings?: MetabaseParametersSchemaParameterMappings;
+            inline_parameters?: Array<string> | null;
+            parameter_mappings?: MetabaseParametersSchemaParameterMappings | null;
             /**
              * value must be an integer greater or equal to than zero.
              */
             row: number;
             series?: Array<{
                 [key: string]: unknown;
-            }>;
+            }> | null;
             /**
              * value must be an integer greater than zero.
              */
@@ -8395,16 +8218,13 @@ export type PutApiDashboardByIdCardsData = {
              */
             size_y: number;
         }>;
-        /**
-         * value must be seq of maps in which ids are unique
-         */
         tabs?: Array<{
             /**
              * value must be an integer.
              */
             id: number;
             name: string;
-        }>;
+        }> | null;
     };
     path: {
         /**
@@ -8618,20 +8438,17 @@ export type GetApiDashboardByIdRelatedResponses = {
 export type GetApiDatabaseData = {
     body?: never;
     path?: never;
-    query?: {
+    query: {
         /**
          * include must be either empty or the value 'tables'
          */
-        include?: 'tables';
-        include_analytics?: boolean;
-        saved?: boolean;
-        include_editable_data_model?: boolean;
-        exclude_uneditable_details?: boolean;
-        include_only_uploadable?: boolean;
-        /**
-         * value must be an integer greater than zero.
-         */
-        router_database_id?: number;
+        include?: 'tables' | null;
+        include_analytics: boolean | null;
+        saved: boolean | null;
+        include_editable_data_model: boolean | null;
+        exclude_uneditable_details: boolean | null;
+        include_only_uploadable: boolean | null;
+        router_database_id?: number | null;
     };
     url: '/api/database/';
 };
@@ -8656,12 +8473,9 @@ export type GetApiDatabaseResponses = {
 
 export type PostApiDatabaseData = {
     body?: {
-        auto_run_queries?: boolean;
-        /**
-         * value must be an integer greater than zero.
-         */
-        cache_ttl?: number;
-        connection_source?: 'admin' | 'setup';
+        auto_run_queries?: boolean | null;
+        cache_ttl?: number | null;
+        connection_source: 'admin' | 'setup' | null;
         /**
          * Value must be a map.
          */
@@ -8672,11 +8486,11 @@ export type PostApiDatabaseData = {
          * value must be a valid database engine.
          */
         engine: string;
-        is_full_sync?: boolean;
-        is_on_demand?: boolean;
+        is_full_sync: boolean | null;
+        is_on_demand: boolean | null;
         name: string;
-        provider_name?: string;
-        schedules?: MetabaseSyncSchedulesExpandedSchedulesMap;
+        provider_name?: string | null;
+        schedules?: MetabaseSyncSchedulesExpandedSchedulesMap | null;
     };
     path?: never;
     query?: never;
@@ -8800,7 +8614,7 @@ export type GetApiDatabaseByIdData = {
         id: number;
     };
     query?: {
-        include?: 'tables' | 'tables.fields';
+        include?: 'tables' | 'tables.fields' | null;
         include_editable_data_model?: boolean;
         exclude_uneditable_details?: boolean;
     };
@@ -8827,34 +8641,22 @@ export type GetApiDatabaseByIdResponses = {
 
 export type PutApiDatabaseByIdData = {
     body?: {
-        auto_run_queries?: boolean;
-        /**
-         * value must be an integer greater than zero.
-         */
-        cache_ttl?: number;
-        caveats?: string;
-        description?: string;
-        /**
-         * Value must be a map.
-         */
+        auto_run_queries?: boolean | null;
+        cache_ttl?: number | null;
+        caveats?: string | null;
+        description?: string | null;
         details?: {
             [key: string]: unknown;
-        };
-        /**
-         * value must be a valid database engine.
-         */
-        engine?: string;
-        name?: string;
-        points_of_interest?: string;
-        provider_name?: string;
-        refingerprint?: boolean;
-        schedules?: MetabaseSyncSchedulesExpandedSchedulesMap;
-        /**
-         * Value must be a map.
-         */
+        } | null;
+        engine?: string | null;
+        name?: string | null;
+        points_of_interest?: string | null;
+        provider_name?: string | null;
+        refingerprint?: boolean | null;
+        schedules?: MetabaseSyncSchedulesExpandedSchedulesMap | null;
         settings?: {
             [key: string]: unknown;
-        };
+        } | null;
     };
     path: {
         /**
@@ -8893,8 +8695,8 @@ export type GetApiDatabaseByIdAutocompleteSuggestionsData = {
         id: number;
     };
     query?: {
-        prefix?: string;
-        substring?: string;
+        prefix?: string | null;
+        substring?: string | null;
     };
     url: '/api/database/{id}/autocomplete_suggestions';
 };
@@ -9108,11 +8910,11 @@ export type GetApiDatabaseByIdMetadataData = {
          */
         id: number;
     };
-    query?: {
-        include_hidden?: boolean;
-        include_editable_data_model?: boolean;
-        remove_inactive?: boolean;
-        skip_fields?: boolean;
+    query: {
+        include_hidden: boolean | null;
+        include_editable_data_model: boolean | null;
+        remove_inactive: boolean | null;
+        skip_fields: boolean | null;
     };
     url: '/api/database/{id}/metadata';
 };
@@ -9173,9 +8975,9 @@ export type GetApiDatabaseByIdSchemaData = {
          */
         id: number;
     };
-    query?: {
-        include_hidden?: boolean;
-        include_editable_data_model?: boolean;
+    query: {
+        include_hidden: boolean | null;
+        include_editable_data_model: boolean | null;
     };
     url: '/api/database/{id}/schema/';
 };
@@ -9206,9 +9008,9 @@ export type GetApiDatabaseByIdSchemaBySchemaData = {
          */
         id: number;
     };
-    query?: {
-        include_hidden?: boolean;
-        include_editable_data_model?: boolean;
+    query: {
+        include_hidden: boolean | null;
+        include_editable_data_model: boolean | null;
     };
     url: '/api/database/{id}/schema/{schema}';
 };
@@ -9239,9 +9041,9 @@ export type GetApiDatabaseByIdSchemasData = {
          */
         id: number;
     };
-    query?: {
-        include_editable_data_model?: boolean;
-        include_hidden?: boolean;
+    query: {
+        include_editable_data_model: boolean | null;
+        include_hidden: boolean | null;
     };
     url: '/api/database/{id}/schemas';
 };
@@ -9515,7 +9317,7 @@ export type GetApiDatabaseByVirtualDbSchemasResponses = {
 
 export type PostApiDatasetData = {
     body?: {
-        database?: number;
+        database?: number | null;
     };
     path?: never;
     query?: never;
@@ -9546,7 +9348,7 @@ export type PostApiDatasetNativeData = {
          * value must be an integer greater than zero.
          */
         database: number;
-        pretty?: boolean;
+        pretty: boolean | null;
     };
     path?: never;
     query?: never;
@@ -9573,7 +9375,7 @@ export type PostApiDatasetNativeResponses = {
 
 export type PostApiDatasetParameterRemappingData = {
     body?: {
-        field_ids?: Array<MetabaseLibSchemaIdField>;
+        field_ids?: Array<MetabaseLibSchemaIdField> | null;
         parameter: MetabaseParametersSchemaParameter;
         value: unknown;
     };
@@ -9602,7 +9404,7 @@ export type PostApiDatasetParameterRemappingResponses = {
 
 export type PostApiDatasetParameterSearchByQueryData = {
     body?: {
-        field_ids?: Array<MetabaseLibSchemaIdField>;
+        field_ids?: Array<MetabaseLibSchemaIdField> | null;
         parameter: MetabaseParametersSchemaParameter;
     };
     path: {
@@ -9632,7 +9434,7 @@ export type PostApiDatasetParameterSearchByQueryResponses = {
 
 export type PostApiDatasetParameterValuesData = {
     body?: {
-        field_ids?: Array<MetabaseLibSchemaIdField>;
+        field_ids?: Array<MetabaseLibSchemaIdField> | null;
         parameter: MetabaseParametersSchemaParameter;
     };
     path?: never;
@@ -10049,9 +9851,9 @@ export type PutApiEeAdvancedPermissionsApplicationGraphData = {
         [key: string]: unknown;
     };
     path?: never;
-    query?: {
-        'skip-graph'?: boolean;
-        force?: boolean;
+    query: {
+        'skip-graph': boolean | null;
+        force: boolean | null;
     };
     url: '/api/ee/advanced-permissions/application/graph';
 };
@@ -10078,14 +9880,8 @@ export type GetApiEeAdvancedPermissionsImpersonationData = {
     body?: never;
     path?: never;
     query?: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        group_id?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        db_id?: number;
+        group_id?: number | null;
+        db_id?: number | null;
     };
     url: '/api/ee/advanced-permissions/impersonation/';
 };
@@ -10140,14 +9936,14 @@ export type DeleteApiEeAdvancedPermissionsImpersonationByIdResponses = {
 
 export type PostApiEeAiEntityAnalysisAnalyzeChartData = {
     body?: {
-        description?: string;
+        description?: string | null;
         image_base64: string;
-        name?: string;
+        name?: string | null;
         timeline_events?: Array<{
-            description?: string;
+            description?: string | null;
             name: string;
             timestamp: string;
-        }>;
+        }> | null;
     };
     path?: never;
     query?: never;
@@ -10293,30 +10089,21 @@ export type DeleteApiEeAuditAppUserByIdSubscriptionsResponses = {
 
 export type PostApiEeAutodescribeCardSummarizeData = {
     body?: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        cache_ttl?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_id?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_position?: number;
-        dataset?: boolean;
+        cache_ttl?: number | null;
+        collection_id?: number | null;
+        collection_position?: number | null;
+        dataset?: boolean | null;
         /**
          * Value must be a map.
          */
         dataset_query: {
             [key: string]: unknown;
         };
-        description?: string;
+        description?: string | null;
         display: string;
-        parameter_mappings?: Array<MetabaseParametersSchemaParameterMapping>;
-        parameters?: Array<MetabaseParametersSchemaParameter>;
-        result_metadata?: MetabaseAnalyzeQueryResultsResultsMetadata;
+        parameter_mappings?: Array<MetabaseParametersSchemaParameterMapping> | null;
+        parameters?: Array<MetabaseParametersSchemaParameter> | null;
+        result_metadata?: MetabaseAnalyzeQueryResultsResultsMetadata | null;
         /**
          * Value must be a map.
          */
@@ -10464,15 +10251,12 @@ export type GetApiEeCommentResponses = {
 
 export type PostApiEeCommentData = {
     body?: {
-        child_target_id?: string;
+        child_target_id?: string | null;
         content: {
             [key: string]: unknown;
         };
         html: string;
-        /**
-         * value must be an integer greater than zero.
-         */
-        parent_comment_id?: number;
+        parent_comment_id?: number | null;
         /**
          * value must be an integer greater than zero.
          */
@@ -10850,7 +10634,7 @@ export type PostApiEeDatabaseRoutingDestinationDatabaseResponses = {
 
 export type PutApiEeDatabaseRoutingRouterDatabaseByIdData = {
     body?: {
-        user_attribute?: string;
+        user_attribute?: string | null;
     };
     path: {
         /**
@@ -10994,29 +10778,26 @@ export type PostApiEeDocumentData = {
     body?: {
         cards?: {
             [key: string]: {
-                /**
-                 * value must be an integer greater than zero.
-                 */
-                cache_ttl?: number;
+                cache_ttl?: number | null;
                 /**
                  * Value must be a map.
                  */
                 dataset_query: {
                     [key: string]: unknown;
                 };
-                description?: string;
+                description?: string | null;
                 display: string;
-                entity_id?: string;
+                entity_id?: string | null;
                 name: string;
                 parameter_mappings?: Array<{
                     [key: string]: unknown;
-                }>;
+                }> | null;
                 parameters?: Array<{
                     [key: string]: unknown;
-                }>;
+                }> | null;
                 result_metadata?: Array<{
                     [key: string]: unknown;
-                }>;
+                }> | null;
                 /**
                  * Value must be a map.
                  */
@@ -11024,15 +10805,9 @@ export type PostApiEeDocumentData = {
                     [key: string]: unknown;
                 };
             };
-        };
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_id?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_position?: number;
+        } | null;
+        collection_id?: number | null;
+        collection_position?: number | null;
         document: unknown;
         name: string;
     };
@@ -11121,32 +10896,29 @@ export type GetApiEeDocumentByDocumentIdResponses = {
 
 export type PutApiEeDocumentByDocumentIdData = {
     body?: {
-        archived?: boolean;
+        archived?: boolean | null;
         cards?: {
             [key: string]: {
-                /**
-                 * value must be an integer greater than zero.
-                 */
-                cache_ttl?: number;
+                cache_ttl?: number | null;
                 /**
                  * Value must be a map.
                  */
                 dataset_query: {
                     [key: string]: unknown;
                 };
-                description?: string;
+                description?: string | null;
                 display: string;
-                entity_id?: string;
+                entity_id?: string | null;
                 name: string;
                 parameter_mappings?: Array<{
                     [key: string]: unknown;
-                }>;
+                }> | null;
                 parameters?: Array<{
                     [key: string]: unknown;
-                }>;
+                }> | null;
                 result_metadata?: Array<{
                     [key: string]: unknown;
-                }>;
+                }> | null;
                 /**
                  * Value must be a map.
                  */
@@ -11154,15 +10926,9 @@ export type PutApiEeDocumentByDocumentIdData = {
                     [key: string]: unknown;
                 };
             };
-        };
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_id?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_position?: number;
+        } | null;
+        collection_id?: number | null;
+        collection_position?: number | null;
         document?: unknown;
         name?: string;
     };
@@ -11404,7 +11170,7 @@ export type GetApiEeGsheetsServiceAccountResponses = {
      * map where {:email -> <nullable string>}
      */
     '2XX': {
-        email?: string;
+        email: string | null;
     };
 };
 
@@ -12134,7 +11900,7 @@ export type PostApiEeMetabotV3AgentStreamingData = {
          * value must be a valid UUID.
          */
         conversation_id: string;
-        history?: MetabaseEnterpriseMetabotV3ClientSchemaMessages;
+        history: MetabaseEnterpriseMetabotV3ClientSchemaMessages | null;
         message: string;
         metabot_id?: string;
         profile_id?: string;
@@ -12279,7 +12045,7 @@ export type GetApiEeMetabotV3MetabotByIdResponses = {
 
 export type PutApiEeMetabotV3MetabotByIdData = {
     body?: {
-        collection_id?: number;
+        collection_id?: number | null;
         use_verified_content?: boolean;
     };
     path: {
@@ -12505,15 +12271,9 @@ export type GetApiEeScimV2GroupsData = {
     body?: never;
     path?: never;
     query?: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        startIndex?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        count?: number;
-        filter?: string;
+        startIndex?: number | null;
+        count?: number | null;
+        filter?: string | null;
     };
     url: '/api/ee/scim/v2/Groups';
 };
@@ -12660,15 +12420,9 @@ export type GetApiEeScimV2UsersData = {
     body?: never;
     path?: never;
     query?: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        startIndex?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        count?: number;
-        filter?: string;
+        startIndex?: number | null;
+        count?: number | null;
+        filter?: string | null;
     };
     url: '/api/ee/scim/v2/Users';
 };
@@ -12705,7 +12459,7 @@ export type PostApiEeScimV2UsersData = {
             value: string;
         }>;
         id?: string;
-        locale?: string;
+        locale?: string | null;
         name: {
             familyName: string;
             givenName: string;
@@ -12812,7 +12566,7 @@ export type PutApiEeScimV2UsersByIdData = {
             value: string;
         }>;
         id?: string;
-        locale?: string;
+        locale?: string | null;
         name: {
             familyName: string;
             givenName: string;
@@ -12875,11 +12629,11 @@ export type PostApiEeSerializationExportData = {
         /**
          * name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)
          */
-        dirname?: string;
+        dirname?: string | null;
         /**
          * collections' db ids/entity-ids to serialize
          */
-        collection?: Array<number | string | string>;
+        collection?: Array<number | string | string> | null;
         all_collections: boolean;
         settings: boolean;
         data_model: boolean;
@@ -12953,7 +12707,7 @@ export type GetApiEeStaleByIdData = {
         id: number | 'root';
     };
     query: {
-        before_date?: string;
+        before_date?: string | null;
         is_recursive: boolean;
         sort_column: 'name' | 'last_used_at';
         sort_direction: 'asc' | 'desc';
@@ -12983,10 +12737,10 @@ export type GetApiEeTransformJobData = {
     body?: never;
     path?: never;
     query?: {
-        last_run_start_time?: string;
-        next_run_start_time?: string;
-        last_run_statuses?: Array<'started' | 'succeeded' | 'failed' | 'timeout'>;
-        tag_ids?: Array<number>;
+        last_run_start_time?: string | null;
+        next_run_start_time?: string | null;
+        last_run_statuses?: Array<'started' | 'succeeded' | 'failed' | 'timeout'> | null;
+        tag_ids?: Array<number> | null;
     };
     url: '/api/ee/transform-job/';
 };
@@ -13011,7 +12765,7 @@ export type GetApiEeTransformJobResponses = {
 
 export type PostApiEeTransformJobData = {
     body?: {
-        description?: string;
+        description?: string | null;
         name: string;
         schedule: string;
         tag_ids?: Array<number>;
@@ -13102,7 +12856,7 @@ export type GetApiEeTransformJobByJobIdResponses = {
 
 export type PutApiEeTransformJobByJobIdData = {
     body?: {
-        description?: string;
+        description?: string | null;
         name?: string;
         schedule?: string;
         tag_ids?: Array<number>;
@@ -13314,9 +13068,9 @@ export type GetApiEeTransformData = {
     body?: never;
     path?: never;
     query?: {
-        last_run_start_time?: string;
-        last_run_statuses?: Array<'started' | 'succeeded' | 'failed' | 'timeout'>;
-        tag_ids?: Array<number>;
+        last_run_start_time?: string | null;
+        last_run_statuses?: Array<'started' | 'succeeded' | 'failed' | 'timeout'> | null;
+        tag_ids?: Array<number> | null;
     };
     url: '/api/ee/transform/';
 };
@@ -13341,7 +13095,7 @@ export type GetApiEeTransformResponses = {
 
 export type PostApiEeTransformData = {
     body?: {
-        description?: string;
+        description?: string | null;
         name: string;
         run_trigger?: MetabaseEnterpriseTransformsApiRunTrigger;
         source: MetabaseEnterpriseTransformsApiTransformSource;
@@ -13377,12 +13131,12 @@ export type GetApiEeTransformRunData = {
     query?: {
         sort_column?: 'started_at' | 'ended_at';
         sort_direction?: 'asc' | 'desc';
-        transform_ids?: Array<number>;
-        statuses?: Array<'started' | 'succeeded' | 'failed' | 'timeout'>;
-        transform_tag_ids?: Array<number>;
-        start_time?: string;
-        end_time?: string;
-        run_methods?: Array<'manual' | 'cron'>;
+        transform_ids?: Array<number> | null;
+        statuses?: Array<'started' | 'succeeded' | 'failed' | 'timeout'> | null;
+        transform_tag_ids?: Array<number> | null;
+        start_time?: string | null;
+        end_time?: string | null;
+        run_methods?: Array<'manual' | 'cron'> | null;
     };
     url: '/api/ee/transform/run';
 };
@@ -13467,7 +13221,7 @@ export type GetApiEeTransformByIdResponses = {
 
 export type PutApiEeTransformByIdData = {
     body?: {
-        description?: string;
+        description?: string | null;
         name?: string;
         run_trigger?: MetabaseEnterpriseTransformsApiRunTrigger;
         source?: MetabaseEnterpriseTransformsApiTransformSource;
@@ -13757,7 +13511,7 @@ export type DeleteApiEeUploadManagementTablesByIdData = {
         id: number;
     };
     query?: {
-        'archive-cards'?: boolean;
+        'archive-cards'?: boolean | null;
     };
     url: '/api/ee/upload-management/tables/{id}';
 };
@@ -14432,32 +14186,20 @@ export type GetApiFieldByIdResponses = {
 
 export type PutApiFieldByIdData = {
     body?: {
-        caveats?: string;
-        /**
-         * value must be a valid coercion strategy (keyword or string).
-         */
-        coercion_strategy?: unknown;
-        description?: string;
-        display_name?: string;
-        /**
-         * value must be an integer greater than zero.
-         */
-        fk_target_field_id?: number;
-        has_field_values?: MetabaseLibSchemaMetadataColumnHasFieldValues;
-        json_unfolding?: boolean;
-        nfc_path?: Array<string>;
-        points_of_interest?: string;
-        /**
-         * value must be a valid field semantic or relation type (keyword or string).
-         */
-        semantic_type?: unknown;
-        /**
-         * Value must be a map.
-         */
+        caveats?: string | null;
+        coercion_strategy?: unknown | null;
+        description?: string | null;
+        display_name?: string | null;
+        fk_target_field_id?: number | null;
+        has_field_values?: MetabaseLibSchemaMetadataColumnHasFieldValues | null;
+        json_unfolding?: boolean | null;
+        nfc_path?: Array<string> | null;
+        points_of_interest?: string | null;
+        semantic_type?: unknown | null;
         settings?: {
             [key: string]: unknown;
-        };
-        visibility_type?: 'retired' | 'sensitive' | 'normal' | 'hidden' | 'details-only';
+        } | null;
+        visibility_type?: 'retired' | 'sensitive' | 'normal' | 'hidden' | 'details-only' | null;
     };
     path: {
         /**
@@ -14519,10 +14261,7 @@ export type DeleteApiFieldByIdDimensionResponses = {
 
 export type PostApiFieldByIdDimensionData = {
     body?: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        human_readable_field_id?: number;
+        human_readable_field_id?: number | null;
         name: string;
         type: 'internal' | 'external';
     };
@@ -14985,9 +14724,9 @@ export type PutApiGlossaryByIdResponses = {
 
 export type PutApiGoogleSettingsData = {
     body?: {
-        'google-auth-auto-create-accounts-domain'?: string;
-        'google-auth-client-id'?: string;
-        'google-auth-enabled'?: boolean;
+        'google-auth-auto-create-accounts-domain'?: string | null;
+        'google-auth-client-id'?: string | null;
+        'google-auth-enabled'?: boolean | null;
     };
     path?: never;
     query?: never;
@@ -15014,10 +14753,10 @@ export type PutApiGoogleSettingsResponses = {
 
 export type PutApiLdapSettingsData = {
     body?: {
-        'ldap-enabled'?: boolean;
-        'ldap-host'?: string;
-        'ldap-password'?: string;
-        'ldap-port'?: number;
+        'ldap-enabled'?: boolean | null;
+        'ldap-host'?: string | null;
+        'ldap-password'?: string | null;
+        'ldap-port'?: number | null;
     };
     path?: never;
     query?: never;
@@ -15309,8 +15048,8 @@ export type PostApiModerationReviewData = {
          */
         moderated_item_id: number;
         moderated_item_type: 'card' | 'dashboard';
-        status?: 'verified';
-        text?: string;
+        status?: 'verified' | null;
+        text?: string | null;
     };
     path?: never;
     query?: never;
@@ -15339,14 +15078,8 @@ export type GetApiMtGtapData = {
     body?: never;
     path?: never;
     query?: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        group_id?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        table_id?: number;
+        group_id?: number | null;
+        table_id?: number | null;
     };
     url: '/api/mt/gtap/';
 };
@@ -15372,10 +15105,7 @@ export type GetApiMtGtapResponses = {
 export type PostApiMtGtapData = {
     body?: {
         attribute_remappings?: unknown;
-        /**
-         * value must be an integer greater than zero.
-         */
-        card_id?: number;
+        card_id?: number | null;
         /**
          * value must be an integer greater than zero.
          */
@@ -15410,10 +15140,7 @@ export type PostApiMtGtapResponses = {
 
 export type PostApiMtGtapValidateData = {
     body?: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        card_id?: number;
+        card_id?: number | null;
         /**
          * value must be an integer greater than zero.
          */
@@ -15505,10 +15232,7 @@ export type GetApiMtGtapByIdResponses = {
 export type PutApiMtGtapByIdData = {
     body?: {
         attribute_remappings?: unknown;
-        /**
-         * value must be an integer greater than zero.
-         */
-        card_id?: number;
+        card_id?: number | null;
     };
     path: {
         /**
@@ -15565,12 +15289,9 @@ export type GetApiMtUserAttributesResponses = {
 
 export type PutApiMtUserByIdAttributesData = {
     body?: {
-        /**
-         * value must be a valid user attributes map (name -> value)
-         */
         login_attributes?: {
             [key: string]: unknown;
-        };
+        } | null;
     };
     path: {
         /**
@@ -15603,8 +15324,8 @@ export type PutApiMtUserByIdAttributesResponses = {
 export type GetApiNativeQuerySnippetData = {
     body?: never;
     path?: never;
-    query?: {
-        archived?: boolean;
+    query: {
+        archived: boolean | null;
     };
     url: '/api/native-query-snippet/';
 };
@@ -15629,12 +15350,9 @@ export type GetApiNativeQuerySnippetResponses = {
 
 export type PostApiNativeQuerySnippetData = {
     body?: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_id?: number;
+        collection_id?: number | null;
         content: string;
-        description?: string;
+        description?: string | null;
         /**
          * snippet names cannot include '}' or start with spaces
          */
@@ -15695,17 +15413,11 @@ export type GetApiNativeQuerySnippetByIdResponses = {
 
 export type PutApiNativeQuerySnippetByIdData = {
     body?: {
-        archived?: boolean;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_id?: number;
-        content?: string;
-        description?: string;
-        /**
-         * snippet names cannot include '}' or start with spaces
-         */
-        name?: unknown;
+        archived?: boolean | null;
+        collection_id?: number | null;
+        content?: string | null;
+        description?: string | null;
+        name?: unknown | null;
     };
     path: {
         /**
@@ -15756,7 +15468,7 @@ export type GetApiNotificationData = {
          */
         card_id?: number;
         include_inactive?: boolean;
-        payload_type?: 'notification/dashboard' | 'notification/system-event' | 'notification/testing' | 'notification/card';
+        payload_type?: 'notification/dashboard' | 'notification/system-event' | 'notification/testing' | 'notification/card' | null;
     };
     url: '/api/notification/';
 };
@@ -16017,9 +15729,9 @@ export type PostApiNotificationByIdUnsubscribeResponses = {
 
 export type PostApiNotifyDbAttachedDatawarehouseData = {
     body?: {
-        schema_name?: string;
-        'synchronous?'?: boolean;
-        table_name?: string;
+        schema_name?: string | null;
+        'synchronous?': boolean | null;
+        table_name?: string | null;
     };
     path?: never;
     query?: never;
@@ -16046,12 +15758,9 @@ export type PostApiNotifyDbAttachedDatawarehouseResponses = {
 
 export type PostApiNotifyDbByIdData = {
     body?: {
-        scan?: 'full' | 'schema';
-        /**
-         * value must be an integer greater than zero.
-         */
-        table_id?: number;
-        table_name?: string;
+        scan?: 'full' | 'schema' | null;
+        table_id?: number | null;
+        table_name?: string | null;
     };
     path: {
         /**
@@ -16144,9 +15853,9 @@ export type PutApiPermissionsGraphData = {
         [key: string]: unknown;
     };
     path?: never;
-    query?: {
-        'skip-graph'?: boolean;
-        force?: boolean;
+    query: {
+        'skip-graph': boolean | null;
+        force: boolean | null;
     };
     url: '/api/permissions/graph';
 };
@@ -16404,7 +16113,7 @@ export type PostApiPermissionsMembershipData = {
          * value must be an integer greater than zero.
          */
         group_id: number;
-        is_group_manager?: boolean;
+        is_group_manager: boolean | null;
         /**
          * value must be an integer greater than zero.
          */
@@ -17225,8 +16934,8 @@ export type GetApiPreviewEmbedTilesDashboardByTokenDashcardByDashcardIdCardByCar
 
 export type PostApiProductFeedbackData = {
     body?: {
-        comments?: string;
-        email?: string;
+        comments?: string | null;
+        email?: string | null;
         source: string;
     };
     path?: never;
@@ -17286,7 +16995,7 @@ export type PostApiPublicActionByUuidExecuteData = {
     body?: {
         parameters?: {
             [key: string]: unknown;
-        };
+        } | null;
     };
     path: {
         /**
@@ -17451,10 +17160,7 @@ export type GetApiPublicCardByUuidQueryData = {
         uuid: string;
     };
     query?: {
-        /**
-         * value must be a valid JSON string.
-         */
-        parameters?: string;
+        parameters?: string | null;
     };
     url: '/api/public/card/{uuid}/query';
 };
@@ -17489,10 +17195,7 @@ export type GetApiPublicCardByUuidQueryByExportFormatData = {
     query: {
         format_rows: boolean;
         pivot_results: boolean;
-        /**
-         * value must be a valid JSON string.
-         */
-        parameters?: string;
+        parameters?: string | null;
     };
     url: '/api/public/card/{uuid}/query/{export-format}';
 };
@@ -17562,10 +17265,7 @@ export type GetApiPublicDashboardByUuidDashcardByDashcardIdCardByCardIdData = {
         'card-id': number;
     };
     query?: {
-        /**
-         * value must be a valid JSON string.
-         */
-        parameters?: string;
+        parameters?: string | null;
     };
     url: '/api/public/dashboard/{uuid}/dashcard/{dashcard-id}/card/{card-id}';
 };
@@ -17593,7 +17293,7 @@ export type PostApiPublicDashboardByUuidDashcardByDashcardIdCardByCardIdByExport
         format_rows: boolean;
         parameters?: Array<{
             [key: string]: unknown;
-        }>;
+        }> | null;
         pivot_results: boolean;
     };
     path: {
@@ -17676,7 +17376,7 @@ export type PostApiPublicDashboardByUuidDashcardByDashcardIdExecuteData = {
     body?: {
         parameters?: {
             [key: string]: unknown;
-        };
+        } | null;
     };
     path: {
         /**
@@ -17814,7 +17514,7 @@ export type GetApiPublicOembedData = {
         /**
          * The format param is not used by the API, but is required as part of the oEmbed spec: http://oembed.com/#section2 just return an error if `format` is specified and it's anything other than `json`.
          */
-        format?: 'json';
+        format?: 'json' | null;
         maxheight: number;
         maxwidth: number;
     };
@@ -17848,10 +17548,7 @@ export type GetApiPublicPivotCardByUuidQueryData = {
         uuid: string;
     };
     query?: {
-        /**
-         * value must be a valid JSON string.
-         */
-        parameters?: string;
+        parameters?: string | null;
     };
     url: '/api/public/pivot/card/{uuid}/query';
 };
@@ -17891,10 +17588,7 @@ export type GetApiPublicPivotDashboardByUuidDashcardByDashcardIdCardByCardIdData
         'dashcard-id': number;
     };
     query?: {
-        /**
-         * value must be a valid JSON string.
-         */
-        parameters?: string;
+        parameters?: string | null;
     };
     url: '/api/public/pivot/dashboard/{uuid}/dashcard/{dashcard-id}/card/{card-id}';
 };
@@ -18026,13 +17720,10 @@ export type GetApiPublicTilesDashboardByUuidDashcardByDashcardIdCardByCardIdByZo
 export type GetApiPulseData = {
     body?: never;
     path?: never;
-    query?: {
-        archived?: boolean;
-        /**
-         * value must be an integer greater than zero.
-         */
-        dashboard_id?: number;
-        creator_or_recipient?: boolean;
+    query: {
+        archived: boolean | null;
+        dashboard_id?: number | null;
+        creator_or_recipient: boolean | null;
     };
     url: '/api/pulse/';
 };
@@ -18059,23 +17750,14 @@ export type PostApiPulseData = {
     body?: {
         cards: unknown;
         channels: unknown;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_id?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_position?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        dashboard_id?: number;
+        collection_id?: number | null;
+        collection_position?: number | null;
+        dashboard_id?: number | null;
         name: string;
         parameters?: Array<{
             [key: string]: unknown;
-        }>;
-        skip_if_empty?: boolean;
+        }> | null;
+        skip_if_empty: boolean | null;
     };
     path?: never;
     query?: never;
@@ -18194,10 +17876,7 @@ export type GetApiPulsePreviewCardPngByIdData = {
         id: number;
     };
     query?: {
-        /**
-         * value must be an integer greater than zero.
-         */
-        width?: number;
+        width?: number | null;
     };
     url: '/api/pulse/preview_card_png/{id}';
 };
@@ -18254,20 +17933,11 @@ export type PostApiPulseTestData = {
     body?: {
         cards: unknown;
         channels: unknown;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_id?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_position?: number;
-        /**
-         * value must be an integer greater than zero.
-         */
-        dashboard_id?: number;
+        collection_id?: number | null;
+        collection_position?: number | null;
+        dashboard_id?: number | null;
         name: string;
-        skip_if_empty?: boolean;
+        skip_if_empty: boolean | null;
     };
     path?: never;
     query?: never;
@@ -18388,18 +18058,15 @@ export type GetApiPulseByIdResponses = {
 
 export type PutApiPulseByIdData = {
     body?: {
-        archived?: boolean;
-        cards?: unknown;
-        channels?: unknown;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_id?: number;
-        name?: string;
+        archived: boolean | null;
+        cards?: unknown | null;
+        channels?: unknown | null;
+        collection_id?: number | null;
+        name?: string | null;
         parameters?: Array<{
             [key: string]: unknown;
-        }>;
-        skip_if_empty?: boolean;
+        }> | null;
+        skip_if_empty: boolean | null;
     };
     path: {
         /**
@@ -18559,31 +18226,28 @@ export type GetApiRevisionByEntityByIdResponses = {
 export type GetApiSearchData = {
     body?: never;
     path?: never;
-    query?: {
-        q?: string;
-        context?: string;
-        archived?: boolean;
-        /**
-         * value must be an integer greater than zero.
-         */
-        table_db_id?: number;
-        models?: Array<'dashboard' | 'table' | 'dataset' | 'segment' | 'collection' | 'document' | 'database' | 'action' | 'indexed-entity' | 'metric' | 'card'>;
-        filter_items_in_personal_collection?: 'all' | 'only' | 'only-mine' | 'exclude' | 'exclude-others';
-        created_at?: string;
-        created_by?: Array<number>;
-        display_type?: Array<string>;
-        last_edited_at?: string;
-        last_edited_by?: Array<number>;
-        model_ancestors?: boolean;
-        search_engine?: string;
-        search_native_query?: boolean;
-        verified?: boolean;
-        ids?: Array<number>;
-        calculate_available_models?: boolean;
-        include_dashboard_questions?: boolean;
-        include_metadata?: boolean;
-        non_temporal_dim_ids?: string;
-        has_temporal_dim?: boolean;
+    query: {
+        q?: string | null;
+        context?: string | null;
+        archived: boolean | null;
+        table_db_id?: number | null;
+        models?: Array<'dashboard' | 'table' | 'dataset' | 'segment' | 'collection' | 'document' | 'database' | 'action' | 'indexed-entity' | 'metric' | 'card'> | null;
+        filter_items_in_personal_collection?: 'all' | 'only' | 'only-mine' | 'exclude' | 'exclude-others' | null;
+        created_at?: string | null;
+        created_by?: Array<number> | null;
+        display_type?: Array<string> | null;
+        last_edited_at?: string | null;
+        last_edited_by?: Array<number> | null;
+        model_ancestors: boolean | null;
+        search_engine?: string | null;
+        search_native_query?: boolean | null;
+        verified?: boolean | null;
+        ids?: Array<number> | null;
+        calculate_available_models?: boolean | null;
+        include_dashboard_questions: boolean | null;
+        include_metadata: boolean | null;
+        non_temporal_dim_ids?: string | null;
+        has_temporal_dim?: boolean | null;
     };
     url: '/api/search/';
 };
@@ -18745,7 +18409,7 @@ export type PostApiSegmentData = {
         definition: {
             [key: string]: unknown;
         };
-        description?: string;
+        description?: string | null;
         name: string;
         /**
          * value must be an integer greater than zero.
@@ -18839,16 +18503,16 @@ export type GetApiSegmentByIdResponses = {
 
 export type PutApiSegmentByIdData = {
     body?: {
-        archived?: boolean;
-        caveats?: string;
+        archived?: boolean | null;
+        caveats?: string | null;
         definition?: {
             [key: string]: unknown;
-        };
-        description?: string;
-        name?: string;
-        points_of_interest?: string;
+        } | null;
+        description?: string | null;
+        name?: string | null;
+        points_of_interest?: string | null;
         revision_message: string;
-        show_in_getting_started?: boolean;
+        show_in_getting_started?: boolean | null;
     };
     path: {
         /**
@@ -19246,10 +18910,7 @@ export type PutApiSettingByKeyResponses = {
 export type PostApiSetupData = {
     body?: {
         prefs: {
-            /**
-             * String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.
-             */
-            site_locale?: string;
+            site_locale?: string | null;
             site_name: string;
         };
         /**
@@ -19261,8 +18922,8 @@ export type PostApiSetupData = {
              * value must be a valid email address.
              */
             email: string;
-            first_name?: string;
-            last_name?: string;
+            first_name?: string | null;
+            last_name?: string | null;
             /**
              * password is too common.
              */
@@ -19373,8 +19034,8 @@ export type GetApiSlackManifestResponses = {
 
 export type PutApiSlackSettingsData = {
     body?: {
-        'slack-app-token'?: string;
-        'slack-bug-report-channel'?: string;
+        'slack-app-token'?: string | null;
+        'slack-bug-report-channel'?: string | null;
     };
     path?: never;
     query?: never;
@@ -19426,18 +19087,15 @@ export type GetApiTableResponses = {
 
 export type PutApiTableData = {
     body?: {
-        caveats?: string;
-        data_authority?: MetabaseWarehouseSchemaApiTableDataAuthorityWrite;
-        description?: string;
-        display_name?: string;
-        /**
-         * value must be a valid entity type (keyword or string).
-         */
-        entity_type?: unknown;
+        caveats?: string | null;
+        data_authority?: MetabaseWarehouseSchemaApiTableDataAuthorityWrite | null;
+        description?: string | null;
+        display_name?: string | null;
+        entity_type?: unknown | null;
         ids: Array<number>;
-        points_of_interest?: string;
-        show_in_getting_started?: boolean;
-        visibility_type?: 'technical' | 'hidden' | 'cruft';
+        points_of_interest?: string | null;
+        show_in_getting_started?: boolean | null;
+        visibility_type?: 'technical' | 'hidden' | 'cruft' | null;
     };
     path?: never;
     query?: never;
@@ -19531,7 +19189,7 @@ export type GetApiTableByIdData = {
         id: number;
     };
     query?: {
-        include_editable_data_model?: boolean;
+        include_editable_data_model?: boolean | null;
     };
     url: '/api/table/{id}';
 };
@@ -19556,18 +19214,15 @@ export type GetApiTableByIdResponses = {
 
 export type PutApiTableByIdData = {
     body?: {
-        caveats?: string;
-        data_authority?: MetabaseWarehouseSchemaApiTableDataAuthorityWrite;
-        description?: string;
-        display_name?: string;
-        /**
-         * value must be a valid entity type (keyword or string).
-         */
-        entity_type?: unknown;
-        field_order?: 'alphabetical' | 'custom' | 'database' | 'smart';
-        points_of_interest?: string;
-        show_in_getting_started?: boolean;
-        visibility_type?: 'technical' | 'hidden' | 'cruft';
+        caveats?: string | null;
+        data_authority?: MetabaseWarehouseSchemaApiTableDataAuthorityWrite | null;
+        description?: string | null;
+        display_name?: string | null;
+        entity_type?: unknown | null;
+        field_order?: 'alphabetical' | 'custom' | 'database' | 'smart' | null;
+        points_of_interest?: string | null;
+        show_in_getting_started?: boolean | null;
+        visibility_type?: 'technical' | 'hidden' | 'cruft' | null;
     };
     path: {
         /**
@@ -19734,10 +19389,10 @@ export type GetApiTableByIdQueryMetadataData = {
          */
         id: number;
     };
-    query?: {
-        include_sensitive_fields?: boolean;
-        include_hidden_fields?: boolean;
-        include_editable_data_model?: boolean;
+    query: {
+        include_sensitive_fields: boolean | null;
+        include_hidden_fields: boolean | null;
+        include_editable_data_model: boolean | null;
     };
     url: '/api/table/{id}/query_metadata';
 };
@@ -20080,7 +19735,7 @@ export type PostApiTestingEchoResponses = {
 
 export type PostApiTestingMarkStaleData = {
     body?: {
-        'date-str'?: string;
+        'date-str'?: string | null;
         /**
          * value must be an integer greater than zero.
          */
@@ -20164,14 +19819,8 @@ export type PostApiTestingRestoreByNameResponses = {
 
 export type PostApiTestingSetTimeData = {
     body?: {
-        /**
-         * value must be an integer.
-         */
-        'add-ms'?: number;
-        /**
-         * value must be a valid date string
-         */
-        time?: string;
+        'add-ms'?: number | null;
+        time?: string | null;
     };
     path?: never;
     query?: never;
@@ -20380,16 +20029,13 @@ export type GetApiTilesByZoomByXByYResponses = {
 
 export type PostApiTimelineEventData = {
     body?: {
-        archived?: boolean;
-        description?: string;
-        icon?: 'star' | 'cake' | 'mail' | 'warning' | 'bell' | 'cloud';
+        archived?: boolean | null;
+        description?: string | null;
+        icon?: 'star' | 'cake' | 'mail' | 'warning' | 'bell' | 'cloud' | null;
         name: string;
-        /**
-         * value must be an integer greater than zero.
-         */
-        question_id?: number;
-        source?: 'collections' | 'question';
-        time_matters?: boolean;
+        question_id?: number | null;
+        source?: 'collections' | 'question' | null;
+        time_matters?: boolean | null;
         /**
          * value must be an integer greater than zero.
          */
@@ -20485,20 +20131,14 @@ export type GetApiTimelineEventByIdResponses = {
 
 export type PutApiTimelineEventByIdData = {
     body?: {
-        archived?: boolean;
-        description?: string;
-        icon?: 'star' | 'cake' | 'mail' | 'warning' | 'bell' | 'cloud';
-        name?: string;
-        time_matters?: boolean;
-        /**
-         * value must be an integer greater than zero.
-         */
-        timeline_id?: number;
-        /**
-         * value must be a valid date string
-         */
-        timestamp?: string;
-        timezone?: string;
+        archived?: boolean | null;
+        description?: string | null;
+        icon?: 'star' | 'cake' | 'mail' | 'warning' | 'bell' | 'cloud' | null;
+        name?: string | null;
+        time_matters?: boolean | null;
+        timeline_id?: number | null;
+        timestamp?: string | null;
+        timezone?: string | null;
     };
     path: {
         /**
@@ -20560,14 +20200,11 @@ export type GetApiTimelineResponse = GetApiTimelineResponses[keyof GetApiTimelin
 
 export type PostApiTimelineData = {
     body?: {
-        archived?: boolean;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_id?: number;
-        default?: boolean;
-        description?: string;
-        icon?: 'star' | 'cake' | 'mail' | 'warning' | 'bell' | 'cloud';
+        archived?: boolean | null;
+        collection_id?: number | null;
+        default?: boolean | null;
+        description?: string | null;
+        icon?: 'star' | 'cake' | 'mail' | 'warning' | 'bell' | 'cloud' | null;
         name: string;
     };
     path?: never;
@@ -20598,9 +20235,9 @@ export type PostApiTimelineResponse = PostApiTimelineResponses[keyof PostApiTime
 export type GetApiTimelineCollectionRootData = {
     body?: never;
     path?: never;
-    query?: {
-        include?: 'events';
-        archived?: boolean;
+    query: {
+        include?: 'events' | null;
+        archived: boolean | null;
     };
     url: '/api/timeline/collection/root';
 };
@@ -20631,9 +20268,9 @@ export type GetApiTimelineCollectionByIdData = {
          */
         id: number;
     };
-    query?: {
-        include?: 'events';
-        archived?: boolean;
+    query: {
+        include?: 'events' | null;
+        archived: boolean | null;
     };
     url: '/api/timeline/collection/{id}';
 };
@@ -20731,15 +20368,12 @@ export type GetApiTimelineByIdResponse = GetApiTimelineByIdResponses[keyof GetAp
 
 export type PutApiTimelineByIdData = {
     body?: {
-        archived?: boolean;
-        /**
-         * value must be an integer greater than zero.
-         */
-        collection_id?: number;
-        default?: boolean;
-        description?: string;
-        icon?: 'star' | 'cake' | 'mail' | 'warning' | 'bell' | 'cloud';
-        name?: string;
+        archived?: boolean | null;
+        collection_id?: number | null;
+        default?: boolean | null;
+        description?: string | null;
+        icon?: 'star' | 'cake' | 'mail' | 'warning' | 'bell' | 'cloud' | null;
+        name?: string | null;
     };
     path: {
         /**
@@ -20771,7 +20405,7 @@ export type PutApiTimelineByIdResponses = {
 
 export type PostApiUploadCsvData = {
     body?: {
-        collection_id?: number;
+        collection_id: number | null;
         file: {
             filename: string;
             tempfile: unknown;
@@ -20882,7 +20516,7 @@ export type GetApiUserKeyValueNamespaceByNamespaceKeyByKeyResponses = {
 
 export type PutApiUserKeyValueNamespaceByNamespaceKeyByKeyData = {
     body?: {
-        expires_at?: MetabaseLibSchemaLiteralStringDatetime;
+        expires_at?: MetabaseLibSchemaLiteralStringDatetime | null;
         value?: unknown;
     };
     path: {
@@ -20914,14 +20548,11 @@ export type PutApiUserKeyValueNamespaceByNamespaceKeyByKeyResponses = {
 export type GetApiUserData = {
     body?: never;
     path?: never;
-    query?: {
-        status?: string;
-        query?: string;
-        /**
-         * value must be an integer greater than zero.
-         */
-        group_id?: number;
-        include_deactivated?: boolean;
+    query: {
+        status?: string | null;
+        query?: string | null;
+        group_id?: number | null;
+        include_deactivated: boolean | null;
     };
     url: '/api/user/';
 };
@@ -20952,16 +20583,13 @@ export type PostApiUserData = {
          * value must be a valid email address.
          */
         email: string;
-        first_name?: string;
-        last_name?: string;
-        /**
-         * login attribute keys must be a keyword or string
-         */
+        first_name?: string | null;
+        last_name?: string | null;
         login_attributes?: {
             [key: string]: unknown;
-        };
-        source?: string;
-        user_group_memberships?: Array<MetabaseUsersApiUserGroupMembership>;
+        } | null;
+        source?: string | null;
+        user_group_memberships?: Array<MetabaseUsersApiUserGroupMembership> | null;
     };
     path?: never;
     query?: never;
@@ -21108,25 +20736,16 @@ export type GetApiUserByIdResponse = GetApiUserByIdResponses[keyof GetApiUserByI
 
 export type PutApiUserByIdData = {
     body?: {
-        /**
-         * value must be a valid email address.
-         */
-        email?: string;
-        first_name?: string;
-        is_group_manager?: boolean;
-        is_superuser?: boolean;
-        last_name?: string;
-        /**
-         * String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.
-         */
-        locale?: string;
-        /**
-         * login attribute keys must be a keyword or string
-         */
+        email?: string | null;
+        first_name?: string | null;
+        is_group_manager?: boolean | null;
+        is_superuser?: boolean | null;
+        last_name?: string | null;
+        locale?: string | null;
         login_attributes?: {
             [key: string]: unknown;
-        };
-        user_group_memberships?: Array<MetabaseUsersApiUserGroupMembership>;
+        } | null;
+        user_group_memberships?: Array<MetabaseUsersApiUserGroupMembership> | null;
     };
     path: {
         /**
@@ -21193,7 +20812,7 @@ export type PutApiUserByIdModalByModalResponse = PutApiUserByIdModalByModalRespo
 
 export type PutApiUserByIdPasswordData = {
     body?: {
-        old_password?: string;
+        old_password?: string | null;
         /**
          * password is too common.
          */
