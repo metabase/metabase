@@ -13,6 +13,7 @@
   "org.apache.hadoop"                {:resource "apache2_0.txt"}
   "org.clojure"                      {:resource "EPL.txt"}
   "org.eclipse.jetty"                {:resource "apache2_0.txt"}
+  "org.eclipse.jetty.ee"             {:resource "apache2_0.txt"}
   "org.opensaml"                     {:resource "apache2_0.txt"}
   "org.ow2.asm"                      {:resource "BSD.txt"}
   "xalan"                            {:resource "apache2_0.txt"}}
