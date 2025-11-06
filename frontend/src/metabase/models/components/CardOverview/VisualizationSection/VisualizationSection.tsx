@@ -11,13 +11,13 @@ import type { Card } from "metabase-types/api";
 import S from "./VisualizationSection.css";
 
 type VisualizationSectionProps = {
-  card: Card;
   className?: string;
+  card: Card;
 };
 
 export function VisualizationSection({
-  card,
   className,
+  card,
 }: VisualizationSectionProps) {
   const metadata = useSelector(getMetadata);
   const question = useMemo(

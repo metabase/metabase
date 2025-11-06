@@ -7,15 +7,15 @@ import { DescriptionSection } from "./DescriptionSection";
 import { QuerySourceSection } from "./QuerySourceSection";
 import { VisualizationSection } from "./VisualizationSection";
 
-interface CardOverviewProps {
+type CardOverviewProps = {
   card: Card;
-}
+};
 
 export function CardOverview({ card }: CardOverviewProps) {
   return (
-    <Flex p="xl" pt={0} flex={1} className={S.root}>
+    <Flex className={S.root} p="xl" pt={0} flex={1}>
       <Flex direction="column" flex={1} mah={700}>
-        <VisualizationSection card={card} className={S.visualization} />
+        <VisualizationSection className={S.visualization} card={card} />
       </Flex>
       <Stack maw={300} ml="lg" gap="md" className={S.sidebar}>
         <DescriptionSection card={card} />
