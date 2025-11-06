@@ -46,7 +46,7 @@
   com.github.blagerweij/liquibase-sessionlock {:mvn/version "1.6.9"}            ; session lock for liquibase migrations
   com.github.jknack/handlebars              ^:antq/exclude                      ; 4.4.0 requires java 17+
                                             {:mvn/version "4.3.1"}              ; templating engine
-  com.github.oliyh/martian-clj-http         {:mvn/version "0.1.31"}             ; openapi client
+  com.github.oliyh/martian-clj-http         {:mvn/version "0.2.1"}             ; openapi client
   com.github.pangloss/transducers           {:git/sha "c91d39046c8c64dc31b84ebb27154a8084fcda4c" ; like medley for transducers
                                              :git/url "https://github.com/pangloss/transducers"}
   com.github.seancorfield/honeysql          {:mvn/version "2.7.1340"}           ; Honey SQL 2. SQL generation from Clojure data maps
@@ -147,7 +147,7 @@
   org.clj-commons/hickory                   {:mvn/version "0.7.7"               ; Parse HTML into Clojure data structures
                                              :exclusions [org.jsoup/jsoup]}
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
-  org.clojure/clojure                       {:mvn/version "1.12.2"}
+  org.clojure/clojure                       {:mvn/version "1.12.3"}
   org.clojure/core.async                    {:mvn/version "1.7.701"
                                              :exclusions  [org.clojure/tools.reader]}
   org.clojure/core.logic                    {:mvn/version "1.1.0"}              ; optimized pattern matching library for Clojure
@@ -166,14 +166,14 @@
   org.clojure/tools.namespace               {:mvn/version "1.5.0"}
   org.clojure/tools.reader                  {:mvn/version "1.5.2"}
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "12.0.24"}
-  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.0.25"}
-  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.0.24"}
-  org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.0.25"}
+  org.eclipse.jetty/jetty-server            {:mvn/version "12.1.3"}
+  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.1.3"}
+  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.1.3"}
+  org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.1.3"}
   org.eclipse.jgit/org.eclipse.jgit        {:mvn/version "7.3.0.202506031305-r"}; Java implementation of Git version control system
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
-  org.graalvm.polyglot/js-community         {:mvn/version "24.2.2" :extension "pom"} ; JavaScript engine
-  org.graalvm.polyglot/polyglot             {:mvn/version "24.2.2"}             ; GraalVM platform, required by JS engine
+  org.graalvm.polyglot/js-community         {:mvn/version "25.0.1" :extension "pom"} ; JavaScript engine
+  org.graalvm.polyglot/polyglot             {:mvn/version "25.0.1"}             ; GraalVM platform, required by JS engine
   org.jsoup/jsoup                           {:mvn/version "1.21.1"}             ; required by hickory
   org.liquibase/liquibase-core              {:mvn/version "4.33.0"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
@@ -201,6 +201,7 @@
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
   software.amazon.awssdk/s3                 {:mvn/version "2.36.2"}             ; AWS SDK v2 for S3
   software.amazon.awssdk/sts                {:mvn/version "2.36.2"}             ; Required for S3 client to use service account
+  software.amazon.jdbc/aws-advanced-jdbc-wrapper {:mvn/version "2.6.5"}        ; AWS JDBC wrapper for IAM authentication
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
   user-agent/user-agent                     {:mvn/version "0.1.1"}              ; User-Agent string parser, for Login History page & elsewhere
   weavejester/dependency                    {:mvn/version "1.0.0"}              ; Dependency graphs and topological sorting
@@ -691,7 +692,7 @@
   ;;
   ;; ./bin/mage cljfmt-all -h for more info
   :cljfmt
-  {:deps       {io.github.weavejester/cljfmt {:git/sha "7de286008766127128a156275b9add3bf443d7e5"}}
+  {:deps       {io.github.weavejester/cljfmt {:mvn/version "0.15.3"}}
    :ns-default cljfmt.tool
    :exec-fn    cljfmt.tool/fix}
 

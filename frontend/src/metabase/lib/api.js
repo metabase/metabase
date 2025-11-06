@@ -1,9 +1,11 @@
 import EventEmitter from "events";
 import querystring from "querystring";
 
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isTest } from "metabase/env";
 import { isWithinIframe } from "metabase/lib/dom";
 import { delay } from "metabase/lib/promise";
+import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 
 import { IS_EMBED_PREVIEW } from "./embed";
 
@@ -37,8 +39,6 @@ export class Api extends EventEmitter {
   basename = "";
   apiKey = "";
   sessionToken;
-
-  onBeforeRequest;
   onResponseError;
 
   /**
@@ -114,7 +114,7 @@ export class Api extends EventEmitter {
     return headers;
   }
 
-  _makeMethod(method, creatorOptions = {}) {
+  _makeMethod(methodTemplate, creatorOptions = {}) {
     return (urlTemplate, methodOptions = {}) => {
       if (typeof methodOptions === "function") {
         methodOptions = { transformResponse: methodOptions };
@@ -127,12 +127,12 @@ export class Api extends EventEmitter {
       };
 
       return async (rawData, invocationOptions = {}) => {
-        if (this.onBeforeRequest) {
-          await this.onBeforeRequest();
-        }
-
-        const options = { ...defaultOptions, ...invocationOptions };
-        let url = urlTemplate;
+        let { url, method, options } =
+          await this.apiRequestManipulationMiddleware({
+            url: urlTemplate,
+            method: methodTemplate,
+            options: { ...defaultOptions, ...invocationOptions },
+          });
         // this will transform arrays to objects with numeric keys
         // we shouldn't be using top level-arrays in the API
         const data = { ...rawData };
@@ -375,6 +375,79 @@ export class Api extends EventEmitter {
           throw error;
         }
       });
+  }
+
+  /**
+   /**
+   * @typedef {{
+   *    method: "GET" | "POST";
+   *    url: string;
+   *    options: {
+   *      headers?: Record<string, string>;
+   *      hasBody: boolean;
+   *    } & Record<string, unknown>;
+   * }} OnBeforeRequestHandlerData
+   *
+   * @typedef {(data: OnBeforeRequestHandlerData) => (Promise<void | OnBeforeRequestHandlerData>)} OnBeforeRequestHandler
+   *
+   * @typedef {{
+   *   key: string;
+   *   handler: OnBeforeRequestHandler
+   * }} OnBeforeRequestHandlerDescriptor
+   *
+   * @param data {OnBeforeRequestHandlerData}
+   * @return data {Promise<OnBeforeRequestHandlerData>}
+   */
+  async apiRequestManipulationMiddleware(data) {
+    let { method, url, options } = data;
+
+    /**
+     * Handlers order is important.
+     * Handlers are executed in order and each handler uses the data returned by a previous handler.
+     * @type {OnBeforeRequestHandler[]}
+     */
+    const handlers = [];
+
+    if (isEmbeddingSdk()) {
+      if (
+        PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler
+      ) {
+        // A handler that set's `getOrRefreshSession` logic for SDK
+        handlers.push(
+          PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
+            .getOrRefreshSessionHandler,
+        );
+      }
+    }
+
+    if (handlers.length) {
+      for (const handler of handlers) {
+        const onBeforeRequestHandlerResult = await handler({
+          method,
+          url,
+          options,
+        });
+
+        if (onBeforeRequestHandlerResult) {
+          if (onBeforeRequestHandlerResult.method) {
+            method = onBeforeRequestHandlerResult.method;
+          }
+
+          if (onBeforeRequestHandlerResult.url) {
+            url = onBeforeRequestHandlerResult.url;
+          }
+
+          if (onBeforeRequestHandlerResult.options) {
+            options = {
+              ...options,
+              ...onBeforeRequestHandlerResult.options,
+            };
+          }
+        }
+      }
+    }
+
+    return { method, url, options };
   }
 }
 

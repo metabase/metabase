@@ -1,1 +1,1 @@
-export * from "./MetabotLogo";
+export { MetabotLogo } from "./MetabotLogo";
