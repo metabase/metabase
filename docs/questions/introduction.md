@@ -54,7 +54,7 @@ Questions that live in a dashboard are only visible in that dashboard. These que
 
 Questions saved to a collection can be added to multiple dashboards. Moving a question from one collection to another collection won't have any effect on the dashboards the question has been added to. To save a question to a collection, you'll need to be in a group with [curate access](../permissions/collections.md#curate-access) to that collection.
 
-### Checking for for breaking changes
+### Checking for breaking changes
 
 > {% include plans-blockquote.html feature="Checking for breaking changes" %}
 
