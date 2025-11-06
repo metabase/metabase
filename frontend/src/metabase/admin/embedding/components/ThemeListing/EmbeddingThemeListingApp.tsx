@@ -69,7 +69,7 @@ export function EmbeddingThemeListingApp() {
 
       {/* Theme cards */}
       {themes && themes.length > 0 ? (
-        <SimpleGrid cols={3} spacing="md">
+        <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
           {themes.map((theme) => (
             <EmbeddingThemeCard
               key={theme.id}
