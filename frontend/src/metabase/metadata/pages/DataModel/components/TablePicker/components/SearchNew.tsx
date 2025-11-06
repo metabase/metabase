@@ -35,18 +35,18 @@ export function SearchNew({
     refetch,
   } = useListTablesQuery({
     term: query,
-    data_layer: filters.visibilityType2 ?? undefined,
-    data_source:
+    // TODO: Please rename visibilityType2 to dataLayer
+    "data-layer": filters.visibilityType2 ?? undefined,
+    "data-source":
       filters.dataSource === "unknown"
         ? null
         : (filters.dataSource ?? undefined),
-    owner_user_id:
+    "owner-user-id":
       filters.ownerUserId === "unknown"
         ? null
         : (filters.ownerUserId ?? undefined),
-    owner_email: filters.ownerEmail ?? undefined,
-    include_hidden: filters.visibilityType2 != null,
-    orphan_only: filters.orphansOnly === true ? true : undefined,
+    "owner-email": filters.ownerEmail ?? undefined,
+    "orphan-only": filters.orphansOnly === true ? true : undefined,
   });
 
   useEffect(() => {

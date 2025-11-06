@@ -97,12 +97,11 @@ export interface TableListQuery {
   skip_fields?: boolean;
 
   term?: string;
-  // visibility_type?: TableVisibilityType;
-  data_layer?: TableDataLayer;
-  data_source?: string | null;
-  owner_user_id?: UserId | null;
-  owner_email?: string | null;
-  orphan_only?: boolean | null;
+  "data-layer"?: TableDataLayer;
+  "data-source"?: string | null;
+  "owner-user-id"?: UserId | null;
+  "owner-email"?: string | null;
+  "orphan-only"?: boolean | null;
 }
 
 export interface ForeignKey {

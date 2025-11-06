@@ -64,31 +64,31 @@
 (api.macros/defendpoint :get "/"
   "Get all `Tables`."
   [_
-   {:keys [term visibility_type data_layer data_source owner_user_id owner_email orphan_only]}
+   {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only]}
    :- [:map
        ;; conjunctive search terms
        [:term {:optional true} :string]
-       [:visibility_type {:optional true} :string]
-       [:data_layer {:optional true} :string]
-       [:data_source {:optional true} :string]
-       [:owner_user_id {:optional true} [:or :int [:enum ""]]]
-       [:owner_email {:optional true} :string]
-       [:orphan_only {:optional true} [:maybe ms/BooleanValue]]]]
+       [:visibility-type {:optional true} :string]
+       [:data.layer {:optional true} :string]
+       [:data-source {:optional true} :string]
+       [:owner-user-id {:optional true} [:maybe :int]]
+       [:owner-email {:optional true} :string]
+       [:orphan-only {:optional true} [:maybe ms/BooleanValue]]]]
   (let [like       (case (app-db/db-type) (:h2 :postgres) :ilike :like)
         pattern    (some-> term (str/replace "*" "%") (cond-> (not (str/ends-with? term "%")) (str "%")))
         empty-null (fn [x] (if (and (string? x) (str/blank? x)) nil x))
         where      (cond-> [:and [:= :active true]]
                      (not (str/blank? term)) (conj [like :name pattern])
-                     visibility_type         (conj [:= :visibility_type (empty-null visibility_type)])
-                     data_layer              (conj [:= :data_layer      (empty-null data_layer)])
-                     data_source             (conj [:= :data_source     (empty-null data_source)])
-                     owner_user_id           (conj [:= :owner_user_id   (empty-null owner_user_id)])
-                     owner_email             (conj [:= :owner_email     (empty-null owner_email)]))
+                     visibility-type         (conj [:= :visibility_type (empty-null visibility-type)])
+                     data-layer              (conj [:= :data_layer      (empty-null data-layer)])
+                     data-source             (conj [:= :data_source     (empty-null data-source)])
+                     owner-user-id           (conj [:= :owner_user_id   (empty-null owner-user-id)])
+                     owner-email             (conj [:= :owner_email     (empty-null owner-email)]))
         ;; Use LEFT JOIN to efficiently filter orphaned tables
         ;; Exclude transforms as dependents since they produce tables
         query      (cond-> {:where    where
                             :order-by [[:name :asc]]}
-                     (and orphan_only (premium-features/has-feature? :dependencies))
+                     (and orphan-only (premium-features/has-feature? :dependencies))
                      (assoc :left-join [[:dependency :d]
                                         [:and
                                          [:= :d.to_entity_type "table"]
@@ -260,10 +260,7 @@
           (seq schema_ids)   (conj (into [:or] (map schema-expr) (sort schema_ids)))))))
 
 (api.macros/defendpoint :post "/edit"
-  "DEMOWARE: Edit tables associated with one or more databases/schemas
-  - the API will live somewhere else (at least needs to apply to models)
-  - auth lol
-  - return a kind of token or identifier for status/undo."
+  "Bulk edit tables."
   [_route-params
    _query-params
    body
@@ -277,7 +274,7 @@
         [:data_layer {:optional true} [:maybe :string]]
         [:owner_email {:optional true} [:maybe :string]]
         [:owner_user_id {:optional true} [:maybe :int]]]]]
-  ;; todo so much
+  (api/check-superuser)
   (let [where   (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
         set-ks  [:visibility_type
                  :data_authority
@@ -291,7 +288,8 @@
         stmt    {:update :metabase_table
                  :set    set-map
                  :where  where}]
-    (when (seq set-map) (t2/query stmt))
+    (when (seq set-map)
+      (t2/query stmt))
     {}))
 
 (defn- table->model
@@ -316,6 +314,7 @@
        ::table-selectors
        [:map
         [:target_collection_id [:maybe [:or pos-int? [:= "library"]]]]]]]
+  (api/check-superuser)
   (let [target-collection (cond
                             (= "library" target_collection_id) (api/check-403 (collections/remote-synced-collection))
                             (nil? target_collection_id) nil
@@ -337,51 +336,6 @@
     {:created_count     (count created-models)
      :models            created-models
      :target_collection target-collection}))
-
-(api.macros/defendpoint :post "/:id/substitute-model"
-  "Creates a model that wraps the table, all entities dependent on the table will instead be made dependent on the model."
-  [{table-id :id} :- [:map [:id :int]]
-   _query-params
-   {:keys [collection_id]} :- [:map [:collection_id [:maybe :int]]]]
-  ;; todo prem feature, auth, actual impl and all that
-  (t2/with-transaction []
-    (let [edges            (t2/select :model/Dependency :from_entity_type "card" :to_entity_type "table" :to_entity_id table-id)
-          {card-ids :card} (u/group-by :from_entity_type :from_entity_id edges)
-          cards            (when (seq card-ids) (t2/select :model/Card :id [:in (sort card-ids)]))
-          table-fields     (t2/select-pk->fn :name [:model/Field :id :name] :table_id table-id)
-          queries          (map :dataset_query cards)
-          table            (t2/select-one [:model/Table :db_id :display_name] table-id)
-          user             (t2/select-one :model/User api/*current-user-id*)
-          model            (queries/create-card! {:type          :model
-                                                  :display       :table
-                                                  :name          (:display_name table)
-                                                  :collection_id collection_id
-                                                  :database_id   (:db_id table)
-                                                  :table_id      table-id
-                                                  :visualization_settings {}
-                                                  :dataset_query {:type     :query
-                                                                  :database (:db_id table)
-                                                                  :query    {:source-table table-id}}}
-                                                 user)
-          matching-stage?  (fn [x] (and (map? x) (= table-id (:source-table x))))
-          stage-sub        (fn [stage] (-> stage (dissoc :source-table) (assoc :source-card (:id model))))
-          stage-subs-xf    (comp (filter matching-stage?) (map (juxt identity stage-sub)))
-          stage-subs       (into {} stage-subs-xf (tree-seq seqable? seq queries))
-          matching-ref?    (fn [x]
-                             (and (vector? x)
-                                  (= :field (nth x 0 nil))
-                                  (contains? table-fields (nth x 2 nil))))
-          ref-sub          (fn [[_ m id]] [:field m (table-fields id)])
-          ref-subs-xf      (comp (filter matching-ref?) (map (juxt identity ref-sub)))
-          ref-subs         (into {} ref-subs-xf (tree-seq seqable? seq queries))
-          all-subs         (merge stage-subs ref-subs)]
-      (doseq [card cards
-              :let [{:keys [dataset_query]} card]
-              :when (not (lib.query/native? dataset_query))]
-        (queries/update-card! {:card-before-update card
-                               :card-updates       {:dataset_query (walk/postwalk-replace all-subs dataset_query)}
-                               :actor              user}))
-      {:model model})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
