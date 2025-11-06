@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
@@ -15,7 +14,6 @@ import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getLocation } from "metabase/selectors/routing";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";
@@ -84,21 +82,15 @@ type MetricTabsProps = {
 
 function MetricTabs({ card }: MetricTabsProps) {
   const metadata = useSelector(getMetadata);
-  const location = useSelector(getLocation);
-  const tabs = getTabs(card, metadata, location);
+  const tabs = getTabs(card, metadata);
   return <PaneHeaderTabs tabs={tabs} />;
 }
 
-function getTabs(
-  card: Card,
-  metadata: Metadata,
-  { pathname }: Location,
-): PaneHeaderTab[] {
+function getTabs(card: Card, metadata: Metadata): PaneHeaderTab[] {
   const tabs: PaneHeaderTab[] = [
     {
       label: t`Overview`,
       to: Urls.dataStudioMetric(card.id),
-      isSelected: Urls.dataStudioMetric(card.id) === pathname,
     },
   ];
 
@@ -110,7 +102,6 @@ function getTabs(
       tabs.push({
         label: t`Query`,
         to: Urls.dataStudioMetricQuery(card.id),
-        isSelected: Urls.dataStudioMetricQuery(card.id) === pathname,
       });
     }
   }
@@ -119,7 +110,6 @@ function getTabs(
     tabs.push({
       label: t`Dependencies`,
       to: Urls.dataStudioMetricDependencies(card.id),
-      isSelected: Urls.dataStudioMetricDependencies(card.id) === pathname,
     });
   }
 

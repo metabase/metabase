@@ -4,6 +4,8 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import EditableText from "metabase/common/components/EditableText";
+import { useSelector } from "metabase/lib/redux";
+import { getLocation } from "metabase/selectors/routing";
 import type { GroupProps, IconName } from "metabase/ui";
 import { Box, Button, Flex, Group, Icon, Stack, Tooltip } from "metabase/ui";
 
@@ -96,22 +98,28 @@ type PaneHeaderTabsProps = {
 };
 
 export function PaneHeaderTabs({ tabs }: PaneHeaderTabsProps) {
+  const location = useSelector(getLocation);
+
   return (
     <Group gap="sm">
-      {tabs.map(({ label, to, isSelected }) => (
-        <Button
-          key={label}
-          component={Link}
-          to={to}
-          size="sm"
-          radius="xl"
-          c={isSelected ? "brand" : undefined}
-          bg={isSelected ? "brand-light" : "transparent"}
-          bd="none"
-        >
-          {label}
-        </Button>
-      ))}
+      {tabs.map(({ label, to }) => {
+        const isSelected = to === location.pathname;
+
+        return (
+          <Button
+            key={label}
+            component={Link}
+            to={to}
+            size="sm"
+            radius="xl"
+            c={isSelected ? "brand" : undefined}
+            bg={isSelected ? "brand-light" : "transparent"}
+            bd="none"
+          >
+            {label}
+          </Button>
+        );
+      })}
     </Group>
   );
 }
