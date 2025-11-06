@@ -9,6 +9,27 @@ describe("Links in documents", () => {
     H.activateToken("bleeding-edge");
   });
 
+  describe("plain links", () => {
+    it("should support adding links via floating menu", () => {
+      cy.visit("/document/new");
+      H.documentContent().click();
+      H.addToDocument("Click here", false);
+
+      cy.realPress(["Shift", "Alt", "{leftarrow}"]);
+      H.documentFormattingMenu().should("exist");
+      H.documentFormattingMenu().findByRole("button", { name: /link/ }).click();
+      cy.realType("test.com{enter}");
+
+      H.documentContent()
+        .findByRole("link")
+        .should("contain.text", "here")
+        .invoke("attr", "href")
+        .then((href) => {
+          expect(href).to.equal("https://test.com");
+        });
+    });
+  });
+
   describe("smart links", () => {
     beforeEach(() => {
       H.createQuestion(PRODUCTS_AVERAGE_BY_CATEGORY, { wrapId: true });
