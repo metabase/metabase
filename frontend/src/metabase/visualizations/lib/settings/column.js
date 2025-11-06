@@ -150,7 +150,7 @@ export const DATE_COLUMN_SETTINGS = {
       options: getDateStyleOptionsForUnit(
         unit,
         settings["date_abbreviate"],
-        settings["date_separator"],
+        settings["date_separator"],,,
       ),
     }),
     getHidden: ({ unit }) => getDateStyleOptionsForUnit(unit).length < 2,
