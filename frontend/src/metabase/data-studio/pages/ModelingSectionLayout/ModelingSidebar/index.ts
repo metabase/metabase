@@ -1,1 +1,1 @@
-export { ModelingSidebarContainer as ModelingSidebar } from "./ModelingSidebarContainer";
+export { ModelingSidebar } from "./ModelingSidebar";
