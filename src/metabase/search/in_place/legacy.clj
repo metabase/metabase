@@ -310,6 +310,13 @@
    :display_name
    :description])
 
+(defmethod searchable-columns "transform"
+  [_ search-native-query]
+  (cond-> [:name
+           :description]
+    search-native-query
+    (conj :source)))
+
 (defmethod searchable-columns "indexed-entity"
   [_ _]
   [:name])
@@ -371,6 +378,10 @@
   [_]
   [:id :name :archived :created_at :updated_at :collection_id :creator_id])
 
+(defmethod columns-for-model "transform"
+  [_]
+  [:id :name :created_at :updated_at])
+
 (defmethod columns-for-model "indexed-entity" [_]
   [[:model-index-value.name     :name]
    [:model-index-value.model_pk :id]
@@ -428,6 +439,10 @@
    [:table.name :table_name]
    [:table.description :table_description]
    [:metabase_database.name :database_name]])
+
+(defmethod columns-for-model "transform"
+  [_]
+  [:id :name :description :created_at :updated_at])
 
 (mu/defn- select-clause-for-model :- [:sequential HoneySQLColumn]
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
@@ -525,10 +540,18 @@
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
       (add-collection-join-and-where-clauses model search-ctx)))
 
+(defmethod search-query-for-model "transform"
+  [_model search-ctx]
+  (base-query-for-model "transform" search-ctx))
+
 (defmethod search-query-for-model "database"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
       (sql.helpers/where [:= :router_database_id nil])))
+
+(defmethod search-query-for-model "transform"
+  [model search-ctx]
+  (base-query-for-model model search-ctx))
 
 (defmethod search-query-for-model "dashboard"
   [model search-ctx]

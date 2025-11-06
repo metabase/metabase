@@ -40,7 +40,7 @@
 
   If this clause is 'selected' (i.e., appears in `:fields`, `:aggregation`, or `:breakout`), select the clause `AS`
   this alias. This alias is guaranteed to be unique."
-  (:refer-clojure :exclude [mapv ref select-keys some])
+  (:refer-clojure :exclude [mapv ref select-keys some empty? not-empty])
   (:require
    [medley.core :as m]
    [metabase.config.core :as config]
@@ -51,7 +51,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -61,7 +60,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv select-keys some]]))
+   [metabase.util.performance :refer [mapv select-keys some empty? not-empty]]))
 
 (mu/defn- ^:dynamic *escape-alias-fn* :- :string
   [driver :- :keyword
@@ -80,7 +79,7 @@
 
 (defn- escape-fn []
   {:pre [(keyword? driver/*driver*)]}
-  (let [f      (lib.util/unique-name-generator)
+  (let [f      (lib/unique-name-generator)
         driver driver/*driver*]
     (fn [s]
       (->> s
@@ -284,11 +283,15 @@
     &match
 
     [:field opts _id-or-name]
-    (let [col (m/find-first #(lib.equality/= % (or (::resolved opts)
-                                                   (throw (ex-info "Missing ::resolved -- should have been added by add-source-aliases"
-                                                                   {:field-ref &match
-                                                                    :path      (concat path &parents)}))))
-                            returned-columns)]
+    (let [resolved (or (::resolved opts)
+                       (throw (ex-info "Missing ::resolved -- should have been added by add-source-aliases"
+                                       {:field-ref &match
+                                        :path      (concat path &parents)})))
+          ;; PERF: This is quadratic: O(refs-in-stage * returned-columns)!
+          ;; There's not a direct way to index this since [[lib.equality/=]] is too fuzzy for that.
+          ;; Even a partial fix like (group-by f returned-columns) so that this is scanning a small plausible set
+          ;; of matches instead of everything would go a long way!
+          col      (m/find-first #(lib.equality/= % resolved) returned-columns)]
       (-> &match
           (lib/update-options (fn [opts]
                                 (-> opts
@@ -440,8 +443,8 @@
   [query                                                                              :- ::lib.schema/query
    {:keys [globally-unique-join-aliases?], :or {globally-unique-join-aliases? false}} :- [:maybe ::options]]
   (let [make-join-alias-unique-name-generator (if globally-unique-join-aliases?
-                                                (constantly (lib.util/unique-name-generator))
-                                                lib.util/unique-name-generator)]
+                                                (constantly (lib/unique-name-generator))
+                                                lib/unique-name-generator)]
     (lib.walk/walk-stages
      query
      (fn [_query _path stage]

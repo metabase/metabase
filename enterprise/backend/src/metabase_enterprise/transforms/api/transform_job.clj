@@ -148,8 +148,12 @@
   (log/info "Getting the transforms of transform job" job-id)
   (api/check-superuser)
   (api/check-404 (t2/select-one-pk :model/TransformJob :id job-id))
-  (transforms.jobs/job-transforms job-id))
+  (-> (transforms.jobs/job-transforms job-id)
+      (t2/hydrate :creator)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Get all transform jobs."
   [_route-params

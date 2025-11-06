@@ -94,19 +94,20 @@ const TEST_CARD = createMockCard({
   parameters: [TEST_PARAM],
 });
 
-const setup = ({
+const setup = async ({
   isValidCard = true,
   title,
   withCustomLayout = false,
   withChartTypeSelector = false,
   initialSqlParameters,
   cardId = TEST_CARD_ID,
+  preventWaitForLoader = false,
 }: Partial<
   Pick<BaseSdkQuestionProps, "initialSqlParameters"> &
     Pick<SdkQuestionDefaultViewProps, "withChartTypeSelector" | "title"> & {
       isValidCard?: boolean;
       withCustomLayout?: boolean;
-    } & { cardId: BaseEntityId | CardId }
+    } & { cardId: BaseEntityId | CardId; preventWaitForLoader?: boolean }
 > = {}) => {
   const { state } = setupSdkState({
     currentUser: TEST_USER,
@@ -132,7 +133,7 @@ const setup = ({
 
   setupEntityIdEndpoint({ card: { [TEST_ENTITY_ID]: TEST_CARD_ID } });
 
-  return renderWithSDKProviders(
+  renderWithSDKProviders(
     <SdkQuestion
       questionId={cardId}
       title={title}
@@ -148,13 +149,17 @@ const setup = ({
       storeInitialState: state,
     },
   );
+
+  if (!preventWaitForLoader) {
+    await waitForLoaderToBeRemoved();
+  }
 };
 
 describe("InteractiveQuestion", () => {
   it("should initially render with a loader", async () => {
-    setup();
-
+    await setup({ preventWaitForLoader: true });
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    await waitForLoaderToBeRemoved();
   });
 
   describe("table visualization", () => {
@@ -162,22 +167,8 @@ describe("InteractiveQuestion", () => {
       mockGetBoundingClientRect();
     });
 
-    beforeEach(() => {
-      jest.useFakeTimers();
-    });
-
-    afterEach(() => {
-      jest.useRealTimers();
-    });
-
     it("should render loading state when rerunning the query", async () => {
-      setup({ withCustomLayout: true });
-
-      await waitForLoaderToBeRemoved();
-
-      act(() => {
-        jest.runAllTimers();
-      });
+      await setup({ withCustomLayout: true });
 
       expect(
         await within(screen.getByTestId("table-root")).findByText(
@@ -202,13 +193,7 @@ describe("InteractiveQuestion", () => {
   });
 
   it("should render when question is valid", async () => {
-    setup();
-
-    await waitForLoaderToBeRemoved();
-
-    act(() => {
-      jest.runAllTimers();
-    });
+    await setup();
 
     expect(
       within(screen.getByTestId("table-root")).getByText(
@@ -221,18 +206,14 @@ describe("InteractiveQuestion", () => {
   });
 
   it("should not render an error if a question isn't found before the question loaded", async () => {
-    setup();
-
-    await waitForLoaderToBeRemoved();
+    await setup();
 
     expect(screen.queryByText("Error")).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("should render an error if a question isn't found", async () => {
-    setup({ isValidCard: false });
-
-    await waitForLoaderToBeRemoved();
+    await setup({ isValidCard: false });
 
     expect(screen.getByRole("alert")).toHaveTextContent(
       `Question ${TEST_CARD.id} not found. Make sure you pass the correct ID.`,
@@ -260,8 +241,7 @@ describe("InteractiveQuestion", () => {
   ])(
     "shows the question title according to the title prop",
     async (titleProp, expectedTitle) => {
-      setup({ title: titleProp });
-      await waitForLoaderToBeRemoved();
+      await setup({ title: titleProp });
 
       const element = screen.queryByText(expectedTitle ?? "My Question");
       expect(element?.textContent ?? null).toBe(expectedTitle);
@@ -269,8 +249,7 @@ describe("InteractiveQuestion", () => {
   );
 
   it("should show a chart type selector button if withChartTypeSelector is true", async () => {
-    setup({ withChartTypeSelector: true });
-    await waitForLoaderToBeRemoved();
+    await setup({ withChartTypeSelector: true });
 
     expect(
       screen.getByTestId("chart-type-selector-button"),
@@ -278,8 +257,7 @@ describe("InteractiveQuestion", () => {
   });
 
   it("should not show a chart type selector button if withChartTypeSelector is false", async () => {
-    setup({ withChartTypeSelector: false });
-    await waitForLoaderToBeRemoved();
+    await setup({ withChartTypeSelector: false });
 
     expect(
       screen.queryByTestId("chart-type-selector-button"),
@@ -287,8 +265,7 @@ describe("InteractiveQuestion", () => {
   });
 
   it("should change the visualization if a different visualization is selected", async () => {
-    setup({ withChartTypeSelector: true });
-    await waitForLoaderToBeRemoved();
+    await setup({ withChartTypeSelector: true });
     expect(
       screen.getByTestId("chart-type-selector-button"),
     ).toBeInTheDocument();
@@ -314,8 +291,7 @@ describe("InteractiveQuestion", () => {
   // Obviously, we can't test every single permutation of chart settings right now, but tests in the core
   // app should cover most cases anyway.
   it("should allow user to use chart settings", async () => {
-    setup({ withChartTypeSelector: true });
-    await waitForLoaderToBeRemoved();
+    await setup({ withChartTypeSelector: true });
 
     await userEvent.click(screen.getByLabelText("gear icon"));
 
@@ -333,9 +309,7 @@ describe("InteractiveQuestion", () => {
   });
 
   it("should query with the parameters in a parameterized question", async () => {
-    setup({ initialSqlParameters: { product_id: 1024 } });
-
-    await waitForLoaderToBeRemoved();
+    await setup({ initialSqlParameters: { product_id: 1024 } });
 
     const lastQuery = fetchMock.callHistory.lastCall(
       `path:/api/card/${TEST_CARD.id}/query`,
@@ -352,9 +326,7 @@ describe("InteractiveQuestion", () => {
 
   it("should not flash an error when loading with an entity ID (metabase#57059)", async () => {
     setupCardByEntityIdEndpoints({ ...TEST_CARD, entity_id: TEST_ENTITY_ID });
-    setup({ cardId: TEST_ENTITY_ID });
-
-    await waitForLoaderToBeRemoved();
+    await setup({ cardId: TEST_ENTITY_ID });
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(

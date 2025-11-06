@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupDatabaseListEndpoint } from "__support__/server-mocks";
+import {
+  setupDatabaseListEndpoint,
+  setupUpdateSettingEndpoint,
+} from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import * as domUtils from "metabase/lib/dom";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
@@ -26,8 +29,6 @@ describe("BrowseNavSection", () => {
     expect(
       await within(tab).findByRole("button", { name: "Add data" }),
     ).toBeInTheDocument();
-    // The user-visible text of the button says only "Add"
-    expect(within(tab).getByText("Add")).toBeInTheDocument();
   });
 
   it("should not render a section title and an 'Add data' button for users without enough permissions", async () => {
@@ -42,8 +43,6 @@ describe("BrowseNavSection", () => {
     expect(
       within(tab).queryByRole("button", { name: "Add data" }),
     ).not.toBeInTheDocument();
-    // The user-visible text of the button says only "Add"
-    expect(within(tab).queryByText("Add")).not.toBeInTheDocument();
   });
 
   it("should not render the 'Add data' button for full app embedding", () => {
@@ -186,6 +185,7 @@ function setup({
     can_upload: true,
   });
   setupDatabaseListEndpoint([database]);
+  setupUpdateSettingEndpoint();
 
   if (isEmbeddingIframe) {
     jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);

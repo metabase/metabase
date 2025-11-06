@@ -21,7 +21,7 @@ export const uploadTranslationDictionary = (rows: DictionaryArray) => {
   cy.wait("@getSettings");
 
   cy.findByTestId("content-localization-setting").findByText(
-    /Upload translation dictionary/,
+    /Upload edited translation dictionary/,
   );
 
   cy.get("#content-translation-dictionary-upload-input").selectFile(

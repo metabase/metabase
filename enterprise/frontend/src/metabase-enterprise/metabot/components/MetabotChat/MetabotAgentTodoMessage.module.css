@@ -1,0 +1,32 @@
+.todoContainer {
+  border: 1px solid var(--mb-color-brand);
+  background-color: var(--mb-color-brand-lighter);
+}
+
+.todoHeader {
+  cursor: pointer;
+  user-select: none;
+}
+
+.primaryColor {
+  color: var(--mb-color-text-brand);
+}
+
+.todoItem {
+  border-radius: 2px;
+}
+
+.statusIndicator {
+  height: 0.8rem;
+  width: 0.8rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 2px;
+  background: var(--mb-color-brand);
+}
+
+.pendingIndicator {
+  border: 1.5px solid var(--mb-color-brand);
+  margin-top: 1px;
+  background: none;
+}

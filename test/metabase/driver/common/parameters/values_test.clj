@@ -781,7 +781,7 @@
     (mt/dataset test-data
       (qp.store/with-metadata-provider meta/metadata-provider
         (let [template-tags {"createdAt" {:type         :dimension
-                                          :dimension    [:field (meta/id :orders :created-at) {}]
+                                          :dimension    [:field (meta/id :orders :created-at) nil]
                                           :name         "createdAt"
                                           :id           "4636d745-1467-4a70-ba20-2a08069d77ff"
                                           :display-name "CreatedAt"

@@ -1,0 +1,38 @@
+.container {
+  border: 1px solid var(--mb-color-border);
+}
+
+.headerOpened {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.suggestionEditor {
+  :global {
+    .cm-content {
+      padding: 0;
+    }
+
+    .cm-collapsedLines {
+      padding-left: 0;
+    }
+  }
+}
+
+.suggestionEditorOnlyNew {
+  background: color-mix(in srgb, var(--mb-color-success) 11%, transparent);
+
+  :global {
+    .cm-gutters {
+      background: transparent;
+    }
+  }
+}
+
+.suggestionHeader {
+  cursor: pointer;
+}
+
+.suggestionHeaderCollapsed,
+.suggestionHeaderCollapsed * {
+  user-select: none;
+}

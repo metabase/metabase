@@ -15,6 +15,8 @@ export type UseDownloadDataParams = Pick<
   | "dashcardId"
   | "uuid"
   | "token"
+  | "documentUuid"
+  | "documentId"
   | "params"
   | "visualizationSettings"
 >;
@@ -31,6 +33,8 @@ export const useDownloadData = ({
   dashcardId,
   uuid,
   token,
+  documentUuid,
+  documentId,
   params,
   visualizationSettings,
 }: UseDownloadDataParams): AsyncFnReturn<
@@ -55,6 +59,8 @@ export const useDownloadData = ({
           dashcardId,
           uuid,
           token,
+          documentUuid,
+          documentId,
           params,
           visualizationSettings,
         }),
@@ -63,6 +69,8 @@ export const useDownloadData = ({
     [
       dashboardId,
       dashcardId,
+      documentUuid,
+      documentId,
       params,
       question,
       result,

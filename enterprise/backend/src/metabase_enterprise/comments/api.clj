@@ -19,6 +19,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+;;; TODO (Cam 10/28/25) -- don't capitalize constants https://guide.clojure.style/#naming-constants
 (def ^:private TYPE->MODEL
   {"document" :model/Document})
 
@@ -87,6 +88,9 @@
                    (keep delete-comment))
           comments)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Get comments for an entity"
   [_route-params
@@ -177,6 +181,9 @@
                        ;; New comments always have empty reactions map
                        (assoc :reactions []))]
     (notify-comment! comment {:entity entity :parent parent})
+    (events/publish-event! :event/comment-create
+                           {:object comment
+                            :user-id api/*current-user-id*})
     comment))
 
 (api.macros/defendpoint :put "/:comment-id"
@@ -206,8 +213,12 @@
                            not-empty)]
       (t2/update! :model/Comment comment-id updates))
 
-    (-> (t2/select-one :model/Comment :id comment-id)
-        (t2/hydrate :creator :reactions))))
+    (let [updated-comment (-> (t2/select-one :model/Comment :id comment-id)
+                              (t2/hydrate :creator :reactions))]
+      (events/publish-event! :event/comment-update
+                             {:object updated-comment
+                              :user-id api/*current-user-id*})
+      updated-comment)))
 
 (api.macros/defendpoint :delete "/:comment-id"
   "Soft delete a comment"
@@ -226,6 +237,10 @@
 
     ;; Soft delete the comment
     (t2/update! :model/Comment comment-id {:deleted_at [:now]})
+
+    (events/publish-event! :event/comment-delete
+                           {:object comment
+                            :user-id api/*current-user-id*})
 
     ;; Return 204 No Content
     api/generic-204-no-content))

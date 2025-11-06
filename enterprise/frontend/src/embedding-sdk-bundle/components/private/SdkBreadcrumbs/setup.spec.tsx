@@ -6,11 +6,13 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabaseEndpoints,
+  setupDatabaseListEndpoint,
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
@@ -156,6 +158,10 @@ export const setup = async () => {
     collections: [ROOT_TEST_COLLECTION, NESTED_COLLECTION],
   });
 
+  setupCollectionByIdEndpoint({
+    collections: [ROOT_TEST_COLLECTION, NESTED_COLLECTION],
+  });
+
   setupCollectionItemsEndpoint({
     collection: ROOT_TEST_COLLECTION,
     collectionItems,
@@ -185,6 +191,7 @@ export const setup = async () => {
   );
   setupAlertsEndpoints(TEST_CARD, []);
   setupDatabaseEndpoints(TEST_DATABASE);
+  setupDatabaseListEndpoint([TEST_DATABASE]);
   setupTableEndpoints(TEST_TABLE);
 
   setupNotificationChannelsEndpoints({});

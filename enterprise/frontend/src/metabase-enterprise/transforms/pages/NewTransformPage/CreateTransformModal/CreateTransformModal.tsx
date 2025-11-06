@@ -20,22 +20,36 @@ import {
 import * as Errors from "metabase/lib/errors";
 import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
-import { trackTransformCreated } from "metabase-enterprise/transforms/analytics";
-import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
 import type {
   CreateTransformRequest,
+  SuggestedTransform,
   Transform,
   TransformSource,
 } from "metabase-types/api";
 
+import { trackTransformCreated } from "../../../analytics";
+
+import { SchemaFormSelect } from "./../../../components/SchemaFormSelect";
+
+const NEW_TRANSFORM_SCHEMA = Yup.object({
+  name: Yup.string().required(Errors.required),
+  description: Yup.string().nullable(),
+  targetName: Yup.string().required(Errors.required),
+  targetSchema: Yup.string().nullable(),
+});
+
+type NewTransformValues = Yup.InferType<typeof NEW_TRANSFORM_SCHEMA>;
+
 type CreateTransformModalProps = {
   source: TransformSource;
+  suggestedTransform: SuggestedTransform | undefined;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
 
 export function CreateTransformModal({
   source,
+  suggestedTransform,
   onCreate,
   onClose,
 }: CreateTransformModalProps) {
@@ -44,6 +58,7 @@ export function CreateTransformModal({
       <FocusTrap.InitialFocus />
       <CreateTransformForm
         source={source}
+        suggestedTransform={suggestedTransform}
         onCreate={onCreate}
         onClose={onClose}
       />
@@ -53,26 +68,14 @@ export function CreateTransformModal({
 
 type CreateTransformFormProps = {
   source: TransformSource;
+  suggestedTransform: SuggestedTransform | undefined;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
 
-type NewTransformValues = {
-  name: string;
-  description: string | null;
-  targetName: string;
-  targetSchema: string | null;
-};
-
-const NEW_TRANSFORM_SCHEMA = Yup.object({
-  name: Yup.string().required(Errors.required),
-  description: Yup.string().nullable(),
-  targetName: Yup.string().required(Errors.required),
-  targetSchema: Yup.string().nullable(),
-});
-
 function CreateTransformForm({
   source,
+  suggestedTransform,
   onCreate,
   onClose,
 }: CreateTransformFormProps) {
@@ -100,8 +103,8 @@ function CreateTransformForm({
   const supportsSchemas = database && hasFeature(database, "schemas");
 
   const initialValues: NewTransformValues = useMemo(
-    () => getInitialValues(schemas),
-    [schemas],
+    () => getInitialValues(schemas, suggestedTransform),
+    [schemas, suggestedTransform],
   );
 
   if (isLoading || error != null) {
@@ -165,12 +168,17 @@ function CreateTransformForm({
   );
 }
 
-function getInitialValues(schemas: string[]): NewTransformValues {
+function getInitialValues(
+  schemas: string[],
+  suggestedTransform: SuggestedTransform | undefined,
+): NewTransformValues {
   return {
     name: "",
-    description: null,
-    targetName: "",
-    targetSchema: schemas?.[0] || null,
+    description: suggestedTransform ? suggestedTransform.description : null,
+    targetName: suggestedTransform ? suggestedTransform.target.name : "",
+    targetSchema: suggestedTransform
+      ? suggestedTransform.target.schema
+      : schemas?.[0] || null,
   };
 }
 
@@ -186,7 +194,7 @@ function getCreateRequest(
     target: {
       type: "table",
       name: targetName,
-      schema: targetSchema,
+      schema: targetSchema ?? null,
       database: databaseId,
     },
   };

@@ -6,6 +6,7 @@ import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
+  setupCardsUsingModelEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupModelActionsEndpoints,
@@ -199,13 +200,7 @@ async function setup({
   const modelUpdateSpy = jest.spyOn(Models.actions, "update");
 
   setupDatabasesEndpoints(databases);
-
-  fetchMock.get({
-    url: "path:/api/card",
-    query: { f: "using_model", model_id: card.id },
-    response: usedBy,
-  });
-
+  setupCardsUsingModelEndpoint(card, usedBy);
   setupCardsEndpoints([card]);
   setupCardQueryMetadataEndpoint(
     card,

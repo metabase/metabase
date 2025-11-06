@@ -41,7 +41,7 @@ export type MbqlClause__2 = MetabaseLibSchemaExpressionArithmeticPlusMinusTempor
 export type MbqlClause = MetabaseLibSchemaExpressionArithmeticPlusMinusTemporalIntervalSchema | MetabaseLibSchemaExpressionArithmeticPlusMinusNumericSchema | MetabaseLibSchemaExpressionArithmeticTemporalDifferenceSchema;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :/ clause
  */
 export type _heyapi_10_ = unknown;
 
@@ -496,7 +496,7 @@ export type MbqlClauseRtrim = [
 export type MbqlClauseSegment = [
     'segment',
     MetabaseLibSchemaCommonOptions,
-    MetabaseLibSchemaIdSegment
+    MetabaseLibSchemaCommonNonBlankString | MetabaseLibSchemaIdSegment
 ];
 
 export type MbqlClauseShare = [
@@ -714,6 +714,31 @@ export type MetabaseEnterpriseMetabotV3ToolsApiBasicMetric = {
     type: 'metric';
 };
 
+export type MetabaseEnterpriseMetabotV3ToolsApiBasicSnippet = {
+    description?: string | null;
+    id: number;
+    name: string;
+};
+
+export type MetabaseEnterpriseMetabotV3ToolsApiBasicTransform = {
+    description?: string | null;
+    entity_id?: string | null;
+    id: number;
+    name: string;
+    source: MetabaseEnterpriseTransformsApiTransformSource;
+    type: 'mbql' | 'native' | 'python';
+};
+
+export type MetabaseEnterpriseMetabotV3ToolsApiBrokenQuestion = {
+    id: number;
+    name: string;
+};
+
+export type MetabaseEnterpriseMetabotV3ToolsApiBrokenTransform = {
+    id: number;
+    name: string;
+};
+
 export const MetabaseEnterpriseMetabotV3ToolsApiBucket = {
     MILLISECOND: 'millisecond',
     SECOND: 'second',
@@ -737,6 +762,25 @@ export const MetabaseEnterpriseMetabotV3ToolsApiBucket = {
 } as const;
 
 export type MetabaseEnterpriseMetabotV3ToolsApiBucket = typeof MetabaseEnterpriseMetabotV3ToolsApiBucket[keyof typeof MetabaseEnterpriseMetabotV3ToolsApiBucket];
+
+export type MetabaseEnterpriseMetabotV3ToolsApiCheckTransformDependenciesArguments = {
+    source: MetabaseEnterpriseTransformsApiTransformSource;
+    transform_id: number;
+} & {
+    [key: string]: unknown;
+};
+
+export type MetabaseEnterpriseMetabotV3ToolsApiCheckTransformDependenciesResult = {
+    structured_output: {
+        bad_question_count: number;
+        bad_questions: Array<MetabaseEnterpriseMetabotV3ToolsApiBrokenQuestion>;
+        bad_transform_count: number;
+        bad_transforms: Array<MetabaseEnterpriseMetabotV3ToolsApiBrokenTransform>;
+        success: boolean;
+    };
+} | {
+    output: string;
+};
 
 export type MetabaseEnterpriseMetabotV3ToolsApiColumn = {
     description?: string | null;
@@ -910,6 +954,31 @@ export type MetabaseEnterpriseMetabotV3ToolsApiFullMetric = {
     verified?: boolean;
 };
 
+export type MetabaseEnterpriseMetabotV3ToolsApiFullSnippet = {
+    content: string;
+    description?: string | null;
+    id: number;
+    name: string;
+};
+
+export type MetabaseEnterpriseMetabotV3ToolsApiFullTransform = {
+    /**
+     * value must be a valid date string
+     */
+    created_at: string;
+    description?: string | null;
+    entity_id?: string | null;
+    id: number;
+    name: string;
+    source: MetabaseEnterpriseTransformsApiTransformSource;
+    target: MetabaseEnterpriseTransformsApiTransformTarget;
+    type: 'mbql' | 'native' | 'python';
+    /**
+     * value must be a valid date string
+     */
+    updated_at: string;
+};
+
 export type MetabaseEnterpriseMetabotV3ToolsApiGenerateInsightsArguments = {
     for: {
         metric_id: number;
@@ -927,6 +996,9 @@ export type MetabaseEnterpriseMetabotV3ToolsApiGenerateInsightsArguments = {
 export type MetabaseEnterpriseMetabotV3ToolsApiGetCurrentUserResult = {
     structured_output: {
         email_address: string;
+        glossary: {
+            [key: string]: string;
+        } | null;
         id: number;
         name: string;
         type: 'user';
@@ -1012,6 +1084,26 @@ export type MetabaseEnterpriseMetabotV3ToolsApiGetReportDetailsResult = {
     output: string;
 };
 
+export type MetabaseEnterpriseMetabotV3ToolsApiGetSnippetDetailsArguments = {
+    snippet_id: number;
+} & {
+    [key: string]: unknown;
+};
+
+/**
+ * Schema for SQL snippet detail results
+ */
+export type MetabaseEnterpriseMetabotV3ToolsApiGetSnippetDetailsResult = {
+    structured_output: MetabaseEnterpriseMetabotV3ToolsApiFullSnippet;
+};
+
+/**
+ * Schema for SQL snippet list results
+ */
+export type MetabaseEnterpriseMetabotV3ToolsApiGetSnippetsResult = {
+    structured_output: Array<MetabaseEnterpriseMetabotV3ToolsApiBasicSnippet>;
+};
+
 export type MetabaseEnterpriseMetabotV3ToolsApiGetTableDetailsArguments = {
     model_id?: number;
     table_id?: number | string;
@@ -1056,6 +1148,47 @@ export type MetabaseEnterpriseMetabotV3ToolsApiGetTablesResult = {
             name: string;
         }>;
     };
+} | {
+    output: string;
+};
+
+export type MetabaseEnterpriseMetabotV3ToolsApiGetTransformDetailsArguments = {
+    transform_id: number;
+} & {
+    [key: string]: unknown;
+};
+
+export type MetabaseEnterpriseMetabotV3ToolsApiGetTransformDetailsResult = {
+    structured_output: Array<MetabaseEnterpriseMetabotV3ToolsApiFullTransform>;
+} | {
+    output: string;
+};
+
+export type MetabaseEnterpriseMetabotV3ToolsApiGetTransformPythonLibraryDetailsArguments = {
+    path: string;
+} & {
+    [key: string]: unknown;
+};
+
+export type MetabaseEnterpriseMetabotV3ToolsApiGetTransformPythonLibraryDetailsResult = {
+    structured_output: {
+        /**
+         * value must be a valid date string
+         */
+        created_at: string;
+        path: string;
+        source: string;
+        /**
+         * value must be a valid date string
+         */
+        updated_at: string;
+    };
+} | {
+    output: string;
+};
+
+export type MetabaseEnterpriseMetabotV3ToolsApiGetTransformsResult = {
+    structured_output: Array<MetabaseEnterpriseMetabotV3ToolsApiBasicTransform>;
 } | {
     output: string;
 };
@@ -1119,9 +1252,10 @@ export type MetabaseEnterpriseMetabotV3ToolsApiQueryModelArguments = {
 export type MetabaseEnterpriseMetabotV3ToolsApiSearchArguments = {
     created_at?: string | null;
     database_id?: number | null;
-    entity_types?: Array<'table' | 'model' | 'question' | 'dashboard' | 'metric' | 'database'> | null;
+    entity_types?: Array<'table' | 'model' | 'question' | 'dashboard' | 'metric' | 'database' | 'transform'> | null;
     last_edited_at?: string | null;
     limit?: number;
+    search_native_query?: boolean | null;
     semantic_queries?: Array<string> | null;
     term_queries?: Array<string> | null;
 } & {
@@ -1143,6 +1277,7 @@ export type MetabaseEnterpriseMetabotV3ToolsApiSearchResult = {
 export type MetabaseEnterpriseMetabotV3ToolsApiSearchResultItem = {
     collection?: {
         authority_level?: string | null;
+        description?: string | null;
         name?: string | null;
     } | null;
     created_at?: string | null;
@@ -1152,7 +1287,7 @@ export type MetabaseEnterpriseMetabotV3ToolsApiSearchResultItem = {
     display_name?: string | null;
     id: number;
     name: string;
-    type: 'table' | 'model' | 'dashboard' | 'question' | 'metric' | 'database';
+    type: 'table' | 'model' | 'dashboard' | 'question' | 'metric' | 'database' | 'transform';
     updated_at?: string | null;
     verified?: boolean | null;
 };
@@ -1237,6 +1372,10 @@ export type MetabaseEnterpriseMetabotV3ToolsApiToolRequest = {
     conversation_id: string;
 };
 
+export type MetabaseEnterpriseMetabotV3ToolsTransformsTransformSource = MetabaseEnterpriseTransformsApiTransformSource;
+
+export type MetabaseEnterpriseMetabotV3ToolsTransformsTransformTarget = MetabaseEnterpriseTransformsApiTransformTarget;
+
 export type MetabaseEnterprisePermissionDebugImplGroupId = number;
 
 export type MetabaseEnterprisePermissionDebugImplPermDebugInfo = {
@@ -1253,6 +1392,13 @@ export type MetabaseEnterprisePermissionDebugImplPermDebugInfo = {
     };
 };
 
+/**
+ * value must be a valid attribute remappings map (attribute name -> remapped name)
+ */
+export type MetabaseEnterpriseSandboxSchemaAttributeRemappings = {
+    [key: string]: string | MetabaseLibSchemaIdField | MetabaseLibSchemaParameterTarget;
+} | null;
+
 export const MetabaseEnterpriseTransformsApiRunTrigger = {
     NONE: 'none',
     GLOBAL_SCHEDULE: 'global-schedule'
@@ -1261,9 +1407,7 @@ export const MetabaseEnterpriseTransformsApiRunTrigger = {
 export type MetabaseEnterpriseTransformsApiRunTrigger = typeof MetabaseEnterpriseTransformsApiRunTrigger[keyof typeof MetabaseEnterpriseTransformsApiRunTrigger];
 
 export type MetabaseEnterpriseTransformsApiTransformSource = {
-    query: {
-        database: number;
-    };
+    query: MetabaseQueriesSchemaQuery;
     type: 'query';
 } | {
     body: string;
@@ -1443,7 +1587,7 @@ export type MetabaseActionsTypesScopeRaw = {
 /**
  * value must be an array of valid results column metadata maps.
  */
-export type MetabaseAnalyzeQueryResultsResultsMetadata = Array<MetabaseLegacyMbqlSchemaLegacyColumnMetadata> | null;
+export type MetabaseAnalyzeQueryResultsResultsMetadata = Array<MetabaseQueryProcessorSchemaResultMetadataColumn> | null;
 
 /**
  * Masked string like 'mb_1234**********'.
@@ -1573,55 +1717,277 @@ export type MetabaseCollectionsApiMoveDashboardQuestionCandidatesResponse = {
 };
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :!= clause
  */
 export type MetabaseLegacyMbqlSchema___ = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :* clause
  */
 export type MetabaseLegacyMbqlSchema__ = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :+ clause
  */
 export type MetabaseLegacyMbqlSchema__2 = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :- clause
  */
 export type MetabaseLegacyMbqlSchema = unknown;
 
+export type MetabaseLegacyMbqlSchemaNativeQueryCommon = {
+    collection?: MetabaseLibSchemaCommonNonBlankString | null;
+    'template-tags'?: MetabaseLegacyMbqlSchemaTemplateTagMap;
+} & unknown;
+
 /**
- * schema for a valid legacy MBQL :tag clause
+ * Things required by all template tag types.
+ */
+export type MetabaseLegacyMbqlSchemaTemplateTagCommon = {
+    'display-name': MetabaseLibSchemaCommonNonBlankString;
+    id?: MetabaseLibSchemaTemplateTagId;
+    name: MetabaseLibSchemaCommonNonBlankString;
+    type: MetabaseLegacyMbqlSchemaTemplateTagType;
+};
+
+/**
+ * Things required by all template tag types.
+ */
+export type MetabaseLegacyMbqlSchemaTemplateTagFieldFilter = {
+    alias?: string;
+    default?: unknown;
+    dimension: MetabaseLegacyMbqlSchemaField;
+    'display-name': MetabaseLibSchemaCommonNonBlankString;
+    id?: MetabaseLibSchemaTemplateTagId;
+    name: MetabaseLibSchemaCommonNonBlankString;
+    /**
+     * optional map to be appended to filter clause
+     */
+    options?: {
+        [key: string]: unknown;
+    } | null;
+    required?: boolean;
+    type: 'dimension';
+    /**
+     * which type of widget the frontend should show for this Field Filter; this also affects which parameter types
+     * are allowed to be specified for it.
+     */
+    'widget-type': MetabaseLegacyMbqlSchemaWidgetType;
+};
+
+/**
+ * Things required by all template tag types.
+ */
+export type MetabaseLegacyMbqlSchemaTemplateTagRawValue = {
+    default?: unknown;
+    'display-name': MetabaseLibSchemaCommonNonBlankString;
+    id?: MetabaseLibSchemaTemplateTagId;
+    name: MetabaseLibSchemaCommonNonBlankString;
+    required?: boolean;
+    type: 'date' | 'number' | 'boolean' | 'text';
+};
+
+/**
+ * Things required by all template tag types.
+ */
+export type MetabaseLegacyMbqlSchemaTemplateTagSnippet = {
+    database?: MetabaseLibSchemaIdDatabase;
+    'display-name': MetabaseLibSchemaCommonNonBlankString;
+    id?: MetabaseLibSchemaTemplateTagId;
+    name: MetabaseLibSchemaCommonNonBlankString;
+    'snippet-id': MetabaseLibSchemaIdSnippet;
+    'snippet-name': MetabaseLibSchemaCommonNonBlankString;
+    type: 'snippet';
+};
+
+/**
+ * Things required by all template tag types.
+ */
+export type MetabaseLegacyMbqlSchemaTemplateTagSourceQuery = {
+    'card-id': MetabaseLibSchemaIdCard;
+    'display-name': MetabaseLibSchemaCommonNonBlankString;
+    id?: MetabaseLibSchemaTemplateTagId;
+    name: MetabaseLibSchemaCommonNonBlankString;
+    type: 'card';
+};
+
+/**
+ * Things required by all template tag types.
+ */
+export type MetabaseLegacyMbqlSchemaTemplateTagTemporalUnit = {
+    alias?: string;
+    default?: unknown;
+    dimension: MetabaseLegacyMbqlSchemaField;
+    'display-name': MetabaseLibSchemaCommonNonBlankString;
+    id?: MetabaseLibSchemaTemplateTagId;
+    name: MetabaseLibSchemaCommonNonBlankString;
+    required?: boolean;
+    type: 'temporal-unit';
+};
+
+/**
+ * Things required by all template tag types.
+ */
+export type MetabaseLegacyMbqlSchemaTemplateTagValueCommon = {
+    default?: unknown;
+    'display-name': MetabaseLibSchemaCommonNonBlankString;
+    id?: MetabaseLibSchemaTemplateTagId;
+    name: MetabaseLibSchemaCommonNonBlankString;
+    required?: boolean;
+    type: MetabaseLegacyMbqlSchemaTemplateTagType;
+};
+
+export type MetabaseLegacyMbqlSchemaLegacyColumnMetadataBinningInfo = {
+    bin_width?: MetabaseLibSchemaBinningBinWidth;
+    binning_strategy?: MetabaseLibSchemaBinningStrategy;
+    num_bins?: MetabaseLibSchemaBinningNumBins;
+    strategy: MetabaseLibSchemaBinningStrategy;
+};
+
+export type MetabaseLegacyMbqlSchemaLegacyColumnMetadataQualifiedKeys = {
+    'lib/breakout?'?: boolean | null;
+    'lib/card-id'?: number | null;
+    /**
+     * The simply-deduplicated name that was historically used in QP results metadata (originally calculated by
+     * the [[metabase.query-processor.middleware.annotate]] middleware, now calculated
+     * by [[metabase.lib.middleware.result-metadata]]). This just adds suffixes to column names e.g. `ID` and `ID` become
+     * `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name.
+     */
+    'lib/deduplicated-name'?: string | null;
+    'lib/desired-column-alias'?: string | null;
+    'lib/expression-name'?: string | null;
+    'lib/external-remap'?: MetabaseLibSchemaMetadataColumnRemappingExternal | null;
+    'lib/internal-remap'?: MetabaseLibSchemaMetadataColumnRemappingInternal | null;
+    'lib/model-display-name'?: string | null;
+    'lib/original-binning'?: ({
+        strategy: MetabaseLibSchemaBinningStrategy;
+    } & ({
+        strategy: 'default';
+    } | {
+        'bin-width': MetabaseLibSchemaBinningBinWidth;
+        strategy: 'bin-width';
+    } | {
+        'num-bins': MetabaseLibSchemaBinningNumBins;
+        strategy: 'num-bins';
+    })) | null;
+    'lib/original-display-name'?: string | null;
+    'lib/original-expression-name'?: string | null;
+    'lib/original-join-alias'?: string | null;
+    /**
+     * The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the
+     * column in the table it appears in). This should be the same as the `:lib/source-column-alias` for the very first
+     * usage of the column.
+     * Allowed to be blank because some databases like SQL Server allow blank column names.
+     */
+    'lib/original-name'?: string | null;
+    'lib/ref-display-name'?: string | null;
+    'lib/ref-name'?: string | null;
+    'lib/source'?: MetabaseLibSchemaMetadataColumnSource | null;
+    'lib/source-column-alias'?: string | null;
+    'lib/source-uuid'?: MetabaseLibSchemaCommonUuid | null;
+    'lib/type'?: 'metadata/column';
+    'metabase.lib.field/binning'?: ({
+        strategy: MetabaseLibSchemaBinningStrategy;
+    } & ({
+        strategy: 'default';
+    } | {
+        'bin-width': MetabaseLibSchemaBinningBinWidth;
+        strategy: 'bin-width';
+    } | {
+        'num-bins': MetabaseLibSchemaBinningNumBins;
+        strategy: 'num-bins';
+    })) | null;
+    'metabase.lib.field/temporal-unit'?: 'day' | 'day-of-month' | 'day-of-week' | 'day-of-year' | 'default' | 'hour' | 'hour-of-day' | 'millisecond' | 'minute' | 'minute-of-hour' | 'month' | 'month-of-year' | 'quarter' | 'quarter-of-year' | 'second' | 'second-of-minute' | 'week' | 'week-of-year' | 'year' | 'year-of-era' | null;
+    'metabase.lib.join/join-alias'?: string | null;
+    'qp/implicit-field?'?: boolean | null;
+};
+
+/**
+ * schema for a valid MBQL 4 :< clause
  */
 export type MetabaseLegacyMbqlSchema__3 = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :<= clause
  */
 export type MetabaseLegacyMbqlSchema___2 = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 := clause
  */
 export type MetabaseLegacyMbqlSchema__4 = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :> clause
  */
 export type MetabaseLegacyMbqlSchema__5 = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :>= clause
  */
 export type MetabaseLegacyMbqlSchema___3 = unknown;
 
-export type MetabaseLegacyMbqlSchemaAddable = MetabaseLegacyMbqlSchemaDateTimeExpressionArg | MetabaseLegacyMbqlSchemaInterval | MetabaseLegacyMbqlSchemaNumericExpressionArg;
+export type MetabaseLegacyMbqlSchemaAddable = MetabaseLegacyMbqlSchemaNumericExpressionArg | MetabaseLegacyMbqlSchemaDateTimeExpressionArg | MetabaseLegacyMbqlSchemaInterval | MetabaseLegacyMbqlSchemaSegment;
 
+/**
+ * Schema for anything that is a valid `:aggregation` clause.
+ */
 export type MetabaseLegacyMbqlSchemaAggregation = MetabaseLegacyMbqlSchemaAggregationOptions | MetabaseLegacyMbqlSchemaUnnamedAggregation;
 
+/**
+ * Additional options for any aggregation clause when wrapping it in `:aggregation-options`.
+ */
+export type MetabaseLegacyMbqlSchemaAggregationOptionsOptions = {
+    'display-name'?: MetabaseLibSchemaCommonNonBlankString;
+    name?: MetabaseLibSchemaCommonNonBlankString;
+};
+
+export type MetabaseLegacyMbqlSchemaAggregations = Array<MetabaseLegacyMbqlSchemaAggregation>;
+
+export const MetabaseLegacyMbqlSchemaArithmeticDateTimeUnit = {
+    MILLISECOND: 'millisecond',
+    SECOND: 'second',
+    MINUTE: 'minute',
+    HOUR: 'hour',
+    DAY: 'day',
+    WEEK: 'week',
+    MONTH: 'month',
+    QUARTER: 'quarter',
+    YEAR: 'year'
+} as const;
+
+export type MetabaseLegacyMbqlSchemaArithmeticDateTimeUnit = typeof MetabaseLegacyMbqlSchemaArithmeticDateTimeUnit[keyof typeof MetabaseLegacyMbqlSchemaArithmeticDateTimeUnit];
+
 export type MetabaseLegacyMbqlSchemaBooleanExpression = MetabaseLegacyMbqlSchemaAnd | MetabaseLegacyMbqlSchemaOr | MetabaseLegacyMbqlSchemaNot | MetabaseLegacyMbqlSchema__4 | MetabaseLegacyMbqlSchema___ | MetabaseLegacyMbqlSchema__3 | MetabaseLegacyMbqlSchema__5 | MetabaseLegacyMbqlSchema___2 | MetabaseLegacyMbqlSchema___3 | MetabaseLegacyMbqlSchemaBetween | MetabaseLegacyMbqlSchemaStartsWith | MetabaseLegacyMbqlSchemaEndsWith | MetabaseLegacyMbqlSchemaContains | MetabaseLegacyMbqlSchemaIn | MetabaseLegacyMbqlSchemaNotIn | MetabaseLegacyMbqlSchemaDoesNotContain | MetabaseLegacyMbqlSchemaInside | MetabaseLegacyMbqlSchemaIsEmpty | MetabaseLegacyMbqlSchemaNotEmpty | MetabaseLegacyMbqlSchemaIsNull | MetabaseLegacyMbqlSchemaNotNull | MetabaseLegacyMbqlSchemaRelativeTimeInterval | MetabaseLegacyMbqlSchemaTimeInterval | MetabaseLegacyMbqlSchemaDuring;
+
+export type MetabaseLegacyMbqlSchemaBreakouts = Array<MetabaseLegacyMbqlSchemaFieldOrExpressionRef>;
+
+export type MetabaseLegacyMbqlSchemaCaseOptions = {
+    default?: MetabaseLegacyMbqlSchemaExpressionArg;
+};
+
+export type MetabaseLegacyMbqlSchemaCaseSubclause = [
+    MetabaseLegacyMbqlSchemaFilter,
+    MetabaseLegacyMbqlSchemaExpressionArg
+];
+
+export type MetabaseLegacyMbqlSchemaCaseSubclauses = Array<MetabaseLegacyMbqlSchemaCaseSubclause>;
+
+export type MetabaseLegacyMbqlSchemaCheckKeysForQueryType = unknown;
+
+/**
+ * `:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the
+ * columns in the source query.
+ *
+ * Where this is added was changed in Metabase 0.33.0 -- previously, when `card__id` source queries were resolved, the
+ * middleware would add `:source-metadata` to the top-level; to support joins against source queries, this has been
+ * changed so it is always added at the same level the resolved `:source-query` is added.
+ *
+ * This should automatically be fixed by `normalize`; if we encounter it, it means some middleware is not functioning
+ * properly.
+ */
+export type MetabaseLegacyMbqlSchemaCheckQueryDoesNotHaveSourceMetadata = unknown;
 
 /**
  * Schema for a valid `:database` ID, in the top-level 'outer' query. Either a positive integer (referring to an
@@ -1711,13 +2077,65 @@ export const MetabaseLegacyMbqlSchemaDatetimeDiffUnit = {
  */
 export type MetabaseLegacyMbqlSchemaDatetimeDiffUnit = typeof MetabaseLegacyMbqlSchemaDatetimeDiffUnit[keyof typeof MetabaseLegacyMbqlSchemaDatetimeDiffUnit];
 
+/**
+ * Schema for the definition of a date function expression.
+ */
 export type MetabaseLegacyMbqlSchemaDatetimeExpression = MetabaseLegacyMbqlSchema__2 | MetabaseLegacyMbqlSchemaDatetimeAdd | MetabaseLegacyMbqlSchemaDatetimeSubtract | MetabaseLegacyMbqlSchemaConvertTimezone | MetabaseLegacyMbqlSchemaNow | MetabaseLegacyMbqlSchemaDate | MetabaseLegacyMbqlSchemaDatetime | MetabaseLegacyMbqlSchemaToday;
 
+export type MetabaseLegacyMbqlSchemaDatetimeOptions = {
+    mode?: MetabaseLegacyMbqlSchemaDatetimeOptionsMode;
+};
+
+export const MetabaseLegacyMbqlSchemaDatetimeOptionsMode = {
+    SIMPLE_BYTES: 'simple-bytes',
+    UNIX_NANOSECONDS: 'unix-nanoseconds',
+    SIMPLE: 'simple',
+    ISO: 'iso',
+    ISO_BYTES: 'iso-bytes',
+    UNIX_SECONDS: 'unix-seconds',
+    UNIX_MILLISECONDS: 'unix-milliseconds',
+    UNIX_MICROSECONDS: 'unix-microseconds'
+} as const;
+
+export type MetabaseLegacyMbqlSchemaDatetimeOptionsMode = typeof MetabaseLegacyMbqlSchemaDatetimeOptionsMode[keyof typeof MetabaseLegacyMbqlSchemaDatetimeOptionsMode];
+
+/**
+ * Schema for a valid is-empty or not-empty argument.
+ */
 export type MetabaseLegacyMbqlSchemaEmptyable = MetabaseLegacyMbqlSchemaStringExpressionArg | MetabaseLegacyMbqlSchemaFieldOrExpressionRef;
 
-export type MetabaseLegacyMbqlSchemaEqualityComparable = boolean | number | string | MetabaseLegacyMbqlSchemaTemporalLiteral | MetabaseLegacyMbqlSchemaRelativeDatetime | MetabaseLegacyMbqlSchemaFieldOrExpressionRef | MetabaseLegacyMbqlSchemaExpressionArg | MetabaseLegacyMbqlSchemaValue | null;
+/**
+ * Schema for things that make sense in a `=` or `!=` filter, i.e. things that can be compared for equality.
+ */
+export type MetabaseLegacyMbqlSchemaEqualityComparable = boolean | number | string | MetabaseLegacyMbqlSchemaTemporalLiteral | MetabaseLegacyMbqlSchemaFieldOrExpressionRefOrRelativeDatetime | MetabaseLegacyMbqlSchemaExpressionArg | MetabaseLegacyMbqlSchemaValue | null;
+
+/**
+ * Schema for the first arg to `=`, `!=`, and friends.
+ */
+export type MetabaseLegacyMbqlSchemaEqualityFilterFieldArg = MetabaseLegacyMbqlSchemaEqualityComparable;
 
 export type MetabaseLegacyMbqlSchemaExpressionArg = number | boolean | MetabaseLegacyMbqlSchemaBooleanExpression | MetabaseLegacyMbqlSchemaNumericExpression | MetabaseLegacyMbqlSchemaDatetimeExpression | MetabaseLegacyMbqlSchemaAggregation | string | MetabaseLegacyMbqlSchemaStringExpression | MetabaseLegacyMbqlSchemaValue | MetabaseLegacyMbqlSchemaFieldOrExpressionRef;
+
+export type MetabaseLegacyMbqlSchemaExpressionName = MetabaseLibSchemaCommonNonBlankString;
+
+/**
+ * Options for a legacy `:expression` ref in MBQL 4 are the same as in MBQL 5, except that `:lib/uuid` is optional and
+ * it cannot be empty.
+ */
+export type MetabaseLegacyMbqlSchemaExpressionRefOptions = {
+    'base-type'?: MetabaseLibSchemaCommonBaseType | null;
+    'database-type'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'display-name'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'effective-type'?: MetabaseLibSchemaCommonBaseType | null;
+    'lib/uuid'?: string;
+    name?: MetabaseLibSchemaCommonNonBlankString | null;
+    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
+    'temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
+};
+
+export type MetabaseLegacyMbqlSchemaExpressions = {
+    [key: string]: MetabaseLegacyMbqlSchemaFieldOrExpressionDef;
+};
 
 /**
  * Valid modes to extract weeks.
@@ -1733,62 +2151,45 @@ export const MetabaseLegacyMbqlSchemaExtractWeekMode = {
  */
 export type MetabaseLegacyMbqlSchemaExtractWeekMode = typeof MetabaseLegacyMbqlSchemaExtractWeekMode[keyof typeof MetabaseLegacyMbqlSchemaExtractWeekMode];
 
-export type MetabaseLegacyMbqlSchemaFieldOptions = {
-    'base-type'?: MetabaseLibSchemaCommonBaseType | null;
-    /**
-     * Replaces `binning-strategy`.
-     *
-     * Using binning requires the driver to support the `:binning` feature.
-     */
-    binning?: MetabaseLibSchemaBinningBinning | null;
-    'inherited-temporal-unit'?: MetabaseLegacyMbqlSchemaDateTimeUnit | null;
-    /**
-     * Replaces `joined-field`.
-     *
-     * `:join-alias` is used to refer to a FieldOrExpression from a different Table/nested query that you are EXPLICITLY
-     * JOINING against.
-     */
-    'join-alias'?: MetabaseLibSchemaJoinAlias | null;
-    /**
-     * Replaces `fk->`.
-     *
-     * `:source-field` is used to refer to a FieldOrExpression from a different Table you would like IMPLICITLY JOINED to
-     * the source table.
-     *
-     * If both `:source-field` and `:join-alias` are supplied, `:join-alias` should be used to perform the join;
-     * `:source-field` should be for information purposes only.
-     */
-    'source-field'?: MetabaseLibSchemaIdField;
-    /**
-     * The join alias of the source field used for an implicit join.
-     */
-    'source-field-join-alias'?: MetabaseLibSchemaCommonNonBlankString;
-    /**
-     * The name or desired alias of the field used for an implicit join.
-     */
-    'source-field-name'?: MetabaseLibSchemaCommonNonBlankString;
-    /**
-     * `:temporal-unit` is used to specify DATE BUCKETING for a FieldOrExpression that represents a moment in time of
-     * some sort.
-     *
-     * There is no requirement that all `:type/Temporal` derived FieldOrExpressions specify a `:temporal-unit`, but for
-     * legacy reasons `:field` clauses that refer to `:type/DateTime` FieldOrExpressions will be automatically "bucketed"
-     * in the `:breakout` and `:filter` clauses, but nowhere else. Auto-bucketing only applies to `:filter` clauses when
-     * values for comparison are `yyyy-MM-dd` date strings. See the `auto-bucket-datetimes` middleware for more details.
-     * `:field` clauses elsewhere will not be automatically bucketed, so drivers still need to make sure they do any
-     * special datetime handling for plain `:field` clauses when their FieldOrExpression derives from `:type/DateTime`.
-     */
-    'temporal-unit'?: MetabaseLegacyMbqlSchemaDateTimeUnit | null;
-} & MetabaseLegacyMbqlSchemaValidateTemporalUnit & MetabaseLegacyMbqlSchemaNoBinningOptionsAtTopLevel;
-
 /**
  * Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
  * `:+` clause or a `:field` or `:value` clause.
  */
 export type MetabaseLegacyMbqlSchemaFieldOrExpressionDef = MetabaseLegacyMbqlSchemaNumericExpression | MetabaseLegacyMbqlSchemaStringExpression | MetabaseLegacyMbqlSchemaBooleanExpression | MetabaseLegacyMbqlSchemaDatetimeExpression | MetabaseLegacyMbqlSchemaCase | MetabaseLegacyMbqlSchemaIf | MetabaseLegacyMbqlSchemaOffset | MetabaseLegacyMbqlSchemaValue | MetabaseLegacyMbqlSchemaFieldOrExpressionRef;
 
+export type MetabaseLegacyMbqlSchemaFieldOrExpressionRef = MetabaseLegacyMbqlSchemaExpression | MetabaseLegacyMbqlSchemaField;
+
+export type MetabaseLegacyMbqlSchemaFieldOrExpressionRefOrRelativeDatetime = MetabaseLegacyMbqlSchemaRelativeDatetime | MetabaseLegacyMbqlSchemaFieldOrExpressionRef;
+
+/**
+ * Options for an MBQL 4 `:field` ref are the same as MBQL 5, except that `:lib/uuid` is not required and it cannot be
+ * empty.
+ */
+export type MetabaseLegacyMbqlSchemaFieldRefOptions = {
+    'base-type'?: MetabaseLibSchemaCommonBaseType | null;
+    binning?: MetabaseLibSchemaBinningBinning;
+    'database-type'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'display-name'?: MetabaseLibSchemaCommonNonBlankString | null;
+    'effective-type'?: MetabaseLibSchemaCommonBaseType | null;
+    'inherited-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
+    'join-alias'?: MetabaseLibSchemaJoinAlias;
+    'lib/original-binning'?: MetabaseLibSchemaBinningBinning;
+    'lib/uuid'?: string;
+    'metabase.lib.field/original-effective-type'?: MetabaseLibSchemaCommonBaseType;
+    'metabase.lib.field/original-temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
+    name?: MetabaseLibSchemaCommonNonBlankString | null;
+    'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
+    'source-field'?: MetabaseLibSchemaIdField;
+    'source-field-join-alias'?: MetabaseLibSchemaCommonNonBlankString;
+    'source-field-name'?: MetabaseLibSchemaCommonNonBlankString;
+    'temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
+} | null;
+
 export type MetabaseLegacyMbqlSchemaFields = Array<MetabaseLegacyMbqlSchemaFieldOrExpressionRef> & MetabaseLegacyMbqlSchemaHelpersDistinct;
 
+/**
+ * Schema for a valid MBQL `:filter` clause.
+ */
 export type MetabaseLegacyMbqlSchemaFilter = MetabaseLegacyMbqlSchemaDatetimeExpression | MetabaseLegacyMbqlSchemaNumericExpression | MetabaseLegacyMbqlSchemaStringExpression | MetabaseLegacyMbqlSchemaBooleanExpression | MetabaseLegacyMbqlSchemaValue | MetabaseLegacyMbqlSchemaSegment | MetabaseLegacyMbqlSchemaFieldOrExpressionRef;
 
 export type MetabaseLegacyMbqlSchemaIntGreaterThanZeroOrNumericExpression = number | MetabaseLegacyMbqlSchemaNumericExpression;
@@ -1839,7 +2240,7 @@ export type MetabaseLegacyMbqlSchemaJoin = {
      * Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause with
      * appropriate aliases.
      */
-    fields?: 'all' | 'none' | MetabaseLegacyMbqlSchemaFields;
+    fields?: MetabaseLegacyMbqlSchemaJoinFields;
     /**
      * Mostly used only internally. When a join is implicitly generated via a `:field` clause with
      * `:source-field`, the ID of the foreign key field in the source Table will be recorded here. This information is used
@@ -1859,14 +2260,16 @@ export type MetabaseLegacyMbqlSchemaJoin = {
      * *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where
      * this is specified. YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!
      */
-    'source-table'?: MetabaseLibSchemaIdTable | string;
+    'source-table'?: MetabaseLegacyMbqlSchemaSourceTable;
     /**
      * Defaults to `:left-join`; used for all automatically-generated JOINs
      *
      * Driver implementations: this is guaranteed to be present after pre-processing.
      */
-    strategy?: 'full-join' | 'right-join' | 'left-join' | 'inner-join';
+    strategy?: MetabaseLibSchemaJoinStrategy;
 } & unknown;
+
+export type MetabaseLegacyMbqlSchemaJoinFields = 'all' | 'none' | MetabaseLegacyMbqlSchemaFields;
 
 /**
  * Schema for a valid sequence of `Join`s. Must be a non-empty sequence, and `:alias`, if specified, must be unique.
@@ -1874,11 +2277,9 @@ export type MetabaseLegacyMbqlSchemaJoin = {
 export type MetabaseLegacyMbqlSchemaJoins = Array<MetabaseLegacyMbqlSchemaJoin>;
 
 export type MetabaseLegacyMbqlSchemaMbqlQuery = {
-    aggregation?: Array<MetabaseLegacyMbqlSchemaAggregation>;
-    breakout?: Array<MetabaseLegacyMbqlSchemaFieldOrExpressionRef>;
-    expressions?: {
-        [key: string]: MetabaseLegacyMbqlSchemaFieldOrExpressionDef;
-    };
+    aggregation?: MetabaseLegacyMbqlSchemaAggregations;
+    breakout?: MetabaseLegacyMbqlSchemaBreakouts;
+    expressions?: MetabaseLegacyMbqlSchemaExpressions;
     fields?: MetabaseLegacyMbqlSchemaFields;
     filter?: MetabaseLegacyMbqlSchemaFilter;
     joins?: MetabaseLegacyMbqlSchemaJoins;
@@ -1891,7 +2292,18 @@ export type MetabaseLegacyMbqlSchemaMbqlQuery = {
      */
     'source-metadata'?: Array<MetabaseLegacyMbqlSchemaLegacyColumnMetadata> | null;
     'source-query'?: MetabaseLegacyMbqlSchemaSourceQuery;
-    'source-table'?: MetabaseLibSchemaIdTable | string;
+    'source-table'?: MetabaseLegacyMbqlSchemaSourceTable;
+} & {
+    [key: string]: unknown;
+} & MetabaseLegacyMbqlSchemaRemoveFieldRefsFromFieldsAlreadyInBreakout & unknown;
+
+/**
+ * Schema for a valid, normalized native [inner] query.
+ */
+export type MetabaseLegacyMbqlSchemaNativeQuery = {
+    collection?: MetabaseLibSchemaCommonNonBlankString | null;
+    query: unknown;
+    'template-tags'?: MetabaseLegacyMbqlSchemaTemplateTagMap;
 } & unknown;
 
 export type MetabaseLegacyMbqlSchemaNativeSourceQuery = {
@@ -1900,7 +2312,10 @@ export type MetabaseLegacyMbqlSchemaNativeSourceQuery = {
     'template-tags'?: MetabaseLegacyMbqlSchemaTemplateTagMap;
 } & unknown;
 
-export type MetabaseLegacyMbqlSchemaNumericExpression = MetabaseLegacyMbqlSchema__2 | MetabaseLegacyMbqlSchema | _heyapi_338_ | MetabaseLegacyMbqlSchema__ | MetabaseLegacyMbqlSchemaCoalesce | MetabaseLegacyMbqlSchemaLength | MetabaseLegacyMbqlSchemaFloor | MetabaseLegacyMbqlSchemaCeil | MetabaseLegacyMbqlSchemaRound | MetabaseLegacyMbqlSchemaAbs | MetabaseLegacyMbqlSchemaPower | MetabaseLegacyMbqlSchemaSqrt | MetabaseLegacyMbqlSchemaExp | MetabaseLegacyMbqlSchemaLog | MetabaseLegacyMbqlSchemaCase | MetabaseLegacyMbqlSchemaIf | MetabaseLegacyMbqlSchemaDatetimeDiff | MetabaseLegacyMbqlSchemaInteger | MetabaseLegacyMbqlSchemaFloat | MetabaseLegacyMbqlSchemaTemporalExtract | MetabaseLegacyMbqlSchemaGetYear | MetabaseLegacyMbqlSchemaGetQuarter | MetabaseLegacyMbqlSchemaGetMonth | MetabaseLegacyMbqlSchemaGetWeek | MetabaseLegacyMbqlSchemaGetDay | MetabaseLegacyMbqlSchemaGetDayOfWeek | MetabaseLegacyMbqlSchemaGetHour | MetabaseLegacyMbqlSchemaGetMinute | MetabaseLegacyMbqlSchemaGetSecond | MetabaseLegacyMbqlSchemaAggregation2;
+/**
+ * Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values.
+ */
+export type MetabaseLegacyMbqlSchemaNumericExpression = MetabaseLegacyMbqlSchema__2 | MetabaseLegacyMbqlSchema | _heyapi_400_ | MetabaseLegacyMbqlSchema__ | MetabaseLegacyMbqlSchemaCoalesce | MetabaseLegacyMbqlSchemaLength | MetabaseLegacyMbqlSchemaFloor | MetabaseLegacyMbqlSchemaCeil | MetabaseLegacyMbqlSchemaRound | MetabaseLegacyMbqlSchemaAbs | MetabaseLegacyMbqlSchemaPower | MetabaseLegacyMbqlSchemaSqrt | MetabaseLegacyMbqlSchemaExp | MetabaseLegacyMbqlSchemaLog | MetabaseLegacyMbqlSchemaCase | MetabaseLegacyMbqlSchemaIf | MetabaseLegacyMbqlSchemaDatetimeDiff | MetabaseLegacyMbqlSchemaInteger | MetabaseLegacyMbqlSchemaFloat | MetabaseLegacyMbqlSchemaTemporalExtract | MetabaseLegacyMbqlSchemaGetYear | MetabaseLegacyMbqlSchemaGetQuarter | MetabaseLegacyMbqlSchemaGetMonth | MetabaseLegacyMbqlSchemaGetWeek | MetabaseLegacyMbqlSchemaGetDay | MetabaseLegacyMbqlSchemaGetDayOfWeek | MetabaseLegacyMbqlSchemaGetHour | MetabaseLegacyMbqlSchemaGetMinute | MetabaseLegacyMbqlSchemaGetSecond | MetabaseLegacyMbqlSchemaAggregation2;
 
 export type MetabaseLegacyMbqlSchemaNumericExpressionArg = number | MetabaseLegacyMbqlSchemaNumericExpression | MetabaseLegacyMbqlSchemaAggregation | MetabaseLegacyMbqlSchemaValue | MetabaseLegacyMbqlSchemaReference;
 
@@ -1911,9 +2326,16 @@ export type MetabaseLegacyMbqlSchemaOrderBy = MetabaseLegacyMbqlSchemaAsc | Meta
 
 export type MetabaseLegacyMbqlSchemaOrderBys = Array<MetabaseLegacyMbqlSchemaOrderBy> & MetabaseLegacyMbqlSchemaHelpersDistinct;
 
-export type MetabaseLegacyMbqlSchemaOrderComparable = MetabaseLegacyMbqlSchemaValue | number | string | MetabaseLegacyMbqlSchemaTemporalLiteral | MetabaseLegacyMbqlSchemaExpressionArg | MetabaseLegacyMbqlSchemaRelativeDatetime | MetabaseLegacyMbqlSchemaFieldOrExpressionRef;
+/**
+ * Schema for things that make sense in a filter like `>` or `<`, i.e. things that can be sorted.
+ */
+export type MetabaseLegacyMbqlSchemaOrderComparable = MetabaseLegacyMbqlSchemaValue | number | string | MetabaseLegacyMbqlSchemaTemporalLiteral | MetabaseLegacyMbqlSchemaExpressionArg | MetabaseLegacyMbqlSchemaFieldOrExpressionRefOrRelativeDatetime;
+
+export type MetabaseLegacyMbqlSchemaOrderedFilterFieldArg = MetabaseLegacyMbqlSchemaOrderComparable;
 
 export type MetabaseLegacyMbqlSchemaQuery = {
+    [key: string]: unknown;
+} & MetabaseLegacyMbqlSchemaCheckQueryDoesNotHaveSourceMetadata & {
     constraints?: MetabaseLibSchemaConstraintsConstraints | null;
     'create-row'?: MetabaseLibSchemaActionsRow | null;
     database?: MetabaseLegacyMbqlSchemaDatabaseId;
@@ -1923,11 +2345,7 @@ export type MetabaseLegacyMbqlSchemaQuery = {
      */
     info?: MetabaseLibSchemaInfoInfo | null;
     middleware?: MetabaseLibSchemaMiddlewareOptionsMiddlewareOptions | null;
-    native?: {
-        collection?: MetabaseLibSchemaCommonNonBlankString | null;
-        query: unknown;
-        'template-tags'?: MetabaseLegacyMbqlSchemaTemplateTagMap;
-    } & unknown;
+    native?: MetabaseLegacyMbqlSchemaNativeQuery;
     parameters?: MetabaseLibSchemaParameterParameters | null;
     query?: MetabaseLegacyMbqlSchemaMbqlQuery;
     settings?: MetabaseLibSchemaSettingsSettings | null;
@@ -1936,8 +2354,11 @@ export type MetabaseLegacyMbqlSchemaQuery = {
      */
     type: 'query' | 'native';
     'update-row'?: MetabaseLibSchemaActionsRow | null;
-} & MetabaseLegacyMbqlSchemaCheckKeysForQueryType & MetabaseLegacyMbqlSchemaCheckQueryDoesNotHaveSourceMetadata & unknown;
+} & MetabaseLegacyMbqlSchemaCheckKeysForQueryType & unknown;
 
+/**
+ * Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause.
+ */
 export type MetabaseLegacyMbqlSchemaReference = MetabaseLegacyMbqlSchemaAggregation2 | MetabaseLegacyMbqlSchemaExpression | MetabaseLegacyMbqlSchemaField;
 
 export const MetabaseLegacyMbqlSchemaRelativeDatetimeUnit = {
@@ -1953,11 +2374,25 @@ export const MetabaseLegacyMbqlSchemaRelativeDatetimeUnit = {
 
 export type MetabaseLegacyMbqlSchemaRelativeDatetimeUnit = typeof MetabaseLegacyMbqlSchemaRelativeDatetimeUnit[keyof typeof MetabaseLegacyMbqlSchemaRelativeDatetimeUnit];
 
+export type MetabaseLegacyMbqlSchemaRemoveFieldRefsFromFieldsAlreadyInBreakout = unknown;
+
+/**
+ * Schema for a valid value for a `:source-query`.
+ */
 export type MetabaseLegacyMbqlSchemaSourceQuery = MetabaseLegacyMbqlSchemaNativeSourceQuery | MetabaseLegacyMbqlSchemaMbqlQuery;
+
+/**
+ * Schema for a valid value for the `:source-table` clause of an MBQL query.
+ */
+export type MetabaseLegacyMbqlSchemaSourceTable = MetabaseLibSchemaIdTable | string;
 
 export type MetabaseLegacyMbqlSchemaStringExpression = MetabaseLegacyMbqlSchemaSubstring | MetabaseLegacyMbqlSchemaTrim | MetabaseLegacyMbqlSchemaLtrim | MetabaseLegacyMbqlSchemaRtrim | MetabaseLegacyMbqlSchemaReplace | MetabaseLegacyMbqlSchemaLower | MetabaseLegacyMbqlSchemaUpper | MetabaseLegacyMbqlSchemaConcat | MetabaseLegacyMbqlSchemaRegexMatchFirst | MetabaseLegacyMbqlSchemaCoalesce | MetabaseLegacyMbqlSchemaCase | MetabaseLegacyMbqlSchemaIf | MetabaseLegacyMbqlSchemaHost | MetabaseLegacyMbqlSchemaDomain | MetabaseLegacyMbqlSchemaSubdomain | MetabaseLegacyMbqlSchemaPath | MetabaseLegacyMbqlSchemaMonthName | MetabaseLegacyMbqlSchemaQuarterName | MetabaseLegacyMbqlSchemaDayName | MetabaseLegacyMbqlSchemaText | MetabaseLegacyMbqlSchemaSplitPart;
 
 export type MetabaseLegacyMbqlSchemaStringExpressionArg = string | MetabaseLegacyMbqlSchemaStringExpression | MetabaseLegacyMbqlSchemaValue | MetabaseLegacyMbqlSchemaFieldOrExpressionRef;
+
+export type MetabaseLegacyMbqlSchemaStringFilterOptions = {
+    'case-sensitive'?: boolean;
+};
 
 /**
  * Schema for a template tag as specified in a native query. There are four types of template tags, differentiated by
@@ -1992,82 +2427,7 @@ export type MetabaseLegacyMbqlSchemaStringExpressionArg = string | MetabaseLegac
  *
  * Field filters and raw values usually have their value specified by `:parameters`.
  */
-export type MetabaseLegacyMbqlSchemaTemplateTag = MetabaseLegacyMbqlSchemaTemplateTag_FieldFilter | MetabaseLegacyMbqlSchemaTemplateTag_Snippet | MetabaseLegacyMbqlSchemaTemplateTag_SourceQuery | MetabaseLegacyMbqlSchemaTemplateTag_TemporalUnit | MetabaseLegacyMbqlSchemaTemplateTag_RawValue;
-
-/**
- * Schema for a field filter template tag.
- */
-export type MetabaseLegacyMbqlSchemaTemplateTag_FieldFilter = {
-    alias?: string;
-    default?: unknown;
-    dimension: MetabaseLegacyMbqlSchemaField;
-    'display-name': MetabaseLibSchemaCommonNonBlankString;
-    id?: MetabaseLibSchemaTemplateTagId;
-    name: MetabaseLibSchemaCommonNonBlankString;
-    /**
-     * optional map to be appended to filter clause
-     */
-    options?: {
-        [key: string]: unknown;
-    } | null;
-    required?: boolean;
-    type: 'dimension';
-    /**
-     * which type of widget the frontend should show for this Field Filter; this also affects which parameter types
-     * are allowed to be specified for it.
-     */
-    'widget-type': MetabaseLegacyMbqlSchemaWidgetType;
-};
-
-/**
- * Schema for a raw value template tag.
- */
-export type MetabaseLegacyMbqlSchemaTemplateTag_RawValue = {
-    default?: unknown;
-    'display-name': MetabaseLibSchemaCommonNonBlankString;
-    id?: MetabaseLibSchemaTemplateTagId;
-    name: MetabaseLibSchemaCommonNonBlankString;
-    required?: boolean;
-    type: 'date' | 'number' | 'boolean' | 'text';
-};
-
-/**
- * Schema for a native query snippet template tag.
- */
-export type MetabaseLegacyMbqlSchemaTemplateTag_Snippet = {
-    database?: MetabaseLibSchemaIdDatabase;
-    'display-name': MetabaseLibSchemaCommonNonBlankString;
-    id?: MetabaseLibSchemaTemplateTagId;
-    name: MetabaseLibSchemaCommonNonBlankString;
-    'snippet-id': MetabaseLibSchemaIdSnippet;
-    'snippet-name': MetabaseLibSchemaCommonNonBlankString;
-    type: 'snippet';
-};
-
-/**
- * Schema for a source query template tag.
- */
-export type MetabaseLegacyMbqlSchemaTemplateTag_SourceQuery = {
-    'card-id': MetabaseLibSchemaIdCard;
-    'display-name': MetabaseLibSchemaCommonNonBlankString;
-    id?: MetabaseLibSchemaTemplateTagId;
-    name: MetabaseLibSchemaCommonNonBlankString;
-    type: 'card';
-};
-
-/**
- * Schema for a temporal unit template tag.
- */
-export type MetabaseLegacyMbqlSchemaTemplateTag_TemporalUnit = {
-    alias?: string;
-    default?: unknown;
-    dimension: MetabaseLegacyMbqlSchemaField;
-    'display-name': MetabaseLibSchemaCommonNonBlankString;
-    id?: MetabaseLibSchemaTemplateTagId;
-    name: MetabaseLibSchemaCommonNonBlankString;
-    required?: boolean;
-    type: 'temporal-unit';
-};
+export type MetabaseLegacyMbqlSchemaTemplateTag = MetabaseLegacyMbqlSchemaTemplateTagFieldFilter | MetabaseLegacyMbqlSchemaTemplateTagSnippet | MetabaseLegacyMbqlSchemaTemplateTagSourceQuery | MetabaseLegacyMbqlSchemaTemplateTagTemporalUnit | MetabaseLegacyMbqlSchemaTemplateTagRawValue;
 
 /**
  * Schema for the `:template-tags` map passed in as part of a native query.
@@ -2077,6 +2437,23 @@ export type MetabaseLegacyMbqlSchemaTemplateTag_TemporalUnit = {
 export type MetabaseLegacyMbqlSchemaTemplateTagMap = {
     [key: string]: MetabaseLegacyMbqlSchemaTemplateTag;
 } & MetabaseLibSchemaTemplateTagTemplateTagMapValidateNames;
+
+/**
+ * Schema for valid values of template tag `:type`.
+ */
+export const MetabaseLegacyMbqlSchemaTemplateTagType = {
+    SNIPPET: 'snippet',
+    CARD: 'card',
+    DIMENSION: 'dimension',
+    NUMBER: 'number',
+    TEXT: 'text',
+    DATE: 'date'
+} as const;
+
+/**
+ * Schema for valid values of template tag `:type`.
+ */
+export type MetabaseLegacyMbqlSchemaTemplateTagType = typeof MetabaseLegacyMbqlSchemaTemplateTagType[keyof typeof MetabaseLegacyMbqlSchemaTemplateTagType];
 
 /**
  * Valid units to extract from a temporal.
@@ -2105,6 +2482,10 @@ export type MetabaseLegacyMbqlSchemaTemporalExtractUnit = typeof MetabaseLegacyM
  * Schema for valid temporal literals.
  */
 export type MetabaseLegacyMbqlSchemaTemporalLiteral = MetabaseLegacyMbqlSchemaDateOrDatetimeLiteral | MetabaseLegacyMbqlSchemaTimeLiteral;
+
+export type MetabaseLegacyMbqlSchemaTimeIntervalOptions = {
+    'include-current'?: boolean;
+};
 
 /**
  * Schema for valid time literals.
@@ -2143,234 +2524,232 @@ export type MetabaseLegacyMbqlSchemaValueTypeInfo = {
 };
 
 /**
- * Schema for valid values of `:widget-type` for a [[::TemplateTag:FieldFilter]].
+ * Schema for valid values of `:widget-type` for a [[::TemplateTag.FieldFilter]].
  */
 export type MetabaseLegacyMbqlSchemaWidgetType = MetabaseLibSchemaParameterWidgetType;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :abs clause
  */
 export type MetabaseLegacyMbqlSchemaAbs = unknown;
 
+/**
+ * Schema for a valid MBQL 4 :absolute-datetime clause.
+ */
 export type MetabaseLegacyMbqlSchemaAbsoluteDatetime = unknown | unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :aggregation clause
  */
 export type MetabaseLegacyMbqlSchemaAggregation2 = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :aggregation-options clause
  */
 export type MetabaseLegacyMbqlSchemaAggregationOptions = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * Schema for a valid MBQL 4 :and clause.
  */
-export type MetabaseLegacyMbqlSchemaAnd = unknown;
+export type MetabaseLegacyMbqlSchemaAnd = unknown | MetabaseLegacyMbqlSchemaFilter;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :asc clause
  */
 export type MetabaseLegacyMbqlSchemaAsc = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :avg clause
  */
 export type MetabaseLegacyMbqlSchemaAvg = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :between clause
  */
 export type MetabaseLegacyMbqlSchemaBetween = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :case clause
  */
 export type MetabaseLegacyMbqlSchemaCase = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :ceil clause
  */
 export type MetabaseLegacyMbqlSchemaCeil = unknown;
 
-export type MetabaseLegacyMbqlSchemaCheckKeysForQueryType = unknown;
-
 /**
- * `:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the
- * columns in the source query.
- *
- * Where this is added was changed in Metabase 0.33.0 -- previously, when `card__id` source queries were resolved, the
- * middleware would add `:source-metadata` to the top-level; to support joins against source queries, this has been
- * changed so it is always added at the same level the resolved `:source-query` is added.
- *
- * This should automatically be fixed by `normalize`; if we encounter it, it means some middleware is not functioning
- * properly.
- */
-export type MetabaseLegacyMbqlSchemaCheckQueryDoesNotHaveSourceMetadata = unknown;
-
-/**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :coalesce clause
  */
 export type MetabaseLegacyMbqlSchemaCoalesce = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :concat clause
  */
 export type MetabaseLegacyMbqlSchemaConcat = unknown;
 
+/**
+ * Schema for a valid MBQL 4 :metabase.legacy-mbql.schema/contains clause.
+ */
 export type MetabaseLegacyMbqlSchemaContains = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :convert-timezone clause
  */
 export type MetabaseLegacyMbqlSchemaConvertTimezone = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :count clause
  */
 export type MetabaseLegacyMbqlSchemaCount = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :count-where clause
  */
 export type MetabaseLegacyMbqlSchemaCountWhere = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :cum-count clause
  */
 export type MetabaseLegacyMbqlSchemaCumCount = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :cum-sum clause
  */
 export type MetabaseLegacyMbqlSchemaCumSum = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :date clause
  */
 export type MetabaseLegacyMbqlSchemaDate = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :datetime clause
  */
 export type MetabaseLegacyMbqlSchemaDatetime = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :datetime-add clause
  */
 export type MetabaseLegacyMbqlSchemaDatetimeAdd = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :datetime-diff clause
  */
 export type MetabaseLegacyMbqlSchemaDatetimeDiff = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :datetime-subtract clause
  */
 export type MetabaseLegacyMbqlSchemaDatetimeSubtract = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :day-name clause
  */
 export type MetabaseLegacyMbqlSchemaDayName = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :desc clause
  */
 export type MetabaseLegacyMbqlSchemaDesc = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :distinct clause
  */
 export type MetabaseLegacyMbqlSchemaDistinct = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :distinct-where clause
  */
 export type MetabaseLegacyMbqlSchemaDistinctWhere = unknown;
 
+/**
+ * Schema for a valid MBQL 4 :metabase.legacy-mbql.schema/does-not-contain clause.
+ */
 export type MetabaseLegacyMbqlSchemaDoesNotContain = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :domain clause
  */
 export type MetabaseLegacyMbqlSchemaDomain = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :during clause
  */
 export type MetabaseLegacyMbqlSchemaDuring = unknown;
 
+/**
+ * Schema for a valid MBQL 4 :metabase.legacy-mbql.schema/ends-with clause.
+ */
 export type MetabaseLegacyMbqlSchemaEndsWith = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :exp clause
  */
 export type MetabaseLegacyMbqlSchemaExp = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :expression clause
  */
 export type MetabaseLegacyMbqlSchemaExpression = unknown;
 
+/**
+ * Schema for a valid MBQL 4 :field clause.
+ */
 export type MetabaseLegacyMbqlSchemaField = unknown & MetabaseLegacyMbqlSchemaRequireBaseTypeForFieldName;
 
-export type MetabaseLegacyMbqlSchemaFieldOrExpressionRef = MetabaseLegacyMbqlSchemaExpression | MetabaseLegacyMbqlSchemaField;
-
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :float clause
  */
 export type MetabaseLegacyMbqlSchemaFloat = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :floor clause
  */
 export type MetabaseLegacyMbqlSchemaFloor = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :get-day clause
  */
 export type MetabaseLegacyMbqlSchemaGetDay = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :get-day-of-week clause
  */
 export type MetabaseLegacyMbqlSchemaGetDayOfWeek = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :get-hour clause
  */
 export type MetabaseLegacyMbqlSchemaGetHour = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :get-minute clause
  */
 export type MetabaseLegacyMbqlSchemaGetMinute = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :get-month clause
  */
 export type MetabaseLegacyMbqlSchemaGetMonth = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :get-quarter clause
  */
 export type MetabaseLegacyMbqlSchemaGetQuarter = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :get-second clause
  */
 export type MetabaseLegacyMbqlSchemaGetSecond = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :get-week clause
  */
 export type MetabaseLegacyMbqlSchemaGetWeek = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :get-year clause
  */
 export type MetabaseLegacyMbqlSchemaGetYear = unknown;
 
@@ -2380,42 +2759,42 @@ export type MetabaseLegacyMbqlSchemaGetYear = unknown;
 export type MetabaseLegacyMbqlSchemaHelpersDistinct = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :host clause
  */
 export type MetabaseLegacyMbqlSchemaHost = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :if clause
  */
 export type MetabaseLegacyMbqlSchemaIf = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :in clause
  */
 export type MetabaseLegacyMbqlSchemaIn = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :inside clause
  */
 export type MetabaseLegacyMbqlSchemaInside = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :integer clause
  */
 export type MetabaseLegacyMbqlSchemaInteger = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :interval clause
  */
 export type MetabaseLegacyMbqlSchemaInterval = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :is-empty clause
  */
 export type MetabaseLegacyMbqlSchemaIsEmpty = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :is-null clause
  */
 export type MetabaseLegacyMbqlSchemaIsNull = unknown;
 
@@ -2425,244 +2804,303 @@ export type MetabaseLegacyMbqlSchemaIsNull = unknown;
  */
 export type MetabaseLegacyMbqlSchemaLegacyColumnMetadata = {
     base_type: MetabaseLibSchemaCommonBaseType;
+    binning_info?: MetabaseLegacyMbqlSchemaLegacyColumnMetadataBinningInfo | null;
     converted_timezone?: MetabaseLibSchemaExpressionTemporalTimezoneId | null;
+    description?: string | null;
     display_name: string;
     effective_type?: MetabaseLibSchemaCommonBaseType;
     field_ref?: MetabaseLegacyMbqlSchemaReference | null;
     fingerprint?: MetabaseLibSchemaMetadataFingerprintFingerprint | null;
     id?: MetabaseLibSchemaIdField | null;
+    'lib/breakout?'?: boolean | null;
+    'lib/card-id'?: number | null;
+    /**
+     * The simply-deduplicated name that was historically used in QP results metadata (originally calculated by
+     * the [[metabase.query-processor.middleware.annotate]] middleware, now calculated
+     * by [[metabase.lib.middleware.result-metadata]]). This just adds suffixes to column names e.g. `ID` and `ID` become
+     * `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name.
+     */
+    'lib/deduplicated-name'?: string | null;
+    'lib/desired-column-alias'?: string | null;
+    'lib/expression-name'?: string | null;
+    'lib/external-remap'?: MetabaseLibSchemaMetadataColumnRemappingExternal | null;
+    'lib/internal-remap'?: MetabaseLibSchemaMetadataColumnRemappingInternal | null;
+    'lib/model-display-name'?: string | null;
+    'lib/original-binning'?: ({
+        strategy: MetabaseLibSchemaBinningStrategy;
+    } & ({
+        strategy: 'default';
+    } | {
+        'bin-width': MetabaseLibSchemaBinningBinWidth;
+        strategy: 'bin-width';
+    } | {
+        'num-bins': MetabaseLibSchemaBinningNumBins;
+        strategy: 'num-bins';
+    })) | null;
+    'lib/original-display-name'?: string | null;
+    'lib/original-expression-name'?: string | null;
+    'lib/original-join-alias'?: string | null;
+    /**
+     * The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the
+     * column in the table it appears in). This should be the same as the `:lib/source-column-alias` for the very first
+     * usage of the column.
+     * Allowed to be blank because some databases like SQL Server allow blank column names.
+     */
+    'lib/original-name'?: string | null;
+    'lib/ref-display-name'?: string | null;
+    'lib/ref-name'?: string | null;
+    'lib/source'?: MetabaseLibSchemaMetadataColumnSource | null;
+    'lib/source-column-alias'?: string | null;
+    'lib/source-uuid'?: MetabaseLibSchemaCommonUuid | null;
+    'lib/type'?: 'metadata/column';
+    'metabase.lib.field/binning'?: ({
+        strategy: MetabaseLibSchemaBinningStrategy;
+    } & ({
+        strategy: 'default';
+    } | {
+        'bin-width': MetabaseLibSchemaBinningBinWidth;
+        strategy: 'bin-width';
+    } | {
+        'num-bins': MetabaseLibSchemaBinningNumBins;
+        strategy: 'num-bins';
+    })) | null;
+    'metabase.lib.field/temporal-unit'?: 'day' | 'day-of-month' | 'day-of-week' | 'day-of-year' | 'default' | 'hour' | 'hour-of-day' | 'millisecond' | 'minute' | 'minute-of-hour' | 'month' | 'month-of-year' | 'quarter' | 'quarter-of-year' | 'second' | 'second-of-minute' | 'week' | 'week-of-year' | 'year' | 'year-of-era' | null;
+    'metabase.lib.join/join-alias'?: string | null;
     name: string;
+    'qp/implicit-field?'?: boolean | null;
     semantic_type?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
     source?: MetabaseLibSchemaMetadataColumnLegacySource | null;
     unit?: MetabaseLibSchemaTemporalBucketingUnit | null;
     visibility_type?: MetabaseLibSchemaMetadataColumnVisibilityType | null;
-};
+} & unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :length clause
  */
 export type MetabaseLegacyMbqlSchemaLength = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :log clause
  */
 export type MetabaseLegacyMbqlSchemaLog = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :lower clause
  */
 export type MetabaseLegacyMbqlSchemaLower = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :ltrim clause
  */
 export type MetabaseLegacyMbqlSchemaLtrim = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :max clause
  */
 export type MetabaseLegacyMbqlSchemaMax = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :median clause
  */
 export type MetabaseLegacyMbqlSchemaMedian = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :metric clause
  */
 export type MetabaseLegacyMbqlSchemaMetric = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :min clause
  */
 export type MetabaseLegacyMbqlSchemaMin = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :month-name clause
  */
 export type MetabaseLegacyMbqlSchemaMonthName = unknown;
 
-export type MetabaseLegacyMbqlSchemaNoBinningOptionsAtTopLevel = unknown;
-
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :not clause
  */
 export type MetabaseLegacyMbqlSchemaNot = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :not-empty clause
  */
 export type MetabaseLegacyMbqlSchemaNotEmpty = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :not-in clause
  */
 export type MetabaseLegacyMbqlSchemaNotIn = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :not-null clause
  */
 export type MetabaseLegacyMbqlSchemaNotNull = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :now clause
  */
 export type MetabaseLegacyMbqlSchemaNow = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :offset clause
  */
 export type MetabaseLegacyMbqlSchemaOffset = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * Schema for a valid MBQL 4 :or clause.
  */
-export type MetabaseLegacyMbqlSchemaOr = unknown;
+export type MetabaseLegacyMbqlSchemaOr = unknown | MetabaseLegacyMbqlSchemaFilter;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :path clause
  */
 export type MetabaseLegacyMbqlSchemaPath = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :percentile clause
  */
 export type MetabaseLegacyMbqlSchemaPercentile = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :power clause
  */
 export type MetabaseLegacyMbqlSchemaPower = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :quarter-name clause
  */
 export type MetabaseLegacyMbqlSchemaQuarterName = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :regex-match-first clause
  */
 export type MetabaseLegacyMbqlSchemaRegexMatchFirst = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :relative-datetime clause
  */
 export type MetabaseLegacyMbqlSchemaRelativeDatetime = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :relative-time-interval clause
  */
 export type MetabaseLegacyMbqlSchemaRelativeTimeInterval = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :replace clause
  */
 export type MetabaseLegacyMbqlSchemaReplace = unknown;
 
+/**
+ * Fields using names rather than integer IDs are required to specify `:base-type`.
+ */
 export type MetabaseLegacyMbqlSchemaRequireBaseTypeForFieldName = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :round clause
  */
 export type MetabaseLegacyMbqlSchemaRound = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :rtrim clause
  */
 export type MetabaseLegacyMbqlSchemaRtrim = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :segment clause
  */
 export type MetabaseLegacyMbqlSchemaSegment = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :share clause
  */
 export type MetabaseLegacyMbqlSchemaShare = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :split-part clause
  */
 export type MetabaseLegacyMbqlSchemaSplitPart = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :sqrt clause
  */
 export type MetabaseLegacyMbqlSchemaSqrt = unknown;
 
+/**
+ * Schema for a valid MBQL 4 :metabase.legacy-mbql.schema/starts-with clause.
+ */
 export type MetabaseLegacyMbqlSchemaStartsWith = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :stddev clause
  */
 export type MetabaseLegacyMbqlSchemaStddev = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :subdomain clause
  */
 export type MetabaseLegacyMbqlSchemaSubdomain = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :substring clause
  */
 export type MetabaseLegacyMbqlSchemaSubstring = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :sum clause
  */
 export type MetabaseLegacyMbqlSchemaSum = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :sum-where clause
  */
 export type MetabaseLegacyMbqlSchemaSumWhere = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :temporal-extract clause
  */
 export type MetabaseLegacyMbqlSchemaTemporalExtract = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :text clause
  */
 export type MetabaseLegacyMbqlSchemaText = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :time clause
  */
 export type MetabaseLegacyMbqlSchemaTime = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :time-interval clause
  */
 export type MetabaseLegacyMbqlSchemaTimeInterval = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :today clause
  */
 export type MetabaseLegacyMbqlSchemaToday = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :trim clause
  */
 export type MetabaseLegacyMbqlSchemaTrim = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :upper clause
  */
 export type MetabaseLegacyMbqlSchemaUpper = unknown;
 
-export type MetabaseLegacyMbqlSchemaValidateTemporalUnit = unknown;
-
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :value clause
  */
 export type MetabaseLegacyMbqlSchemaValue = unknown;
 
 /**
- * schema for a valid legacy MBQL :tag clause
+ * schema for a valid MBQL 4 :var clause
  */
 export type MetabaseLegacyMbqlSchemaVar = unknown;
 
@@ -3001,6 +3439,9 @@ export type MetabaseLibSchemaIdTable = number;
  */
 export type MetabaseLibSchemaIdUser = number;
 
+/**
+ * Schema for `info.context`; used for informational purposes to record how a query was executed.
+ */
 export const MetabaseLibSchemaInfoContext = {
     ACTION: 'action',
     AD_HOC: 'ad-hoc',
@@ -3027,6 +3468,9 @@ export const MetabaseLibSchemaInfoContext = {
     TABLE_GRID: 'table-grid'
 } as const;
 
+/**
+ * Schema for `info.context`; used for informational purposes to record how a query was executed.
+ */
 export type MetabaseLibSchemaInfoContext = typeof MetabaseLibSchemaInfoContext[keyof typeof MetabaseLibSchemaInfoContext];
 
 export type MetabaseLibSchemaInfoHash = string;
@@ -3161,7 +3605,7 @@ export type MetabaseLibSchemaLiteralTemporal = MetabaseLibSchemaLiteralDate | Me
  */
 export type MetabaseLibSchemaLiteralTime = MetabaseLibSchemaLiteralStringTime | unknown;
 
-export type MetabaseLibSchemaMbqlClauseClause = unknown | MbqlClause___ | MbqlClause__ | MbqlClause__2 | MbqlClause | _heyapi_504_ | MbqlClause__3 | MbqlClause___2 | MbqlClause__4 | MbqlClause__5 | MbqlClause___3 | MbqlClauseAbs | MbqlClauseAbsoluteDatetime | MbqlClauseAggregation | MbqlClauseAnd | MbqlClauseAsc | MbqlClauseAvg | MbqlClauseBetween | MbqlClauseCase | MbqlClauseCeil | MbqlClauseCoalesce | MbqlClauseConcat | MbqlClauseContains | MbqlClauseConvertTimezone | MbqlClauseCount | MbqlClauseCountWhere | MbqlClauseCumCount | MbqlClauseCumSum | MbqlClauseDate | MbqlClauseDatetime | MbqlClauseDatetimeAdd | MbqlClauseDatetimeDiff | MbqlClauseDatetimeSubtract | MbqlClauseDayName | MbqlClauseDesc | MbqlClauseDistinct | MbqlClauseDistinctWhere | MbqlClauseDoesNotContain | MbqlClauseDomain | MbqlClauseDuring | MbqlClauseEndsWith | MbqlClauseExp | MbqlClauseExpression | MbqlClauseField | MbqlClauseFloat | MbqlClauseFloor | MbqlClauseGetDay | MbqlClauseGetDayOfWeek | MbqlClauseGetHour | MbqlClauseGetMinute | MbqlClauseGetMonth | MbqlClauseGetQuarter | MbqlClauseGetSecond | MbqlClauseGetWeek | MbqlClauseGetYear | MbqlClauseHost | MbqlClauseIf | MbqlClauseIn | MbqlClauseInside | MbqlClauseInteger | MbqlClauseInterval | MbqlClauseIsEmpty | MbqlClauseIsNull | MbqlClauseLength | MbqlClauseLog | MbqlClauseLower | MbqlClauseLtrim | MbqlClauseMax | MbqlClauseMedian | MbqlClauseMetric | MbqlClauseMin | MbqlClauseMonthName | MbqlClauseNot | MbqlClauseNotEmpty | MbqlClauseNotIn | MbqlClauseNotNull | MbqlClauseNow | MbqlClauseOffset | MbqlClauseOr | MbqlClausePath | MbqlClausePercentile | MbqlClausePower | MbqlClauseQuarterName | MbqlClauseRegexMatchFirst | MbqlClauseRelativeDatetime | MbqlClauseRelativeTimeInterval | MbqlClauseReplace | MbqlClauseRound | MbqlClauseRtrim | MbqlClauseSegment | MbqlClauseShare | MbqlClauseSplitPart | MbqlClauseSqrt | MbqlClauseStartsWith | MbqlClauseStddev | MbqlClauseSubdomain | MbqlClauseSubstring | MbqlClauseSum | MbqlClauseSumWhere | MbqlClauseTemporalExtract | MbqlClauseText | MbqlClauseTime | MbqlClauseTimeInterval | MbqlClauseToday | MbqlClauseTrim | MbqlClauseUpper | MbqlClauseValue | MbqlClauseVar;
+export type MetabaseLibSchemaMbqlClauseClause = unknown | MbqlClause___ | MbqlClause__ | MbqlClause__2 | MbqlClause | _heyapi_553_ | MbqlClause__3 | MbqlClause___2 | MbqlClause__4 | MbqlClause__5 | MbqlClause___3 | MbqlClauseAbs | MbqlClauseAbsoluteDatetime | MbqlClauseAggregation | MbqlClauseAnd | MbqlClauseAsc | MbqlClauseAvg | MbqlClauseBetween | MbqlClauseCase | MbqlClauseCeil | MbqlClauseCoalesce | MbqlClauseConcat | MbqlClauseContains | MbqlClauseConvertTimezone | MbqlClauseCount | MbqlClauseCountWhere | MbqlClauseCumCount | MbqlClauseCumSum | MbqlClauseDate | MbqlClauseDatetime | MbqlClauseDatetimeAdd | MbqlClauseDatetimeDiff | MbqlClauseDatetimeSubtract | MbqlClauseDayName | MbqlClauseDesc | MbqlClauseDistinct | MbqlClauseDistinctWhere | MbqlClauseDoesNotContain | MbqlClauseDomain | MbqlClauseDuring | MbqlClauseEndsWith | MbqlClauseExp | MbqlClauseExpression | MbqlClauseField | MbqlClauseFloat | MbqlClauseFloor | MbqlClauseGetDay | MbqlClauseGetDayOfWeek | MbqlClauseGetHour | MbqlClauseGetMinute | MbqlClauseGetMonth | MbqlClauseGetQuarter | MbqlClauseGetSecond | MbqlClauseGetWeek | MbqlClauseGetYear | MbqlClauseHost | MbqlClauseIf | MbqlClauseIn | MbqlClauseInside | MbqlClauseInteger | MbqlClauseInterval | MbqlClauseIsEmpty | MbqlClauseIsNull | MbqlClauseLength | MbqlClauseLog | MbqlClauseLower | MbqlClauseLtrim | MbqlClauseMax | MbqlClauseMedian | MbqlClauseMetric | MbqlClauseMin | MbqlClauseMonthName | MbqlClauseNot | MbqlClauseNotEmpty | MbqlClauseNotIn | MbqlClauseNotNull | MbqlClauseNow | MbqlClauseOffset | MbqlClauseOr | MbqlClausePath | MbqlClausePercentile | MbqlClausePower | MbqlClauseQuarterName | MbqlClauseRegexMatchFirst | MbqlClauseRelativeDatetime | MbqlClauseRelativeTimeInterval | MbqlClauseReplace | MbqlClauseRound | MbqlClauseRtrim | MbqlClauseSegment | MbqlClauseShare | MbqlClauseSplitPart | MbqlClauseSqrt | MbqlClauseStartsWith | MbqlClauseStddev | MbqlClauseSubdomain | MbqlClauseSubstring | MbqlClauseSum | MbqlClauseSumWhere | MbqlClauseTemporalExtract | MbqlClauseText | MbqlClauseTime | MbqlClauseTimeInterval | MbqlClauseToday | MbqlClauseTrim | MbqlClauseUpper | MbqlClauseValue | MbqlClauseVar;
 
 /**
  * All acceptable card types.
@@ -3641,6 +4085,10 @@ export type MetabaseLibSchemaParameterTargetLegacyExpressionRef = MetabaseLegacy
 
 export type MetabaseLibSchemaParameterTargetLegacyFieldRef = MetabaseLegacyMbqlSchemaField;
 
+export type MetabaseLibSchemaParameterTemplateTagTagName = {
+    id: MetabaseLibSchemaCommonNonBlankString;
+} | MetabaseLibSchemaCommonNonBlankString;
+
 export type MetabaseLibSchemaParameterVariableTarget = MetabaseLegacyMbqlSchemaField | MetabaseLibSchemaParameterTemplateTag;
 
 export type MetabaseLibSchemaParameterDimension = unknown;
@@ -3650,6 +4098,9 @@ export type MetabaseLibSchemaParameterId = MetabaseLibSchemaCommonNonBlankString
 /**
  * Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
  * part of the `:parameters` list in a query.
+ *
+ * Note that this is different from the parameter declarations that are saved as part of Dashboards and Cards; for THAT
+ * schema refer to `:metabase.parameters.schema/parameter`.
  */
 export type MetabaseLibSchemaParameterParameter = {
     default?: unknown;
@@ -3675,9 +4126,7 @@ export type MetabaseLibSchemaParameterTarget = MetabaseLibSchemaParameterDimensi
  */
 export type MetabaseLibSchemaParameterTemplateTag = [
     'template-tag',
-    {
-        id: MetabaseLibSchemaCommonNonBlankString;
-    } | MetabaseLibSchemaCommonNonBlankString
+    MetabaseLibSchemaParameterTemplateTagTagName
 ];
 
 /**
@@ -3733,6 +4182,9 @@ export type MetabaseLibSchemaParameterVariable = [
     MetabaseLibSchemaParameterVariableTarget
 ];
 
+/**
+ * The type of widget to display in the FE UI for the user to use to pick values for this parameter.
+ */
 export const MetabaseLibSchemaParameterWidgetType = {
     NONE: 'none',
     NUMBER: 'number',
@@ -3766,6 +4218,9 @@ export const MetabaseLibSchemaParameterWidgetType = {
     'BOOLEAN/=': 'boolean/='
 } as const;
 
+/**
+ * The type of widget to display in the FE UI for the user to use to pick values for this parameter.
+ */
 export type MetabaseLibSchemaParameterWidgetType = typeof MetabaseLibSchemaParameterWidgetType[keyof typeof MetabaseLibSchemaParameterWidgetType];
 
 export type MetabaseLibSchemaQuery = {
@@ -3820,6 +4275,8 @@ export type MetabaseLibSchemaRefFieldLiteralOptions = {
     name?: MetabaseLibSchemaCommonNonBlankString | null;
     'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
     'source-field'?: MetabaseLibSchemaIdField;
+    'source-field-join-alias'?: MetabaseLibSchemaCommonNonBlankString;
+    'source-field-name'?: MetabaseLibSchemaCommonNonBlankString;
     'temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
 };
 
@@ -3838,6 +4295,8 @@ export type MetabaseLibSchemaRefFieldOptions = {
     name?: MetabaseLibSchemaCommonNonBlankString | null;
     'semantic-type'?: MetabaseLibSchemaCommonSemanticOrRelationType | null;
     'source-field'?: MetabaseLibSchemaIdField;
+    'source-field-join-alias'?: MetabaseLibSchemaCommonNonBlankString;
+    'source-field-name'?: MetabaseLibSchemaCommonNonBlankString;
     'temporal-unit'?: MetabaseLibSchemaTemporalBucketingUnit;
 };
 
@@ -3981,40 +4440,10 @@ export const MetabaseLibSchemaTemplateTagType = {
  */
 export type MetabaseLibSchemaTemplateTagType = typeof MetabaseLibSchemaTemplateTagType[keyof typeof MetabaseLibSchemaTemplateTagType];
 
-export const MetabaseLibSchemaTemplateTagWidgetType = {
-    NONE: 'none',
-    NUMBER: 'number',
-    TEXT: 'text',
-    DATE: 'date',
-    BOOLEAN: 'boolean',
-    DATE_SINGLE: 'date/single',
-    ID: 'id',
-    CATEGORY: 'category',
-    LOCATION_CITY: 'location/city',
-    LOCATION_STATE: 'location/state',
-    LOCATION_ZIP_CODE: 'location/zip_code',
-    LOCATION_COUNTRY: 'location/country',
-    DATE_RANGE: 'date/range',
-    DATE_MONTH_YEAR: 'date/month-year',
-    DATE_QUARTER_YEAR: 'date/quarter-year',
-    DATE_RELATIVE: 'date/relative',
-    DATE_ALL_OPTIONS: 'date/all-options',
-    TEMPORAL_UNIT: 'temporal-unit',
-    'NUMBER/!=': 'number/!=',
-    'NUMBER/<=': 'number/<=',
-    'NUMBER/=': 'number/=',
-    'NUMBER/>=': 'number/>=',
-    NUMBER_BETWEEN: 'number/between',
-    'STRING/!=': 'string/!=',
-    'STRING/=': 'string/=',
-    STRING_CONTAINS: 'string/contains',
-    STRING_DOES_NOT_CONTAIN: 'string/does-not-contain',
-    STRING_ENDS_WITH: 'string/ends-with',
-    STRING_STARTS_WITH: 'string/starts-with',
-    'BOOLEAN/=': 'boolean/='
-} as const;
-
-export type MetabaseLibSchemaTemplateTagWidgetType = typeof MetabaseLibSchemaTemplateTagWidgetType[keyof typeof MetabaseLibSchemaTemplateTagWidgetType];
+/**
+ * Schema for valid values of `:widget-type` for a `:metabase.lib.schema.template-tag/field-filter` template tag.
+ */
+export type MetabaseLibSchemaTemplateTagWidgetType = MetabaseLibSchemaParameterWidgetType;
 
 export const MetabaseLibSchemaTemporalBucketingUnitDate = {
     DAY: 'day',
@@ -4422,6 +4851,8 @@ export const MetabaseParametersSchemaValuesSourceType = {
 
 export type MetabaseParametersSchemaValuesSourceType = typeof MetabaseParametersSchemaValuesSourceType[keyof typeof MetabaseParametersSchemaValuesSourceType];
 
+export type MetabaseQueriesSchemaCardResultMetadata = Array<MetabaseLibSchemaMetadataLibOrLegacyColumn>;
+
 /**
  * Schema for an instance of a `:model/Card` (everything is optional to support updates).
  */
@@ -4430,6 +4861,7 @@ export type MetabaseQueriesSchemaCard = {
     id?: MetabaseLibSchemaIdCard | null;
     parameter_mappings?: MetabaseParametersSchemaParameterMappings | null;
     parameters?: MetabaseParametersSchemaParameters | null;
+    result_metadata?: MetabaseQueriesSchemaCardResultMetadata | null;
     type?: MetabaseLibSchemaMetadataCardType | null;
 };
 
@@ -4462,6 +4894,11 @@ export type MetabaseQueriesSchemaQuery = MetabaseQueriesSchemaEmptyMap | ({
     stages: MetabaseLibSchemaStages;
     'update-row'?: MetabaseLibSchemaActionsRow;
 } & MetabaseLibSchemaUtilUniqueUuids & unknown);
+
+/**
+ * A single result metadata column as returned by the Query Processor.
+ */
+export type MetabaseQueryProcessorSchemaResultMetadataColumn = MetabaseLegacyMbqlSchemaLegacyColumnMetadata;
 
 /**
  * Schema for valid export formats for downloading query results.
@@ -4593,7 +5030,7 @@ export type MetabaseUsersApiUser = {
      */
     email: string;
     first_login?: unknown | null;
-    first_name: string;
+    first_name: string | null;
     group_ids?: Array<number> | null;
     has_invited_second_user?: boolean | null;
     has_model?: boolean | null;
@@ -6537,8 +6974,6 @@ export type GetApiCardByIdData = {
         id: number | string;
     };
     query?: {
-        ignore_view?: boolean | null;
-        context?: 'collection' | null;
         'legacy-mbql'?: boolean | null;
     };
     url: '/api/card/{id}';
@@ -6579,6 +7014,7 @@ export type PutApiCardByIdData = {
         embedding_params?: {
             [key: string]: 'disabled' | 'enabled' | 'locked';
         } | null;
+        embedding_type?: string | null;
         enable_embedding?: boolean | null;
         name?: string | null;
         parameter_mappings?: MetabaseParametersSchemaParameterMappings | null;
@@ -7099,6 +7535,7 @@ export type PostApiCollectionData = {
         name: string;
         namespace?: string | null;
         parent_id?: number | null;
+        type?: 'remote-synced' | null;
     };
     path?: never;
     query?: never;
@@ -7243,6 +7680,7 @@ export type GetApiCollectionRootItemsData = {
     path?: never;
     query: {
         models?: Array<'dashboard' | 'dataset' | 'no_models' | 'timeline' | 'snippet' | 'collection' | 'document' | 'pulse' | 'metric' | 'card'> | null;
+        collection_type?: 'remote-synced';
         include_can_run_adhoc_query: boolean | null;
         archived: boolean | null;
         namespace?: string | null;
@@ -7422,6 +7860,7 @@ export type PutApiCollectionByIdData = {
         description?: string | null;
         name?: string | null;
         parent_id?: number | null;
+        type?: 'remote-synced' | null;
     };
     path: {
         /**
@@ -8146,6 +8585,7 @@ export type PutApiDashboardByIdData = {
         embedding_params?: {
             [key: string]: 'disabled' | 'enabled' | 'locked';
         } | null;
+        embedding_type?: string | null;
         enable_embedding?: boolean | null;
         name?: string | null;
         parameters?: MetabaseParametersSchemaParameters | null;
@@ -10189,12 +10629,62 @@ export type GetApiEeBillingResponses = {
     '2XX': unknown;
 };
 
+export type GetApiEeCloudAddOnsAddonsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/ee/cloud-add-ons/addons';
+};
+
+export type GetApiEeCloudAddOnsAddonsErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type GetApiEeCloudAddOnsAddonsResponses = {
+    /**
+     * Successful response
+     */
+    '2XX': unknown;
+};
+
+export type GetApiEeCloudAddOnsPlansData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/ee/cloud-add-ons/plans';
+};
+
+export type GetApiEeCloudAddOnsPlansErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type GetApiEeCloudAddOnsPlansResponses = {
+    /**
+     * Successful response
+     */
+    '2XX': unknown;
+};
+
 export type PostApiEeCloudAddOnsByProductTypeData = {
     body?: {
-        terms_of_service: boolean;
+        terms_of_service?: boolean | null;
     };
     path: {
-        'product-type': 'metabase-ai';
+        'product-type': 'metabase-ai' | 'python-execution';
     };
     query?: never;
     url: '/api/ee/cloud-add-ons/{product-type}';
@@ -10749,6 +11239,72 @@ export type PostApiEeDependenciesCheckTransformResponses = {
     '2XX': unknown;
 };
 
+export type GetApiEeDependenciesGraphData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * value must be an integer greater than zero.
+         */
+        id?: number;
+        type?: 'table' | 'card' | 'snippet' | 'transform' | 'dashboard' | 'document' | 'sandbox';
+        archived?: boolean;
+    };
+    url: '/api/ee/dependencies/graph';
+};
+
+export type GetApiEeDependenciesGraphErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type GetApiEeDependenciesGraphResponses = {
+    /**
+     * Successful response
+     */
+    '2XX': unknown;
+};
+
+export type GetApiEeDependenciesGraphDependentsData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * value must be an integer greater than zero.
+         */
+        id: number;
+        type: 'table' | 'card' | 'snippet' | 'transform' | 'dashboard' | 'document' | 'sandbox';
+        dependent_type: 'table' | 'card' | 'snippet' | 'transform' | 'dashboard' | 'document' | 'sandbox';
+        dependent_card_type?: 'question' | 'model' | 'metric';
+        archived?: boolean;
+    };
+    url: '/api/ee/dependencies/graph/dependents';
+};
+
+export type GetApiEeDependenciesGraphDependentsErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type GetApiEeDependenciesGraphDependentsResponses = {
+    /**
+     * Successful response
+     */
+    '2XX': unknown;
+};
+
 export type GetApiEeDocumentData = {
     body?: never;
     path?: never;
@@ -10833,6 +11389,43 @@ export type PostApiEeDocumentResponses = {
      */
     '2XX': unknown;
 };
+
+export type GetApiEeDocumentPublicData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/ee/document/public';
+};
+
+export type GetApiEeDocumentPublicErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type GetApiEeDocumentPublicResponses = {
+    /**
+     * sequence of map where {:name -> <string>, :id -> <value must be an integer greater than zero.>, :public_uuid -> <value must be a valid UUID.>}
+     */
+    '2XX': Array<{
+        /**
+         * value must be an integer greater than zero.
+         */
+        id: number;
+        name: string;
+        /**
+         * value must be a valid UUID.
+         */
+        public_uuid: string;
+    }>;
+};
+
+export type GetApiEeDocumentPublicResponse = GetApiEeDocumentPublicResponses[keyof GetApiEeDocumentPublicResponses];
 
 export type DeleteApiEeDocumentByDocumentIdData = {
     body?: never;
@@ -10959,6 +11552,114 @@ export type PutApiEeDocumentByDocumentIdResponses = {
      */
     '2XX': unknown;
 };
+
+export type PostApiEeDocumentByDocumentIdCardByCardIdQueryByExportFormatData = {
+    body?: {
+        format_rows: boolean;
+        parameters?: Array<{
+            [key: string]: unknown;
+        }> | string | null;
+        pivot_results: boolean;
+    };
+    path: {
+        /**
+         * value must be an integer greater than zero.
+         */
+        'document-id': number;
+        /**
+         * value must be an integer greater than zero.
+         */
+        'card-id': number;
+        'export-format': string;
+    };
+    query?: never;
+    url: '/api/ee/document/{document-id}/card/{card-id}/query/{export-format}';
+};
+
+export type PostApiEeDocumentByDocumentIdCardByCardIdQueryByExportFormatErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PostApiEeDocumentByDocumentIdCardByCardIdQueryByExportFormatResponses = {
+    /**
+     * Successful response
+     */
+    '2XX': unknown;
+};
+
+export type DeleteApiEeDocumentByDocumentIdPublicLinkData = {
+    body?: never;
+    path: {
+        /**
+         * value must be an integer greater than zero.
+         */
+        'document-id': number;
+    };
+    query?: never;
+    url: '/api/ee/document/{document-id}/public-link';
+};
+
+export type DeleteApiEeDocumentByDocumentIdPublicLinkErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type DeleteApiEeDocumentByDocumentIdPublicLinkResponses = {
+    /**
+     * Successful response
+     */
+    '2XX': unknown;
+};
+
+export type PostApiEeDocumentByDocumentIdPublicLinkData = {
+    body?: never;
+    path: {
+        /**
+         * value must be an integer greater than zero.
+         */
+        'document-id': number;
+    };
+    query?: never;
+    url: '/api/ee/document/{document-id}/public-link';
+};
+
+export type PostApiEeDocumentByDocumentIdPublicLinkErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PostApiEeDocumentByDocumentIdPublicLinkResponses = {
+    /**
+     * map where {:uuid -> <value must be a valid UUID.>}
+     */
+    '2XX': {
+        /**
+         * value must be a valid UUID.
+         */
+        uuid: string;
+    };
+};
+
+export type PostApiEeDocumentByDocumentIdPublicLinkResponse = PostApiEeDocumentByDocumentIdPublicLinkResponses[keyof PostApiEeDocumentByDocumentIdPublicLinkResponses];
 
 export type DeleteApiEeEmailOverrideData = {
     body?: never;
@@ -11243,6 +11944,44 @@ export type PostApiEeMetabotToolsAnswerSourcesResponses = {
 };
 
 export type PostApiEeMetabotToolsAnswerSourcesResponse = PostApiEeMetabotToolsAnswerSourcesResponses[keyof PostApiEeMetabotToolsAnswerSourcesResponses];
+
+export type PostApiEeMetabotToolsCheckTransformDependenciesData = {
+    body?: {
+        arguments: MetabaseEnterpriseMetabotV3ToolsApiCheckTransformDependenciesArguments;
+        /**
+         * value must be a valid UUID.
+         */
+        conversation_id: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/ee/metabot-tools/check-transform-dependencies';
+};
+
+export type PostApiEeMetabotToolsCheckTransformDependenciesErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PostApiEeMetabotToolsCheckTransformDependenciesResponses = {
+    /**
+     * map where {:conversation_id -> <value must be a valid UUID.>}
+     */
+    '2XX': {
+        /**
+         * value must be a valid UUID.
+         */
+        conversation_id: string;
+    };
+};
+
+export type PostApiEeMetabotToolsCheckTransformDependenciesResponse = PostApiEeMetabotToolsCheckTransformDependenciesResponses[keyof PostApiEeMetabotToolsCheckTransformDependenciesResponses];
 
 export type PostApiEeMetabotToolsCreateDashboardSubscriptionData = {
     body?: {
@@ -11665,6 +12404,78 @@ export type PostApiEeMetabotToolsGetReportDetailsResponses = {
 
 export type PostApiEeMetabotToolsGetReportDetailsResponse = PostApiEeMetabotToolsGetReportDetailsResponses[keyof PostApiEeMetabotToolsGetReportDetailsResponses];
 
+export type PostApiEeMetabotToolsGetSnippetDetailsData = {
+    body?: {
+        arguments: MetabaseEnterpriseMetabotV3ToolsApiGetSnippetDetailsArguments;
+        /**
+         * value must be a valid UUID.
+         */
+        conversation_id: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/ee/metabot-tools/get-snippet-details';
+};
+
+export type PostApiEeMetabotToolsGetSnippetDetailsErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PostApiEeMetabotToolsGetSnippetDetailsResponses = {
+    /**
+     * Schema for SQL snippet detail results
+     */
+    '2XX': {
+        /**
+         * value must be a valid UUID.
+         */
+        conversation_id: string;
+        structured_output: MetabaseEnterpriseMetabotV3ToolsApiFullSnippet;
+    };
+};
+
+export type PostApiEeMetabotToolsGetSnippetDetailsResponse = PostApiEeMetabotToolsGetSnippetDetailsResponses[keyof PostApiEeMetabotToolsGetSnippetDetailsResponses];
+
+export type PostApiEeMetabotToolsGetSnippetsData = {
+    body?: MetabaseEnterpriseMetabotV3ToolsApiToolRequest;
+    path?: never;
+    query?: never;
+    url: '/api/ee/metabot-tools/get-snippets';
+};
+
+export type PostApiEeMetabotToolsGetSnippetsErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PostApiEeMetabotToolsGetSnippetsResponses = {
+    /**
+     * Schema for SQL snippet list results
+     */
+    '2XX': {
+        /**
+         * value must be a valid UUID.
+         */
+        conversation_id: string;
+        structured_output: Array<MetabaseEnterpriseMetabotV3ToolsApiBasicSnippet>;
+    };
+};
+
+export type PostApiEeMetabotToolsGetSnippetsResponse = PostApiEeMetabotToolsGetSnippetsResponses[keyof PostApiEeMetabotToolsGetSnippetsResponses];
+
 export type PostApiEeMetabotToolsGetTableDetailsData = {
     body?: {
         arguments: MetabaseEnterpriseMetabotV3ToolsApiGetTableDetailsArguments;
@@ -11740,6 +12551,114 @@ export type PostApiEeMetabotToolsGetTablesResponses = {
 };
 
 export type PostApiEeMetabotToolsGetTablesResponse = PostApiEeMetabotToolsGetTablesResponses[keyof PostApiEeMetabotToolsGetTablesResponses];
+
+export type PostApiEeMetabotToolsGetTransformDetailsData = {
+    body?: {
+        arguments: MetabaseEnterpriseMetabotV3ToolsApiGetTransformDetailsArguments;
+        /**
+         * value must be a valid UUID.
+         */
+        conversation_id: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/ee/metabot-tools/get-transform-details';
+};
+
+export type PostApiEeMetabotToolsGetTransformDetailsErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PostApiEeMetabotToolsGetTransformDetailsResponses = {
+    /**
+     * map where {:conversation_id -> <value must be a valid UUID.>}
+     */
+    '2XX': {
+        /**
+         * value must be a valid UUID.
+         */
+        conversation_id: string;
+    };
+};
+
+export type PostApiEeMetabotToolsGetTransformDetailsResponse = PostApiEeMetabotToolsGetTransformDetailsResponses[keyof PostApiEeMetabotToolsGetTransformDetailsResponses];
+
+export type PostApiEeMetabotToolsGetTransformPythonLibraryDetailsData = {
+    body?: {
+        arguments: MetabaseEnterpriseMetabotV3ToolsApiGetTransformPythonLibraryDetailsArguments;
+        /**
+         * value must be a valid UUID.
+         */
+        conversation_id: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/ee/metabot-tools/get-transform-python-library-details';
+};
+
+export type PostApiEeMetabotToolsGetTransformPythonLibraryDetailsErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PostApiEeMetabotToolsGetTransformPythonLibraryDetailsResponses = {
+    /**
+     * map where {:conversation_id -> <value must be a valid UUID.>}
+     */
+    '2XX': {
+        /**
+         * value must be a valid UUID.
+         */
+        conversation_id: string;
+    };
+};
+
+export type PostApiEeMetabotToolsGetTransformPythonLibraryDetailsResponse = PostApiEeMetabotToolsGetTransformPythonLibraryDetailsResponses[keyof PostApiEeMetabotToolsGetTransformPythonLibraryDetailsResponses];
+
+export type PostApiEeMetabotToolsGetTransformsData = {
+    body?: MetabaseEnterpriseMetabotV3ToolsApiToolRequest;
+    path?: never;
+    query?: never;
+    url: '/api/ee/metabot-tools/get-transforms';
+};
+
+export type PostApiEeMetabotToolsGetTransformsErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PostApiEeMetabotToolsGetTransformsResponses = {
+    /**
+     * map where {:conversation_id -> <value must be a valid UUID.>}
+     */
+    '2XX': {
+        /**
+         * value must be a valid UUID.
+         */
+        conversation_id: string;
+    };
+};
+
+export type PostApiEeMetabotToolsGetTransformsResponse = PostApiEeMetabotToolsGetTransformsResponses[keyof PostApiEeMetabotToolsGetTransformsResponses];
 
 export type PostApiEeMetabotToolsQueryDatasourceData = {
     body?: {
@@ -11892,6 +12811,44 @@ export type PostApiEeMetabotToolsSearchResponses = {
 };
 
 export type PostApiEeMetabotToolsSearchResponse = PostApiEeMetabotToolsSearchResponses[keyof PostApiEeMetabotToolsSearchResponses];
+
+export type PostApiEeMetabotToolsSearchV2Data = {
+    body?: {
+        arguments?: MetabaseEnterpriseMetabotV3ToolsApiSearchArguments;
+        /**
+         * value must be a valid UUID.
+         */
+        conversation_id: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/ee/metabot-tools/search_v2';
+};
+
+export type PostApiEeMetabotToolsSearchV2Errors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PostApiEeMetabotToolsSearchV2Responses = {
+    /**
+     * map where {:conversation_id -> <value must be a valid UUID.>}
+     */
+    '2XX': {
+        /**
+         * value must be a valid UUID.
+         */
+        conversation_id: string;
+    };
+};
+
+export type PostApiEeMetabotToolsSearchV2Response = PostApiEeMetabotToolsSearchV2Responses[keyof PostApiEeMetabotToolsSearchV2Responses];
 
 export type PostApiEeMetabotV3AgentStreamingData = {
     body?: {
@@ -12216,6 +13173,455 @@ export type GetApiEePermissionDebugResponses = {
 };
 
 export type GetApiEePermissionDebugResponse = GetApiEePermissionDebugResponses[keyof GetApiEePermissionDebugResponses];
+
+export type GetApiEePublicDocumentByUuidData = {
+    body?: never;
+    path: {
+        /**
+         * value must be a valid UUID.
+         */
+        uuid: string;
+    };
+    query?: never;
+    url: '/api/ee/public/document/{uuid}';
+};
+
+export type GetApiEePublicDocumentByUuidErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type GetApiEePublicDocumentByUuidResponses = {
+    /**
+     * Successful response
+     */
+    '2XX': unknown;
+};
+
+export type GetApiEePublicDocumentByUuidCardByCardIdData = {
+    body?: never;
+    path: {
+        /**
+         * value must be a valid UUID.
+         */
+        uuid: string;
+        /**
+         * value must be an integer greater than zero.
+         */
+        'card-id': number;
+    };
+    query?: {
+        parameters?: string | null;
+    };
+    url: '/api/ee/public/document/{uuid}/card/{card-id}';
+};
+
+export type GetApiEePublicDocumentByUuidCardByCardIdErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type GetApiEePublicDocumentByUuidCardByCardIdResponses = {
+    /**
+     * Successful response
+     */
+    '2XX': unknown;
+};
+
+export type PostApiEePublicDocumentByUuidCardByCardIdByExportFormatData = {
+    body?: {
+        format_rows: boolean;
+        parameters?: Array<{
+            [key: string]: unknown;
+        }> | string | null;
+        pivot_results: boolean;
+    };
+    path: {
+        /**
+         * value must be a valid UUID.
+         */
+        uuid: string;
+        /**
+         * value must be an integer greater than zero.
+         */
+        'card-id': number;
+        'export-format': MetabaseQueryProcessorSchemaExportFormat;
+    };
+    query?: never;
+    url: '/api/ee/public/document/{uuid}/card/{card-id}/{export-format}';
+};
+
+export type PostApiEePublicDocumentByUuidCardByCardIdByExportFormatErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PostApiEePublicDocumentByUuidCardByCardIdByExportFormatResponses = {
+    /**
+     * Successful response
+     */
+    '2XX': unknown;
+};
+
+export type GetApiEeRemoteSyncBranchesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/ee/remote-sync/branches';
+};
+
+export type GetApiEeRemoteSyncBranchesErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type GetApiEeRemoteSyncBranchesResponses = {
+    /**
+     * map where {:items -> <sequence of string>}
+     */
+    '2XX': {
+        items: Array<string>;
+    };
+};
+
+export type GetApiEeRemoteSyncBranchesResponse = GetApiEeRemoteSyncBranchesResponses[keyof GetApiEeRemoteSyncBranchesResponses];
+
+export type PostApiEeRemoteSyncCreateBranchData = {
+    body?: {
+        name: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/ee/remote-sync/create-branch';
+};
+
+export type PostApiEeRemoteSyncCreateBranchErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PostApiEeRemoteSyncCreateBranchResponses = {
+    /**
+     * map where {:status -> <string>, :message -> <string>}
+     */
+    '2XX': {
+        message: string;
+        status: string;
+    };
+};
+
+export type PostApiEeRemoteSyncCreateBranchResponse = PostApiEeRemoteSyncCreateBranchResponses[keyof PostApiEeRemoteSyncCreateBranchResponses];
+
+export type GetApiEeRemoteSyncCurrentTaskData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/ee/remote-sync/current-task';
+};
+
+export type GetApiEeRemoteSyncCurrentTaskErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type GetApiEeRemoteSyncCurrentTaskResponses = {
+    /**
+     * nullable map where {:id -> <integer greater than 0>, :sync_task_type -> <enum of import, export>, :initiated_by (optional) -> <nullable integer greater than 0>, :progress -> <nullable float between 0.0 and 1.0 inclusive>, :started_at -> <anything>, :ended_at (optional) -> <nullable anything>, :last_progress_report_at (optional) -> <nullable anything>, :version (optional) -> <nullable string>, :cancelled (optional) -> <nullable boolean>, :error_message (optional) -> <nullable string>, :status -> <enum of :running, :successful, :errored, :cancelled, :timed-out>}
+     */
+    '2XX': {
+        cancelled?: boolean | null;
+        ended_at?: unknown | null;
+        error_message?: string | null;
+        id: number;
+        initiated_by?: number | null;
+        last_progress_report_at?: unknown | null;
+        progress: number | null;
+        started_at: unknown;
+        status: 'running' | 'successful' | 'errored' | 'cancelled' | 'timed-out';
+        sync_task_type: 'import' | 'export';
+        version?: string | null;
+    } | null;
+};
+
+export type GetApiEeRemoteSyncCurrentTaskResponse = GetApiEeRemoteSyncCurrentTaskResponses[keyof GetApiEeRemoteSyncCurrentTaskResponses];
+
+export type PostApiEeRemoteSyncCurrentTaskCancelData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/ee/remote-sync/current-task/cancel';
+};
+
+export type PostApiEeRemoteSyncCurrentTaskCancelErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PostApiEeRemoteSyncCurrentTaskCancelResponses = {
+    /**
+     * map where {:id -> <integer greater than 0>, :sync_task_type -> <enum of import, export>, :initiated_by (optional) -> <nullable integer greater than 0>, :progress -> <nullable float between 0.0 and 1.0 inclusive>, :started_at -> <anything>, :ended_at (optional) -> <nullable anything>, :last_progress_report_at (optional) -> <nullable anything>, :version (optional) -> <nullable string>, :cancelled (optional) -> <nullable boolean>, :error_message (optional) -> <nullable string>, :status -> <enum of :running, :successful, :errored, :cancelled, :timed-out>}
+     */
+    '2XX': {
+        cancelled?: boolean | null;
+        ended_at?: unknown | null;
+        error_message?: string | null;
+        id: number;
+        initiated_by?: number | null;
+        last_progress_report_at?: unknown | null;
+        progress: number | null;
+        started_at: unknown;
+        status: 'running' | 'successful' | 'errored' | 'cancelled' | 'timed-out';
+        sync_task_type: 'import' | 'export';
+        version?: string | null;
+    };
+};
+
+export type PostApiEeRemoteSyncCurrentTaskCancelResponse = PostApiEeRemoteSyncCurrentTaskCancelResponses[keyof PostApiEeRemoteSyncCurrentTaskCancelResponses];
+
+export type GetApiEeRemoteSyncDirtyData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/ee/remote-sync/dirty';
+};
+
+export type GetApiEeRemoteSyncDirtyErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type GetApiEeRemoteSyncDirtyResponses = {
+    /**
+     * map where {:dirty -> <sequence of map where {:id -> <integer greater than 0>, :name -> <nullable string>, :model -> <string>, :sync_status -> <string>, :created_at (optional) -> <anything>, :updated_at (optional) -> <nullable anything>, :collection_id (optional) -> <nullable integer greater than 0>, :authority_level (optional) -> <nullable string>, :display (optional) -> <nullable string>, :query_type (optional) -> <nullable string>, :description (optional) -> <nullable string>}>}
+     */
+    '2XX': {
+        dirty: Array<{
+            authority_level?: string | null;
+            collection_id?: number | null;
+            created_at?: unknown;
+            description?: string | null;
+            display?: string | null;
+            id: number;
+            model: string;
+            name: string | null;
+            query_type?: string | null;
+            sync_status: string;
+            updated_at?: unknown | null;
+        }>;
+    };
+};
+
+export type GetApiEeRemoteSyncDirtyResponse = GetApiEeRemoteSyncDirtyResponses[keyof GetApiEeRemoteSyncDirtyResponses];
+
+export type PostApiEeRemoteSyncExportData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/ee/remote-sync/export';
+};
+
+export type PostApiEeRemoteSyncExportErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PostApiEeRemoteSyncExportResponses = {
+    /**
+     * map where {:message -> <string>, :task_id -> <integer greater than 0>}
+     */
+    '2XX': {
+        message: string;
+        task_id: number;
+    };
+};
+
+export type PostApiEeRemoteSyncExportResponse = PostApiEeRemoteSyncExportResponses[keyof PostApiEeRemoteSyncExportResponses];
+
+export type PostApiEeRemoteSyncImportData = {
+    body?: {
+        branch?: string;
+        force?: boolean;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/ee/remote-sync/import';
+};
+
+export type PostApiEeRemoteSyncImportErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PostApiEeRemoteSyncImportResponses = {
+    /**
+     * map where {:status -> <must equal :success>, :task_id -> <nullable integer greater than 0>, :message (optional) -> <nullable string>}
+     */
+    '2XX': {
+        message?: string | null;
+        status: 'success';
+        task_id: number | null;
+    };
+};
+
+export type PostApiEeRemoteSyncImportResponse = PostApiEeRemoteSyncImportResponses[keyof PostApiEeRemoteSyncImportResponses];
+
+export type GetApiEeRemoteSyncIsDirtyData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/ee/remote-sync/is-dirty';
+};
+
+export type GetApiEeRemoteSyncIsDirtyErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type GetApiEeRemoteSyncIsDirtyResponses = {
+    /**
+     * map where {:is_dirty -> <boolean>}
+     */
+    '2XX': {
+        is_dirty: boolean;
+    };
+};
+
+export type GetApiEeRemoteSyncIsDirtyResponse = GetApiEeRemoteSyncIsDirtyResponses[keyof GetApiEeRemoteSyncIsDirtyResponses];
+
+export type PutApiEeRemoteSyncSettingsData = {
+    body?: {
+        'remote-sync-branch'?: string | null;
+        'remote-sync-token'?: string | null;
+        'remote-sync-type'?: 'production' | 'development' | null;
+        'remote-sync-url'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/ee/remote-sync/settings';
+};
+
+export type PutApiEeRemoteSyncSettingsErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PutApiEeRemoteSyncSettingsResponses = {
+    /**
+     * map where {:success -> <boolean>, :task_id (optional) -> <integer greater than 0>}
+     */
+    '2XX': {
+        success: boolean;
+        task_id?: number;
+    };
+};
+
+export type PutApiEeRemoteSyncSettingsResponse = PutApiEeRemoteSyncSettingsResponses[keyof PutApiEeRemoteSyncSettingsResponses];
+
+export type PostApiEeRemoteSyncStashData = {
+    body?: {
+        message: string;
+        new_branch: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/ee/remote-sync/stash';
+};
+
+export type PostApiEeRemoteSyncStashErrors = {
+    /**
+     * Client error response
+     */
+    '4XX': unknown;
+    /**
+     * Server error response
+     */
+    '5XX': unknown;
+};
+
+export type PostApiEeRemoteSyncStashResponses = {
+    /**
+     * map where {:status -> <string>, :message -> <string>, :task_id -> <integer greater than 0>}
+     */
+    '2XX': {
+        message: string;
+        status: string;
+        task_id: number;
+    };
+};
+
+export type PostApiEeRemoteSyncStashResponse = PostApiEeRemoteSyncStashResponses[keyof PostApiEeRemoteSyncStashResponses];
 
 export type GetApiEeScimApiKeyData = {
     body?: never;
@@ -15104,7 +16510,7 @@ export type GetApiMtGtapResponses = {
 
 export type PostApiMtGtapData = {
     body?: {
-        attribute_remappings?: unknown;
+        attribute_remappings?: MetabaseEnterpriseSandboxSchemaAttributeRemappings;
         card_id?: number | null;
         /**
          * value must be an integer greater than zero.
@@ -15231,7 +16637,7 @@ export type GetApiMtGtapByIdResponses = {
 
 export type PutApiMtGtapByIdData = {
     body?: {
-        attribute_remappings?: unknown;
+        attribute_remappings?: MetabaseEnterpriseSandboxSchemaAttributeRemappings;
         card_id?: number | null;
     };
     path: {
@@ -18231,7 +19637,7 @@ export type GetApiSearchData = {
         context?: string | null;
         archived: boolean | null;
         table_db_id?: number | null;
-        models?: Array<'dashboard' | 'table' | 'dataset' | 'segment' | 'collection' | 'document' | 'database' | 'action' | 'indexed-entity' | 'metric' | 'card'> | null;
+        models?: Array<'dashboard' | 'table' | 'dataset' | 'segment' | 'collection' | 'transform' | 'document' | 'database' | 'action' | 'indexed-entity' | 'metric' | 'card'> | null;
         filter_items_in_personal_collection?: 'all' | 'only' | 'only-mine' | 'exclude' | 'exclude-others' | null;
         created_at?: string | null;
         created_by?: Array<number> | null;

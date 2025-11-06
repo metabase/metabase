@@ -108,7 +108,7 @@
 
         (testing "failures for timeout"
           (mt/with-prometheus-system! [_ system]
-            (mt/with-temporary-setting-values [db-connection-timeout-ms 0]
+            (mt/with-temporary-setting-values [db-connection-timeout-ms -1] ;; setting to -1 because 0 sometimes flakes
               (database/health-check-database! (mt/db))
               (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
               (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"})) "unhealthy user-input")

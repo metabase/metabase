@@ -24,6 +24,7 @@ const registerVisualizationsOnce = _.once(registerVisualizations);
 interface InitDataLoaderParameters {
   reduxStore: SdkStore;
   authConfig: MetabaseAuthConfig;
+  isLocalHost?: boolean;
 }
 
 export const useInitData = () => {
@@ -49,6 +50,7 @@ export const useInitData = () => {
 export const useInitDataInternal = ({
   reduxStore,
   authConfig,
+  isLocalHost,
 }: InitDataLoaderParameters) => {
   const dispatch = reduxStore.dispatch;
 
@@ -98,7 +100,7 @@ export const useInitDataInternal = ({
 
   useMount(function initializeData() {
     if (isAuthUninitialized()) {
-      dispatch(initAuth(authConfig));
+      dispatch(initAuth({ ...authConfig, isLocalHost }));
     }
   });
 

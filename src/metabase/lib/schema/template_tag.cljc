@@ -8,16 +8,9 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [every?]]))
 
-;; Schema for valid values of `:widget-type` for a [[TemplateTag:FieldFilter]].
 (mr/def ::widget-type
-  (into
-   [:enum
-    ;; this will be a nicer error message than Malli trying to list every single possible allowed type.
-    {:decode/normalize common/normalize-keyword
-     :error/message    "Valid template tag :widget-type"}
-    :none]
-   ;; TODO -- move this stuff into `metabase.lib`
-   (keys lib.schema.parameter/types)))
+  "Schema for valid values of `:widget-type` for a `:metabase.lib.schema.template-tag/field-filter` template tag."
+  [:ref ::lib.schema.parameter/widget-type])
 
 (mr/def ::type
   "Schema for valid values of template tag `:type`."
@@ -141,7 +134,7 @@
 
 ;; Valid values of `:type` for raw value template tags.
 (mr/def ::raw-value.type
-  (into [:enum] raw-value-template-tag-types))
+  (into [:enum {:decode/normalize keyword}] raw-value-template-tag-types))
 
 ;; Example:
 ;;

@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [flatland.ordered.set :refer [ordered-set]]
+   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.lib-be.core :as lib-be]
@@ -16,30 +17,24 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn- transform-deps :- ::driver/native-query-deps
+(defmethod transforms.i/table-dependencies :query
   [transform]
-  (if (transforms.util/python-transform? transform)
-    ;; Python transforms have dependencies via source-tables mapping
-    (into #{}
-          (map #(hash-map :table %))
-          (vals (get-in transform [:source :source-tables])))
-    ;; Query transforms have dependencies via SQL query analysis
-    (let [query (-> (get-in transform [:source :query])
-                    transforms.util/massage-sql-query
-                    qp.preprocess/preprocess)
-          driver (-> query
-                     lib.metadata/database
-                     :engine)]
-      (if (lib/native-only-query? query)
-        (driver/native-query-deps driver query)
-        (into #{}
-              (map (fn [table-id]
-                     {:table table-id}))
-              (lib/all-source-table-ids query))))))
+  (let [query (-> (get-in transform [:source :query])
+                  transforms.util/massage-sql-query
+                  qp.preprocess/preprocess)
+        driver (-> query
+                   lib.metadata/database
+                   :engine)]
+    (if (lib/native-only-query? query)
+      (driver/native-query-deps driver query)
+      (into #{}
+            (map (fn [table-id]
+                   {:table table-id}))
+            (lib/all-source-table-ids query)))))
 
 (defn- dependency-map [transforms]
   (into {}
-        (map (juxt :id transform-deps))
+        (map (juxt :id transforms.i/table-dependencies))
         transforms))
 
 (mu/defn- output-table-map
@@ -65,7 +60,7 @@
   (let [;; Group all transforms by their database
         transforms-by-db (->> transforms
                               (map (fn [transform]
-                                     (let [db-id (transforms.util/target-database-id transform)]
+                                     (let [db-id (transforms.i/target-db-id transform)]
                                        {db-id [transform]})))
                               (apply merge-with into))
         transform-ids (into #{} (map :id) transforms)
@@ -130,9 +125,9 @@
         db-transforms    (filter #(= (get-in % [:source :query :database]) db-id) transforms)
         output-tables    (output-table-map mp db-transforms)
         transform-ids    (into #{} (map :id) db-transforms)
-        node->children   #(->> % transforms-by-id transform-deps (keep (fn [{:keys [table transform]}]
-                                                                         (or (output-tables table)
-                                                                             (transform-ids transform)))))
+        node->children   #(->> % transforms-by-id transforms.i/table-dependencies (keep (fn [{:keys [table transform]}]
+                                                                                          (or (output-tables table)
+                                                                                              (transform-ids transform)))))
         id->name         (comp :name transforms-by-id)
         cycle            (find-cycle node->children [transform-id])]
     (when cycle

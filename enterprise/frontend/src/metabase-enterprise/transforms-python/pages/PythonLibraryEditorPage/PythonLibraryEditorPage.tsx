@@ -5,6 +5,7 @@ import Button from "metabase/common/components/Button";
 import EditBar from "metabase/common/components/EditBar";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { isResourceNotFoundError } from "metabase/lib/errors";
+import type * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Flex } from "metabase/ui";
 import {
@@ -13,12 +14,11 @@ import {
 } from "metabase-enterprise/api/python-transform-library";
 
 import { PythonEditor } from "../../components/PythonEditor";
-import type { PythonLibraryEditorPageParams } from "../../types";
 
 import S from "./PythonLibraryEditorPage.module.css";
 
 type PythonLibraryEditorPageProps = {
-  params: PythonLibraryEditorPageParams;
+  params: Urls.TransformPythonLibraryParams;
 };
 
 const EMPTY_LIBRARY_SOURCE = `

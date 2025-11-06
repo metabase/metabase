@@ -1,4 +1,5 @@
 import {
+  type Placement,
   type VirtualElement,
   autoUpdate,
   computePosition,
@@ -11,11 +12,33 @@ import type {
   SuggestionKeyDownProps,
   SuggestionProps,
 } from "@tiptap/suggestion";
+import { merge } from "icepick";
 import type React from "react";
+
+type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
+};
+
+interface SuggestionRendererOptions {
+  positionOptions: {
+    placement: Placement;
+    fallbackPlacements: Placement[];
+  };
+}
+
+const defaultRendererOptions: SuggestionRendererOptions = {
+  positionOptions: {
+    placement: "bottom-start",
+    fallbackPlacements: ["top-start", "bottom-end", "top-end"],
+  },
+};
 
 export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
   SuggestionComponent: React.ComponentType<SuggestionProps<I, TSelected>>,
+  options?: DeepPartial<SuggestionRendererOptions>,
 ) => {
+  const config = merge(defaultRendererOptions, options);
+
   return () => {
     let component: ReactRenderer | undefined;
     let currentClientRect: (() => DOMRect | null) | null | undefined;
@@ -42,11 +65,11 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
       };
 
       computePosition(virtualElement, element, {
-        placement: "bottom-start",
+        placement: config.positionOptions.placement,
         strategy: "fixed",
         middleware: [
           flip({
-            fallbackPlacements: ["top-start", "bottom-end", "top-end"],
+            fallbackPlacements: config.positionOptions.fallbackPlacements,
             padding: 4,
           }),
           shift({

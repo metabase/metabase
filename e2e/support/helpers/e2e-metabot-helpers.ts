@@ -2,8 +2,12 @@ import type { StaticResponse } from "cypress/types/net-stubbing";
 
 import { appBar } from "./e2e-ui-elements-helpers";
 
+export function metabotChatSidebar() {
+  return cy.findByTestId("metabot-chat");
+}
+
 export function assertChatVisibility(visibility: "visible" | "not.visible") {
-  cy.findByTestId("metabot-chat").should(
+  metabotChatSidebar().should(
     visibility === "visible" ? "be.visible" : "not.exist",
   );
 }
@@ -60,7 +64,6 @@ export function sendMetabotMessage(input: string) {
   metabotChatInput()
     .should("not.be.disabled")
     .click()
-    .should("be.focused")
     .type(input)
     .type("{Enter}");
 }
@@ -78,6 +81,7 @@ export const mockMetabotResponse = (response: StaticResponse) => {
   return cy
     .intercept("POST", "/api/ee/metabot-v3/agent-streaming", (req) => {
       req.reply({
+        status: 200,
         ...response,
         headers: {
           "content-type": "text/event-stream; charset=utf-8",

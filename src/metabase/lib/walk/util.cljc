@@ -1,14 +1,17 @@
 (ns metabase.lib.walk.util
   "Utility functions built on top of [[metabase.lib.walk]]."
+  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.set :as set]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [not-empty]]))
 
 (defn- transduce-stages
   ([rf query]
@@ -104,12 +107,32 @@
        nil))
     @has-native-stage?))
 
+(mu/defn any-native-stage-not-introduced-by-sandbox?
+  "Sandboxing can introduce native stages to a query, because, for example, a table can be replaced with a Question that
+  is based on a native query.
+
+  Sometimes we need to check whether the query has a native stage that was introduced at the 'user level' (this could
+  be the user's question itself, or one of the sources of their question, e.g. if the user makes Card A -> Card B ->
+  Card C where Card C is a native question), rather than a native stage that was introduced by a sandbox (e.g. Card A
+  -> Table B, which is swapped by a sandbox for Card C where Card C is a native question)."
+  [query :- ::lib.schema/query]
+  (let [has-native-stage? (volatile! false)]
+    (lib.walk/walk-stages
+     query
+     (fn [_query _path stage]
+       (when (and (not @has-native-stage?)
+                  (not (:query-permissions/sandboxed-table stage))
+                  (= (:lib/type stage) :mbql.stage/native))
+         (vreset! has-native-stage? true))
+       nil))
+    @has-native-stage?))
+
 (mu/defn all-field-ids :- [:set ::lib.schema.id/field]
   "Set of all Field IDs referenced in `:field` refs in a query or MBQL clause."
   [query-or-clause :- [:or
                        ::lib.schema/query
                        ::lib.schema.mbql-clause/clause]]
-  (let [field-ids   (volatile! (transient #{}))
+  (let [field-ids (volatile! (transient #{}))
         walk-clause (fn [clause]
                       (lib.util.match/match-lite clause
                         [:field _opts (id :guard pos-int?)]
@@ -120,6 +143,30 @@
                                                (walk-clause clause)))
       (lib.walk/walk-clause query-or-clause walk-clause))
     (persistent! @field-ids)))
+
+(mu/defn all-implicitly-joined-field-ids :- [:set ::lib.schema.id/field]
+  "Set of all Field IDs from implicitly joined tables."
+  [query-or-clause :- [:or ::lib.schema/query ::lib.schema.mbql-clause/clause]]
+  (let [joined-field-ids (volatile! (transient #{}))
+        implicit-join-field-opt? #(and (:source-field %) (not (:join-alias %)))
+        walk-clause (fn [clause]
+                      (lib.util.match/match-lite clause
+                        [:field (opts :guard implicit-join-field-opt?) id]
+                        (vswap! joined-field-ids conj! id))
+                      nil)]
+    (if (map? query-or-clause)
+      (lib.walk/walk-clauses query-or-clause (fn [_query _path-type _path clause]
+                                               (walk-clause clause)))
+      (lib.walk/walk-clause query-or-clause walk-clause))
+    (persistent! @joined-field-ids)))
+
+(mu/defn all-implicitly-joined-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
+  "Set of all Table IDs referenced via implicit joins in `query` or nil if no such IDs can be found."
+  [query :- ::lib.schema/query]
+  (->> (all-implicitly-joined-field-ids query)
+       (lib.metadata/bulk-metadata query :metadata/column)
+       (into #{} (keep :table-id))
+       not-empty))
 
 (mu/defn all-template-tags-id->field-ids :- [:maybe
                                              [:map-of

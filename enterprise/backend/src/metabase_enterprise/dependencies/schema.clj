@@ -8,4 +8,7 @@
    [:card      {:optional true} [:set ::lib.schema.id/card]]
    [:table     {:optional true} [:set ::lib.schema.id/table]]
    [:snippet   {:optional true} [:set ::lib.schema.id/snippet]]
-   [:transform {:optional true} [:set ::lib.schema.id/transform]]])
+   [:transform {:optional true} [:set ::lib.schema.id/transform]]
+   [:dashboard {:optional true} [:set ::lib.schema.id/dashboard]]
+   [:document  {:optional true} [:set ::lib.schema.id/document]]
+   [:sandbox   {:optional true} [:set ::lib.schema.id/sandbox]]])

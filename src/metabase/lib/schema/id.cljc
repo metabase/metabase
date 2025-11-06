@@ -83,8 +83,17 @@
   pos-int?)
 
 (mr/def ::transform
-  [:schema {:doc/title "Valid Transform ID"} pos-int?])
+  "Valid Transform ID"
+  pos-int?)
 
 (mr/def ::collection
   "Valid Collection ID"
+  pos-int?)
+
+(mr/def ::document
+  "Valid Document ID"
+  pos-int?)
+
+(mr/def ::sandbox
+  "Valid Sandbox ID"
   pos-int?)

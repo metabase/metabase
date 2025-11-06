@@ -3,7 +3,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.context :as context]
-   [metabase-enterprise.metabot-v3.table-utils :as table-utils]))
+   [metabase-enterprise.metabot-v3.table-utils :as table-utils]
+   [metabase.lib.core :as lib]
+   [metabase.test :as mt]))
 
 (deftest database-tables-for-context-prioritization
   (let [used [{:id 1 :name "used1"} {:id 2 :name "used2"}]
@@ -133,6 +135,46 @@
           (is (= 0 @call-count)
               "Should not call database-tables-for-context for MBQL queries"))))))
 
+(deftest enhance-context-with-schema-python-transform
+  (testing "Enhances context with schema for Python transforms"
+    (let [mock-tables [{:id 24 :name "orders" :schema "public"}
+                       {:id 31 :name "products" :schema "public"}]]
+      (with-redefs [context/python-transform-tables-for-context
+                    (fn [_] mock-tables)]
+        (let [input {:user_is_viewing [{:type "transform"
+                                        :source {:type "python"
+                                                 :source-database 2
+                                                 :source-tables {:orders 24
+                                                                 :products 31}}}]}
+              result (#'context/enhance-context-with-schema input)
+              used-tables (get-in result [:user_is_viewing 0 :used_tables])]
+          (is (= mock-tables used-tables)))))))
+
+(deftest enhance-context-with-schema-python-transform-no-source-tables
+  (testing "Handles Python transform without source-tables"
+    (let [called? (atom false)]
+      (with-redefs [context/python-transform-tables-for-context
+                    (fn [_] (reset! called? true) nil)]
+        (let [input {:user_is_viewing [{:type "transform"
+                                        :source {:type "python"
+                                                 :source-database 2
+                                                 :source-tables {}}}]}
+              result (#'context/enhance-context-with-schema input)]
+          (is (nil? (get-in result [:user_is_viewing 0 :used_tables])))
+          (is (false? @called?)))))))
+
+(deftest enhance-context-with-schema-python-transform-no-source-database
+  (testing "Handles Python transform without source-database"
+    (let [called? (atom false)]
+      (with-redefs [context/python-transform-tables-for-context
+                    (fn [_] (reset! called? true) nil)]
+        (let [input {:user_is_viewing [{:type "transform"
+                                        :source {:type "python"
+                                                 :source-tables {:orders 24}}}]}
+              result (#'context/enhance-context-with-schema input)]
+          (is (nil? (get-in result [:user_is_viewing 0 :used_tables])))
+          (is (false? @called?)))))))
+
 (deftest capabilities-signalling
   (testing "We signal our capabilities to ai-service"
     (is (= (count (-> (the-ns 'metabase-enterprise.metabot-v3.tools.api)
@@ -141,3 +183,28 @@
            (count (->> (context/create-context {})
                        :capabilities
                        (filter #(str/starts-with? % "backend:"))))))))
+
+(deftest annotate-transform-source-types-native-transform-test
+  (testing "Annotates draft native transform with source_type :native"
+    (let [input {:user_is_viewing [{:type "transform"
+                                    :source {:type :query
+                                             :query (lib/native-query (mt/metadata-provider) "SELECT * FROM users")}}]}
+          result (#'context/annotate-transform-source-types input)]
+      (is (= :native (get-in result [:user_is_viewing 0 :source_type]))))))
+
+(deftest annotate-transform-source-types-mbql-transform-test
+  (testing "Annotates draft MBQL transform with source_type :mbql"
+    (let [input {:user_is_viewing [{:type "transform"
+                                    :source {:type :query
+                                             :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}]}
+          result (#'context/annotate-transform-source-types input)]
+      (is (= :mbql (get-in result [:user_is_viewing 0 :source_type]))))))
+
+(deftest annotate-transform-source-types-python-transform-test
+  (testing "Annotates draft Python transform with source_type :python"
+    (let [input {:user_is_viewing [{:type "transform"
+                                    :source {:type :python
+                                             :body "import pandas as pd"
+                                             :source-database (mt/id)}}]}
+          result (#'context/annotate-transform-source-types input)]
+      (is (= :python (get-in result [:user_is_viewing 0 :source_type]))))))

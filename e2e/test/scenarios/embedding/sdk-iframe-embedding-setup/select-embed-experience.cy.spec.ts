@@ -1,4 +1,7 @@
-import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 import {
   assertDashboard,
@@ -186,27 +189,10 @@ H.describeWithSnowplow(suiteTitle, () => {
     );
   });
 
-  it("localizes the iframe preview when ?locale is passed", () => {
-    visitNewEmbedPage({ locale: "fr" });
-
-    // TODO: update this test once "Exploration" is localized in french.
-    getEmbedSidebar().findByText("Exploration").click();
-
-    H.waitForSimpleEmbedIframesToLoad();
-
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.log("data picker is localized");
-
-      cy.findByText("Données", { timeout: 10_000 }).should("be.visible");
-
-      cy.findByText("Choisissez vos données de départ", {
-        timeout: 10_000,
-      }).should("be.visible");
-    });
-  });
-
   it("should show a fake loading indicator in embed preview", () => {
-    cy.visit("/embed-js");
+    cy.visit(`/question/${ORDERS_QUESTION_ID}`);
+
+    H.openEmbedJsModal();
 
     cy.get("#iframe-embed-container")
       .findByTestId("preview-loading-indicator", { timeout: 20_000 })

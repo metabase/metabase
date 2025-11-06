@@ -2,8 +2,10 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
@@ -56,10 +58,11 @@
   (let [dashboard       (t2/hydrate dashboard :resolved-params)
         param           (get-in dashboard [:resolved-params param-key])
         results         (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
-                              :let [[_dimension field-ref opts] (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                                                                     (mbql.u/check-clause :dimension))]
+                              :let [field-ref ((some-fn lib/parameter-target-field-ref
+                                                        lib/parameter-target-expression-ref)
+                                               target)]
                               :when field-ref]
-                          (custom-values/values-from-card card field-ref opts))]
+                          (custom-values/values-from-card card field-ref))]
     (when-some [values (seq (distinct (mapcat :values results)))]
       (let [has_more_values (boolean (some true? (map :has_more_values results)))]
         {:values          (cond->> values
@@ -83,6 +86,26 @@
                  2 second
                  1 first)))))
 
+(mu/defn- cards-with-filters :- [:sequential ::lib.schema.metadata/card]
+  "Lazy seq of cards from `dashboard` that are mapped to param `param-key` and contain some filters.
+  Dashboard is expected to have hydrated `:resolved-params`."
+  [dashboard param-key]
+  (for [mapping (get-in dashboard [:resolved-params param-key :mappings])
+        :let [database-id (get-in mapping [:dashcard :card :dataset_query :database])
+              card-id (get-in mapping [:dashcard :card :id])
+              mp (lib-be/application-database-metadata-provider database-id)
+              card (lib.metadata/card mp card-id)
+              query (lib/card->underlying-query mp card)]
+        :when (and (not-empty query)
+                   (m/find-first (partial lib/filters query)
+                                 (range (lib/stage-count query))))]
+    card))
+
+(defn- cards-with-filters?
+  "Does param-key have any card with filter mapped? Dashboard is expected to have hydrated `:resolved-params`."
+  [dashboard param-key]
+  (boolean (seq (cards-with-filters dashboard param-key))))
+
 (mu/defn chain-filter :- ms/FieldValuesResult
   "C H A I N filters!
 
@@ -99,7 +122,8 @@
          constraints (chain-filter-constraints dashboard constraint-param-key->value)
          param       (get-in dashboard [:resolved-params param-key])
          field-ids   (into #{} (map :field-id (param->fields param)))]
-     (if (empty? field-ids)
+     (if (or (empty? field-ids)
+             (cards-with-filters? dashboard param-key))
        (or (filter-values-from-field-refs dashboard param-key)
            (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
                            {:param       (get (:resolved-params dashboard) param-key)

@@ -108,6 +108,9 @@
     (search.settings/experimental-search-weight-overrides!
      (merge-with merge (search.settings/experimental-search-weight-overrides) {context (update-keys overrides u/qualified-name)}))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/weights"
   "Return the current weights being used to rank the search results"
   [_route-params
@@ -116,6 +119,9 @@
                          [:search_engine {:optional true} :any]]]
   (search.config/weights context))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :put "/weights"
   "Update the current weights being used to rank the search results"
   [_route-params
@@ -128,6 +134,9 @@
       (set-weights! context overrides))
     (search.config/weights context)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Search for items in Metabase.
   For the list of supported models, check [[metabase.search.config/all-models]].
@@ -148,7 +157,9 @@
   - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)
   - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)
 
-  Note that not all item types support all filters, and the results will include only models that support the provided filters. For example:
+  Note that not all item types support all filters, and the results will include only models that support the provided
+  filters. For example:
+
   - The `created-by` filter supports dashboards, models, actions, and cards.
   - The `verified` filter supports models and cards.
 
@@ -184,7 +195,7 @@
        [:last_edited_by                      {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:model_ancestors                     {:default false} [:maybe :boolean]]
        [:search_engine                       {:optional true} [:maybe string?]]
-       [:search_native_query                 {:optional true} [:maybe true?]]
+       [:search_native_query                 {:optional true} [:maybe :boolean]]
        [:verified                            {:optional true} [:maybe true?]]
        [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:calculate_available_models          {:optional true} [:maybe true?]]

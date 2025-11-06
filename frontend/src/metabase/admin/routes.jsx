@@ -23,6 +23,7 @@ import { PerformanceApp } from "metabase/admin/performance/components/Performanc
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 import {
   EmbeddingSdkSettings,
+  EmbeddingSecuritySettings,
   StaticEmbeddingSettings,
 } from "metabase/admin/settings/components/EmbeddingSettings";
 import { Help } from "metabase/admin/tools/components/Help";
@@ -47,6 +48,7 @@ import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
+  PLUGIN_DEPENDENCIES,
   PLUGIN_METABOT,
   PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
@@ -173,6 +175,11 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             title={t`Static`}
             component={StaticEmbeddingSettings}
           />
+          <Route
+            path="security"
+            title={t`Security`}
+            component={EmbeddingSecuritySettings}
+          />
         </Route>
       </Route>
 
@@ -273,6 +280,12 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
               }}
             />
           </Route>
+          {PLUGIN_DEPENDENCIES.isEnabled && (
+            <Route
+              path="dependencies"
+              component={PLUGIN_DEPENDENCIES.DependencyGraphPage}
+            />
+          )}
         </Route>
       </Route>
     </Route>

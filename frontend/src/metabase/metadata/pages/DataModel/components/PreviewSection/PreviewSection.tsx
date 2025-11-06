@@ -51,7 +51,10 @@ const PreviewSectionBase = ({
   onPreviewTypeChange,
 }: Props) => {
   const data = useMemo(() => getPreviewTypeData(), []);
-  const pkFields = table.fields?.filter((field) => isPK(field)) ?? [];
+  const pkFields = useMemo(
+    () => table.fields?.filter((field) => isPK(field)) ?? [],
+    [table.fields],
+  );
 
   return (
     <Card

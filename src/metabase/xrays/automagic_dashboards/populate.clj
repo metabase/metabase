@@ -140,7 +140,11 @@
    {query :dataset_query, :keys [title description width height id] :as dashcard} :- ::ads/card-template
    [x y]]
   (let [query-fields (when query
-                       (binding [lib.schema/*HACK-disable-join-alias-in-field-ref-validation* true]
+                       ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of
+                       ;; filters and whatever that use columns from joins before adding the joins themselves (same
+                       ;; with expressions), which is technically invalid at the time it happens but ends up resulting
+                       ;; in a valid query at the end of the day. Maybe one day we can rework this code to be saner
+                       (binding [lib.schema/*HACK-disable-ref-validation* true]
                          (-> {:dataset_query (lib-be/normalize-query query)}
                              queries/populate-card-query-fields
                              (select-keys [:query_type :database_id :table_id]))))
@@ -320,7 +324,11 @@
 
 (mu/defn- create-dashboard-populate-dashcards :- [:sequential ::ads/dashcard]
   [dashcards :- [:maybe [:sequential ::ads/card-template]]]
-  (let [card-id->can-run-adhoc-query (binding [lib.schema/*HACK-disable-join-alias-in-field-ref-validation* true]
+  ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of filters and whatever that
+  ;; use columns from joins before adding the joins themselves (same with expressions), which is technically invalid
+  ;; at the time it happens but ends up resulting in a valid query at the end of the day. Maybe one day we can rework
+  ;; this code to be saner
+  (let [card-id->can-run-adhoc-query (binding [lib.schema/*HACK-disable-ref-validation* true]
                                        (into {}
                                              (map (juxt ::id :can_run_adhoc_query))
                                              (queries/with-can-run-adhoc-query

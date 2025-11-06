@@ -8,6 +8,7 @@ import LogoIcon from "metabase/common/components/LogoIcon";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Icon } from "metabase/ui";
@@ -19,6 +20,7 @@ import { AdminNavItem } from "./AdminNavItem";
 import { AdminNavLink } from "./AdminNavItem.styled";
 import AdminNavCS from "./AdminNavbar.module.css";
 import {
+  AdminButtons,
   AdminExitLink,
   AdminLogoContainer,
   AdminLogoLink,
@@ -92,10 +94,15 @@ export const AdminNavbar = ({
         </AdminNavbarItems>
 
         {!isPaidPlan && isAdmin && <StoreLink />}
-        <AdminExitLink
-          to="/"
-          data-testid="exit-admin"
-        >{t`Exit admin`}</AdminExitLink>
+
+        <AdminButtons>
+          <PLUGIN_METABOT.MetabotAdminAppBarButton />
+
+          <AdminExitLink
+            to="/"
+            data-testid="exit-admin"
+          >{t`Exit admin`}</AdminExitLink>
+        </AdminButtons>
       </MobileHide>
     </AdminNavbarRoot>
   );

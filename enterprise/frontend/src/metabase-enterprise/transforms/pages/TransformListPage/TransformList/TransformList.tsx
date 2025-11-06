@@ -5,26 +5,25 @@ import { AdminContentTable } from "metabase/common/components/AdminContentTable"
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { Card, Flex } from "metabase/ui";
 import {
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
-import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
 import type { Transform } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
-import type { TransformListParams } from "../../../types";
-import { getTransformUrl } from "../../../urls";
+import { TimezoneIndicator } from "../../../components/TimezoneIndicator";
 import { parseTimestampWithTimezone } from "../../../utils";
 import { hasFilterParams } from "../utils";
 
 import S from "./TransformList.module.css";
 
 type TransformListProps = {
-  params: TransformListParams;
+  params: Urls.TransformListParams;
 };
 
 export function TransformList({ params }: TransformListProps) {
@@ -48,7 +47,7 @@ export function TransformList({ params }: TransformListProps) {
   const dispatch = useDispatch();
 
   const handleRowClick = (transform: Transform) => {
-    dispatch(push(getTransformUrl(transform.id)));
+    dispatch(push(Urls.transform(transform.id)));
   };
 
   if (isLoading || error != null) {

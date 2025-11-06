@@ -13,7 +13,13 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js", () 
   });
 
   it("shows the Enable to Continue button and enables embedding on click", () => {
-    cy.visit("/embed-js");
+    cy.visit("/admin/embedding");
+
+    cy.findAllByTestId("sdk-setting-card")
+      .first()
+      .within(() => {
+        cy.findByText("New embed").click();
+      });
 
     cy.log("shows tooltip with fair usage info");
     getEmbedSidebar().findByLabelText("info icon").trigger("mouseover");
@@ -49,7 +55,14 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js", () 
 
   it("hides the enable card when embedding is already enabled", () => {
     H.updateSetting("enable-embedding-simple", true);
-    cy.visit("/embed-js");
+
+    cy.visit("/admin/embedding");
+
+    cy.findAllByTestId("sdk-setting-card")
+      .first()
+      .within(() => {
+        cy.findByText("New embed").click();
+      });
 
     getEmbedSidebar()
       .contains("Enable Embedded Analytics JS to get started.")

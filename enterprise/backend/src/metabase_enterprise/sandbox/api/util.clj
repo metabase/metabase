@@ -39,7 +39,10 @@
 
   WARNING: This should NOT be used directly for sandboxing enforcement. Use `*sandboxes-for-user*` or
   `enforced-sandboxes-for-tables` below, so that the cache is used."
-  :feature :sandboxes
+  ;; This needs to be `:none` because we need to be able to decide whether sandboxing is *configured* for a user, even
+  ;; if the feature isn't actually available to be enforced. (This way, we can block all requests that *would
+  ;; otherwise be* sandboxed when sandboxing is turned off.)
+  :feature :none
   [user-id]
   (when user-id
     (let [user-group-ids           (user/group-ids user-id)

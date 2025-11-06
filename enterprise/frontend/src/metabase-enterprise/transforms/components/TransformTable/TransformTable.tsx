@@ -3,10 +3,9 @@ import { t } from "ttag";
 
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { Card } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
-
-import { getTransformUrl } from "../../urls";
 
 import S from "./TransformTable.module.css";
 
@@ -18,7 +17,7 @@ export function TransformTable({ transforms }: TransformTableProps) {
   const dispatch = useDispatch();
 
   const handleRowClick = (transform: Transform) => {
-    dispatch(push(getTransformUrl(transform.id)));
+    dispatch(push(Urls.transform(transform.id)));
   };
 
   return (

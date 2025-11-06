@@ -7,6 +7,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.models.visualization-settings :as viz-settings]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.parameters.shared :as shared.params]
    [metabase.query-processor :as qp]
@@ -135,10 +136,11 @@
 
 (defn- fixup-viz-settings
   "The viz-settings from :data :viz-settings might be incorrect if there is a cached of the same query.
-  See #58469.
+  See #58469 and #64687.
   TODO: remove this hack when it's fixed in QP."
   [qp-result]
-  (update-in qp-result [:data :viz-settings] merge (get-in qp-result [:json_query :viz-settings])))
+  (update-in qp-result [:data :viz-settings] merge (-> (get-in qp-result [:json_query :viz-settings])
+                                                       viz-settings/db->norm)))
 
 (def rows-to-disk-threshold
   "Maximum rows to hold in memory when running notification queries. After this, query results are streamed straight to disk. See [[metabase.notification.payload.temp-storage]] for more details."

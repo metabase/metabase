@@ -9,6 +9,7 @@
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
@@ -241,7 +242,12 @@
 
 (defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
   ;; TODO restructure things such that s3 can we swapped out for other transfer mechanisms
-  (with-open [log-future-ref     (open-python-message-update-future! run-id message-log)
+  (with-open [^Closeable log-future-ref
+              (if (app-db/in-transaction?)
+                ;; if in a transaction (such as under mt/with-temp), it is not safe to poll for logs (close race / contention)
+                ;; tests that want to test async log behaviour should opt out of thread-local test helpers
+                (reify Closeable (close [_]))
+                (open-python-message-update-future! run-id message-log))
               shared-storage-ref (s3/open-shared-storage! (:source-tables source))]
     (let [driver          (:engine db)
           server-url      (transforms-python.settings/python-runner-url)
@@ -261,7 +267,7 @@
 
           output-manifest (python-runner/read-output-manifest @shared-storage-ref)
           events          (python-runner/read-events @shared-storage-ref)]
-      (.close log-future-ref)                               ; early close to force any writes to flush
+      (.close ^Closeable log-future-ref)                 ; early close to force any writes to flush
       (replace-python-logs! message-log events)
       (if (not= 200 status)
         (do
@@ -285,7 +291,7 @@
               (with-open [in (python-runner/open-output @shared-storage-ref)]
                 (io/copy in temp-file))
               (let [file-size (.length temp-file)]
-                (transforms.instrumentation/with-stage-timing [run-id :file-to-dwh]
+                (transforms.instrumentation/with-stage-timing [run-id [:import :file-to-dwh]]
                   (transfer-file-to-db driver db transform output-manifest temp-file))
                 (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size nil))
               (finally
@@ -332,8 +338,9 @@
                                 (log! message-log (i18n/tru "Python execution finished successfully in {0}" (u.format/format-milliseconds (u/since-ms start-ms))))
                                 (save-log-to-transform-run-message! run-id message-log))
             ex-message-fn     #(exceptional-run-message message-log %)
-            result            (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn)]
-        (transforms.instrumentation/with-stage-timing [run-id :table-sync]
+            result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
+                                (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
+        (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
           (transforms.util/sync-target! target db run-id))
         {:run_id run-id
          :result result}))

@@ -8,8 +8,23 @@
 }
 
 .SuggestionsSidebarWrapper {
-  min-height: 100vh;
+  min-height: 100%;
   width: 346px;
   background-color: var(--mb-color-bg-light);
   border-left: 2px solid var(--mb-color-border);
+}
+
+.DashboardWrapper {
+  flex-grow: 1;
+
+  &.HasSidebar {
+    padding-right: 346px;
+  }
+}
+
+.Root {
+  background: var(--mb-color-background-light);
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }

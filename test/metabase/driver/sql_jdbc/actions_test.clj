@@ -17,6 +17,10 @@
    [toucan2.core :as t2])
   (:import (clojure.lang ExceptionInfo)))
 
+(use-fixtures :each (fn [t]
+                      (mt/with-test-user :rasta
+                        (t))))
+
 (mu/defn- cast-values :- ::actions.args/row
   [driver        :- :keyword
    column->value :- ::actions.args/row

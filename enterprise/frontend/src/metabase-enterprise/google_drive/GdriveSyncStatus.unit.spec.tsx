@@ -2,8 +2,10 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupDatabaseListEndpoint,
   setupGdriveGetFolderEndpoint,
   setupGdriveServiceAccountEndpoint,
+  setupTablesEndpoints,
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { useListDatabasesQuery, useListTablesQuery } from "metabase/api";
@@ -62,6 +64,9 @@ const setup = ({
   setupGdriveServiceAccountEndpoint(
     "test-service-account@service-account.metabase.com",
   );
+
+  setupDatabaseListEndpoint([]);
+  setupTablesEndpoints([]);
 
   return renderWithProviders(<TestComponent />, {
     storeInitialState: {

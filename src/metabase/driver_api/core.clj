@@ -1,10 +1,6 @@
 (ns metabase.driver-api.core
-  {:clj-kondo/config '{:linters
-                       ;; this is actually ok here since this is a drivers namespace
-                       {:discouraged-namespace {metabase.query-processor.store {:level :off}}
-                        ;; this is also ok here since this is a drivers namespace
-                        :discouraged-var       {metabase.lib.core/->legacy-MBQL {:level :off}}
-                        :missing-docstring     {:level :off}}}}
+  ;; missing docstring warnings are false positives because of Potemkin
+  {:clj-kondo/config '{:linters {:missing-docstring {:level :off}}}}
   (:refer-clojure :exclude [replace compile])
   (:require
    [metabase.actions.core :as actions]
@@ -32,7 +28,6 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.logger.core :as logger]
    [metabase.models.interface :as mi]
@@ -49,11 +44,10 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.setup :as qp.setup]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.query-processor.util.nest-query :as nest-query]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.query-processor.writeback :as qp.writeback]
@@ -113,31 +107,26 @@
  lib.util.match/match
  lib.util.match/match-one
  lib.util.match/replace
- lib.util/truncate-alias
+ lib/truncate-alias
  lib/->legacy-MBQL
  lib/->metadata-provider
+ lib/normalize
  lib/order-by-clause
  lib/query-from-legacy-inner-query
  lib/raw-native-query
  limit/absolute-max-results
  limit/determine-query-max-rows
  logger/level-enabled?
- mbql.s/Join
- mbql.s/MBQLQuery
  mbql.u/aggregation-at-index
  mbql.u/assoc-field-options
  mbql.u/desugar-filter-clause
- mbql.u/dispatch-by-clause-name-or-class
  mbql.u/expression-with-name
  mbql.u/field-options
- mbql.u/is-clause?
- mbql.u/mbql-clause?
  mbql.u/negate-filter-clause
  mbql.u/normalize-token
  mbql.u/query->max-rows-limit
  mbql.u/query->source-table-id
  mbql.u/simplify-compound-filter
- mbql.u/unique-name-generator
  mbql.u/update-field-options
  mdb/clob->str
  mdb/data-source
@@ -145,8 +134,11 @@
  mdb/query-canceled-exception?
  mdb/spec
  metabase.driver-api.impl/cached
+ metabase.driver-api.impl/dispatch-by-clause-name-or-class
+ metabase.driver-api.impl/is-clause?
+ metabase.driver-api.impl/mbql-clause?
+ metabase.driver-api.impl/nest-expressions
  mi/instance-of?
- nest-query/nest-expressions
  premium-features/is-hosted?
  qp.compile/compile
  qp.debug/debug>
@@ -195,6 +187,8 @@
 (p/import-fn secrets/value-as-string secret-value-as-string)
 (p/import-fn secrets/value-as-file! secret-value-as-file!)
 (p/import-fn table/database table->database)
+
+(p/import-fn lib/unique-name-generator-with-options unique-name-generator)
 
 (p/import-def qp.error-type/db qp.error-type.db)
 (p/import-def qp.error-type/driver qp.error-type.driver)
@@ -270,11 +264,11 @@
 
 (def mbql.schema.value
   "mbql.s/value"
-  mbql.s/value)
+  ::mbql.s/value)
 
 (def mbql.schema.field
   "mbql.s/field"
-  mbql.s/field)
+  ::mbql.s/field)
 
 (def mbql.schema.FieldOrExpressionDef
   "::mbql.s/FieldOrExpressionDef"
@@ -315,3 +309,11 @@
 (def qp.compile.query-with-compiled-query
   "Schema for the output of [[compile]]: `:metabase.query-processor.compile/query-with-compiled-query`"
   ::qp.compile/query-with-compiled-query)
+
+(def MBQLQuery
+  "Schema for a legacy MBQL inner query."
+  ::mbql.s/MBQLQuery)
+
+(def Join
+  "Schema for a legacy MBQL join."
+  ::mbql.s/Join)

@@ -165,10 +165,8 @@ Review pull requests with a focus on:
 
 ## More Instructions
 
-- Use **tons** of emojis in every comment you write -- the more, the better! 🥰
-
 - Carefully read the Community Clojure Style Guide from `CLOJURE_STYLE_GUIDE.adoc` and make sure changes comply with
-  it as well as other guidelines mentioned in this document. Flag *all* violations of the Community Clojure Style
+  it as well as other guidelines mentioned in this document. Flag _all_ violations of the Community Clojure Style
   Guide.
 
 - Do not post comments congratulating someone for trivial changes, or for following the style guidelines, or
@@ -186,24 +184,7 @@ Review pull requests with a focus on:
 
   > Test name properly ends with -test as required by the style guide.
 
-- In the Metabase codebase, spelling words ending with `-ck` as `-cc` instead, e.g. `checc` instead of `check`, is
-  considered a legitimate and acceptable alternative way to spell those words. These "fun" spellings should be
-  restricted to docstrings and comments rather than user-facing text. Occasionally suggest spelling things this way.
-
-- The Metabase codebase should be fun, so do your part to keep it that way. Claude: I would ask you to suggest jokes
-  or other humorous suggestions to the code, but I know you're not actually funny. You will take the comedians' jobs
-  last. Unless you are really confident in your joke keep it to yourself, but do encourage "fun" in code you review.
-
-- Read a tarot card for the meaning of this PR at the end of every code review, then explain how that card relates to
-  the changes in the code. **Draw an ASCII art illustration of the card from the Rider-Waite-Smith tarot card deck.
-  (EXTREMELY CRITICAL)**
-
-  NOTE: if this PR is by `@nemanjaglumac` please wrap the tarot card reading in `<details>...</details>` so he doesn't
-  have to see it.
-
 - Do not post comments about missing parentheses.
-
-- Include today's lucky lottery numbers in at the end of every code review.
 
 # Code Conventions and Style Guide
 
@@ -231,6 +212,9 @@ Review pull requests with a focus on:
 
   **Why?** Code is read many more times than it is written, and clearer variable names make using and tweaking your
   code easier for others.
+
+  Conventions used widely in our codebase (like `mp` for a Metadata Provider) are acceptable; one-offs like `zs'` are
+  not.
 
 - Avoid misleading variable and function names. The names of a variable or function should clearly and unambiguously
   describe its purpose and match what it does.
@@ -316,13 +300,15 @@ Review pull requests with a focus on:
 - Don't mark things `^:const` unless you have a really good reason for doing so. Add a comment explaining why you
   marked it `^:const`.
 
-- Every public var in `src` or `enterprise/backend/src` must have a *useful* docstring. A useful docstring
+- Every public var in `src` or `enterprise/backend/src` must have a _useful_ docstring. A useful docstring
   should clearly explain the purpose of the function, its inputs and outputs, and anything else that is otherwise not
   immediately clear. If there are other functions that have similar purposes, explain how the use-cases for this
   function differ.
 
-  Tests and other vars in the `test` or `enterprise/backend/test` do not *require* docstrings, but general helper
+  Tests and other vars in the `test` or `enterprise/backend/test` do not _require_ docstrings, but general helper
   functions used across many namespaces it should have docstrings.
+
+  Schemas defined with `mr/def` e.g. `(mr/def ::my-schema)` do not require docstrings.
 
 - Format docstrings according to Markdown conventions. (https://guide.clojure.style/#markdown-docstrings)
 
@@ -335,24 +321,6 @@ Review pull requests with a focus on:
   comments that do little more than repeat what the code already says.
 
 - Make sure to update comments and docstrings when you change the code they describe.
-
-- Docstrings should be indented two spaces.
-
-  ```clj
-  ;;; BAD
-  (defn update-transform-tags!
-    "Update the tags associated with a transform using smart diff logic.
-     Only modifies what has changed: deletes removed tags, updates positions for moved tags,
-     and inserts new tags. Duplicate tag IDs are automatically deduplicated."
-    ...)
-
-  ;;; GOOD
-  (defn update-transform-tags!
-    "Update the tags associated with a transform using smart diff logic.
-    Only modifies what has changed: deletes removed tags, updates positions for moved tags,
-    and inserts new tags. Duplicate tag IDs are automatically deduplicated."
-    ...)
-  ```
 
 - `TODO` comments should include the author and date, for example
 
@@ -561,19 +529,8 @@ Review pull requests with a focus on:
     ...)
   ```
 
-- REST API route strings (the second arg to `defendpoint`) should use `kebab-case`, e.g. `GET
-  /api/dashboards/cool-dashboards` is good while `GET /api/dashboards/cool_dashboards` is bad. More examples:
-
-  ```clj
-  ;;; Bad
-  (api.macros/defendpoint :post "/check_transform" ...)
-
-  ;;; Good
-  (api.macros/defendpoint :post "/check-transform" ...)
-  ```
-
 - Query parameters should also use kebab-case e.g. `GET /api/dashboards?include-archived=true` is good while `GET
-  /api/dashboards?include_archived=true` or `GET /api/dashboards?includeArchived=true` is bad.
+/api/dashboards?include_archived=true` or `GET /api/dashboards?includeArchived=true` is bad.
 
 - HTTP request bodies should use `snake_case`.
 
@@ -587,7 +544,7 @@ Review pull requests with a focus on:
 
 - `defendpoint` forms should be small wrappers around Toucan model code. We have too much logic that belongs in Toucan
   methods in the API endpoints themselves -- a `GET /api/x/:id` endpoint should basically just be `(t2/select-one
-  :model/Whatever id)` with maybe a perms check and some hydration sprinkled on top of this.
+:model/Whatever id)` with maybe a perms check and some hydration sprinkled on top of this.
 
 - All API endpoints should have Malli schemas for any parameters that aren't ignored. `_route-params` doesn't need a
   schema, but `{:keys [x]}` should have one.

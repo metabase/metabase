@@ -2,6 +2,7 @@
   "Cache arbitrary immutable values on `metadata-providerable` (eg. a query), by using the `CachedMetadataProvider`'s
   general caching facilities. Has helpers for constructing a cache key that includes the query and stage, making it
   easy to cache things like `visible-columns`."
+  (:refer-clojure :exclude [not-empty])
   (:require
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -11,7 +12,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [not-empty]])
   #?(:cljs (:require-macros [metabase.lib.metadata.cache])))
 
 (mr/def ::cache-key
@@ -96,14 +98,16 @@
    not-found]
   (if-let [metadata-provider (->cached-metadata-provider metadata-providerable)]
     (lib.metadata.protocols/cached-value metadata-provider k not-found)
-    not-found))
+    (do (log/warn "Not a cached-metadata-provider")
+        not-found)))
 
 (mu/defn- cache-value! :- :nil
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
    k                     :- ::cache-key
    v]
-  (when-let [metadata-provider (->cached-metadata-provider metadata-providerable)]
-    (lib.metadata.protocols/cache-value! metadata-provider k v))
+  (if-let [metadata-provider (->cached-metadata-provider metadata-providerable)]
+    (lib.metadata.protocols/cache-value! metadata-provider k v)
+    (log/warn "Not a cached-metadata-provider"))
   nil)
 
 (defn ^:dynamic *cache-hit-hook*

@@ -43,7 +43,8 @@
 (def model->db-model
   "Mapping of model name to :db_model and :alias"
   (cond-> api/model->db-model
-    config/ee-available? (assoc "document" {:db-model :model/Document :alias :document})))
+    config/ee-available? (assoc "document" {:db-model :model/Document :alias :document}
+                                "transform" {:db-model :model/Transform :alias :transform})))
 
 ;; We won't need this once fully migrated to specs, but kept for now in case legacy cod falls out of sync
 (def excluded-models
@@ -74,7 +75,7 @@
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
   (cond-> ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action"]
-    config/ee-available? (conj "document")
+    config/ee-available? (concat ["document" "transform"])
     :always (conj "database")))
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
@@ -259,7 +260,7 @@
    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:limit-int                           {:optional true} ms/Int]
    [:offset-int                          {:optional true} ms/Int]
-   [:search-native-query                 {:optional true} true?]
+   [:search-native-query                 {:optional true} :boolean]
    [:table-db-id                         {:optional true} ms/PositiveInt]
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
