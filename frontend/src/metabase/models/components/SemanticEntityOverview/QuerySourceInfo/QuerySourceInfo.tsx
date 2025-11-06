@@ -1,17 +1,27 @@
 import { Fragment, useMemo } from "react";
 import { Link } from "react-router";
+import { t } from "ttag";
 
 import { useGetCardQuery, useGetTableQuery } from "metabase/api";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Anchor, Box } from "metabase/ui";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Anchor, Stack, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { CardId, TableId } from "metabase-types/api";
+import type { Card, CardId, TableId } from "metabase-types/api";
 
-type QuerySourcePathProps = {
-  query: Lib.Query;
+type QuerySourceInfoProps = {
+  card: Card;
 };
 
-export function QuerySourcePath({ query }: QuerySourcePathProps) {
+export function QuerySourceInfo({ card }: QuerySourceInfoProps) {
+  const metadata = useSelector(getMetadata);
+  const { query, queryInfo } = useMemo(() => {
+    const query = Lib.fromJsQueryAndMetadata(metadata, card.dataset_query);
+    const queryInfo = Lib.queryDisplayInfo(query);
+    return { query, queryInfo };
+  }, [metadata, card]);
+
   const pickerInfo = useMemo(() => {
     const tableOrCardId = Lib.sourceTableOrCardId(query);
     const tableOrCard =
@@ -21,15 +31,20 @@ export function QuerySourcePath({ query }: QuerySourcePathProps) {
     return tableOrCard != null ? Lib.pickerInfo(query, tableOrCard) : null;
   }, [query]);
 
-  if (pickerInfo == null) {
+  if (!queryInfo.isEditable || pickerInfo == null) {
     return null;
   }
 
-  if (pickerInfo.cardId == null) {
-    return <TableSourcePath tableId={pickerInfo.tableId} />;
-  } else {
-    return <CardSourcePath cardId={pickerInfo.cardId} />;
-  }
+  return (
+    <Stack gap="xs">
+      <Title order={6}>{t`Based on`}</Title>
+      {pickerInfo.cardId == null ? (
+        <TableSourcePath tableId={pickerInfo.tableId} />
+      ) : (
+        <CardSourcePath cardId={pickerInfo.cardId} />
+      )}
+    </Stack>
+  );
 }
 
 type TableSourcePathProps = {
@@ -130,19 +145,19 @@ type SourcePathProps = {
 
 function SourcePath({ parts }: SourcePathProps) {
   return (
-    <Box fw={700}>
+    <div>
       {parts.map((part, index) => (
         <Fragment key={index}>
           {index > 0 && " / "}
           {part.url ? (
-            <Anchor component={Link} to={part.url} c="text-primary">
+            <Anchor component={Link} to={part.url}>
               {part.name}
             </Anchor>
           ) : (
-            <Box component="span">{part.name}</Box>
+            <span>{part.name}</span>
           )}
         </Fragment>
       ))}
-    </Box>
+    </div>
   );
 }
