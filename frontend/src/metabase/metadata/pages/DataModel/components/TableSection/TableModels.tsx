@@ -44,11 +44,8 @@ export function TableModels({ table }: Props) {
   }
 
   return (
-    <Box className={S.container}>
+    <Box>
       <Stack gap={8}>
-        <Text fw="bold" size="sm" lh="16px">
-          {t`This table has been published as a model`}
-        </Text>
         {models.map((model) => {
           if (!("name" in model.data) || !("collection" in model.data)) {
             return null;

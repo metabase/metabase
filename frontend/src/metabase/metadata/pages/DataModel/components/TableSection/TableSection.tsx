@@ -39,6 +39,7 @@ import { TableMetadataSection } from "./TableMetadataSection";
 import { TableModels } from "./TableModels";
 import S from "./TableSection.module.css";
 import { useResponsiveButtons } from "./hooks";
+import { TableSectionGroup } from "./TableSectionGroup";
 
 interface Props {
   params: RouteParams;
@@ -178,21 +179,19 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
 
       <Box px="xl">
         <Group justify="stretch" gap="sm">
-          {!isSorting && (
-            <Box style={{ flexGrow: 1 }}>
-              <Tooltip label={t`Sync options`}>
-                <Button
-                  leftSection={<Icon name="settings" />}
-                  onClick={onSyncOptionsClick}
-                  style={{
-                    width: "100%",
-                  }}
-                >
-                  {t`Sync settings`}
-                </Button>
-              </Tooltip>
-            </Box>
-          )}
+          <Box style={{ flexGrow: 1 }}>
+            <Tooltip label={t`Sync options`}>
+              <Button
+                leftSection={<Icon name="settings" />}
+                onClick={onSyncOptionsClick}
+                style={{
+                  width: "100%",
+                }}
+              >
+                {t`Sync settings`}
+              </Button>
+            </Tooltip>
+          </Box>
           <Box style={{ flexGrow: 1 }}>
             <Tooltip label={t`Create model and publish to collection`}>
               <Button
@@ -226,18 +225,20 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         </Group>
       </Box>
 
+      <TransformLink table={table} />
+
       <Box px="xl">
-        <TransformLink table={table} />
+        <TableSectionGroup title={t`Metadata`}>TODO</TableSectionGroup>
       </Box>
 
       <Box px="xl">
-        <Box className={S.box}>
-          <TableMetadataSection table={table} />
-        </Box>
+        <TableMetadataSection table={table} />
       </Box>
 
       <Box px="xl">
-        <TableModels table={table} />
+        <TableSectionGroup title={t`This table has been published as a model`}>
+          <TableModels table={table} />
+        </TableSectionGroup>
       </Box>
 
       <Box
@@ -359,6 +360,7 @@ function TableLink({ table }: { table: Table }) {
   return (
     <Tooltip label={t`Go to this table`} position="top">
       <Box>
+        {/* wrapping with a Box because Tooltip does not work for <Button component={Link} /> */}
         <Button
           component={Link}
           to={getQueryBuilderUrl(table)}
@@ -385,7 +387,8 @@ function TransformLink({ table }: { table: Table }) {
     <Box
       component={Link}
       to={`/admin/transforms?id=${table.transform_id}`}
-      p="sm"
+      py="sm"
+      px="xl"
       style={{
         borderRadius: 4,
         display: "inline-flex",

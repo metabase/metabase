@@ -1,5 +1,10 @@
-import S from "./TableMetadataSection.module.css";
+import { t } from "ttag";
 
+import {
+  usePublishModelsMutation,
+  useUpdateTableFieldsOrderMutation,
+  useUpdateTableMutation,
+} from "metabase/api";
 import {
   ActiveInput,
   DataSourceInput,
@@ -10,7 +15,8 @@ import {
   SortableFieldList,
   UserInput,
 } from "metabase/metadata/components";
-
+import { useMetadataToasts } from "metabase/metadata/hooks";
+import { Stack, Title } from "metabase/ui";
 import type {
   FieldId,
   Table,
@@ -20,15 +26,8 @@ import type {
   UserId,
 } from "metabase-types/api";
 
-import {
-  usePublishModelsMutation,
-  useUpdateTableFieldsOrderMutation,
-  useUpdateTableMutation,
-} from "metabase/api";
-
-import { t } from "ttag";
-
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import S from "./TableMetadataSection.module.css";
+import { TableSectionGroup } from "./TableSectionGroup";
 
 interface Props {
   table: Table;
@@ -154,7 +153,7 @@ export function TableMetadataSection({ table }: Props) {
   };
 
   return (
-    <>
+    <TableSectionGroup title={t`Settings`}>
       <div className={S.container}>
         <UserInput
           email={table.owner_email}
@@ -238,6 +237,6 @@ export function TableMetadataSection({ table }: Props) {
           className={S.gridLabelInput}
         /> */}
       </div>
-    </>
+    </TableSectionGroup>
   );
 }
