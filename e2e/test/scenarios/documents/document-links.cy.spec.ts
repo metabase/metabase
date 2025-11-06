@@ -1,3 +1,5 @@
+import { times } from "underscore";
+
 import { PRODUCTS_AVERAGE_BY_CATEGORY } from "e2e/support/test-visualizer-data";
 
 const { H } = cy;
@@ -16,7 +18,7 @@ describe("Links in documents", () => {
 
       cy.log("Add text and make a link");
       H.addToDocument("Click here", false);
-      cy.realPress(["Shift", "Alt", "{leftarrow}"]);
+      times("here".length, () => cy.realPress(["Shift", "{leftarrow}"]));
       H.documentFormattingMenu().findByRole("button", { name: /link/ }).click();
       cy.realType("test.com{enter}");
 
