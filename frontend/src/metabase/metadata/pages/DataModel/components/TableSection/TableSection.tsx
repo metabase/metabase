@@ -10,6 +10,7 @@ import {
 import EmptyState from "metabase/common/components/EmptyState";
 import {
   FieldOrderPicker,
+  FieldOrderPicker2,
   NameDescriptionInput,
   SortableFieldList,
 } from "metabase/metadata/components";
@@ -237,6 +238,23 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
 
       <Box px="xl">
         <TableModels table={table} />
+      </Box>
+
+      <Box
+        bd="1px solid var(--mb-color-border)"
+        bg="bg-white"
+        bdrs="md"
+        p="md"
+        mx="xl"
+      >
+        <Text c="text-secondary" fw="bold" lh="16px" mb="md" size="sm">
+          {t`Field sort order`}
+        </Text>
+
+        <FieldOrderPicker2
+          value={table.field_order}
+          onChange={handleFieldOrderTypeChange}
+        />
       </Box>
 
       <Box
