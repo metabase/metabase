@@ -123,7 +123,7 @@ You can edit a model's query by clicking on the down arrow next to the model's n
 
 > {% include plans-blockquote.html feature="Checking for breaking changes" %}
 
-When a model is saved, Metabase will try to detect if the changes you made would break any other entities that depend on the model you changed. For example, if you deleted or removed a column from a model that is referenced in other questions, Metabase will warn you that those downstream questions will break. 
+When you save changes to a model, Metabase will try to detect whether your changes would break any other entities that depend on that model. For example, if you remove a column from the model, but other questions based on that model rely on that column, Metabase will warn you that those downstream questions will break. 
 
 ## Model list view
 
