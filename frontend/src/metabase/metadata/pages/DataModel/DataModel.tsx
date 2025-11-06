@@ -187,7 +187,6 @@ function DataModelContent({ children, location, params }: Props) {
                      * This is to avoid state mix-up with optimistic updates.
                      */
                     key={table.id}
-                    params={params}
                     table={table}
                     onSyncOptionsClick={openSyncModal}
                   />

@@ -1,76 +1,37 @@
-import { useElementSize } from "@mantine/hooks";
 import { memo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { useUpdateTableMutation } from "metabase/api";
 import {
-  useUpdateTableFieldsOrderMutation,
-  useUpdateTableMutation,
-} from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
-import {
-  FieldOrderPicker,
   FieldOrderPicker2,
   NameDescriptionInput,
-  SortableFieldList,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import {
-  Box,
-  Button,
-  Group,
-  Icon,
-  Loader,
-  Stack,
-  Text,
-  Tooltip,
-} from "metabase/ui";
-import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
+import { Box, Button, Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
+import type { Table, TableFieldOrder } from "metabase-types/api";
 
-import type { RouteParams } from "../../types";
-import { getUrl, parseRouteParams } from "../../utils";
-import { ResponsiveButton } from "../ResponsiveButton";
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 import { SubstituteModelModal } from "../TablePicker/components/SubstituteModelModal";
 
-import { FieldList } from "./FieldList";
 import { TableMetadataSettings } from "./TableMetadataSection";
 import { TableModels } from "./TableModels";
 import S from "./TableSection.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
-import { useResponsiveButtons } from "./hooks";
 
 interface Props {
-  params: RouteParams;
   table: Table;
   onSyncOptionsClick: () => void;
 }
 
-const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
-  const { fieldId, ...parsedParams } = parseRouteParams(params);
+const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
   const [updateTable] = useUpdateTableMutation();
-  const [updateTableSorting, { isLoading: isUpdatingSorting }] =
-    useUpdateTableMutation();
-  const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
+  const [updateTableSorting] = useUpdateTableMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
   const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
   const [isSubstituteModelModalOpen, setIsSubstituteModelModalOpen] =
     useState(false);
-  const { height: headerHeight, ref: headerRef } = useElementSize();
-  const [isSorting, setIsSorting] = useState(false);
-  const hasFields = Boolean(table.fields && table.fields.length > 0);
-  const {
-    buttonsContainerRef,
-    showButtonLabel,
-    setDoneButtonWidth,
-    setSortingButtonWidth,
-  } = useResponsiveButtons({
-    hasFields,
-    isSorting,
-    isUpdatingSorting,
-  });
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateTable({
@@ -126,34 +87,6 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     }
   };
 
-  const handleCustomFieldOrderChange = async (fieldOrder: FieldId[]) => {
-    const { error } = await updateTableFieldsOrder({
-      id: table.id,
-      field_order: fieldOrder,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update field order`);
-    } else {
-      sendSuccessToast(t`Field order updated`, async () => {
-        const { error: fieldsOrderError } = await updateTableFieldsOrder({
-          id: table.id,
-          field_order: table.fields?.map(getRawTableFieldId) ?? [],
-        });
-
-        if (table.field_order !== "custom") {
-          const { error: tableError } = await updateTable({
-            id: table.id,
-            field_order: table.field_order,
-          });
-          sendUndoToast(fieldsOrderError ?? tableError);
-        } else {
-          sendUndoToast(fieldsOrderError);
-        }
-      });
-    }
-  };
-
   return (
     <Stack data-testid="table-section" gap="md" pb="xl">
       <Box
@@ -162,7 +95,6 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         px="xl"
         mt="xl"
         pos="sticky"
-        ref={headerRef}
         top={0}
       >
         <NameDescriptionInput
@@ -251,89 +183,6 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           onChange={handleFieldOrderTypeChange}
         />
       </Box>
-
-      <Box
-        bg="accent-gray-light"
-        className={S.header}
-        pos="sticky"
-        top={headerHeight - 8}
-        pb={12}
-        px="xl"
-      >
-        <Group
-          align="center"
-          gap="md"
-          justify="space-between"
-          miw={0}
-          top={0}
-          wrap="nowrap"
-        >
-          <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
-
-          <Group
-            flex="1"
-            gap="md"
-            justify="flex-end"
-            miw={0}
-            ref={buttonsContainerRef}
-            wrap="nowrap"
-          >
-            {/* keep these conditions in sync with getRequiredWidth in useResponsiveButtons */}
-
-            {isUpdatingSorting && (
-              <Loader data-testid="loading-indicator" size="xs" />
-            )}
-
-            {!isSorting && hasFields && (
-              <ResponsiveButton
-                icon="sort_arrows"
-                showLabel={showButtonLabel}
-                onClick={() => setIsSorting(true)}
-                onRequestWidth={setSortingButtonWidth}
-              >{t`Sorting`}</ResponsiveButton>
-            )}
-
-            {isSorting && (
-              <FieldOrderPicker
-                value={table.field_order}
-                onChange={handleFieldOrderTypeChange}
-              />
-            )}
-
-            {isSorting && (
-              <ResponsiveButton
-                icon="check"
-                showLabel={showButtonLabel}
-                showIconWithLabel={false}
-                onClick={() => setIsSorting(false)}
-                onRequestWidth={setDoneButtonWidth}
-              >{t`Done`}</ResponsiveButton>
-            )}
-          </Group>
-        </Group>
-      </Box>
-
-      <Stack gap="lg" px="xl">
-        <Stack gap={12}>
-          {!hasFields && <EmptyState message={t`This table has no fields`} />}
-
-          {isSorting && hasFields && (
-            <SortableFieldList
-              activeFieldId={fieldId}
-              table={table}
-              onChange={handleCustomFieldOrderChange}
-            />
-          )}
-
-          {!isSorting && hasFields && (
-            <FieldList
-              activeFieldId={fieldId}
-              getFieldHref={(fieldId) => getUrl({ ...parsedParams, fieldId })}
-              table={table}
-            />
-          )}
-        </Stack>
-      </Stack>
 
       <PublishModelsModal
         tables={new Set([table.id])}
