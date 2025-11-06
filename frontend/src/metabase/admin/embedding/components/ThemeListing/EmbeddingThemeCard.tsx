@@ -50,8 +50,11 @@ const EmbeddingThemeActionMenu = ({
   return (
     <Menu position="bottom-end">
       <Menu.Target>
-        {/** This avoids triggering the card's onEdit when we click on the ellipsis menu. */}
-        <ActionIcon onClick={(e) => e.stopPropagation()}>
+        <ActionIcon
+          aria-label={t`More actions`}
+          {/** This avoids triggering the card's onEdit when we click on the ellipsis menu. */}
+          onClick={(e) => e.stopPropagation()}
+        >
           <Icon name="ellipsis" />
         </ActionIcon>
       </Menu.Target>

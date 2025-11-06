@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
+  useCopyEmbeddingThemeMutation,
   useCreateEmbeddingThemeMutation,
+  useDeleteEmbeddingThemeMutation,
   useListEmbeddingThemesQuery,
 } from "metabase/api/embedding-theme";
 import EmptyState from "metabase/common/components/EmptyState";
@@ -12,6 +15,7 @@ import {
   Flex,
   Icon,
   Loader,
+  Modal,
   SimpleGrid,
   Stack,
   Text,
@@ -23,7 +27,11 @@ import { EmbeddingThemeCard } from "./EmbeddingThemeCard";
 export function EmbeddingThemeListingApp() {
   const { data: themes, isLoading } = useListEmbeddingThemesQuery();
   const [createTheme] = useCreateEmbeddingThemeMutation();
+  const [duplicateTheme] = useCopyEmbeddingThemeMutation();
+  const [deleteTheme] = useDeleteEmbeddingThemeMutation();
   const [sendToast] = useToast();
+
+  const [themeToDelete, setThemeToDelete] = useState<number | null>(null);
 
   const handleCreateTheme = async () => {
     try {
@@ -38,6 +46,31 @@ export function EmbeddingThemeListingApp() {
     } catch (error) {
       console.error("Failed to create theme:", error);
       sendToast({ message: t`Failed to create theme`, icon: "warning" });
+    }
+  };
+
+  const handleDuplicateTheme = async (themeId: number) => {
+    try {
+      await duplicateTheme(themeId).unwrap();
+      sendToast({ message: t`Theme duplicated successfully`, icon: "check" });
+    } catch (error) {
+      console.error("Failed to duplicate theme:", error);
+      sendToast({ message: t`Failed to duplicate theme`, icon: "warning" });
+    }
+  };
+
+  const handleDeleteTheme = async () => {
+    if (!themeToDelete) {
+      return;
+    }
+
+    try {
+      await deleteTheme(themeToDelete).unwrap();
+      sendToast({ message: t`Theme deleted successfully`, icon: "check" });
+      setThemeToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete theme:", error);
+      sendToast({ message: t`Failed to delete theme`, icon: "warning" });
     }
   };
 
@@ -76,9 +109,8 @@ export function EmbeddingThemeListingApp() {
               theme={theme}
               // TODO(EMB-946): navigate to visual editor
               onEdit={() => {}}
-              // TODO(EMB-944): add ability to duplicate and delete named themes
-              onDuplicate={() => {}}
-              onDelete={() => {}}
+              onDuplicate={() => handleDuplicateTheme(theme.id)}
+              onDelete={() => setThemeToDelete(theme.id)}
             />
           ))}
         </SimpleGrid>
@@ -91,6 +123,25 @@ export function EmbeddingThemeListingApp() {
           />
         </Stack>
       )}
+
+      {/* Delete confirmation modal */}
+      <Modal
+        opened={themeToDelete !== null}
+        onClose={() => setThemeToDelete(null)}
+        title={t`Delete theme`}
+      >
+        <Stack>
+          <Text>{t`Are you sure you want to delete this theme? This action cannot be undone.`}</Text>
+          <Flex justify="flex-end" gap="md">
+            <Button variant="subtle" onClick={() => setThemeToDelete(null)}>
+              {t`Cancel`}
+            </Button>
+            <Button variant="filled" color="error" onClick={handleDeleteTheme}>
+              {t`Delete`}
+            </Button>
+          </Flex>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }
