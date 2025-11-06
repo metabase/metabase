@@ -8,7 +8,7 @@ import S from "./ModelFieldList.module.css";
 
 type ModelFieldListProps = {
   fields: Field[];
-  activeFieldIndex?: number;
+  activeFieldName?: string;
   onSelect: (field: Field) => void;
   onNameChange: (field: Field, name: string) => void;
   onDescriptionChange: (field: Field, description: string | null) => void;
@@ -16,7 +16,7 @@ type ModelFieldListProps = {
 
 export function ModelFieldList({
   fields,
-  activeFieldIndex,
+  activeFieldName,
   onSelect,
   onNameChange,
   onDescriptionChange,
@@ -38,7 +38,8 @@ export function ModelFieldList({
       <Box px="md" pb="md">
         <FieldList
           fields={fields}
-          activeFieldIndex={activeFieldIndex}
+          activeFieldKey={activeFieldName}
+          getFieldKey={(field) => field.name}
           onSelect={onSelect}
           onNameChange={onNameChange}
           onDescriptionChange={onDescriptionChange}

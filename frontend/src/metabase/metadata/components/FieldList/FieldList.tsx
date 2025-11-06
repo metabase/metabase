@@ -8,7 +8,8 @@ import { FieldItem } from "./FieldItem";
 
 interface Props {
   fields: Field[];
-  activeFieldIndex?: number;
+  activeFieldKey?: number | string;
+  getFieldKey: (field: Field) => number | string;
   getFieldHref?: (field: Field) => string;
   onSelect?: (field: Field) => void;
   onNameChange: (field: Field, newName: string) => void;
@@ -17,7 +18,8 @@ interface Props {
 
 export const FieldList = ({
   fields,
-  activeFieldIndex,
+  activeFieldKey,
+  getFieldKey,
   getFieldHref,
   onSelect,
   onNameChange,
@@ -29,15 +31,16 @@ export const FieldList = ({
 
   return (
     <Stack gap={rem(12)}>
-      {fields.map((field, fieldIndex) => {
+      {fields.map((field) => {
+        const key = getFieldKey(field);
         const parentName = field.nfc_path?.[0] ?? "";
         const parent = fieldsByName[parentName];
 
         return (
           <FieldItem
-            key={fieldIndex}
+            key={key}
             field={field}
-            active={fieldIndex === activeFieldIndex}
+            active={key === activeFieldKey}
             parent={parent}
             href={getFieldHref?.(field) ?? ""}
             onSelect={() => onSelect?.(field)}

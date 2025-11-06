@@ -27,11 +27,6 @@ export const TableFieldList = ({
     return _.sortBy(table.fields ?? [], (item) => item.position);
   }, [table.fields]);
 
-  const activeFieldIndex = useMemo(
-    () => fields.findIndex((field) => field.id === activeFieldId),
-    [fields, activeFieldId],
-  );
-
   const handleNameChange = async (field: Field, name: string) => {
     const id = getRawTableFieldId(field);
     const { error } = await updateField({ id, display_name: name });
@@ -75,7 +70,8 @@ export const TableFieldList = ({
   return (
     <FieldList
       fields={fields}
-      activeFieldIndex={activeFieldIndex}
+      activeFieldKey={activeFieldId}
+      getFieldKey={(field) => getRawTableFieldId(field)}
       getFieldHref={(field) => getFieldHref(getRawTableFieldId(field))}
       onNameChange={handleNameChange}
       onDescriptionChange={handleDescriptionChange}

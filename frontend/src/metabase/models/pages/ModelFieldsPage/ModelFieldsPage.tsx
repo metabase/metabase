@@ -41,11 +41,7 @@ type ModelFieldsPageBodyProps = {
 function ModelFieldsPageBody({ card }: ModelFieldsPageBodyProps) {
   const fields = card.result_metadata ?? [];
   const [activeFieldName, setActiveFieldName] = useState<string>();
-
-  const activeFieldIndex = fields.findIndex(
-    (field) => field.name === activeFieldName,
-  );
-  const activeField = fields[activeFieldIndex];
+  const activeField = fields.find((field) => field.name === activeFieldName);
 
   const handleSelect = (field: Field) => {
     setActiveFieldName(field.name);
@@ -61,7 +57,7 @@ function ModelFieldsPageBody({ card }: ModelFieldsPageBodyProps) {
       <Flex flex={1} mih={0}>
         <ModelFieldList
           fields={fields}
-          activeFieldIndex={activeFieldIndex}
+          activeFieldName={activeFieldName}
           onSelect={handleSelect}
           onNameChange={handleNameChange}
           onDescriptionChange={handleDescriptionChange}
