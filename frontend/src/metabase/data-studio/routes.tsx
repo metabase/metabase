@@ -1,11 +1,18 @@
-import { IndexRedirect, IndexRoute } from "react-router";
+import type { Store } from "@reduxjs/toolkit";
+import { IndexRoute } from "react-router";
 import { t } from "ttag";
 
 import { Route } from "metabase/hoc/Title";
+import * as Urls from "metabase/lib/urls";
 import { getDataStudioMetadataRoutes } from "metabase/metadata/routes";
 import { getDataStudioMetricRoutes } from "metabase/metrics/routes";
 import { getDataStudioModelRoutes } from "metabase/models/routes";
-import { PLUGIN_DEPENDENCIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
+import {
+  PLUGIN_DEPENDENCIES,
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_TRANSFORMS,
+} from "metabase/plugins";
+import type { State } from "metabase-types/store";
 
 import { DataSectionLayout } from "./pages/DataSectionLayout";
 import { DataStudioLayout } from "./pages/DataStudioLayout";
@@ -15,10 +22,14 @@ import { ModelingCollectionView } from "./pages/ModelingSectionLayout/ModelingCo
 import { ModelingEmptyPage } from "./pages/ModelingSectionLayout/ModelingEmptyPage";
 import { ModelingGlossary } from "./pages/ModelingSectionLayout/ModelingGlossary";
 
-export function getDataStudioRoutes() {
+export function getDataStudioRoutes(store: Store<State>) {
   return (
     <Route component={DataStudioLayout}>
-      <IndexRedirect to="data" />
+      <IndexRoute
+        onEnter={(_state, replace) => {
+          replace(getIndexPath(store.getState()));
+        }}
+      />
       <Route title={t`Data`} path="data" component={DataSectionLayout}>
         {getDataStudioMetadataRoutes()}
       </Route>
@@ -56,4 +67,14 @@ export function getDataStudioRoutes() {
       )}
     </Route>
   );
+}
+
+function getIndexPath(state: State) {
+  if (PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state)) {
+    return Urls.dataModel();
+  }
+  if (PLUGIN_TRANSFORMS.canAccessTransforms(state)) {
+    return Urls.transformList();
+  }
+  return Urls.dataStudioModeling();
 }

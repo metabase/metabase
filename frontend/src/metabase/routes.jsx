@@ -366,7 +366,7 @@ export const getRoutes = (store) => {
           {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
 
           {/* DATA STUDIO */}
-          <Route path="data-studio">{getDataStudioRoutes()}</Route>
+          <Route path="data-studio">{getDataStudioRoutes(store)}</Route>
         </Route>
       </Route>
 
