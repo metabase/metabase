@@ -32,6 +32,7 @@
 
 (p/import-vars
  [mdb.connection
+  *application-db*
   application-db
   data-source
   db-type
