@@ -58,12 +58,10 @@ export const EmbeddingThemeCardPreview = ({
   const chart2 = chartColorOf(2);
 
   return (
-    <svg viewBox="0 0 251 251" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <g clipPath="url(#clip0_17128_6556)">
-        <mask id="path-1-inside-1_17128_6556" fill="white">
-          <path d="M0 0H251V251H0V0Z" />
-        </mask>
+    <svg viewBox="0 0 251 251" fill="none">
+      <g>
         <path d="M0 0H251V251H0V0Z" fill={colorOf("background-secondary")} />
+
         <text
           x="28"
           y="48"
@@ -73,6 +71,7 @@ export const EmbeddingThemeCardPreview = ({
         >
           {"Abc"}
         </text>
+
         <rect
           x="28"
           y="69"
@@ -81,6 +80,7 @@ export const EmbeddingThemeCardPreview = ({
           rx="6"
           fill={colorOf("background")}
         />
+
         <rect
           x="28.5"
           y="69.5"
@@ -90,9 +90,11 @@ export const EmbeddingThemeCardPreview = ({
           stroke="#071722"
           strokeOpacity="0.14"
         />
+
         <line x1="97" y1="142.5" x2="437" y2="142.5" stroke="#EEECEC" />
         <line x1="97" y1="188.5" x2="437" y2="188.5" stroke="#EEECEC" />
         <line x1="97" y1="235.5" x2="437" y2="235.5" stroke="#EEECEC" />
+
         <text
           x="60"
           y="147"
@@ -117,6 +119,7 @@ export const EmbeddingThemeCardPreview = ({
         >
           100
         </text>
+
         <text
           x="60"
           y="107"
@@ -126,6 +129,7 @@ export const EmbeddingThemeCardPreview = ({
         >
           {"Theme preview"}
         </text>
+
         <rect x="97" y="236.539" width="18.77" height="13.4699" fill={chart0} />
         <rect x="97" y="206.758" width="18.77" height="29.7755" fill={chart1} />
         <rect x="97" y="194" width="18.77" height="12.7609" fill={chart2} />
@@ -184,19 +188,6 @@ export const EmbeddingThemeCardPreview = ({
         <rect x="237" y="159.66" width="18.77" height="62.2027" fill={chart1} />
         <rect x="237" y="133" width="18.77" height="26.6583" fill={chart2} />
       </g>
-
-      <path
-        d="M251 251V250H0V251V252H251V251Z"
-        fill="#071722"
-        fillOpacity="0.14"
-        mask="url(#path-1-inside-1_17128_6556)"
-      />
-
-      <defs>
-        <clipPath id="clip0_17128_6556">
-          <path d="M0 0H251V251H0V0Z" fill="white" />
-        </clipPath>
-      </defs>
     </svg>
   );
 };
