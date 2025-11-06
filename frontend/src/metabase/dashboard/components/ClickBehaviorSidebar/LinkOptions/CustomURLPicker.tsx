@@ -95,11 +95,8 @@ export function CustomURLPicker({
         onClose={closeModal}
         title={t`Enter a URL to link to`}
         size="lg"
-        closeOnClickOutside={hasLinkTemplate}
-        closeOnEscape={hasLinkTemplate}
-        withCloseButton={hasLinkTemplate}
       >
-        <Flex direction="column" gap="md">
+        <Flex direction="column" gap="md" mt="sm">
           <Text>
             {t`You can insert the value of a column or dashboard filter using its name, like this: {{some_column}}`}
           </Text>
