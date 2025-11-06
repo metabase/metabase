@@ -5,7 +5,6 @@ import { t } from "ttag";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import EntityMenu from "metabase/common/components/EntityMenu";
 import Link from "metabase/common/components/Link";
-import Modal from "metabase/common/components/Modal";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -136,12 +135,11 @@ function ModelActionListItem({
                 onClick={openExecuteModal}
               />
             </ActionRunButtonContainer>
-            <Modal isOpen={executeModalOpened} onClose={closeExecuteModal}>
-              <ActionExecuteModal
-                actionId={action.id}
-                onClose={closeExecuteModal}
-              />
-            </Modal>
+            <ActionExecuteModal
+              opened={executeModalOpened}
+              actionId={action.id}
+              onClose={closeExecuteModal}
+            />
           </>
         )}
       </ActionCardContainer>
