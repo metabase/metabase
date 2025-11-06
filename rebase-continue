@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "upstack",
+        "restack"
+      ],
+      "branch": "emb-941-scaffold-theme-listing-page-in-embedding-admin-settings"
+    }
+  ]
 }
