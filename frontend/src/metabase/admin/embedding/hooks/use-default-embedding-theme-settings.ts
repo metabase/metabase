@@ -62,7 +62,7 @@ export const WHITELABEL_CHART_COLOR_NAMES = [
  * The theme includes all the essential SDK colors mapped from the main app's
  * color palette, using the instance's brand, filter, summarize, and chart colors.
  */
-export function useDefaultEmbeddingTheme(): MetabaseTheme {
+export function useDefaultEmbeddingThemeSettings(): MetabaseTheme {
   const whitelabelColors = useSetting("application-colors");
 
   return useMemo(() => {
