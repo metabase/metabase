@@ -21,7 +21,7 @@ import type { Card, DatasetColumn, Field } from "metabase-types/api";
 import { ModelHeader } from "../../components/ModelHeader";
 import { ModelQueryEditor } from "../../components/ModelQueryEditor";
 import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";
-import { getValidationResult } from "../../utils";
+import { getValidationResult, mergeFieldMetadata } from "../../utils";
 
 type ModelQueryPageParams = {
   cardId: string;
@@ -65,7 +65,9 @@ function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
   const question = useMemo(() => {
     return new Question(card, metadata)
       .setDatasetQuery(datasetQuery)
-      .setResultsMetadata({ columns: resultMetadata });
+      .setResultsMetadata({
+        columns: mergeFieldMetadata(resultMetadata, card.result_metadata),
+      });
   }, [card, metadata, datasetQuery, resultMetadata]);
 
   const validationResult = useMemo(
@@ -90,9 +92,9 @@ function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
       const { error } = await updateCard({
         id: card.id,
         dataset_query: question.datasetQuery(),
+        result_metadata: question.getResultMetadata(),
         display,
         visualization_settings: settings,
-        result_metadata: resultMetadata,
       });
       if (error) {
         sendErrorToast(t`Failed to update model query`);

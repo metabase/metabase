@@ -20,11 +20,11 @@ import type { Card, Field } from "metabase-types/api";
 
 import { ModelHeader } from "../../components/ModelHeader";
 import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";
+import type { FieldPatch } from "../../types";
 
 import { ModelFieldDetails } from "./ModelFieldDetails";
 import { ModelFieldEmptyState } from "./ModelFieldEmptyState";
 import { ModelFieldList } from "./ModelFieldList";
-import type { FieldPatch } from "./types";
 
 type ModelFieldsPageParams = {
   cardId: string;

@@ -20,7 +20,7 @@ import type {
 } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../../constants";
-import type { FieldPatch } from "../types";
+import type { FieldPatch } from "../../../types";
 
 import S from "./ModelFieldDetails.module.css";
 
