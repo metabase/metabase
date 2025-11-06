@@ -227,7 +227,7 @@
     (assoc driver.common/default-port-details :placeholder 3306)
     driver.common/default-dbname-details
     driver.common/default-user-details
-    (driver.common/auth-provider-options [:aws-iam])
+    (driver.common/auth-provider-options #{:aws-iam})
     (assoc driver.common/default-password-details
            :visible-if {"use-auth-provider" false})
     driver.common/default-role-details

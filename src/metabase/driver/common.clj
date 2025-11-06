@@ -252,7 +252,7 @@
 (defn auth-provider-options
   "Options for using an auth provider instead of a literal password.
   When called with no arguments, returns options for all available auth providers.
-  When called with a collection of provider keywords (e.g., [:aws-iam]), returns options
+  When called with a collection of provider keywords (e.g., #{:aws-iam}), returns options
   filtered to only those providers."
   ([]
    (auth-provider-options nil))
