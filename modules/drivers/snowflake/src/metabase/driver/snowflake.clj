@@ -919,3 +919,33 @@
   [_driver]
   ;; https://docs.snowflake.com/en/sql-reference/identifiers
   255)
+
+(defmethod sql.qp/->honeysql [:snowflake :contains]
+  [driver [_ field arg {:keys [case-sensitive] :or {case-sensitive true} :as options}]]
+  (sql.qp/like-clause (sql.qp/->honeysql driver (sql.qp/maybe-cast-uuid-for-text-compare field))
+                      (sql.qp/generate-pattern driver "%" arg "%" options) options)
+  [:contains
+   (if case-sensitive
+     (sql.qp/->honeysql driver (sql.qp/maybe-cast-uuid-for-text-compare field))
+     [:lower (sql.qp/->honeysql driver (sql.qp/maybe-cast-uuid-for-text-compare field))])
+   (sql.qp/generate-pattern driver "" arg "" options)])
+
+(defmethod sql.qp/->honeysql [:snowflake :starts-with]
+  [driver [_ field arg {:keys [case-sensitive] :or {case-sensitive true} :as options}]]
+  (sql.qp/like-clause (sql.qp/->honeysql driver (sql.qp/maybe-cast-uuid-for-text-compare field))
+                      (sql.qp/generate-pattern driver nil arg "%" options) options)
+  [:startswith
+   (if case-sensitive
+     (sql.qp/->honeysql driver (sql.qp/maybe-cast-uuid-for-text-compare field))
+     [:lower (sql.qp/->honeysql driver (sql.qp/maybe-cast-uuid-for-text-compare field))])
+   (sql.qp/generate-pattern driver "" arg "" options)])
+
+(defmethod sql.qp/->honeysql [:snowflake :ends-with]
+  [driver [_ field arg {:keys [case-sensitive] :or {case-sensitive true} :as options}]]
+  (sql.qp/like-clause (sql.qp/->honeysql driver (sql.qp/maybe-cast-uuid-for-text-compare field))
+                      (sql.qp/generate-pattern driver "%" arg nil options) options)
+  [:endswith
+   (if case-sensitive
+     (sql.qp/->honeysql driver (sql.qp/maybe-cast-uuid-for-text-compare field))
+     [:lower (sql.qp/->honeysql driver (sql.qp/maybe-cast-uuid-for-text-compare field))])
+   (sql.qp/generate-pattern driver "" arg "" options)])
