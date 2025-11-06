@@ -732,12 +732,9 @@ export function getDateFormatFromStyle(
 
   if (DATE_STYLE_TO_FORMAT?.[style]?.[unit]) {
     format = DATE_STYLE_TO_FORMAT[style][unit];
-  } else if (style !== "") {
-    console.warn("Unknown date style", style);
-  }
-
-  if (format == null) {
-    format = DEFAULT_DATE_FORMATS[unit] ? DEFAULT_DATE_FORMATS[unit] : style;
+  } else {
+    // TODO: can we get smarter about inferring other units from custom styles?
+    format = DEFAULT_DATE_FORMATS?.[unit] ?? DEFAULT_DATE_STYLE;
   }
 
   if (includeWeekday && hasDay(unit)) {
