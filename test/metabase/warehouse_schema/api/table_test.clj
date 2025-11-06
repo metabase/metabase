@@ -1239,24 +1239,103 @@
                    :model/Table    {gc :id}         {:db_id jvm, :schema "jre"}
                    :model/Table    {jit :id}        {:db_id jvm, :schema "jre"}]
 
-      (is (= #{nil} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
+      (testing "only admin can edit"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "table/edit" {:database_ids [clojure jvm]
+                                                                    :data_layer   "copper"}))))
 
-      (mt/user-http-request :crowberto :post 200 "table/edit" {:database_ids     [clojure jvm]
-                                                               :data_layer "copper"})
+      (testing "simple happy path updating with db ids"
+        (mt/user-http-request :crowberto :post 200 "table/edit" {:database_ids [clojure jvm]
+                                                                 :data_layer   "copper"})
 
-      (is (= #{:copper} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
+        (is (= #{:copper} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]]))))
 
-      (mt/user-http-request :crowberto :post 200 "table/edit" {:database_ids     [clojure]
-                                                               :table_ids        [classes]
-                                                               :schema_ids       [(format "%d:jre" jvm)]
-                                                               :data_layer "silver"})
-      (is (= {vars       :silver
-              namespaces :silver
-              beans      :copper
-              classes    :silver
-              gc         :silver
-              jit        :silver}
-             (t2/select-pk->fn :data_layer :model/Table :db_id [:in [clojure jvm]]))))))
+      (testing "updating with all selectors"
+        (mt/user-http-request :crowberto :post 200 "table/edit" {:database_ids  [clojure]
+                                                                 :table_ids     [classes]
+                                                                 :schema_ids    [(format "%d:jre" jvm)]
+                                                                 :data_layer    "silver"})
+        (is (= {vars       :silver
+                namespaces :silver
+                beans      :copper
+                classes    :silver
+                gc         :silver
+                jit        :silver}
+               (t2/select-pk->fn :data_layer :model/Table :db_id [:in [clojure jvm]]))))
+
+      (testing "can update owner_email"
+        (is (= #{nil} (t2/select-fn-set :owner_email :model/Table :db_id [:in [clojure jvm]])))
+
+        (mt/user-http-request :crowberto :post 200 "table/edit" {:database_ids [clojure]
+                                                                 :owner_email  "clojure-owner@example.com"})
+
+        (is (= {vars       "clojure-owner@example.com"
+                namespaces "clojure-owner@example.com"
+                beans      nil
+                classes    nil
+                gc         nil
+                jit        nil}
+               (t2/select-pk->fn :owner_email :model/Table :db_id [:in [clojure jvm]]))))
+
+      (testing "can update owner_user_id"
+        (is (= #{nil} (t2/select-fn-set :owner_user_id :model/Table :db_id [:in [clojure jvm]])))
+
+        (mt/user-http-request :crowberto :post 200 "table/edit" {:table_ids      [beans classes]
+                                                                 :owner_user_id  (mt/user->id :rasta)})
+
+        (is (= {vars       nil
+                namespaces nil
+                beans      (mt/user->id :rasta)
+                classes    (mt/user->id :rasta)
+                gc         nil
+                jit        nil}
+               (t2/select-pk->fn :owner_user_id :model/Table :db_id [:in [clojure jvm]])))))))
+
+;; TODO tests trigger resync if unhide a table by changign data layer (waiting for confirmation from Sameer on this)
+
+(deftest ^:parallel table-selectors->filter-test
+  (testing "table-selectors->filter function generates correct WHERE clauses"
+    (let [selectors->table-ids (fn [selectors]
+                                 (let [where (#'api.table/table-selectors->filter selectors)]
+                                   (t2/select-pks-set :model/Table {:where where})))]
+      (mt/with-temp [:model/Database {db-1 :id}      {}
+                     :model/Database {db-2 :id}      {}
+                     :model/Table    {table-1 :id}   {:db_id db-1}
+                     :model/Table    {table-2 :id}   {:db_id db-1, :schema "schema-a"}
+                     :model/Table    {table-3 :id}   {:db_id db-2, :schema "schema-a"}
+                     :model/Table    {table-4 :id}   {:db_id db-2, :schema "schema-b"}
+                     :model/Table    {table-5 :id}   {:db_id db-2}]
+
+        (testing "filter by database_ids"
+          (is (= #{table-1 table-2}
+                 (selectors->table-ids {:database_ids [db-1]}))))
+
+        (testing "filter by table_ids"
+          (is (= #{table-3 table-4}
+                 (selectors->table-ids {:table_ids [table-3 table-4]}))))
+
+        (testing "filter by schema_ids"
+          (is (= #{table-2}
+                 (selectors->table-ids {:schema_ids [(format "%d:schema-a" db-1)]}))))
+
+        (testing "filter by multiple schema_ids"
+          (is (= #{table-3 table-4}
+                 (selectors->table-ids {:schema_ids [(format "%d:schema-a" db-2)
+                                                     (format "%d:schema-b" db-2)]}))))
+
+        (testing "combine database_ids and table_ids (OR logic)"
+          (is (= #{table-1 table-2 table-3}
+                 (selectors->table-ids {:database_ids [db-1]
+                                        :table_ids    [table-3]}))))
+
+        (testing "combine all selectors (OR logic)"
+          (is (= #{table-1 table-2 table-4 table-5}
+                 (selectors->table-ids {:database_ids [db-1]
+                                        :table_ids    [table-5]
+                                        :schema_ids   [(format "%d:schema-b" db-2)]}))))
+
+        (testing "empty selectors returns no tables"
+          (is (= nil (selectors->table-ids {}))))))))
 
 (deftest publish-model-test
   (testing "POST /api/table/publish-model"

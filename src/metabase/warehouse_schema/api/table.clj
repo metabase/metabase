@@ -291,12 +291,11 @@
         existing-tables (t2/query {:select [:id :visibility_type]
                                    :from   [:metabase_table]
                                    :where  where})
-        table-ids        (set (map :id))
-        set-map (select-keys body set-ks)
-        set-map (table/sync-visibility-fields set-map {})]
+        table-ids        (set (map :id existing-tables))
+        set-map          (select-keys body set-ks)]
     (when (seq set-map)
-      (t2/update! :model/Table [:in table-ids] set-map))
-    (maybe-sync-undhidden-tables! existing-tables set-map)
+      (t2/update! :model/Table [:in table-ids] set-map)
+      (maybe-sync-undhidden-tables! existing-tables set-map))
     {}))
 
 (defn- table->model
