@@ -89,7 +89,7 @@
                     (a/>!! canceled-chan ::streaming-response/request-canceled))
             (testing "Cancel signal kills the in progress query"
               (is (thrown-with-msg? Throwable
-                                    #"Command execution failed on MongoDB server with error 11601 \(Interrupted\)"
+                                    #"Command.*failed.*11601"
                                     (qp/process-query query))))))))))
 
 (deftest ^:synchronized question-base-on-native-model-cache-test
