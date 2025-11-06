@@ -206,19 +206,14 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           </Box>
           <Button
             component={Link}
-            onClick={(event) => {
-              event.preventDefault();
-            }}
-            to={`/bench/dependencies?id=${table.id}&type=table`}
-            disabled
+            to={getDependencyGraphUrl(table)}
             p="sm"
             leftSection={
               <Tooltip label={t`Dependency graph`}>
-                <Icon name="network" c="text-light" />
+                <Icon name="network" />
               </Tooltip>
             }
             style={{
-              backgroundColor: "var(--mb-color-accent-gray-light)",
               flexGrow: 0,
               width: 40,
             }}
@@ -399,6 +394,10 @@ function TransformLink({ table }: { table: Table }) {
 
 function getQueryBuilderUrl(table: Table) {
   return `/question#?db=${table.db_id}&table=${table.id}`;
+}
+
+function getDependencyGraphUrl(table: Table) {
+  return `/admin/tools/dependencies?id=${table.id}&type=table`;
 }
 
 export const TableSection = memo(TableSectionBase);
