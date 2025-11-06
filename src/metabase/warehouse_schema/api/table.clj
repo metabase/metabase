@@ -77,26 +77,27 @@
   (let [like       (case (app-db/db-type) (:h2 :postgres) :ilike :like)
         pattern    (some-> term (str/replace "*" "%") (cond-> (not (str/ends-with? term "%")) (str "%")))
         empty-null (fn [x] (if (and (string? x) (str/blank? x)) nil x))
+        ;; Used for &orphan-only=true to anti-join dependencies (and therefore find orphans)
+        ;; Excludes transforms as dependents since they produce tables
+        orphan-sq  {:select [[:inline 1]]
+                    :from   [[:dependency :d]]
+                    :where  [:and
+                             [:= :d.to_entity_type "table"]
+                             [:= :d.to_entity_id   :metabase_table.id]
+                             ;; TODO: Ngoc (31/10/2025) we are not sure whether to exclude transform here
+                             ;; let's circle back before merging bulk editing
+                             [:not= :d.from_entity_type "transform"]]}
         where      (cond-> [:and [:= :active true]]
                      (not (str/blank? term)) (conj [like :name pattern])
                      visibility-type         (conj [:= :visibility_type (empty-null visibility-type)])
                      data-layer              (conj [:= :data_layer      (empty-null data-layer)])
                      data-source             (conj [:= :data_source     (empty-null data-source)])
                      owner-user-id           (conj [:= :owner_user_id   (empty-null owner-user-id)])
-                     owner-email             (conj [:= :owner_email     (empty-null owner-email)]))
-        ;; Use LEFT JOIN to efficiently filter orphaned tables
-        ;; Exclude transforms as dependents since they produce tables
-        query      (cond-> {:where    where
-                            :order-by [[:name :asc]]}
+                     owner-email             (conj [:= :owner_email     (empty-null owner-email)])
                      (and orphan-only (premium-features/has-feature? :dependencies))
-                     (assoc :left-join [[:dependency :d]
-                                        [:and
-                                         [:= :d.to_entity_type "table"]
-                                         [:= :d.to_entity_id :metabase_table.id]
-                                         ;; TODO: Ngoc (31/10/2025) we are not sure whether to exclude transform here
-                                         ;; let's circle back before merging bulk editing
-                                         [:not= :d.from_entity_type "transform"]]]
-                            :where     [:and where [:= :d.id nil]]))]
+                     (conj [:not-exists orphan-sq]))
+        query      {:where where
+                    :order-by [[:name :asc]]}]
     (as-> (t2/select :model/Table query) tables
       (t2/hydrate tables :db)
       (into [] (comp (filter mi/can-read?)
