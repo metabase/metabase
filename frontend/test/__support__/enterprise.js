@@ -1,5 +1,3 @@
-import { initializePlugins } from "metabase-enterprise/plugins";
-
 /**
  * @deprecated use setupEnterprisePlugins with settings set via mockSettings
  * ```ts
@@ -36,7 +34,8 @@ export function setupEnterpriseTest() {
 }
 
 export function setupEnterprisePlugins() {
-  initializePlugins();
+  const { initializePlugins } = require(`metabase-enterprise`);
+  initializePlugins?.();
 }
 
 // function is used for optimization, so we don't need to import all plugins
