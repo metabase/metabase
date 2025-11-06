@@ -11,7 +11,7 @@ export function EmbeddingThemeCard({
   onDuplicate,
   onDelete,
 }: {
-  theme: Omit<EmbeddingTheme, "settings">;
+  theme: EmbeddingTheme;
   onEdit: (id: number) => void;
   onDuplicate: (id: number) => void;
   onDelete: (id: number) => void;
