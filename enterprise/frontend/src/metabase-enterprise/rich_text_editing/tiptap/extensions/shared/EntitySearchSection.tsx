@@ -63,6 +63,8 @@ export function EntitySearchSection({
           onMouseEnter={() => onItemHover(index)}
         />
       ))}
+
+      <Divider my="sm" mx="sm" />
       {query.length > 0 &&
       menuItems.length === 0 &&
       searchResults.length === 0 ? (
@@ -70,15 +72,20 @@ export function EntitySearchSection({
           <Text size="md" c="text-medium">{t`No results found`}</Text>
         </Box>
       ) : null}
+      <CreateNewQuestionFooter
+        isSelected={selectedIndex === menuItems.length}
+        onClick={onTriggerCreateNew}
+        onMouseEnter={() => onItemHover(menuItems.length)}
+      />
+      {modal === "new-question-type" && (
+        <CreateQuestionModal
+          onSave={onSaveNewQuestion}
+          onClose={onModalClose}
+        />
+      )}
+
       {canBrowseAll && (
         <>
-          {menuItems.length > 0 && <Divider my="sm" mx="sm" />}
-          <CreateNewQuestionFooter
-            isSelected={selectedIndex === menuItems.length}
-            onClick={onTriggerCreateNew}
-            onMouseEnter={() => onItemHover(menuItems.length)}
-          />
-
           <SearchResultsFooter
             isSelected={selectedIndex === menuItems.length + 1}
             onClick={onFooterClick}
@@ -88,13 +95,6 @@ export function EntitySearchSection({
           {modal === "question-picker" && (
             <QuestionPickerModal
               onChange={onModalSelect}
-              onClose={onModalClose}
-            />
-          )}
-
-          {modal === "new-question-type" && (
-            <CreateQuestionModal
-              onSave={onSaveNewQuestion}
               onClose={onModalClose}
             />
           )}

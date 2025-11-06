@@ -24,6 +24,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import {
+  CreateNewQuestionFooter,
   MenuItemComponent,
   SearchResultsFooter,
 } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
@@ -296,9 +297,9 @@ export const CommandSuggestion = forwardRef<
   let totalItems = currentItems.length;
 
   if (showLinkSearch || showEmbedSearch) {
-    totalItems = searchMenuItems.length + 1;
+    totalItems = searchMenuItems.length + 2;
   } else if (currentItems.length === 0 && query) {
-    totalItems = 1; // Just the browse all footer
+    totalItems = 2; // "Browse all" footer and "New chart"
   }
 
   const selectItem = (index: number) => {
@@ -489,8 +490,16 @@ export const CommandSuggestion = forwardRef<
               {query && (
                 <>
                   <Divider my="sm" mx="sm" />
-                  <SearchResultsFooter
+                  <CreateNewQuestionFooter
                     isSelected={selectedIndex === currentItems.length}
+                    onClick={() => {
+                      // Switch to embed mode so selected questions get embedded
+                      setShowEmbedSearch(true);
+                      entityHandlers.onTriggerCreateQuestion();
+                    }}
+                  />
+                  <SearchResultsFooter
+                    isSelected={selectedIndex === currentItems.length + 1}
                     onClick={() => {
                       // Switch to embed mode so selected questions get embedded
                       setShowEmbedSearch(true);

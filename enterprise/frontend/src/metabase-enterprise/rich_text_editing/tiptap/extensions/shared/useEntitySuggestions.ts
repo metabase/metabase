@@ -185,7 +185,7 @@ export function useEntitySuggestions({
     return entityMenuItems;
   }, [isInModelSelectionMode, searchModelMenuItems, entityMenuItems]);
 
-  const totalItems = menuItems.length + Number(canBrowseAll);
+  const totalItems = menuItems.length + Number(canBrowseAll) + 1; // Adding "New Chart" item
 
   const selectItem = useCallback(
     (index: number) => {

@@ -86,13 +86,19 @@ export const CreateQuestionModal = ({
 
   const handleSave = async () => {
     try {
+      const name =
+        modifiedQuestion.displayName() ||
+        modifiedQuestion.generateQueryDescription() ||
+        "";
+
       const modifiedData = {
+        name,
+        database_id: modifiedQuestion.datasetQuery().database,
         dataset_query: modifiedQuestion.datasetQuery(),
         display: modifiedQuestion.display(),
         visualization_settings:
           modifiedQuestion.card().visualization_settings ?? {},
       };
-
       const newCardId = generateDraftCardId();
 
       dispatch(
@@ -103,11 +109,7 @@ export const CreateQuestionModal = ({
         }),
       );
 
-      onSave(
-        newCardId,
-        modifiedQuestion.card().name,
-        modifiedQuestion.card().database_id,
-      );
+      onSave(newCardId, name);
       onClose();
     } catch (error) {
       console.error("Failed to save modified question:", error);
