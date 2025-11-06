@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import { Box, Group, Icon, Loader, Stack, Text } from "metabase/ui";
@@ -53,7 +54,12 @@ export function TableModels({ table }: Props) {
             return null;
           }
           return (
-            <Box key={model.id} className={S.modelItem}>
+            <Box
+              key={model.id}
+              className={S.modelItem}
+              component={Link}
+              to={`/model/${model.id}`}
+            >
               <Group gap={8} wrap="nowrap" align="flex-start">
                 <Icon name="model" size={16} c="brand" />
                 <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
