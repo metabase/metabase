@@ -35,6 +35,7 @@ import { SubstituteModelModal } from "../TablePicker/components/SubstituteModelM
 
 import { FieldList } from "./FieldList";
 import { TableMetadataSection } from "./TableMetadataSection";
+import { TableModels } from "./TableModels";
 import S from "./TableSection.module.css";
 import { useResponsiveButtons } from "./hooks";
 
@@ -236,6 +237,10 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         <Box className={S.box}>
           <TableMetadataSection table={table} />
         </Box>
+      </Box>
+
+      <Box px="xl">
+        <TableModels table={table} />
       </Box>
 
       <Box
