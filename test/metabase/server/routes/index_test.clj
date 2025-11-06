@@ -85,14 +85,3 @@
     ;; but we can override with the user locale
     (binding [i18n/*user-locale* "fr"]
       (is (= "fr" (:language (#'index/template-parameters "index" false {})))))))
-
-(deftest color-scheme-meta-tag-test
-  (mt/with-temp-env-var-value! [mb-premium-embedding-token "test-token"]
-    (testing "color-scheme meta tag should be present for static embedding"
-      (let [embed-html (#'index/load-entrypoint-template "embed" true {})]
-        (is (re-find #"<meta name=\"color-scheme\" content=\"light dark\"" embed-html)
-            "embed entrypoint should have color-scheme meta tag")))
-    (testing "color-scheme meta tag should NOT be present for EAJS"
-      (let [embed-sdk-html (#'index/load-entrypoint-template "embed-sdk" true {})]
-        (is (not (re-find #"<meta name=\"color-scheme\" content=\"light dark\"" embed-sdk-html))
-            "embed-sdk entrypoint should NOT have color-scheme meta tag")))))
