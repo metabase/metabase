@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 
-import { useListCollectionsTreeQuery } from "metabase/api";
+import {
+  useListCollectionsTreeQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
 import {
   currentUserPersonalCollections,
   nonPersonalOrArchivedCollection,
@@ -11,6 +14,7 @@ import {
   getCollectionIcon,
 } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
+import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { getUser } from "metabase/selectors/user";
 
 import { ModelingSidebarView } from "./ModelingSidebarView";
@@ -28,10 +32,13 @@ export function ModelingSidebarContainer({
 }: ModelingSidebarContainerProps) {
   const currentUser = useSelector(getUser);
 
-  const { data: collections = [], isLoading } = useListCollectionsTreeQuery({
-    "exclude-other-user-collections": true,
-    "exclude-archived": true,
-  });
+  const { data: databaseData, isLoading: isLoadingDatabases } =
+    useListDatabasesQuery();
+  const { data: collections = [], isLoading: isLoadingCollections } =
+    useListCollectionsTreeQuery({
+      "exclude-other-user-collections": true,
+      "exclude-archived": true,
+    });
 
   const collectionTree = useMemo(() => {
     if (!currentUser) {
@@ -70,7 +77,16 @@ export function ModelingSidebarContainer({
     return collectionId === "root" ? "root" : parseInt(collectionId, 10);
   }, [collectionId]);
 
+  const { hasDataAccess, hasNativeWrite } = useMemo(() => {
+    const databases = databaseData?.data ?? [];
+    return {
+      hasDataAccess: getHasDataAccess(databases),
+      hasNativeWrite: getHasNativeWrite(databases),
+    };
+  }, [databaseData]);
+
   const selectedSnippetId = snippetId ? parseInt(snippetId, 10) : undefined;
+  const isLoading = isLoadingDatabases || isLoadingCollections;
 
   if (isLoading || !currentUser) {
     return null;
@@ -80,8 +96,10 @@ export function ModelingSidebarContainer({
     <ModelingSidebarView
       collections={collectionTree}
       selectedCollectionId={selectedCollectionId}
-      isGlossaryActive={isGlossaryActive}
       selectedSnippetId={selectedSnippetId}
+      isGlossaryActive={isGlossaryActive}
+      hasDataAccess={hasDataAccess}
+      hasNativeWrite={hasNativeWrite}
     />
   );
 }

@@ -18,26 +18,29 @@ import { buildSnippetTree } from "./utils";
 interface ModelingSidebarViewProps {
   collections: ITreeNodeItem[];
   selectedCollectionId: string | number | undefined;
-  isGlossaryActive: boolean;
   selectedSnippetId?: number;
+  isGlossaryActive: boolean;
+  hasDataAccess: boolean;
+  hasNativeWrite: boolean;
 }
 
 export function ModelingSidebarView({
   collections,
   selectedCollectionId,
-  isGlossaryActive,
   selectedSnippetId,
+  isGlossaryActive,
+  hasDataAccess,
+  hasNativeWrite,
 }: ModelingSidebarViewProps) {
   const dispatch = useDispatch();
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
   const [isSnippetMenuOpen, setIsSnippetMenuOpen] = useState(false);
   const snippetPlugins = useSnippetPlugins();
 
+  const { data: snippets = [] } = useListSnippetsQuery();
   const { data: snippetCollections = [] } = useListCollectionsQuery({
     namespace: "snippets",
   });
-
-  const { data: snippets = [] } = useListSnippetsQuery();
 
   const snippetTree = useMemo(
     () => buildSnippetTree(snippetCollections, snippets),
@@ -108,17 +111,19 @@ export function ModelingSidebarView({
             icon="repository"
             title={t`Library`}
             rightSection={
-              <Menu.Target>
-                <Button
-                  w={32}
-                  h={32}
-                  size="compact-md"
-                  variant="filled"
-                  leftSection={<Icon name="add" />}
-                  aria-label={t`Create model or metric`}
-                  onClick={() => setIsCreateMenuOpen(true)}
-                />
-              </Menu.Target>
+              hasDataAccess && (
+                <Menu.Target>
+                  <Button
+                    w={32}
+                    h={32}
+                    size="compact-md"
+                    variant="filled"
+                    leftSection={<Icon name="add" />}
+                    aria-label={t`Create model or metric`}
+                    onClick={() => setIsCreateMenuOpen(true)}
+                  />
+                </Menu.Target>
+              )
             }
           >
             <Tree
@@ -131,27 +136,36 @@ export function ModelingSidebarView({
             />
           </ModelingSidebarSection>
           <Menu.Dropdown>
-            <Menu.Sub>
-              <Menu.Sub.Target>
-                <Menu.Sub.Item leftSection={<Icon name="model" />}>
-                  {t`Model`}
-                </Menu.Sub.Item>
-              </Menu.Sub.Target>
-              <Menu.Sub.Dropdown>
-                <Menu.Item
-                  leftSection={<Icon name="notebook" />}
-                  onClick={handleCreateModelNotebook}
-                >
-                  {t`Query builder`}
-                </Menu.Item>
-                <Menu.Item
-                  leftSection={<Icon name="sql" />}
-                  onClick={handleCreateModelNative}
-                >
-                  {t`SQL query`}
-                </Menu.Item>
-              </Menu.Sub.Dropdown>
-            </Menu.Sub>
+            {hasNativeWrite ? (
+              <Menu.Sub>
+                <Menu.Sub.Target>
+                  <Menu.Sub.Item leftSection={<Icon name="model" />}>
+                    {t`Model`}
+                  </Menu.Sub.Item>
+                </Menu.Sub.Target>
+                <Menu.Sub.Dropdown>
+                  <Menu.Item
+                    leftSection={<Icon name="notebook" />}
+                    onClick={handleCreateModelNotebook}
+                  >
+                    {t`Query builder`}
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<Icon name="sql" />}
+                    onClick={handleCreateModelNative}
+                  >
+                    {t`SQL query`}
+                  </Menu.Item>
+                </Menu.Sub.Dropdown>
+              </Menu.Sub>
+            ) : (
+              <Menu.Item
+                leftSection={<Icon name="model" />}
+                onClick={handleCreateModelNotebook}
+              >
+                {t`Model`}
+              </Menu.Item>
+            )}
             <Menu.Item
               leftSection={<Icon name="metric" />}
               onClick={handleCreateMetric}
