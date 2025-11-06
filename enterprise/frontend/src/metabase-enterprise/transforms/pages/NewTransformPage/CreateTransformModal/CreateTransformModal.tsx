@@ -68,18 +68,6 @@ function getValidationSchema(source: TransformSource) {
         otherwise: (schema) => schema.nullable(),
       }),
     keysetFilterUniqueKey: Yup.string().nullable(),
-    queryLimit: Yup.number()
-      .nullable()
-      .positive(t`Query limit must be a positive number`)
-      .integer(t`Query limit must be an integer`)
-      .when("incremental", {
-        is: true,
-        then: (schema) =>
-          isPythonTransform
-            ? schema.required(t`Query limit is required for Python transforms`)
-            : schema.nullable(),
-        otherwise: (schema) => schema.nullable(),
-      }),
     sourceStrategy: Yup.mixed<"keyset">().oneOf(["keyset"]).required(),
     targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
   });
@@ -208,15 +196,6 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
               sourceTables={source["source-tables"]}
             />
           )}
-          {
-            <FormTextInput
-              name="queryLimit"
-              label={t`Query Limit`}
-              placeholder={t`e.g., 1000`}
-              description={t`Maximum number of rows to fetch from the source table per run`}
-              type="number"
-            />
-          }
         </>
       )}
     </>
@@ -252,8 +231,8 @@ function IncrementalNotice({ source }: IncrementalNoticeProps) {
 
   return (
     <Alert variant="info" icon="info">
-      {t`Ensure your query contains WHERE filter on the keyset column (and potentially a LIMIT). You may want to use:`}{" "}
-      <strong>{`[[AND id > {{watermark}}]] [[LIMIT {{limit}}]]`}</strong>
+      {t`Ensure your query contains WHERE filter on the keyset column. You may want to use:`}{" "}
+      <strong>{`[[AND id > {{watermark}}]]`}</strong>
     </Alert>
   );
 }
@@ -393,7 +372,6 @@ function getInitialValues(
       : schemas?.[0] || null,
     keysetColumn: null,
     keysetFilterUniqueKey: null,
-    queryLimit: null,
     sourceStrategy: "keyset",
     targetStrategy: "append",
   };
@@ -409,7 +387,6 @@ function getCreateRequest(
     incremental,
     keysetColumn,
     keysetFilterUniqueKey,
-    queryLimit,
     sourceStrategy,
     targetStrategy,
   }: NewTransformValues,
@@ -424,9 +401,6 @@ function getCreateRequest(
           "keyset-column": keysetColumn!,
           ...(keysetFilterUniqueKey && {
             "keyset-filter-unique-key": keysetFilterUniqueKey,
-          }),
-          ...(queryLimit != null && {
-            "query-limit": queryLimit,
           }),
         },
       }

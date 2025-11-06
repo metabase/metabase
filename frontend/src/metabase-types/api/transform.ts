@@ -33,7 +33,6 @@ export type KeysetStrategy = {
   type: "keyset";
   "keyset-column": string;
   "keyset-filter-unique-key"?: string;
-  "query-limit"?: number;
 };
 
 export type SourceIncrementalStrategy = KeysetStrategy;

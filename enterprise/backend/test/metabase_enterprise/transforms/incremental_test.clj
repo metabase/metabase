@@ -19,10 +19,10 @@
    [toucan2.core :as t2]))
 
 (defn- make-incremental-source-query
-  "Create a native query with optional watermark template tag and limit."
+  "Create a native query with optional watermark template tag."
   [schema]
   (let [timestamp-sql (first (sql/format [(sql.qp/current-datetime-honeysql-form driver/*driver*)]))
-        query (format "SELECT *, %s AS load_timestamp FROM %s [[WHERE id > {{watermark}}]] [[LIMIT {{limit}}]]"
+        query (format "SELECT *, %s AS load_timestamp FROM %s [[WHERE id > {{watermark}}]] LIMIT 10"
                       timestamp-sql
                       (if schema
                         (sql.u/quote-name driver/*driver* :table schema "transforms_products")
@@ -34,12 +34,7 @@
                                            :name "watermark"
                                            :display-name "Watermark"
                                            :type :number
-                                           :required false}
-                              "limit" {:id "limit"
-                                       :name "limit"
-                                       :display-name "Limit"
-                                       :type :number
-                                       :required false}}}}))
+                                           :required false}}}}))
 
 (defn- make-incremental-mbql-query
   "Create an MBQL query for incremental transforms."
@@ -58,21 +53,18 @@
 (defn- make-incremental-transform-payload
   "Create a transform payload for incremental transform testing.
 
-  transform-type can be :native, :mbql, or :python
-  limit specifies the query-limit for incremental strategies"
-  [transform-name target-table-name keyset-column transform-type limit]
+  transform-type can be :native, :mbql, or :python"
+  [transform-name target-table-name keyset-column transform-type]
   (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
     {:name transform-name
      :source (case transform-type
                :native {:type "query"
                         :query (make-incremental-source-query schema)
                         :source-incremental-strategy {:type "keyset"
-                                                      :query-limit limit
                                                       :keyset-column keyset-column}}
                :mbql {:type "query"
                       :query (make-incremental-mbql-query)
                       :source-incremental-strategy {:type "keyset"
-                                                    :query-limit limit
                                                     :keyset-filter-unique-key "column-unique-key-v1$id"
                                                     :keyset-column keyset-column}}
                :python {:type "python"
@@ -80,8 +72,7 @@
                         :body incremental-python-body
                         :source-incremental-strategy {:type "keyset"
                                                       :keyset-filter-unique-key "column-unique-key-v1$id"
-                                                      :keyset-column keyset-column
-                                                      :query-limit limit}})
+                                                      :keyset-column keyset-column}})
      :target {:type "table-incremental"
               :schema schema
               :name target-table-name
@@ -156,7 +147,7 @@
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [target-table "incremental_test"]
-            (let [transform-payload (make-incremental-transform-payload "Test Incremental Transform" target-table "id" :native 2)]
+            (let [transform-payload (make-incremental-transform-payload "Test Incremental Transform" target-table "id" :native)]
               (testing "Transform is created successfully"
                 (mt/with-temp [:model/Transform transform transform-payload]
                   (is (some? (:id transform)))
@@ -187,7 +178,7 @@
           (mt/with-premium-features #{:transforms :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table "incremental_twice"]
-                (let [transform-payload (make-incremental-transform-payload "Incremental Transform" target-table "id" transform-type 10)]
+                (let [transform-payload (make-incremental-transform-payload "Incremental Transform" target-table "id" transform-type)]
                   (mt/with-temp [:model/Transform transform transform-payload]
                     (testing "First run processes all data"
                       (transforms.i/execute! transform {:run-method :manual})
@@ -218,7 +209,7 @@
           (mt/with-premium-features #{:transforms :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table "switch_incr_to_non_incr"]
-                (let [initial-payload (make-incremental-transform-payload "Switch Transform" target-table "id" transform-type 10)]
+                (let [initial-payload (make-incremental-transform-payload "Switch Transform" target-table "id" transform-type)]
                   (mt/with-temp [:model/Transform transform initial-payload]
                     (testing "Initial incremental run processes first batch"
                       (transforms.i/execute! transform {:run-method :manual})
@@ -270,7 +261,7 @@
           (mt/with-premium-features #{:transforms :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table "switch_non_incr_to_incr"]
-                (let [incremental-payload (make-incremental-transform-payload "Switch Transform" target-table "id" transform-type 10)
+                (let [incremental-payload (make-incremental-transform-payload "Switch Transform" target-table "id" transform-type)
                       initial-payload (-> incremental-payload
                                           (update :source dissoc :source-incremental-strategy)
                                           (update :target dissoc :source-incremental-strategy)

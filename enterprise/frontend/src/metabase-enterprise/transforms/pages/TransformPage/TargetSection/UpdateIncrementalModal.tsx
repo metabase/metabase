@@ -65,7 +65,6 @@ type IncrementalValues = {
   sourceStrategy: "keyset";
   keysetColumn: string | null;
   keysetFilterUniqueKey: string | null;
-  queryLimit: number | null;
   targetStrategy: "append";
 };
 
@@ -86,18 +85,6 @@ function getValidationSchema(transform: Transform) {
         otherwise: (schema) => schema.nullable(),
       }),
     keysetFilterUniqueKey: Yup.string().nullable(),
-    queryLimit: Yup.number()
-      .nullable()
-      .positive(t`Query limit must be a positive number`)
-      .integer(t`Query limit must be an integer`)
-      .when("incremental", {
-        is: true,
-        then: (schema) =>
-          isPythonTransform
-            ? schema.required(t`Query limit is required for Python transforms`)
-            : schema.nullable(),
-        otherwise: (schema) => schema.nullable(),
-      }),
     targetStrategy: Yup.string().oneOf(["append"]).required(),
   });
 }
@@ -175,9 +162,6 @@ function UpdateIncrementalForm({
             ...(values.keysetFilterUniqueKey && {
               "keyset-filter-unique-key": values.keysetFilterUniqueKey,
             }),
-            ...(values.queryLimit != null && {
-              "query-limit": values.queryLimit,
-            }),
           },
         }
       : {
@@ -240,8 +224,8 @@ function UpdateIncrementalForm({
 
                   return isNativeQuery ? (
                     <Alert variant="info" icon="info">
-                      {t`Ensure your query contains WHERE filter on the keyset column (and potentially a LIMIT). You may want to use:`}{" "}
-                      <strong>{`[[AND id > {{watermark}}]] [[LIMIT {{limit}}]]`}</strong>
+                      {t`Ensure your query contains WHERE filter on the keyset column. You may want to use:`}{" "}
+                      <strong>{`[[AND id > {{watermark}}]]`}</strong>
                     </Alert>
                   ) : null;
                 })()}
@@ -279,15 +263,6 @@ function UpdateIncrementalForm({
                           sourceTables={transform.source["source-tables"]}
                         />
                       )}
-                    {
-                      <FormTextInput
-                        name="queryLimit"
-                        label={t`Query Limit`}
-                        placeholder={t`e.g., 1000`}
-                        description={t`Maximum number of rows to fetch from the source table per run`}
-                        type="number"
-                      />
-                    }
                   </>
                 )}
                 <FormSelect
@@ -321,17 +296,11 @@ function getInitialValues(transform: Transform): IncrementalValues {
     strategy?.type === "keyset" && strategy["keyset-filter-unique-key"]
       ? strategy["keyset-filter-unique-key"]
       : null;
-  const queryLimit =
-    strategy?.type === "keyset" && strategy["query-limit"]
-      ? strategy["query-limit"]
-      : null;
-
   return {
     incremental: isIncremental,
     sourceStrategy: "keyset",
     keysetColumn: isIncremental ? columnName : null,
     keysetFilterUniqueKey: isIncremental ? filterUniqueKey : null,
-    queryLimit: isIncremental ? queryLimit : null,
     targetStrategy: "append",
   };
 }
