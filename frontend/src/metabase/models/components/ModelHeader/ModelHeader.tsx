@@ -40,7 +40,6 @@ export function ModelHeader({ card, actions, className }: ModelHeaderProps) {
       tabs={<ModelTabs card={card} />}
       actions={actions}
       className={className}
-      p="xl"
     />
   );
 }

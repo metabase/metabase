@@ -40,7 +40,6 @@ export function MetricHeader({ card, actions, className }: MetricHeaderProps) {
       tabs={<MetricTabs card={card} />}
       actions={actions}
       className={className}
-      p="xl"
     />
   );
 }

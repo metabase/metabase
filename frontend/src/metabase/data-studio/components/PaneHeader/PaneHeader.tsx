@@ -29,13 +29,12 @@ export const PaneHeader = ({
   tabs,
   actions,
   className,
-  p = "md",
   ...rest
 }: PaneHeaderProps) => {
   return (
     <Group
       className={cx(S.header, className)}
-      p={p}
+      p="md"
       justify="space-between"
       gap="sm"
       {...rest}

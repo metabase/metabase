@@ -13,7 +13,7 @@ type CardOverviewProps = {
 
 export function CardOverview({ card }: CardOverviewProps) {
   return (
-    <Flex className={S.root} p="xl" pt={0} flex={1}>
+    <Flex className={S.root} px="md" pb="md" flex={1}>
       <Flex direction="column" flex={1} mah={700}>
         <VisualizationSection className={S.visualization} card={card} />
       </Flex>
