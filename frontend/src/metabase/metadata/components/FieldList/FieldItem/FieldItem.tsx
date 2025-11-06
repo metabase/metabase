@@ -17,6 +17,7 @@ type FieldItemProps = {
   href: string;
   active?: boolean;
   parent?: Field;
+  onSelect?: () => void;
   onNameChange: (newName: string) => void;
   onDescriptionChange: (newDescription: string | null) => void;
 };
@@ -26,6 +27,7 @@ export function FieldItem({
   field,
   href,
   parent,
+  onSelect,
   onNameChange,
   onDescriptionChange,
 }: FieldItemProps) {
@@ -65,6 +67,8 @@ export function FieldItem({
       event.target.tagName === "TEXTAREA"
     ) {
       event.preventDefault();
+    } else {
+      onSelect?.();
     }
   };
 

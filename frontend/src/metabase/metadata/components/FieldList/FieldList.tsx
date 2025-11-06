@@ -10,6 +10,7 @@ interface Props {
   fields: Field[];
   activeFieldIndex?: number;
   getFieldHref?: (field: Field) => string;
+  onSelect?: (field: Field) => void;
   onNameChange: (field: Field, newName: string) => void;
   onDescriptionChange: (field: Field, newDescription: string | null) => void;
 }
@@ -18,6 +19,7 @@ export const FieldList = ({
   fields,
   activeFieldIndex,
   getFieldHref,
+  onSelect,
   onNameChange,
   onDescriptionChange,
 }: Props) => {
@@ -38,6 +40,7 @@ export const FieldList = ({
             active={fieldIndex === activeFieldIndex}
             parent={parent}
             href={getFieldHref?.(field) ?? ""}
+            onSelect={() => onSelect?.(field)}
             onNameChange={(newName) => onNameChange(field, newName)}
             onDescriptionChange={(newDescription) =>
               onDescriptionChange(field, newDescription)

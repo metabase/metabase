@@ -1,7 +1,9 @@
+import { useState } from "react";
+
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { Center, Flex } from "metabase/ui";
-import type { Card } from "metabase-types/api";
+import type { Card, Field } from "metabase-types/api";
 
 import { ModelHeader } from "../../components/ModelHeader";
 import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";
@@ -37,6 +39,15 @@ type ModelFieldsPageBodyProps = {
 
 function ModelFieldsPageBody({ card }: ModelFieldsPageBodyProps) {
   const fields = card.result_metadata ?? [];
+  const [activeFieldName, setActiveFieldName] = useState<string>();
+
+  const activeFieldIndex = fields.findIndex(
+    (field) => field.name === activeFieldName,
+  );
+
+  const handleSelect = (field: Field) => {
+    setActiveFieldName(field.name);
+  };
 
   const handleNameChange = () => null;
 
@@ -47,6 +58,8 @@ function ModelFieldsPageBody({ card }: ModelFieldsPageBodyProps) {
       <ModelHeader card={card} />
       <ModelFieldList
         fields={fields}
+        activeFieldIndex={activeFieldIndex}
+        onSelect={handleSelect}
         onNameChange={handleNameChange}
         onDescriptionChange={handleDescriptionChange}
       />
