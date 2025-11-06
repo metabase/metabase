@@ -1,15 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
-import cx from "classnames";
+import { Link } from "react-router";
 import { t } from "ttag";
 
-import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
-import AdminS from "metabase/css/admin.module.css";
-import CS from "metabase/css/core/index.css";
-import { Icon, Modal } from "metabase/ui";
+import { ActionIcon, Icon, Menu } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 
-import { ActionLink, TriggerIconContainer } from "./SegmentActionSelect.styled";
-import SegmentRetireModal from "./SegmentRetireModal";
+import S from "./SegmentActionSelect.module.css";
+import { SegmentRetireModal } from "./SegmentRetireModal";
 
 interface SegmentActionSelectProps {
   object: Segment;
@@ -23,55 +20,38 @@ export function SegmentActionSelect({
   const [modalOpened, { open: openModal, close: closeModal }] =
     useDisclosure(false);
 
-  const handleRetire = async (_payload: Segment) => {
-    await onRetire();
-    closeModal();
-  };
-
   return (
     <>
-      <PopoverWithTrigger
-        triggerElement={
-          <TriggerIconContainer>
+      <Menu position="bottom-end">
+        <Menu.Target>
+          <ActionIcon>
             <Icon name="ellipsis" />
-          </TriggerIconContainer>
-        }
-      >
-        <ul className={AdminS.UserActionsSelect}>
-          <li>
-            <ActionLink to={`/admin/datamodel/segment/${object.id}`}>
-              {t`Edit Segment`}
-            </ActionLink>
-          </li>
-          <li>
-            <ActionLink to={`/admin/datamodel/segment/${object.id}/revisions`}>
-              {t`Revision History`}
-            </ActionLink>
-          </li>
-          <li className={cx(CS.mt1, CS.borderTop)}>
-            <a
-              className={cx(
-                CS.block,
-                CS.p2,
-                CS.bgErrorHover,
-                CS.textError,
-                CS.textWhiteHover,
-                CS.cursorPointer,
-              )}
-              onClick={openModal}
-            >
-              {t`Retire Segment`}
-            </a>
-          </li>
-        </ul>
-      </PopoverWithTrigger>
-      <Modal opened={modalOpened} onClose={closeModal}>
-        <SegmentRetireModal
-          object={object}
-          onRetire={handleRetire}
-          onClose={closeModal}
-        />
-      </Modal>
+          </ActionIcon>
+        </Menu.Target>
+        <Menu.Dropdown p="sm">
+          <Menu.Item
+            component={Link}
+            to={`/admin/datamodel/segment/${object.id}`}
+          >
+            {t`Edit Segment`}
+          </Menu.Item>
+          <Menu.Item
+            component={Link}
+            to={`/admin/datamodel/segment/${object.id}/revisions`}
+          >
+            {t`Revision History`}
+          </Menu.Item>
+          <Menu.Divider />
+          <Menu.Item className={S.dangerItem} onClick={openModal}>
+            {t`Retire Segment`}
+          </Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
+      <SegmentRetireModal
+        opened={modalOpened}
+        onClose={closeModal}
+        onRetire={onRetire}
+      />
     </>
   );
 }
