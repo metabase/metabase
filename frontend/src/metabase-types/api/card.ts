@@ -412,7 +412,7 @@ export interface UpdateCardRequest {
   dataset_query?: DatasetQuery;
   type?: CardType;
   display?: string;
-  description?: string;
+  description?: string | null;
   visualization_settings?: VisualizationSettings;
   archived?: boolean;
   enable_embedding?: boolean;

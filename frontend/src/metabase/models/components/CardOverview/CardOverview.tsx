@@ -1,10 +1,10 @@
-import Markdown from "metabase/common/components/Markdown";
 import { Flex, Stack } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
 import S from "./CardOverview.module.css";
 import { CardOverviewVisualization } from "./CardOverviewVisualization";
 import { CreatorAndLastEditorInfo } from "./CreatorAndLastEditorInfo";
+import { DescriptionInfo } from "./DescriptionInfo";
 import { QuerySourceInfo } from "./QuerySourceInfo";
 
 interface CardOverviewProps {
@@ -18,9 +18,7 @@ export function CardOverview({ card }: CardOverviewProps) {
         <CardOverviewVisualization card={card} className={S.visualization} />
       </Flex>
       <Stack maw={300} ml="lg" gap="md" className={S.sidebar}>
-        {card.description && (
-          <Markdown c="text-primary">{card.description}</Markdown>
-        )}
+        <DescriptionInfo card={card} />
         <QuerySourceInfo card={card} />
         <CreatorAndLastEditorInfo card={card} />
       </Stack>
