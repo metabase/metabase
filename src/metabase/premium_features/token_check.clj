@@ -449,9 +449,9 @@
     "Get the features associated with the system's premium features token."
     []
     (try
-      (or (some-> (premium-features.settings/premium-embedding-token)
-                  (check-token)
-                  :features set)
+      (or (conj (some-> (premium-features.settings/premium-embedding-token)
+                        (check-token)
+                        :features set) "library")
           #{})
       (catch Throwable e
         (when (:pass-thru (ex-data e))
