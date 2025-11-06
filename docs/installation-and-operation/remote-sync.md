@@ -69,6 +69,8 @@ Copy the token immediately after generating it.
 
 ![Development settings](./images/development-settings.png)
 
+You can put any Metabase into development mode. We also offer [Development instances](./development-instance.md) that you can use for Remote Sync or any other kind of development.
+
 In the Metabase instance that you use for development:
 
 1. Go to **Admin settings** > **Settings** > **Remote sync**.
@@ -99,7 +101,7 @@ You can rename the Synced Collection if you want, and you can add sub-collection
    - **Create new content:** Click "New" and choose a dashboard, question, or document. Save it to the Synced Collection.
    - **Move existing content:** Drag and drop items from other collections into the Synced Collection, or use the move option in the item's menu.
 
-Remember that the synced collection must be [self-contained](#items-in-the-synced-collection-cant-depend-on-items-outside-of-it). 
+Remember that the synced collection must be [self-contained](#items-in-the-synced-collection-cant-depend-on-items-outside-of-it).
 
 ### 5. Push your changes to your repository
 
