@@ -78,6 +78,9 @@ function linkPasteRule(config: Parameters<typeof markPasteRule>[0]) {
  * extension also adds support for the `title` attribute.
  */
 export const PlainLink = Link.extend({
+  // Typing after a link (e.g. hitting space) should not be linked - https://github.com/ueberdosis/tiptap/issues/2571#issuecomment-1712057913
+  inclusive: false,
+}).extend({
   addOptions() {
     const base = this.parent?.();
     return {
