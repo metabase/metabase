@@ -48,7 +48,7 @@ const baseConfig = {
      * This isn't a problem in the core app because we seem to not import to entry file directly
      * for any component under tests.
      */
-    "sdk-ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.js",
+    "sdk-ee-plugins": "<rootDir>/frontend/src/metabase/lib/sdk-plugins-noop.js",
     /**
      * SDK iframe embedding imports the embedding sdk and its components.
      * We want to exclude the SDK from the main app's bundle to reduce the bundle size.

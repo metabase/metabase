@@ -1,5 +1,31 @@
+import { initializePlugins } from "metabase-enterprise/plugins";
+
 /**
  * @deprecated use setupEnterprisePlugins with settings set via mockSettings
+ * ```ts
+ * import { createMockState } from "metabase-types/store/mocks";
+ * import { mockSettings } from "__support__/settings";
+ * import {
+ *   createMockTokenFeatures,
+ * } from "metabase-types/api/mocks";
+ *
+ * const state = createMockState({
+ *   settings: mockSettings({
+ *     "token-features": createMockTokenFeatures(tokenFeatures),
+ *   }),
+ * });
+ *
+ * if (hasEnterprisePlugins) {
+ *   setupEnterprisePlugins();
+ * }
+ *
+ * renderWithProviders(
+ *   <SomeComponent />,
+ *   {
+ *     storeInitialState: state,
+ *   },
+ * );
+ * ```
  */
 export function setupEnterpriseTest() {
   jest.mock("metabase-enterprise/settings", () => ({
@@ -10,10 +36,11 @@ export function setupEnterpriseTest() {
 }
 
 export function setupEnterprisePlugins() {
-  require("metabase-enterprise/plugins");
+  initializePlugins();
 }
 
 // function is used for optimization, so we don't need to import all plugins
 export function setupEnterpriseOnlyPlugin(pluginName) {
-  require(`metabase-enterprise/${pluginName}`);
+  const { initializePlugin } = require(`metabase-enterprise/${pluginName}`);
+  initializePlugin?.();
 }

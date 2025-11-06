@@ -91,3 +91,15 @@ export function initializePlugin() {
     });
   }
 }
+
+/**
+ * Reset snippets plugin features.
+ *
+ * @internal for testing purposes only
+ */
+export function resetPlugin() {
+  PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.length = 0;
+  PLUGIN_SNIPPET_SIDEBAR_MODALS.length = 0;
+  PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS.collection = null;
+  PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.length = 0;
+}
