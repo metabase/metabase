@@ -7,6 +7,7 @@ export type FieldPatch = Partial<
     | "description"
     | "semantic_type"
     | "fk_target_field_id"
+    | "visibility_type"
     | "settings"
   >
 >;

@@ -2,13 +2,14 @@ import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import {
+  FieldVisibilityPicker,
   NameDescriptionInput,
   SemanticTypeAndTargetPicker,
   TitledSection,
 } from "metabase/metadata/components";
 import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { Field } from "metabase-types/api";
+import type { Field, FieldVisibilityType } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../../constants";
 import type { FieldPatch } from "../types";
@@ -38,6 +39,10 @@ export function ModelFieldDetails({
     onChangeField(field, { description });
   };
 
+  const handleVisibilityChange = (visibility: FieldVisibilityType) => {
+    onChangeField(field, { visibility_type: visibility });
+  };
+
   return (
     <Flex className={S.section} flex={1} direction="column" h="100%">
       <Box className={S.header} p="md">
@@ -60,6 +65,14 @@ export function ModelFieldDetails({
             field={field}
             idFields={idFields}
             onChange={handleChange}
+          />
+        </TitledSection>
+        <TitledSection title={t`Behavior`}>
+          <FieldVisibilityPicker
+            label={t`Visibility`}
+            description={t`Where this field should be displayed`}
+            value={field.visibility_type}
+            onChange={handleVisibilityChange}
           />
         </TitledSection>
       </Flex>
