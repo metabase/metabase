@@ -38,6 +38,7 @@ import { TableMetadataSection } from "./TableMetadataSection";
 import { TableModels } from "./TableModels";
 import S from "./TableSection.module.css";
 import { useResponsiveButtons } from "./hooks";
+import { TableSectionGroup } from "./TableSectionGroup";
 
 interface Props {
   params: RouteParams;
@@ -228,13 +229,17 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
       </Box>
 
       <Box px="xl">
-        <Box className={S.box}>
-          <TableMetadataSection table={table} />
-        </Box>
+        <TableSectionGroup title={t`Metadata`}>TODO</TableSectionGroup>
       </Box>
 
       <Box px="xl">
-        <TableModels table={table} />
+        <TableMetadataSection table={table} />
+      </Box>
+
+      <Box px="xl">
+        <TableSectionGroup title={t`This table has been published as a model`}>
+          <TableModels table={table} />
+        </TableSectionGroup>
       </Box>
 
       <Box
@@ -339,6 +344,7 @@ function TableLink({ table }: { table: Table }) {
   return (
     <Tooltip label={t`Go to this table`} position="top">
       <Box>
+        {/* wrapping with a Box because Tooltip does not work for <Button component={Link} /> */}
         <Button
           component={Link}
           to={getQueryBuilderUrl(table)}
