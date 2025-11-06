@@ -71,6 +71,9 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
               theme={
                 resolvedColorScheme === "dark" ? "filled_black" : "outline"
               }
+              containerProps={{
+                style: { colorScheme: "light" },
+              }}
             />
           </GoogleOAuthProvider>
           <Checkbox
