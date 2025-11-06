@@ -77,6 +77,7 @@ export function ModelFieldList({
           <FieldList
             fields={fields}
             activeFieldKey={activeFieldName}
+            readOnly={isReadOnly}
             getFieldKey={getFieldKey}
             onSelect={onSelectField}
             onNameChange={handleNameChange}

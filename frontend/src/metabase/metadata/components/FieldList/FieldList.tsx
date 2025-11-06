@@ -9,6 +9,7 @@ import { FieldItem } from "./FieldItem";
 interface Props<T extends number | string> {
   fields: Field[];
   activeFieldKey?: T;
+  readOnly?: boolean;
   getFieldKey: (field: Field) => T;
   getFieldHref?: (field: Field) => string;
   onSelect?: (field: Field) => void;
@@ -19,6 +20,7 @@ interface Props<T extends number | string> {
 export function FieldList<T extends number | string>({
   fields,
   activeFieldKey,
+  readOnly,
   getFieldKey,
   getFieldHref,
   onSelect,
@@ -43,6 +45,7 @@ export function FieldList<T extends number | string>({
             active={key === activeFieldKey}
             parent={parent}
             href={getFieldHref?.(field) ?? ""}
+            readOnly={readOnly}
             onSelect={() => onSelect?.(field)}
             onNameChange={(newName) => onNameChange(field, newName)}
             onDescriptionChange={(newDescription) =>

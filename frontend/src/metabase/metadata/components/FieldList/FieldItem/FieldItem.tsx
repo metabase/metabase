@@ -17,6 +17,7 @@ type FieldItemProps = {
   href: string;
   active?: boolean;
   parent?: Field;
+  readOnly?: boolean;
   onSelect?: () => void;
   onNameChange: (newName: string) => void;
   onDescriptionChange: (newDescription: string | null) => void;
@@ -27,6 +28,7 @@ export function FieldItem({
   field,
   href,
   parent,
+  readOnly,
   onSelect,
   onNameChange,
   onDescriptionChange,
@@ -143,6 +145,7 @@ export function FieldItem({
             px={rem(1)}
             py={rem(2)}
             tabIndex={undefined} // override the default 0 which breaks a11y
+            isDisabled={readOnly}
             onChange={handleNameChange}
             onClick={handleInputClick}
           />
@@ -162,6 +165,7 @@ export function FieldItem({
           py={0}
           placeholder={t`No description yet`}
           tabIndex={undefined} // override the default 0 which breaks a11y
+          isDisabled={readOnly}
           onChange={handleDescriptionChange}
           onClick={handleInputClick}
         />
