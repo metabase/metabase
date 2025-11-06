@@ -18,7 +18,8 @@ For now, impersonation access is only available for the following databases:
 - PostgreSQL. If you're using views in PostgresSQL, the row-level security policies on views will only work on Postgres versions 15 and higher.
 - Redshift
 - Snowflake
-- SQL Server.
+- SQL Server
+- Starburst/Trino.
 
 If you want to switch database _connections_ based on who is logged in, check out [Database routing](./database-routing.md).
 
