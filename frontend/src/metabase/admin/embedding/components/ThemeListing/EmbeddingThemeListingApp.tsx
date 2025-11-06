@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useDefaultEmbeddingTheme } from "metabase/admin/embedding/hooks/use-default-embedding-theme";
+import { useDefaultEmbeddingThemeSettings } from "metabase/admin/embedding/hooks";
 import {
   useCreateEmbeddingThemeMutation,
   useListEmbeddingThemesQuery,
@@ -25,13 +25,13 @@ export function EmbeddingThemeListingApp() {
   const { data: themes, isLoading } = useListEmbeddingThemesQuery();
   const [createTheme] = useCreateEmbeddingThemeMutation();
   const [sendToast] = useToast();
-  const defaultTheme = useDefaultEmbeddingTheme();
+  const defaultThemeSettings = useDefaultEmbeddingThemeSettings();
 
   const handleCreateTheme = async () => {
     try {
       await createTheme({
         name: t`Untitled theme`,
-        settings: defaultTheme,
+        settings: defaultThemeSettings,
       }).unwrap();
 
       // TODO(EMB-946): Navigate to the theme editor to edit the newly created theme.

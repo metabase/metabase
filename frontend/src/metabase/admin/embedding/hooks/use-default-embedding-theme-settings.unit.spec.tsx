@@ -4,19 +4,19 @@ import type { ColorSettings } from "metabase-types/api/settings";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { useDefaultEmbeddingTheme } from "./use-default-embedding-theme";
+import { useDefaultEmbeddingThemeSettings } from "./use-default-embedding-theme-settings";
 
 const setup = (applicationColors?: ColorSettings) => {
   const initialState = createMockState({
     settings: { values: { "application-colors": applicationColors } },
   } as Partial<State>);
 
-  return renderHookWithProviders(() => useDefaultEmbeddingTheme(), {
+  return renderHookWithProviders(() => useDefaultEmbeddingThemeSettings(), {
     storeInitialState: initialState,
   });
 };
 
-describe("useDefaultEmbeddingTheme", () => {
+describe("useDefaultEmbeddingThemeSettings", () => {
   it("default colors should match lib/colors/colors.ts", () => {
     const { result } = setup();
     const theme = result.current;
