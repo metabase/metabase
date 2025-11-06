@@ -58,7 +58,11 @@ export const EmbeddingThemeCardPreview = ({
   const chart2 = chartColorOf(2);
 
   return (
-    <svg viewBox="0 0 251 251" fill="none">
+    <svg
+      viewBox="0 0 250 250"
+      fill="none"
+      style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+    >
       <g>
         <path d="M0 0H251V251H0V0Z" fill={colorOf("background-secondary")} />
 
