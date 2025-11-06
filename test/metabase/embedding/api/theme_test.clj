@@ -138,3 +138,32 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :delete 403 (format "embed-theme/%s" theme-id))))
         (is (t2/exists? :model/EmbeddingTheme :id theme-id))))))
+
+(deftest copy-theme-test
+  (testing "POST /api/embed-theme/:id/copy"
+    (testing "duplicates a theme with 'Copy of' prefix"
+      (mt/with-empty-h2-app-db!
+        (let [original-name "My Theme"
+              original-settings {:colors {:brand "#FF0000"
+                                          :text-primary "#000000"}}
+              created  (mt/user-http-request :crowberto :post 200 "embed-theme"
+                                             {:name     original-name
+                                              :settings original-settings})
+              theme-id (:id created)
+              response (mt/user-http-request :crowberto :post 200 (format "embed-theme/%s/copy" theme-id))]
+          (is (= #{:id :entity_id :name :settings :created_at :updated_at}
+                 (set (keys response))))
+          (is (= "Copy of My Theme" (:name response)))
+          (is (= original-settings (:settings response)))
+          (is (not= theme-id (:id response)))
+          (testing "both themes exist in the database"
+            (is (t2/exists? :model/EmbeddingTheme :id theme-id))
+            (is (t2/exists? :model/EmbeddingTheme :id (:id response)))))))
+    (testing "returns 404 for non-existent theme"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :post 404 "embed-theme/999999/copy"))))
+    (testing "requires superuser permissions"
+      (mt/with-temp [:model/EmbeddingTheme {theme-id :id} {:name     "Test Theme"
+                                                           :settings {}}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 (format "embed-theme/%s/copy" theme-id))))))))
