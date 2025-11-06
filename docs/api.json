@@ -2912,6 +2912,9 @@
               "authority_level" : {
                 "type" : "string"
               },
+              "description" : {
+                "type" : "string"
+              },
               "name" : {
                 "type" : "string"
               }
@@ -16189,6 +16192,44 @@
         "tags" : [ "/api/ee/billing" ]
       }
     },
+    "/api/ee/cloud-add-ons/addons" : {
+      "get" : {
+        "summary" : "GET /api/ee/cloud-add-ons/addons",
+        "description" : "Get addons information from the Metabase Store API.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/cloud-add-ons" ]
+      }
+    },
+    "/api/ee/cloud-add-ons/plans" : {
+      "get" : {
+        "summary" : "GET /api/ee/cloud-add-ons/plans",
+        "description" : "Get plans information from the Metabase Store API.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/cloud-add-ons" ]
+      }
+    },
     "/api/ee/cloud-add-ons/{product-type}" : {
       "post" : {
         "summary" : "POST /api/ee/cloud-add-ons/{product-type}",
@@ -16199,7 +16240,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai" ]
+            "enum" : [ "metabase-ai", "python-execution" ]
           }
         } ],
         "responses" : {
@@ -16222,8 +16263,7 @@
                   "terms_of_service" : {
                     "type" : "boolean"
                   }
-                },
-                "required" : [ "terms_of_service" ]
+                }
               }
             }
           }
