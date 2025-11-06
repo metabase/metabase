@@ -145,6 +145,8 @@ export const NativeQueryModal = ({
     queryResult || (!hasExecutedQuery ? initialDataset : null);
   const failedDataset = isFailedDataset(datasetToUse) ? datasetToUse : null;
 
+  const isNewQuestion = !card?.id;
+
   useEffect(() => {
     if (isOpen && card) {
       dispatch(loadMetadataForDocumentCard(card));
@@ -214,26 +216,50 @@ export const NativeQueryModal = ({
       return;
     }
 
-    const modifiedData = {
-      dataset_query: modifiedQuestion.datasetQuery(),
-      display: modifiedQuestion.display(),
-      visualization_settings:
-        modifiedQuestion.card().visualization_settings ?? {},
-    };
-
     const newCardId = generateDraftCardId();
+    if (!isNewQuestion) {
+      const modifiedData = {
+        dataset_query: modifiedQuestion.datasetQuery(),
+        display: modifiedQuestion.display(),
+        visualization_settings:
+          modifiedQuestion.card().visualization_settings ?? {},
+      };
 
-    dispatch(
-      createDraftCard({
-        originalCard: card,
-        modifiedData,
-        draftId: newCardId,
-      }),
-    );
+      dispatch(
+        createDraftCard({
+          originalCard: card,
+          modifiedData,
+          draftId: newCardId,
+        }),
+      );
+    } else {
+      const dataset_query = modifiedQuestion.datasetQuery();
+      const name =
+        modifiedQuestion.displayName() ||
+        modifiedQuestion.generateQueryDescription() ||
+        t`New question`;
+
+      const modifiedData = {
+        name,
+        database_id: dataset_query.database,
+        dataset_query: dataset_query,
+        display: modifiedQuestion.display(),
+        visualization_settings:
+          modifiedQuestion.card().visualization_settings ?? {},
+      };
+
+      dispatch(
+        createDraftCard({
+          originalCard: undefined,
+          modifiedData,
+          draftId: newCardId,
+        }),
+      );
+    }
 
     onSave({ card_id: newCardId });
     onClose();
-  }, [modifiedQuestion, card, dispatch, onSave, onClose]);
+  }, [modifiedQuestion, isNewQuestion, onSave, onClose, dispatch, card]);
 
   const rawSeries = useMemo<RawSeries | null>(() => {
     if (!modifiedQuestion || !datasetToUse || failedDataset) {

@@ -15,6 +15,7 @@ import {
   generateDraftCardId,
   loadMetadataForDocumentCard,
 } from "metabase-enterprise/documents/documents.slice";
+import { NativeQueryModal } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/NativeQueryModal";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 
@@ -44,9 +45,7 @@ export const CreateQuestionModal = ({
     [databases],
   );
 
-  const [modifiedQuestion, setModifiedQuestion] = useState<Question>(() =>
-    Question.create(),
-  );
+  const [modifiedQuestion, setModifiedQuestion] = useState<Question>();
 
   const reportTimezone = useSelector((state) =>
     getSetting(state, "report-timezone-long"),
@@ -84,17 +83,19 @@ export const CreateQuestionModal = ({
     }
   };
 
-  const handleSave = async () => {
+  const handleSaveStructuredQuestion = async () => {
     try {
       const name =
         modifiedQuestion.displayName() ||
         modifiedQuestion.generateQueryDescription() ||
         "";
 
+      const dataset_query = modifiedQuestion.datasetQuery();
+
       const modifiedData = {
         name,
-        database_id: modifiedQuestion.datasetQuery().database,
-        dataset_query: modifiedQuestion.datasetQuery(),
+        database_id: dataset_query.database,
+        dataset_query: dataset_query,
         display: modifiedQuestion.display(),
         visualization_settings:
           modifiedQuestion.card().visualization_settings ?? {},
@@ -116,10 +117,15 @@ export const CreateQuestionModal = ({
     }
   };
 
-  if (questionType === "notebook") {
-    return (
+  const handleSaveNativeQuestion = async ({ card_id }) => {
+    onSave(card_id, "New SQL query");
+    onClose();
+  };
+
+  return (
+    <>
       <Modal
-        opened
+        opened={!!modifiedQuestion && questionType === "notebook"}
         onClose={onClose}
         size="80%"
         title={t`Create new question`}
@@ -140,48 +146,62 @@ export const CreateQuestionModal = ({
           <Button variant="subtle" onClick={onClose}>
             {t`Cancel`}
           </Button>
-          <Button variant="filled" onClick={handleSave}>
+          <Button variant="filled" onClick={handleSaveStructuredQuestion}>
             {t`Save and use`}
           </Button>
         </Flex>
       </Modal>
-    );
-  }
 
-  if (questionType === "native") {
-    return null; // TODO: implement this
-  }
+      {!!modifiedQuestion && questionType === "native" && (
+        <NativeQueryModal
+          isOpen
+          card={modifiedQuestion.card()}
+          onSave={handleSaveNativeQuestion}
+          onClose={onClose}
+        />
+      )}
 
-  return (
-    <Modal
-      opened
-      onClose={onClose}
-      size="80%"
-      title={t`Create new question`}
-      padding="lg"
-    >
-      <Flex gap="sm" mb="md">
-        {hasDataAccess && (
-          <Button
-            variant="outline"
-            className={S.newButton}
-            leftSection={<Icon aria-hidden name="insight" />}
-            onClick={() => handleNewQuestion("notebook")}
-          >
-            {t`New Question`}
-          </Button>
-        )}
-        {hasNativeWrite && (
-          <Button
-            variant="outline"
-            className={S.newButton}
-            leftSection={<Icon aria-hidden name="sql" />}
-            onClick={() => handleNewQuestion("native")}
-          >
-            {t`New SQL query`}
-          </Button>
-        )}
-      </Flex>
-    </Modal>
+      <Modal
+        opened={!questionType}
+        onClose={onClose}
+        size="80%"
+        title={t`Create new question`}
+        padding="lg"
+      >
+        <Flex gap="sm" mb="md">
+          {hasDataAccess && (
+            <Button
+              variant="outline"
+              className={S.newButton}
+              leftSection={<Icon aria-hidden name="insight" />}
+              onClick={() => {
+                setModifiedQuestion(Question.create());
+                handleNewQuestion("notebook");
+              }}
+            >
+              {t`New Question`}
+            </Button>
+          )}
+          {hasNativeWrite && (
+            <Button
+              variant="outline"
+              className={S.newButton}
+              leftSection={<Icon aria-hidden name="sql" />}
+              onClick={() => {
+                setModifiedQuestion(
+                  Question.create({
+                    DEPRECATED_RAW_MBQL_type: "native",
+                    creationType: "native_question",
+                  }),
+                );
+                handleNewQuestion("native");
+              }}
+            >
+              {t`New SQL query`}
+            </Button>
+          )}
+        </Flex>
+      </Modal>
+    </>
   );
 };
