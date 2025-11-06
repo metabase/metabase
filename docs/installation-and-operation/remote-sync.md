@@ -27,7 +27,7 @@ We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-t
 
 ### Key concepts
 
-**Remote sync has two modes for different roles**: Remote Sync has two configuration modes:
+**Remote sync has two modes for different roles**:
 
 - **Development mode**: Create and edit content. You can [push](#pushing-changes-to-git) and [pull](#pulling-changes-from-git) changes to and from your repository. Multiple Metabase instances can connect in Development mode, each working on [different branches](#branch-management).
 - **Production mode**: Serves read-only content to users. Production instances only [pull](#pulling-changes-from-git) changes (typically from your main branch) and don't allow direct editing of synced content. You can set up [auto-sync](#pulling-changes-automatically) to automatically pull approved changes every five minutes.
