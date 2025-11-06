@@ -5,13 +5,8 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [metabase.appearance.core :as appearance]
    [metabase.events.core :as events]
-   [metabase.session.core :as session]
-   [metabase.sso.core :as sso]
-   [metabase.system.core :as system]
    [metabase.task.core :as task]
-   [metabase.users.models.user :as user]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -19,16 +14,6 @@
 
 (def ^:private job-key "metabase.task.invitation-reminder.job")
 (def ^:private trigger-key "metabase.task.invitation-reminder.trigger")
-
-(defn- join-url
-  [user-id]
-  (let [reset-token               (user/set-password-reset-token! user-id)
-        should-link-to-login-page (and (sso/sso-enabled?)
-                                       (not (session/enable-password-login)))]
-    (if should-link-to-login-page
-      (str (system/site-url) "/auth/login")
-      ;; NOTE: the new user join url is a password reset route with an indicator that this is a first time user.
-      (str (user/form-password-reset-url reset-token) "#new"))))
 
 (defn- users-invited-3-days-ago
   "Find all users who were invited 3 days ago (same calendar day, 3 days back)
