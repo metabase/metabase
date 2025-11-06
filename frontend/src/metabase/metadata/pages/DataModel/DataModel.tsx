@@ -75,14 +75,17 @@ function DataModelContent({ children, location, params }: Props) {
     isFieldValuesModalOpen,
     { close: closeFieldValuesModal, open: openFieldValuesModal },
   ] = useDisclosure();
-  const tableId = Array.from(selectedTables)[0] ?? queryTableId;
+  // Use the first selected table for fetching metadata when exactly one is selected
+  const metadataTableId = Array.from(selectedTables)[0] ?? queryTableId;
+  // But keep the URL tableId for navigation/path to avoid auto-expansion when selecting/deselecting
+  const navigationTableId = hasSelectedItems ? queryTableId : queryTableId;
   const isEmptyStateShown =
-    databaseId == null || tableId == null || fieldId == null;
+    databaseId == null || metadataTableId == null || fieldId == null;
   const {
     data: table,
     error,
     isLoading: isLoadingTables,
-  } = useGetTableQueryMetadataQuery(getTableMetadataQuery(tableId));
+  } = useGetTableQueryMetadataQuery(getTableMetadataQuery(metadataTableId));
   const fieldsByName = useMemo(() => {
     return _.indexBy(table?.fields ?? [], (field) => field.name);
   }, [table]);
@@ -131,7 +134,8 @@ function DataModelContent({ children, location, params }: Props) {
         <RouterTablePicker
           databaseId={databaseId}
           schemaName={schemaName}
-          tableId={tableId}
+          tableId={navigationTableId}
+          fieldId={fieldId}
           params={params}
         />
 
@@ -145,7 +149,7 @@ function DataModelContent({ children, location, params }: Props) {
       {!isSegments && (
         <>
           {databaseId != null &&
-            tableId == null &&
+            metadataTableId == null &&
             databaseExists === false && (
               <Stack
                 className={S.column}
@@ -170,7 +174,7 @@ function DataModelContent({ children, location, params }: Props) {
               <EditTableMetadata />
             </Stack>
           )}
-          {tableId && !hasSelectedMoreThanOneTable && (
+          {metadataTableId && !hasSelectedMoreThanOneTable && (
             <Stack
               className={S.column}
               flex={COLUMN_CONFIG.table.flex}
@@ -248,7 +252,7 @@ function DataModelContent({ children, location, params }: Props) {
                 fieldId={fieldId}
                 previewType={previewType}
                 table={table}
-                tableId={tableId}
+                tableId={metadataTableId}
                 onClose={closePreview}
                 onPreviewTypeChange={setPreviewType}
               />
