@@ -30,7 +30,7 @@ import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
 import { ResponsiveButton } from "../ResponsiveButton";
 
-import { FieldList } from "./FieldList";
+import { TableFieldList } from "./TableFieldList";
 import S from "./TableSection.module.css";
 import { useResponsiveButtons } from "./hooks";
 
@@ -256,10 +256,10 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           )}
 
           {!isSorting && hasFields && (
-            <FieldList
+            <TableFieldList
+              table={table}
               activeFieldId={fieldId}
               getFieldHref={(fieldId) => getUrl({ ...parsedParams, fieldId })}
-              table={table}
             />
           )}
         </Stack>

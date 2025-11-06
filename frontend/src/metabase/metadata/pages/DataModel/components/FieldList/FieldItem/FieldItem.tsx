@@ -3,80 +3,47 @@ import type { MouseEvent } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { useUpdateFieldMutation } from "metabase/api";
 import EditableText from "metabase/common/components/EditableText";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Card, Flex, Group, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 
 import S from "./FieldItem.module.css";
 
-interface Props {
-  active?: boolean;
+type FieldItemProps = {
   field: Field;
   href: string;
+  active?: boolean;
   parent?: Field;
-}
+  onNameChange: (newName: string) => void;
+  onDescriptionChange: (newDescription: string | null) => void;
+};
 
-export const FieldItem = ({ active, field, href, parent }: Props) => {
-  const id = getRawTableFieldId(field);
-  const [updateField] = useUpdateFieldMutation();
-  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
-    useMetadataToasts();
+export function FieldItem({
+  active,
+  field,
+  href,
+  parent,
+  onNameChange,
+  onDescriptionChange,
+}: FieldItemProps) {
   const icon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
 
-  const handleNameChange = async (name: string) => {
-    const newName = name.trim();
-
-    if (field.display_name === newName) {
-      return;
-    }
-
-    const { error } = await updateField({ id, display_name: name });
-
-    if (error) {
-      sendErrorToast(t`Failed to update name of ${field.display_name}`);
-    } else {
-      sendSuccessToast(t`Name of ${field.display_name} updated`, async () => {
-        const { error } = await updateField({
-          id,
-          display_name: field.display_name,
-        });
-        sendUndoToast(error);
-      });
+  const handleNameChange = async (newValue: string) => {
+    const newName = newValue.trim();
+    if (field.display_name !== newName) {
+      onNameChange(newName);
     }
   };
 
-  const handleDescriptionChange = async (description: string) => {
-    const newDescription = description.trim();
+  const handleDescriptionChange = async (newValue: string) => {
+    const trimmedValue = newValue.trim();
+    const newDescription = trimmedValue.length === 0 ? null : trimmedValue;
 
-    if ((field.description ?? "") === newDescription) {
-      return;
-    }
-
-    const { error } = await updateField({
-      id,
-      // API does not accept empty strings
-      description: description.length === 0 ? null : description,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update description of ${field.display_name}`);
-    } else {
-      sendSuccessToast(
-        t`Description of ${field.display_name} updated`,
-        async () => {
-          const { error } = await updateField({
-            id,
-            description: field.description ?? "",
-          });
-          sendUndoToast(error);
-        },
-      );
+    if (field.description !== newDescription) {
+      onDescriptionChange(newDescription);
     }
   };
 
@@ -161,8 +128,6 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
 
           <Box
             className={cx(S.input, S.name)}
-            // TODO: fix EditableText or use something else
-            // https://linear.app/metabase/issue/SEM-429/data-model-inline-field-namedescription-inputs
             component={EditableText}
             fw="bold"
             initialValue={field.display_name}
@@ -181,8 +146,6 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
 
         <Box
           className={cx(S.input, S.description)}
-          // TODO: fix EditableText or use something else
-          // https://linear.app/metabase/issue/SEM-429/data-model-inline-field-namedescription-inputs
           component={EditableText}
           initialValue={field.description ?? ""}
           isMultiline
@@ -201,4 +164,4 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
       </Flex>
     </Card>
   );
-};
+}
