@@ -3,21 +3,27 @@ import type { Route } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useUpdateCardMutation } from "metabase/api";
+import {
+  skipToken,
+  useListDatabaseIdFieldsQuery,
+  useUpdateCardMutation,
+} from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaneHeaderActions } from "metabase/data-studio/components/PaneHeader";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Center, Flex } from "metabase/ui";
 import type { Card, Field } from "metabase-types/api";
 
 import { ModelHeader } from "../../components/ModelHeader";
 import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";
 
+import { ModelFieldDetails } from "./ModelFieldDetails";
 import { ModelFieldEmptyState } from "./ModelFieldEmptyState";
-import { ModelFieldInfo } from "./ModelFieldInfo";
 import { ModelFieldList } from "./ModelFieldList";
+import type { FieldPatch } from "./types";
 
 type ModelFieldsPageParams = {
   cardId: string;
@@ -30,7 +36,25 @@ type ModelFieldsPageProps = {
 
 export function ModelFieldsPage({ params, route }: ModelFieldsPageProps) {
   const cardId = Urls.extractEntityId(params.cardId);
-  const { card, isLoading, error } = useLoadCardWithMetadata(cardId);
+  const {
+    card,
+    isLoading: isLoadingCard,
+    error: cardError,
+  } = useLoadCardWithMetadata(cardId);
+  const {
+    data: idFields = [],
+    isLoading: isLoadingFields,
+    error: fieldsError,
+  } = useListDatabaseIdFieldsQuery(
+    card?.database_id != null
+      ? {
+          id: card.database_id,
+          ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+        }
+      : skipToken,
+  );
+  const isLoading = isLoadingCard || isLoadingFields;
+  const error = cardError ?? fieldsError;
 
   if (isLoading || error != null || card == null) {
     return (
@@ -40,15 +64,20 @@ export function ModelFieldsPage({ params, route }: ModelFieldsPageProps) {
     );
   }
 
-  return <ModelFieldsPageBody card={card} route={route} />;
+  return <ModelFieldsPageBody card={card} idFields={idFields} route={route} />;
 }
 
 type ModelFieldsPageBodyProps = {
   card: Card;
+  idFields: Field[];
   route: Route;
 };
 
-function ModelFieldsPageBody({ card, route }: ModelFieldsPageBodyProps) {
+function ModelFieldsPageBody({
+  card,
+  idFields,
+  route,
+}: ModelFieldsPageBodyProps) {
   const [fields, setFields] = useState(card.result_metadata ?? []);
   const [activeFieldName, setActiveFieldName] = useState<string>();
   const [updateCard, { isLoading: isSaving }] = useUpdateCardMutation();
@@ -64,19 +93,14 @@ function ModelFieldsPageBody({ card, route }: ModelFieldsPageBodyProps) {
     [fields, card],
   );
 
-  const handleSelect = (field: Field) => {
+  const handleSelectField = (field: Field) => {
     setActiveFieldName(field.name);
   };
 
-  const handleNameChange = (field: Field, name: string) => {
-    setFields(updateField(fields, field, { display_name: name }));
-  };
-
-  const handleDescriptionChange = (
-    field: Field,
-    description: string | null,
-  ) => {
-    setFields(updateField(fields, field, { description }));
+  const handleChangeField = (field: Field, patch: FieldPatch) => {
+    const newFields = [...fields];
+    newFields[findFieldIndex(fields, field.name)] = { ...field, ...patch };
+    setFields(newFields);
   };
 
   const handleSave = async () => {
@@ -113,15 +137,14 @@ function ModelFieldsPageBody({ card, route }: ModelFieldsPageBodyProps) {
           <ModelFieldList
             fields={fields}
             activeFieldName={activeFieldName}
-            onSelect={handleSelect}
-            onNameChange={handleNameChange}
-            onDescriptionChange={handleDescriptionChange}
+            onSelectField={handleSelectField}
+            onChangeField={handleChangeField}
           />
           {activeField != null ? (
-            <ModelFieldInfo
+            <ModelFieldDetails
               field={activeField}
-              onNameChange={handleNameChange}
-              onDescriptionChange={handleDescriptionChange}
+              idFields={idFields}
+              onChangeField={handleChangeField}
             />
           ) : (
             <ModelFieldEmptyState />
@@ -139,10 +162,4 @@ function fieldField(fields: Field[], fieldName: string) {
 
 function findFieldIndex(fields: Field[], fieldName: string) {
   return fields.findIndex((field) => field.name === fieldName);
-}
-
-function updateField(fields: Field[], field: Field, updates: Partial<Field>) {
-  const newFields = [...fields];
-  newFields[findFieldIndex(fields, field.name)] = { ...field, ...updates };
-  return newFields;
 }

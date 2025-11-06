@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
 import { CoercionStrategyPicker } from "metabase/metadata/components";
+import { TitledSection } from "metabase/metadata/components/TitledSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   canCoerceFieldType,
@@ -13,7 +14,6 @@ import { Flex, Stack, Switch, rem } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
 import { trackMetadataChange } from "../../../analytics";
-import { TitledSection } from "../../TitledSection";
 
 import S from "./DataSection.module.css";
 import { LabeledValue } from "./LabeledValue";

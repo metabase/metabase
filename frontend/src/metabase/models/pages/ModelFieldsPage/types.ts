@@ -1,0 +1,12 @@
+import type { Field } from "metabase-types/api";
+
+export type FieldPatch = Partial<
+  Pick<
+    Field,
+    | "display_name"
+    | "description"
+    | "semantic_type"
+    | "fk_target_field_id"
+    | "settings"
+  >
+>;

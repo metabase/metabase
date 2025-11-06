@@ -4,23 +4,34 @@ import { FieldList } from "metabase/metadata/components/FieldList";
 import { Box, Button, Flex, Group, Icon } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
+import type { FieldPatch } from "../types";
+
 import S from "./ModelFieldList.module.css";
 
 type ModelFieldListProps = {
   fields: Field[];
   activeFieldName?: string;
-  onSelect: (field: Field) => void;
-  onNameChange: (field: Field, name: string) => void;
-  onDescriptionChange: (field: Field, description: string | null) => void;
+  onSelectField: (field: Field) => void;
+  onChangeField: (field: Field, patch: FieldPatch) => void;
 };
 
 export function ModelFieldList({
   fields,
   activeFieldName,
-  onSelect,
-  onNameChange,
-  onDescriptionChange,
+  onSelectField,
+  onChangeField,
 }: ModelFieldListProps) {
+  const handleNameChange = (field: Field, name: string) => {
+    onChangeField(field, { display_name: name });
+  };
+
+  const handleDescriptionChange = (
+    field: Field,
+    description: string | null,
+  ) => {
+    onChangeField(field, { description });
+  };
+
   return (
     <Flex className={S.section} flex={1} direction="column">
       <Group
@@ -40,9 +51,9 @@ export function ModelFieldList({
           fields={fields}
           activeFieldKey={activeFieldName}
           getFieldKey={(field) => field.name}
-          onSelect={onSelect}
-          onNameChange={onNameChange}
-          onDescriptionChange={onDescriptionChange}
+          onSelect={onSelectField}
+          onNameChange={handleNameChange}
+          onDescriptionChange={handleDescriptionChange}
         />
       </Box>
     </Flex>
