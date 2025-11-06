@@ -23,7 +23,7 @@ export function EmbeddingThemeCard({
       onClick={() => onEdit(theme.id)}
       style={{ cursor: "pointer" }}
     >
-      <EmbeddingThemeCardPreview />
+      <EmbeddingThemeCardPreview theme={theme.settings} />
 
       <Group align="center" justify="space-between" px="md" py="sm">
         <Text fz="lg">{theme.name}</Text>
