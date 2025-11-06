@@ -17,7 +17,7 @@ export function CardOverview({ card }: CardOverviewProps) {
       <Flex direction="column" flex={1} mah={700}>
         <VisualizationSection className={S.visualization} card={card} />
       </Flex>
-      <Stack maw={300} ml="lg" gap="md" className={S.sidebar}>
+      <Stack maw={300} ml="lg" gap="lg" className={S.sidebar}>
         <DescriptionSection card={card} />
         <QuerySourceSection card={card} />
         <CreatorAndLastEditorSection card={card} />

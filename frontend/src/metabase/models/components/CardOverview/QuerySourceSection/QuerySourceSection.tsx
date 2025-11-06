@@ -38,7 +38,7 @@ export function QuerySourceSection({ card }: QuerySourceSectionProps) {
   }
 
   return (
-    <Stack gap="xs">
+    <Stack gap="sm">
       <Title order={6}>{t`Based on`}</Title>
       {pickerInfo.cardId == null ? (
         <TableSourcePath tableId={pickerInfo.tableId} />
