@@ -44,6 +44,7 @@ type QuerySectionProps = {
     | Partial<Omit<NativeQuerySnippet, "id">>
     | null;
   nativeEditorSelectedText?: string | null;
+  readOnly?: boolean;
   isNative: boolean;
   isRunnable: boolean;
   isRunning: boolean;
@@ -72,6 +73,7 @@ export function QuerySection({
   proposedQuestion,
   modalSnippet,
   nativeEditorSelectedText,
+  readOnly,
   isNative,
   isRunnable,
   isRunning,
@@ -133,7 +135,7 @@ export function QuerySection({
       hasRunButton
       isInitiallyOpen
       isNativeEditorOpen
-      readOnly={false}
+      readOnly={readOnly}
       hasParametersList={false}
       isRunnable={isRunnable}
       isRunning={isRunning}
@@ -169,6 +171,7 @@ export function QuerySection({
       <Box w="100%" style={{ overflowY: isResizing ? "hidden" : "auto" }}>
         <Notebook
           question={question}
+          readOnly={readOnly}
           isDirty={false}
           isRunnable={false}
           isResultDirty={false}

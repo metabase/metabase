@@ -44,6 +44,7 @@ export type QueryEditorUiOptions = {
   cardType?: CardType;
   cardDisplay?: CardDisplayType;
   cardVizSettings?: VisualizationSettings;
+  readOnly?: boolean;
   canConvertToNative?: boolean;
   convertToNativeTitle?: string;
   convertToNativeButtonLabel?: string;

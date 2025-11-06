@@ -10,6 +10,7 @@ import { getEditorOptions } from "./utils";
 type ModelEditorProps = {
   query: Lib.Query;
   uiState: QueryEditorUiState;
+  readOnly?: boolean;
   onChangeQuery: (newQuery: Lib.Query) => void;
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
   onChangeResultMetadata?: (newResultMetadata: DatasetColumn[] | null) => void;
@@ -18,11 +19,12 @@ type ModelEditorProps = {
 export function ModelQueryEditor({
   query,
   uiState,
+  readOnly = false,
   onChangeQuery,
   onChangeUiState,
   onChangeResultMetadata,
 }: ModelEditorProps) {
-  const uiOptions = useMemo(() => getEditorOptions(), []);
+  const uiOptions = useMemo(() => getEditorOptions(readOnly), [readOnly]);
 
   return (
     <QueryEditor

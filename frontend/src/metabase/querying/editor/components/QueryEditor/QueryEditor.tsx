@@ -92,6 +92,7 @@ export function QueryEditor({
             proposedQuestion={proposedQuestion}
             modalSnippet={uiState.modalSnippet}
             nativeEditorSelectedText={selectedText}
+            readOnly={uiOptions?.readOnly}
             isNative={isNative}
             isRunnable={isRunnable}
             isRunning={isRunning}

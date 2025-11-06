@@ -150,6 +150,7 @@ function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
         <ModelQueryEditor
           query={question.query()}
           uiState={uiState}
+          readOnly={!card.can_write}
           onChangeQuery={handleChangeQuery}
           onChangeUiState={setUiState}
           onChangeResultMetadata={setResultMetadata}

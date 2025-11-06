@@ -10,6 +10,7 @@ import { getEditorOptions } from "./utils";
 type MetricQueryEditorProps = {
   query: Lib.Query;
   uiState: QueryEditorUiState;
+  readOnly?: boolean;
   onChangeQuery: (query: Lib.Query) => void;
   onChangeUiState: (state: QueryEditorUiState) => void;
   onChangeResultMetadata?: (newResultMetadata: DatasetColumn[] | null) => void;
@@ -18,10 +19,14 @@ type MetricQueryEditorProps = {
 export function MetricQueryEditor({
   query,
   uiState,
+  readOnly = false,
   onChangeQuery,
   onChangeUiState,
 }: MetricQueryEditorProps) {
-  const uiOptions = useMemo(() => getEditorOptions(query), [query]);
+  const uiOptions = useMemo(
+    () => getEditorOptions(query, readOnly),
+    [query, readOnly],
+  );
 
   return (
     <QueryEditor

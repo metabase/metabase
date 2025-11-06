@@ -150,6 +150,7 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
         <MetricQueryEditor
           query={question.query()}
           uiState={uiState}
+          readOnly={!card.can_write}
           onChangeQuery={handleChangeQuery}
           onChangeUiState={setUiState}
           onChangeResultMetadata={setResultMetadata}
