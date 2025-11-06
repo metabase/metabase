@@ -468,11 +468,6 @@
              #_{:clj-kondo/ignore [:deprecated-var]}
              (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :venues))))))))
 
-(defn- format-env-key ^String [env-key]
-  (let [[_ header body footer]
-        (re-find #"(?s)(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
-    (str header (str/replace body #"\s+|\\n" "\n") footer)))
-
 (deftest can-change-from-password-test
   (mt/test-driver
     :snowflake
@@ -501,7 +496,7 @@
            (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :use-password false :private-key-value pk-key)))))))
 
 (deftest can-connect-test
-  (let [pk-key (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
+  (let [pk-key (test.data.snowflake/format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
         pk-user (tx/db-test-env-var :snowflake :pk-user)
         pk-db (tx/db-test-env-var :snowflake :pk-db "SNOWFLAKE_SAMPLE_DATA")]
     (mt/test-driver :snowflake
@@ -570,7 +565,7 @@
 
 (deftest maybe-test-and-migrate-details!-test
   ;; We create very ambiguous database details and loop over which version should succeed on connect.
-  (let [pk-key (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
+  (let [pk-key (test.data.snowflake/format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
         pk-user (tx/db-test-env-var-or-throw :snowflake :pk-user)
         pk-db (tx/db-test-env-var-or-throw :snowflake :pk-db "SNOWFLAKE_SAMPLE_DATA")]
     (mt/test-driver
@@ -652,7 +647,7 @@
           warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
          ;; User with default role PULIC. To access the db custom role has to be used.
           user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-custom-user)
-          private-key-value (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
+          private-key-value (test.data.snowflake/format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
           db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
           database          {:name    "Snowflake RSA test DB custom"
                              :engine  :snowflake
@@ -711,7 +706,7 @@
           warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
          ;; User with default role PULIC. To access the db custom role has to be used.
           user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-default-user)
-          private-key-value (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
+          private-key-value (test.data.snowflake/format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
           db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
           database          {:name    "Snowflake RSA test DB default"
                              :engine  :snowflake
@@ -1246,12 +1241,6 @@
                  (is (true? (sql-jdbc.sync.interface/have-select-privilege?
                              driver/*driver* conn schema table-name))))))))))))
 
-(defn- priv-key->base64 [priv-key-var]
-  (-> (tx/db-test-env-var-or-throw :snowflake priv-key-var)
-      format-env-key
-      u/string-to-bytes
-      mt/bytes->base64-data-uri))
-
 (defn- get-db-priv-key [db]
   (-> (:details db)
       (#'driver.snowflake/resolve-private-key)
@@ -1262,7 +1251,7 @@
   (merge (dissoc details :password)
          {:user pk-user
           :private-key-options "uploaded"
-          :private-key-value (priv-key->base64 priv-key)
+          :private-key-value (test.data.snowflake/priv-key->base64 priv-key)
           :use-password false}))
 
 (deftest private-key-file-updated-test
