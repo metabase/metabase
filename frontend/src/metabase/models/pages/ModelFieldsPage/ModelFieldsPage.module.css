@@ -1,3 +1,9 @@
 .fields {
   overflow: auto;
+  min-width: 20rem;
+  max-width: 50rem;
+}
+
+.fieldsHeader {
+  z-index: 1;
 }

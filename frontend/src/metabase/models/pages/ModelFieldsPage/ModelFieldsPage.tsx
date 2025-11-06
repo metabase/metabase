@@ -1,7 +1,9 @@
+import { t } from "ttag";
+
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { FieldList } from "metabase/metadata/pages/DataModel/components/FieldList";
-import { Center, Flex } from "metabase/ui";
+import { Box, Button, Center, Flex, Group, Icon } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
 import { ModelHeader } from "../../components/ModelHeader";
@@ -46,12 +48,26 @@ function ModelFieldsPageBody({ card }: ModelFieldsPageBodyProps) {
   return (
     <Flex direction="column" h="100%" bg="bg-light">
       <ModelHeader card={card} />
-      <Flex className={S.fields} direction="column" p="md">
-        <FieldList
-          fields={fields}
-          onNameChange={handleNameChange}
-          onDescriptionChange={handleDescriptionChange}
-        />
+      <Flex className={S.fields} direction="column">
+        <Group
+          className={S.fieldsHeader}
+          pos="sticky"
+          top={0}
+          p="md"
+          justify="end"
+          bg="bg-light"
+        >
+          <Button size="sm" leftSection={<Icon name="sort_arrows" />}>
+            {t`Sorting`}
+          </Button>
+        </Group>
+        <Box px="md" pb="md">
+          <FieldList
+            fields={fields}
+            onNameChange={handleNameChange}
+            onDescriptionChange={handleDescriptionChange}
+          />
+        </Box>
       </Flex>
     </Flex>
   );

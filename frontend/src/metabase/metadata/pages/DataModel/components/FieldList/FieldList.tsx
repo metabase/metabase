@@ -33,7 +33,7 @@ export const FieldList = ({
 
         return (
           <FieldItem
-            key={field.name}
+            key={fieldIndex}
             field={field}
             active={fieldIndex === activeFieldIndex}
             parent={parent}
