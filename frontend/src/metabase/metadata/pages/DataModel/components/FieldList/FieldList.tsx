@@ -9,7 +9,7 @@ import { FieldItem } from "./FieldItem";
 interface Props {
   fields: Field[];
   activeFieldIndex?: number;
-  getFieldHref: (field: Field) => string;
+  getFieldHref?: (field: Field) => string;
   onNameChange: (field: Field, newName: string) => void;
   onDescriptionChange: (field: Field, newDescription: string | null) => void;
 }
@@ -37,7 +37,7 @@ export const FieldList = ({
             field={field}
             active={fieldIndex === activeFieldIndex}
             parent={parent}
-            href={getFieldHref(field)}
+            href={getFieldHref?.(field) ?? ""}
             onNameChange={(newName) => onNameChange(field, newName)}
             onDescriptionChange={(newDescription) =>
               onDescriptionChange(field, newDescription)
