@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-962-compute-default-theme-colors-based-on-appearance-settings",
     "hash": "2ca16293705f95728843f99256ab75686562cd42"
+  },
+  "upstream": {
+    "branch": "emb-942-add-embedding-theme-preview-placeholder-cards-to-theme"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 65529,
+        "gqlID": "PR_kwDOAczgH86x2g5t"
+      }
+    }
   }
 }
