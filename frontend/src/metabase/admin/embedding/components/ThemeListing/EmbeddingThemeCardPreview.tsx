@@ -50,7 +50,14 @@ export const EmbeddingThemeCardPreview = ({
         >
           {"Abc"}
         </text>
-        <rect x="28" y="69" width="435" height="269" rx="6" fill="white" />
+        <rect
+          x="28"
+          y="69"
+          width="435"
+          height="269"
+          rx="6"
+          fill={colorOf("background")}
+        />
         <rect
           x="28.5"
           y="69.5"
