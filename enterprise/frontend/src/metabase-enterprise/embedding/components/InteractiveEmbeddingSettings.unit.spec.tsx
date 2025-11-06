@@ -42,7 +42,9 @@ describe("InteractiveEmbeddingSettings", () => {
 
   it("should toggle interactive embedding on", async () => {
     await setup({ enabled: false });
-    const toggle = await screen.findByText("Enable interactive embedding");
+    const toggle = await screen.findByLabelText(
+      "Enable interactive embedding toggle",
+    );
 
     await userEvent.click(toggle);
     const puts = await findRequests("PUT");
@@ -55,9 +57,7 @@ describe("InteractiveEmbeddingSettings", () => {
   it("should show quickstart link", async () => {
     await setup({ enabled: true });
 
-    expect(
-      await screen.findByText("Check out the Quickstart"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Quick start")).toBeInTheDocument();
   });
 
   it("should allow changing authorized origins", async () => {

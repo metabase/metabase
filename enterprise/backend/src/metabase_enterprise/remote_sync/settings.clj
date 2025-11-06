@@ -23,7 +23,8 @@
   :type :string
   :visibility :admin
   :encryption :no
-  :export? false)
+  :export? false
+  :can-read-from-env? false)
 
 (defsetting remote-sync-token
   (deferred-tru "An Authorization Bearer token allowing access to the git repo over HTTP")
@@ -33,14 +34,16 @@
   :export? false
   :sensitive? true
   :encryption :when-encryption-key-set
-  :audit :getter)
+  :audit :getter
+  :can-read-from-env? false)
 
 (defsetting remote-sync-url
   (deferred-tru "The location of your git repository, e.g. https://github.com/acme-inco/metabase.git")
   :type :string
   :visibility :admin
   :encryption :no
-  :export? false)
+  :export? false
+  :can-read-from-env? false)
 
 (defsetting remote-sync-type
   (deferred-tru "Git synchronization type - :development or :production")
@@ -56,7 +59,8 @@
                             (throw (ex-info "Remote-sync-type set to an unsupported value"
                                             {:value new-value
                                              :options (seq valid-types)})))]
-              (setting/set-value-of-type! :keyword :remote-sync-type value))))
+              (setting/set-value-of-type! :keyword :remote-sync-type value)))
+  :can-read-from-env? false)
 
 (defsetting remote-sync-auto-import
   (deferred-tru "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production.")
@@ -85,19 +89,26 @@
 (defn check-git-settings!
   "Validates git repository settings by attempting to connect and retrieve the default branch.
 
-  Takes a map with :remote-sync-url (required) and :remote-sync-token (optional) keys.
+  If no args are passed, it validates the current settings.
 
   Throws ExceptionInfo if unable to connect to the repository with the provided settings."
-  ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url   (setting/get :remote-sync-url)
-                                                                     :remote-sync-token (setting/get :remote-sync-token)})))
+  ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url    (setting/get :remote-sync-url)
+                                                                     :remote-sync-token  (setting/get :remote-sync-token)
+                                                                     :remote-sync-branch (setting/get :remote-sync-branch)
+                                                                     :remote-sync-type   (setting/get :remote-sync-type)})))
 
-  ([{:keys [remote-sync-url remote-sync-token]}]
-   (let [source
-         (try (git/git-source remote-sync-url "HEAD" remote-sync-token)
-              (catch Exception e
-                (throw (ex-info "Unable to connect to git repository with the provided settings" {:cause (.getMessage e)} e))))]
-     (when-not (git/has-data? source)
-       (throw (ex-info "Cannot connect to an uninitialized repository" {:url remote-sync-url}))))))
+  ([{:keys [remote-sync-url remote-sync-token remote-sync-branch remote-sync-type]}]
+   (when-not (or (not (str/index-of remote-sync-url ":"))
+                 (str/starts-with? remote-sync-url "file://")
+                 (and (or (str/starts-with? remote-sync-url "http://")
+                          (str/starts-with? remote-sync-url "https://"))
+                      (str/index-of remote-sync-url "github.com")))
+     (throw (ex-info "Invalid Repository URL format"
+                     {:url remote-sync-url})))
+
+   (let [source (git/git-source remote-sync-url "HEAD" remote-sync-token)]
+     (when (and (= :production remote-sync-type) (not (str/blank? remote-sync-branch)) (not (some #{remote-sync-branch} (git/branches source))))
+       (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch}))))))
 
 (defn check-and-update-remote-settings!
   "Validates and updates git sync settings in the application database.

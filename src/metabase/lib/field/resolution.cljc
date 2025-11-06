@@ -1,7 +1,7 @@
 (ns metabase.lib.field.resolution
   "Code for resolving field metadata from a field ref. There's a lot of code here, isn't there? This is probably more
   complicated than it needs to be!"
-  (:refer-clojure :exclude [not-empty some select-keys])
+  (:refer-clojure :exclude [not-empty some select-keys #?(:clj empty?)])
   (:require
    #?@(:clj
        ([metabase.config.core :as config]))
@@ -26,7 +26,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [not-empty some select-keys]]))
+   [metabase.util.performance :refer [not-empty some select-keys #?(:clj empty?)]]))
 
 (mr/def ::id-or-name
   [:or :string ::lib.schema.id/field])
@@ -614,7 +614,7 @@
   "Resolve a ref like `CATEGORY_2` to `CATEGORY` if the query only has the latter."
   [query stage-number id-or-name]
   (when (string? id-or-name)
-    (when-let [[_match original-name suffix] (re-matches #"^(\w+)_([1-9][0-9]*)$" id-or-name)]
+    (when-let [[_match original-name suffix] (re-matches #"^(\w+)_([1-9]\d*)$" id-or-name)]
       (let [suffix     (parse-long suffix)
             new-suffix (dec suffix)
             ;; e.g. `CATEGORY_3` becomes `CATEGORY_2`; `CATEGORY_2` becomes `CATEGORY`

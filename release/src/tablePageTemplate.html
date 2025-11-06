@@ -32,6 +32,20 @@
   <body class="p-5 text-gray-200 bg-gray-800">
       <h1>Metabase v{{major-version}} Release Log</h1>
       <p>as of {{current-time}}</p>
+      <h2>
+        Pending Backports
+      </h2>
+      <div>
+        {{backport-table}}
+      </div>
+      <h2>
+        Merged Changes
+      </h2>
+      <div>
+        <a href="https://github.com/metabase/metabase/commits/release-x.{{major-version}}.x/">
+          View on GitHub
+        </a>
+      </div>
       <div>
         {{release-table}}
       </div>

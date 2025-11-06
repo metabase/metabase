@@ -19,10 +19,10 @@ import {
   Loader,
   Text,
 } from "metabase/ui";
-import { sourceDatabaseId } from "metabase-enterprise/transforms/utils";
 import type { Transform } from "metabase-types/api";
 
 import { SplitSection } from "../../../components/SplitSection";
+import { sourceDatabaseId } from "../../../utils";
 import { isTransformRunning } from "../utils";
 
 import { UpdateTargetModal } from "./UpdateTargetModal";

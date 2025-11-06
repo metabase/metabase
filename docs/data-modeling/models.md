@@ -16,7 +16,7 @@ Models:
 - Can [surface individual records in search results](#surface-individual-records-in-search-by-matching-against-this-column).
 - Can be [persisted for faster loading](./model-persistence.md).
 
-For a deep dive on why and how to use models, check out our [Learn article on models][learn-models].
+For more on why and how to use models, check out our [Learn article on models][learn-models].
 
 ## How to use models
 
@@ -121,7 +121,10 @@ You can edit a model's query by clicking on the down arrow next to the model's n
 
 ## Model list view
 
-![Viewing a model as a list, with a detail view](./images/model-list-detail.png)
+![Viewing a model as a list](./images/model-list.png)
+
+List view helps you explore records one by one instead of sorting through big tables. You can customize the layout to highlight the most important fields.
+
 
 To view a model as a list:
 
@@ -131,7 +134,7 @@ To view a model as a list:
 4. Navigate to the **Settings** tab.
 5. Under "What should the default view of this data be?", toggle to **List**.
 
-![Model list view](./images/model-list-view.png)
+![Model list edit](./images/model-list-edit.png)
 
 ### Customize model list view
 
@@ -141,21 +144,18 @@ You can customize how the data appears by clicking **Customize the List layout**
 
 Each item in the list has:
 
-- An entity icon
-- A left column with:
-  - The title or primary identifier on top.
-  - A subtitle/description or secondary identifier.
-  - An image (only if the record contains an image link)
-- A right column for up to 5 additional columns.
+- **An entity icon.** If the record has an image link, it shows the image, which you can hide anytime.
+- **A left column** showing the title or primary identifier.
+- **A right column** for up to 5 additional columns.
 
 You can:
 
-- **Search for columns** using the "Find a column..." search box
-- **Drag columns** from the available list into either the left (Title + Subtitle) or right columns areas
-- **Reorder columns** by dragging them within their respective areas
+- **Search for columns** using the "Find a column..." search box.
+- **Drag columns** from the available list into either the left column or right columns areas.
+- **Reorder columns** by dragging them within their respective areas.
 - **Remove columns** by clicking on the X on the column.
 
-You can see a preview on the bottom with sample data from your model. 
+You can see a preview on the bottom with sample data from your model.
 
 Click **Done** to save your changes.
 

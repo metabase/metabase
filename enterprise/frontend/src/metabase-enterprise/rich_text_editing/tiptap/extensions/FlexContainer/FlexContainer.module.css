@@ -67,7 +67,7 @@
 
 .flexContainer:hover .resizeHandle {
   opacity: 1;
-  background-color: var(--mb-color-text-secondary-inverse);
+  background-color: var(--mb-color-text-secondary);
 }
 
 .flexContainer.resizing {

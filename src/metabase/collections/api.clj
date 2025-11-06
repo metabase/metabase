@@ -653,7 +653,7 @@
                 :personal_owner_id
                 :location
                 :archived_directly
-                [:type :collection_type]
+                :type
                 [(h2x/literal "collection") :model]
                 :authority_level])
       ;; the nil indicates that collections are never pinned.
@@ -729,13 +729,15 @@
               (assoc row :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
               (dissoc row :personal_owner_id)))]
     (for [row (annotate-collections parent-collection rows options)]
-      (-> (t2/instance :model/Collection row)
-          collection/maybe-localize-trash-name
-          (update :archived api/bit->boolean)
-          (t2/hydrate :can_write :effective_location :can_restore :can_delete)
-          (dissoc :collection_position :display :moderated_status :icon
-                  :collection_preview :dataset_query :table_id :query_type :is_upload)
-          update-personal-collection))))
+      (let [type-value (:type row)]
+        (-> (t2/instance :model/Collection row)
+            collection/maybe-localize-trash-name
+            (update :archived api/bit->boolean)
+            (t2/hydrate :can_write :effective_location :can_restore :can_delete)
+            (dissoc :collection_position :display :moderated_status :icon
+                    :collection_preview :dataset_query :table_id :query_type :is_upload)
+            (assoc :type type-value)
+            update-personal-collection)))))
 
 ;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
 (mu/defn- coalesce-edit-info :- revisions/MaybeAnnotated
@@ -757,7 +759,7 @@
 
 (defn- remove-unwanted-keys [{:keys [model] :as row}]
   (cond-> (dissoc row :model_ranking :archived_directly :total_count)
-    (not= model :collection) (dissoc :collection_type)))
+    (not= model "collection") (dissoc :type)))
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
@@ -810,7 +812,7 @@
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
-   :collection_type [:archived :boolean] [:last_used_at :timestamp]
+   :type [:archived :boolean] [:last_used_at :timestamp]
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 
@@ -850,7 +852,7 @@
     [:authority_level :asc :nulls-last]))
 
 (def ^:private normal-collections-first-sort-clause
-  [:collection_type :asc :nulls-first])
+  [:type :asc :nulls-first])
 
 (defn children-sort-clause
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
@@ -1124,6 +1126,9 @@
       #{:collection}
       #{:no_models})))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
   doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no
@@ -1444,6 +1449,9 @@
       ;; Now we can safely delete this collection and anything left under it.
       (t2/delete! :model/Collection :id id))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id/items"
   "Fetch a specific Collection's items with the following options:
 

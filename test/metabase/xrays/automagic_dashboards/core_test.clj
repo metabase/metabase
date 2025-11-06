@@ -773,7 +773,7 @@
         (let [model-card (t2/select-one :model/Card model-id)
               dashboard (magic/automagic-analysis model-card nil)
               parameter-mappings (eduction (comp (keep :parameter_mappings) cat) (:dashcards dashboard))
-              dimension? (mr/validator mbql.s/dimension)]
+              dimension? (mr/validator ::mbql.s/dimension)]
           (is (every? (comp dimension? :target) parameter-mappings)))))))
 
 (deftest test-table-title-test

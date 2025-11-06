@@ -115,7 +115,7 @@
     [:cat
      [:merge
       ::common/options
-      [:map [:mode {:optional true} ;; no mode should be iso string
+      [:map [:mode {:optional true} ; no mode should be iso string
              (into [:enum {:decode/normalize normalize-datetime-mode}]
                    datetime-string-modes)]]]
      [:schema [:ref ::expression/string]]]
@@ -134,7 +134,7 @@
       ::common/options
       [:map [:mode (into [:enum {:decode/normalize normalize-datetime-mode}]
                          datetime-binary-modes)]]]
-     :any]]])
+     [:schema [:ref ::expression/expression]]]]])
 
 ;; doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit

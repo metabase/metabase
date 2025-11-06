@@ -27,7 +27,7 @@ describe("ColorSettings", () => {
       />,
     );
 
-    const input = screen.getByPlaceholderText(color("summarize"));
+    const input = screen.getByPlaceholderText(Color(color("summarize")).hex());
     await userEvent.clear(input);
     await userEvent.type(input, color("error"));
 

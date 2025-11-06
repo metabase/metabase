@@ -1,14 +1,13 @@
+import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type {
-  DraggableProvided,
-  DropResult,
-  DroppableProvided,
-} from "react-beautiful-dnd";
-import { Draggable, Droppable } from "react-beautiful-dnd";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { DragDropContext } from "metabase/common/components/DragDropContext";
+import type {
+  DragEndEvent,
+  RenderItemProps,
+} from "metabase/common/components/Sortable";
+import { Sortable, SortableList } from "metabase/common/components/Sortable";
 import { Form, FormProvider } from "metabase/forms";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
@@ -56,6 +55,10 @@ export function FormCreator({
   onChange,
   onClose,
 }: FormCreatorProps) {
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 5 },
+  });
+
   const [formSettings, setFormSettings] = useState<ActionFormSettings>(
     passedFormSettings?.fields ? passedFormSettings : getDefaultFormSettings(),
   );
@@ -88,26 +91,28 @@ export function FormCreator({
     [validationSchema],
   );
 
-  const handleDragEnd = useCallback(
-    ({ source, destination }: DropResult) => {
+  const handleSortEnd = useCallback(
+    ({ id, newIndex }: DragEndEvent) => {
       if (!formSettings.fields) {
         return;
       }
 
-      const oldOrder = source.index;
-      const newOrder = destination?.index ?? source.index;
+      const oldIndex = form.fields.findIndex((field) => field.name === id);
+      if (oldIndex === -1) {
+        return;
+      }
 
       const reorderedFields = reorderFields(
         formSettings.fields,
-        oldOrder,
-        newOrder,
+        oldIndex,
+        newIndex,
       );
       setFormSettings({
         ...formSettings,
         fields: reorderedFields,
       });
     },
-    [formSettings],
+    [form.fields, formSettings],
   );
 
   const handleChangeFieldSettings = useCallback(
@@ -125,6 +130,32 @@ export function FormCreator({
       });
     },
     [formSettings],
+  );
+
+  const fieldSettings = formSettings.fields || {};
+
+  const renderItem = ({
+    item: field,
+    id,
+  }: RenderItemProps<(typeof form.fields)[number]>) => (
+    <Sortable
+      key={id}
+      id={id}
+      disabled={!isEditable}
+      as={FormFieldEditorDragContainer}
+      draggingStyle={{ opacity: 0.5 }}
+    >
+      {({ dragHandleRef, dragHandleListeners }) => (
+        <FormFieldEditor
+          field={field}
+          fieldSettings={fieldSettings[field.name]}
+          isEditable={isEditable}
+          onChange={handleChangeFieldSettings}
+          dragHandleRef={dragHandleRef}
+          dragHandleListeners={dragHandleListeners}
+        />
+      )}
+    </Sortable>
   );
 
   if (!parameters.length) {
@@ -150,8 +181,6 @@ export function FormCreator({
       </SidebarContent>
     );
   }
-
-  const fieldSettings = formSettings.fields || {};
 
   const showWarning = form.fields.some((field) => {
     const settings = fieldSettings[field.name];
@@ -189,37 +218,13 @@ export function FormCreator({
           onSubmit={ON_SUBMIT_NOOP}
         >
           <Form role="form" data-testid="action-form-editor">
-            <DragDropContext onDragEnd={handleDragEnd}>
-              <Droppable droppableId="action-form-droppable">
-                {(provided: DroppableProvided) => (
-                  <div {...provided.droppableProps} ref={provided.innerRef}>
-                    {form.fields.map((field, index) => (
-                      <Draggable
-                        key={`draggable-${field.name}`}
-                        draggableId={field.name}
-                        isDragDisabled={!isEditable}
-                        index={index}
-                      >
-                        {(provided: DraggableProvided) => (
-                          <FormFieldEditorDragContainer
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                          >
-                            <FormFieldEditor
-                              field={field}
-                              fieldSettings={fieldSettings[field.name]}
-                              isEditable={isEditable}
-                              onChange={handleChangeFieldSettings}
-                            />
-                          </FormFieldEditorDragContainer>
-                        )}
-                      </Draggable>
-                    ))}
-                  </div>
-                )}
-              </Droppable>
-            </DragDropContext>
+            <SortableList
+              items={form.fields}
+              getId={(field) => field.name}
+              renderItem={renderItem}
+              onSortEnd={handleSortEnd}
+              sensors={[pointerSensor]}
+            />
           </Form>
         </FormProvider>
       </FormContainer>

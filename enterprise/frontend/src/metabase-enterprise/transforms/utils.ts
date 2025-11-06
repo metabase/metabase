@@ -1,11 +1,14 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import { hasFeature } from "metabase/admin/databases/utils";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { isNotNull } from "metabase/lib/types";
+import * as Lib from "metabase-lib";
 import type {
   Database,
   DatabaseId,
+  DraftTransformSource,
   TransformRunMethod,
   TransformRunStatus,
   TransformSource,
@@ -120,4 +123,23 @@ export function parseRunMethod(value: unknown): TransformRunMethod | undefined {
     default:
       return undefined;
   }
+}
+
+export function isSameSource(
+  source1: DraftTransformSource,
+  source2: DraftTransformSource,
+) {
+  if (source1.type === "query" && source2.type === "query") {
+    return Lib.areLegacyQueriesEqual(source1.query, source2.query);
+  }
+  if (source1.type === "python" && source2.type === "python") {
+    return _.isEqual(source1, source2);
+  }
+  return false;
+}
+
+export function isNotDraftSource(
+  source: DraftTransformSource,
+): source is TransformSource {
+  return source.type !== "python" || source["source-database"] != null;
 }

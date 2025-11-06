@@ -48,6 +48,7 @@ import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
+  PLUGIN_DEPENDENCIES,
   PLUGIN_METABOT,
   PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
@@ -279,6 +280,12 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
               }}
             />
           </Route>
+          {PLUGIN_DEPENDENCIES.isEnabled && (
+            <Route
+              path="dependencies"
+              component={PLUGIN_DEPENDENCIES.DependencyGraphPage}
+            />
+          )}
         </Route>
       </Route>
     </Route>

@@ -40,9 +40,7 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
-  PLUGIN_DEPENDENCIES,
   PLUGIN_DOCUMENTS,
-  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
   PLUGIN_TABLE_EDITING,
@@ -155,16 +153,6 @@ export const getRoutes = (store) => {
             <IndexRoute component={Onboarding} />
           </Route>
 
-          {PLUGIN_DEPENDENCIES.isEnabled && (
-            <Route title={t`Dependencies`} path="dependencies">
-              <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
-              <Route
-                path=":type/:id"
-                component={PLUGIN_DEPENDENCIES.DependencyGraphPage}
-              />
-            </Route>
-          )}
-
           <Route path="search" title={t`Search`} component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}
           <Redirect from="archive" to="trash" replace />
@@ -175,11 +163,6 @@ export const getRoutes = (store) => {
           />
 
           {PLUGIN_DOCUMENTS.getRoutes()}
-
-          <Route
-            path="embed-js"
-            component={PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetup}
-          />
 
           <Route
             path="collection/entity/:entity_id(**)"

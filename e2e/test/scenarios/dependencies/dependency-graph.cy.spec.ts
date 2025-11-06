@@ -3,12 +3,10 @@ const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
-  ALL_USERS_GROUP_ID,
   FIRST_COLLECTION_ID,
   ORDERS_DASHBOARD_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import type { IconName } from "metabase/ui";
 import type {
   CardId,
@@ -21,7 +19,7 @@ import type {
   TransformId,
 } from "metabase-types/api";
 
-const BASE_URL = "/dependencies";
+const BASE_URL = "/admin/tools/dependencies";
 const TABLE_NAME = "scoreboard_actions";
 const TABLE_DISPLAY_NAME = "Scoreboard Actions";
 const TABLE_ID_ALIAS = "tableId";
@@ -237,6 +235,7 @@ describe("scenarios > dependencies > dependency graph", () => {
         .click();
       graphEntryButton().findByText(dependentItemTitle).should("be.visible");
       cy.go("back");
+      graphEntryButton().findByText(itemTitle).should("be.visible");
     }
 
     it("should display dependencies for a table and navigate to them", () => {
@@ -525,62 +524,6 @@ describe("scenarios > dependencies > dependency graph", () => {
       });
     });
   });
-
-  describe("permissions", () => {
-    it("should be able to view database entities without collection access", () => {
-      cy.updatePermissionsGraph({
-        [ALL_USERS_GROUP_ID]: {
-          [WRITABLE_DB_ID]: {
-            "view-data": DataPermissionValue.UNRESTRICTED,
-            "create-queries": DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
-          },
-        },
-      });
-
-      getScoreboardTableId().then((tableId) => {
-        createTableBasedQuestion({ tableId });
-        createTableBasedModel({ tableId });
-        createTableBasedMetric({ tableId });
-        createTableBasedTransform({ tableName: TABLE_NAME });
-        cy.signIn("nocollection");
-        visitGraphForEntity(tableId, "table");
-      });
-
-      dependencyGraph().within(() => {
-        cy.findByLabelText(TABLE_DISPLAY_NAME).within(() => {
-          cy.findByText(/question/).should("not.exist");
-          cy.findByText(/model/).should("not.exist");
-          cy.findByText(/metric/).should("not.exist");
-          cy.findByText(/transform/).should("not.exist");
-        });
-      });
-    });
-
-    it("should be able to view collection entities without data access", () => {
-      getScoreboardTableId()
-        .then((tableId) => createTableBasedQuestion({ tableId }))
-        .then(({ body: card }) => {
-          createCardBasedQuestion({ cardId: card.id });
-          createCardBasedModel({ cardId: card.id });
-          createCardBasedMetric({ cardId: card.id });
-          createCardBasedTransform({ cardId: card.id });
-          createCardBasedSnippet({ cardId: card.id });
-          cy.signIn("nodata");
-          visitGraphForEntity(card.id, "card");
-        });
-
-      dependencyGraph().within(() => {
-        cy.findByLabelText(TABLE_DISPLAY_NAME).should("not.exist");
-        cy.findByLabelText(TABLE_BASED_QUESTION_NAME).within(() => {
-          cy.findByText("1 question").should("be.visible");
-          cy.findByText("1 model").should("be.visible");
-          cy.findByText("1 metric").should("be.visible");
-          cy.findByText(/snippet/).should("not.exist");
-          cy.findByText(/transform/).should("not.exist");
-        });
-      });
-    });
-  });
 });
 
 function visitGraph() {
@@ -588,7 +531,7 @@ function visitGraph() {
 }
 
 function visitGraphForEntity(id: DependencyId, type: DependencyType) {
-  return cy.visit(`/${BASE_URL}/${type}/${id}`);
+  return cy.visit(BASE_URL, { qs: { id, type } });
 }
 
 function dependencyGraph() {

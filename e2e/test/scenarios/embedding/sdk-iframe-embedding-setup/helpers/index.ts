@@ -1,6 +1,6 @@
 import { match } from "ts-pattern";
 
-import { entityPickerModal } from "e2e/support/helpers";
+import { entityPickerModal, modal } from "e2e/support/helpers";
 import type { Dashboard, RecentItem } from "metabase-types/api";
 
 type RecentActivityIntercept = {
@@ -11,21 +11,24 @@ type DashboardIntercept = {
   response: Cypress.Response<Dashboard>;
 };
 
-export const getEmbedSidebar = () => cy.findByRole("complementary");
+export const getEmbedSidebar = () =>
+  modal()
+    .first()
+    .within(() => cy.findByRole("complementary"));
 
 export const getRecentItemCards = () =>
   cy.findAllByTestId("embed-recent-item-card");
 
-export const visitNewEmbedPage = ({ locale }: { locale?: string } = {}) => {
+export const visitNewEmbedPage = () => {
   cy.intercept("GET", "/api/dashboard/*").as("dashboard");
 
-  const params = new URLSearchParams();
+  cy.visit("/admin/embedding");
 
-  if (locale) {
-    params.append("locale", locale);
-  }
-
-  cy.visit("/embed-js?" + params);
+  cy.findAllByTestId("sdk-setting-card")
+    .first()
+    .within(() => {
+      cy.findByText("New embed").click();
+    });
 
   cy.wait("@dashboard");
 
@@ -136,6 +139,15 @@ export const navigateToGetCodeStep = (options: NavigateToStepOptions) => {
   cy.log("navigate to get code step");
   getEmbedSidebar().within(() => {
     cy.findByText("Get code").click(); // Get code step
+  });
+};
+
+export const completeWizard = (options: NavigateToStepOptions) => {
+  navigateToGetCodeStep(options);
+
+  cy.log("complete wizard");
+  getEmbedSidebar().within(() => {
+    cy.findByText("Done").click();
   });
 };
 

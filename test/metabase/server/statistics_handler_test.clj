@@ -80,8 +80,7 @@
     (.start connector)
     (thunk connector chan-start-handle chan-finish-handle chan-done-request)
     (.stop connector)
-    (.stop server)
-    (.join server)))
+    (.stop server)))
 
 (defmacro with-server
   [status-code async arguments & body]

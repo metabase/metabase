@@ -121,6 +121,8 @@
                              :num_parameters (count parameters)})
     action))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/public_link"
   "Generate publicly-accessible links for this Action. Returns UUID to be used in public links. (If this
   Action has already been shared, it will return the existing public link rather than creating a new one.) Public
@@ -137,6 +139,8 @@
                              {:public_uuid <>
                               :made_public_by_id api/*current-user-id*})))}))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :delete "/:id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
   [{:keys [id]} :- [:map

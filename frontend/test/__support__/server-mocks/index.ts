@@ -10,6 +10,7 @@ export * from "./bookmark";
 export * from "./bug-report";
 export * from "./card";
 export * from "./collection";
+export * from "./comment";
 export * from "./constants";
 export * from "./dashboard";
 export * from "./database";

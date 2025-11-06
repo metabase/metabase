@@ -156,9 +156,8 @@ export type ExecutionResult = {
 };
 
 type TestPythonScriptState = {
-  isRunning: boolean;
-  isDirty: boolean;
   executionResult: ExecutionResult | null;
+  isRunning: boolean;
   run: () => void;
   cancel: () => void;
 };
@@ -166,13 +165,10 @@ type TestPythonScriptState = {
 export function useTestPythonTransform(
   source: PythonTransformSourceDraft,
 ): TestPythonScriptState {
-  const [executePython, { isLoading: isRunning, originalArgs }] =
-    useExecutePythonMutation();
+  const [executePython, { isLoading: isRunning }] = useExecutePythonMutation();
   const abort = useRef<(() => void) | null>(null);
   const [executionResult, setData] =
     useState<ExecutePythonTransformResponse | null>(null);
-
-  const isDirty = originalArgs?.code !== source.body;
 
   const run = async () => {
     if (source["source-database"] === undefined) {
@@ -205,11 +201,10 @@ export function useTestPythonTransform(
   };
 
   return {
-    isRunning,
-    isDirty,
-    cancel,
-    run,
     executionResult,
+    isRunning,
+    run,
+    cancel,
   };
 }
 

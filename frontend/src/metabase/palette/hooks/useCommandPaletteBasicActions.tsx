@@ -13,9 +13,16 @@ import {
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_DOCUMENTS } from "metabase/plugins";
+import {
+  PLUGIN_DOCUMENTS,
+  type SdkIframeEmbedSetupModalProps,
+} from "metabase/plugins";
 import { openDiagnostics } from "metabase/redux/app";
-import { closeModal, setOpenModal } from "metabase/redux/ui";
+import {
+  closeModal,
+  setOpenModal,
+  setOpenModalWithProps,
+} from "metabase/redux/ui";
 import {
   getHasDataAccess,
   getHasDatabaseWithActionsEnabled,
@@ -26,6 +33,7 @@ import {
   getUserPersonalCollectionId,
 } from "metabase/selectors/user";
 import { useColorScheme } from "metabase/ui";
+import type { ModalName } from "metabase-types/store/modal";
 
 import {
   type RegisterShortcutProps,
@@ -60,9 +68,19 @@ export const useCommandPaletteBasicActions = ({
   const hasEmbedJsFeature = useHasTokenFeature("embedding_simple");
 
   const openNewModal = useCallback(
-    (modalId: string) => {
+    (modalId: ModalName) => {
       dispatch(closeModal());
       dispatch(setOpenModal(modalId));
+    },
+    [dispatch],
+  );
+  const openNewModalWithProps = useCallback(
+    <TProps extends Record<string, unknown>>(
+      modalId: ModalName,
+      props?: TProps,
+    ) => {
+      dispatch(closeModal());
+      dispatch(setOpenModalWithProps({ id: modalId, props }));
     },
     [dispatch],
   );
@@ -233,7 +251,10 @@ export const useCommandPaletteBasicActions = ({
         section: "basic",
         icon: "embed",
         keywords: "embed flow, new embed, embed js",
-        perform: () => dispatch(push("/embed-js")),
+        perform: () =>
+          openNewModalWithProps<
+            Pick<SdkIframeEmbedSetupModalProps, "initialState">
+          >("embed"),
       });
     }
 
@@ -266,6 +287,7 @@ export const useCommandPaletteBasicActions = ({
     hasNativeWrite,
     collectionId,
     openNewModal,
+    openNewModalWithProps,
     isAdmin,
     personalCollectionId,
     hasEmbedJsFeature,

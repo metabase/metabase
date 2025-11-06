@@ -51,6 +51,7 @@ To edit a chart, click the **three-dot** menu in the chart's upper right. You ca
 - Edit visualization
 - Edit query
 - Replace the chart with another question or model
+- [Download results](../questions/exporting-results.md#exporting-results-from-document-cards)
 
 Edits only affect the chart in the document. If you added the chart from a collection, Metabase will have created a copy of the chart. Any changes made to the chart in the document won't affect the original question.
 
@@ -122,6 +123,10 @@ This deletion is permanent.
 ## Printing documents
 
 To print a document, click on the **three-dot** menu and select **Print document**.
+
+## Sharing documents
+
+Admins can create [public links](../embedding/public-links.md#create-a-public-link-for-a-document) to share documents with anyone.
 
 ## When to use a document vs. a dashboard
 

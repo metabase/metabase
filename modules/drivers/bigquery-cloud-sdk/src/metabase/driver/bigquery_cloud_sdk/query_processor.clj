@@ -1,5 +1,5 @@
 (ns metabase.driver.bigquery-cloud-sdk.query-processor
-  (:refer-clojure :exclude [select-keys some])
+  (:refer-clojure :exclude [select-keys some not-empty])
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -20,7 +20,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [select-keys some]])
+   [metabase.util.performance :refer [select-keys some not-empty]])
   (:import
    (com.google.cloud.bigquery
     Field

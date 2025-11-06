@@ -6,5 +6,5 @@
 
 (mr/def ::segment
   [:map
-   [:filter      {:optional true} [:maybe mbql.s/Filter]]
-   [:aggregation {:optional true} [:maybe [:sequential ::mbql.s/Aggregation]]]])
+   [:filter      {:optional true} [:maybe [:ref ::mbql.s/Filter]]]
+   [:aggregation {:optional true} [:maybe [:sequential [:ref ::mbql.s/Aggregation]]]]])

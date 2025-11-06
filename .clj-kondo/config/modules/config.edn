@@ -46,7 +46,7 @@
 ;; you need to make
 {:metabase/modules
  {actions
-  {:team "Workflows"
+  {:team "Gadget"
    :api  #{metabase.actions.api
            metabase.actions.args
            metabase.actions.core
@@ -249,7 +249,7 @@
 
   ;; TODO -- way too many API namespaces.
   channel
-  {:team "Workflows"
+  {:team "Gadget"
    :api  #{metabase.channel.api
            metabase.channel.core
            metabase.channel.email
@@ -557,9 +557,10 @@
            util}}
 
   glossary
-  {:team "Workflows"
+  {:team "Gadget"
    :api  #{metabase.glossary.api}
    :uses #{api
+           events
            models
            util}}
 
@@ -604,6 +605,7 @@
    :api  #{metabase.lib.binning
            metabase.lib.binning.util
            metabase.lib.card
+           metabase.lib.computed ; temporarily so that `qp.compile` can use it as lib memoization evolves
            metabase.lib.core
            metabase.lib.equality
            metabase.lib.field
@@ -740,7 +742,7 @@
            util}}
 
   notification
-  {:team "Workflows"
+  {:team "Gadget"
    :api  #{metabase.notification.api
            metabase.notification.core
            metabase.notification.init
@@ -848,7 +850,6 @@
            app-db
            channel
            config
-           driver
            premium-features
            settings
            task
@@ -876,7 +877,7 @@
            util}}
 
   pulse
-  {:team "Workflows"
+  {:team "Gadget"
    :api  #{metabase.pulse.api
            metabase.pulse.core
            metabase.pulse.init}
@@ -1084,7 +1085,6 @@
            audit-app
            collections
            config
-           driver
            events
            lib
            lib-be
@@ -1157,7 +1157,6 @@
            app-db
            channel
            config
-           driver
            events
            login-history
            request
@@ -1506,12 +1505,13 @@
            warehouse-schema}}
 
   enterprise/action-v2
-  {:team "Workflows"
+  {:team "Gadget"
    :api  #{metabase-enterprise.action-v2.api
            metabase-enterprise.action-v2.init}
    :uses #{actions
            api
            driver
+           events
            lib
            models
            query-processor
@@ -1624,7 +1624,9 @@
   {:team "UX West"
    :api  #{metabase-enterprise.billing.api.routes}
    :uses #{api
-           premium-features util}}
+           premium-features
+           store-api
+           util}}
 
   enterprise/bookmarks
   {:team "UX West"
@@ -1646,11 +1648,12 @@
    :uses #{api
            events
            premium-features
+           store-api
            util
            enterprise/harbormaster}}
 
   enterprise/comments
-  {:team "Workflows"
+  {:team "UX West"
    :api  #{metabase-enterprise.comments.api
            metabase-enterprise.comments.init}
    :uses #{analytics
@@ -1686,7 +1689,7 @@
    :uses :any}
 
   enterprise/dashboard-subscription-filters
-  {:team "Workflows"
+  {:team "Querying"
    :api  #{}
    :uses #{premium-features}}
 
@@ -1734,6 +1737,7 @@
            lib-be
            models
            native-query-snippets
+           permissions
            premium-features
            queries
            query-processor
@@ -1757,8 +1761,10 @@
            events
            models
            premium-features
+           public-sharing
            queries
            query-permissions
+           query-processor
            revisions
            search
            util
@@ -1890,6 +1896,16 @@
    :uses #{premium-features
            util}}
 
+  enterprise/public-sharing
+  {:team "UX West"
+   :api  #{metabase-enterprise.public-sharing.api}
+   :uses #{api
+           events
+           premium-features
+           public-sharing
+           query-processor
+           util}}
+
   enterprise/remote-sync
   {:team "UX West"
    :api  #{metabase-enterprise.remote-sync.api
@@ -1903,8 +1919,8 @@
            models
            premium-features
            settings
-           startup
            task
+           task-history
            util
            enterprise/serialization}}
 
@@ -1975,7 +1991,7 @@
            enterprise/metabot-v3}}
 
   enterprise/serialization
-  {:team "Workflows"
+  {:team "Querying"
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core

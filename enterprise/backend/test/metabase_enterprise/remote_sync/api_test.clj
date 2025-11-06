@@ -29,10 +29,8 @@
         branches))
     (default-branch [_]
       "main")
-    (list-files [_] [])
-    (read-file [_ _] "")
-    (write-files! [_ _ _] nil)
-    (version [_] "mock-version")))
+    (snapshot [_]
+      nil)))
 
 (use-fixtures :once
   (fixtures/initialize :db)
@@ -527,8 +525,8 @@
 (deftest settings-handles-invalid-settings-test
   (testing "PUT /api/ee/remote-sync/settings handles invalid settings"
     (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                         {:remote-sync-url "invalid-url"})]
-      (is (= "Unable to connect to git repository with the provided settings" (:error response))))))
+                                         {:remote-sync-url "asdf://invalid-url"})]
+      (is (= "Invalid Repository URL format" (:error response))))))
 
 (deftest settings-cannot-change-with-dirty-data
   (testing "PUT /api/ee/remote-sync/settings doesn't allow loosing dirty data"
@@ -570,12 +568,12 @@
                                        remote-sync-token "test-token"
                                        remote-sync-branch "main"
                                        remote-sync-type :development]
-      (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Card"
-                                                :model_id 1
-                                                :status "updated"
-                                                :status_changed_at (java.time.OffsetDateTime/now)}]
+      (mt/with-temp [:model/RemoteSyncObject remote-sync {:model_type "Card"
+                                                          :model_id 1
+                                                          :status "updated"
+                                                          :status_changed_at (java.time.OffsetDateTime/now)}]
         (with-redefs [source/source-from-settings (constantly mock-source)
-                      impl/async-export!          (fn [_ _ _] (swap! export-calls inc))]
+                      impl/async-export!          (fn [_ _ _] (assoc remote-sync :calls (swap! export-calls inc)))]
           (is (=? {:status "success"
                    :message "Stashing to feature-branch"}
                   (mt/user-http-request :crowberto :post 200 "ee/remote-sync/stash"

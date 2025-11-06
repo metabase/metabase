@@ -8,8 +8,7 @@
    [metabase.driver :as driver]
    ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
    ;; Lib only soon
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core]
    [metabase.lib.core :as lib]
    [metabase.query-processor.schema :as qp.schema]
@@ -84,8 +83,8 @@
 (defn- field-normalizer
   {:deprecated "0.57.0"}
   [field]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (let [[type id-or-name options] (mbql.normalize/normalize-tokens field)]
+  (let [[type id-or-name options] (lib/normalize ::mbql.s/field field)]
+    #_{:clj-kondo/ignore [:deprecated-var]}
     [type id-or-name (select-keys options field-options-for-identification)]))
 
 ;;; TODO (Cam 9/10/25) -- this logic is all wrong and needs to use Lib instead

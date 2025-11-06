@@ -196,6 +196,19 @@ describe("EditableDashboard", () => {
     expect(dataPickerDataCallUrl).toContain("models=dataset");
     expect(dataPickerDataCallUrl).not.toContain("models=table");
   });
+
+  it("should show 'Add a chart' button on empty dashboards", async () => {
+    await setup({ dashcards: [] });
+
+    expect(screen.getByText("This dashboard is empty")).toBeInTheDocument();
+    expect(screen.getByText("Add a chart")).toBeInTheDocument();
+  });
+
+  it("should allow editing the dashboard title", async () => {
+    await setup();
+
+    expect(screen.getByTestId("dashboard-name-heading")).toBeEnabled();
+  });
 });
 
 function setupSimpleDataPickerEndpoints() {

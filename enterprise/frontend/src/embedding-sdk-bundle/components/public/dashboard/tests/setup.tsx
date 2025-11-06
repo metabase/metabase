@@ -23,6 +23,7 @@ import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Box } from "metabase/ui";
+import type { DashboardCard } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -102,7 +103,11 @@ export const textDashcard2 = createMockTextDashboardCard({
   dashboard_tab_id: dashboardTabs[1].id,
 });
 
-export const dashcards = [tableDashcard, textDashcard, textDashcard2];
+export const DEFAULT_DASHCARDS: DashboardCard[] = [
+  tableDashcard,
+  textDashcard,
+  textDashcard2,
+];
 
 export interface SetupSdkDashboardOptions {
   props?: Partial<SdkDashboardProps>;
@@ -111,6 +116,7 @@ export interface SetupSdkDashboardOptions {
   component: React.ComponentType<SdkDashboardProps>;
   dashboardName?: string;
   dataPickerProps?: EditableDashboardProps["dataPickerProps"];
+  dashcards?: DashboardCard[];
 }
 
 jest.mock("metabase/common/hooks/use-locale", () => ({
@@ -124,6 +130,7 @@ export const setupSdkDashboard = async ({
   component: Component,
   dashboardName = "Dashboard",
   dataPickerProps,
+  dashcards = DEFAULT_DASHCARDS,
 }: SetupSdkDashboardOptions) => {
   const useLocaleMock = useLocale as jest.Mock;
   useLocaleMock.mockReturnValue({ isLocaleLoading });
@@ -212,7 +219,14 @@ export const setupSdkDashboard = async ({
   );
 
   if (!isLocaleLoading) {
-    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+    if (dashcards.length === 0) {
+      // For empty dashboards, wait for the empty state instead of the grid
+      expect(
+        await screen.findByTestId("dashboard-empty-state"),
+      ).toBeInTheDocument();
+    } else {
+      expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+    }
   }
 
   return {

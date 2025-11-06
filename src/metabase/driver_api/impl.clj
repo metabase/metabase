@@ -1,11 +1,9 @@
 (ns metabase.driver-api.impl
   {:clj-kondo/config
    '{:linters
-     {:discouraged-namespace {metabase.legacy-mbql.util      {:level :off}
-                              metabase.query-processor.store {:level :off}}
+     {:discouraged-namespace {metabase.query-processor.store {:level :off}}
       :deprecated-namespace  {:exclude [metabase.query-processor.store]}}}}
   (:require
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
@@ -38,12 +36,31 @@
       ~ks
       (fn [] ~@body))))
 
+(defn mbql-clause?
+  "True if `x` is an MBQL clause (a sequence with a keyword as its first arg)."
+  [x]
+  (and (sequential? x)
+       (not (map-entry? x))
+       (keyword? (first x))))
+
+(defn is-clause?
+  "If `x` is an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
+
+    (is-clause? :count [:count 10])        ; -> true
+    (is-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> true"
+  [k-or-ks x]
+  (and
+   (mbql-clause? x)
+   (if (coll? k-or-ks)
+     ((set k-or-ks) (first x))
+     (= k-or-ks (first x)))))
+
 (defn dispatch-by-clause-name-or-class
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
   clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
   ([x]
    (letfn [(clause-type [x]
-             (when (mbql.u/mbql-clause? x)
+             (when (mbql-clause? x)
                (first x)))
            (mbql5-lib-type [x]
              (when (map? x)

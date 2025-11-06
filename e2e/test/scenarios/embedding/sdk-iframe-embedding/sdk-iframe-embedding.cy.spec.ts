@@ -413,11 +413,13 @@ H.describeWithSnowplowEE(
     });
 
     it("should not send an Embedded Analytics JS usage event in the preview", () => {
-      cy.visit("/embed-js");
+      cy.visit(`/question/${ORDERS_QUESTION_ID}`);
+
+      H.openEmbedJsModal();
 
       H.waitForSimpleEmbedIframesToLoad();
       H.getSimpleEmbedIframeContent().within(() => {
-        cy.findByText("Orders in a dashboard").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
       });
 
       H.expectUnstructuredSnowplowEvent(

@@ -185,7 +185,7 @@
   #_{:clj-kondo/ignore [:deprecated-var]}
   {:database (id)
    :type     :native
-   :native   (mbql.normalize/normalize-fragment [:native] inner-native-query)})
+   :native   (mbql.normalize/normalize ::mbql.s/NativeQuery inner-native-query)})
 
 (defn run-mbql-query* [query]
   ;; catch the Exception and rethrow with the query itself so we can have a little extra info for debugging if it fails.
