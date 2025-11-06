@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-962-compute-default-theme-colors-based-on-appearance-settings",
-    "hash": "2ca16293705f95728843f99256ab75686562cd42"
+    "hash": "3b2b97b4c62639f020068473ae5658317192c9fb"
   },
   "upstream": {
     "branch": "emb-942-add-embedding-theme-preview-placeholder-cards-to-theme"
