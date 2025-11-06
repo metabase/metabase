@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import Markdown from "metabase/common/components/Markdown";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import { Avatar, Flex, Stack, Text } from "metabase/ui";
 import type { Card } from "metabase-types/api";
@@ -31,7 +32,9 @@ export function SemanticEntityOverview({ card }: SemanticEntityOverviewProps) {
             </Stack>
           </Flex>
         )}
-        {card.description && <Text>{card.description}</Text>}
+        {card.description && (
+          <Markdown c="text-primary">{card.description}</Markdown>
+        )}
         {card.table_id != null ? (
           <Stack gap={2}>
             <Text size="sm" fw={700}>
