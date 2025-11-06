@@ -106,6 +106,7 @@ function ModelFieldsPageBody({
   };
 
   const handleSave = async () => {
+    setIsSorting(false);
     const { error } = await updateCard({
       id: card.id,
       result_metadata: fields,
