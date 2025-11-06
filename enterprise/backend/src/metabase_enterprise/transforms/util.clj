@@ -8,6 +8,7 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -48,7 +49,7 @@
   [transform]
   (when (query-transform? transform)
     (let [query (-> transform :source :query)]
-      (lib/native-only-query? query))))
+      (lib/native-only-query? (lib-be/normalize-query query)))))
 
 (defn python-transform?
   "Check if this is a Python transform."
@@ -61,7 +62,7 @@
   [source]
   (case (keyword (:type source))
     :python :python
-    :query  (if (lib/native-only-query? (:query source))
+    :query  (if (lib/native-only-query? (lib-be/normalize-query (:query source)))
               :native
               :mbql)
     (throw (ex-info (str "Unknown transform source type: " (:type source))
