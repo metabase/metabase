@@ -176,22 +176,33 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
 
       <Box px="xl">
         <Group justify="stretch" gap="sm">
-          <Box style={{ flexGrow: 1 }}>
-            <TableLink table={table} />
-          </Box>
           {!isSorting && (
             <Box style={{ flexGrow: 1 }}>
               <Tooltip label={t`Sync options`}>
                 <Button
-                  leftSection={<Icon name="gear_settings_filled" />}
+                  leftSection={<Icon name="settings" />}
                   onClick={onSyncOptionsClick}
                   style={{
                     width: "100%",
                   }}
-                />
+                >
+                  {t`Sync settings`}
+                </Button>
               </Tooltip>
             </Box>
           )}
+          <Box style={{ flexGrow: 1 }}>
+            <Tooltip label={t`Create model and publish to collection`}>
+              <Button
+                onClick={() => setIsCreateModelsModalOpen(true)}
+                p="sm"
+                leftSection={<Icon name="add_folder" />}
+                style={{
+                  width: "100%",
+                }}
+              >{t`Publish`}</Button>
+            </Tooltip>
+          </Box>
           <Button
             component={Link}
             onClick={(event) => {
@@ -207,20 +218,12 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
             }
             style={{
               backgroundColor: "var(--mb-color-accent-gray-light)",
-              flexGrow: 1,
+              flexGrow: 0,
+              width: 40,
             }}
           />
-          <Box style={{ flexGrow: 1 }}>
-            <Tooltip label={t`Create model`}>
-              <Button
-                onClick={() => setIsCreateModelsModalOpen(true)}
-                p="sm"
-                leftSection={<Icon name="model" />}
-                style={{
-                  width: "100%",
-                }}
-              />
-            </Tooltip>
+          <Box style={{ flexGrow: 0, width: 40 }}>
+            <TableLink table={table} />
           </Box>
         </Group>
       </Box>

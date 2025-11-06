@@ -382,6 +382,8 @@ import segment_component from "./segment.svg?component";
 import segment_source from "./segment.svg?source";
 import send_component from "./send.svg?component";
 import send_source from "./send.svg?source";
+import settings_component from "./settings.svg?component";
+import settings_source from "./settings.svg?source";
 import share_component from "./share.svg?component";
 import share_source from "./share.svg?source";
 import shield_component from "./shield.svg?component";
@@ -1201,6 +1203,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: sankey_component,
       source: sankey_source,
     },
+    settings: {
+      component: settings_component,
+      source: settings_source,
+    },
     share: {
       component: share_component,
       source: share_source,
@@ -1713,6 +1719,7 @@ export type IconName =
   | "sankey"
   | "share"
   | "send"
+  | "settings"
   | "smile"
   | "split"
   | "sql"
