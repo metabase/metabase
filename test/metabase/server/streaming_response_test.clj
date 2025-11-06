@@ -151,7 +151,7 @@
                           (Thread/sleep (long wait))
                           (recur more))))))))))))
 
-(deftest canceling-chan-is-not-working-test
+(deftest canceling-chan-is-working-test
   (let [cnt      (atom 30)
         canceled (atom nil)
         handler  (fn [req respond _raise]
@@ -160,18 +160,16 @@
                      (streaming-response/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
                        (try
                          (loop []
-                           (.write os (.getBytes (str "msg-" @cnt)))
-                           (.write os (.getBytes "\n"))
-                           (.flush os)
-                           (swap! cnt dec)
-                           (Thread/sleep 1)
-                           ;; NOTE: we never get anything in there because `do-f*`, which puts stuff on canceled-chan,
-                           ;; reacts to an exception which you get when you try to write to a closed OutputStream. So
-                           ;; the body is interrupted.
-                           (when (a/poll! canceled-chan)
-                             (reset! canceled :nice))
-                           (when (or (pos? @cnt) (nil? @canceled))
-                             (recur)))
+                           (if (a/poll! canceled-chan)
+                             (reset! canceled :nice)
+                             (do
+                               (.write os (.getBytes (str "msg-" @cnt)))
+                               (.write os (.getBytes "\n"))
+                               (.flush os)
+                               (swap! cnt dec)
+                               (Thread/sleep 10)
+                               (when (pos? @cnt)
+                                 (recur)))))
                          (catch Exception _e
                            (reset! canceled :not-nice))))
                      req)))
@@ -179,17 +177,22 @@
                    .start)
         url      (str "http://localhost:" (.. server getURI getPort))]
     (try
-      (let [res   (http/request {:method :post :url url
-                                 :as :stream
-                                 :decompress-body false})]
-        (.close ^java.io.Closeable (:body res)) ;; cancel the request
-        (Thread/sleep 10)
-        ;; it's been 28 when I tested this, if it every becomes flaky maybe decrease the number?
-        (is (< 20 @cnt) "Stopped writing when channel closed")
-        #_(testing "canceled-chan is working"
-            (is (= :nice @canceled) "Request has been canceled by looking at `canceled-chan`"))
-        (testing "canceled-chan is not working"
-          (is (= :not-nice @canceled) "Request has been canceled, but at what cost?")))
+      (with-redefs [streaming-response/async-cancellation-poll-interval-ms 5]
+        (testing "Closing body stops request handler"
+          (let [res (http/request {:method          :post :url url
+                                   :as              :stream
+                                   :decompress-body false})]
+            (.read ^java.io.InputStream (:body res)) ;; start the handler
+            (.close ^java.io.Closeable (:body res))
+            (loop [i 10] ;; poll for request cancellation
+              (when (and (pos? i)
+                         (not @canceled))
+                (Thread/sleep 5)
+                (recur (dec i))))
+            ;; it's been 29 when I tested this, if it every becomes flaky maybe decrease the number?
+            (is (< 20 @cnt) "Stopped writing when channel closed")
+            (testing "canceled-chan is working"
+              (is (= :nice @canceled))))))
       (finally
         (.stop server)))))
 
