@@ -128,9 +128,9 @@ function getCreateRequest(
     name: name,
     description,
     type: "metric",
-    display,
     dataset_query: Lib.toJsQuery(query),
-    visualization_settings: settings,
     result_metadata: resultMetadata,
+    display,
+    visualization_settings: settings,
   };
 }

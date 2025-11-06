@@ -20,19 +20,21 @@ import type {
 } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../../constants";
-import type { FieldPatch } from "../types";
+import type { FieldPatch } from "../../../types";
 
 import S from "./ModelFieldDetails.module.css";
 
 type ModelFieldDetailsProps = {
   field: Field;
   idFields: Field[];
+  isReadOnly: boolean;
   onChangeField: (field: Field, patch: FieldPatch) => void;
 };
 
 export function ModelFieldDetails({
   field,
   idFields,
+  isReadOnly,
   onChangeField,
 }: ModelFieldDetailsProps) {
   const denyList = useMemo(() => {
@@ -74,7 +76,12 @@ export function ModelFieldDetails({
           nameMaxLength={NAME_MAX_LENGTH}
           namePlaceholder={t`Give this field a name`}
           description={field.description ?? ""}
-          descriptionPlaceholder={t`Give this field a description`}
+          descriptionPlaceholder={
+            isReadOnly
+              ? t`No description yet`
+              : t`Give this field a description`
+          }
+          readOnly={isReadOnly}
           onNameChange={handleNameChange}
           onDescriptionChange={handleDescriptionChange}
         />
@@ -86,34 +93,38 @@ export function ModelFieldDetails({
             {field.database_type}
           </LabeledValue>
         </TitledSection>
-        <TitledSection title={t`Metadata`}>
-          <SemanticTypeAndTargetPicker
-            label={t`Semantic type`}
-            description={t`What this data represents`}
-            field={field}
-            idFields={idFields}
-            onChange={handleChange}
-          />
-        </TitledSection>
-        <TitledSection title={t`Behavior`}>
-          <FieldVisibilityPicker
-            label={t`Visibility`}
-            description={t`Where this field should be displayed`}
-            value={field.visibility_type}
-            onChange={handleVisibilityChange}
-          />
-        </TitledSection>
-        <TitledSection title={t`Formatting`}>
-          <ColumnSettings
-            value={field.settings ?? {}}
-            column={field}
-            denylist={denyList}
-            extraData={{ forAdminSettings: true }}
-            inheritedSettings={inheritedSettings}
-            style={{ maxWidth: undefined }}
-            onChange={handleSettingsChange}
-          />
-        </TitledSection>
+        {!isReadOnly && (
+          <>
+            <TitledSection title={t`Metadata`}>
+              <SemanticTypeAndTargetPicker
+                label={t`Semantic type`}
+                description={t`What this data represents`}
+                field={field}
+                idFields={idFields}
+                onChange={handleChange}
+              />
+            </TitledSection>
+            <TitledSection title={t`Behavior`}>
+              <FieldVisibilityPicker
+                label={t`Visibility`}
+                description={t`Where this field should be displayed`}
+                value={field.visibility_type}
+                onChange={handleVisibilityChange}
+              />
+            </TitledSection>
+            <TitledSection title={t`Formatting`}>
+              <ColumnSettings
+                value={field.settings ?? {}}
+                column={field}
+                denylist={denyList}
+                extraData={{ forAdminSettings: true }}
+                inheritedSettings={inheritedSettings}
+                style={{ maxWidth: undefined }}
+                onChange={handleSettingsChange}
+              />
+            </TitledSection>
+          </>
+        )}
       </Flex>
     </Flex>
   );

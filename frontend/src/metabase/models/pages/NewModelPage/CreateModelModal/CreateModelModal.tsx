@@ -126,9 +126,9 @@ function getCreateRequest(
   return {
     name: name,
     description,
-    display: "table",
     dataset_query: Lib.toJsQuery(query),
-    visualization_settings: {},
     result_metadata: resultMetadata,
+    display: "table",
+    visualization_settings: {},
   };
 }

@@ -3,10 +3,45 @@ import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import type { DatasetColumn, Field } from "metabase-types/api";
 
-export type ValidationResult = {
-  isValid: boolean;
-  errorMessage?: string;
-};
+import type { FieldPatch, ValidationResult } from "./types";
+
+export function getFieldPatch(field: Field | DatasetColumn): FieldPatch {
+  const {
+    display_name,
+    description,
+    semantic_type,
+    fk_target_field_id,
+    visibility_type,
+    settings,
+  } = field;
+  return {
+    display_name,
+    description,
+    semantic_type,
+    fk_target_field_id,
+    visibility_type,
+    settings,
+  };
+}
+
+export function mergeFieldMetadata(
+  queryMetadata: Field[] | DatasetColumn[] | null,
+  savedMetadata: Field[] | DatasetColumn[] | null,
+) {
+  if (queryMetadata == null || savedMetadata == null) {
+    return queryMetadata;
+  }
+
+  const savedFieldByName = Object.fromEntries(
+    savedMetadata.map((savedField) => [savedField.name, savedField]),
+  );
+  return queryMetadata.map((queryField) => {
+    const savedField = savedFieldByName[queryField.name];
+    return savedField == null
+      ? queryField
+      : { ...queryField, ...getFieldPatch(savedField) };
+  });
+}
 
 export function getValidationResult(
   query: Lib.Query,

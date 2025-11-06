@@ -5,7 +5,7 @@ import { FieldList } from "metabase/metadata/components/FieldList";
 import { Box, Button, Flex, Group, Icon } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
-import type { FieldPatch } from "../types";
+import type { FieldPatch } from "../../../types";
 
 import S from "./ModelFieldList.module.css";
 
@@ -13,6 +13,7 @@ type ModelFieldListProps = {
   fields: Field[];
   activeFieldName?: string;
   isSorting: boolean;
+  isReadOnly: boolean;
   onSelectField: (field: Field) => void;
   onChangeField: (field: Field, patch: FieldPatch) => void;
   onChangeSorting: (fields: Field[]) => void;
@@ -23,6 +24,7 @@ export function ModelFieldList({
   fields,
   activeFieldName,
   isSorting,
+  isReadOnly,
   onSelectField,
   onChangeField,
   onChangeSorting,
@@ -53,16 +55,18 @@ export function ModelFieldList({
 
   return (
     <Flex className={S.section} flex={1} direction="column">
-      <Group className={S.header} p="md" justify="end">
-        <Button
-          size="sm"
-          leftSection={isSorting! && <Icon name="sort_arrows" />}
-          onClick={handleSortingClick}
-        >
-          {isSorting ? t`Done` : t`Sorting`}
-        </Button>
-      </Group>
-      <Box px="md" pb="md">
+      {!isReadOnly && (
+        <Group className={S.header} p="md" justify="end">
+          <Button
+            size="sm"
+            leftSection={isSorting! && <Icon name="sort_arrows" />}
+            onClick={handleSortingClick}
+          >
+            {isSorting ? t`Done` : t`Sorting`}
+          </Button>
+        </Group>
+      )}
+      <Box px="md" pb="md" pt={isReadOnly ? "md" : undefined}>
         {isSorting ? (
           <SortableFieldList
             fields={fields}
@@ -73,6 +77,7 @@ export function ModelFieldList({
           <FieldList
             fields={fields}
             activeFieldKey={activeFieldName}
+            readOnly={isReadOnly}
             getFieldKey={getFieldKey}
             onSelect={onSelectField}
             onNameChange={handleNameChange}

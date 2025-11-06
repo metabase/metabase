@@ -20,11 +20,11 @@ import type { Card, Field } from "metabase-types/api";
 
 import { ModelHeader } from "../../components/ModelHeader";
 import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";
+import type { FieldPatch } from "../../types";
 
 import { ModelFieldDetails } from "./ModelFieldDetails";
 import { ModelFieldEmptyState } from "./ModelFieldEmptyState";
 import { ModelFieldList } from "./ModelFieldList";
-import type { FieldPatch } from "./types";
 
 type ModelFieldsPageParams = {
   cardId: string;
@@ -84,6 +84,7 @@ function ModelFieldsPageBody({
   const [isSorting, setIsSorting] = useState(false);
   const [updateCard, { isLoading: isSaving }] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const isReadOnly = !card.can_write;
 
   const activeField = useMemo(
     () => (activeFieldName ? fieldField(fields, activeFieldName) : null),
@@ -149,6 +150,7 @@ function ModelFieldsPageBody({
             fields={fields}
             activeFieldName={activeFieldName}
             isSorting={isSorting}
+            isReadOnly={isReadOnly}
             onSelectField={handleSelectField}
             onChangeField={handleChangeField}
             onChangeSorting={setFields}
@@ -158,10 +160,11 @@ function ModelFieldsPageBody({
             <ModelFieldDetails
               field={activeField}
               idFields={idFields}
+              isReadOnly={isReadOnly}
               onChangeField={handleChangeField}
             />
           ) : (
-            <ModelFieldEmptyState />
+            <ModelFieldEmptyState isReadOnly={isReadOnly} />
           )}
         </Flex>
       </Flex>
