@@ -102,6 +102,8 @@ import cloud_filled_component from "./cloud_filled.svg?component";
 import cloud_filled_source from "./cloud_filled.svg?source";
 import code_block_component from "./code_block.svg?component";
 import code_block_source from "./code_block.svg?source";
+import collection2_component from "./collection2.svg?component";
+import collection2_source from "./collection2.svg?source";
 import combine_component from "./combine.svg?component";
 import combine_source from "./combine.svg?source";
 import comment_component from "./comment.svg?component";
@@ -1537,6 +1539,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     external: { component: share_component, source: share_source },
     table_spaced: { component: table_component, source: table_source },
     collection: { component: folder_component, source: folder_source },
+    collection2: {
+      component: collection2_component,
+      source: collection2_source,
+    },
     beaker: { component: formula_component, source: formula_source },
     test_tube: { component: test_tube_component, source: test_tube_source },
     eye_filled: { component: eye_component, source: eye_source },
@@ -1595,6 +1601,7 @@ export type IconName =
   | "close"
   | "cloud"
   | "cloud_filled"
+  | "collection2"
   | "compare"
   | "combine"
   | "company"
@@ -1682,6 +1689,7 @@ export type IconName =
   | "lock"
   | "lock_filled"
   | "mail"
+  | "mail_filled"
   | "message_circle"
   | "metabot"
   | "metabot_sad"

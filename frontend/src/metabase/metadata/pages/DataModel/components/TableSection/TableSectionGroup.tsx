@@ -6,14 +6,16 @@ export function TableSectionGroup({
   title,
   children,
 }: {
-  title: string;
+  title?: string;
   children: React.ReactNode;
 }) {
   return (
     <Stack gap="md" className={S.box}>
-      <Title order={4} fz="sm" c="text-secondary">
-        {title}
-      </Title>
+      {title && (
+        <Title order={4} fz="sm" c="text-secondary">
+          {title}
+        </Title>
+      )}
       {children}
     </Stack>
   );

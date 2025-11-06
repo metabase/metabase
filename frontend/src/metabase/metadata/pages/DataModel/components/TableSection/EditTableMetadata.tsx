@@ -21,6 +21,7 @@ import { SyncOptionsModal } from "../SyncOptionsModal";
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 
 import S from "./TableMetadataSection.module.css";
+import { TableSectionGroup } from "./TableSectionGroup";
 
 export function EditTableMetadata() {
   const {
@@ -98,8 +99,8 @@ export function EditTableMetadata() {
           fs="lg"
           lh="normal"
           wrap="nowrap"
-          mt="xl"
-          px="xl"
+          mt="lg"
+          px="lg"
           pt="md"
           justify="space-between"
         >
@@ -108,12 +109,12 @@ export function EditTableMetadata() {
             c="text-dark"
             style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
           >
-            <Icon name="table2" size={20} />
+            <Icon name="collection2" size={20} />
             {jt`${selectedItemsCount} item${selectedItemsCount === 1 ? "" : "s"} selected`}
           </Title>
         </Group>
 
-        <Box px="xl">
+        <Box px="lg">
           <Group gap="sm">
             <Box flex={1}>
               <Button
@@ -140,66 +141,69 @@ export function EditTableMetadata() {
             </Box>
           </Group>
         </Box>
+        <Box px="lg">
+          <TableSectionGroup>
+            <Box className={S.container}>
+              <LayerInput
+                clearable
+                value={dataLayer}
+                onChange={(newDataLayer) =>
+                  handleSubmit({ dataLayer: newDataLayer })
+                }
+                className={S.gridLabelInput}
+                styles={{
+                  label: {
+                    gridColumn: 1,
+                    fontWeight: "normal",
+                  },
+                  input: {
+                    gridColumn: 2,
+                  },
+                }}
+              />
 
-        <Box className={S.container} px="xl">
-          <LayerInput
-            clearable
-            value={dataLayer}
-            onChange={(newDataLayer) =>
-              handleSubmit({ dataLayer: newDataLayer })
-            }
-            className={S.gridLabelInput}
-            styles={{
-              label: {
-                gridColumn: 1,
-                fontWeight: "normal",
-              },
-              input: {
-                gridColumn: 2,
-              },
-            }}
-          />
+              <UserInput
+                clearable
+                email={email}
+                label={t`Owner`}
+                userId={userId}
+                onEmailChange={(newEmail) => {
+                  handleSubmit({ email: newEmail });
+                }}
+                onUserIdChange={(newUserId) => {
+                  handleSubmit({ userId: newUserId });
+                }}
+                className={S.gridLabelInput}
+                styles={{
+                  label: {
+                    gridColumn: 1,
+                    fontWeight: "normal",
+                  },
+                  input: {
+                    gridColumn: 2,
+                  },
+                }}
+              />
 
-          <UserInput
-            clearable
-            email={email}
-            label={t`Owner`}
-            userId={userId}
-            onEmailChange={(newEmail) => {
-              handleSubmit({ email: newEmail });
-            }}
-            onUserIdChange={(newUserId) => {
-              handleSubmit({ userId: newUserId });
-            }}
-            className={S.gridLabelInput}
-            styles={{
-              label: {
-                gridColumn: 1,
-                fontWeight: "normal",
-              },
-              input: {
-                gridColumn: 2,
-              },
-            }}
-          />
-
-          <DataSourceInput
-            clearable
-            value={dataSource}
-            onChange={(newDataSource) =>
-              handleSubmit({ dataSource: newDataSource })
-            }
-            className={S.gridLabelInput}
-            styles={{
-              label: {
-                gridColumn: 1,
-                fontWeight: "normal",
-              },
-              input: {
-                gridColumn: 2,
-              },
-            }}
-          />
+              <DataSourceInput
+                clearable
+                value={dataSource}
+                onChange={(newDataSource) =>
+                  handleSubmit({ dataSource: newDataSource })
+                }
+                className={S.gridLabelInput}
+                styles={{
+                  label: {
+                    gridColumn: 1,
+                    fontWeight: "normal",
+                  },
+                  input: {
+                    gridColumn: 2,
+                  },
+                }}
+              />
+            </Box>
+          </TableSectionGroup>
         </Box>
       </Stack>
       <PublishModelsModal
