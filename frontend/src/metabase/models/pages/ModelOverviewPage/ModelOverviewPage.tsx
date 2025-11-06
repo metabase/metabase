@@ -1,10 +1,10 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useLoadCardWithMetadata } from "metabase/data-studio/hooks/use-load-card-with-metadata";
 import * as Urls from "metabase/lib/urls";
 import { Center, Flex } from "metabase/ui";
 
 import { ModelHeader } from "../../components/ModelHeader";
 import { SemanticEntityOverview } from "../../components/SemanticEntityOverview";
+import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";
 
 import S from "./ModelOverviewPage.module.css";
 

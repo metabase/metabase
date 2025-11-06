@@ -1,7 +1,7 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useLoadCardWithMetadata } from "metabase/data-studio/hooks/use-load-card-with-metadata";
 import * as Urls from "metabase/lib/urls";
 import { SemanticEntityOverview } from "metabase/models/components/SemanticEntityOverview";
+import { useLoadCardWithMetadata } from "metabase/models/hooks/use-load-card-with-metadata";
 import { Center, Flex } from "metabase/ui";
 
 import { MetricHeader } from "../../components/MetricHeader";

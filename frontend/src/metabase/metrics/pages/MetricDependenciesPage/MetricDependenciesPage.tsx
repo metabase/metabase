@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useLoadCardWithMetadata } from "metabase/data-studio/hooks/use-load-card-with-metadata";
 import * as Urls from "metabase/lib/urls";
+import { useLoadCardWithMetadata } from "metabase/models/hooks/use-load-card-with-metadata";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Center, Flex } from "metabase/ui";
 

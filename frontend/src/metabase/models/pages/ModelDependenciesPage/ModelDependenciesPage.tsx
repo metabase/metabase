@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useLoadCardWithMetadata } from "metabase/data-studio/hooks/use-load-card-with-metadata";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Center, Flex } from "metabase/ui";
 
 import { ModelHeader } from "../../components/ModelHeader";
+import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";
 
 type ModelDependenciesPageParams = {
   cardId: string;
