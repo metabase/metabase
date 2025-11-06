@@ -37,7 +37,7 @@ const ARROW_STROKE_THICKNESS = 1.25;
 const getBackgroundArcColor = () => color("bg-medium");
 const getSegmentLabelColor = () => color("text-dark");
 const getCenterLabelColor = () => color("text-dark");
-const getArrowFillColor = () => color("text-medium");
+const getArrowFillColor = () => color("text-medium-opaque");
 const getArrowStrokeColor = () => color("bg-white");
 
 // in ems, but within the scaled 100px SVG element
