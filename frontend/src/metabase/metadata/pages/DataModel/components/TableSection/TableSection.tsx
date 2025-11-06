@@ -177,21 +177,19 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
 
       <Box px="xl">
         <Group justify="stretch" gap="sm">
-          {!isSorting && (
-            <Box style={{ flexGrow: 1 }}>
-              <Tooltip label={t`Sync options`}>
-                <Button
-                  leftSection={<Icon name="settings" />}
-                  onClick={onSyncOptionsClick}
-                  style={{
-                    width: "100%",
-                  }}
-                >
-                  {t`Sync settings`}
-                </Button>
-              </Tooltip>
-            </Box>
-          )}
+          <Box style={{ flexGrow: 1 }}>
+            <Tooltip label={t`Sync options`}>
+              <Button
+                leftSection={<Icon name="settings" />}
+                onClick={onSyncOptionsClick}
+                style={{
+                  width: "100%",
+                }}
+              >
+                {t`Sync settings`}
+              </Button>
+            </Tooltip>
+          </Box>
           <Box style={{ flexGrow: 1 }}>
             <Tooltip label={t`Create model and publish to collection`}>
               <Button
