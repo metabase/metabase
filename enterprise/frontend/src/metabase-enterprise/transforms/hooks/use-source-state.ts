@@ -1,75 +1,93 @@
-import { useCallback, useMemo, useState } from "react";
-import _ from "underscore";
+import { useMemo, useState } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
-  type MetabotSuggestedTransform,
   deactivateSuggestedTransform,
   getMetabotSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
-import type { Transform, TransformSource } from "metabase-types/api";
+import type {
+  DraftTransformSource,
+  SuggestedTransform,
+  TransformId,
+} from "metabase-types/api";
 
-interface UseSourceStateResult<SourceType> {
-  source: SourceType | TransformSource;
-  setSource: (source: SourceType) => void;
-  suggestedTransform: MetabotSuggestedTransform | undefined;
-  proposedSource: TransformSource | undefined;
-  clearProposed: () => void;
-  acceptProposed: (source: TransformSource) => void;
+import { isSameSource } from "../utils";
+
+type UseSourceStateProps = {
+  transformId?: TransformId;
+  initialSource: DraftTransformSource;
+};
+
+type UseSourceStateResult = {
+  source: DraftTransformSource;
+  proposedSource: DraftTransformSource | undefined;
+  suggestedTransform: SuggestedTransform | undefined;
   isDirty: boolean;
-}
+  setSource: (source: DraftTransformSource) => void;
+  setSourceAndRejectProposed: (source: DraftTransformSource) => void;
+  acceptProposed: () => void;
+  rejectProposed: () => void;
+};
 
-export const useSourceState = <SourceType>(
-  transformId: Transform["id"] | undefined,
-  initialSource: SourceType,
-): UseSourceStateResult<SourceType> => {
+export function useSourceState({
+  transformId,
+  initialSource,
+}: UseSourceStateProps): UseSourceStateResult {
   const dispatch = useDispatch();
 
-  const [source, setSource] = useState<SourceType | TransformSource>(
-    initialSource,
+  const suggestedTransform = useSelector((state) =>
+    getMetabotSuggestedTransform(state, transformId),
   );
 
-  const suggestedTransform = useSelector(
-    (state) => getMetabotSuggestedTransform(state, transformId) as any,
-  ) as ReturnType<typeof getMetabotSuggestedTransform>;
-
-  const isPropsedSame = useMemo(
-    () => _.isEqual(suggestedTransform?.source, source),
-    [suggestedTransform?.source, source],
+  const [source, setSource] = useState(
+    transformId != null
+      ? initialSource
+      : (suggestedTransform?.source ?? initialSource),
   );
-  const proposedSource = isPropsedSame ? undefined : suggestedTransform?.source;
+
+  const proposedSource = useMemo(() => {
+    return suggestedTransform != null &&
+      !isSameSource(suggestedTransform.source, source)
+      ? suggestedTransform.source
+      : undefined;
+  }, [source, suggestedTransform]);
 
   const isDirty = useMemo(() => {
-    return !_.isEqual(initialSource, source) || !!proposedSource;
-  }, [initialSource, source, proposedSource]);
+    return (
+      transformId == null ||
+      proposedSource != null ||
+      !isSameSource(source, initialSource)
+    );
+  }, [source, initialSource, proposedSource, transformId]);
 
-  const handleSetSource = useCallback(
-    (source: SourceType) => {
-      dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
-      setSource(source);
-    },
-    [dispatch, suggestedTransform],
-  );
+  const setSourceAndRejectProposed = (source: DraftTransformSource) => {
+    if (suggestedTransform != null) {
+      dispatch(deactivateSuggestedTransform(suggestedTransform.id));
+    }
+    setSource(source);
+  };
 
-  const clearProposed = useCallback(() => {
-    dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
-  }, [dispatch, suggestedTransform]);
+  const acceptProposed = () => {
+    if (suggestedTransform != null) {
+      setSource(suggestedTransform.source);
+      dispatch(deactivateSuggestedTransform(suggestedTransform.id));
+    }
+  };
 
-  const acceptProposed = useCallback(
-    async (source: TransformSource) => {
-      setSource(source);
-      dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
-    },
-    [dispatch, suggestedTransform],
-  );
+  const rejectProposed = () => {
+    if (suggestedTransform != null) {
+      dispatch(deactivateSuggestedTransform(suggestedTransform.id));
+    }
+  };
 
   return {
     source,
-    setSource: handleSetSource,
-    isDirty,
-    suggestedTransform,
     proposedSource,
-    clearProposed,
+    suggestedTransform,
+    isDirty,
+    setSource,
+    setSourceAndRejectProposed,
     acceptProposed,
+    rejectProposed,
   };
-};
+}

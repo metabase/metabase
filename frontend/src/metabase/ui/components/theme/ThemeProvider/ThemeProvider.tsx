@@ -13,6 +13,7 @@ import {
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { parseHashOptions } from "metabase/lib/browser";
+import { mutateColors } from "metabase/lib/colors/colors";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 
@@ -38,6 +39,7 @@ interface ThemeProviderProps {
 
 const ThemeProviderInner = (props: ThemeProviderProps) => {
   const { resolvedColorScheme } = useColorScheme();
+  const [themeCacheBuster, setThemeCacheBuster] = useState(1);
 
   // Merge default theme overrides with user-provided theme overrides
   const theme = useMemo(() => {
@@ -48,6 +50,13 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
 
     return {
       ...theme,
+      other: {
+        ...theme.other,
+        updateColorSettings: (newValue) => {
+          mutateColors(newValue);
+          setThemeCacheBuster(themeCacheBuster + 1);
+        },
+      },
       fn: {
         themeColor: (
           color: string,
@@ -83,7 +92,7 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
         },
       },
     } as MantineTheme;
-  }, [props.theme, resolvedColorScheme]);
+  }, [props.theme, resolvedColorScheme, themeCacheBuster]);
 
   const { withCssVariables, withGlobalClasses } =
     useContext(ThemeProviderContext);

@@ -1347,6 +1347,11 @@
   A map which can provide values for any of the above options, except for :export?.
   Any top level options will override what's in this base map.
   The use case for this map is sharing strongly coupled options between similar settings, see [[uuid-nonce-base]].
+
+  ##### `:can-read-from-env?`
+
+  Boolean that determines if this setting can be configured from an environment variable.
+  If false, a value set in an environment variable will be ignored.
   "
   {:style/indent 1}
   [setting-symbol description & {:as options}]

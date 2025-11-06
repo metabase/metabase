@@ -288,6 +288,11 @@
         (when *token-check-happening*
           (throw (ex-info "Token check is being called recursively, there is a good chance some `defenterprise` is causing this"
                           {:pass-thru true})))
+        ;; important to not count these errors against the circuit breaker. These are not the types of errors we need
+        ;; to circuit break. (#65294)
+        (when-not ((requiring-resolve 'metabase.app-db.core/db-is-set-up?))
+          (throw (ex-info "Metabase DB is not yet set up"
+                          {:reason :token-check/app-db-not-ready})))
         (locking lock
           (binding [*token-check-happening* true]
             (try (dh/with-circuit-breaker breaker

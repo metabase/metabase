@@ -1,4 +1,5 @@
 import type { EmbeddingThemeOptions } from "metabase/embedding-sdk/theme/private";
+import type { ColorSettings } from "metabase-types/api/settings";
 
 interface _EmotionCompatibilityTheme {
   fn: {
@@ -14,6 +15,7 @@ declare module "@mantine/core" {
    **/
   export interface MantineThemeOther extends EmbeddingThemeOptions {
     colorScheme: "light" | "dark";
+    updateColorSettings: (settings: ColorSettings) => void;
   }
   export interface MantineTheme extends _EmotionCompatibilityTheme {}
 }

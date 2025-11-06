@@ -62,6 +62,7 @@
              (fn []
                (let [respond identity
                      raise   #'*error-fn*] ; capture var rather than the bound value at the time this is eval'ed
+                 (log/debugf "Building :normalize coercer for schema %s" (pr-str schema))
                  (mc/coercer schema (mtx/transformer mtx/default-value-transformer {:name :normalize}) respond raise)))))
 
 (defn normalize

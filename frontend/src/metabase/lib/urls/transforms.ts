@@ -61,11 +61,19 @@ export function transformList({
   }
 }
 
-export function newTransformFromType(type: "query" | "native" | "python") {
-  return `${ROOT_URL}/new/${type}`;
+export function newQueryTransform() {
+  return `${ROOT_URL}/new/query`;
 }
 
-export function newTransformFromCard(cardId: CardId) {
+export function newNativeTransform() {
+  return `${ROOT_URL}/new/native`;
+}
+
+export function newPythonTransform() {
+  return `${ROOT_URL}/new/python`;
+}
+
+export function newCardTransform(cardId: CardId) {
   return `${ROOT_URL}/new/card/${cardId}`;
 }
 

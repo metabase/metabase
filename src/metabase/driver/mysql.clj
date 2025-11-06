@@ -1,6 +1,6 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [some not-empty])
   (:require
    [clojure.java.io :as jio]
    [clojure.java.jdbc :as jdbc]
@@ -29,7 +29,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [metabase.util.performance :as perf :refer [some]])
+   [metabase.util.performance :as perf :refer [some not-empty]])
   (:import
    (java.io File)
    (java.sql

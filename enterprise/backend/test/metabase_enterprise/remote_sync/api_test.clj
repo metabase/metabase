@@ -29,10 +29,8 @@
         branches))
     (default-branch [_]
       "main")
-    (list-files [_] [])
-    (read-file [_ _] "")
-    (write-files! [_ _ _] nil)
-    (version [_] "mock-version")))
+    (snapshot [_]
+      nil)))
 
 (use-fixtures :once
   (fixtures/initialize :db)

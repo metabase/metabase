@@ -240,8 +240,8 @@ function UpdateIncrementalForm({
 
                   return isNativeQuery ? (
                     <Alert variant="info" icon="info">
-                          {t`Ensure your query contains WHERE filter on the keyset column (and potentially a LIMIT). You may want to use:`}{" "}
-                          <strong>{`[[AND id > {{watermark}}]] [[LIMIT {{limit}}]]`}</strong>
+                      {t`Ensure your query contains WHERE filter on the keyset column (and potentially a LIMIT). You may want to use:`}{" "}
+                      <strong>{`[[AND id > {{watermark}}]] [[LIMIT {{limit}}]]`}</strong>
                     </Alert>
                   ) : null;
                 })()}
@@ -279,7 +279,7 @@ function UpdateIncrementalForm({
                           sourceTables={transform.source["source-tables"]}
                         />
                       )}
-                    {(
+                    {
                       <FormTextInput
                         name="queryLimit"
                         label={t`Query Limit`}
@@ -287,7 +287,7 @@ function UpdateIncrementalForm({
                         description={t`Maximum number of rows to fetch from the source table per run`}
                         type="number"
                       />
-                    )}
+                    }
                   </>
                 )}
                 <FormSelect

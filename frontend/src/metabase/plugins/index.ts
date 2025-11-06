@@ -81,8 +81,7 @@ import type {
   ModelCacheRefreshStatus,
   ParameterId,
   Pulse,
-  PythonTransformSource,
-  PythonTransformTableAliases,
+  PythonTransformSourceDraft,
   Revision,
   SearchModel,
   Series,
@@ -104,7 +103,11 @@ import type {
 } from "metabase-types/store";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
-import type { GetAuthProviders, PluginGroupManagersType } from "./types";
+import type {
+  GetAuthProviders,
+  PluginGroupManagersType,
+  SyncedCollectionsSidebarSectionProps,
+} from "./types";
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUNCTIONS: (() => void)[] = [];
@@ -578,6 +581,9 @@ export interface SimpleDataPickerProps {
 
 export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
+  onBeforeRequestHandlers: {
+    getOrRefreshSessionHandler: async () => {},
+  },
 };
 
 export const PLUGIN_EMBEDDING_IFRAME_SDK = {
@@ -914,11 +920,7 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
 export const PLUGIN_REMOTE_SYNC: {
   LibraryNav: ComponentType;
   RemoteSyncSettings: ComponentType;
-  SyncedCollectionsSidebarSection: ComponentType<{
-    syncedCollections: any[];
-    collectionItem: any;
-    onItemSelect: () => void;
-  }>;
+  SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
   REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
   useSyncStatus: () => {
     isIdle: boolean;
@@ -941,44 +943,40 @@ export const PLUGIN_REMOTE_SYNC: {
   }),
 };
 
+export type PythonTransformEditorProps = {
+  name?: string;
+  source: PythonTransformSourceDraft;
+  proposedSource?: PythonTransformSourceDraft;
+  isNew: boolean;
+  isDirty: boolean;
+  isSaving: boolean;
+  onChangeSource: (source: PythonTransformSourceDraft) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onAcceptProposed: () => void;
+  onRejectProposed: () => void;
+};
+
+export type PythonTransformSourceSectionProps = {
+  transform: Transform;
+};
+
 export type PythonTransformsPlugin = {
+  isEnabled: boolean;
+  TransformEditor: ComponentType<PythonTransformEditorProps>;
+  SourceSection: ComponentType<PythonTransformSourceSectionProps>;
   PythonRunnerSettingsPage: ComponentType;
-  SourceSection: ComponentType<{ transform: Transform }>;
-  TransformEditor: ComponentType<{
-    transform?: Transform | undefined;
-    initialSource: {
-      type: "python";
-      body: string;
-      "source-database": DatabaseId | undefined;
-      "source-tables": PythonTransformTableAliases;
-    };
-    proposedSource?: PythonTransformSource;
-    isNew?: boolean;
-    isSaving?: boolean;
-    isRunnable?: boolean;
-    onChange?: (newSource: {
-      type: "python";
-      body: string;
-      "source-database": DatabaseId | undefined;
-      "source-tables": PythonTransformTableAliases;
-    }) => void;
-    onSave: (newSource: PythonTransformSource) => void;
-    onCancel: () => void;
-    onRejectProposed?: () => void;
-    onAcceptProposed?: (query: PythonTransformSource) => void;
-  }>;
   getAdminRoutes: () => ReactNode;
   getTransformsNavLinks: () => ReactNode;
-  getCreateTransformsMenuItems: () => ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
-  PythonRunnerSettingsPage: NotFoundPlaceholder,
-  TransformEditor: NotFoundPlaceholder,
+  isEnabled: false,
+  TransformEditor: PluginPlaceholder,
   SourceSection: PluginPlaceholder,
+  PythonRunnerSettingsPage: NotFoundPlaceholder,
   getAdminRoutes: () => null,
   getTransformsNavLinks: () => null,
-  getCreateTransformsMenuItems: () => null,
 };
 
 type DependenciesPlugin = {

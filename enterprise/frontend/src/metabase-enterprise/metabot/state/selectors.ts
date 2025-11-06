@@ -24,14 +24,28 @@ export const getMetabotVisible = createSelector(
   (metabot) => metabot.visible,
 );
 
-export const getMessages = createSelector(
+export const getDebugMode = createSelector(
+  getMetabot,
+  (metabot) => metabot.experimental.debugMode,
+);
+
+const getInternalMessages = createSelector(
   getMetabot,
   (metabot) => metabot.messages,
 );
 
-export const getToolCalls = createSelector(
+export const getMessages = createSelector(
+  [getInternalMessages, getDebugMode],
+  (messages, debugMode) => {
+    return debugMode
+      ? messages
+      : messages.filter((msg) => msg.type !== "tool_call");
+  },
+);
+
+export const getActiveToolCalls = createSelector(
   getMetabot,
-  (metabot) => metabot.toolCalls,
+  (metabot) => metabot.activeToolCalls,
 );
 
 export const getLastMessage = createSelector(getMessages, (messages) =>

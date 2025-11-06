@@ -43,6 +43,7 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
   CreateTransformRequest,
+  SuggestedTransform,
   Transform,
   TransformSource,
 } from "metabase-types/api";
@@ -90,28 +91,25 @@ export type NewTransformValues = Yup.InferType<
 
 type CreateTransformModalProps = {
   source: TransformSource;
-  initValues?: Partial<NewTransformValues>;
+  suggestedTransform: SuggestedTransform | undefined;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
-  initialIncremental?: boolean;
 };
 
 export function CreateTransformModal({
   source,
-  initValues,
+  suggestedTransform,
   onCreate,
   onClose,
-  initialIncremental = false,
 }: CreateTransformModalProps) {
   return (
     <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
       <FocusTrap.InitialFocus />
       <CreateTransformForm
         source={source}
-        initValues={initValues}
+        suggestedTransform={suggestedTransform}
         onCreate={onCreate}
         onClose={onClose}
-        initialIncremental={initialIncremental}
       />
     </Modal>
   );
@@ -119,10 +117,9 @@ export function CreateTransformModal({
 
 type CreateTransformFormProps = {
   source: TransformSource;
-  initValues?: Partial<NewTransformValues>;
+  suggestedTransform: SuggestedTransform | undefined;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
-  initialIncremental: boolean;
 };
 
 type SourceStrategyFieldsProps = {
@@ -284,10 +281,9 @@ function TargetStrategyFields() {
 
 function CreateTransformForm({
   source,
-  initValues,
+  suggestedTransform,
   onCreate,
   onClose,
-  initialIncremental,
 }: CreateTransformFormProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
@@ -313,8 +309,8 @@ function CreateTransformForm({
   const supportsSchemas = database && hasFeature(database, "schemas");
 
   const initialValues: NewTransformValues = useMemo(
-    () => getInitialValues(schemas, initialIncremental, initValues),
-    [schemas, initialIncremental, initValues],
+    () => getInitialValues(schemas, suggestedTransform),
+    [schemas, suggestedTransform],
   );
 
   const validationSchema = useMemo(() => getValidationSchema(source), [source]);
@@ -386,21 +382,20 @@ function CreateTransformForm({
 
 function getInitialValues(
   schemas: string[],
-  initialIncremental: boolean,
-  initValues?: Partial<NewTransformValues>,
+  suggestedTransform: SuggestedTransform | undefined,
 ): NewTransformValues {
   return {
     name: "",
-    description: null,
-    targetName: "",
-    targetSchema: schemas?.[0] || null,
-    incremental: initialIncremental,
-    keysetColumn: initialIncremental ? "id" : null,
+    description: suggestedTransform ? suggestedTransform.description : null,
+    targetName: suggestedTransform ? suggestedTransform.target.name : "",
+    targetSchema: suggestedTransform
+      ? suggestedTransform.target.schema
+      : schemas?.[0] || null,
+    keysetColumn: null,
     keysetFilterUniqueKey: null,
     queryLimit: null,
     sourceStrategy: "keyset",
     targetStrategy: "append",
-    ...initValues,
   };
 }
 
