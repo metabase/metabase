@@ -126,8 +126,7 @@
     :archived_at false
     :deactivated_at false
     :updated_at  true
-    :owner_user_id false
-    :transform_id false}))
+    :owner_user_id false}))
 
 (defn- field-defaults []
   (merge
