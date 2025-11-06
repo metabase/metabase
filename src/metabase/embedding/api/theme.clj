@@ -3,7 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.util.i18n :refer [trs]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -75,5 +75,5 @@
   (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
   (let [source-theme (t2/select-one :model/EmbeddingTheme :id id)]
     (t2/insert-returning-instance! :model/EmbeddingTheme
-                                   {:name (trs "Copy of {0}" (:name source-theme))
+                                   {:name (tru "Copy of {0}" (:name source-theme))
                                     :settings (:settings source-theme)})))
