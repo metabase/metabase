@@ -224,9 +224,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         </Group>
       </Box>
 
-      <Box px="xl">
-        <TransformLink table={table} />
-      </Box>
+      <TransformLink table={table} />
 
       <Box px="xl">
         <TableSectionGroup title={t`Metadata`}>TODO</TableSectionGroup>
@@ -371,7 +369,8 @@ function TransformLink({ table }: { table: Table }) {
     <Box
       component={Link}
       to={`/admin/transforms?id=${table.transform_id}`}
-      p="sm"
+      py="sm"
+      px="xl"
       style={{
         borderRadius: 4,
         display: "inline-flex",
