@@ -71,7 +71,7 @@ export const TableFieldList = ({
     <FieldList
       fields={fields}
       activeFieldKey={activeFieldId}
-      getFieldKey={(field) => getRawTableFieldId(field)}
+      getFieldKey={getRawTableFieldId}
       getFieldHref={(field) => getFieldHref(getRawTableFieldId(field))}
       onNameChange={handleNameChange}
       onDescriptionChange={handleDescriptionChange}

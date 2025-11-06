@@ -11,7 +11,6 @@ import * as Urls from "metabase/lib/urls";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
-  SortableFieldList,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -32,6 +31,7 @@ import { ResponsiveButton } from "../ResponsiveButton";
 
 import { TableFieldList } from "./TableFieldList";
 import S from "./TableSection.module.css";
+import { TableSortableFieldList } from "./TableSortableFieldList";
 import { useResponsiveButtons } from "./hooks";
 
 interface Props {
@@ -248,9 +248,9 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           {!hasFields && <EmptyState message={t`This table has no fields`} />}
 
           {isSorting && hasFields && (
-            <SortableFieldList
-              activeFieldId={fieldId}
+            <TableSortableFieldList
               table={table}
+              activeFieldId={fieldId}
               onChange={handleCustomFieldOrderChange}
             />
           )}

@@ -6,29 +6,27 @@ import {
   type DragEndEvent,
   SortableList,
 } from "metabase/common/components/Sortable";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Stack, rem } from "metabase/ui";
-import type { Field, FieldId, Table } from "metabase-types/api";
+import type { Field, FieldId } from "metabase-types/api";
 
 import { SortableFieldItem } from "../SortableFieldItem";
 
-interface Props {
-  activeFieldId?: FieldId;
-  table: Table;
+interface Props<T extends number | string> {
+  fields: Field[];
+  activeFieldKey?: FieldId;
+  getFieldKey: (field: Field) => T;
   onChange: (fieldOrder: FieldId[]) => void;
 }
 
-export const SortableFieldList = ({
-  activeFieldId,
-  table,
+export function SortableFieldList<T extends number | string>({
+  fields,
+  activeFieldKey,
+  getFieldKey,
   onChange,
-}: Props) => {
+}: Props<T>) {
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
   });
-  const fields = useMemo(() => {
-    return _.sortBy(table.fields ?? [], (item) => item.position);
-  }, [table.fields]);
   const fieldsByName = useMemo(() => {
     return _.indexBy(fields, (field) => field.name);
   }, [fields]);
@@ -42,25 +40,26 @@ export const SortableFieldList = ({
   return (
     <Stack gap={rem(12)}>
       <SortableList<Field>
-        getId={getRawTableFieldId}
         items={fields}
-        renderItem={({ id, item: field }) => {
+        sensors={[pointerSensor]}
+        getId={getFieldKey}
+        renderItem={({ item: field }) => {
+          const key = getFieldKey(field);
           const parentName = field.nfc_path?.[0] ?? "";
           const parent = fieldsByName[parentName];
 
           return (
             <SortableFieldItem
-              active={id === activeFieldId}
-              disabled={isDragDisabled}
+              key={key}
               field={field}
               parent={parent}
-              key={id}
+              active={getFieldKey(field) === activeFieldKey}
+              disabled={isDragDisabled}
             />
           );
         }}
-        sensors={[pointerSensor]}
         onSortEnd={handleSortEnd}
       />
     </Stack>
   );
-};
+}

@@ -6,17 +6,17 @@ import type { Field } from "metabase-types/api";
 
 import { FieldItem } from "./FieldItem";
 
-interface Props {
+interface Props<T extends number | string> {
   fields: Field[];
-  activeFieldKey?: number | string;
-  getFieldKey: (field: Field) => number | string;
+  activeFieldKey?: T;
+  getFieldKey: (field: Field) => T;
   getFieldHref?: (field: Field) => string;
   onSelect?: (field: Field) => void;
   onNameChange: (field: Field, newName: string) => void;
   onDescriptionChange: (field: Field, newDescription: string | null) => void;
 }
 
-export const FieldList = ({
+export function FieldList<T extends number | string>({
   fields,
   activeFieldKey,
   getFieldKey,
@@ -24,7 +24,7 @@ export const FieldList = ({
   onSelect,
   onNameChange,
   onDescriptionChange,
-}: Props) => {
+}: Props<T>) {
   const fieldsByName = useMemo(() => {
     return _.indexBy(fields, (field) => field.name);
   }, [fields]);
@@ -53,4 +53,4 @@ export const FieldList = ({
       })}
     </Stack>
   );
-};
+}
