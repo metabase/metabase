@@ -1,4 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
+import type { ComponentType } from "react";
 import { IndexRoute } from "react-router";
 import { t } from "ttag";
 
@@ -22,7 +23,11 @@ import { ModelingCollectionView } from "./pages/ModelingSectionLayout/ModelingCo
 import { ModelingEmptyPage } from "./pages/ModelingSectionLayout/ModelingEmptyPage";
 import { ModelingGlossary } from "./pages/ModelingSectionLayout/ModelingGlossary";
 
-export function getDataStudioRoutes(store: Store<State>) {
+export function getDataStudioRoutes(
+  store: Store<State>,
+  CanAccessDataModel: ComponentType,
+  CanAccessTransforms: ComponentType,
+) {
   return (
     <Route component={DataStudioLayout}>
       <IndexRoute
@@ -30,16 +35,16 @@ export function getDataStudioRoutes(store: Store<State>) {
           replace(getIndexPath(store.getState()));
         }}
       />
-      <Route title={t`Data`} path="data" component={DataSectionLayout}>
-        {getDataStudioMetadataRoutes()}
+      <Route path="data" component={CanAccessDataModel}>
+        <Route title={t`Data`} component={DataSectionLayout}>
+          {getDataStudioMetadataRoutes()}
+        </Route>
       </Route>
       {PLUGIN_TRANSFORMS.isEnabled && (
-        <Route
-          title={t`Transforms`}
-          path="transforms"
-          component={DataSectionLayout}
-        >
-          {PLUGIN_TRANSFORMS.getDataStudioTransformRoutes()}
+        <Route path="transforms" component={CanAccessTransforms}>
+          <Route title={t`Transforms`} component={DataSectionLayout}>
+            {PLUGIN_TRANSFORMS.getDataStudioTransformRoutes()}
+          </Route>
         </Route>
       )}
       <Route
