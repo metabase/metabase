@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-941-scaffold-theme-listing-page-in-embedding-admin-settings",
-    "hash": "b978aa50a247129f50e4ad48d9a633e116e1037f"
+    "hash": "831909b51a7fff0a74a05b027fd3df55a853086f"
   },
   "upstream": {
     "branch": "emb-962-compute-default-theme-colors-based-on-appearance-settings"
