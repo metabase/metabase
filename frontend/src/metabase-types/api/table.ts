@@ -174,6 +174,24 @@ export interface EditTablesRequest {
   owner_user_id?: UserId | null;
 }
 
+export interface SyncTablesSchemaRequest {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
+}
+
+export interface RescanTablesValuesRequest {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
+}
+
+export interface DiscardTablesValuesRequest {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
+}
+
 export type UploadManagementResponse = Table[];
 
 export interface DeleteUploadTableRequest {

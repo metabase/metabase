@@ -1,6 +1,7 @@
 import { updateMetadata } from "metabase/lib/redux/metadata";
 import { ForeignKeySchema, TableSchema } from "metabase/schema";
 import type {
+  DiscardTablesValuesRequest,
   EditTablesRequest,
   ForeignKey,
   GetTableDataRequest,
@@ -8,8 +9,10 @@ import type {
   GetTableRequest,
   PublishModelsRequest,
   PublishModelsResponse,
+  RescanTablesValuesRequest,
   SubstituteModelRequest,
   SubstituteModelResponse,
+  SyncTablesSchemaRequest as SyncTablesSchemasRequest,
   Table,
   TableData,
   TableId,
@@ -140,6 +143,15 @@ export const tableApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
+    rescanTablesFieldValues: builder.mutation<void, RescanTablesValuesRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/table/rescan_values`,
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
+    }),
     syncTableSchema: builder.mutation<void, TableId>({
       query: (id) => ({
         method: "POST",
@@ -154,10 +166,37 @@ export const tableApi = Api.injectEndpoints({
           tag("card"),
         ]),
     }),
+    syncTablesSchemas: builder.mutation<void, SyncTablesSchemasRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/table/sync_schema`,
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [
+          tag("table"),
+          listTag("field"),
+          listTag("field-values"),
+          listTag("parameter-values"),
+          tag("card"),
+        ]),
+    }),
     discardTableFieldValues: builder.mutation<void, TableId>({
       query: (id) => ({
         method: "POST",
         url: `/api/table/${id}/discard_values`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
+    }),
+    discardTablesFieldValues: builder.mutation<
+      void,
+      DiscardTablesValuesRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/table/discard_values`,
+        body,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
@@ -202,8 +241,11 @@ export const {
   useUpdateTableListMutation,
   useUpdateTableFieldsOrderMutation,
   useRescanTableFieldValuesMutation,
+  useRescanTablesFieldValuesMutation,
   useSyncTableSchemaMutation,
+  useSyncTablesSchemasMutation,
   useDiscardTableFieldValuesMutation,
+  useDiscardTablesFieldValuesMutation,
   usePublishModelsMutation,
   useSubstituteModelMutation,
 } = tableApi;

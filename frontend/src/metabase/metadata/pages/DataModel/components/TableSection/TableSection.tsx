@@ -38,8 +38,8 @@ import { FieldList } from "./FieldList";
 import { TableMetadataSettings } from "./TableMetadataSection";
 import { TableModels } from "./TableModels";
 import S from "./TableSection.module.css";
-import { useResponsiveButtons } from "./hooks";
 import { TableSectionGroup } from "./TableSectionGroup";
+import { useResponsiveButtons } from "./hooks";
 
 interface Props {
   params: RouteParams;
@@ -180,20 +180,18 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
       <Box px="xl">
         <Group justify="stretch" gap="sm">
           <Box style={{ flexGrow: 1 }}>
-            <Tooltip label={t`Sync options`}>
-              <Button
-                leftSection={<Icon name="settings" />}
-                onClick={onSyncOptionsClick}
-                style={{
-                  width: "100%",
-                }}
-              >
-                {t`Sync settings`}
-              </Button>
-            </Tooltip>
+            <Button
+              leftSection={<Icon name="settings" />}
+              onClick={onSyncOptionsClick}
+              style={{
+                width: "100%",
+              }}
+            >
+              {t`Sync settings`}
+            </Button>
           </Box>
           <Box style={{ flexGrow: 1 }}>
-            <Tooltip label={t`Create model and publish to collection`}>
+            <Tooltip label={t`Create model and publish to a collection`}>
               <Button
                 onClick={() => setIsCreateModelsModalOpen(true)}
                 p="sm"

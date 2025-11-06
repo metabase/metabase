@@ -41,11 +41,9 @@ interface Props {
 export const DataModel = ({ children, location, params }: Props) => {
   return (
     <SelectionProvider>
-      <DataModelContent
-        children={children}
-        location={location}
-        params={params}
-      />
+      <DataModelContent location={location} params={params}>
+        {children}
+      </DataModelContent>
     </SelectionProvider>
   );
 };
@@ -288,7 +286,7 @@ function DataModelContent({ children, location, params }: Props) {
       {table && (
         <SyncOptionsModal
           isOpen={isSyncModalOpen}
-          tableId={table.id}
+          tableIds={[table.id]}
           onClose={closeSyncModal}
         />
       )}

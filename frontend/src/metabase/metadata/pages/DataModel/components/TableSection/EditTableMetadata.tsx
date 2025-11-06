@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { jt, t } from "ttag";
 
@@ -8,16 +9,7 @@ import {
   UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import {
-  Box,
-  Button,
-  Group,
-  Icon,
-  Stack,
-  Title,
-  Tooltip,
-  rem,
-} from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Title, Tooltip } from "metabase/ui";
 import type {
   TableDataLayer,
   TableDataSource,
@@ -25,6 +17,7 @@ import type {
 } from "metabase-types/api";
 
 import { useSelection } from "../../contexts/SelectionContext";
+import { SyncOptionsModal } from "../SyncOptionsModal";
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 
 import S from "./TableMetadataSection.module.css";
@@ -45,6 +38,8 @@ export function EditTableMetadata() {
   >(null);
   const [email, setEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<UserId | "unknown" | null>(null);
+  const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
+    useDisclosure();
 
   const handleSubmit = async ({
     dataLayer,
@@ -94,7 +89,7 @@ export function EditTableMetadata() {
 
   return (
     <>
-      <Stack gap="lg">
+      <Stack gap="md">
         <Group
           align="center"
           c="text-light"
@@ -108,33 +103,43 @@ export function EditTableMetadata() {
           pt="md"
           justify="space-between"
         >
-          <Group>
-            <Title
-              order={4}
-              c="text-dark"
-              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-            >
-              <Icon name="table2" size={20} />
-              {jt`${selectedItemsCount} item${selectedItemsCount === 1 ? "" : "s"} selected`}
-            </Title>
-          </Group>
-          <Group>
-            <Button
-              onClick={() => setIsCreateModelsModalOpen(true)}
-              p="sm"
-              leftSection={
-                <Tooltip
-                  label={t`Create model${selectedItemsCount === 1 ? "" : "s"}`}
-                >
-                  <Icon name="model" />
-                </Tooltip>
-              }
-              style={{
-                width: 40,
-              }}
-            />
-          </Group>
+          <Title
+            order={4}
+            c="text-dark"
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+          >
+            <Icon name="table2" size={20} />
+            {jt`${selectedItemsCount} item${selectedItemsCount === 1 ? "" : "s"} selected`}
+          </Title>
         </Group>
+
+        <Box px="xl">
+          <Group gap="sm">
+            <Box flex={1}>
+              <Button
+                leftSection={<Icon name="settings" />}
+                onClick={openSyncModal}
+                style={{
+                  width: "100%",
+                }}
+              >
+                {t`Sync settings`}
+              </Button>
+            </Box>
+            <Box flex={1}>
+              <Tooltip label={t`Create models and publish to a collection`}>
+                <Button
+                  onClick={() => setIsCreateModelsModalOpen(true)}
+                  p="sm"
+                  leftSection={<Icon name="add_folder" />}
+                  style={{
+                    width: "100%",
+                  }}
+                >{t`Publish`}</Button>
+              </Tooltip>
+            </Box>
+          </Group>
+        </Box>
 
         <Box className={S.container} px="xl">
           <LayerInput
@@ -203,6 +208,14 @@ export function EditTableMetadata() {
         databases={selectedDatabases}
         isOpen={isCreateModelsModalOpen}
         onClose={() => setIsCreateModelsModalOpen(false)}
+      />
+
+      <SyncOptionsModal
+        isOpen={isSyncModalOpen}
+        databaseIds={Array.from(selectedDatabases)}
+        schemaIds={Array.from(selectedSchemas)}
+        tableIds={Array.from(selectedTables)}
+        onClose={closeSyncModal}
       />
     </>
   );
