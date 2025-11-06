@@ -1953,9 +1953,9 @@
                    [[(hex->bytes "900000000000810074123E9DB008AB5C")]
                     [(hex->bytes "900000000000475000DE4EC0C0A920AB")]]]])
       (let [mp (mt/metadata-provider)]
-        (is (=? [[1 "\\x900000000000810074123e9db008ab5c"]
-                 [2 "\\x900000000000475000de4ec0c0a920ab"]]
-                (->> (lib.metadata/table mp (mt/id :bytea_table))
-                     (lib/query mp)
-                     (qp/process-query)
-                     (mt/rows))))))))
+        (is (= [[1 "\\x900000000000810074123e9db008ab5c"]
+                [2 "\\x900000000000475000de4ec0c0a920ab"]]
+               (->> (lib.metadata/table mp (mt/id :bytea_table))
+                    (lib/query mp)
+                    (qp/process-query)
+                    (mt/rows))))))))
