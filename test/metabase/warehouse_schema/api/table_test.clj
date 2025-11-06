@@ -1217,14 +1217,14 @@
 
       (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "gold"})
       (is (=? [{:display_name "Products2"}]
-              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data_layer "gold")
+              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "gold")
                    (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
                    (map #(select-keys % [:display_name])))))
 
       (testing "empty filter"
         (is (=? [{:display_name "People"}
                  {:display_name "Products"}]
-                (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data_layer "")
+                (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "")
                      (filter #(= (:db_id %) (mt/id)))       ; prevent stray tables from affecting unit test results
                      (map #(select-keys % [:display_name])))))))))
 
@@ -1346,7 +1346,7 @@
 
           (testing "both tables returned with orphan_only=false"
             (is (= #{table-1-id table-2-id}
-                   (->> (mt/user-http-request :crowberto :get 200 "table" :orphan_only false)
+                   (->> (mt/user-http-request :crowberto :get 200 "table" :orphan-only false)
                         (filter #(= (:db_id %) db-id))
                         (map :id)
                         set))))
@@ -1359,7 +1359,7 @@
             (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
             (testing "after creating card that depends on table-1, only table-2 is orphaned"
               (is (= #{table-2-id}
-                     (->> (mt/user-http-request :crowberto :get 200 "table" :orphan_only true)
+                     (->> (mt/user-http-request :crowberto :get 200 "table" :orphan-only true)
                           (filter #(= (:db_id %) db-id))
                           (map :id)
                           set))))))))))

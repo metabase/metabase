@@ -69,7 +69,7 @@
        ;; conjunctive search terms
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
-       [:data.layer {:optional true} :string]
+       [:data-layer {:optional true} :string]
        [:data-source {:optional true} :string]
        [:owner-user-id {:optional true} [:maybe :int]]
        [:owner-email {:optional true} :string]
