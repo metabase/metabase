@@ -4,7 +4,7 @@
   extended to Object as a no-op and on the type defined here deletes the temporary file.
 
   When getting query results for notifications (alerts, subscriptions) once the query row count
-  exceeds [[metabase.notification.payload.execute/rows-to-disk-threshold]], we then start streaming all rows to
+  exceeds [[metabase.notification.payload.execute/cells-to-disk-threshold]], we then start streaming all rows to
   disk. This ensures that smaller queries don't needlessly write to disk and then reload, while large results don't
   attempt to reside in memory and kill an instance.
 
