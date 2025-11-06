@@ -5,7 +5,10 @@ import _ from "underscore";
 
 import Markdown from "metabase/common/components/Markdown";
 import { useSetting } from "metabase/common/hooks";
-import { getDateStyleOptionsForUnit } from "metabase/lib/formatting";
+import {
+  dateStyleOption,
+  getDateStyleOptionsForUnit,
+} from "metabase/lib/formatting";
 import { Autocomplete, Stack, Text } from "metabase/ui";
 import type { DatetimeUnit } from "metabase-types/api";
 
@@ -23,12 +26,14 @@ export function DateFormatInput({
   const dateStyleOptionValues = useMemo(() => {
     const dateAbbreviate =
       formattingSettings?.["type/Temporal"]?.date_abbreviate;
+    const dateFormatSetting =
+      formattingSettings?.["type/Temporal"]?.date_style ?? "";
     const dateStyleOptions = getDateStyleOptionsForUnit(unit, dateAbbreviate);
     return _.uniq([
+      dateStyleOption(dateFormatSetting, unit, dateAbbreviate),
       ...dateStyleOptions.map(({ value }) => value),
-      value,
     ]).filter(Boolean);
-  }, [formattingSettings, value, unit]);
+  }, [formattingSettings, unit]);
 
   const debouncedChange = _.debounce(onChange, 500);
 
@@ -40,6 +45,10 @@ export function DateFormatInput({
         id="date_style"
         label={t`Date style`}
         value={localValue}
+        comboboxProps={{
+          withinPortal: false,
+          floatingStrategy: "fixed",
+        }}
         description={
           <Markdown>
             {t`Select one of the preset date formats or provide your own using [custom date format options](https://day.js.org/docs/en/display/format).`}

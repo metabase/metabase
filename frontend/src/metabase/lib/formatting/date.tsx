@@ -60,6 +60,24 @@ const DATE_STYLE_TO_FORMAT: DATE_STYLE_TO_FORMAT_TYPE = {
   },
 };
 
+const getDateStyleForUnit = ({
+  style,
+  unit,
+}: {
+  style: string;
+  unit: DatetimeUnit;
+}) => {
+  if (DATE_STYLE_TO_FORMAT?.[style]?.[unit]) {
+    return DATE_STYLE_TO_FORMAT[style][unit];
+  }
+
+  if (unit === "month") {
+    return style.replace(/d+([^a-zA-Z0-9]{0,1})(\s){0,1}/gi, "");
+  }
+
+  return style ?? DEFAULT_DATE_FORMATS[unit] ?? DEFAULT_DATE_STYLE;
+};
+
 const DATE_RANGE_MONTH_PLACEHOLDER = "<MONTH>";
 
 type DateVal = string | number | Dayjs;
@@ -728,14 +746,7 @@ export function getDateFormatFromStyle(
     unit = "default";
   }
 
-  let format = null;
-
-  if (DATE_STYLE_TO_FORMAT?.[style]?.[unit]) {
-    format = DATE_STYLE_TO_FORMAT[style][unit];
-  } else {
-    // TODO: can we get smarter about inferring other units from custom styles?
-    format = DEFAULT_DATE_FORMATS?.[unit] ?? DEFAULT_DATE_STYLE;
-  }
+  let format = getDateStyleForUnit({ style, unit });
 
   if (includeWeekday && hasDay(unit)) {
     format = `ddd, ${format}`;

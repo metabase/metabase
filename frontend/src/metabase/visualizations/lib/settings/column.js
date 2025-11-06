@@ -11,7 +11,6 @@ import {
   getCurrencyStyleOptions,
   getCurrencySymbol,
   getDateFormatFromStyle,
-  getDateStyleOptionsForUnit,
   getTimeStyleOptions,
   numberFormatterForOptions,
 } from "metabase/lib/formatting";
@@ -144,7 +143,6 @@ export const DATE_COLUMN_SETTINGS = {
       );
     },
     getProps: ({ unit }) => ({ unit }),
-    getHidden: ({ unit }) => getDateStyleOptionsForUnit(unit).length < 2,
   },
   date_abbreviate: {
     get title() {
