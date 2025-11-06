@@ -1,9 +1,9 @@
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { Link } from "react-router";
 
 import { useGetCardQuery, useGetTableQuery } from "metabase/api";
 import * as Urls from "metabase/lib/urls";
-import { Anchor, Text } from "metabase/ui";
+import { Anchor, Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { CardId, TableId } from "metabase-types/api";
 
@@ -47,19 +47,23 @@ function TableSourcePath({ tableId }: TableSourcePathProps) {
     const pathParts: SourcePathPart[] = [];
     pathParts.push({
       name: table.db.name,
-      url: Urls.dataModelDatabase(table.db_id),
+      url: table.db.is_audit ? undefined : Urls.dataModelDatabase(table.db_id),
     });
 
     if (table.schema) {
       pathParts.push({
         name: table.schema,
-        url: Urls.dataModelSchema(table.db_id, table.schema),
+        url: table.db.is_audit
+          ? undefined
+          : Urls.dataModelSchema(table.db_id, table.schema),
       });
     }
 
     pathParts.push({
       name: table.display_name,
-      url: Urls.dataModelTable(table.db_id, table.schema, table.id),
+      url: table.db.is_audit
+        ? undefined
+        : Urls.dataModelTable(table.db_id, table.schema, table.id),
     });
 
     return pathParts;
@@ -117,7 +121,7 @@ function CardSourcePath({ cardId }: CardSourcePathProps) {
 
 type SourcePathPart = {
   name: string;
-  url: string;
+  url?: string;
 };
 
 type SourcePathProps = {
@@ -126,15 +130,19 @@ type SourcePathProps = {
 
 function SourcePath({ parts }: SourcePathProps) {
   return (
-    <Text>
+    <Box fw={700}>
       {parts.map((part, index) => (
-        <span key={part.url}>
+        <Fragment key={index}>
           {index > 0 && " / "}
-          <Anchor component={Link} to={part.url} c="text-primary" fw={700}>
-            {part.name}
-          </Anchor>
-        </span>
+          {part.url ? (
+            <Anchor component={Link} to={part.url} c="text-primary">
+              {part.name}
+            </Anchor>
+          ) : (
+            <Box component="span">{part.name}</Box>
+          )}
+        </Fragment>
       ))}
-    </Text>
+    </Box>
   );
 }
