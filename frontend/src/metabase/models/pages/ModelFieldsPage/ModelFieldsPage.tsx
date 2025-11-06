@@ -84,6 +84,7 @@ function ModelFieldsPageBody({
   const [isSorting, setIsSorting] = useState(false);
   const [updateCard, { isLoading: isSaving }] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const isReadOnly = !card.can_write;
 
   const activeField = useMemo(
     () => (activeFieldName ? fieldField(fields, activeFieldName) : null),
@@ -149,6 +150,7 @@ function ModelFieldsPageBody({
             fields={fields}
             activeFieldName={activeFieldName}
             isSorting={isSorting}
+            isReadOnly={isReadOnly}
             onSelectField={handleSelectField}
             onChangeField={handleChangeField}
             onChangeSorting={setFields}
@@ -158,10 +160,11 @@ function ModelFieldsPageBody({
             <ModelFieldDetails
               field={activeField}
               idFields={idFields}
+              isReadOnly={isReadOnly}
               onChangeField={handleChangeField}
             />
           ) : (
-            <ModelFieldEmptyState />
+            <ModelFieldEmptyState isReadOnly={isReadOnly} />
           )}
         </Flex>
       </Flex>

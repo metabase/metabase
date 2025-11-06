@@ -17,6 +17,7 @@ interface Props {
   nameRightSection?: ReactNode;
   description: string;
   descriptionPlaceholder: string;
+  readOnly?: boolean;
   onNameChange: (name: string) => void;
   onDescriptionChange: (description: string) => void;
 }
@@ -30,6 +31,7 @@ export const NameDescriptionInput = ({
   nameRightSection,
   description,
   descriptionPlaceholder,
+  readOnly,
   onNameChange,
   onDescriptionChange,
 }: Props) => {
@@ -115,6 +117,7 @@ export const NameDescriptionInput = ({
           },
         }}
         value={name}
+        readOnly={readOnly}
         onChange={handleNameChange}
       />
 
@@ -128,6 +131,7 @@ export const NameDescriptionInput = ({
         minRows={2}
         placeholder={descriptionPlaceholder}
         value={description}
+        readOnly={readOnly}
         onChange={handleDescriptionChange}
       />
     </Box>
