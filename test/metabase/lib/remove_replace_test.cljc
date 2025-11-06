@@ -779,8 +779,6 @@
   (testing "issue #45041"
     (testing "Emptying a stage via remove-replace should merge that stage into the next stage"
       (let [query (lib/query meta/metadata-provider (meta/table-metadata :products))
-            breakout-col (->> (lib/breakoutable-columns query)
-                              (m/find-first (comp #{"CATEGORY"} :name)))
             q2 (-> query
                    (lib/aggregate (lib/count))
                    lib/append-stage
