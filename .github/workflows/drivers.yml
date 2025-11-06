@@ -441,7 +441,7 @@ jobs:
             image: mysql:latest
             env:
               enable-ssl-tests: 'true'
-              enable-aws-iam-tests: 'false' #TODO: enable
+              enable-aws-iam-tests: 'true'
         job:
           - name: Driver Tests
             test-args: >-
@@ -503,8 +503,8 @@ jobs:
       MB_MYSQL_AWS_IAM_TEST: ${{ matrix.version.env.enable-aws-iam-tests }}
       MB_MYSQL_AWS_IAM_TEST_HOST: ${{ secrets.MYSQL_AURORA_IAM_INSTANCE_HOST }}
       MB_MYSQL_AWS_IAM_TEST_PORT: 3306
-      MB_MYSQL_AWS_IAM_TEST_USER: mb_test
-      MB_MYSQL_AWS_IAM_TEST_DBNAME: mb_test
+      MB_MYSQL_AWS_IAM_TEST_USER: my_iam_user
+      MB_MYSQL_AWS_IAM_TEST_DBNAME: test_db
       MB_MYSQL_AWS_IAM_TEST_SSL_CERT: trust
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_AURORA_IAM_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_AURORA_IAM_SECRET_ACCESS_KEY }}
@@ -804,7 +804,7 @@ jobs:
             docker-image: postgres:latest
             env:
               enable-ssl-tests: 'true'
-              enable-aws-iam-tests: 'false' #TODO: enable
+              enable-aws-iam-tests: 'true'
         job:
           - name: Driver Tests
             test-args: >-
@@ -847,8 +847,8 @@ jobs:
       MB_POSTGRES_AWS_IAM_TEST: ${{ matrix.version.env.enable-aws-iam-tests }}
       MB_POSTGRES_AWS_IAM_TEST_HOST: ${{ secrets.POSTGRES_AURORA_IAM_INSTANCE_HOST }}
       MB_POSTGRES_AWS_IAM_TEST_PORT: 5432
-      MB_POSTGRES_AWS_IAM_TEST_USER: mb_test
-      MB_POSTGRES_AWS_IAM_TEST_DBNAME: mb_test
+      MB_POSTGRES_AWS_IAM_TEST_USER: my_iam_user
+      MB_POSTGRES_AWS_IAM_TEST_DBNAME: test_db
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_AURORA_IAM_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_AURORA_IAM_SECRET_ACCESS_KEY }}
     services:
