@@ -8,17 +8,17 @@ import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
-import S from "./CardOverviewVisualization.css";
+import S from "./VisualizationSection.css";
 
-type CardOverviewVisualizationProps = {
+type VisualizationSectionProps = {
   card: Card;
   className?: string;
 };
 
-export function CardOverviewVisualization({
+export function VisualizationSection({
   card,
   className,
-}: CardOverviewVisualizationProps) {
+}: VisualizationSectionProps) {
   const metadata = useSelector(getMetadata);
   const question = useMemo(
     () => new Question(card, metadata),

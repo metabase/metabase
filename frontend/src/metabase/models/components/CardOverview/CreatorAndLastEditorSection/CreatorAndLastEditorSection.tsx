@@ -5,13 +5,13 @@ import { getUserName } from "metabase/lib/user";
 import { Box, FixedSizeIcon, Group, Stack, Title } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
-type CreatorAndLastEditorInfoProps = {
+type CreatorAndLastEditorSectionProps = {
   card: Card;
 };
 
-export function CreatorAndLastEditorInfo({
+export function CreatorAndLastEditorSection({
   card,
-}: CreatorAndLastEditorInfoProps) {
+}: CreatorAndLastEditorSectionProps) {
   const createdAt = card.created_at;
   const createdBy = card.creator;
   const editedAt = card["last-edit-info"]?.timestamp;

@@ -12,11 +12,11 @@ import type { Card, CardId, TableId } from "metabase-types/api";
 
 import S from "./QuerySourceInfo.module.css";
 
-type QuerySourceInfoProps = {
+type QuerySourceSectionProps = {
   card: Card;
 };
 
-export function QuerySourceInfo({ card }: QuerySourceInfoProps) {
+export function QuerySourceSection({ card }: QuerySourceSectionProps) {
   const metadata = useSelector(getMetadata);
   const { query, queryInfo } = useMemo(() => {
     const query = Lib.fromJsQueryAndMetadata(metadata, card.dataset_query);

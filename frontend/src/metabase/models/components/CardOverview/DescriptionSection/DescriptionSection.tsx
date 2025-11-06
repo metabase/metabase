@@ -7,11 +7,11 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box } from "metabase/ui";
 import type { Card, CardType } from "metabase-types/api";
 
-type DescriptionInfoProps = {
+type DescriptionSectionProps = {
   card: Card;
 };
 
-export function DescriptionInfo({ card }: DescriptionInfoProps) {
+export function DescriptionSection({ card }: DescriptionSectionProps) {
   const [updateCard] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
