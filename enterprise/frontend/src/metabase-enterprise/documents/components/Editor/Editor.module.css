@@ -11,7 +11,7 @@
 }
 
 .editorContent :global(.ProseMirror),
-.editorContentWrapper {
+.editorContentInner {
   max-width: 56.25rem;
   margin: 0 auto;
 }

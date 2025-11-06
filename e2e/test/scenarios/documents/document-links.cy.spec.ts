@@ -49,8 +49,7 @@ describe("Links in documents", () => {
       cy.log("Assert link is unlinked");
       H.documentContent()
         .findByRole("paragraph")
-        .should("contain.text", "Click here");
-      H.documentContent()
+        .should("contain.text", "Click here")
         .findByRole("link", { name: "here" })
         .should("not.exist");
     });

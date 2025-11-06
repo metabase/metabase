@@ -1,5 +1,11 @@
 import type { Editor } from "@tiptap/core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import ExternalLink from "metabase/common/components/ExternalLink";
@@ -42,14 +48,7 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
     const handleMouseOver = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       if (target.tagName === "A" && target.classList.contains(S.plainLink)) {
-        const targetRect = target.getBoundingClientRect();
-        const editorRect = editor.view.dom.getBoundingClientRect();
-        const leftMax = editorRect.width - MAX_W;
         clearHoverTimeout();
-        setHoverPosition({
-          top: targetRect.bottom - editorRect.top,
-          left: Math.min(targetRect.left - editorRect.left, leftMax),
-        });
         setHoveredLink(target);
       }
     };
@@ -72,6 +71,22 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
     };
   }, [clearHoverTimeout, editor, startHoverTimeout]);
 
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (!hoveredLink) {
+      return;
+    }
+    const linkRect = hoveredLink.getBoundingClientRect();
+    const editorRect = editor.view.dom.getBoundingClientRect();
+    const hoverMenuRect = ref.current?.getBoundingClientRect();
+
+    const leftMax = editorRect.width - (hoverMenuRect?.width ?? MAX_W);
+    setHoverPosition({
+      top: linkRect.bottom - editorRect.top,
+      left: Math.min(linkRect.left - editorRect.left, leftMax),
+    });
+  }, [hoveredLink, editor]);
+
   const href = hoveredLink?.getAttribute("href");
   if (!href || !hoveredLink) {
     return null;
@@ -79,6 +94,7 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
 
   return (
     <Box
+      ref={ref}
       mt="xs"
       ml="-sm"
       pos="absolute"
