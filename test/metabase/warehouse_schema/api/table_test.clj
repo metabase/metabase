@@ -1414,7 +1414,7 @@
                      :model/Database {d2 :id} {:engine "h2", :details (:details (mt/db))}
                      :model/Table    {t1 :id} {:db_id d1, :schema "PUBLIC"}
                      :model/Table    {t2 :id} {:db_id d1, :schema "PUBLIC"}
-                     :model/Table    {t3 :id} {:db_id d2, :schema "PUBLIC"}
+                     :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
                      :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
                      :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
         (with-redefs [sync/sync-table! (fn [table]
@@ -1437,7 +1437,7 @@
                      :model/Database {d2 :id} {:engine "h2", :details (:details (mt/db))}
                      :model/Table    {t1 :id} {:db_id d1, :schema "PUBLIC"}
                      :model/Table    {t2 :id} {:db_id d1, :schema "PUBLIC"}
-                     :model/Table    {t3 :id} {:db_id d2, :schema "PUBLIC"}
+                     :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
                      :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
                      :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
         (with-redefs [sync/update-field-values-for-table! (fn [table]
