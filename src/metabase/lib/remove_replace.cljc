@@ -229,6 +229,25 @@
              possible-location))))
      (stage-paths query stage-number))))
 
+(defn- simplify-query [query]
+  (let [first-stage (lib.util/query-stage query 0)
+        stage-keys (-> first-stage keys set)
+        next-stage (when-not (lib.util/last-stage? query 0)
+                     (lib.util/query-stage query 1))]
+    ;; if the first stage is empty and there are more stages after it, merge the first stage into the next stage
+    (if (and (or (= stage-keys
+                    #{:source-table :lib/type})
+                 (= stage-keys
+                    #{:source-card :lib/type}))
+             next-stage
+             (lib.util/mbql-stage? first-stage)
+             (lib.util/mbql-stage? next-stage))
+      (let [additional-stages (drop 2 (:stages query))
+            new-stages (vec (cons (merge next-stage first-stage)
+                                  additional-stages))]
+        (assoc query :stages new-stages))
+      query)))
+
 (mu/defn- remove-replace* :- :map
   [query             :- :map
    stage-number      :- :int
@@ -283,7 +302,8 @@
                            ;; clean this up -- why don't we do that?
                            (lib.schema.util/distinct-mbql-clauses? (:breakout new-stage)))
                           ;; any change to something other than breakouts is always considered valid
-                          true)]
+                          true)
+          new-query (simplify-query new-query)]
       (if valid-change?
         new-query
         query))))
