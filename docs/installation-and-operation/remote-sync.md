@@ -99,7 +99,7 @@ You can rename the Synced Collection if you want, and you can add sub-collection
    - **Create new content:** Click "New" and choose a dashboard, question, or document. Save it to the Synced Collection.
    - **Move existing content:** Drag and drop items from other collections into the Synced Collection, or use the move option in the item's menu.
 
-Remember that the synced collection must be [self-contained](#key-concepts) — everything a dashboard or question needs must be inside it. For example, if you add a question that references a model, make sure the model is also in the synced collection.
+Remember that the synced collection must be [self-contained](#items-in-the-synced-collection-cant-depend-on-items-outside-of-it). 
 
 ### 5. Push your changes to your repository
 
@@ -118,8 +118,6 @@ Check your repository — you should see the collection.
 **About branches:** By default, you're pushing to your repository's main branch. However, you can choose which branch to push your development work to, allowing you to open pull requests for review before merging to the branch that your production Metabase pulls from. See [Branch management](#branch-management) for details on creating and switching branches.
 
 ### 6. Create a personal access token for production
-
-Now that you have content in your repository, you can set up your production Metabase to pull that content.
 
 Create a [GitHub fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) for your repository with these permissions:
 
@@ -386,4 +384,4 @@ If you want to switch fully to Remote Sync, we recommend starting with a new rep
 3. Move the content you want to sync into the synced collection.
 4. Push up your changes to the new repo.
 
-Note: Remote Sync does NOT sync table metadata, so if you're importing and exporting your [table metadata](../data-modeling/metadata-editing.md), you should stick with serialization.
+Remote Sync does NOT sync table metadata, so if you're importing and exporting your [table metadata](../data-modeling/metadata-editing.md), you should stick with serialization.
