@@ -3,11 +3,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useUpdateFieldMutation } from "metabase/api";
+import { FieldList } from "metabase/metadata/components/FieldList";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field, FieldId, Table } from "metabase-types/api";
-
-import { FieldList } from "../../FieldList";
 
 interface Props {
   table: Table;

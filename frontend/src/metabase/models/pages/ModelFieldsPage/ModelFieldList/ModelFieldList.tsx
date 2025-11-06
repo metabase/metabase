@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { FieldList } from "metabase/metadata/pages/DataModel/components/FieldList";
+import { FieldList } from "metabase/metadata/components/FieldList";
 import { Box, Button, Flex, Group, Icon } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
