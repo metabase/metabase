@@ -1,11 +1,13 @@
-import type {
-  MetabaseColor,
-  MetabaseTheme,
+import { useCallback, useMemo } from "react";
+
+import {
+  DEFAULT_SDK_FONT_SIZE,
+  type MetabaseColor,
+  type MetabaseTheme,
 } from "metabase/embedding-sdk/theme";
+import { getSizeInPx } from "metabase/visualizations/shared/utils/size-in-px";
 
 import { useDefaultEmbeddingTheme } from "../../hooks/use-default-embedding-theme";
-
-const baseFontSizes = { h1: 24, h2: 16 };
 
 // TODO(EMB-942): add embedding theme preview placeholder card
 export const EmbeddingThemeCardPreview = ({
@@ -19,7 +21,18 @@ export const EmbeddingThemeCardPreview = ({
   const colorOf = (key: Exclude<MetabaseColor, "charts">) =>
     colors?.[key] ?? defaultTheme.colors?.[key];
 
-  const fontSizeOf = (order: "h1" | "h2") => baseFontSizes[order];
+  // Get preview sizes.
+  const emToPx = useCallback(
+    (emValue: number) => {
+      const baseFontSize = getSizeInPx(theme.fontSize) ?? DEFAULT_SDK_FONT_SIZE;
+
+      return getSizeInPx(`${emValue}em`, baseFontSize);
+    },
+    [theme.fontSize],
+  );
+
+  const h1FontSize = useMemo(() => emToPx(1.714), [emToPx]);
+  const h2FontSize = useMemo(() => emToPx(1.143), [emToPx]);
 
   return (
     <svg viewBox="0 0 251 251" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -30,9 +43,9 @@ export const EmbeddingThemeCardPreview = ({
         <path d="M0 0H251V251H0V0Z" fill={colorOf("background-secondary")} />
         <text
           x="28"
-          y="50"
+          y="48"
           fill={colorOf("text-primary")}
-          fontSize={fontSizeOf("h1")}
+          fontSize={h1FontSize}
           fontWeight="600"
         >
           {"Abc"}
@@ -66,7 +79,7 @@ export const EmbeddingThemeCardPreview = ({
           x="60"
           y="107"
           fill={colorOf("text-primary")}
-          fontSize={fontSizeOf("h2")}
+          fontSize={h2FontSize}
           fontWeight="700"
         >
           {"Theme preview"}
