@@ -192,6 +192,12 @@
                            test)]
                  (nrepl-eval "mb.hawk.core" (str code) (:port options)))}
 
+  affected-modules
+  {:doc      "Calculates which backend modules have changes compared to a Git ref (e.g. `master`)"
+   :examples [["./bin/mage affected-modules master"]]
+   :requires [[mage.modules]]
+   :task     (task! (mage.modules/affected-modules (:arguments parsed)))}
+
   ls {:doc      "List all mage public and private tasks"
       :examples [["./bin/mage ls" "List all tasks"]]
       :requires [[mage.util :as u]]
