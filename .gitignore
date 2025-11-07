@@ -104,6 +104,7 @@ dev/serialization_deltas/
 *.tsbuildinfo
 /trace-output/
 /temp-types/
+/frontend/src/metabase-types/openapi
 
 **/cypress_sample_database.json
 **/cypress_sample_instance_data.json

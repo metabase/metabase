@@ -20,8 +20,6 @@ const {
 } = require("./frontend/build/shared/rspack/get-banner-options");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 
-const { TsCheckerRspackPlugin } = require("ts-checker-rspack-plugin");
-
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
 const IMAGES_PATH = __dirname + "/resources/frontend_client/app/img";
@@ -284,18 +282,6 @@ const config = {
   },
 
   plugins: [
-    // new TsCheckerRspackPlugin({
-    //   devServer: true,
-    //   async: false,
-    //   typescript: {
-    //     configFile: __dirname + "/tsconfig.json",
-    //     memoryLimit: 4096, // Increase memory limit to 4GB
-    //     diagnosticOptions: {
-    //       semantic: true,
-    //       syntactic: true,
-    //     },
-    //   },
-    // }),
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new rspack.CssExtractRspackPlugin({
       filename: isDevMode ? "[name].css" : "[name].[contenthash].css",
@@ -345,7 +331,6 @@ const config = {
   ],
 };
 
-console.log({ shouldEnableHotRefresh });
 if (shouldEnableHotRefresh) {
   config.target = "web";
 
@@ -365,10 +350,6 @@ if (shouldEnableHotRefresh) {
     hot: true,
     client: {
       progress: false,
-      // overlay: {
-      //   errors: true,
-      //   warnings: false,
-      // },
       overlay: false,
     },
     headers: {
@@ -399,7 +380,7 @@ if (shouldEnableHotRefresh) {
 
   config.plugins.unshift(
     new ReactRefreshPlugin({
-      overlay: true,
+      overlay: false,
     }),
   );
 }
@@ -433,12 +414,12 @@ if (isDevMode) {
   // helps with source maps
   config.output.devtoolModuleFilenameTemplate = "[absolute-resource-path]";
 
-  // config.plugins.push(
-  //   new WebpackNotifierPlugin({
-  //     excludeWarnings: true,
-  //     skipFirstNotification: true,
-  //   }),
-  // );
+  config.plugins.push(
+    new WebpackNotifierPlugin({
+      excludeWarnings: true,
+      skipFirstNotification: true,
+    }),
+  );
 }
 
 module.exports = config;

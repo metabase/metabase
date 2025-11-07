@@ -18,7 +18,9 @@
   "Path to the local OpenAPI specification file."
   "resources/openapi/openapi.json")
 
-(defn- sort-keys [data]
+(defn- sort-keys
+  "Sort maps and sets alphabetically to reduce diff noise on openapi.json"
+  [data]
   (walk/postwalk
    (fn [x]
      (cond

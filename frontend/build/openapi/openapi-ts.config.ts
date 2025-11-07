@@ -2,7 +2,7 @@ import { defineConfig } from "@hey-api/openapi-ts";
 
 // eslint-disable-next-line import/no-default-export
 export default defineConfig({
-  input: "./resources/openapi/openapi.json", // or .yaml
+  input: "./resources/openapi/openapi.json",
   output: {
     path: "frontend/src/metabase-types/openapi",
     clean: false,
@@ -12,7 +12,7 @@ export default defineConfig({
   },
   plugins: [
     {
-      enums: true, // default
+      enums: true,
       name: "@hey-api/typescript",
     },
   ],

@@ -39,7 +39,6 @@ const getLocaleOptions = (locales: LocaleData[] | null) => {
   return [{ label: t`Use site default`, value: "" }, ...options];
 };
 
-
 const localeOptions = getLocaleOptions(
   Object.values(MetabaseSessionApiAvailableLocale).map((x) => [x[0], x[1]]),
 );
@@ -121,7 +120,7 @@ const UserProfileForm = ({
                 }
                 mb="md"
               />
-              {/* {user.middle_name} */}
+              {user.middle_name}
             </div>
             <FormSubmitButton
               label={t`Update`}

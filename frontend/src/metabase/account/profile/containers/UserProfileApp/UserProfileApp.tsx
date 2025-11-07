@@ -7,7 +7,6 @@ import { updateUser } from "../../actions";
 import UserProfileForm from "../../components/UserProfileForm";
 import { getIsSsoUser, getLocales } from "../../selectors";
 
-
 const mapStateToProps = (state: State) => ({
   user: checkNotNull(getUser(state)),
   locales: getLocales(state),

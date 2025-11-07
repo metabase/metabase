@@ -3433,6 +3433,12 @@
           "name" : {
             "type" : "string"
           },
+          "related_tables" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.table-result"
+            },
+            "type" : "array"
+          },
           "type" : {
             "enum" : [ "model", "table" ],
             "type" : "string"

@@ -1,10 +1,6 @@
-import type { UserInfo, UserListResult } from "metabase-types/api";
+import type { User, UserInfo, UserListResult } from "metabase-types/api";
 
-import type { MetabaseUsersApiUser } from "../../../../../ts-types/hey-api/types.gen";
-
-export const createMockUser = (
-  opts?: Partial<MetabaseUsersApiUser>,
-): MetabaseUsersApiUser => ({
+export const createMockUser = (opts?: Partial<User>): User => ({
   id: 1,
   first_name: "Testy",
   last_name: "Tableton",
