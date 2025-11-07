@@ -614,7 +614,7 @@
                                 migrating-to (edn/read-string (str/replace (:message (second msgs)) success-re "$1"))
                                 success-keys (set (keys details-to-succeed))
                                 [_ keys-removed _] (data/diff success-keys (set (keys details)))]
-                            (is (=? [{:level :info, :message "Attempting to connect to 4 possible legacy details"}
+                            (is (=? [{:level :info, :message "Attempting to connect to 3 possible legacy details"}
                                      {:level :info, :message success-re}]
                                     msgs))
                             (is (= {:keys success-keys
