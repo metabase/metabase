@@ -124,8 +124,27 @@ You can use [plugins](./plugins.md) to add custom functionality to your question
 
 ### `mapQuestionClickActions`
 
-This plugin allows you to add custom actions to the click-through menu of an interactive question. You can add and
-customize the appearance and behavior of the custom actions.
+When people click on a data point in the embedded interactive chart, Metabase shows them a menu of actions by default. The plugin `mapQuestionClickActions` allows you to customize this behavior. You can choose to:
+
+- Open the default Metabase menu.
+- Add custom actions to that click-through menu.
+- Perform immediate action without opening a menu.
+
+Use `mapQuestionClickActions` globally at the provider level, or on individual `InteractiveQuestion` or `InteractiveDashboard` components. For more on provider scope, see [Plugins](./plugins.md)
+
+The example below shows all the options for click action behavior. This example will:
+
+- Open a menu with custom actions when "Last Name" column is clicked.
+- Perform an immediate action (show an alert) when the "Plan" column is clicked.
+- Shows the default menu (available as `clickActions`) in all other cases.
+
+The behavior is determined by what `mapQuestionClickActions` returns: array of actions to open a menu, or a single action to trigger an immediate action.
+
+```typescript
+{% include_file "{{ dirname }}/snippets/questions/interactive-question-click-actions.tsx" snippet="example" %}
+```
+
+You can also customize the appearance of custom actions in the click menu. The example below shows an example of a click menu with default actions, a custom action, and a custom action with customized appearance:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/questions/interactive-question-plugins.tsx" snippet="example" %}
