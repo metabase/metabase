@@ -3,6 +3,7 @@ import type {
   EmbeddingType,
 } from "metabase/public/lib/types";
 import type { IconName } from "metabase/ui";
+import type { Segment } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
@@ -313,6 +314,7 @@ export type VisualizationSettings = {
   "scalar.field"?: string;
   "scalar.switch_positive_negative"?: boolean;
   "scalar.compact_primary_number"?: boolean;
+  "scalar.segments"?: Segment[];
 
   // Pie Settings
   "pie.dimension"?: string | string[];

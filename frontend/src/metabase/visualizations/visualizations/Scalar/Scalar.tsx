@@ -8,7 +8,11 @@ import {
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
-import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
+import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
+import {
+  compactifyValue,
+  getColor,
+} from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import {
@@ -77,6 +81,20 @@ export class Scalar extends Component<
         },
       ]) => cols.length < 2,
     }),
+    "scalar.segments": {
+      get section() {
+        return t`Conditional colors`;
+      },
+      getDefault() {
+        return [];
+      },
+      widget: ChartSettingSegmentsEditor,
+      persistDefault: true,
+      noPadding: true,
+      props: {
+        canRemoveAll: true,
+      },
+    },
     ...columnSettings({
       getColumns: (
         [
@@ -174,6 +192,10 @@ export class Scalar extends Component<
       jsx: true,
     };
 
+    const segments = settings["scalar.segments"];
+
+    const color = getColor(value, segments);
+
     const { displayValue, fullScalarValue } = compactifyValue(
       value,
       width,
@@ -214,6 +236,7 @@ export class Scalar extends Component<
         >
           <span onClick={handleClick} ref={(scalar) => (this._scalar = scalar)}>
             <ScalarValue
+              color={color}
               fontFamily={fontFamily}
               gridSize={gridSize}
               height={Math.max(height - PADDING * 2, 0)}

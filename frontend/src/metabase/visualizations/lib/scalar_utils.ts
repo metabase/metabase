@@ -1,6 +1,9 @@
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
+import { color } from "metabase/ui/utils/colors";
 import type { RowValue } from "metabase-types/api";
+
+import type { Segment } from "../components/settings/ChartSettingSegmentsEditor";
 
 export const COMPACT_MAX_WIDTH = 250;
 export const COMPACT_WIDTH_PER_DIGIT = 25;
@@ -37,4 +40,22 @@ export function compactifyValue(
       : fullScalarValue;
 
   return { displayValue, fullScalarValue };
+}
+
+const DEFAULT_COLOR = color("text-primary");
+
+export function getColor(_value: RowValue, segments?: Segment[]) {
+  const value = parseInt(String(_value));
+
+  if (!segments || segments.length === 0 || Number.isNaN(value)) {
+    return DEFAULT_COLOR;
+  }
+
+  const segment = segments.find((s) => s.min <= value && value <= s.max);
+
+  if (!segment || !segment.color) {
+    return DEFAULT_COLOR;
+  }
+
+  return segment.color;
 }
