@@ -67,6 +67,12 @@ export function EmbeddingNav() {
           label={t`Security`}
           icon="shield_outline"
         />
+
+        <EmbeddingNavItem
+          path="/admin/embedding/themes"
+          label={t`Themes`}
+          icon="palette"
+        />
       </Stack>
     </AdminNavWrapper>
   );
