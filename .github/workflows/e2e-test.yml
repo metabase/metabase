@@ -112,9 +112,10 @@ jobs:
         if: github.run_attempt != '1'
         run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
 
-      - name: Build frontend
+      - name: Build frontend (in background)
         run: |
-          yarn build-release
+          yarn build-release &
+
       - name: Run live backend
         env:
           MB_DB_TYPE: h2
