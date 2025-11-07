@@ -5,6 +5,7 @@ import { jt, t } from "ttag";
 import { useEditTablesMutation } from "metabase/api";
 import {
   DataSourceInput,
+  EntityTypeInput,
   LayerInput,
   UserInput,
 } from "metabase/metadata/components";
@@ -38,6 +39,7 @@ export function EditTableMetadata() {
     TableDataSource | "unknown" | null
   >(null);
   const [email, setEmail] = useState<string | null>(null);
+  const [entityType, setEntityType] = useState<string | null>(null);
   const [userId, setUserId] = useState<UserId | "unknown" | null>(null);
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
     useDisclosure();
@@ -46,17 +48,20 @@ export function EditTableMetadata() {
     dataLayer,
     dataSource,
     email,
+    entityType,
     userId,
   }: {
     dataLayer?: TableDataLayer | null;
     dataSource?: TableDataSource | "unknown" | null;
     email?: string | null;
+    entityType?: string | null;
     userId?: UserId | "unknown" | null;
   }) => {
     const { error } = await editTables({
       table_ids: Array.from(selectedTables),
       schema_ids: Array.from(selectedSchemas),
       database_ids: Array.from(selectedDatabases),
+      entity_type: entityType ?? undefined,
       data_layer: dataLayer ?? undefined,
       data_source: dataSource === "unknown" ? null : (dataSource ?? undefined),
       owner_email:
@@ -85,6 +90,9 @@ export function EditTableMetadata() {
     }
     if (userId) {
       setUserId(userId);
+    }
+    if (entityType) {
+      setEntityType(entityType);
     }
   };
 
@@ -141,27 +149,10 @@ export function EditTableMetadata() {
             </Box>
           </Group>
         </Box>
-        <Box px="lg">
-          <TableSectionGroup>
-            <Box className={S.container}>
-              <LayerInput
-                clearable
-                value={dataLayer}
-                onChange={(newDataLayer) =>
-                  handleSubmit({ dataLayer: newDataLayer })
-                }
-                className={S.gridLabelInput}
-                styles={{
-                  label: {
-                    gridColumn: 1,
-                    fontWeight: "normal",
-                  },
-                  input: {
-                    gridColumn: 2,
-                  },
-                }}
-              />
 
+        <Box px="lg">
+          <TableSectionGroup title={t`Attributes`}>
+            <Box className={S.container}>
               <UserInput
                 clearable
                 email={email}
@@ -177,12 +168,42 @@ export function EditTableMetadata() {
                 styles={{
                   label: {
                     gridColumn: 1,
-                    fontWeight: "normal",
                   },
                   input: {
                     gridColumn: 2,
                   },
                 }}
+              />
+
+              <LayerInput
+                clearable
+                value={dataLayer}
+                onChange={(newDataLayer) =>
+                  handleSubmit({ dataLayer: newDataLayer })
+                }
+                className={S.gridLabelInput}
+                styles={{
+                  label: {
+                    gridColumn: 1,
+                  },
+                  input: {
+                    gridColumn: 2,
+                  },
+                }}
+              />
+
+              <EntityTypeInput
+                value={entityType}
+                onChange={(entityType) => handleSubmit({ entityType })}
+                styles={{
+                  label: {
+                    gridColumn: 1,
+                  },
+                  input: {
+                    gridColumn: 2,
+                  },
+                }}
+                className={S.gridLabelInput}
               />
 
               <DataSourceInput
@@ -195,7 +216,6 @@ export function EditTableMetadata() {
                 styles={{
                   label: {
                     gridColumn: 1,
-                    fontWeight: "normal",
                   },
                   input: {
                     gridColumn: 2,
@@ -206,6 +226,7 @@ export function EditTableMetadata() {
           </TableSectionGroup>
         </Box>
       </Stack>
+
       <PublishModelsModal
         tables={selectedTables}
         schemas={selectedSchemas}

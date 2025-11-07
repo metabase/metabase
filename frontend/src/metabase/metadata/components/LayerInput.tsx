@@ -40,7 +40,7 @@ export const LayerInput = ({
         { value: "silver", label: t`Silver` },
         { value: "gold", label: t`Gold` },
       ]}
-      label={t`Data quality layer`}
+      label={t`Visibility type`}
       renderOption={(item) => {
         const selected = item.option.value === value;
 

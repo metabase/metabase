@@ -172,6 +172,7 @@ export interface EditTablesRequest {
   data_layer?: TableDataLayer | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
+  entity_type?: string | null;
 }
 
 export interface SyncTablesSchemaRequest {

@@ -1,27 +1,16 @@
 import { t } from "ttag";
 
+import { useUpdateTableMutation } from "metabase/api";
 import {
-  usePublishModelsMutation,
-  useUpdateTableFieldsOrderMutation,
-  useUpdateTableMutation,
-} from "metabase/api";
-import {
-  ActiveInput,
   DataSourceInput,
   EntityTypeInput,
-  FieldOrderPicker,
   LayerInput,
-  NameDescriptionInput,
-  SortableFieldList,
   UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Stack, Title } from "metabase/ui";
 import type {
-  FieldId,
   Table,
   TableDataSource,
-  TableFieldOrder,
   TableVisibilityType2,
   UserId,
 } from "metabase-types/api";
@@ -168,7 +157,6 @@ export function TableMetadataSettings({ table }: Props) {
           styles={{
             label: {
               gridColumn: 1,
-              fontWeight: "normal",
             },
             input: {
               gridColumn: 2,
@@ -183,7 +171,6 @@ export function TableMetadataSettings({ table }: Props) {
           styles={{
             label: {
               gridColumn: 1,
-              fontWeight: "normal",
             },
             input: {
               gridColumn: 2,
@@ -198,7 +185,6 @@ export function TableMetadataSettings({ table }: Props) {
           styles={{
             label: {
               gridColumn: 1,
-              fontWeight: "normal",
             },
             input: {
               gridColumn: 2,
@@ -214,7 +200,6 @@ export function TableMetadataSettings({ table }: Props) {
           styles={{
             label: {
               gridColumn: 1,
-              fontWeight: "normal",
             },
             input: {
               gridColumn: 2,
