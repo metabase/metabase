@@ -1,5 +1,4 @@
 (ns metabase.activity-feed.core
-  "API namespace for the Activity Feed."
   (:require
    [metabase.activity-feed.models.recent-views]
    [potemkin :as p]))

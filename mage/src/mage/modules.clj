@@ -88,10 +88,8 @@
      (println "You can run tests for these modules and all downstream modules as follows:")
      (println)
      (println)
-     (println "clojure -X :dev:ee:ee-dev:test :only '[")
-     (doseq [module affected]
-       (println (pr-str (module->test-directory module))))
-     (println "]'"))
+     (printf "clojure -X :dev:ee:ee-dev:test :only '%s'\n" (pr-str (mapv module->test-directory affected)))
+     (flush))
    (System/exit 0))
 
   ([deps modules]
