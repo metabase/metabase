@@ -2,6 +2,7 @@ import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
+import { TitledSection } from "metabase/metadata/components/TitledSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
@@ -13,7 +14,6 @@ import type {
 } from "metabase-types/api";
 
 import { trackMetadataChange } from "../../analytics";
-import { TitledSection } from "../TitledSection";
 
 interface Props {
   field: Field;

@@ -3,6 +3,7 @@ import _ from "underscore";
 import type {
   Dataset,
   DatasetColumn,
+  Field,
   RowValues,
   VisualizerColumnValueSource,
   VisualizerDataSource,
@@ -80,6 +81,6 @@ export function mergeVisualizerData({
   return {
     cols: columns,
     rows: _.zip(...unzippedRows),
-    results_metadata: { columns },
+    results_metadata: { columns: columns as unknown as Field[] },
   };
 }

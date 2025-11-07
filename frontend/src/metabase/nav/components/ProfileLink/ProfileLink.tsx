@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { logout } from "metabase/auth/actions";
 import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPages/ErrorDiagnosticModal";
 import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -39,15 +40,16 @@ const mapStateToProps = (state: State) => ({
 });
 
 const mapDispatchToProps = {
-  openDiagnostics,
+  onOpenDiagnostics: openDiagnostics,
+  onLogout: logout,
 };
 
 interface ProfileLinkProps {
   adminItems: AdminPath[];
   canAccessOnboardingPage: boolean;
   isNewInstance: boolean;
+  onOpenDiagnostics: () => void;
   onLogout: () => void;
-  openDiagnostics: () => void;
 }
 
 interface MenuItem {
@@ -57,7 +59,6 @@ interface MenuItem {
   link?: string;
   action?: () => void;
   separator?: boolean;
-  event?: string;
 }
 
 function ProfileLinkInner({
@@ -65,7 +66,7 @@ function ProfileLinkInner({
   canAccessOnboardingPage,
   isNewInstance,
   onLogout,
-  openDiagnostics,
+  onOpenDiagnostics,
 }: ProfileLinkProps) {
   const [modalOpen, setModalOpen] = useState<string | null>(null);
   const version = useSetting("version") as MetabaseInfo["version"];
@@ -93,50 +94,61 @@ function ProfileLinkInner({
         title: t`Account settings`,
         icon: null,
         link: Urls.accountSettings(),
-        event: `Navbar;Profile Dropdown;Edit Profile`,
       },
-      showAdminSettingsItem && {
-        title: t`Admin settings`,
+      ...(showAdminSettingsItem
+        ? [
+            {
+              title: t`Admin settings`,
+              icon: null,
+              link: "/admin",
+            },
+          ]
+        : []),
+      {
+        title: t`Data studio`,
         icon: null,
-        link: "/admin",
-        event: `Navbar;Profile Dropdown;Enter Admin`,
+        link: Urls.dataStudio(),
       },
+      {
+        separator: true,
+      },
+      ...(helpLink.visible
+        ? [
+            {
+              title: t`Help`,
+              icon: null,
+              link: helpLink.href,
+              externalLink: true,
+            },
+          ]
+        : []),
+      ...(showOnboardingLink
+        ? [
+            {
+              // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances
+              title: t`How to use Metabase`,
+              icon: null,
+              link: "/getting-started",
+            },
+          ]
+        : []),
       {
         title: t`Keyboard shortcuts`,
         icon: null,
         action: () => dispatch(setOpenModal("help")),
       },
       {
-        separator: true,
-      },
-      helpLink.visible && {
-        title: t`Help`,
-        icon: null,
-        link: helpLink.href,
-        externalLink: true,
-        event: `Navbar;Profile Dropdown;About ${tag}`,
-      },
-      showOnboardingLink && {
-        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances
-        title: t`How to use Metabase`,
-        icon: null,
-        link: "/getting-started",
-        event: `Navbar;Profile Dropdown;Getting Started`,
-      },
-      {
         title: t`Report an issue`,
         icon: null,
         action: () => {
           trackErrorDiagnosticModalOpened("profile-menu");
-          openDiagnostics();
+          onOpenDiagnostics();
         },
-        event: `Navbar;Profile Dropdown;Report Bug`,
       },
       {
         title: t`About ${applicationName}`,
         icon: null,
         action: () => openModal("about"),
-        event: `Navbar;Profile Dropdown;About ${tag}`,
       },
       {
         separator: true,
@@ -145,9 +157,8 @@ function ProfileLinkInner({
         title: t`Sign out`,
         icon: null,
         action: () => onLogout(),
-        event: `Navbar;Profile Dropdown;Logout`,
       },
-    ].filter((item) => !!item);
+    ];
   };
 
   // show trademark if application name is not whitelabeled

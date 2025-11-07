@@ -40,7 +40,7 @@ export default class RevisionHistory extends Component {
               crumbs={[
                 [
                   t`Segments`,
-                  `/admin/datamodel/segments?table=${segment.table_id}`,
+                  `/data-studio/data/segments?table=${segment.table_id}`,
                 ],
                 [t`Segment History`],
               ]}

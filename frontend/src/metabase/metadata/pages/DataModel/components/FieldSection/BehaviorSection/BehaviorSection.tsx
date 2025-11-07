@@ -7,6 +7,7 @@ import {
   FieldVisibilityPicker,
   UnfoldJsonPicker,
 } from "metabase/metadata/components";
+import { TitledSection } from "metabase/metadata/components/TitledSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   canFieldUnfoldJson,
@@ -22,7 +23,6 @@ import type {
 } from "metabase-types/api";
 
 import { trackMetadataChange } from "../../../analytics";
-import { TitledSection } from "../../TitledSection";
 
 import { RemappingPicker } from "./RemappingPicker";
 

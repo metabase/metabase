@@ -6,13 +6,13 @@ import {
   useUpdateFieldMutation,
 } from "metabase/api";
 import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
+import { TitledSection } from "metabase/metadata/components/TitledSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DatabaseId, Field, Table } from "metabase-types/api";
 
 import { trackMetadataChange } from "../../analytics";
-import { TitledSection } from "../TitledSection";
 
 import { getSemanticTypeError } from "./utils";
 

@@ -15,7 +15,10 @@ import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import {
+  PLUGIN_CACHING,
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+} from "metabase/plugins";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
@@ -51,6 +54,9 @@ export const useCommandPalette = ({
 
   const isAdmin = useSelector(getUserIsAdmin);
   const canUserAccessSettings = useSelector(canAccessSettings);
+  const hasDataModelAccess = useSelector(
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
+  );
 
   const isSearchTypeaheadEnabled = useSetting("search-typeahead-enabled");
 
@@ -323,11 +329,29 @@ export const useCommandPalette = ({
       }));
   }, [disabled, canUserAccessSettings, isAdmin, settingValues]);
 
-  useRegisterActions(hasQuery ? [...adminActions, ...settingsActions] : [], [
-    adminActions,
-    settingsActions,
-    hasQuery,
-  ]);
+  const dataModelActions = useMemo<PaletteAction[]>(() => {
+    if (disabled || !hasDataModelAccess) {
+      return [];
+    }
+
+    return [
+      {
+        id: "data-studio-table-metadata",
+        name: t`Table Metadata`,
+        icon: "table",
+        perform: () => {},
+        section: "data-studio",
+        extra: {
+          href: Urls.dataModel(),
+        },
+      },
+    ];
+  }, [disabled, hasDataModelAccess]);
+
+  useRegisterActions(
+    hasQuery ? [...adminActions, ...settingsActions, ...dataModelActions] : [],
+    [adminActions, settingsActions, dataModelActions, hasQuery],
+  );
 
   return {
     searchRequestId,

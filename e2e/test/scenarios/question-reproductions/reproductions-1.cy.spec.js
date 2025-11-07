@@ -669,10 +669,6 @@ describe("issue 17910", () => {
     });
     cy.wait("@card");
 
-    cy.get("#QuestionSavedModal").within(() => {
-      cy.findByText("Not now").click();
-    });
-
     H.questionInfoButton().click();
 
     H.sidesheet().within(() => {
@@ -1019,13 +1015,10 @@ describe("issue 19742", () => {
 
     H.openNavigationSidebar();
     cy.icon("gear").click();
-    selectFromDropdown("Admin settings");
+    selectFromDropdown("Data studio");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Table Metadata").click();
     H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Exit admin").click();
+    H.DataStudio.exitButton().click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();

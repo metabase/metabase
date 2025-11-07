@@ -8,9 +8,12 @@ import { useCheckCardDependencies } from "./hooks/use-check-card-dependencies";
 import { useCheckSnippetDependencies } from "./hooks/use-check-snippet-dependencies";
 import { useCheckTransformDependencies } from "./hooks/use-check-transform-dependencies";
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
+import { getDataStudioDependencyRoutes } from "./routes";
 
 if (hasPremiumFeature("dependencies")) {
   PLUGIN_DEPENDENCIES.isEnabled = true;
+  PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes =
+    getDataStudioDependencyRoutes;
   PLUGIN_DEPENDENCIES.DependencyGraphPage = DependencyGraphPage;
   PLUGIN_DEPENDENCIES.CheckDependenciesForm = CheckDependenciesForm;
   PLUGIN_DEPENDENCIES.CheckDependenciesModal = CheckDependenciesModal;

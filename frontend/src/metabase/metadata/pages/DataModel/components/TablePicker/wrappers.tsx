@@ -14,7 +14,7 @@ export function RouterTablePicker(props: TreePath & { params: RouteParams }) {
   const dispatch = useDispatch();
   const [value, setValue] = useState(props);
   const location = useSelector(getLocation);
-  const isSegments = location.pathname?.startsWith("/admin/datamodel/segment");
+  const isSegments = location.pathname?.startsWith("/data-studio/data/segment");
 
   const onChange = useCallback(
     (value: TreePath, options?: ChangeOptions) => {

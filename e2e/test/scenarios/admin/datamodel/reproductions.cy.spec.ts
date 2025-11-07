@@ -70,7 +70,7 @@ describe("issue 18384", () => {
 
     cy.location("pathname").should(
       "eq",
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PEOPLE_ID}/field/${PEOPLE.ADDRESS}`,
+      `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PEOPLE_ID}/field/${PEOPLE.ADDRESS}`,
     );
 
     H.DataModel.FieldSection.getNameInput()
@@ -134,9 +134,8 @@ describe("issue 15542", () => {
   function openOrdersProductIdSettings() {
     // Navigate without reloading the page
     H.appBar().icon("gear").click();
-    H.popover().findByText("Admin settings").click();
+    H.popover().findByText("Data studio").click();
 
-    H.appBar().findByText("Table Metadata").click();
     H.DataModel.TablePicker.getTable("Orders").click();
     H.DataModel.TableSection.clickField("Product ID");
   }
@@ -161,7 +160,7 @@ describe("issue 15542", () => {
 
     cy.wait("@fieldDimensionUpdate");
 
-    cy.findByRole("link", { name: "Exit admin" }).click();
+    H.DataStudio.exitButton().click();
     openOrdersTable();
 
     H.tableHeaderClick("Product ID");
@@ -177,7 +176,7 @@ describe("issue 15542", () => {
     H.DataModel.FieldSection.getDisplayValuesInput().click();
     H.popover().findByText("Use original value").click();
 
-    cy.findByRole("link", { name: "Exit admin" }).click();
+    H.DataStudio.exitButton().click();
     openOrdersTable();
 
     H.tableHeaderClick("Product ID");
@@ -199,7 +198,7 @@ describe("issue 52411", { tags: "@external" }, () => {
   });
 
   it("should be able to select a table in a database with multiple schemas on segments list page when there are multiple databases and there is a saved question (metabase#52411)", () => {
-    cy.visit("/admin/datamodel/segments");
+    cy.visit("/data-studio/data/segments");
     cy.findByTestId("segment-list-table").findByText("Filter by table").click();
     H.popover().within(() => {
       cy.findByText("Writable Postgres12").click();

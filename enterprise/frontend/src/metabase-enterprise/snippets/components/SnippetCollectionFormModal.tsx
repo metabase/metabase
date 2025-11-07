@@ -1,47 +1,39 @@
-import { useCallback } from "react";
 import { t } from "ttag";
 
-import ModalContent from "metabase/common/components/ModalContent";
+import { Modal } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
-import type { SnippetCollectionFormOwnProps } from "./SnippetCollectionForm";
 import SnippetCollectionForm from "./SnippetCollectionForm";
 
-interface SnippetCollectionFormModalOwnProps
-  extends Omit<SnippetCollectionFormOwnProps, "onCancel"> {
-  onClose?: () => void;
+interface SnippetCollectionFormModalProps {
+  collection: Collection;
+  onClose: () => void;
+  onSaved?: () => void;
 }
-
-type SnippetCollectionFormModalProps = SnippetCollectionFormModalOwnProps;
 
 function SnippetFormModal({
   collection,
-  onSave,
+  onSaved,
   onClose,
-  ...props
 }: SnippetCollectionFormModalProps) {
   const isEditing = collection.id != null;
   const title = isEditing
     ? t`Editing ${collection.name}`
     : t`Create your new folder`;
 
-  const handleSave = useCallback(
-    (snippetCollection: Collection) => {
-      onSave?.(snippetCollection);
-      onClose?.();
-    },
-    [onSave, onClose],
-  );
+  const handleSave = () => {
+    onSaved?.();
+    onClose();
+  };
 
   return (
-    <ModalContent title={title} onClose={onClose}>
+    <Modal opened onClose={onClose} title={title}>
       <SnippetCollectionForm
-        {...props}
         collection={collection}
         onSave={handleSave}
         onCancel={onClose}
       />
-    </ModalContent>
+    </Modal>
   );
 }
 

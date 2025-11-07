@@ -4,6 +4,10 @@ import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import { MetabaseReduxContext } from "metabase/lib/redux";
+import {
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_TRANSFORMS,
+} from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 
@@ -68,11 +72,31 @@ const UserCanAccessSettings = connectedReduxRedirect<Props, State>({
   context: MetabaseReduxContext,
 });
 
-export const UserCanAccessOnboarding = connectedReduxRedirect<Props, State>({
+const UserCanAccessOnboarding = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserCanAccessOnboarding",
   redirectPath: "/",
   allowRedirectBack: false,
   authenticatedSelector: (state) => getCanAccessOnboardingPage(state),
+  redirectAction: routerActions.replace,
+  context: MetabaseReduxContext,
+});
+
+const UserCanAccessDataModel = connectedReduxRedirect<Props, State>({
+  wrapperDisplayName: "UserCanAccessDataModel",
+  redirectPath: "/unauthorized",
+  allowRedirectBack: false,
+  authenticatedSelector: (state) =>
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state),
+  redirectAction: routerActions.replace,
+  context: MetabaseReduxContext,
+});
+
+const UserCanAccessTransforms = connectedReduxRedirect<Props, State>({
+  wrapperDisplayName: "UserCanAccessTransforms",
+  redirectPath: "/unauthorized",
+  allowRedirectBack: false,
+  authenticatedSelector: (state) =>
+    PLUGIN_TRANSFORMS.canAccessTransforms(state),
   redirectAction: routerActions.replace,
   context: MetabaseReduxContext,
 });
@@ -93,5 +117,13 @@ export const CanAccessSettings = MetabaseIsSetup(
 );
 
 export const CanAccessOnboarding = UserCanAccessOnboarding(
+  ({ children }) => children,
+);
+
+export const CanAccessDataModel = UserCanAccessDataModel(
+  ({ children }) => children,
+);
+
+export const CanAccessTransforms = UserCanAccessTransforms(
   ({ children }) => children,
 );

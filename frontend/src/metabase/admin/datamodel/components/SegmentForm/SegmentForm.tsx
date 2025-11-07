@@ -147,7 +147,7 @@ const SegmentFormActions = ({
       <FormSubmitButton type="submit" primary={isValid} disabled={!isValid}>
         {t`Save changes`}
       </FormSubmitButton>
-      <Button as={Link} to="/admin/datamodel/segments">
+      <Button as={Link} to="/data-studio/data/segments">
         {t`Cancel`}
       </Button>
     </div>

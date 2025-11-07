@@ -47,6 +47,7 @@ import {
 } from "metabase/plugins/components/PluginPlaceholder";
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import type { SearchFilterComponent } from "metabase/search/types";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type { HoveredObject } from "metabase/visualizations/types";
@@ -88,7 +89,6 @@ import type {
   TableId,
   Timeline,
   TimelineEvent,
-  Transform,
   TransformId,
   UpdateSnippetRequest,
   UpdateTransformRequest,
@@ -295,10 +295,61 @@ export type IllustrationValue = {
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
 
 // snippet sidebar
-export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS = [];
+type SnippetSidebarMenuOption = {
+  icon: IconName;
+  name?: string;
+  label?: string;
+  onClick: () => void;
+};
+
+type SnippetSidebarComponentRef = {
+  state?: {
+    modalSnippetCollection?: unknown;
+    permissionsModalCollectionId?: unknown;
+  };
+  setState: (state: {
+    modalSnippetCollection?: unknown;
+    permissionsModalCollectionId?: unknown;
+  }) => void;
+  props: {
+    snippetCollection: { id: number | string | null };
+  };
+};
+
+export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS: Array<
+  (componentRef: SnippetSidebarComponentRef) => SnippetSidebarMenuOption
+> = [];
+
 export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS = {};
-export const PLUGIN_SNIPPET_SIDEBAR_MODALS = [];
+
+export const PLUGIN_SNIPPET_SIDEBAR_MODALS: Array<
+  (componentRef: SnippetSidebarComponentRef) => JSX.Element | null
+> = [];
+
 export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
+
+export const PLUGIN_SNIPPET_FOLDERS = {
+  isEnabled: false,
+  CollectionPickerModal: PluginPlaceholder as ComponentType<{
+    isOpen: boolean;
+    onSelect: (collectionId: number | string | null) => void;
+    onClose: () => void;
+  }>,
+  CollectionFormModal: PluginPlaceholder as ComponentType<{
+    collection: Collection;
+    onClose?: () => void;
+    onSaved?: () => void;
+  }>,
+  CollectionMenu: PluginPlaceholder as ComponentType<{
+    collection: Collection;
+    onEditDetails: (collection: Collection) => void;
+    onChangePermissions: (collectionId: number | string) => void;
+  }>,
+  CollectionPermissionsModal: PluginPlaceholder as ComponentType<{
+    collectionId: number | string;
+    onClose: () => void;
+  }>,
+};
 
 interface PluginDashboardSubscriptionParametersSectionOverride {
   Component?: ComponentType<{
@@ -518,6 +569,7 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
   getDataColumns: (_subject: PermissionSubject) => [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,
+  canAccessDataModel: (state: State): boolean => getUserIsAdmin(state),
   dataModelQueryProps: {} as any,
   databaseDetailsQueryProps: {} as any,
 };
@@ -755,7 +807,8 @@ type PluginMetabotType = {
   getMetabotVisible: (state: State) => boolean;
   MetabotToggleButton: ComponentType<{ className?: string }>;
   MetabotAppBarButton: ComponentType;
-  MetabotAdminAppBarButton: ComponentType;
+  MetabotDataStudioButton: ComponentType;
+  MetabotDataStudioSidebar: ComponentType;
 };
 
 export const PLUGIN_METABOT: PluginMetabotType = {
@@ -779,7 +832,8 @@ export const PLUGIN_METABOT: PluginMetabotType = {
   getMetabotVisible: () => false,
   MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,
-  MetabotAdminAppBarButton: PluginPlaceholder,
+  MetabotDataStudioButton: PluginPlaceholder,
+  MetabotDataStudioSidebar: PluginPlaceholder,
 };
 
 type DashCardMenuItemGetter = (
@@ -906,15 +960,17 @@ export type TransformPickerProps = {
 };
 
 export type TransformsPlugin = {
+  isEnabled: boolean;
+  canAccessTransforms: (state: State) => boolean;
+  getDataStudioTransformRoutes(): ReactNode;
   TransformPicker: ComponentType<TransformPickerProps>;
-  getAdminPaths(): AdminPath[];
-  getAdminRoutes(): ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  isEnabled: false,
+  canAccessTransforms: () => false,
+  getDataStudioTransformRoutes: () => null,
   TransformPicker: PluginPlaceholder,
-  getAdminPaths: () => [],
-  getAdminRoutes: () => null,
 };
 
 export const PLUGIN_REMOTE_SYNC: {
@@ -944,43 +1000,40 @@ export const PLUGIN_REMOTE_SYNC: {
 };
 
 export type PythonTransformEditorProps = {
-  name?: string;
   source: PythonTransformSourceDraft;
   proposedSource?: PythonTransformSourceDraft;
-  isNew: boolean;
   isDirty: boolean;
-  isSaving: boolean;
   onChangeSource: (source: PythonTransformSourceDraft) => void;
-  onSave: () => void;
-  onCancel: () => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
 };
 
-export type PythonTransformSourceSectionProps = {
-  transform: Transform;
+export type PythonTransformSourceValidationResult = {
+  isValid: boolean;
+  errorMessage?: string;
 };
 
 export type PythonTransformsPlugin = {
   isEnabled: boolean;
+  getPythonLibraryRoutes: () => ReactNode;
+  getPythonSourceValidationResult: (
+    source: PythonTransformSourceDraft,
+  ) => PythonTransformSourceValidationResult;
   TransformEditor: ComponentType<PythonTransformEditorProps>;
-  SourceSection: ComponentType<PythonTransformSourceSectionProps>;
   PythonRunnerSettingsPage: ComponentType;
-  getAdminRoutes: () => ReactNode;
-  getTransformsNavLinks: () => ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
   isEnabled: false,
+  getPythonLibraryRoutes: () => null,
+  getPythonSourceValidationResult: () => ({ isValid: true }),
   TransformEditor: PluginPlaceholder,
-  SourceSection: PluginPlaceholder,
   PythonRunnerSettingsPage: NotFoundPlaceholder,
-  getAdminRoutes: () => null,
-  getTransformsNavLinks: () => null,
 };
 
 type DependenciesPlugin = {
   isEnabled: boolean;
+  getDataStudioDependencyRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
@@ -1042,6 +1095,7 @@ function useCheckDependencies<TChange>({
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   isEnabled: false,
+  getDataStudioDependencyRoutes: () => null,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,

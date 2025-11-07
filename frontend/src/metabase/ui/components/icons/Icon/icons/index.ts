@@ -58,6 +58,8 @@ import bolt_component from "./bolt.svg?component";
 import bolt_source from "./bolt.svg?source";
 import bolt_filled_component from "./bolt_filled.svg?component";
 import bolt_filled_source from "./bolt_filled.svg?source";
+import book_open_component from "./book_open.svg?component";
+import book_open_source from "./book_open.svg?source";
 import bookmark_component from "./bookmark.svg?component";
 import bookmark_source from "./bookmark.svg?source";
 import bookmark_filled_component from "./bookmark_filled.svg?component";
@@ -466,6 +468,8 @@ import thumbs_up_component from "./thumbs_up.svg?component";
 import thumbs_up_source from "./thumbs_up.svg?source";
 import time_history_component from "./time_history.svg?component";
 import time_history_source from "./time_history.svg?source";
+import transform_component from "./transform.svg?component";
+import transform_source from "./transform.svg?source";
 import trash_component from "./trash.svg?component";
 import trash_source from "./trash.svg?source";
 import trash_filled_component from "./trash_filled.svg?component";
@@ -624,6 +628,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     bookmark_filled: {
       component: bookmark_filled_component,
       source: bookmark_filled_source,
+    },
+    book_open: {
+      component: book_open_component,
+      source: book_open_source,
     },
     bolt: {
       component: bolt_component,
@@ -1423,6 +1431,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: time_history_component,
       source: time_history_source,
     },
+    transform: {
+      component: transform_component,
+      source: transform_source,
+    },
     trash: {
       component: trash_component,
       source: trash_source,
@@ -1578,6 +1590,7 @@ export type IconName =
   | "bar"
   | "bell"
   | "birthday"
+  | "book_open"
   | "bookmark"
   | "bookmark_filled"
   | "bolt"
@@ -1740,6 +1753,7 @@ export type IconName =
   | "sum"
   | "sync"
   | "synced_collection"
+  | "transform"
   | "question"
   | "quote"
   | "redo"

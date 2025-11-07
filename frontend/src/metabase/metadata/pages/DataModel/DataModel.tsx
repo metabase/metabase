@@ -66,7 +66,7 @@ function DataModelContent({ children, location, params }: Props) {
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
-  const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
+  const isSegments = location.pathname.startsWith("/data-studio/data/segment");
   const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =
     useDisclosure();
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
@@ -140,7 +140,7 @@ function DataModelContent({ children, location, params }: Props) {
         />
 
         <Box className={S.footer} mx="xl" py="sm">
-          <SegmentsLink active={isSegments} to="/admin/datamodel/segments" />
+          <SegmentsLink active={isSegments} to="/data-studio/data/segments" />
         </Box>
       </Stack>
 
@@ -266,7 +266,7 @@ function DataModelContent({ children, location, params }: Props) {
               justify="center"
               miw={rem(EMPTY_STATE_MIN_WIDTH)}
             >
-              <Box maw={rem(320)} p="xl">
+              <Box p="xl">
                 <EmptyState
                   illustrationElement={<img src={EmptyDashboardBot} />}
                   title={

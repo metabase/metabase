@@ -21,6 +21,10 @@ export const processResults = (
   const actions = processSection(t`Actions`, groupedResults["basic"]);
   const search = processSection(t`Results`, groupedResults["search"]);
   const recent = processSection(t`Recents`, groupedResults["recent"]);
+  const dataStudio = processSection(
+    t`Data Studio`,
+    groupedResults["data-studio"],
+  );
   const admin = processSection(t`Admin`, groupedResults["admin"]);
   const docs = processSection(t`Documentation`, groupedResults["docs"]);
 
@@ -28,7 +32,14 @@ export const processResults = (
     return [...recent];
   }
 
-  return [...recent, ...actions.slice(0, 6), ...admin, ...search, ...docs];
+  return [
+    ...recent,
+    ...actions.slice(0, 6),
+    ...dataStudio,
+    ...admin,
+    ...search,
+    ...docs,
+  ];
 };
 
 export const processSection = (

@@ -31,10 +31,6 @@ import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
 export type CardType = "model" | "question" | "metric";
 
-export type CardCreatorInfo = Pick<
-  UserInfo,
-  "first_name" | "last_name" | "email" | "id" | "common_name"
->;
 
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 
@@ -68,7 +64,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   document_id?: DocumentId;
   dashboard_count: number | null;
 
-  result_metadata: Field[];
+  result_metadata: Field[] | null;
   moderation_reviews?: ModerationReview[];
   persisted?: boolean;
 
@@ -81,7 +77,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   archived: boolean;
   is_remote_synced?: boolean;
 
-  creator?: CardCreatorInfo;
+  creator?: UserInfo;
   "last-edit-info"?: LastEditInfo;
   table_id?: TableId;
 }
@@ -389,13 +385,13 @@ export interface CreateCardRequest {
   type?: CardType;
   parameters?: Parameter[];
   parameter_mappings?: unknown;
-  description?: string;
+  description?: string | null;
   collection_id?: CollectionId;
   dashboard_id?: DashboardId;
   document_id?: DocumentId | null;
   dashboard_tab_id?: DashboardTabId;
   collection_position?: number;
-  result_metadata?: Field[];
+  result_metadata?: Field[] | null;
   cache_ttl?: number;
 }
 
@@ -411,7 +407,7 @@ export interface UpdateCardRequest {
   dataset_query?: DatasetQuery;
   type?: CardType;
   display?: string;
-  description?: string;
+  description?: string | null;
   visualization_settings?: VisualizationSettings;
   archived?: boolean;
   enable_embedding?: boolean;
@@ -421,7 +417,7 @@ export interface UpdateCardRequest {
   dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
   collection_position?: number;
-  result_metadata?: Field[];
+  result_metadata?: Field[] | null;
   cache_ttl?: number;
   collection_preview?: boolean;
   delete_old_dashcards?: boolean;

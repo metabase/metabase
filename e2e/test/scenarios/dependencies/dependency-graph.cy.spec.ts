@@ -19,7 +19,7 @@ import type {
   TransformId,
 } from "metabase-types/api";
 
-const BASE_URL = "/admin/tools/dependencies";
+const BASE_URL = "/data-studio/dependencies";
 const TABLE_NAME = "scoreboard_actions";
 const TABLE_DISPLAY_NAME = "Scoreboard Actions";
 const TABLE_ID_ALIAS = "tableId";
@@ -153,7 +153,7 @@ describe("scenarios > dependencies > dependency graph", () => {
       });
       testEntitySearch({
         itemName: TABLE_BASED_TRANSFORM_NAME,
-        itemIcon: "refresh_downstream",
+        itemIcon: "transform",
         isRecentItem: false,
       });
     });
@@ -193,7 +193,7 @@ describe("scenarios > dependencies > dependency graph", () => {
         tabName: "Transforms",
         itemName: TABLE_BASED_TRANSFORM_NAME,
         itemLevel: 0,
-        itemIcon: "refresh_downstream",
+        itemIcon: "transform",
       });
     });
   });

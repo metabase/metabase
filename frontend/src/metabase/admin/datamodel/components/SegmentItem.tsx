@@ -16,7 +16,7 @@ export const SegmentItem = ({ segment, onRetire }: Props) => {
   return (
     <tr>
       <Box component="td" className={S.cell} p="sm">
-        <Link to={`/admin/datamodel/segment/${segment.id}`}>
+        <Link to={`/data-studio/data/segment/${segment.id}`}>
           <Group display="inline-flex" gap="sm" wrap="nowrap">
             <Box
               color="text-medium"
