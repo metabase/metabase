@@ -921,7 +921,7 @@
              (build-recursive-table-calls group-or-id perm-type table-perms)))))
 
 (mu/defn set-table-permissions!
-  "Sets table permissions to specified values  for a given group. If a permission value already exists for a specified group and table,
+  "Sets table permissions to specified values for a given group. If a permission value already exists for a specified group and table,
   it will be updated to the new value.
 
   `table-perms` is a map from tables or table ID to the permission value for each table. All tables in the list must
