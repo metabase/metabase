@@ -37,6 +37,11 @@ describe(
         });
       });
 
+      after(() => {
+        // Reset the effect of calling `advanceServerClockBy` which pauses the server clock.
+        resetServerTime();
+      });
+
       function runPreemptiveCachingTest(questionId: string) {
         function visitCachedQuestion(questionId: string) {
           cy.log("Visiting the question");
