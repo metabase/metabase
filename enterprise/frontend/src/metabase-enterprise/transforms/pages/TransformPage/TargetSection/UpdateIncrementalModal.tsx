@@ -63,7 +63,6 @@ export function UpdateIncrementalModal({
 type IncrementalValues = {
   incremental: boolean;
   sourceStrategy: "keyset";
-  keysetColumn: string | null;
   keysetFilterUniqueKey: string | null;
   targetStrategy: "append";
 };
@@ -77,14 +76,13 @@ function getValidationSchema(transform: Transform) {
   return Yup.object({
     incremental: Yup.boolean().required(),
     sourceStrategy: Yup.string().oneOf(["keyset"]).required(),
-    keysetColumn: Yup.string()
+    keysetFilterUniqueKey: Yup.string()
       .nullable()
       .when("incremental", {
         is: true,
         then: (schema) => schema.required(Errors.required),
         otherwise: (schema) => schema.nullable(),
       }),
-    keysetFilterUniqueKey: Yup.string().nullable(),
     targetStrategy: Yup.string().oneOf(["append"]).required(),
   });
 }
@@ -158,10 +156,7 @@ function UpdateIncrementalForm({
           ...transform.source,
           "source-incremental-strategy": {
             type: "keyset" as const,
-            "keyset-column": values.keysetColumn!,
-            ...(values.keysetFilterUniqueKey && {
-              "keyset-filter-unique-key": values.keysetFilterUniqueKey,
-            }),
+            "keyset-filter-unique-key": values.keysetFilterUniqueKey!,
           },
         }
       : {
@@ -220,12 +215,6 @@ function UpdateIncrementalForm({
                 />
                 {values.sourceStrategy === "keyset" && (
                   <>
-                    <FormTextInput
-                      name="keysetColumn"
-                      label={t`Keyset Column`}
-                      placeholder={t`e.g., id, updated_at`}
-                      description={t`Column name in the target table to track progress`}
-                    />
                     {isMbqlQuery && libQuery && (
                       <KeysetColumnSelect
                         name="keysetFilterUniqueKey"
@@ -273,8 +262,6 @@ function UpdateIncrementalForm({
 function getInitialValues(transform: Transform): IncrementalValues {
   const isIncremental = transform.target.type === "table-incremental";
   const strategy = transform.source["source-incremental-strategy"];
-  const columnName =
-    strategy?.type === "keyset" ? strategy["keyset-column"] : null;
   const filterUniqueKey =
     strategy?.type === "keyset" && strategy["keyset-filter-unique-key"]
       ? strategy["keyset-filter-unique-key"]
@@ -282,7 +269,6 @@ function getInitialValues(transform: Transform): IncrementalValues {
   return {
     incremental: isIncremental,
     sourceStrategy: "keyset",
-    keysetColumn: isIncremental ? columnName : null,
     keysetFilterUniqueKey: isIncremental ? filterUniqueKey : null,
     targetStrategy: "append",
   };

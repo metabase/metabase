@@ -31,8 +31,7 @@ export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
 
 export type KeysetStrategy = {
   type: "keyset";
-  "keyset-column": string;
-  "keyset-filter-unique-key"?: string;
+  "keyset-filter-unique-key": string;
 };
 
 export type SourceIncrementalStrategy = KeysetStrategy;

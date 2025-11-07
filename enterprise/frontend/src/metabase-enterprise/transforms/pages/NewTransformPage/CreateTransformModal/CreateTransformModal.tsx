@@ -60,14 +60,13 @@ function getValidationSchema(source: TransformSource) {
     targetName: Yup.string().required(Errors.required),
     targetSchema: Yup.string().nullable().defined(),
     incremental: Yup.boolean().required(),
-    keysetColumn: Yup.string()
+    keysetFilterUniqueKey: Yup.string()
       .nullable()
       .when("incremental", {
         is: true,
         then: (schema) => schema.required(Errors.required),
         otherwise: (schema) => schema.nullable(),
       }),
-    keysetFilterUniqueKey: Yup.string().nullable(),
     sourceStrategy: Yup.mixed<"keyset">().oneOf(["keyset"]).required(),
     targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
   });
@@ -172,12 +171,6 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
       />
       {values.sourceStrategy === "keyset" && (
         <>
-          <FormTextInput
-            name="keysetColumn"
-            label={t`Keyset Column`}
-            placeholder={t`e.g., id, updated_at`}
-            description={t`Column name in the target table to track progress`}
-          />
           {isMbqlQuery && libQuery && (
             <KeysetColumnSelect
               name="keysetFilterUniqueKey"
@@ -334,7 +327,6 @@ function getInitialValues(
     targetSchema: suggestedTransform
       ? suggestedTransform.target.schema
       : schemas?.[0] || null,
-    keysetColumn: null,
     keysetFilterUniqueKey: null,
     sourceStrategy: "keyset",
     targetStrategy: "append",
@@ -349,7 +341,6 @@ function getCreateRequest(
     targetName,
     targetSchema,
     incremental,
-    keysetColumn,
     keysetFilterUniqueKey,
     sourceStrategy,
     targetStrategy,
@@ -362,10 +353,7 @@ function getCreateRequest(
         ...source,
         "source-incremental-strategy": {
           type: sourceStrategy,
-          "keyset-column": keysetColumn!,
-          ...(keysetFilterUniqueKey && {
-            "keyset-filter-unique-key": keysetFilterUniqueKey,
-          }),
+          "keyset-filter-unique-key": keysetFilterUniqueKey!,
         },
       }
     : source;
