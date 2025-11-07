@@ -12,14 +12,13 @@
    (when-let [[_match module] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^/]+)/.*$" filename)]
      (symbol (str/replace module #"_" "-")))
    (when-let [[_match module] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^/]+)/.*$" filename)]
-     (symbol "enterprise" (str/replace module #"_" "-")))
-   filename))
+     (symbol "enterprise" (str/replace module #"_" "-")))))
 
 (defn- updated-modules [git-ref]
   (let [git-ref       (or git-ref "master")
         updated-files (u/updated-files git-ref)]
     (into (sorted-set)
-          (map file->module)
+          (keep file->module)
           updated-files)))
 
 (defn- module->test-directory
@@ -68,10 +67,27 @@
       acc
       new-deps))))
 
+(declare unaffected-modules)
+(declare skip-driver-tests?)
+
 (defn- affected-modules
   ([[git-ref]]
-   (let [updated  (updated-modules git-ref)
-         affected (affected-modules (dependencies) updated)]
+   (let [updated    (updated-modules git-ref)
+         deps       (dependencies)
+         affected   (affected-modules deps updated)
+         unaffected (unaffected-modules deps updated)]
+     (println "These modules have changed:" (pr-str updated))
+     (println)
+     (println)
+     (println "These modules are unaffected by this change:" (pr-str unaffected))
+     (println)
+     (println)
+     (println "Driver tests" (if (skip-driver-tests? deps updated) "CAN" "CAN NOT") "be skipped.")
+     (println)
+     (println)
+     (println "You can run tests for these modules and all downstream modules as follows:")
+     (println)
+     (println)
      (println "clojure -X :dev:ee:ee-dev:test :only '[")
      (doseq [module affected]
        (println (pr-str (module->test-directory module))))
