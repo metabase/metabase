@@ -674,7 +674,7 @@
     (t2/insert! :model/DataPermissions batched-new-perms)))
 
 (defn- batch-delete-permissions!
-  "Must like on insert sometime we have to delete more permission models than the psql limit of MAX 16-bit parameters.
+  "Much like on insert, sometimes we have to delete more permission models than the psql limit of MAX 16-bit parameters.
   This batches our deletes into groups of 1000."
   [to-delete-ids]
   (doseq [batched-to-delete-ids (partition-all permission-batch-size to-delete-ids)]
