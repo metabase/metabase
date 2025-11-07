@@ -170,7 +170,7 @@ const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
         bg="bg-white"
         bdrs="md"
         p="md"
-        mx="xl"
+        mx="lg"
       >
         <Text c="text-secondary" fw="bold" lh="16px" mb="md" size="sm">
           {t`Field sort order`}
