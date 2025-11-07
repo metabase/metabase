@@ -74,7 +74,7 @@ function ProfileLinkInner({
   const { tag, date, ...versionExtra } = version;
   const helpLink = useHelpLink();
   const dispatch = useDispatch();
-  const hasDataStudio = useHasTokenFeature("data-studio");
+  const hasDataStudio = useHasTokenFeature("data_studio");
 
   const openModal = (modalName: string) => {
     setModalOpen(modalName);
