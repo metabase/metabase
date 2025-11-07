@@ -3,11 +3,6 @@ import { PLUGIN_SELECTORS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { State } from "metabase-types/store";
 
-// Store the original selector functions to preserve Enterprise/OSS behavior
-const originalGetNoDataIllustration = PLUGIN_SELECTORS.getNoDataIllustration;
-const originalGetNoObjectIllustration =
-  PLUGIN_SELECTORS.getNoObjectIllustration;
-
 // Flag to ensure initialization happens only once
 let isInitialized = false;
 
@@ -24,6 +19,10 @@ export const initializePlugin = () => {
   if (isInitialized) {
     return;
   }
+  // Store the original selector functions to preserve Enterprise/OSS behavior
+  const originalGetNoDataIllustration = PLUGIN_SELECTORS.getNoDataIllustration;
+  const originalGetNoObjectIllustration =
+    PLUGIN_SELECTORS.getNoObjectIllustration;
 
   isInitialized = true;
 
