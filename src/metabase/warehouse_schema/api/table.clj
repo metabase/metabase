@@ -272,6 +272,7 @@
         [:data_authority {:optional true} [:maybe :string]]
         [:data_source {:optional true} [:maybe :string]]
         [:data_layer {:optional true} [:maybe :string]]
+        [:entity_type {:optional true} [:maybe :string]]
         [:owner_email {:optional true} [:maybe :string]]
         [:owner_user_id {:optional true} [:maybe :int]]]]]
   (api/check-superuser)
@@ -281,7 +282,8 @@
                  :data_source
                  :data_layer
                  :owner_email
-                 :owner_user_id]
+                 :owner_user_id
+                 :entity_type]
         set-map (select-keys body set-ks)
         ;; Sync visibility fields
         set-map (table/sync-visibility-fields set-map {})
