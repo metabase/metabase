@@ -41,7 +41,9 @@ function BaseTree({
   const prevData = usePrevious(data);
 
   useEffect(() => {
-    if (initiallyExpanded && data !== prevData) {
+    const dataHasChanged = !_.isEqual(data, prevData);
+
+    if (initiallyExpanded && dataHasChanged) {
       setExpandedIds(new Set(getAllExpandableIds(data)));
       return;
     }
@@ -52,7 +54,7 @@ function BaseTree({
     const selectedItemChanged =
       previousSelectedId !== selectedId && !expandedIds.has(selectedId);
 
-    if (selectedItemChanged || !_.isEqual(data, prevData)) {
+    if (selectedItemChanged || dataHasChanged) {
       setExpandedIds(
         (prev) =>
           new Set([...prev, ...getInitialExpandedIds(selectedId, data)]),
