@@ -10,6 +10,7 @@ import { initializePlugin as initializeEmbedding } from "./embedding";
 import { initializePlugin as initializeEmbeddingSdk } from "./embedding-sdk";
 import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeWhitelabelPlugin } from "./whitelabel";
+import { initializePlugin as initializeWhitelabelOverridePlugin } from "./whitelabel/sdk-overrides";
 
 /**
  * Initialize all SDK enterprise plugins that use hasPremiumFeature.
@@ -20,4 +21,5 @@ export function initializePlugins() {
   initializeEmbeddingSdk?.();
   initializeMetabot?.();
   initializeWhitelabelPlugin?.();
+  initializeWhitelabelOverridePlugin?.();
 }
