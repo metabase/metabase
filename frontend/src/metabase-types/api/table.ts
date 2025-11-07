@@ -65,6 +65,7 @@ export type Table = {
   data_layer: TableDataLayer | null;
   owner_email: string | null;
   owner_user_id: UserId | null;
+  estimated_row_count?: number | null;
   transform_id: TransformId | null; // readonly
   data_update_frequency: string; // readonly
   view_count: number;

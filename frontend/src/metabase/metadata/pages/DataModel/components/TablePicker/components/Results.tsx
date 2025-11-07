@@ -1,12 +1,18 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
-import { type KeyboardEvent, useEffect, useRef } from "react";
+import { type KeyboardEvent, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router";
+import { t } from "ttag";
 
+import { useListUsersQuery } from "metabase/api";
+import {
+  type NumberFormatter,
+  useNumberFormatter,
+} from "metabase/common/hooks/use-number-formatter";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Box, Checkbox, Flex, Icon, Skeleton, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { Field } from "metabase-types/api";
+import type { Field, UserId } from "metabase-types/api";
 
 import { useSelection } from "../../../contexts/SelectionContext";
 import { getUrl } from "../../../utils";
@@ -51,6 +57,14 @@ export function TablePickerResults({
 
   const virtualItems = virtual.getVirtualItems();
 
+  const { data: usersData } = useListUsersQuery();
+  const ownerNameById = useMemo(() => {
+    const users = usersData?.data ?? [];
+    return new Map<UserId, string>(
+      users.map((user) => [user.id, user.common_name]),
+    );
+  }, [usersData]);
+
   useEffect(
     function scrollActiveTableIntoView() {
       if (path.tableId === undefined) {
@@ -88,33 +102,44 @@ export function TablePickerResults({
   }, [selectedIndex]);
 
   return (
-    <Box ref={ref} pb="lg" className={S.results}>
-      <Box style={{ height: virtual.getTotalSize() }}>
-        {virtualItems.map(({ start, index }) => {
-          const item = items[index];
-          const parentIndex = items.findIndex(
-            (item) => item.key === item.parent,
-          );
+    <>
+      <Flex className={S.header} gap="sm">
+        <Box className={S.headerSpacer} />
+        <Box className={cx(S.headerCell, S.ownerColumn)}>{t`Owner`}</Box>
+        <Box className={cx(S.headerCell, S.rowsColumn)}>{t`Rows`}</Box>
+        <Box
+          className={cx(S.headerCell, S.publishedColumn)}
+        >{t`Published`}</Box>
+      </Flex>
+      <Box ref={ref} pb="lg" className={S.results}>
+        <Box style={{ height: virtual.getTotalSize() }}>
+          {virtualItems.map(({ start, index }) => {
+            const item = items[index];
+            const parentIndex = items.findIndex(
+              (item) => item.key === item.parent,
+            );
 
-          return (
-            <ResultsItem
-              key={item.key}
-              item={item}
-              parentIndex={parentIndex}
-              path={path}
-              start={start}
-              index={index}
-              selectedIndex={selectedIndex}
-              toggle={toggle}
-              onItemClick={onItemClick}
-              onSelectedIndexChange={onSelectedIndexChange}
-              onItemToggle={onItemToggle}
-              ref={ref}
-            />
-          );
-        })}
+            return (
+              <ResultsItem
+                key={item.key}
+                item={item}
+                parentIndex={parentIndex}
+                path={path}
+                start={start}
+                index={index}
+                selectedIndex={selectedIndex}
+                toggle={toggle}
+                onItemClick={onItemClick}
+                onSelectedIndexChange={onSelectedIndexChange}
+                onItemToggle={onItemToggle}
+                ref={ref}
+                ownerNameById={ownerNameById}
+              />
+            );
+          })}
+        </Box>
       </Box>
-    </Box>
+    </>
   );
 }
 
@@ -190,6 +215,7 @@ interface ResultsItemProps {
   onSelectedIndexChange?: (index: number) => void;
   onItemToggle?: (item: FlatItem) => void;
   ref: React.RefObject<HTMLDivElement>;
+  ownerNameById: Map<UserId, string>;
 }
 
 function isDatabaseActive(
@@ -273,11 +299,15 @@ const ResultsItem = ({
   onSelectedIndexChange,
   onItemToggle,
   ref,
+  ownerNameById,
 }: ResultsItemProps) => {
   const { selectedItemsCount } = useSelection();
 
   const { value, label, type, isExpanded, isLoading, key, level, disabled } =
     item;
+  const formatNumber = useNumberFormatter({ maximumFractionDigits: 0 });
+  const ownerDisplay = getOwnerDisplay(item, ownerNameById);
+  const expectedRowsDisplay = getExpectedRowsDisplay(item, formatNumber);
 
   const isActive = isItemActive(item, path, selectedItemsCount);
   const indent = level * INDENT_OFFSET;
@@ -443,9 +473,10 @@ const ResultsItem = ({
         mih={ITEM_MIN_HEIGHT}
         py="xs"
         w="100%"
-        style={{ paddingLeft: indent }}
+        pl={indent}
+        gap="sm"
       >
-        <Flex align="flex-start" gap="xs" w="100%">
+        <Flex align="flex-start" gap="xs" className={S.content}>
           <Flex align="center" gap="xs">
             <Box className={S.chevronSlot} w={INDENT_OFFSET}>
               {hasToggle && (
@@ -490,7 +521,65 @@ const ResultsItem = ({
             </Box>
           )}
         </Flex>
+
+        {type === "table" && (
+          <>
+            <Box
+              className={cx(S.column, S.ownerColumn)}
+              data-testid="table-owner"
+            >
+              {ownerDisplay}
+            </Box>
+
+            <Box
+              className={cx(S.column, S.rowsColumn)}
+              data-testid="table-expected-rows"
+            >
+              {expectedRowsDisplay}
+            </Box>
+
+            <Box className={cx(S.column, S.publishedColumn)}></Box>
+          </>
+        )}
       </Flex>
     </Flex>
   );
 };
+
+function getOwnerDisplay(
+  item: FlatItem,
+  ownerNameById: Map<UserId, string>,
+): string {
+  if (item.type !== "table" || item.isLoading || !item.table) {
+    return "";
+  }
+
+  const ownerId = item.table.owner_user_id;
+  if (ownerId != null && ownerNameById.has(ownerId)) {
+    return ownerNameById.get(ownerId) ?? "";
+  }
+
+  if (item.table.owner_email) {
+    return item.table.owner_email;
+  }
+
+  return "";
+}
+
+function getExpectedRowsDisplay(
+  item: FlatItem,
+  formatNumber: NumberFormatter,
+): string | null {
+  if (item.type !== "table" || item.isLoading || !item.table) {
+    return null;
+  }
+
+  const expectedRows = item.table.estimated_row_count;
+
+  if (expectedRows == null) {
+    return null;
+  }
+
+  const formatted = formatNumber(expectedRows);
+  return formatted;
+}
