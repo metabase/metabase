@@ -1,10 +1,13 @@
 ---
 title: Metabase CLI
+description: CLI commands for managing your Metabase instance, including database migrations, serialization, and administrative tasks.
 ---
 
 # Metabase CLI
 
-Metabase ships with some handy CLI commands. To view a list of commands, run the Metabase jar followed by `help`.
+Metabase ships with some handy CLI commands for administration, maintenance, and automation tasks. These commands let you manage your Metabase instance, migrate databases, handle serialization, and generate documentation.
+
+To view a list of commands, run the Metabase jar followed by `help`.
 
 ```
 java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help
@@ -59,7 +62,7 @@ Options:
 - `-f, --include-field-values` - Include field values along with field metadata.
 - `-s, --include-database-secrets` - Include database connection details (in plain text; use caution).
 - `-e, --continue-on-error` - Do not break execution on errors.
-- `, --full-stacktrace` - Output full stacktraces on errors.
+- `--full-stacktrace` - Output full stacktraces on errors.
 
 ## `help command-name | help`
 
@@ -72,7 +75,7 @@ Load serialized Metabase instance as created by the [[export]] command from dire
 Options:
 
 - `-e, --continue-on-error` - Do not break execution on errors.
-- `, --full-stacktrace` - Output full stacktraces on errors.
+- `--full-stacktrace` - Output full stacktraces on errors.
 
 ## `load-from-h2 | load-from-h2 h2-connection-string`
 

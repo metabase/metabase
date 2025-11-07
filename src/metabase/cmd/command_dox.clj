@@ -8,7 +8,6 @@
     java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar command-documentation"
   (:require
    [clojure.string :as str]
-   [clojure.tools.cli :as cli]
    [metabase.cmd.common :as cmd.common]))
 
 (set! *warn-on-reflection* true)
@@ -37,8 +36,8 @@
 
 (defn- format-option
   "Format a single option spec as a markdown list item"
-  [[short-opt long-opt desc & {:keys [id]}]]
-  (let [opts (filter some? [short-opt long-opt])
+  [[short-opt long-opt desc & _]]
+  (let [opts (remove str/blank? [short-opt long-opt])
         opt-str (str/join ", " opts)]
     (str "- `" opt-str "` - " desc)))
 

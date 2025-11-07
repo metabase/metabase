@@ -38,7 +38,16 @@
              (#'sut/format-option ["-e" nil "Continue on error"]))))
     (testing "option with additional metadata is ignored"
       (is (= "- `-c, --collection` - Export only specified IDs"
-             (#'sut/format-option ["-c" "--collection" "Export only specified IDs" :id :collection-ids]))))))
+             (#'sut/format-option ["-c" "--collection" "Export only specified IDs" :id :collection-ids]))))
+    (testing "empty string for short option should be ignored"
+      (is (= "- `--full-stacktrace` - Output full stacktraces"
+             (#'sut/format-option ["" "--full-stacktrace" "Output full stacktraces"]))))
+    (testing "empty string for long option should be ignored"
+      (is (= "- `-e` - Continue on error"
+             (#'sut/format-option ["-e" "" "Continue on error"]))))
+    (testing "both options as empty strings should handle gracefully"
+      (is (= "- `` - Some description"
+             (#'sut/format-option ["" "" "Some description"]))))))
 
 (deftest ^:parallel format-options-test
   (testing "format-options handles option specs"
