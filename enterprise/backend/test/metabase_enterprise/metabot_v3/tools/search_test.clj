@@ -406,7 +406,7 @@
                        :model/Dashboard  {id-1 :id}    {:name "Regular Dash (sh1b0le#h)",    :collection_id coll-id}
                        :model/Dashboard  {id-2 :id}    {:name "Bookmarked Dash (sh1b0le#h)", :collection_id coll-id}
                        :model/DashboardBookmark _      {:dashboard_id id-2, :user_id api/*current-user-id*}]
-          (let [base-query   {:term-queries ["sh1b0l#h"], :entity-types ["dashboard"]}
+          (let [base-query   {:term-queries ["sh1b0le#h"], :entity-types ["dashboard"]}
                 test-entity? (comp #{id-1 id-2} :id)
                 query        (fn [& [weights]]
                                (->> (search/search (assoc base-query :weights weights))
