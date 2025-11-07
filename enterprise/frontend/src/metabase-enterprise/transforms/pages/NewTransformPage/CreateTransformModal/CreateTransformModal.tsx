@@ -180,6 +180,14 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
               query={libQuery}
             />
           )}
+          {!isMbqlQuery && libQuery && (
+            <FormTextInput
+              name="keysetFilterUniqueKey"
+              label={t`Source Filter Field`}
+              placeholder={t`e.g., id, updated_at`}
+              description={t`Column name to use in the incremental filter`}
+            />
+          )}
           {isPythonTransform && source["source-tables"] && (
             <PythonKeysetColumnSelect
               name="keysetFilterUniqueKey"
