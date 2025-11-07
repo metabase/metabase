@@ -42,7 +42,7 @@
 
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
   (and (or config/is-dev?
-           ;; TODO (Chris 2025/11/07) This backwards dependency is unfortunate, we should find a better solution.
+           ;; TODO (Chris 2025-11-07) This backwards dependency is unfortunate, we should find a better solution.
            ;;                         Perhaps just an explicit setting for enabling it.
            ;;                         This also opens us up to swapping out the fallback, e.g. to elastic search.
            ;; if the default engine is semantic we want appdb to be available, as we want to mix results
