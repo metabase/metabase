@@ -126,7 +126,15 @@ jobs:
           MB_LAST_ANALYTICS_CHECKSUM: -1
         # FIXME: do the separate invocation for OSS
         run: |
-          clojure -M:dev:drivers:ee:run
+          clojure -M:dev:drivers:ee:run > metabase.log 2>&1 & echo $! > metabase_pid
+          tail -F metabase.log &
+
+      - name: Wait for Metabase to be ready
+        run: |
+          PORT=${MB_JETTY_PORT:-4000}
+          while ! curl -s "http://localhost:${PORT}/api/health" | grep '{"status":"ok"}' >/dev/null; do
+            sleep 1
+          done
 
       - name: Generate database snapshots
         run: node e2e/runner/run_cypress_ci.js snapshot
