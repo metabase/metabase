@@ -7,6 +7,8 @@
 
 (set! *warn-on-reflection* true)
 
+;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
+;;; everything that depends on that module directly or indirectly in `src`
 (defn- file->module [filename]
   (or
    (when-let [[_match module] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^/]+)/.*$" filename)]
