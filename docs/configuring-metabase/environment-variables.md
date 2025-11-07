@@ -107,7 +107,7 @@ Allowed iframe hosts.
 - Default: `true`
 - [Configuration file name](./config-file.md): `anon-tracking-enabled`
 
-Enable the collection of anonymous usage data to help Metabase improve.
+Enable the collection of anonymous usage data in order to help Metabase improve.
 
 ### `MB_API_KEY`
 
@@ -365,7 +365,7 @@ Whether dashboards should default to a user's last used parameters on load.
 - Type: integer
 - Default: `10000`
 
-Consider metabase.driver/can-connect? / can-connect-with-details? to have failed if they were unable to
+Consider metabase.driver/can-connect? / can-connect-with-details? to have failed if they were not able to
   successfully connect after this many milliseconds. By default, this is 10 seconds.
 
 Timeout in milliseconds for connecting to databases, both Metabase application database and data connections.
@@ -444,7 +444,7 @@ The name you want to use for the sender of emails.
 - [Configuration file name](./config-file.md): `email-max-recipients-per-second`
 
 The maximum number of recipients, summed across emails, that can be sent per second.
-                Note that the final email sent before reaching the limit can exceed it, if it has multiple recipients.
+                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients.
 
 ### `MB_EMAIL_REPLY_TO`
 
@@ -746,6 +746,14 @@ Keyword setting to control whitelabeling of the help link. Valid values are `:me
 - [Configuration file name](./config-file.md): `help-link-custom-destination`
 
 Custom URL for the help link.
+
+### `MB_HIDE_STACKTRACES`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `hide-stacktraces`
+
+Prevent the exception middleware from including stacktraces in responses.
 
 ### `MB_HTTP_CHANNEL_HOST_STRATEGY`
 
@@ -1237,7 +1245,7 @@ Indicates whether Metabase is running behind a proxy that sets the source-addres
 By default "Site Url" is used in notification links, but can be overridden.
 
 The base URL where dashboard notitification links will point to instead of the Metabase base URL.
-        Only applicable for users who use interactive embedding and subscriptions.
+        Only applicable for users who utilize interactive embedding and subscriptions.
 
 ### `MB_NOTIFICATION_SYSTEM_EVENT_THREAD_POOL_SIZE`
 
@@ -1305,6 +1313,62 @@ The absolute maximum time to keep any cached query results, in seconds.
 - [Configuration file name](./config-file.md): `redirect-all-requests-to-https`
 
 Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS.
+
+### `MB_REMOTE_SYNC_AUTO_IMPORT`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `remote-sync-auto-import`
+
+Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production.
+
+### `MB_REMOTE_SYNC_AUTO_IMPORT_RATE`
+
+- Type: integer
+- Default: `5`
+- [Configuration file name](./config-file.md): `remote-sync-auto-import-rate`
+
+If remote-sync-type is :production and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
+
+### `MB_REMOTE_SYNC_BRANCH`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-branch`
+
+The remote branch to sync with, e.g. `main`.
+
+### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
+
+- Type: integer
+- Default: `300000`
+- [Configuration file name](./config-file.md): `remote-sync-task-time-limit-ms`
+
+The maximum amount of time a remote sync task will be given to complete.
+
+### `MB_REMOTE_SYNC_TOKEN`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-token`
+
+An Authorization Bearer token allowing access to the git repo over HTTP.
+
+### `MB_REMOTE_SYNC_TYPE`
+
+- Type: keyword
+- Default: `production`
+- [Configuration file name](./config-file.md): `remote-sync-type`
+
+Git synchronization type - :development or :production.
+
+### `MB_REMOTE_SYNC_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-url`
+
+The location of your git repository, e.g. https://github.com/acme-inco/metabase.git.
 
 ### `MB_REPORT_TIMEZONE`
 
@@ -1666,7 +1730,7 @@ When enabled, we show users a button to authenticate with Google to import data 
 - [Exported as](../installation-and-operation/serialization.md): `show-homepage-data`.
 - [Configuration file name](./config-file.md): `show-homepage-data`
 
-Whether or not to display data on the homepage. Admins might turn this off to direct users to better content than raw data.
+Whether or not to display data on the homepage. Admins might turn this off in order to direct users to better content than raw data.
 
 ### `MB_SHOW_HOMEPAGE_XRAYS`
 
@@ -2128,7 +2192,7 @@ Type: integer<br>
 Default: `600000`<br>
 Since: v35.0
 
-Timeout of Jetty async threads, defined in milliseconds. The default is 10 minutes. Few things might reach that timeout, since they return some type of data before, but things like CSV downloads might.
+Timeout of Jetty async threads, defined in milliseconds. The default is 10 minutes. Very few things might reach that timeout, since they return some type of data before, but things like CSV downloads might.
 
 ### `MB_JETTY_DAEMON`
 
