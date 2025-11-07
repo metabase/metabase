@@ -150,9 +150,10 @@ export function VirtualizedTree({
   });
 
   const virtualItems = virtualizer.getVirtualItems();
+  const previouslySelectedId = usePrevious(selectedId);
 
   useEffect(() => {
-    if (selectedId === undefined) {
+    if (selectedId === undefined || selectedId === previouslySelectedId) {
       return;
     }
     const index = flatItems.findIndex(
@@ -161,7 +162,7 @@ export function VirtualizedTree({
     if (index !== -1) {
       virtualizer.scrollToIndex(index, { align: "auto" });
     }
-  }, [selectedId, flatItems, virtualizer]);
+  }, [selectedId, previouslySelectedId, flatItems, virtualizer]);
 
   if (data.length === 0) {
     return <React.Fragment>{emptyState}</React.Fragment>;
