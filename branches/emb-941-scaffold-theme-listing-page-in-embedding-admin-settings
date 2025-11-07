@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-956-integration-branch-for-named-theme-editor-for-embedding",
-    "hash": "14256c7af3b5d489be6a88609996860207741a8f"
+    "hash": "8421d9ca7c24c6c00407988dd6740e2d6b3152f9"
   },
   "upstream": {
     "branch": "emb-941-scaffold-theme-listing-page-in-embedding-admin-settings"
