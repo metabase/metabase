@@ -94,7 +94,10 @@ function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
       const { error } = await updateCard({
         id: card.id,
         dataset_query: question.datasetQuery(),
-        result_metadata: question.getResultMetadata(),
+        result_metadata: mergeFieldMetadata(
+          resultMetadata,
+          card.result_metadata,
+        ),
         display,
         visualization_settings: settings,
       });
