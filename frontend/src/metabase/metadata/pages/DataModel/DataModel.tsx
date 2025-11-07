@@ -286,7 +286,7 @@ function DataModelContent({ children, location, params }: Props) {
           {isEmptyStateShown && (
             <Flex
               align="center"
-              flex="1"
+              flex="4 1 0"
               justify="center"
               miw={rem(EMPTY_STATE_MIN_WIDTH)}
             >
