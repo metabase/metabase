@@ -20,7 +20,7 @@ export const SupportingText = Node.create<{
   name: "supportingText",
   group: "block",
   content: "(paragraph|heading|bulletList|orderedList|blockquote|codeBlock)+",
-  draggable: false,
+  draggable: true,
   isolating: true,
 
   addOptions() {
@@ -97,7 +97,7 @@ const SupportingTextComponent = ({
   node,
 }: NodeViewProps) => {
   return (
-    <NodeViewWrapper className={S.wrapper}>
+    <NodeViewWrapper draggable className={S.wrapper}>
       <div className={S.scrollContainer}>
         {isNodeEmpty(node) && (
           <div contentEditable={false} className={S.placeholder}>
