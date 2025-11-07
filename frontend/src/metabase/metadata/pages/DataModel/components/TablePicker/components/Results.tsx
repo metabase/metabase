@@ -576,7 +576,7 @@ function getExpectedRowsDisplay(
 
   const expectedRows = item.table.estimated_row_count;
 
-  if (expectedRows == null) {
+  if (!expectedRows) {
     return null;
   }
 
