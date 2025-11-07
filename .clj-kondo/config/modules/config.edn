@@ -1828,14 +1828,6 @@
    :uses #{premium-features
            settings}}
 
-  enterprise/library
-  {:team "UX West"
-   :api  #{metabase-enterprise.library.api
-           metabase-enterprise.library.core}
-   :uses #{api
-           app-db
-           collections}}
-
   enterprise/llm
   {:team "Metabot"
    :api  #{metabase-enterprise.llm.api
