@@ -1,8 +1,8 @@
+import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";
 import { Flex, Stack } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
 import S from "./CardOverview.module.css";
-import { CreatorAndLastEditorSection } from "./CreatorAndLastEditorSection";
 import { DescriptionSection } from "./DescriptionSection";
 import { QuerySourceSection } from "./QuerySourceSection";
 import { VisualizationSection } from "./VisualizationSection";
@@ -20,7 +20,12 @@ export function CardOverview({ card }: CardOverviewProps) {
       <Stack maw={300} ml="lg" gap="lg" className={S.sidebar}>
         <DescriptionSection card={card} />
         <QuerySourceSection card={card} />
-        <CreatorAndLastEditorSection card={card} />
+        <EntityCreationInfo
+          createdAt={card.created_at}
+          creator={card.creator}
+          lastEditedAt={card["last-edit-info"]?.timestamp}
+          lastEditor={card["last-edit-info"]}
+        />
       </Stack>
     </Flex>
   );

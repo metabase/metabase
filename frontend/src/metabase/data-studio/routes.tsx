@@ -22,7 +22,11 @@ import { ModelingSectionLayout } from "./pages/ModelingSectionLayout";
 import { ModelingCollectionView } from "./pages/ModelingSectionLayout/ModelingCollectionView";
 import { ModelingEmptyPage } from "./pages/ModelingSectionLayout/ModelingEmptyPage";
 import { ModelingGlossary } from "./pages/ModelingSectionLayout/ModelingGlossary";
-import { SnippetEditorPage } from "./pages/ModelingSectionLayout/SnippetEditorPage";
+import {
+  EditSnippetPage,
+  NewSnippetPage,
+  SnippetDependenciesPage,
+} from "./pages/ModelingSectionLayout/SnippetEditorPage";
 
 export function getDataStudioRoutes(
   store: Store<State>,
@@ -59,7 +63,16 @@ export function getDataStudioRoutes(
           component={ModelingCollectionView}
         />
         <Route path="glossary" component={ModelingGlossary} />
-        <Route path="snippets/:snippetId" component={SnippetEditorPage} />
+        <Route path="snippets/new" component={NewSnippetPage} />
+        <Route path="snippets/:snippetId" component={EditSnippetPage} />
+        {PLUGIN_DEPENDENCIES.isEnabled && (
+          <Route
+            path="snippets/:snippetId/dependencies"
+            component={SnippetDependenciesPage}
+          >
+            <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          </Route>
+        )}
         {getDataStudioModelRoutes()}
         {getDataStudioMetricRoutes()}
       </Route>

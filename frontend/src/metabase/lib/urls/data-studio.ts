@@ -1,4 +1,8 @@
-import type { CardId, CollectionId } from "metabase-types/api";
+import type {
+  CardId,
+  CollectionId,
+  NativeQuerySnippetId,
+} from "metabase-types/api";
 
 const ROOT_URL = "/data-studio";
 
@@ -58,8 +62,12 @@ export function dataStudioCollection(collectionId: CollectionId) {
   return `${dataStudioModeling()}/collections/${collectionId}`;
 }
 
-export function dataStudioSnippet(snippetId: number) {
+export function dataStudioSnippet(snippetId: NativeQuerySnippetId) {
   return `${dataStudioModeling()}/snippets/${snippetId}`;
+}
+
+export function dataStudioSnippetDependencies(snippetId: NativeQuerySnippetId) {
+  return `${dataStudioSnippet(snippetId)}/dependencies`;
 }
 
 export function newDataStudioSnippet() {

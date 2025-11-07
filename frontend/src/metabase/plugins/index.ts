@@ -324,12 +324,27 @@ export const PLUGIN_SNIPPET_SIDEBAR_MODALS: Array<
 
 export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
 
-export const PLUGIN_SNIPPET_COLLECTION_PICKER_MODAL = {
-  Component: null as ComponentType<{
+export const PLUGIN_SNIPPET_FOLDERS = {
+  isEnabled: false,
+  CollectionPickerModal: PluginPlaceholder as ComponentType<{
     isOpen: boolean;
     onSelect: (collectionId: number | string | null) => void;
     onClose: () => void;
-  }> | null,
+  }>,
+  CollectionFormModal: PluginPlaceholder as ComponentType<{
+    collection: Collection;
+    onClose?: () => void;
+    onSaved?: () => void;
+  }>,
+  CollectionMenu: PluginPlaceholder as ComponentType<{
+    collection: Collection;
+    onEditDetails: (collection: Collection) => void;
+    onChangePermissions: (collectionId: number | string) => void;
+  }>,
+  CollectionPermissionsModal: PluginPlaceholder as ComponentType<{
+    collectionId: number | string;
+    onClose: () => void;
+  }>,
 };
 
 interface PluginDashboardSubscriptionParametersSectionOverride {

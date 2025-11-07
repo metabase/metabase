@@ -1,11 +1,27 @@
+import { isRootCollection } from "metabase/collections/utils";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
+
+type SnippetTreeItem = NativeQuerySnippet & { model: "snippet" };
+type CollectionTreeItem = Collection & { model: "collection" };
+
+export type TreeItem = SnippetTreeItem | CollectionTreeItem;
+
+export const isSnippetTreeItem = (item: TreeItem): item is SnippetTreeItem => {
+  return item.model === "snippet";
+};
+
+export const isCollectionTreeItem = (
+  item: TreeItem,
+): item is CollectionTreeItem => {
+  return item.model === "collection";
+};
 
 export function buildSnippetTree(
   snippetCollections: Collection[],
   snippets: NativeQuerySnippet[],
-): ITreeNodeItem[] {
-  const tree: ITreeNodeItem[] = [];
+): ITreeNodeItem<TreeItem>[] {
+  const tree: ITreeNodeItem<TreeItem>[] = [];
 
   const nonArchivedCollections = snippetCollections.filter(
     (collection) => !collection.archived,
@@ -13,6 +29,10 @@ export function buildSnippetTree(
   const nonArchivedSnippets = snippets.filter((snippet) => !snippet.archived);
 
   nonArchivedCollections.forEach((collection) => {
+    if (isRootCollection(collection)) {
+      return;
+    }
+
     const childSnippets = nonArchivedSnippets
       .filter((snippet) => snippet.collection_id === collection.id)
       .map((snippet) => ({
@@ -32,7 +52,7 @@ export function buildSnippetTree(
   });
 
   nonArchivedSnippets
-    .filter((snippet) => !snippet.collection_id)
+    .filter((snippet) => snippet.collection_id == null)
     .forEach((snippet) => {
       tree.push({
         id: snippet.id,
