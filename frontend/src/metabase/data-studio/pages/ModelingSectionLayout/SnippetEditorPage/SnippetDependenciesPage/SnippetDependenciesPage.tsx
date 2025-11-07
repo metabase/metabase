@@ -42,7 +42,7 @@ export function SnippetDependenciesPage({
 
   return (
     <Flex direction="column" h="100%">
-      <SnippetHeader snippet={snippet} isNewSnippet={false} />
+      <SnippetHeader snippet={snippet} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
           baseUrl: Urls.dataStudioSnippetDependencies(snippet.id),

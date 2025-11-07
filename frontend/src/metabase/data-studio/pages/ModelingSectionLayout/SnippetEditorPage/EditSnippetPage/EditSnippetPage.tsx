@@ -99,7 +99,6 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
       <Stack pos="relative" w="100%" h="100%" bg="bg-white" gap={0}>
         <SnippetHeader
           snippet={snippet}
-          isNewSnippet={false}
           actions={
             <PaneHeaderActions
               isValid={true}

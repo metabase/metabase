@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import {
   PaneHeader,
@@ -16,30 +17,15 @@ import type { NativeQuerySnippet } from "metabase-types/api";
 const SNIPPET_NAME_MAX_LENGTH = 254;
 
 type SnippetHeaderProps = {
-  snippet?: NativeQuerySnippet;
-  isNewSnippet: boolean;
+  snippet: NativeQuerySnippet;
   actions?: ReactNode;
 };
 
-export function SnippetHeader({
-  snippet,
-  isNewSnippet,
-  actions,
-}: SnippetHeaderProps) {
+export function SnippetHeader({ snippet, actions }: SnippetHeaderProps) {
   return (
     <PaneHeader
-      title={
-        !isNewSnippet && snippet ? (
-          <SnippetNameInput snippet={snippet} />
-        ) : (
-          <PaneHeaderInput
-            initialValue={t`New SQL snippet`}
-            maxLength={SNIPPET_NAME_MAX_LENGTH}
-            onChange={() => {}}
-          />
-        )
-      }
-      tabs={!isNewSnippet && snippet && <SnippetTabs snippet={snippet} />}
+      title={<SnippetNameInput snippet={snippet} />}
+      tabs={<SnippetTabs snippet={snippet} />}
       actions={actions}
       data-testid="snippet-header"
     />
@@ -62,7 +48,7 @@ function SnippetNameInput({ snippet }: SnippetNameInputProps) {
 
     if (error) {
       sendToast({
-        message: t`Failed to update snippet name`,
+        message: getErrorMessage(error, t`Failed to update snippet name`),
         icon: "warning",
       });
     } else {
