@@ -35,5 +35,4 @@
 
 (defmethod serdes/storage-path "EmbeddingTheme"
   [entity _ctx]
-  (let [{:keys [id label]} (-> entity serdes/path last)]
-    ["embedding_themes" (serdes/storage-leaf-file-name id label)]))
+  [{:label "embedding_themes"} {:label (:name entity) :key (:entity_id entity)}])
