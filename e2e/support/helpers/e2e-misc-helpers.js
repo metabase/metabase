@@ -1,5 +1,5 @@
 import { pickEntity } from "./e2e-collection-helpers";
-import { modal } from "./e2e-ui-elements-helpers";
+import { modal, undoToast } from "./e2e-ui-elements-helpers";
 
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
@@ -336,15 +336,17 @@ export function saveQuestion(
     const wasSavedToCollection = !body.dashboard_id;
 
     if (wasSavedToCollection) {
-      cy.get("#QuestionSavedModal").within(() => {
-        cy.findByText(/add this to a dashboard/i).should("be.visible");
+      checkSavedToCollectionQuestionToast(addToDashboard);
+    }
+  });
+}
 
-        if (addToDashboard) {
-          cy.button("Yes please!").click();
-        } else {
-          cy.button("Not now").click();
-        }
-      });
+export function checkSavedToCollectionQuestionToast(addToDashboard) {
+  undoToast().within(() => {
+    cy.findByText(/Saved/i).should("be.visible");
+
+    if (addToDashboard) {
+      cy.button(/Add this to a dashboard/i).click();
     }
   });
 }
