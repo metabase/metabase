@@ -4,3 +4,6 @@
 
 (defmethod v0-common/representation-type :model/Card [t2-card]
   (:type t2-card))
+
+(defmethod v0-common/representation-type :metadata/card [t2-card]
+  (:type t2-card))

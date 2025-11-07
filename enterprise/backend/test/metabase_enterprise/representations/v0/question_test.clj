@@ -88,30 +88,36 @@
 (deftest export-import-singleton-test
   (testing "Testing export then import roundtrip"
     (let [mp (mt/metadata-provider)]
-      (doseq [query [(mt/native-query {:query "select 1"})
-                     (mt/mbql-query users)
-                     (lib/native-query (mt/metadata-provider) "select 1")
-                     (lib/query mp (lib.metadata/table mp (mt/id :orders)))]]
-        (mt/with-temp [:model/Card {qid :id} {:type :question
-                                              :dataset_query query}]
-          (let [question (t2/select-one :model/Card :id qid)
-                card-edn (export/export-entity question)
-                card-yaml (rep-yaml/generate-string card-edn)
-                card-rep (rep-yaml/parse-string card-yaml)
-                card-rep (rep-read/parse card-rep)
+      (mt/with-temp [:model/Card card {:type :question
+                                       :dataset_query (lib/native-query mp "select 2")}]
+        (doseq [query [(mt/native-query {:query "select 1"})
+                       (mt/mbql-query users)
+                       (lib/native-query (mt/metadata-provider) "select 1")
+                       (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                       (lib/query mp (lib.metadata/card mp (:id card)))]]
+          (mt/with-temp [:model/Card {qid :id} {:type :question
+                                                :dataset_query query}]
+            (let [question (t2/select-one :model/Card :id qid)
+                  card-edn (export/export-entity question)
+                  card-yaml (rep-yaml/generate-string card-edn)
+                  card-rep (rep-yaml/parse-string card-yaml)
+                  card-rep (rep-read/parse card-rep)
 
-                ;; Build ref-index with database
-                ref-index (v0-common/map-entity-index
-                           {(v0-common/unref (:database card-edn))
-                            (t2/select-one :model/Database (mt/id))})
+                  ;; Build ref-index with database
+                  ref-index (v0-common/map-entity-index
+                             {(v0-common/unref (:database card-edn))
+                              (t2/select-one :model/Database (mt/id))
 
-                question (import/insert! card-rep ref-index)
-                question (t2/select-one :model/Card :id (:id question))
-                edn (export/export-entity question)
-                yaml (rep-yaml/generate-string edn)
-                rep2 (rep-yaml/parse-string yaml)
-                rep2 (rep-read/parse rep2)]
-            (is (=? (dissoc card-rep :name :entity-id) rep2))))))))
+                              (v0-common/unref (v0-common/entity->ref card))
+                              card})
+
+                  question (import/insert! card-rep ref-index)
+                  question (t2/select-one :model/Card :id (:id question))
+                  edn (export/export-entity question)
+                  yaml (rep-yaml/generate-string edn)
+                  rep2 (rep-yaml/parse-string yaml)
+                  rep2 (rep-read/parse rep2)]
+              (is (=? (dissoc card-rep :name :entity-id) rep2)))))))))
 
 (deftest representation-type-test
   (doseq [entity (t2/select :model/Card :type :question)]
