@@ -11,7 +11,7 @@ describe("buildMatrix", () => {
   it("should calculate correct regular chunks with default parameters", () => {
     const result = testBuildMatrix("./e2e/test/scenarios/**/*.cy.spec.*", 30);
 
-    expect(result.regularChunks).toBe(26);
+    expect(result.regularChunks).toBe(27);
   });
 
   it("should create correct number of configuration objects", () => {
@@ -23,7 +23,7 @@ describe("buildMatrix", () => {
   it("should apply default specs path when empty entry is provided", () => {
     const result = testBuildMatrix("", 6);
 
-    expect(result.regularChunks).toBe(2);
+    expect(result.regularChunks).toBe(3);
     expect(result.config.length).toBe(6);
   });
 
@@ -39,14 +39,13 @@ describe("buildMatrix", () => {
   });
 
   it("should handle case when input chunks equals special tests count", () => {
-    const result = testBuildMatrix("./e2e/test/scenarios/**/*.cy.spec.*", 4);
+    const result = testBuildMatrix("./e2e/test/scenarios/**/*.cy.spec.*", 3);
 
     expect(result.regularChunks).toBe(0);
-    expect(result.config.length).toBe(4);
-    expect(result.config[0].name).toBe("embedding-sdk");
-    expect(result.config[1].name).toBe("oss-subset");
-    expect(result.config[2].name).toBe("mongo");
-    expect(result.config[3].name).toBe("python");
+    expect(result.config.length).toBe(3);
+    expect(result.config[0].name).toBe("oss-subset");
+    expect(result.config[1].name).toBe("mongo");
+    expect(result.config[2].name).toBe("python");
   });
 
   it("should correctly calculate regularChunks for non-default spec pattern", () => {
@@ -84,7 +83,6 @@ describe("buildMatrix", () => {
   it("should return special test configs when default spec pattern is provided", () => {
     const result = testBuildMatrix("./e2e/test/scenarios/**/*.cy.spec.*", 50);
 
-    expect(result.config[46].name).toBe("embedding-sdk");
     expect(result.config[47].name).toBe("oss-subset");
     expect(result.config[48].name).toBe("mongo");
     expect(result.config[49].name).toBe("python");
