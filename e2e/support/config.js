@@ -49,17 +49,6 @@ const assetsResolverPlugin = {
   },
 };
 
-// these are special and shouldn't be chunked out arbitrarily
-const specBlacklist = ["/embedding-sdk/"];
-
-function getSplittableSpecs(specs) {
-  return specs.filter((spec) => {
-    return !specBlacklist.some((blacklistedPath) =>
-      spec.includes(blacklistedPath),
-    );
-  });
-}
-
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(cypressOn, config) {
@@ -153,7 +142,7 @@ const defaultConfig = {
     require("@cypress/grep/src/plugin")(config);
 
     if (isCI) {
-      cypressSplit(on, config, getSplittableSpecs);
+      cypressSplit(on, config);
       collectFailingTests(on, config);
     }
 
