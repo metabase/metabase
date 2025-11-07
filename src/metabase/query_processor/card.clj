@@ -1,15 +1,12 @@
 (ns metabase.query-processor.card
   "Code for running a query in the context of a specific Card."
-  (:refer-clojure :exclude [mapv select-keys])
+  (:refer-clojure :exclude [mapv select-keys not-empty])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.cache.core :as cache]
-   ;; legacy usages -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
-   ;; Lib soon
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -17,6 +14,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
@@ -35,7 +33,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv select-keys]]
+   [metabase.util.performance :refer [mapv select-keys not-empty]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -55,12 +53,11 @@
            (assoc strategy :avg-execution-ms (or et 0)))
     strategy))
 
-(defn- explict-stage-references
-  [parameters]
+(mu/defn- explict-stage-references :- [:set :int]
+  [parameters :- [:maybe ::parameters.schema/parameters]]
   (into #{}
         (keep (fn [{:keys [target]}]
-                (when (mbql.u/is-clause? :dimension target)
-                  (get-in target [2 :stage-number]))))
+                (some-> target lib/parameter-target-dimension-options :stage-number)))
         parameters))
 
 (defn- point-parameters-to-last-stage
@@ -71,9 +68,8 @@
   [parameters]
   (mapv (fn [{:keys [target], :as parameter}]
           (cond-> parameter
-            (and (mbql.u/is-clause? :dimension target)
-                 (some? (get-in target [2 :stage-number])))
-            (assoc-in [:target 2 :stage-number] -1)))
+            (:stage-number (lib/parameter-target-dimension-options target))
+            (update :target lib/update-parameter-target-dimension-options assoc :stage-number -1)))
         parameters))
 
 (mu/defn- last-stage-number
@@ -86,20 +82,17 @@
   (mapv (fn [{param-type :type, :keys [target], :as parameter}]
           (cond-> parameter
             (and (= param-type :temporal-unit)
-                 (mbql.u/is-clause? :dimension target)
-                 (nil? (get-in target [2 :stage-number])))
-            (assoc-in [:target 2 :stage-number] -2)))
+                 (lib/parameter-target-is-dimension? target)
+                 (nil? (:stage-number (lib/parameter-target-dimension-options target))))
+            (update :target lib/update-parameter-target-dimension-options assoc :stage-number -2)))
         parameters))
 
 (mu/defn query-for-card :- [:maybe ::lib.schema/query]
   "Generate a query for a saved Card"
   [{dataset-query :dataset_query
     card-type     :type
-    :as           card} :- [:map
-                            [:dataset_query [:or
-                                             [:= {:description "empty map"} {}]
-                                             ::lib.schema/query]]]
-   parameters  :- [:maybe [:sequential :map]]
+    :as           card} :- ::queries.schema/card
+   parameters  :- [:maybe ::parameters.schema/parameters]
    constraints :- [:maybe :map]
    middleware  :- [:maybe :map]
    & [ids]]
@@ -179,15 +172,6 @@
                [param-name tag-type])))
      (lib/all-template-tags-map query))))
 
-(defn- allowed-parameter-type-for-template-tag-widget-type? [parameter-type widget-type]
-  (when-let [allowed-template-tag-types (get-in lib.schema.parameter/types [parameter-type :allowed-for])]
-    (contains? allowed-template-tag-types widget-type)))
-
-(defn- allowed-parameter-types-for-template-tag-widget-type [widget-type]
-  (into #{} (for [[parameter-type {:keys [allowed-for]}] lib.schema.parameter/types
-                  :when                                  (contains? allowed-for widget-type)]
-              parameter-type)))
-
 (mu/defn check-allowed-parameter-value-type
   "If a parameter (i.e., a template tag or Dashboard parameter) is specified with `widget-type` (e.g.
   `:date/all-options`), make sure a user is allowed to pass in parameters with value type `parameter-value-type` (e.g.
@@ -198,14 +182,17 @@
 
   Background: some more-specific parameter types aren't allowed for certain types of parameters.
   See [[metabase.legacy-mbql.schema/parameter-types]] for details."
-  [parameter-name
-   widget-type          :- ::lib.schema.template-tag/widget-type
+  [parameter-name       :- :string
+   widget-type          :- ::lib.schema.parameter/widget-type
    parameter-value-type :- ::lib.schema.parameter/type]
-  (when-not (allowed-parameter-type-for-template-tag-widget-type? parameter-value-type widget-type)
-    (let [allowed-types (allowed-parameter-types-for-template-tag-widget-type widget-type)]
-      (throw (ex-info (tru "Invalid parameter type {0} for parameter {1}. Parameter type must be one of: {2}"
+  (when-not (lib.schema.parameter/parameter-type-and-widget-type-allowed-together? parameter-value-type widget-type)
+    (let [allowed-types (lib.schema.parameter/allowed-parameter-types-for-template-tag-widget-type widget-type)]
+      ;; if we're running into errors where `parameter-value-type` is `:text`, that might be because it's the
+      ;; `:default` value in the schema these days
+      (throw (ex-info (tru "Invalid parameter value type {0} for parameter {1} with widget type {2}. Parameter value must be one of: {3}"
                            parameter-value-type
                            (pr-str parameter-name)
+                           widget-type
                            (str/join ", " (sort allowed-types)))
                       {:type              qp.error-type/invalid-parameter
                        :invalid-parameter parameter-name
@@ -255,7 +242,7 @@
     (qp.streaming/streaming-response [rff export-format (qp.streaming/safe-filename-prefix (:card-name info))]
       (qp (update query :info merge info) rff))))
 
-(mu/defn combined-parameters-and-template-tags
+(mu/defn combined-parameters-and-template-tags :- [:maybe ::parameters.schema/parameters]
   "Enrich `card.parameters` to include parameters from template-tags.
 
   On native queries parameters exists in 2 forms:
@@ -276,13 +263,36 @@
                      id->parameter
                      id->template-tags-parameter))))
 
-(defn- enrich-parameters-from-card
+(mu/defn- enrich-parameters-from-card :- ::parameters.schema/parameters
   "Allow the FE to omit type and target for parameters by adding them from the card."
-  [parameters card-parameters]
+  [parameters      :- [:maybe ::parameters.schema/parameters-with-optional-types]
+   card-parameters :- [:maybe ::parameters.schema/parameters]]
   (let [id->card-param (->> card-parameters
                             (map #(select-keys % [:id :type :target]))
                             (m/index-by :id))]
     (mapv #(merge (-> % :id id->card-param) %) parameters)))
+
+(defn- card-read-context
+  "The context to use for tracking the view. Return nil if the view should not be tracked"
+  [{:keys [context]}]
+  (case context
+    :public-dashboard       :dashboard
+    :public-question        :question
+    :embedded-dashboard     :dashboard
+    :embedded-question      :question
+    :csv-download           nil
+    :public-csv-download    nil
+    :embedded-csv-download  nil
+    :json-download          nil
+    :public-json-download   nil
+    :embedded-json-download nil
+    :xlsx-download          nil
+    :public-xlsx-download   nil
+    :embedded-xlsx-download nil
+    :dashboard-subscription nil
+    :pulse                  nil
+    :map-tiles              nil
+    context))
 
 (mu/defn process-query-for-card
   "Run the query for Card with `parameters` and `constraints`. By default, returns results in a
@@ -316,6 +326,7 @@
                                                    :cache_invalidated_at :entity_id :created_at :card_schema
                                                    :parameters]
                                                   :id card-id))
+        parameters (some-> parameters parameters.schema/normalize-parameters-without-adding-default-types)
         parameters (enrich-parameters-from-card parameters (combined-parameters-and-template-tags card))
         dash-viz   (when (and (not= context :question)
                               dashcard-id)
@@ -346,6 +357,10 @@
     (log/tracef "Running query for Card %d:\n%s" card-id
                 (u/pprint-to-str query))
     (binding [qp.perms/*card-id* card-id]
+      (when-let [context (card-read-context info)]
+        (events/publish-event! :event/card-read {:object-id card-id
+                                                 :user-id   (:executed-by info)
+                                                 :context   context}))
       (qp.store/with-metadata-provider (:database_id card)
         (qp.results-metadata/store-previous-result-metadata! card)
         (runner query info)))))

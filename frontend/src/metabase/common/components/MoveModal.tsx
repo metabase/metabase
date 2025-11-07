@@ -172,7 +172,6 @@ export const BulkMoveModal = ({
     .filter((item: CollectionItem) => isItemCollection(item))
     .map((item: CollectionItem) => String(item.id));
 
-  // if the move set includes collections, we can't move into any of them
   const shouldDisableItem = movingCollectionIds.length
     ? (item: CollectionPickerItem) => {
         const collectionItemFullPath =
@@ -208,6 +207,16 @@ export const BulkMoveModal = ({
     ? ["collection", "dashboard"]
     : ["collection"];
 
+  const handleMove = useCallback(
+    async (destination: CollectionPickerValueItem) => {
+      return onMove({
+        id: destination.id,
+        model: destination.model,
+      });
+    },
+    [onMove],
+  );
+
   return (
     <CollectionPickerModal
       title={title}
@@ -215,12 +224,7 @@ export const BulkMoveModal = ({
         id: initialCollectionId,
         model: "collection",
       }}
-      onChange={(destination) => {
-        onMove({
-          id: destination.id,
-          model: destination.model,
-        } as MoveDestination);
-      }}
+      onChange={handleMove}
       options={{
         showSearch: true,
         allowCreateNew: true,

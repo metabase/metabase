@@ -7,7 +7,7 @@ import {
   validateSession,
 } from "embedding/auth-common";
 import * as MetabaseError from "embedding-sdk-bundle/errors";
-import { getIsLocalhost } from "embedding-sdk-bundle/lib/is-localhost";
+import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
@@ -15,6 +15,7 @@ import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { requestSessionTokenFromEmbedJs } from "metabase-enterprise/embedding_iframe_sdk/utils";
@@ -25,7 +26,12 @@ import { getFetchRefreshTokenFn } from "../selectors";
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
   async (
-    { metabaseInstanceUrl, preferredAuthMethod, apiKey }: MetabaseAuthConfig,
+    {
+      metabaseInstanceUrl,
+      preferredAuthMethod,
+      apiKey,
+      isLocalHost,
+    }: MetabaseAuthConfig & { isLocalHost?: boolean },
     { dispatch },
   ) => {
     // remove any stale tokens that might be there from a previous session=
@@ -34,7 +40,7 @@ export const initAuth = createAsyncThunk(
     // Setup JWT or API key
     const isValidInstanceUrl =
       metabaseInstanceUrl && metabaseInstanceUrl?.length > 0;
-    const isValidApiKeyConfig = apiKey && getIsLocalhost();
+    const isValidApiKeyConfig = apiKey && (isLocalHost || getIsLocalhost());
 
     if (isValidApiKeyConfig) {
       // API key setup
@@ -43,17 +49,19 @@ export const initAuth = createAsyncThunk(
       // Use existing user session. Do nothing.
     } else if (isValidInstanceUrl) {
       // SSO setup
-      api.onBeforeRequest = async () => {
-        const session = await dispatch(
-          getOrRefreshSession({
-            metabaseInstanceUrl,
-            preferredAuthMethod,
-          }),
-        ).unwrap();
-        if (session?.id) {
-          api.sessionToken = session.id;
-        }
-      };
+      PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler =
+        async () => {
+          const session = await dispatch(
+            getOrRefreshSession({
+              metabaseInstanceUrl,
+              preferredAuthMethod,
+            }),
+          ).unwrap();
+          if (session?.id) {
+            api.sessionToken = session.id;
+          }
+        };
+
       try {
         // verify that the session is actually valid before proceeding
         await dispatch(

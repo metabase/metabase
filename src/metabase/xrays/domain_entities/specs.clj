@@ -1,23 +1,60 @@
 (ns metabase.xrays.domain-entities.specs
   (:require
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   ;; legacy usages, do not use legacy MBQL stuff in new code.
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.yaml :as yaml]))
 
+(mr/def ::xrays-dimension
+  "X-rays has its own special `:dimension` psuedo-MBQL clause in templates; it's different from the `:dimension` clause
+  we normally see in template tags/parameter targets."
+  [:cat
+   ;;; TODO (Cam 10/28/25) -- I think we should consider normalizing this key to something like `:xrays/dimension` to
+   ;;; make sure it's clear that it's an X-Rays-only thing and that it's different from the standard MBQL `:dimension`
+   ;;; clause
+   [:= {:decode/normalize keyword} :dimension]
+   :string
+   [:? [:map
+        {:decode/normalize lib.schema.common/normalize-map}
+        [:temporal-unit {:optional true} [:keyword {:decode/normalize keyword}]]]]])
+
+;;; it would be cool if there was a way to override `::mbql.s/dimension` and be able to use
+;;; `::mbql.normalize/normalize` normally but I can't figure out how to make it work. So we'll have to normalize
+;;; things the usual way and then go back and manually normalize our special dimension clauses.
+
+(defn- normalize-xrays-dimension [x]
+  (let [schema  ::xrays-dimension
+        decoder (mr/cached ::decoder schema #(mc/decoder schema (mtx/transformer {:name :normalize})))]
+    (decoder x)))
+
+(defn normalize-mbql-clause
+  "Normalize the legacy MBQL fragment saved in X-Rays templates. This handles the special X-Rays version of `:dimension`
+  clauses as well."
+  [x]
+  (walk/postwalk
+   (fn [form]
+     (if (and (sequential? form)
+              (= (first form) "dimension"))
+       (normalize-xrays-dimension form)
+       form))
+   (mbql.normalize/normalize x)))
+
 (def MBQL
   "MBQL clause (ie. a vector starting with a keyword)"
   [:fn
-   {:decode/domain-entity-spec mbql.normalize/normalize
-    :decode/transform-spec     mbql.normalize/normalize
+   {:decode/domain-entity-spec normalize-mbql-clause
+    :decode/transform-spec     normalize-mbql-clause
     :error/message             "valid MBQL clause"}
-   mbql.u/mbql-clause?])
+   ;;; TODO (Cam 10/10/25) -- update this to use [[metabase.lib.core/clause?]] once we convert X-Rays to MBQL 5
+   #(and (vector? %) (keyword? (first %)))])
 
 ;;; TODO (Cam 9/29/25) -- these decoding rules are BUSTED because it ends up creating totally nonsensical types like
 ;;; `:type/AvgPrice` which is not a real type at all. We should probably just leave the field names as strings.
@@ -115,7 +152,7 @@
              (mtx/transformer
               mtx/string-transformer
               mtx/json-transformer
-              (mtx/transformer {:name :domain-entity-spec}))))
+              {:name :domain-entity-spec})))
 
 (def ^:private domain-entities-dir "domain_entity_specs/")
 

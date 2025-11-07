@@ -134,7 +134,7 @@ export const findNodeParentAndPos = (
     }
   });
 
-  if (parentPos && parent) {
+  if (parentPos !== null && parent !== null) {
     return { parentPos, parent };
   }
 

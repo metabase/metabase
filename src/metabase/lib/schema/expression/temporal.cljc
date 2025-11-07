@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.expression.temporal
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [some #?(:clj doseq) #?(:clj for)])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -11,7 +11,7 @@
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some]]
+   [metabase.util.performance :refer [some #?(:clj doseq) #?(:clj for)]]
    [metabase.util.time.impl-common :as u.time.impl-common])
   #?@
    (:clj
@@ -115,7 +115,7 @@
     [:cat
      [:merge
       ::common/options
-      [:map [:mode {:optional true} ;; no mode should be iso string
+      [:map [:mode {:optional true} ; no mode should be iso string
              (into [:enum {:decode/normalize normalize-datetime-mode}]
                    datetime-string-modes)]]]
      [:schema [:ref ::expression/string]]]
@@ -134,7 +134,7 @@
       ::common/options
       [:map [:mode (into [:enum {:decode/normalize normalize-datetime-mode}]
                          datetime-binary-modes)]]]
-     :any]]])
+     [:schema [:ref ::expression/expression]]]]])
 
 ;; doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit

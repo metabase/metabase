@@ -24,7 +24,12 @@ import {
   getCollectionType,
   getIcon,
   isRegularCollection,
+  isSyncedCollection,
 } from "./utils";
+
+if (hasPremiumFeature("remote_sync")) {
+  PLUGIN_COLLECTIONS.isSyncedCollection = isSyncedCollection;
+}
 
 if (hasPremiumFeature("official_collections")) {
   PLUGIN_COLLECTIONS.isRegularCollection = isRegularCollection;

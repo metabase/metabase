@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { screen, within } from "__support__/ui";
 
 import { setup } from "./setup";
@@ -71,5 +73,23 @@ describe("BrowseMetrics (OSS)", () => {
     expect(
       within(table).getAllByTestId("path-for-collection: Alpha"),
     ).toHaveLength(3);
+  });
+
+  it("should render links that point directly to /metric/{id}-{slug} (metabase#55166)", async () => {
+    const { history } = setup({ metricCount: 5 });
+    const table = await screen.findByRole("table", {
+      name: /Table of metrics/,
+    });
+    expect(
+      within(table).getByRole("link", { name: /Metric 1/ }),
+    ).toHaveAttribute("href", "/metric/1-metric-1");
+    expect(
+      within(table).getByRole("link", { name: /Metric 2/ }),
+    ).toHaveAttribute("href", "/metric/2-metric-2");
+
+    expect(screen.queryByTestId("metric-detail-page")).not.toBeInTheDocument();
+    await userEvent.click(within(table).getByText("Metric 1"));
+    expect(screen.getByTestId("metric-detail-page")).toBeInTheDocument();
+    expect(history?.getCurrentLocation().pathname).toBe("/metric/1-metric-1");
   });
 });

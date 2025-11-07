@@ -52,18 +52,18 @@ import { isDimensionTarget } from "metabase-types/guards";
 import type { Query } from "../types";
 
 export type QuestionCreatorOpts = {
-  databaseId?: DatabaseId;
   cardType?: CardType;
-  tableId?: TableId;
   collectionId?: CollectionId;
   dashboardId?: DashboardId;
   metadata?: Metadata;
   parameterValues?: ParameterValuesMap;
-  type?: "query" | "native";
   name?: string;
   display?: CardDisplayType;
   visualization_settings?: VisualizationSettings;
   dataset_query?: DatasetQuery;
+  DEPRECATED_RAW_MBQL_type?: "query" | "native";
+  DEPRECATED_RAW_MBQL_databaseId?: DatabaseId;
+  DEPRECATED_RAW_MBQL_tableId?: TableId;
 };
 
 export type QuestionDashboardProps = {
@@ -460,9 +460,11 @@ class Question {
       return this;
     }
     const query = this.composeQuestion().query();
-    return Question.create({ metadata: this.metadata(), ...options }).setQuery(
-      query,
-    );
+    return Question.create({
+      metadata: this.metadata(),
+      dataset_query: Lib.toJsQuery(query),
+      ...options,
+    });
   }
 
   /**
@@ -911,13 +913,13 @@ class Question {
    * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
    */
   static create({
-    databaseId,
-    tableId,
+    DEPRECATED_RAW_MBQL_type: type = "query",
+    DEPRECATED_RAW_MBQL_databaseId: databaseId,
+    DEPRECATED_RAW_MBQL_tableId: tableId,
     collectionId,
     dashboardId,
     metadata,
     parameterValues,
-    type = "query",
     name,
     display = "table",
     visualization_settings = {},

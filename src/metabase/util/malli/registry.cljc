@@ -5,10 +5,10 @@
    #?@(:clj ([malli.experimental.time :as malli.time]
              [metabase.util.malli.registry.validator-cache :as mr.validator-cache]
              [net.cgrand.macrovich :as macros]))
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.registry]
-   [malli.util :as mut])
+   [malli.util :as mut]
+   [metabase.util.performance :refer [postwalk]])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private cache (atom {}))
@@ -21,7 +21,7 @@
 
   work correctly as cache keys instead of creating new entries every time the code is evaluated."
   [x]
-  (walk/postwalk
+  (postwalk
    (fn [form]
      (cond-> form
        (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) form)
@@ -154,7 +154,6 @@
      ([type schema]
       `(register! ~type ~schema))
      ([type docstring schema]
-      (assert (string? docstring))
       `(metabase.util.malli.registry/def ~type
          ~(macros/case
            :clj `(-with-doc ~schema ~docstring)

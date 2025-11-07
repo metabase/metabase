@@ -5,6 +5,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
@@ -218,6 +220,8 @@
             (update dashboard :dashcards normalize-dashcards))]
     (queries/batch-fetch-dashboard-metadata [(normalize-dashboard dashboard)])))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/query_metadata"
   "Return all metadata for an automagic dashboard for entity `entity` with id `id`."
   [{:keys [entity entity-id-or-query]} :- [:map
@@ -263,11 +267,12 @@
     :keys                                        [linked-tables]}]
   (if (seq linked-tables)
     (let [child-dashboards (map (fn [{:keys [linked-table-id linked-field-id]}]
-                                  (let [table (t2/select-one :model/Table :id linked-table-id)]
+                                  (let [table (t2/select-one :model/Table :id linked-table-id)
+                                        mp    (lib-be/application-database-metadata-provider (:db_id table))]
                                     (automagic-dashboards.core/automagic-analysis
                                      table
                                      {:show         :all
-                                      :query-filter [:= [:field linked-field-id nil] model_pk]})))
+                                      :query-filter [(lib/= (lib.metadata/field mp linked-field-id) model_pk)]})))
                                 linked-tables)
           seed-dashboard   (-> (first child-dashboards)
                                (merge
@@ -311,6 +316,8 @@
                                             :dashcard.background false
                                             :text.align_vertical :bottom}}])}))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/model_index/:model-index-id/primary_key/:pk-id"
   "Return an automagic dashboard for an entity detail specified by `entity`
   with id `id` and a primary key of `indexed-value`."

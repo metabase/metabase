@@ -1,6 +1,10 @@
 import _ from "underscore";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import {
+  convertLinkColumnToClickBehavior,
+  removeInternalClickBehaviors,
+} from "metabase/embedding-sdk/lib/links";
 import { ChartSettingColorPicker } from "metabase/visualizations/components/settings/ChartSettingColorPicker";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
@@ -46,17 +50,12 @@ export function getComputedSettings(
       extra,
     );
   }
-  // In modular embedding (react sdk and embed-js) we disable internal click behaviors
-  // but we want to keep external links (EMB-878) and clicking on the cell should fallback to
-  // drills if available (EMB-879)
+
   if (isEmbeddingSdk()) {
-    if (
-      computedSettings.click_behavior &&
-      computedSettings.click_behavior.type === "link" &&
-      computedSettings.click_behavior.linkType !== "url"
-    ) {
-      computedSettings.click_behavior = undefined;
-    }
+    return _.compose(
+      removeInternalClickBehaviors,
+      convertLinkColumnToClickBehavior,
+    )(computedSettings);
   }
 
   return computedSettings;

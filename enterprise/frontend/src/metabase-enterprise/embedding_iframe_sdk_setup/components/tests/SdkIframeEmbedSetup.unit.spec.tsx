@@ -1,6 +1,15 @@
 import userEvent from "@testing-library/user-event";
 
+import {
+  setupCardEndpoints,
+  setupCardQueryMetadataEndpoint,
+} from "__support__/server-mocks";
 import { screen } from "__support__/ui";
+import {
+  createMockCard,
+  createMockCardQueryMetadata,
+  createMockDatabase,
+} from "metabase-types/api/mocks";
 
 import { setup } from "./test-setup";
 
@@ -98,9 +107,23 @@ describe("Embed flow > forward and backward navigation", () => {
 
 describe("Embed flow > pre-selection via url parameter", () => {
   it("pre-selects question when resource_type=question is in URL", async () => {
+    const mockDatabase = createMockDatabase();
+    const mockCard = createMockCard({ id: 456 });
+
+    setupCardEndpoints(mockCard);
+    setupCardQueryMetadataEndpoint(
+      mockCard,
+      createMockCardQueryMetadata({
+        databases: [mockDatabase],
+      }),
+    );
+
     setup({
       simpleEmbeddingEnabled: true,
-      urlSearchParams: "?resource_type=question&resource_id=456",
+      initialState: {
+        resourceType: "question",
+        resourceId: 456,
+      },
     });
 
     // Starts at the "select embed options" step.

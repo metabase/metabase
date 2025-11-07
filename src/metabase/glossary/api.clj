@@ -3,6 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.events.core :as events]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -24,7 +25,11 @@
    {:keys [term definition]} :- [:map
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
-  (t2/insert-returning-instance! :model/Glossary {:term term :definition definition}))
+  (let [glossary (t2/insert-returning-instance! :model/Glossary {:term term :definition definition})]
+    (events/publish-event! :event/glossary-create
+                           {:object glossary
+                            :user-id api/*current-user-id*})
+    glossary))
 
 (api.macros/defendpoint :put "/:id"
   "Update an existing glossary entry."
@@ -33,13 +38,21 @@
    {:keys [term definition]} :- [:map
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
-  (api/check-404 (t2/select-one :model/Glossary :id id))
-  (t2/update! :model/Glossary id {:term term :definition definition})
-  (t2/select-one :model/Glossary :id id))
+  (let [previous-glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
+    (t2/update! :model/Glossary id {:term term :definition definition})
+    (let [glossary (t2/select-one :model/Glossary :id id)]
+      (events/publish-event! :event/glossary-update
+                             {:object glossary
+                              :previous-object previous-glossary
+                              :user-id api/*current-user-id*})
+      glossary)))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete a glossary entry."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-404 (t2/select-one :model/Glossary :id id))
-  (t2/delete! :model/Glossary :id id)
+  (let [glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
+    (t2/delete! :model/Glossary :id id)
+    (events/publish-event! :event/glossary-delete
+                           {:object glossary
+                            :user-id api/*current-user-id*}))
   api/generic-204-no-content)

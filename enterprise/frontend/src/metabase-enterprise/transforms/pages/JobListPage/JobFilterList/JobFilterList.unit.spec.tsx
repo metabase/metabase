@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { JobListParams } from "metabase-enterprise/transforms/types";
+import type * as Urls from "metabase/lib/urls";
 import type { TransformTag } from "metabase-types/api";
 
 import { JobFilterList } from "./JobFilterList";
 
 type SetupOpts = {
-  params?: JobListParams;
+  params?: Urls.TransformJobListParams;
   tags?: TransformTag[];
 };
 

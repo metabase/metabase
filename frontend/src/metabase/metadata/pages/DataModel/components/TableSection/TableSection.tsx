@@ -7,6 +7,7 @@ import {
   useUpdateTableMutation,
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
+import * as Urls from "metabase/lib/urls";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
@@ -166,7 +167,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
             <Tooltip label={t`Go to this table`} position="top">
               <ActionIcon
                 component={Link}
-                to={getQueryBuilderUrl(table)}
+                to={Urls.queryBuilderTable(table.id, table.db_id)}
                 variant="subtle"
                 color="text-light"
                 size="sm"
@@ -266,9 +267,5 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     </Stack>
   );
 };
-
-function getQueryBuilderUrl(table: Table) {
-  return `/question#?db=${table.db_id}&table=${table.id}`;
-}
 
 export const TableSection = memo(TableSectionBase);

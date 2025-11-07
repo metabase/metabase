@@ -32,7 +32,13 @@
   []
   (t/to-millis-from-epoch (t/instant)))
 
-(def ^:private entities [:model/Card :model/Transform :model/NativeQuerySnippet])
+(def ^:private entities
+  [:model/Card
+   :model/Transform
+   :model/NativeQuerySnippet
+   :model/Dashboard
+   :model/Document
+   :model/Sandbox])
 
 ;; In-memory state for tracking failed entities
 ;; Stores {:model/Type {id {:fail-count N :next-retry-timestamp M}}}

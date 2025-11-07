@@ -69,8 +69,9 @@
   [:enum {:decode/normalize lib.schema.common/normalize-keyword} :none :list :search])
 
 (mr/def ::parameter
-  "Schema for a valid Parameter. We're not using [[metabase.legacy-mbql.schema/Parameter]] here because this Parameter
-  is meant to be used for Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
+  "Schema for a valid stored parameter declaration saved as part of a Dashboard or Card. We're not using
+  `::metabase.lib.schema.parameter/parameter` here because these differ a bit from the parameters attached to
+  queries."
   ;; TODO we could use :multi to dispatch values_source_type to the correct values_source_config
   [:map
    {:description      "parameter must be a map with :id and :type keys"
@@ -83,7 +84,7 @@
                                                     [:sequential [:ref ::parameter-mapping]]
                                                     [:set [:ref ::parameter-mapping]]]]]
    [:name                 {:optional true} :string]
-   ;; ok now I know you're trying to mess with me
+   ;; ok now I know you're trying to mess with me with this camelCase key
    [:sectionId            {:optional true} ::lib.schema.common/non-blank-string]
    [:slug                 {:optional true} :string]
    [:target               {:optional true} [:ref ::lib.schema.parameter/target]]
@@ -92,6 +93,7 @@
    [:values_query_type    {:optional true} [:maybe ::values-query-type]]
    [:values_source_config {:optional true} [:maybe ::values-source-config]]
    [:values_source_type   {:optional true} [:maybe ::values-source-type]]])
+;;; TODO (Cam 10/20/25) -- does this need to include `widget-type` as well? Or is that only set for template tags?
 
 (mu/defn normalize-parameter :- ::parameter
   "Normalize `parameter` when coming out of the application database or in via an API request."
@@ -105,6 +107,22 @@
   "Normalize `parameters` when coming out of the application database or in via an API request."
   [parameters]
   (lib/normalize ::parameters parameters))
+
+(mr/def ::parameter-with-optional-type
+  [:merge
+   ::parameter
+   [:map
+    [:type {:optional true} [:ref ::lib.schema.parameter/type]]]])
+
+(mr/def ::parameters-with-optional-types
+  [:sequential ::parameter-with-optional-type])
+
+(mu/defn normalize-parameters-without-adding-default-types :- ::parameters-with-optional-types
+  "The same as [[normalize-parameters]], but does not add a default `:type` if it is missing. Needed in some cases
+  where we infer the type based on the `:widget-type` in the saved parameter declarations inside a Card or Dashboard,
+  e.g. when running an embedded Card with the Card QP."
+  [parameters]
+  (lib/normalize ::parameters-with-optional-types parameters))
 
 #?(:clj
    (def transform-parameters

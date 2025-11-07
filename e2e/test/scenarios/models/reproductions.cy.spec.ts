@@ -522,7 +522,6 @@ describe("issue 40635", () => {
 
     cy.button("Save").click();
     H.modal().button("Save").click();
-    H.modal().findByText("Not now").click();
 
     assertSettingsSidebar();
     assertVisualizationColumns();
@@ -1990,10 +1989,16 @@ describe("issue 50915", () => {
     cy.findByTestId("dataset-edit-bar").button("Save").click();
     cy.findByTestId("save-question-modal").button("Save").click();
     H.queryBuilderHeader().should("be.visible");
+    H.queryBuilderMain()
+      .findByText("37.65", { timeout: 10000 })
+      .should("be.visible");
 
     cy.log("immediately after saving, drill-thru");
     H.tableHeaderClick("Discount ($)");
     H.popover().findByText("Distinct values").click();
+    H.queryBuilderMain()
+      .findByText("1,115", { timeout: 10000 })
+      .should("be.visible");
     H.assertTableData({ columns: ["Distinct values of Discount"] });
 
     cy.log("assert that the model is used for the data source");

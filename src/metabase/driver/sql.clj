@@ -225,7 +225,21 @@
                          ;; inner query, it can also refer to something in the outer query.
                          ;; sql.references/field-references organizes source-cols into a list of lists
                          ;; to account for this.
-                         (->> (mapcat (partial resolve-field driver metadata-provider) source-col-set)
+                         (->> (mapcat (fn [current-col]
+                                        ;; :unknown-columns is a placeholder for "we know there are columns being
+                                        ;; returned, but have no way of knowing what those are -- this is primarily
+                                        ;; used for table-functions like `select * from my_func()`.  If we encounter
+                                        ;; something like that, assume that the query is valid and make up a matching
+                                        ;; column to avoid false positives.
+                                        (if (= (:type current-col) :unknown-columns)
+                                          (let [name (:column col-spec)]
+                                            [{:base-type :type/*
+                                              :name name
+                                              :display-name (->> name (u.humanization/name->human-readable-name :simple))
+                                              :effective-type :type/*
+                                              :semantic-type :Semantic/*}])
+                                          (resolve-field driver metadata-provider current-col)))
+                                      source-col-set)
                               (some #(when (= (:name %) (:column col-spec))
                                        %))))))]
      (assoc found :lib/desired-column-alias (or alias name))
@@ -271,6 +285,10 @@
       :base-type (apply lca :type/* (map :base-type member-fields))
       :effective-type (apply lca :type/* (map :effective-type member-fields))
       :semantic-type (apply lca :Semantic/* (map :semantic-type member-fields))}]))
+
+(defmethod resolve-field :unknown-columns
+  [_driver _metadata-provider _col-spec]
+  [])
 
 (mu/defmethod driver/native-result-metadata :sql
   [driver       :- :keyword

@@ -367,16 +367,24 @@ const GaugeArc = ({
     .outerRadius(OUTER_RADIUS)
     .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
 
-  const clicked = segment && { value: segment.min, column, settings };
-  const isClickable = clicked && onVisualizationClick != null;
+  const isClickable = segment != null && onVisualizationClick != null;
   const options = column && settings?.column ? settings.column(column) : {};
   const range = segment ? [segment.min, segment.max] : [];
   const value = range.map((v) => formatValue(v, options)).join(" - ");
   const hovered = segment ? { data: [{ key: segment.label, value }] } : {};
 
   const handleClick = (e) => {
-    if (onVisualizationClick && visualizationIsClickable(clicked)) {
-      onVisualizationClick({ ...clicked, event: e.nativeEvent });
+    if (!segment) {
+      return;
+    }
+    const clickData = {
+      value: segment.min,
+      column,
+      settings,
+      event: e.nativeEvent,
+    };
+    if (onVisualizationClick && visualizationIsClickable(clickData)) {
+      onVisualizationClick(clickData);
     }
   };
 

@@ -4,10 +4,12 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.annotate :as annotate]
@@ -877,6 +879,35 @@
                      (->> (mt/mbql-query nil {:source-table "card__1"})
                           mt/process-query
                           mt/rows))))))))))
+
+(deftest convert-timezone-native-query-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/dataset times-mixed
+      (testing "MBQL query with native first stage and MBQL second stage can convert timezones without a src (#64705)"
+        ;; We allow `:convert-timezone` with only the destination timezone, when the underlying column has a known
+        ;; timezone. When the first stage is a native query (or when SQL-based sandboxing makes it so, in #64705)
+        ;; the driver needs to know if the input column has a timezone.
+        (when (driver.u/supports? driver/*driver* :set-timezone (mt/db))
+          (mt/with-report-timezone-id! "Europe/Rome"
+            (let [mp     (mt/metadata-provider)
+                  table  (lib.metadata/table mp (mt/id :times))
+                  col-fn #(lib.options/ensure-uuid [:field {:base-type :type/DateTimeWithLocalTZ} "dt_tz"])
+                  sql    (format "SELECT %s FROM %s WHERE 1 = 1"
+                                 (sql.u/quote-name driver/*driver* :field "dt_tz")
+                                 (sql.u/quote-name driver/*driver* :table (:schema table) (:name table)))
+                  query  (-> (lib/native-query mp sql)
+                             lib/append-stage
+                             (lib/with-fields [(col-fn)])
+                             ;; TODO: Can't build this with `lib/convert-timezone` because it requires both
+                             ;; src and dest timezones, while the UI only requires dest.
+                             (lib/expression "expr" (lib.options/ensure-uuid
+                                                     [:convert-timezone {} (col-fn) "America/Toronto"]))
+                             (lib/order-by (col-fn))
+                             (lib/limit 1))]
+              (is (= [["2004-03-19T03:19:09+01:00" "2004-03-18T21:19:09-05:00"]]
+                     (-> query
+                         mt/process-query
+                         mt/rows))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Datetime diff tests                                                 |

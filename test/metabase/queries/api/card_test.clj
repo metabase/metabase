@@ -72,6 +72,7 @@
    :description            nil
    :display                "scalar"
    :enable_embedding       false
+   :embedding_type         nil
    :initially_published_at nil
    :entity_id              nil
    :embedding_params       nil
@@ -194,7 +195,8 @@
                  :data        {:rows [[8]]}}
                 (mt/user-http-request
                  :rasta :post 202 (format "card/%d/query" card-id)
-                 {:parameters [{:type   :number
+                 {:parameters [{:id     "_CATEGORY_"
+                                :type   :number
                                 :target [:variable [:template-tag :category]]
                                 :value  2}]})))))))
 
@@ -298,14 +300,14 @@
             "The set of Card returned with f=archived should be equal to the set of archived cards")))))
 
 (deftest embedding-sdk-info-saves-view-log
-  (testing "GET /api/card with embedding headers set"
+  (testing "GET /api/card/query with embedding headers set"
     (let [;; any strings will work here (must be shorter than 254 chars), but these are semi-relaistic:
           client-string (mt/random-name)
           version-string (str "1." (rand-int 1000) "." (rand-int 1000))]
       (mt/with-temp [:model/Database {database-id :id} {}
                      :model/Card card-1 {:name "Card 1" :database_id database-id}]
         (mt/with-premium-features #{:audit-app}
-          (mt/user-http-request :crowberto :get 200 (str "card/" (u/the-id card-1))
+          (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card-1) "/query")
                                 {:request-options {:headers {"x-metabase-client" client-string
                                                              "x-metabase-client-version" version-string}}}))
         (is (= {:embedding_client client-string, :embedding_version version-string}
@@ -897,6 +899,21 @@
                                                                        :dataset_query          (mt/mbql-query venues)
                                                                        :visualization_settings {}
                                                                        :enable_embedding       true})))))))))
+
+(deftest create-card-disallow-setting-embedding-type-test
+  (testing "POST /api/card"
+    (testing "Ignore values of `embedding_type` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
+                    ;; should be ignored regardless of the value of the `embedding-type` Setting.
+      (doseq [embedding-type [true false]]
+        (mt/with-temporary-setting-values [enable-embedding-static embedding-type]
+          (mt/with-model-cleanup [:model/Card]
+            (is (=? {:embedding_type nil}
+                    (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
+                                                                       :display                :table
+                                                                       :dataset_query          (mt/mbql-query venues)
+                                                                       :visualization_settings {}
+                                                                       :enable_embedding       true
+                                                                       :embedding_type       "static-legacy"})))))))))
 
 (deftest save-empty-card-test
   (testing "POST /api/card"
@@ -1566,6 +1583,24 @@
           (is (= {:abc "enabled"}
                  (t2/select-one-fn :embedding_params :model/Card :id (u/the-id card)))))))))
 
+(deftest update-embedding-type-to-nil-test
+  (testing "PUT /api/card/:id"
+    (testing "Admin should be able to set embedding_type to nil to clear it"
+      (mt/with-temporary-setting-values [enable-embedding-static true]
+        (mt/with-temp [:model/Card card {:enable_embedding true
+                                         :embedding_type "static-legacy"}]
+          (testing "Verify initial state has embedding_type set"
+            (is (= "static-legacy"
+                   (t2/select-one-fn :embedding_type :model/Card :id (u/the-id card)))))
+          (testing "Setting embedding_type to nil should clear it"
+            (let [response (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
+                                                 {:embedding_type nil})]
+              (testing "Response should contain nil embedding_type"
+                (is (= nil (:embedding_type response))))
+              (testing "Database should contain nil embedding_type"
+                (is (= nil
+                       (t2/select-one-fn :embedding_type :model/Card :id (u/the-id card))))))))))))
+
 (deftest can-we-change-the-collection-position-of-a-card-
   (mt/with-temp [:model/Card card]
     (with-cards-in-writeable-collection! card
@@ -2045,8 +2080,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json & GET /api/card/:id/query/xlsx **WITH PARAMETERS**
-(def ^:private ^String test-params
-  [{:type   :number
+(def ^:private test-params
+  [{:id     "_CATEGORY_"
+    :type   :number
     :target [:variable [:template-tag :category]]
     :value  2}])
 
@@ -2529,9 +2565,9 @@
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp [:model/Collection collection]
             (mt/with-model-cleanup [:model/Card]
-              (is (=? {:message "You do not have curate permissions for this Collection."}
-                      (mt/user-http-request :rasta :post 403 "card"
-                                            (assoc (card-with-name-and-query) :collection_id (u/the-id collection))))))))))))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "card"
+                                           (assoc (card-with-name-and-query) :collection_id (u/the-id collection))))))))))))
 
 (deftest set-card-collection-id-test
   (testing "Should be able to set the Collection ID of a Card in the Root Collection (i.e., `collection_id` is nil)"
@@ -3006,7 +3042,7 @@
                            (mt/user-http-request :crowberto :put 200
                                                  (str "card/" (u/the-id card)) card))]
       (doseq [[query-type query modified-query] [["mbql"   query modified-query]
-                                                 #_["native" (to-native query) (to-native modified-query)]]]
+                                                 ["native" (to-native query) (to-native modified-query)]]]
         (testing (str "For: " query-type)
           (mt/with-model-cleanup [:model/Card]
             (let [{metadata :result_metadata

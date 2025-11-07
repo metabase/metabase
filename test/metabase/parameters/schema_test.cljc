@@ -17,3 +17,7 @@
     (is (= {:parameter_id "53bb6214", :target [:variable [:template-tag "id"]]}
            (parameters.schema/normalize-parameter-mapping
             {"parameter_id" "53bb6214", "card_id" -1, "target" ["variable" ["template-tag" "id"]]})))))
+
+(deftest ^:parallel normalize-parameters-without-adding-default-type-test
+  (is (= [{:id "x", :target [:dimension [:template-tag "y"]]}]
+         (parameters.schema/normalize-parameters-without-adding-default-types [{"id" "x", "target" ["dimension" ["template-tag" "y"]]}]))))

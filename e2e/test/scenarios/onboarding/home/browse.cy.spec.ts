@@ -61,7 +61,7 @@ describe("browse > models", () => {
     cy.get("@open").should("have.been.calledOnce");
     cy.get("@open").should(
       "have.been.calledOnceWithExactly",
-      `/question/${ORDERS_MODEL_ID}-orders-model`,
+      `/model/${ORDERS_MODEL_ID}-orders-model`,
       "_blank",
     );
   });
@@ -325,6 +325,9 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
 
     cy.log("Visit Model 1");
     cy.findByRole("heading", { name: "Model 1" }).click();
+
+    cy.log("make sure data is loaded");
+    H.tableInteractive().findByText("Rustic Paper Wallet").should("be.visible");
 
     browseModels();
 

@@ -52,6 +52,7 @@ import {
   type HoveredObject,
   type QueryClickActionsMode,
   type VisualizationDefinition,
+  type VisualizationGridSize,
   type VisualizationPassThroughProps,
   type Visualization as VisualizationType,
   isRegularClickAction,
@@ -127,10 +128,7 @@ type VisualizationOwnProps = {
     clicked: ClickObject | null,
   ) => Record<string, unknown>;
   getHref?: () => string | undefined;
-  gridSize?: {
-    width: number;
-    height: number;
-  };
+  gridSize?: VisualizationGridSize;
   gridUnit?: number;
   handleVisualizationClick?: (clicked: ClickObject | null) => void;
   headerIcon?: IconProps;
@@ -398,14 +396,67 @@ class Visualization extends PureComponent<
     }
   };
 
-  _getQuestionForCardCached(
+  private static getQuestionForCard(
     metadata: Metadata | undefined,
     card: Card | undefined,
   ) {
     return !!card && !!metadata ? new Question(card, metadata) : undefined;
   }
 
-  getMode(
+  _getClickActionsCached(
+    clickedObject: ClickObject | null | undefined,
+    mode: ClickActionModeGetter | Mode | QueryClickActionsMode | undefined,
+    computedSettings: Record<string, string>,
+    dashcard?: DashboardCard,
+    metadata?: Metadata,
+    rawSeries: (
+      | SingleSeries
+      | {
+          card: Card;
+        }
+    )[] = [],
+    visualizerRawSeries: RawSeries = [],
+    isRawTable = false,
+    getExtraDataForClick: (
+      clicked: ClickObject | null,
+    ) => Record<string, unknown> = () => ({}),
+  ) {
+    if (!clickedObject) {
+      return [];
+    }
+
+    const clicked = isVisualizerDashboardCard(dashcard)
+      ? formatVisualizerClickObject(
+          clickedObject,
+          visualizerRawSeries,
+          dashcard.visualization_settings.visualization.columnValuesMapping,
+        )
+      : clickedObject;
+
+    const card = Visualization.findCardById(
+      clicked.cardId,
+      dashcard,
+      rawSeries,
+      visualizerRawSeries,
+    );
+    const question = Visualization.getQuestionForCard(metadata, card);
+    const modeInstance = Visualization.getMode(mode, question);
+
+    return modeInstance
+      ? modeInstance.actionsForClick(
+          {
+            ...clicked,
+            extraData: {
+              ...getExtraDataForClick(clicked),
+              isRawTable,
+            },
+          },
+          computedSettings,
+        )
+      : [];
+  }
+
+  private static getMode(
     modeOrModeGetter:
       | ClickActionModeGetter
       | Mode
@@ -434,54 +485,49 @@ class Visualization extends PureComponent<
   }
 
   getClickActions(clickedObject?: ClickObject | null) {
-    if (!clickedObject) {
-      return [];
-    }
-
     const {
+      mode,
       dashcard,
       metadata,
-      visualizerRawSeries = [],
+      rawSeries,
+      visualizerRawSeries,
       isRawTable,
-      getExtraDataForClick = () => ({}),
+      getExtraDataForClick,
     } = this.props;
 
-    const clicked = isVisualizerDashboardCard(dashcard)
-      ? formatVisualizerClickObject(
-          clickedObject,
-          visualizerRawSeries,
-          dashcard.visualization_settings.visualization.columnValuesMapping,
-        )
-      : clickedObject;
+    const { computedSettings } = this.state;
 
-    const card = this.findCardById(clicked.cardId);
-
-    const question = this._getQuestionForCardCached(metadata, card);
-    const mode = this.getMode(this.props.mode, question);
-
-    return mode
-      ? mode.actionsForClick(
-          {
-            ...clicked,
-            extraData: {
-              ...getExtraDataForClick(clicked),
-              isRawTable,
-            },
-          },
-          this.state.computedSettings,
-        )
-      : [];
+    return this._getClickActionsCached(
+      clickedObject,
+      mode,
+      computedSettings,
+      dashcard,
+      metadata,
+      rawSeries,
+      visualizerRawSeries,
+      isRawTable,
+      getExtraDataForClick,
+    );
   }
 
-  findCardById = (cardId?: CardId | null) => {
-    const { dashcard, rawSeries = [], visualizerRawSeries = [] } = this.props;
+  private static findCardById(
+    cardId?: CardId | null,
+    dashcard?: DashboardCard,
+    rawSeries: (
+      | SingleSeries
+      | {
+          card: Card;
+        }
+    )[] = [],
+    visualizerRawSeries: RawSeries = [],
+  ) {
     const isVisualizerViz = isVisualizerDashboardCard(dashcard);
     const lookupSeries = isVisualizerViz ? visualizerRawSeries : rawSeries;
     return (
       lookupSeries.find((series) => series.card.id === cardId)?.card ??
       lookupSeries[0].card
     );
-  };
+  }
 
   getNormalizedSizes = () => {
     const { width, height } = this.props;
@@ -536,8 +582,16 @@ class Visualization extends PureComponent<
     nextCard,
     objectId,
   }: Pick<OnChangeCardAndRunOpts, "nextCard" | "objectId">) => {
-    this.props.onChangeCardAndRun?.({
-      previousCard: this.findCardById(nextCard?.id),
+    const { dashcard, rawSeries, visualizerRawSeries, onChangeCardAndRun } =
+      this.props;
+
+    onChangeCardAndRun?.({
+      previousCard: Visualization.findCardById(
+        nextCard?.id,
+        dashcard,
+        rawSeries,
+        visualizerRawSeries,
+      ),
       nextCard,
       objectId,
     });
@@ -939,7 +993,7 @@ class Visualization extends PureComponent<
 }
 
 const VisualizationMemoized = memoizeClass<Visualization>(
-  "_getQuestionForCardCached",
+  "_getClickActionsCached",
 )(Visualization);
 
 // eslint-disable-next-line import/no-default-export

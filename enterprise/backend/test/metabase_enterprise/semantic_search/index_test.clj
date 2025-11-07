@@ -213,6 +213,7 @@
                                :id "1"
                                :name "Dog Training Guide"
                                :searchable_text "Dog Training Guide"
+                               :embeddable_text "Dog Training Guide"
                                :creator_id 1
                                :legacy_input {:model "card" :id "1"}
                                :metadata {}}
@@ -220,6 +221,7 @@
                                :id "2"
                                :name "Elephant Migration"
                                :searchable_text "Elephant Migration"
+                               :embeddable_text "Elephant Migration"
                                :creator_id 2
                                :legacy_input {:model "card" :id "2"}
                                :metadata {}}
@@ -227,6 +229,7 @@
                                :id "3"
                                :name "Tiger Conservation"
                                :searchable_text "Tiger Conservation"
+                               :embeddable_text "Tiger Conservation"
                                :creator_id 3
                                :legacy_input {:model "card" :id "3"}
                                :metadata {}}]]
@@ -255,6 +258,7 @@
                          :id "1"
                          :name "Dog Training Guide"
                          :searchable_text "Dog Training Guide"
+                         :embeddable_text "Dog Training Guide"
                          :creator_id 1
                          :legacy_input {:model "card" :id "1"}
                          :metadata {}}
@@ -262,6 +266,7 @@
                          :id "2"
                          :name "Elephant Migration"
                          :searchable_text "Elephant Migration"
+                         :embeddable_text "Elephant Migration"
                          :creator_id 2
                          :legacy_input {:model "card" :id "2"}
                          :metadata {}}
@@ -269,6 +274,7 @@
                          :id "3"
                          :name "Dog Training Guide"
                          :searchable_text "Dog Training Guide"
+                         :embeddable_text "Dog Training Guide"
                          :creator_id 3
                          :legacy_input {:model "card" :id "3"}
                          :metadata {}}]]
@@ -533,6 +539,7 @@
           base-doc {:model "card"
                     :id "123"
                     :searchable_text "test content"
+                    :embeddable_text "test content"
                     :creator_id 1}]
 
       (testing "MySQL-style integer booleans are converted to real booleans"
@@ -587,6 +594,7 @@
                    :id (:id model-1)
                    :name (:name model-1)
                    :searchable_text (:name model-1)
+                   :embeddable_text (:name model-1)
                    :created_at #t "2025-01-01T12:00:00Z"
                    :creator_id (mt/user->id :crowberto)
                    :archived false
@@ -601,6 +609,7 @@
                    :archived false
                    :collection_id coll-id
                    :searchable_text "Antarctic wildlife"
+                   :embeddable_text "Antarctic wildlife"
                    :legacy_input {:id (str (:id model-index-1) ":1234")
                                   :name "Antarctic wildlife"
                                   :model "indexed-entity"}

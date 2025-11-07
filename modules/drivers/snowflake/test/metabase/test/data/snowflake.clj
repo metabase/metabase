@@ -210,6 +210,9 @@
     (when (#{:count :cum-count} ag-type)
       {:base_type :type/Number}))))
 
+(defmethod sql.tx/generated-column-sql :snowflake [_ expr]
+  (format "AS (%s)" expr))
+
 (defn- setup-tracking-db!
   "Idempotently create test tracking database"
   [conn driver]

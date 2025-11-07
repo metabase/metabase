@@ -8,6 +8,7 @@ import DateTime from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import EntityItem from "metabase/common/components/EntityItem";
 import Markdown from "metabase/common/components/Markdown";
+import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getUserName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -311,6 +312,19 @@ export const Columns = {
               createBookmark={createBookmark}
               deleteBookmark={deleteBookmark}
             />
+          </RowActionsContainer>
+        </ItemCell>
+      );
+    },
+  },
+  Archive: {
+    Header: () => <th></th>,
+    Col: () => <col style={{ width: "100px" }} />,
+    Cell: ({ item }: { item: CollectionItem }) => {
+      return (
+        <ItemCell>
+          <RowActionsContainer>
+            <ArchiveButton item={item} />
           </RowActionsContainer>
         </ItemCell>
       );

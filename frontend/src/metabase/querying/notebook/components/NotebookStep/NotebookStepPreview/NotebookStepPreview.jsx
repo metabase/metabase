@@ -22,8 +22,7 @@ const getPreviewQuestion = (step) => {
     ? previewQuery
     : Lib.limit(previewQuery, stageIndex, PREVIEW_ROWS_LIMIT);
 
-  return Question.create()
-    .setQuery(queryWithLimit)
+  return Question.create({ dataset_query: Lib.toJsQuery(queryWithLimit) })
     .setDisplay("table")
     .setSettings({ "table.pivot": false });
 };

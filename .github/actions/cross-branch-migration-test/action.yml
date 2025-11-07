@@ -17,8 +17,6 @@ runs:
 
     - name: Prepare backend environment
       uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: cross-branch-migrations
 
     - name: Run backend on base branch
       run: |

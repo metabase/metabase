@@ -292,3 +292,40 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
     cy.get("@datasetQuery.all").should("have.length", 1);
   });
 });
+
+describe("scenarios > embedding-sdk > interactive-dashboard > tabs", () => {
+  it("should not show add a chart button on empty dashboard with many tabs (metabase#65001)", () => {
+    signInAsAdminAndEnableEmbeddingSdk();
+
+    const TAB_WITH_CARDS = { id: 1, name: "Tab with cards" };
+    const EMPTY_TAB = { id: 2, name: "Empty tab" };
+
+    const questionCard: Partial<DashboardCard> = {
+      id: ORDERS_DASHBOARD_DASHCARD_ID,
+      dashboard_tab_id: TAB_WITH_CARDS.id,
+      card_id: ORDERS_QUESTION_ID,
+      row: 0,
+      col: 0,
+      size_x: 16,
+      size_y: 8,
+    };
+
+    H.createDashboardWithTabs({
+      name: "Dashboard with empty tab",
+      tabs: [TAB_WITH_CARDS, EMPTY_TAB],
+      dashcards: [questionCard],
+    }).then(({ id: dashboardId }) => {
+      cy.signOut();
+      mockAuthProviderAndJwtSignIn();
+
+      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Orders").should("be.visible");
+      cy.findByRole("tab", { name: EMPTY_TAB.name }).click();
+      cy.findByTestId("dashboard-empty-state").should("be.visible");
+      cy.findByText("Add a chart").should("not.exist");
+    });
+  });
+});

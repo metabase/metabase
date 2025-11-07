@@ -4,13 +4,14 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -51,7 +52,7 @@ saved later when it is ready."
   (let [futur     (-> query
                       legacy-result-metadata-future)
         metadata' (if valid-metadata?
-                    (map mbql.normalize/normalize-source-metadata metadata)
+                    (lib/normalize ::qp.schema/result-metadata.columns metadata)
                     original-metadata)
         result    (deref futur metadata-sync-wait-ms ::timed-out)
         combiner  (fn [result]

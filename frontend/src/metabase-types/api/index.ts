@@ -38,6 +38,7 @@ export * from "./persist";
 export * from "./pulse";
 export * from "./query";
 export * from "./document";
+export * from "./remote-sync";
 export * from "./revision";
 export * from "./schema";
 export * from "./search";

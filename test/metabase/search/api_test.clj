@@ -178,8 +178,7 @@
         :when (false? (:archived result))]
     (cond-> result
       true (assoc :archived true)
-      (= (:model result) "collection") (assoc :location (collection/trash-path)
-                                              :effective_location (collection/trash-path)
+      (= (:model result) "collection") (assoc :effective_location (collection/trash-path)
                                               :collection (assoc default-collection :id true :name true :type "trash")))))
 
 (defn- on-search-types [model-set f coll]

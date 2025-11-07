@@ -31,26 +31,24 @@ export const getQuestion = ({
 }) => {
   const metadataProvider = Lib.metadataProvider(databaseId, metadata);
   const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
-  let question = Question.create({ databaseId, metadata });
-
-  if (table) {
-    let query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
-
-    if (getCount) {
-      query = Lib.aggregateByCount(query, -1);
-    }
-
-    if (fieldId) {
-      query = breakoutWithDefaultTemporalBucket(query, metadata, fieldId);
-    }
-
-    if (segmentId) {
-      query = filterBySegmentId(query, segmentId);
-    }
-
-    question = question.setQuery(query);
+  if (table == null) {
+    return;
   }
 
+  let query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
+  if (getCount) {
+    query = Lib.aggregateByCount(query, -1);
+  }
+
+  if (fieldId) {
+    query = breakoutWithDefaultTemporalBucket(query, metadata, fieldId);
+  }
+
+  if (segmentId) {
+    query = filterBySegmentId(query, segmentId);
+  }
+
+  let question = Question.create({ dataset_query: Lib.toJsQuery(query) });
   if (visualization) {
     question = question.setDisplay(visualization);
   }

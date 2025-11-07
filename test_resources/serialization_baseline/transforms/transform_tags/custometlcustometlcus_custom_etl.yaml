@@ -1,0 +1,8 @@
+built_in_type: null
+created_at: '2025-10-06T20:36:56.684138Z'
+entity_id: custometlcustometlcus
+name: custom-etl
+serdes/meta:
+- id: custometlcustometlcus
+  label: custom_etl
+  model: TransformTag

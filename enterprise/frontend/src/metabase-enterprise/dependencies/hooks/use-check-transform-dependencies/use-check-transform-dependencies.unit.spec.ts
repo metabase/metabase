@@ -18,13 +18,12 @@ function setup({
   setupCheckTransformDependenciesEndpoint(response);
 
   const onSave = jest.fn();
-  const onError = jest.fn();
   const { result } = renderHookWithProviders(
-    () => useCheckTransformDependencies({ onSave, onError }),
+    () => useCheckTransformDependencies({ onSave }),
     {},
   );
 
-  return { result, onSave, onError };
+  return { result, onSave };
 }
 
 describe("useCheckTransformDependencies", () => {

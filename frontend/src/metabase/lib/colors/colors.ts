@@ -6,6 +6,8 @@
 // frontend/src/metabase/styled-components/theme/css-variables.ts
 // NOTE: this file is used in the embedding SDK, so it should not contain anything else except the `colors` constant.
 
+import type { ColorSettings } from "metabase-types/api/settings";
+
 const win = typeof window !== "undefined" ? window : ({} as Window);
 const tokenFeatures = win.MetabaseBootstrap?.["token-features"] ?? {};
 const shouldWhitelabel = !!tokenFeatures["whitelabel"];
@@ -79,6 +81,7 @@ const baseColors = {
 
   // Orion
   orion: {
+    110: "hsla(205, 63%, 5%, 1)",
     100: "hsla(204, 66%, 8%, 1)",
     90: "hsla(204, 34%, 14%, 1)",
     80: "hsla(205, 19%, 23%, 1)",
@@ -237,10 +240,10 @@ const baseColors = {
   },
 };
 
-export const colorConfig = {
+const getColorConfig = (settings: ColorSettings = {}) => ({
   "accent-gray-dark": {
     light: baseColors.orion[20],
-    dark: baseColors.black,
+    dark: baseColors.orion[110],
   },
   "accent-gray-light": {
     light: baseColors.orion[5],
@@ -251,6 +254,14 @@ export const colorConfig = {
     light: baseColors.octopus[60],
     dark: baseColors.octopus[80],
   },
+  "admin-navbar-secondary": {
+    light: baseColors.octopus[40],
+    dark: baseColors.octopus[60],
+  },
+  "admin-navbar-inverse": {
+    light: baseColors.octopus[80],
+    dark: baseColors.octopus[60],
+  },
   "background-brand": {
     light: baseColors.brand[20],
     dark: baseColors.brand[70],
@@ -259,20 +270,31 @@ export const colorConfig = {
     light: baseColors.orionAlpha[10],
     dark: baseColors.orionAlphaInverse[10],
   },
+  "background-disabled-inverse": {
+    light: baseColors.orionAlphaInverse[10],
+    dark: baseColors.orionAlpha[10],
+  },
   "background-error-secondary": {
     light: baseColors.lobster[5],
     dark: baseColors.lobster[90],
   },
   "background-hover": {
-    light: `color-mix(in srgb, var(--mb-color-brand) 15%, transparent)`, //baseColors.oceanAlpha[10],
-    dark: `color-mix(in srgb, var(--mb-color-brand) 15%, transparent)`, //baseColors.oceanAlpha[20],
+    light: `color-mix(in srgb, var(--mb-color-brand) 21%, transparent)`, //baseColors.oceanAlpha[20],
+    dark: `color-mix(in srgb, var(--mb-color-brand) 21%, transparent)`, //baseColors.oceanAlpha[20],
   },
-
+  "background-hover-light": {
+    light: `color-mix(in srgb, var(--mb-color-brand) 7%, transparent)`, //baseColors.oceanAlpha[10],
+    dark: `color-mix(in srgb, var(--mb-color-brand) 7%, transparent)`, //baseColors.oceanAlpha[10],
+  },
   "background-inverse": {
     light: baseColors.orion[80],
     dark: baseColors.orion[20],
   },
-  "background-light": { light: baseColors.orion[5], dark: baseColors.black }, //should be background-secondary
+  "background-light": {
+    //should be background-secondary
+    light: baseColors.orion[5],
+    dark: baseColors.orion[110],
+  },
   "background-selected": {
     light: baseColors.brand[50],
     dark: baseColors.brand[40],
@@ -291,7 +313,7 @@ export const colorConfig = {
     light: baseColors.lobster[10],
     dark: baseColors.lobster[90],
   },
-  "bg-light": { light: baseColors.orion[5], dark: baseColors.black }, //should be background-secondary
+  "bg-light": { light: baseColors.orion[5], dark: baseColors.orion[110] }, //should be background-secondary
   "bg-medium": { light: baseColors.orion[10], dark: baseColors.orion[80] }, //should be background-tertiary
   "bg-night": { light: baseColors.orion[70], dark: baseColors.orion[30] }, //merge with background-secondary-inverse?
   "bg-white-alpha-15": {
@@ -340,15 +362,15 @@ export const colorConfig = {
   },
   "brand-light": {
     light: baseColors.brand[10],
-    dark: baseColors.brand[90],
+    dark: baseColors.brand[80],
   },
   "brand-lighter": {
     light: baseColors.brand[5],
-    dark: baseColors.brand[100],
+    dark: baseColors.brand[90],
   },
   brand: {
-    light: whitelabelColors.brand || baseColors.blue[40],
-    dark: whitelabelColors.brand || baseColors.blue[40],
+    light: settings.brand || baseColors.blue[40],
+    dark: settings.brand || baseColors.blue[40],
   },
   danger: {
     light: baseColors.lobster[50],
@@ -359,12 +381,12 @@ export const colorConfig = {
     dark: baseColors.lobster[50],
   },
   filter: {
-    light: whitelabelColors.filter || baseColors.octopus[50],
-    dark: whitelabelColors.filter || baseColors.octopus[40],
+    light: settings.filter || baseColors.octopus[50],
+    dark: settings.filter || baseColors.octopus[40],
   },
   focus: {
     light: baseColors.blue[20],
-    dark: baseColors.blue[50],
+    dark: baseColors.blue[70],
   },
   "icon-primary-disabled": {
     light: baseColors.orion[30],
@@ -379,8 +401,8 @@ export const colorConfig = {
     dark: baseColors.orion[10],
   },
   "icon-secondary": {
-    light: baseColors.brand[20],
-    dark: baseColors.brand[20],
+    light: baseColors.orion[50],
+    dark: baseColors.orion[50],
   },
   "metabase-brand": {
     light: baseColors.blue[40], // not for whitelabeling
@@ -413,7 +435,7 @@ export const colorConfig = {
   },
   shadow: {
     light: baseColors.orionAlpha[20],
-    dark: `color-mix(in srgb, ${baseColors.black} 20%, transparent)`,
+    dark: `color-mix(in srgb, ${baseColors.orion[110]} 20%, transparent)`,
   },
   "success-darker": {
     //should be success-primary?
@@ -426,8 +448,8 @@ export const colorConfig = {
     dark: baseColors.palm[50],
   },
   summarize: {
-    light: whitelabelColors.summarize || baseColors.palm[50],
-    dark: whitelabelColors.summarize || baseColors.palm[40],
+    light: settings.summarize || baseColors.palm[50],
+    dark: settings.summarize || baseColors.palm[40],
   },
   "switch-off": {
     light: baseColors.orionAlpha[20],
@@ -446,12 +468,16 @@ export const colorConfig = {
     dark: baseColors.brand[40],
   },
   "text-dark": {
-    /* @deprecated, use text-primary */ light: baseColors.orionAlpha[80],
+    light: baseColors.orionAlpha[80] /* @deprecated, use text-primary */,
     dark: baseColors.orionAlphaInverse[80],
   },
   "text-disabled": {
     light: baseColors.orionAlpha[40],
     dark: baseColors.orionAlphaInverse[40],
+  },
+  "text-disabled-inverse": {
+    light: baseColors.orionAlphaInverse[40],
+    dark: baseColors.orionAlpha[40],
   },
   "text-hover": {
     light: baseColors.brand[60],
@@ -471,13 +497,17 @@ export const colorConfig = {
     light: baseColors.orionAlpha[80],
     dark: baseColors.orionAlphaInverse[80],
   },
-  "text-secondary-inverse": {
-    light: baseColors.orionAlphaInverse[60],
-    dark: baseColors.orionAlpha[60],
+  "text-primary-inverse": {
+    light: baseColors.orionAlphaInverse[80],
+    dark: baseColors.orionAlpha[80],
   },
   "text-secondary": {
     light: baseColors.orionAlpha[60],
     dark: baseColors.orionAlphaInverse[60],
+  },
+  "text-secondary-inverse": {
+    light: baseColors.orionAlphaInverse[60],
+    dark: baseColors.orionAlpha[60],
   },
   "text-selected": {
     light: baseColors.white,
@@ -513,7 +543,7 @@ export const colorConfig = {
   },
   "tooltip-text": {
     light: baseColors.white,
-    dark: baseColors.white,
+    dark: baseColors.orionAlphaInverse[80],
   },
   warning: {
     light: baseColors.dubloon[30],
@@ -538,7 +568,7 @@ export const colorConfig = {
   white: {
     //should be changed to be semantic
     light: baseColors.white,
-    dark: baseColors.black,
+    dark: baseColors.orion[110],
   },
   // Legacy colors (keeping existing ones for backward compatibility)
   accent0: {
@@ -575,11 +605,11 @@ export const colorConfig = {
   },
   "bg-primary": {
     light: baseColors.white,
-    dark: baseColors.black,
+    dark: baseColors.orion[110],
   },
   "bg-secondary": {
     light: baseColors.orion[5],
-    dark: baseColors.black,
+    dark: baseColors.orion[100],
   },
   "bg-tertiary": {
     //I don't think this is used?
@@ -611,13 +641,32 @@ export const colorConfig = {
     light: baseColors.orionAlpha[20],
     dark: baseColors.orionAlphaInverse[20],
   },
-};
+  "border-subtle": {
+    light: baseColors.orionAlpha[10],
+    dark: baseColors.orionAlphaInverse[10],
+  },
+});
 
-export const colors: Record<keyof typeof colorConfig, string> = {
-  ...Object.fromEntries(
-    Object.entries(colorConfig).map(([k, v]) => [k, v.light]),
-  ),
-  ...whitelabelColors,
+export const colorConfig = getColorConfig(whitelabelColors);
+
+export const getColors = (settings?: ColorSettings) =>
+  ({
+    ...Object.fromEntries(
+      Object.entries(getColorConfig(settings)).map(([k, v]) => [k, v.light]),
+    ),
+    ...settings,
+  }) as Record<keyof typeof colorConfig, string>;
+
+export const colors = getColors(whitelabelColors);
+
+export const mutateColors = (settings: ColorSettings) => {
+  Object.assign(colorConfig, getColorConfig(settings));
+
+  // Empty the `colors` object to make sure we don't hold onto previously defined (now undefined) values
+  Object.keys(colors).forEach((key) => {
+    delete colors[key as keyof typeof colors];
+  });
+  Object.assign(colors, getColors(settings));
 };
 
 export const staticVizOverrides = {

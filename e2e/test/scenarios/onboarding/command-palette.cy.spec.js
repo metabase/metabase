@@ -7,7 +7,10 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { createMockDashboardCard } from "metabase-types/api/mocks";
+import {
+  createMockDashboardCard,
+  createMockDocument,
+} from "metabase-types/api/mocks";
 
 const { admin } = USERS;
 
@@ -30,6 +33,12 @@ const TAB_4 = {
   id: 4,
   name: "Tab 4",
 };
+
+/**
+ * When keys are pressed too fast redux won't have enough time to update the state,
+ * so conditions in subsequently called event handlers may not have been updated yet.
+ */
+const REAL_PRESS_DELAY = 1;
 
 describe("command palette", () => {
   beforeEach(() => {
@@ -60,6 +69,7 @@ describe("command palette", () => {
 
     //Request to have an item in the recents list
     cy.request(`/api/dashboard/${ORDERS_DASHBOARD_ID}`);
+
     cy.visit("/");
 
     cy.findByRole("button", { name: /search/i }).click();
@@ -209,6 +219,31 @@ describe("command palette", () => {
           });
       });
     });
+  });
+
+  // Making this a separate test for now because it requires the bleeding edge token, which
+  // Enables a bunch of other stuff and messes up the "Renders a searchable command palette"
+  // test. In the future, this can be integrated into the test above, or moved to a BE test
+  it("should display collection names for documents in recents", () => {
+    H.activateToken("bleeding-edge");
+
+    //Create a document so that it appears in the recents list
+    cy.request(
+      "POST",
+      "/api/ee/document",
+      createMockDocument({ collection_id: ADMIN_PERSONAL_COLLECTION_ID }),
+    );
+
+    cy.visit("/");
+
+    cy.findByRole("button", { name: /search/i }).click();
+    H.commandPalette().should("be.visible");
+
+    // UXW-1786
+    cy.findByRole("option", { name: "Test Document" }).should(
+      "contain.text",
+      "Bobby Tables's Personal Collection",
+    );
   });
 
   describe("admin settings links", () => {
@@ -680,12 +715,14 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     // Sidesheet
     cy.realPress("]");
     cy.findByRole("dialog", { name: "Info" }).should("exist");
+    cy.wait(REAL_PRESS_DELAY);
     cy.realPress("]");
     cy.findByRole("dialog", { name: "Info" }).should("not.exist");
 
     // Viz Settings
     cy.realPress("y");
     cy.findByTestId("chartsettings-sidebar").should("exist");
+    cy.wait(REAL_PRESS_DELAY);
     cy.realPress("y");
     cy.findByTestId("chartsettings-sidebar").should("not.exist");
 

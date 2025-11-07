@@ -740,6 +740,9 @@
     ;; Does this driver support "temporal-unit" template tags in native queries?
     :native-temporal-units
 
+    ;; Does this driver support creating tables on their own without adding data?
+    :test/create-table-without-data
+
     ;; Does this driver support transforms with a table as the target?
     :transforms/table
 
@@ -778,7 +781,16 @@
     :metadata/table-writable-check
 
     ;; Does this driver support creating a java.sql.Statement via a Connection?
-    :jdbc/statements})
+    :jdbc/statements
+
+    ;; Does this driver provide :database-default on (describe-fields) or (describe-table)
+    :describe-default-expr
+
+    ;; Does this driver provide :database-is-nullable on (describe-fields) or (describe-table)
+    :describe-is-nullable
+
+    ;; Does this driver provide :database-is-generated on (describe-fields) or (describe-table)
+    :describe-is-generated})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -820,6 +832,7 @@
                               :fingerprint                            true
                               :upload-with-auto-pk                    true
                               :saved-question-sandboxing              true
+                              :test/create-table-without-data         true
                               :test/dynamic-dataset-loading           true
                               :test/uuids-in-create-table-statements  true
                               :metadata/table-existence-check         false
@@ -1227,6 +1240,14 @@
   {:added "0.57.0" :arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmethod native-query-deps :default
+  [driver & args]
+  (if (database-supports? driver :dependencies/native nil)
+    (throw (ex-info "Database that supports :dependencies/native does not provide an implementation of driver/native-query-deps"
+                    {:driver driver
+                     :args args}))
+    #{}))
 
 (defmulti native-result-metadata
   "Gets the result-metadata for a native query using static analysis (i.e., without actually

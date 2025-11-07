@@ -19,11 +19,11 @@ export const UploadTooltip = ({
       <Box ta="center">
         <Text
           size="sm"
-          c="var(--mb-color-text-white)"
+          c="var(--mb-color-tooltip-text)"
         >{t`Upload data to ${collection.name}`}</Text>
         <Text
           size="sm"
-          c="var(--mb-color-text-tertiary)"
+          c="var(--mb-color-tooltip-text-secondary)"
         >{t`${UPLOAD_DATA_FILE_TYPES.join(
           ", ",
         )} (${MAX_UPLOAD_STRING} MB max)`}</Text>

@@ -4,12 +4,15 @@ import { t } from "ttag";
 import { ColorPillPicker } from "metabase/common/components/ColorPicker";
 import { useSetting } from "metabase/common/hooks";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
-import { colors, staticVizOverrides } from "metabase/lib/colors";
+import { originalColors, staticVizOverrides } from "metabase/lib/colors";
 import { ActionIcon, Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
 
 import { getConfigurableThemeColors } from "../utils/theme-colors";
 
-const defaultMetabaseColorsWithoutAlpha = { ...colors, ...staticVizOverrides };
+const defaultMetabaseColorsWithoutAlpha = {
+  ...originalColors,
+  ...staticVizOverrides,
+};
 
 interface ColorCustomizationSectionProps {
   theme?: { colors?: Partial<MetabaseColors> };

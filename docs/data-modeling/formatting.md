@@ -126,6 +126,15 @@ Lets you choose to display the number as a plain number, a percent, in scientifi
 - **Scientific notation** - Display in scientific format (e.g., 1.23e+4)
 - **Currency** - Display with currency formatting
 
+### Currency label style
+
+For fields with Style set to "Currency", choose how to display the currency label. For example, for Canadian dollars:
+
+- **Symbol**: `CA$` 
+- **Local symbol**: `$`
+- **Code**: `CAD`
+- **Name**: `Canadian dollars`
+
 ### Where to display the unit of currency
 
 For currency fields, choose where to show the currency symbol:

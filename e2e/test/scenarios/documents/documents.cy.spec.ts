@@ -145,7 +145,15 @@ H.describeWithSnowplowEE("documents", () => {
 
     // Force the click since this is hidden behind a toast notification
     H.navigationSidebar().findByText("Trash").click({ force: true });
-    H.getUnpinnedSection().findByText("Test Document").should("exist");
+    H.getUnpinnedSection().findByText("Test Document").should("exist").click();
+
+    cy.log("test that deleted documents cannot be edited (metabase#63112)");
+    cy.findByRole("textbox", { name: "Document Title" })
+      .should("be.visible")
+      .and("have.attr", "readonly");
+    H.documentContent()
+      .findByRole("textbox")
+      .should("have.attr", "contenteditable", "false");
   });
 
   it("should handle navigating from /new to /new gracefully", () => {
@@ -230,7 +238,7 @@ H.describeWithSnowplowEE("documents", () => {
           const cardEmbed = resizeNode?.content?.[0];
           const clonedCardId = cardEmbed?.attrs?.id;
           cy.request("DELETE", `/api/card/${clonedCardId}`);
-          cy.visit(`/document/${id}`);
+          H.visitDocument(id);
         });
         cy.findByTestId("document-card-embed").should(
           "have.text",
@@ -241,7 +249,7 @@ H.describeWithSnowplowEE("documents", () => {
       it("read only access", () => {
         cy.signIn("readonly");
 
-        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        H.visitDocument("@documentId");
 
         H.documentContent()
           .findByRole("textbox")
@@ -254,7 +262,7 @@ H.describeWithSnowplowEE("documents", () => {
       it("no access", () => {
         cy.signIn("nocollection");
 
-        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        H.visitDocument("@documentId");
         cy.findByRole("status").should(
           "contain.text",
           "Sorry, you don’t have permission to see that.",
@@ -262,17 +270,17 @@ H.describeWithSnowplowEE("documents", () => {
       });
 
       it("not found", () => {
-        cy.get("@documentId").then((id) =>
-          cy.visit(`/document/${(id as unknown as number) + 1}`),
-        );
+        H.visitDocument(9999);
         H.main().within(() => {
-          cy.findByText("We're a little lost...").should("exist");
-          cy.findByText("The page you asked for couldn't be found.");
+          cy.findByText("We're a little lost...").should("be.visible");
+          cy.findByText("The page you asked for couldn't be found.").should(
+            "be.visible",
+          );
         });
       });
 
       it("should allow you to print", () => {
-        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        H.visitDocument("@documentId");
         cy.findByRole("button", { name: "More options" }).click();
 
         // This needs to be *after* the page load to work
@@ -295,7 +303,7 @@ H.describeWithSnowplowEE("documents", () => {
       it("should handle undo/redo properly, resetting the history whenever a different document is viewed", () => {
         const isMac = Cypress.platform === "darwin";
         const metaKey = isMac ? "Meta" : "Control";
-        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        H.visitDocument("@documentId");
         H.getDocumentCard("Orders").should("exist");
         H.documentContent().within(() => {
           const originalText = "Lorem Ipsum and some more words";
@@ -326,7 +334,7 @@ H.describeWithSnowplowEE("documents", () => {
 
         const originalText = "Lorem Ipsum and some more words";
         const originalExact = new RegExp(`^${originalText}$`);
-        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        H.visitDocument("@documentId");
         cy.findByTestId("document-card-embed").should("contain", "37.65"); // wait for data loading
         H.documentContent().contains(originalExact).click();
 
@@ -364,7 +372,7 @@ H.describeWithSnowplowEE("documents", () => {
     });
 
     it("should support typing with a markdown syntax", () => {
-      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+      H.visitDocument("@documentId");
       H.documentContent().click();
 
       H.addToDocument("# This is a heading level 1");
@@ -508,7 +516,7 @@ H.describeWithSnowplowEE("documents", () => {
         H.createQuestion(ACCOUNTS_COUNT_BY_CREATED_AT);
         // Need to get this one to simulate recent activity
         H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY_PIE).then(
-          ({ body: { id } }) => cy.request(`/api/card/${id}`),
+          ({ body: { id } }) => cy.request("POST", `/api/card/${id}/query`),
         );
         H.createDashboard({
           name: "Fancy Dashboard",
@@ -518,7 +526,7 @@ H.describeWithSnowplowEE("documents", () => {
             dashboard_id: id,
           });
         });
-        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        H.visitDocument("@documentId");
       });
 
       it("should support keyboard and mouse selection in suggestions without double highlight", () => {
@@ -706,6 +714,31 @@ H.describeWithSnowplowEE("documents", () => {
         H.getDocumentCard("Orders").should("exist");
       });
 
+      it("should support renaming cards", () => {
+        cy.log("Add card");
+        H.documentContent().click();
+        H.addToDocument("/", false);
+        H.commandSuggestionItem("Chart").click();
+        H.commandSuggestionDialog()
+          .findByText(PRODUCTS_COUNT_BY_CATEGORY_PIE.name)
+          .click();
+
+        cy.log("Rename card");
+        cy.findByTestId("card-embed-title").realHover();
+        cy.icon("pencil").click();
+        cy.realType("New name{enter}");
+
+        cy.log("Edit query");
+        H.openDocumentCardMenu("New name");
+        H.popover().findByText("Edit Query").click();
+        H.removeSummaryGroupingField({ field: "Category" });
+        H.addSummaryGroupingField({ field: "Price" });
+        H.modal().findByRole("button", { name: "Save and use" }).click();
+
+        cy.log("Assert new name is preserved");
+        H.getDocumentCard("New name").should("exist");
+      });
+
       it("should support resizing cards", () => {
         H.documentContent().click();
         H.addToDocument("/", false);
@@ -827,11 +860,11 @@ H.describeWithSnowplowEE("documents", () => {
           cy.location("pathname").should("equal", `/document/${id}`),
         );
 
-        H.getDocumentCard("Orders, Count, Grouped by Created At (year)").within(
-          () => {
-            H.cartesianChartCircle().eq(1).click();
-          },
+        H.getDocumentCard("Orders, Count, Grouped by Created At (year)").should(
+          "be.visible",
         );
+
+        H.cartesianChartCircle().eq(1).click();
 
         H.popover().findByText("See these Orders").click();
 
@@ -874,7 +907,7 @@ H.describeWithSnowplowEE("documents", () => {
         document: { type: "doc", content: [] },
         idAlias: "documentId",
       });
-      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+      H.visitDocument("@documentId");
 
       // make changes and attempt to save
       H.documentContent().click();

@@ -51,14 +51,6 @@ describe("issue 14636", () => {
   const total = 57;
   const limit = 50;
 
-  function shouldNotBeDisabled(selector) {
-    cy.get(selector).should("be.enabled");
-  }
-
-  function shouldBeDisabled(selector) {
-    cy.get(selector).should("be.disabled");
-  }
-
   /**
    * @param {Object} payload
    * @param {(0|1)} payload.page
@@ -70,15 +62,14 @@ describe("issue 14636", () => {
     cy.intercept(
       "GET",
       `/api/task?limit=${limit}&offset=${offset}&sort_column=started_at&sort_direction=desc`,
-      (req) => {
-        req.reply((res) => {
-          res.body = {
-            data: stubPageRows(page),
-            limit,
-            offset,
-            total,
-          };
-        });
+      {
+        status: 200,
+        body: {
+          data: stubPageRows(page),
+          limit,
+          offset,
+          total,
+        },
       },
     ).as(alias);
   }
@@ -130,7 +121,7 @@ describe("issue 14636", () => {
     stubPageResponses({ page: 1, alias: "second" });
   });
 
-  it("pagination should work (metabase#14636)", { tags: "@flaky" }, () => {
+  it("pagination should work (metabase#14636)", () => {
     cy.visit("/admin/tools/tasks");
     cy.wait("@first");
 
@@ -138,8 +129,6 @@ describe("issue 14636", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Troubleshooting logs");
-    cy.findByLabelText("Previous page").as("previous");
-    cy.findByLabelText("Next page").as("next");
 
     cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -147,10 +136,8 @@ describe("issue 14636", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("513");
 
-    shouldBeDisabled("@previous");
-    shouldNotBeDisabled("@next");
-
-    cy.get("@next").click();
+    cy.findByLabelText("Previous page").should("be.disabled");
+    cy.findByLabelText("Next page").should("not.be.disabled").click();
     cy.wait("@second");
 
     cy.location("search").should("eq", "?page=1");
@@ -164,10 +151,8 @@ describe("issue 14636", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("200");
 
-    shouldNotBeDisabled("@previous");
-    shouldBeDisabled("@next");
-
-    cy.get("@previous").click();
+    cy.findByLabelText("Next page").should("be.disabled");
+    cy.findByLabelText("Previous page").should("not.be.disabled").click();
 
     cy.location("search").should("eq", "");
 

@@ -141,17 +141,14 @@ H.describeWithSnowplowEE(
 
         const uuid = publicLink.split("/").at(-1);
 
-        H.downloadAndAssert(
-          {
-            publicUuid: uuid,
-            fileType: "csv",
-            questionId: ORDERS_BY_YEAR_QUESTION_ID,
-            isDashboard: true,
-            isEmbed: true,
-            dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
-          },
-          H.assertNotEmptyObject,
-        );
+        H.downloadAndAssert({
+          publicUuid: uuid,
+          fileType: "csv",
+          questionId: ORDERS_BY_YEAR_QUESTION_ID,
+          isDashboard: true,
+          isEmbed: true,
+          dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
+        });
 
         H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
@@ -234,16 +231,13 @@ H.describeWithSnowplowEE(
 
         const uuid = publicLink.split("/").at(-1);
 
-        H.downloadAndAssert(
-          {
-            publicUuid: uuid,
-            fileType: "csv",
-            questionId: ORDERS_BY_YEAR_QUESTION_ID,
-            isDashboard: false,
-            isEmbed: true,
-          },
-          H.assertNotEmptyObject,
-        );
+        H.downloadAndAssert({
+          publicUuid: uuid,
+          fileType: "csv",
+          questionId: ORDERS_BY_YEAR_QUESTION_ID,
+          isDashboard: false,
+          isEmbed: true,
+        });
 
         H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
@@ -314,16 +308,13 @@ H.describeWithSnowplowEE(
         cy.location("pathname").then((pathname) => {
           const uuid = pathname.split("/").at(-1);
 
-          H.downloadAndAssert(
-            {
-              publicUuid: uuid,
-              fileType: "csv",
-              questionId: ORDERS_BY_YEAR_QUESTION_ID,
-              isDashboard: false,
-              isEmbed: true,
-            },
-            H.assertNotEmptyObject,
-          );
+          H.downloadAndAssert({
+            publicUuid: uuid,
+            fileType: "csv",
+            questionId: ORDERS_BY_YEAR_QUESTION_ID,
+            isDashboard: false,
+            isEmbed: true,
+          });
 
           cy.get<{ request: Request }>("@fileDownload").then(({ request }) => {
             const url = new URL(request.url);

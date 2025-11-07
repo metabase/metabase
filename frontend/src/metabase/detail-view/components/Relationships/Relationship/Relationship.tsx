@@ -2,50 +2,51 @@ import cx from "classnames";
 import { inflect } from "inflection";
 import { useMemo } from "react";
 import { Link } from "react-router";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Loader, Stack, Text, rem } from "metabase/ui";
-import { isNumeric, isPK } from "metabase-lib/v1/types/utils/isa";
-import type { ForeignKey, Table } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import type { ForeignKey } from "metabase-types/api";
 
 import S from "./Relationship.module.css";
+import {
+  getForeignKeyCountQuery,
+  getForeignKeyQuery,
+  getForeignKeyQuestionUrl,
+} from "./utils";
 
 interface Props {
   fk: ForeignKey;
-  href: string | undefined;
   rowId: string | number;
-  table: Table;
   onClick?: () => void;
 }
 
-export const Relationship = ({ fk, href, rowId, table, onClick }: Props) => {
-  const pk = (table.fields ?? []).find(isPK);
-  const fkOriginId =
-    fk.origin && typeof fk.origin.id == "number" ? fk.origin.id : undefined;
+export const Relationship = ({ fk, rowId, onClick }: Props) => {
+  const metadata = useSelector(getMetadata);
+  const metadataRef = useLatest(metadata);
+  const fkQuery = useMemo(
+    () => getForeignKeyQuery(fk, rowId, metadataRef.current),
+    [fk, rowId, metadataRef],
+  );
+  const fkCountQuery = useMemo(
+    () => (fkQuery != null ? getForeignKeyCountQuery(fkQuery) : undefined),
+    [fkQuery],
+  );
+  const fkQuestionUrl = useMemo(
+    () => (fkQuery != null ? getForeignKeyQuestionUrl(fkQuery) : undefined),
+    [fkQuery],
+  );
 
   const {
     data: dataset,
     error,
     isFetching,
   } = useGetAdhocQueryQuery(
-    fk.origin != null && fkOriginId != null
-      ? {
-          type: "query",
-          query: {
-            "source-table": fk.origin?.table_id,
-            filter: [
-              "=",
-              ["field", fkOriginId, null],
-              isNumeric(pk) && typeof rowId === "string"
-                ? parseFloat(rowId)
-                : rowId,
-            ],
-            aggregation: [["count"]],
-          },
-          database: fk.origin.table?.db_id ?? table.db_id,
-        }
-      : skipToken,
+    fkCountQuery != null ? Lib.toJsQuery(fkCountQuery) : skipToken,
   );
 
   const count = useMemo(() => {
@@ -68,7 +69,9 @@ export const Relationship = ({ fk, href, rowId, table, onClick }: Props) => {
         [S.clickable]: clickable,
       })}
       gap={rem(12)}
-      {...(clickable ? { component: Link, to: href, onClick } : undefined)}
+      {...(clickable
+        ? { component: Link, to: fkQuestionUrl, onClick }
+        : undefined)}
     >
       {isFetching && <Loader data-testid="loading-indicator" size="md" />}
 

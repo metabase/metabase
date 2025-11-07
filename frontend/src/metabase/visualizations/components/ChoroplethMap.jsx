@@ -341,15 +341,15 @@ class ChoroplethMapInner extends Component {
     const onClickFeature =
       isClickable &&
       ((click) => {
-        if (visualizationIsClickable(getFeatureClickObject(rows[0]))) {
-          const featureKey = getFeatureKey(click.feature);
-          const row = rowByFeatureKey.get(featureKey);
-          if (onVisualizationClick) {
-            onVisualizationClick({
-              ...getFeatureClickObject(row, click.feature),
-              event: click.event,
-            });
-          }
+        const featureKey = getFeatureKey(click.feature);
+        const row = rowByFeatureKey.get(featureKey);
+        const clickData = {
+          ...getFeatureClickObject(row, click.feature),
+          event: click.event,
+        };
+
+        if (onVisualizationClick && visualizationIsClickable(clickData)) {
+          onVisualizationClick(clickData);
         }
       });
     const onHoverFeature =

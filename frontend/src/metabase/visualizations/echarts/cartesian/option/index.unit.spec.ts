@@ -139,6 +139,6 @@ describe("ensureRoomForLabels", () => {
     const [originalAxes] = args;
     const axes = ensureRoomForLabels(...args);
     expect(axes.xAxis).toBe(originalAxes.xAxis);
-    expect(axes.yAxis.map(getBoundaryGap)).toEqual([[0.024, 0]]);
+    expect(axes.yAxis.map(getBoundaryGap)).toEqual([[0.026, 0]]);
   });
 });

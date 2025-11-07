@@ -30,9 +30,10 @@ import {
   useDeleteTransformTargetMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
-import { sourceDatabaseId } from "metabase-enterprise/transforms/utils";
 import type { Transform, UpdateTransformRequest } from "metabase-types/api";
+
+import { SchemaFormSelect } from "../../../../components/SchemaFormSelect";
+import { sourceDatabaseId } from "../../../../utils";
 
 type UpdateTargetModalProps = {
   transform: Transform;

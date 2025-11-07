@@ -1,4 +1,7 @@
-import { setupCheckCardDependenciesEndpoint } from "__support__/server-mocks/dependencies";
+import {
+  setupCheckCardDependenciesEndpoint,
+  setupCheckCardDependenciesEndpointError,
+} from "__support__/server-mocks/dependencies";
 import { act, renderHookWithProviders } from "__support__/ui";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
@@ -9,21 +12,26 @@ import { useCheckCardDependencies } from "./use-check-card-dependencies";
 
 type SetupOpts = {
   response?: CheckDependenciesResponse;
+  hasError?: boolean;
 };
 
 function setup({
   response = createMockCheckDependenciesResponse(),
+  hasError = false,
 }: SetupOpts = {}) {
-  setupCheckCardDependenciesEndpoint(response);
+  if (hasError) {
+    setupCheckCardDependenciesEndpointError();
+  } else {
+    setupCheckCardDependenciesEndpoint(response);
+  }
 
   const onSave = jest.fn();
-  const onError = jest.fn();
   const { result } = renderHookWithProviders(
-    () => useCheckCardDependencies({ onSave, onError }),
+    () => useCheckCardDependencies({ onSave }),
     {},
   );
 
-  return { result, onSave, onError };
+  return { result, onSave };
 }
 
 describe("useCheckCardDependencies", () => {
@@ -73,5 +81,14 @@ describe("useCheckCardDependencies", () => {
     expect(result.current.checkData).toEqual(response);
     expect(result.current.isConfirmationShown).toBe(false);
     expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("should save if there is a backend error when checking dependencies", async () => {
+    const question = Question.create({ metadata: SAMPLE_METADATA });
+    const { result, onSave } = setup({ hasError: true });
+
+    await act(() => result.current.handleInitialSave(question));
+
+    expect(onSave).toHaveBeenCalledWith(question);
   });
 });
