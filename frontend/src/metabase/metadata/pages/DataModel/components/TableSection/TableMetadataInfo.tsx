@@ -1,6 +1,9 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
 import { Group, Stack, Text } from "metabase/ui";
+import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { Table } from "metabase-types/api";
 
 interface Props {
@@ -10,13 +13,41 @@ interface Props {
 export function TableMetadataInfo({ table }: Props) {
   const formattedDate = new Date(table.updated_at).toLocaleString();
 
+  const { data: dependencyGraph } = useGetDependencyGraphQuery(
+    table.id != null ? { id: Number(table.id), type: "table" } : skipToken,
+  );
+
+  const { dependenciesCount, dependentsCount } = useMemo(() => {
+    if (!dependencyGraph) {
+      return { dependenciesCount: 0, dependentsCount: 0 };
+    }
+    const thisTable = dependencyGraph.nodes.find(
+      (node) => node.id === table.id,
+    );
+    const dependentsCount = Object.values(
+      thisTable?.dependents_count ?? {},
+    ).reduce((acc, curr) => acc + curr, 0);
+
+    if (!dependencyGraph?.edges) {
+      return { dependenciesCount: 0, dependentsCount };
+    }
+
+    // Dependencies: edges pointing TO this table (things this table depends on)
+    const dependencies = dependencyGraph.edges.filter(
+      (edge) =>
+        edge.to_entity_id === table.id && edge.to_entity_type === "table",
+    ).length;
+
+    return { dependenciesCount: dependencies, dependentsCount };
+  }, [dependencyGraph, table.id]);
+
   return (
     <Stack gap="md">
       <MetadataRow label={t`Name on disk`} value={table.name} />
       <MetadataRow label={t`Last updated at`} value={formattedDate} />
       {/* TODO: Implement view count */}
-      {/* TODO: Implement dependencies count */}
-      {/* TODO: Implement dependents count */}
+      <MetadataRow label={t`Dependencies`} value={String(dependenciesCount)} />
+      <MetadataRow label={t`Dependents`} value={String(dependentsCount)} />
     </Stack>
   );
 }
