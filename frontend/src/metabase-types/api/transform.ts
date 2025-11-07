@@ -30,8 +30,8 @@ export type SuggestedTransform = Partial<Pick<Transform, "id">> &
 export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
 
 export type KeysetStrategy = {
-  type: "keyset";
-  "keyset-filter-unique-key": string;
+  type: "checkpoint";
+  "checkpoint-filter-unique-key": string;
 };
 
 export type SourceIncrementalStrategy = KeysetStrategy;

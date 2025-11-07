@@ -54,25 +54,25 @@
   "Create a transform payload for incremental transform testing.
 
   transform-type can be :native, :mbql, or :python"
-  [transform-name target-table-name keyset-column transform-type]
+  [transform-name target-table-name checkpoint-column transform-type]
   (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
     {:name transform-name
      :source (case transform-type
                :native {:type "query"
                         :query (make-incremental-source-query schema)
-                        :source-incremental-strategy {:type "keyset"
-                                                      :keyset-column keyset-column}}
+                        :source-incremental-strategy {:type "checkpoint"
+                                                      :checkpoint-column checkpoint-column}}
                :mbql {:type "query"
                       :query (make-incremental-mbql-query)
-                      :source-incremental-strategy {:type "keyset"
-                                                    :keyset-filter-unique-key "column-unique-key-v1$id"
-                                                    :keyset-column keyset-column}}
+                      :source-incremental-strategy {:type "checkpoint"
+                                                    :checkpoint-filter-unique-key "column-unique-key-v1$id"
+                                                    :checkpoint-column checkpoint-column}}
                :python {:type "python"
                         :source-tables {"transforms_products" (mt/id :transforms_products)}
                         :body incremental-python-body
-                        :source-incremental-strategy {:type "keyset"
-                                                      :keyset-filter-unique-key "column-unique-key-v1$id"
-                                                      :keyset-column keyset-column}})
+                        :source-incremental-strategy {:type "checkpoint"
+                                                      :checkpoint-filter-unique-key "column-unique-key-v1$id"
+                                                      :checkpoint-column checkpoint-column}})
      :target {:type "table-incremental"
               :schema schema
               :name target-table-name
@@ -142,7 +142,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest create-incremental-transform-test
-  (testing "Creating an incremental transform with keyset strategy"
+  (testing "Creating an incremental transform with checkpoint strategy"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
@@ -153,8 +153,8 @@
                   (is (some? (:id transform)))
                   (is (= "Test Incremental Transform" (:name transform)))
                   (is (= "table-incremental" (-> transform :target :type)))
-                  (is (= "keyset" (-> transform :source :source-incremental-strategy :type)))
-                  (is (= "id" (-> transform :source :source-incremental-strategy :keyset-column)))
+                  (is (= "checkpoint" (-> transform :source :source-incremental-strategy :type)))
+                  (is (= "id" (-> transform :source :source-incremental-strategy :checkpoint-column)))
 
                   (testing "No watermark exists initially"
                     (is (nil? (get-watermark-value (:id transform)))))
@@ -283,7 +283,7 @@
                       (let [updated (mt/user-http-request :crowberto :put 200 (format "ee/transform/%d" (:id transform))
                                                           incremental-payload)]
                         (is (= "table-incremental" (-> updated :target :type)))
-                        (is (= "keyset" (-> updated :source :source-incremental-strategy :type)))))
+                        (is (= "checkpoint" (-> updated :source :source-incremental-strategy :type)))))
 
                     (testing "First incremental run after switch processes no new data"
                       (let [transform (t2/select-one :model/Transform (:id transform))]
@@ -310,4 +310,4 @@
                               (is (= 17 row-count) "Should append 1 new row (16 + 1 = 17)")
                               (is (>= watermark 17) "Watermark should be updated to at least 17"))))))))))))))))
 
-;; TODO: test changing keyset
+;; TODO: test changing checkpoint

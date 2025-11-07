@@ -190,24 +190,24 @@
   [query]
   (assoc-in query [:middleware :disable-remaps?] true))
 
-(defn- is-keyset-incremental? [source]
-  (= :keyset (some-> source :source-incremental-strategy :type keyword)))
+(defn- is-checkpoint-incremental? [source]
+  (= :checkpoint (some-> source :source-incremental-strategy :type keyword)))
 
-(defn- source->keyset-filter-unique-key
+(defn- source->checkpoint-filter-unique-key
   [query source-incremental-strategy]
-  (some->> source-incremental-strategy :keyset-filter-unique-key (lib/column-with-unique-key query)))
+  (some->> source-incremental-strategy :checkpoint-filter-unique-key (lib/column-with-unique-key query)))
 
 (defn- next-watermark-value
   [transform-id]
   (let [{:keys [source target] :as transform} (t2/select-one :model/Transform transform-id)
         db-id (transforms.i/target-db-id transform)]
-    (when (is-keyset-incremental? source)
+    (when (is-checkpoint-incremental? source)
       (when-let [table (target-table db-id target)]
         (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
               table-metadata (lib.metadata/table metadata-provider (:id table))
               mbql-query (-> (lib/query metadata-provider table-metadata)
                              (as-> query
-                                   (lib/aggregate query (lib/max (source->keyset-filter-unique-key query (:source-incremental-strategy source))))))]
+                                   (lib/aggregate query (lib/max (source->checkpoint-filter-unique-key query (:source-incremental-strategy source))))))]
           (some-> mbql-query qp/process-query :data :rows first first bigint))))))
 
 (defn preprocess-incremental-query
@@ -216,7 +216,7 @@
   For native queries, injects the watermark value into the query's :parameters vector as a
   template tag variable named `watermark`
 
-  For MBQL queries, adds a filter clause that constrains the keyset column to values greater
+  For MBQL queries, adds a filter clause that constrains the checkpoint column to values greater
   than the current watermark.
 
   If no watermark value exists for the transform (i.e., this is the first run), returns the
@@ -232,7 +232,7 @@
                  :value watermark-value}))
       (cond-> query
         watermark-value
-        (lib/filter (lib/> (source->keyset-filter-unique-key query source-incremental-strategy) watermark-value))))))
+        (lib/filter (lib/> (source->checkpoint-filter-unique-key query source-incremental-strategy) watermark-value))))))
 
 (defn compile-source
   "Compile the source query of a transform."

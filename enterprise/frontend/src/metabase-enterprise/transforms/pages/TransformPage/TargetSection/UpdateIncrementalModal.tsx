@@ -62,8 +62,8 @@ export function UpdateIncrementalModal({
 
 type IncrementalValues = {
   incremental: boolean;
-  sourceStrategy: "keyset";
-  keysetFilterUniqueKey: string | null;
+  sourceStrategy: "checkpoint";
+  checkpointFilterUniqueKey: string | null;
   targetStrategy: "append";
 };
 
@@ -75,8 +75,8 @@ function getValidationSchema(transform: Transform) {
 
   return Yup.object({
     incremental: Yup.boolean().required(),
-    sourceStrategy: Yup.string().oneOf(["keyset"]).required(),
-    keysetFilterUniqueKey: Yup.string()
+    sourceStrategy: Yup.string().oneOf(["checkpoint"]).required(),
+    checkpointFilterUniqueKey: Yup.string()
       .nullable()
       .when("incremental", {
         is: true,
@@ -155,8 +155,8 @@ function UpdateIncrementalForm({
       ? {
           ...transform.source,
           "source-incremental-strategy": {
-            type: "keyset" as const,
-            "keyset-filter-unique-key": values.keysetFilterUniqueKey!,
+            type: "checkpoint" as const,
+            "checkpoint-filter-unique-key": values.checkpointFilterUniqueKey!,
           },
         }
       : {
@@ -211,13 +211,13 @@ function UpdateIncrementalForm({
                   name="sourceStrategy"
                   label={t`Source Strategy`}
                   description={t`How to track which rows to process`}
-                  data={[{ value: "keyset", label: t`Keyset` }]}
+                  data={[{ value: "checkpoint", label: t`Checkpoint` }]}
                 />
-                {values.sourceStrategy === "keyset" && (
+                {values.sourceStrategy === "checkpoint" && (
                   <>
                     {isMbqlQuery && libQuery && (
                       <KeysetColumnSelect
-                        name="keysetFilterUniqueKey"
+                        name="checkpointFilterUniqueKey"
                         label={t`Source Filter Field`}
                         placeholder={t`Select a field to filter on`}
                         description={t`Which field from the source to use in the incremental filter`}
@@ -226,7 +226,7 @@ function UpdateIncrementalForm({
                     )}
                     {!isMbqlQuery && libQuery && (
                         <FormTextInput
-                        name="keysetFilterUniqueKey"
+                        name="checkpointFilterUniqueKey"
                         label={t`Source Filter Field`}
                         placeholder={t`e.g., id, updated_at`}
                         description={t`Column name to use in the incremental filter`}
@@ -236,7 +236,7 @@ function UpdateIncrementalForm({
                       transform.source.type === "python" &&
                       transform.source["source-tables"] && (
                         <PythonKeysetColumnSelect
-                          name="keysetFilterUniqueKey"
+                          name="checkpointFilterUniqueKey"
                           label={t`Source Filter Field`}
                           placeholder={t`Select a field to filter on`}
                           description={t`Which field from the source to use in the incremental filter`}
@@ -271,13 +271,13 @@ function getInitialValues(transform: Transform): IncrementalValues {
   const isIncremental = transform.target.type === "table-incremental";
   const strategy = transform.source["source-incremental-strategy"];
   const filterUniqueKey =
-    strategy?.type === "keyset" && strategy["keyset-filter-unique-key"]
-      ? strategy["keyset-filter-unique-key"]
+    strategy?.type === "checkpoint" && strategy["checkpoint-filter-unique-key"]
+      ? strategy["checkpoint-filter-unique-key"]
       : null;
   return {
     incremental: isIncremental,
-    sourceStrategy: "keyset",
-    keysetFilterUniqueKey: isIncremental ? filterUniqueKey : null,
+    sourceStrategy: "checkpoint",
+    checkpointFilterUniqueKey: isIncremental ? filterUniqueKey : null,
     targetStrategy: "append",
   };
 }

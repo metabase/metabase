@@ -60,14 +60,14 @@ function getValidationSchema(source: TransformSource) {
     targetName: Yup.string().required(Errors.required),
     targetSchema: Yup.string().nullable().defined(),
     incremental: Yup.boolean().required(),
-    keysetFilterUniqueKey: Yup.string()
+    checkpointFilterUniqueKey: Yup.string()
       .nullable()
       .when("incremental", {
         is: true,
         then: (schema) => schema.required(Errors.required),
         otherwise: (schema) => schema.nullable(),
       }),
-    sourceStrategy: Yup.mixed<"keyset">().oneOf(["keyset"]).required(),
+    sourceStrategy: Yup.mixed<"checkpoint">().oneOf(["checkpoint"]).required(),
     targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
   });
 }
@@ -167,13 +167,13 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
         name="sourceStrategy"
         label={t`Source Strategy`}
         description={t`How to track which rows to process`}
-        data={[{ value: "keyset", label: t`Keyset` }]}
+        data={[{ value: "checkpoint", label: t`Checkpoint` }]}
       />
-      {values.sourceStrategy === "keyset" && (
+      {values.sourceStrategy === "checkpoint" && (
         <>
           {isMbqlQuery && libQuery && (
             <KeysetColumnSelect
-              name="keysetFilterUniqueKey"
+              name="checkpointFilterUniqueKey"
               label={t`Source Filter Field`}
               placeholder={t`Select a field to filter on`}
               description={t`Which field from the source to use in the incremental filter`}
@@ -182,7 +182,7 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
           )}
           {!isMbqlQuery && libQuery && (
             <FormTextInput
-              name="keysetFilterUniqueKey"
+              name="checkpointFilterUniqueKey"
               label={t`Source Filter Field`}
               placeholder={t`e.g., id, updated_at`}
               description={t`Column name to use in the incremental filter`}
@@ -190,7 +190,7 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
           )}
           {isPythonTransform && source["source-tables"] && (
             <PythonKeysetColumnSelect
-              name="keysetFilterUniqueKey"
+              name="checkpointFilterUniqueKey"
               label={t`Source Filter Field`}
               placeholder={t`Select a field to filter on`}
               description={t`Which field from the source to use in the incremental filter`}
@@ -335,8 +335,8 @@ function getInitialValues(
     targetSchema: suggestedTransform
       ? suggestedTransform.target.schema
       : schemas?.[0] || null,
-    keysetFilterUniqueKey: null,
-    sourceStrategy: "keyset",
+    checkpointFilterUniqueKey: null,
+    sourceStrategy: "checkpoint",
     targetStrategy: "append",
   };
 }
@@ -349,7 +349,7 @@ function getCreateRequest(
     targetName,
     targetSchema,
     incremental,
-    keysetFilterUniqueKey,
+    checkpointFilterUniqueKey,
     sourceStrategy,
     targetStrategy,
   }: NewTransformValues,
@@ -361,7 +361,7 @@ function getCreateRequest(
         ...source,
         "source-incremental-strategy": {
           type: sourceStrategy,
-          "keyset-filter-unique-key": keysetFilterUniqueKey!,
+          "checkpoint-filter-unique-key": checkpointFilterUniqueKey!,
         },
       }
     : source;

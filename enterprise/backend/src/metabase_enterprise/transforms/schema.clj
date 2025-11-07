@@ -5,14 +5,14 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(mr/def ::keyset-strategy
+(mr/def ::checkpoint-strategy
   [:map
-   [:type [:= "keyset"]]
-   [:keyset-filter-unique-key ::lib.metadata.column/column-unique-key]])
+   [:type [:= "checkpoint"]]
+   [:checkpoint-filter-unique-key ::lib.metadata.column/column-unique-key]])
 
 (mr/def ::source-incremental-strategy
   [:multi {:dispatch :type}
-   ["keyset" ::keyset-strategy]])
+   ["checkpoint" ::checkpoint-strategy]])
 
 (mr/def ::transform-source
   [:multi {:dispatch (comp keyword :type)}
@@ -24,7 +24,7 @@
    [:python
     [:map {:closed true}
      [:source-database {:optional true} :int]
-     ;; NB: if source is keyset, only one table allowed
+     ;; NB: if source is checkpoint, only one table allowed
      [:source-tables   [:map-of :string :int]]
      [:type [:= "python"]]
      [:body :string]
