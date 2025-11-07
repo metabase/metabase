@@ -74,8 +74,8 @@ jobs:
       - name: Run frontend unit tests
         if: github.ref_name != 'master'
         run: yarn run test-unit --silent
-        # We want Trunk to still receive test reports even if this job fails.
-        # It will filter out the quarantined tests, and will control the job exit code based on the analysis.
+        # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
+        # whether to fail or to pass the whole job, based on the quarantine list.
         continue-on-error: true
       - name: Upload coverage to codecov.io
         if: github.ref_name == 'master'

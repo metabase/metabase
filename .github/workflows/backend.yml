@@ -151,10 +151,9 @@ jobs:
           :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           ${{ matrix.job.test-args }}
         # Trunk Quarantine controls the final state of the run in the CI!
-        # Even if this step fails, we let it pass and then `trunk-io/analytics-uploader` determines whether to fail or to
-        # pass the whole job, based on the quarantine list.
-        # We only want to "continue on error" (ignore failures) when the Trunk upload is active - i.e. not on drafts!
-        continue-on-error: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft == true) }}
+        # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
+        # whether to fail or to pass the whole job, based on the quarantine list.
+        continue-on-error: true
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
