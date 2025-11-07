@@ -47,9 +47,9 @@ function DataStudioNav() {
         <DataStudioNavItem
           label={t`Data structure`}
           icon="database"
-          to={Urls.dataModel()}
+          to={canAccessDataModel ? Urls.dataStudioData() : Urls.transformList()}
           isSelected={
-            pathname.startsWith(Urls.dataModel()) ||
+            pathname.startsWith(Urls.dataStudioData()) ||
             pathname.startsWith(Urls.transformList())
           }
         />

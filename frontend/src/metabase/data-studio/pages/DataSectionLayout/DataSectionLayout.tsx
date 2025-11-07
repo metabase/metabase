@@ -65,8 +65,7 @@ function getTabs(
     {
       label: t`Data`,
       to: Urls.dataStudio(),
-      isSelected:
-        pathname === Urls.dataStudio() || pathname.startsWith(Urls.dataModel()),
+      isSelected: pathname.startsWith(Urls.dataStudioData()),
     },
     {
       label: t`Transforms`,
