@@ -201,8 +201,7 @@ const ResultsItem = ({
   onItemToggle,
   ref,
 }: ResultsItemProps) => {
-  const { selectedItemsCount, hasOnlyOneTableSelected, selectedTables } =
-    useSelection();
+  const { selectedItemsCount } = useSelection();
 
   const {
     value,
@@ -235,14 +234,10 @@ const ResultsItem = ({
     path.tableId == null &&
     path.fieldId == null;
   const isTableActive =
-    (selectedItemsCount === 0 &&
-      type === "table" &&
-      value?.tableId === path.tableId &&
-      path.fieldId == null) ||
-    (hasOnlyOneTableSelected &&
-      type === "table" &&
-      value?.tableId != null &&
-      selectedTables.has(value.tableId));
+    selectedItemsCount === 0 &&
+    type === "table" &&
+    value?.tableId === path.tableId &&
+    path.fieldId == null;
   const isFieldActive =
     selectedItemsCount === 0 &&
     type === "field" &&
