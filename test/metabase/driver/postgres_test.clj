@@ -1927,8 +1927,7 @@
                  "(-89.0,-179.0)"
                  "<(1.0,1.0),50.0>"
                  "'1':4 'content':1 'row':3"
-                 ;; match on type
-                 bytes?
+                 "\\xc4ca4238a0b923820dcc509a6f75849b"
                  "[1,101)"
                  ;; match on type
                  decimal?
