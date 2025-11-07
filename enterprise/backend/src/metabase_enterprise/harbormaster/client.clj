@@ -133,10 +133,10 @@
   (martian-http/bootstrap-openapi
    (str store-api-url "/openapi.json")
    ;; martian options for calling operations
-   {:server-url   store-api-url
-    :interceptors (into [(bearer-auth api-key)] martian-http/default-interceptors)}
+   (merge {:server-url store-api-url}
+          (when api-key {:interceptors (into [(bearer-auth api-key)] martian-http/default-interceptors)}))
    ;; clj-http options for loading the openapi.json itself
-   {:headers {"Authorization" (str "Bearer " api-key)}}))
+   {:headers (merge {} (when api-key {"Authorization" (str "Bearer " api-key)}))}))
 
 (def ^:private create-client-memo
   (memoize/ttl create-client
@@ -148,9 +148,6 @@
     (when (str/blank? store-api-url)
       (log/error "Missing store-api-url. Cannot create hm client config.")
       (throw (ex-info (tru "Missing store-api-url.") {:store-api-url store-api-url})))
-    (when (str/blank? api-key)
-      (log/error "Missing api-key. Cannot create hm client config.")
-      (throw (ex-info (tru "Missing api-key.") {:api-key api-key})))
     (create-client-memo store-api-url api-key)))
 
 (defn explore
