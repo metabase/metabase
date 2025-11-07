@@ -4,7 +4,6 @@
   (`:segment` forms are expanded into filter clauses.)"
   (:refer-clojure :exclude [mapv not-empty])
   (:require
-   [metabase.lib.core :as lib]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]

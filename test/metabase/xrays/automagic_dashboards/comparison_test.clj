@@ -1,7 +1,6 @@
 (ns metabase.xrays.automagic-dashboards.comparison-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
