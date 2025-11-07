@@ -371,7 +371,7 @@ By default, Metabase will pull any changes (if any) from the branch you specify 
 
 ## Disabling Remote Sync
 
-You can disable Remote Sync from the Remote Sync settings page. Disabling clears all remote sync configuration settings.
+To disable Remote Sync, go to the Remote Sync settings page in Admin settings. 
 
 To disable Remote Sync:
 

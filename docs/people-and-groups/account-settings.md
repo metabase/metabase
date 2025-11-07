@@ -44,4 +44,4 @@ This isn't an in-Metabase setting, but just so you know: you can disable UI anim
 
 If you subscribe or are added to dashboard subscriptions or alerts, you’ll be able to manage those notifications here (as well as on the relevant question or dashboard themselves).
 
-Metabase excludes notificatione for [comments](../documents/introduction.md#comment-notifications) from this page.
+Metabase excludes notifications for [comments](../documents/introduction.md#comment-notifications) from this page.
