@@ -67,6 +67,8 @@ export type Table = {
   owner_user_id: UserId | null;
   transform_id: TransformId | null; // readonly
   data_update_frequency: string; // readonly
+  view_count: number;
+  estimated_row_count: number;
 };
 
 export type SchemaName = string;

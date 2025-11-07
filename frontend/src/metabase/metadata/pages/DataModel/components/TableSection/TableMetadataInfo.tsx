@@ -45,20 +45,30 @@ export function TableMetadataInfo({ table }: Props) {
     <Stack gap="md">
       <MetadataRow label={t`Name on disk`} value={table.name} />
       <MetadataRow label={t`Last updated at`} value={formattedDate} />
-      {/* TODO: Implement view count */}
-      <MetadataRow label={t`Dependencies`} value={String(dependenciesCount)} />
-      <MetadataRow label={t`Dependents`} value={String(dependentsCount)} />
+      <MetadataRow label={t`View count`} value={table.view_count} />
+      <MetadataRow
+        label={t`Est. row count`}
+        value={String(table.estimated_row_count)}
+      />
+      <MetadataRow label={t`Dependencies`} value={dependenciesCount} />
+      <MetadataRow label={t`Dependents`} value={dependentsCount} />
     </Stack>
   );
 }
 
-function MetadataRow({ label, value }: { label: string; value: string }) {
+function MetadataRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
   return (
-    <Group justify="space-between" ć>
+    <Group justify="space-between">
       <Text size="md" c="text-primary">
         {label}
       </Text>
-      <Text size="sm" c="text-primary">
+      <Text size="md" c="text-primary">
         {value}
       </Text>
     </Group>
