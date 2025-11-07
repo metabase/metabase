@@ -243,7 +243,7 @@
               checkpoint-col-name (-> source-incremental-strategy :checkpoint-filter)
               driver (some->> query :database (t2/select-one :model/Database) :engine keyword)
               honeysql-query {:select [:*]
-                              :from [[[:raw (str "(" native-sql ")")]]]
+                              :from [[[:raw (str "(" native-sql ")")] :subquery]]
                               :where [:> (h2x/identifier :field checkpoint-col-name) watermark-value]}
               [formatted-sql] (binding [driver/*compile-with-inline-parameters* true]
                                 (sql.qp/format-honeysql driver honeysql-query))]
