@@ -601,7 +601,7 @@
                 (with-redefs [driver/can-connect? (fn [_ d] (= d (assoc details-to-succeed :engine :snowflake)))]
                   (testing (format "use-password: %s private-key-options: %s uses-secret? %s" use-password options uses-secret?)
                     (spit pk-path pk-key)
-                    (is (= 4 (count all-possible-details)))
+                    (is (= 3 (count all-possible-details)))
                     (t2/update! (t2/table-name :model/Database) (mt/id) {:details (json/encode details)})
                     (testing "Connection succeeds and migration occurs"
                       (log/with-no-logs
