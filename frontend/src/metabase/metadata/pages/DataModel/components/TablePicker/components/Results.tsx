@@ -1,10 +1,17 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
-import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Link } from "react-router";
 
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
 
+import { DataModelContext } from "../../../DataModelContext";
 import { getUrl } from "../../../utils";
 import { TYPE_ICONS } from "../constants";
 import type { FlatItem, TreePath } from "../types";
@@ -41,6 +48,7 @@ export function Results({
 }: Props) {
   const [activeTableId, setActiveTableId] = useState(path.tableId);
   const ref = useRef<HTMLDivElement>(null);
+  const { baseUrl } = useContext(DataModelContext);
 
   const virtual = useVirtualizer({
     count: items.length,
@@ -206,7 +214,7 @@ export function Results({
                 marginLeft: level * INDENT_OFFSET,
                 pointerEvents: disabled ? "none" : undefined,
               }}
-              to={getUrl({
+              to={getUrl(baseUrl, {
                 databaseId: value?.databaseId,
                 schemaName:
                   type === "schema" || type === "table"

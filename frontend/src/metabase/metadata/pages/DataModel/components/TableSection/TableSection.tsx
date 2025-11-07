@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useContext, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -27,6 +27,7 @@ import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
+import { DataModelContext } from "../.../../../DataModelContext";
 import { ResponsiveButton } from "../ResponsiveButton";
 
 import { TableFieldList } from "./TableFieldList";
@@ -61,6 +62,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     isSorting,
     isUpdatingSorting,
   });
+  const { baseUrl } = useContext(DataModelContext);
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateTable({
@@ -259,7 +261,9 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
             <TableFieldList
               table={table}
               activeFieldId={fieldId}
-              getFieldHref={(fieldId) => getUrl({ ...parsedParams, fieldId })}
+              getFieldHref={(fieldId) =>
+                getUrl(baseUrl, { ...parsedParams, fieldId })
+              }
             />
           )}
         </Stack>

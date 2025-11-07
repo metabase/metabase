@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { DataModelContext } from "metabase/metadata/pages/DataModel/DataModelContext";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_TRANSFORMS,
@@ -43,7 +44,9 @@ export function DataSectionLayout({
       }
       tabs={tabs.length > 0 && <SectionTabs tabs={tabs} />}
     >
-      {children}
+      <DataModelContext.Provider value={{ baseUrl: Urls.dataStudioData() }}>
+        {children}
+      </DataModelContext.Provider>
     </SectionLayout>
   );
 }

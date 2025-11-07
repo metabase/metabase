@@ -1,6 +1,6 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
 import type { Location } from "history";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useContext, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -15,6 +15,7 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 
 import S from "./DataModel.module.css";
+import { DataModelContext } from "./DataModelContext";
 import {
   FieldSection,
   FieldValuesModal,
@@ -43,7 +44,8 @@ export const DataModel = ({ children, location, params }: Props) => {
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
-  const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
+  const { baseUrl } = useContext(DataModelContext);
+  const isSegments = location.pathname.startsWith(`${baseUrl}/segment`);
   const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =
     useDisclosure();
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
@@ -111,7 +113,7 @@ export const DataModel = ({ children, location, params }: Props) => {
         />
 
         <Box className={S.footer} mx="xl" py="sm">
-          <SegmentsLink active={isSegments} to="/admin/datamodel/segments" />
+          <SegmentsLink active={isSegments} to={`${baseUrl}/segments`} />
         </Box>
       </Stack>
 
