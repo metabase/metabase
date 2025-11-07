@@ -1,12 +1,3 @@
 {
-  "continuations": [
-    {
-      "command": [
-        "upstack",
-        "onto",
-        "emb-956-integration-branch-for-named-theme-editor-for-embedding"
-      ],
-      "branch": "emb-962-compute-default-theme-colors-based-on-appearance-settings"
-    }
-  ]
+  "continuations": null
 }
