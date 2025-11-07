@@ -1945,17 +1945,18 @@
        byte-array))
 
 (deftest bytea-column-not-truncated-test
-  (mt/test-driver :postgres
-    (mt/dataset (mt/dataset-definition
-                 "bytea_dataset"
-                 [["bytea_table"
-                   [{:field-name "bytea_col", :base-type {:native "bytea"}, :effective-type :type/*}]
-                   [[(hex->bytes "900000000000810074123E9DB008AB5C")]
-                    [(hex->bytes "900000000000475000DE4EC0C0A920AB")]]]])
-      (let [mp (mt/metadata-provider)]
-        (is (= [[1 "\\x900000000000810074123e9db008ab5c"]
-                [2 "\\x900000000000475000de4ec0c0a920ab"]]
-               (->> (lib.metadata/table mp (mt/id :bytea_table))
-                    (lib/query mp)
-                    (qp/process-query)
-                    (mt/rows))))))))
+  (testing "fix for #30671"
+    (mt/test-driver :postgres
+      (mt/dataset (mt/dataset-definition
+                   "bytea_dataset"
+                   [["bytea_table"
+                     [{:field-name "bytea_col", :base-type {:native "bytea"}, :effective-type :type/*}]
+                     [[(hex->bytes "900000000000810074123E9DB008AB5C")]
+                      [(hex->bytes "900000000000475000DE4EC0C0A920AB")]]]])
+        (let [mp (mt/metadata-provider)]
+          (is (= [[1 "\\x900000000000810074123e9db008ab5c"]
+                  [2 "\\x900000000000475000de4ec0c0a920ab"]]
+                 (->> (lib.metadata/table mp (mt/id :bytea_table))
+                      (lib/query mp)
+                      (qp/process-query)
+                      (mt/rows)))))))))
