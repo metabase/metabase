@@ -167,6 +167,7 @@ const defaultConfig = {
   // enable video recording in run mode
   video: true,
   videoCompression: true,
+  baseUrl: `http://localhost:${backendPort}`,
 };
 
 const mainConfig = {
