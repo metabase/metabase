@@ -11,6 +11,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.server.streaming-response :as sr]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -76,21 +77,19 @@
                                              (reset! messages msgs))
                         sr/async-cancellation-poll-interval-ms 5]
             (testing "Closing body stream drops connection"
-              (let [body  (mt/user-real-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
-                                                {:request-options {:as              :stream
-                                                                   :decompress-body false}}
-                                                {:message         "Test closure"
-                                                 :context         {}
-                                                 :conversation_id (str (random-uuid))
-                                                 :history         []
-                                                 :state           {}})]
+              (let [body (mt/user-real-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
+                                               {:request-options {:as              :stream
+                                                                  :decompress-body false}}
+                                               {:message         "Test closure"
+                                                :context         {}
+                                                :conversation_id (str (random-uuid))
+                                                :history         []
+                                                :state           {}})]
                 (.read ^java.io.InputStream body) ;; start the handler
                 (.close ^java.io.Closeable body)
-                (loop [i 10] ;; poll for messages arriving
-                  (when (and (pos? i)
-                             (not= :assistant (:role (first @messages))))
-                    (Thread/sleep 5)
-                    (recur (dec i))))
+                (u/poll {:thunk       #(= :assistant (:role (first @messages)))
+                         :done?       true?
+                         :interval-ms 5})
                 (is (= :assistant (:role (first @messages)))
                     "store-messages! was called in the end on the lines streaming-request managed to write to OS")
                 ;; if this flakes in CI, increase the number a bit; but it was 2 quite consistently for me

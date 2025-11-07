@@ -184,11 +184,9 @@
                                    :decompress-body false})]
             (.read ^java.io.InputStream (:body res)) ;; start the handler
             (.close ^java.io.Closeable (:body res))
-            (loop [i 10] ;; poll for request cancellation
-              (when (and (pos? i)
-                         (not @canceled))
-                (Thread/sleep 5)
-                (recur (dec i))))
+            (u/poll {:thunk       #(deref canceled)
+                     :done?       some?
+                     :interval-ms 5})
             ;; it's been 29 when I tested this, if it every becomes flaky maybe decrease the number?
             (is (< 20 @cnt) "Stopped writing when channel closed")
             (testing "canceled-chan is working"
