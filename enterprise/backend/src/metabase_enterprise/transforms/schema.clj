@@ -8,7 +8,11 @@
 (mr/def ::checkpoint-strategy
   [:map
    [:type [:= "checkpoint"]]
-   [:checkpoint-filter-unique-key ::lib.metadata.column/column-unique-key]])
+   ;; for native
+   [:checkpoint-filter {:optional true} :string]
+   ;; for mbql and python
+   [:checkpoint-filter-unique-key {:optional true}
+    ::lib.metadata.column/column-unique-key]])
 
 (mr/def ::source-incremental-strategy
   [:multi {:dispatch :type}

@@ -31,7 +31,10 @@ export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
 
 export type KeysetStrategy = {
   type: "checkpoint";
-  "checkpoint-filter-unique-key": string;
+  // For native queries
+  "checkpoint-filter"?: string;
+  // For MBQL and Python queries
+  "checkpoint-filter-unique-key"?: string;
 };
 
 export type SourceIncrementalStrategy = KeysetStrategy;

@@ -60,13 +60,10 @@ function getValidationSchema(source: TransformSource) {
     targetName: Yup.string().required(Errors.required),
     targetSchema: Yup.string().nullable().defined(),
     incremental: Yup.boolean().required(),
-    checkpointFilterUniqueKey: Yup.string()
-      .nullable()
-      .when("incremental", {
-        is: true,
-        then: (schema) => schema.required(Errors.required),
-        otherwise: (schema) => schema.nullable(),
-      }),
+    // For native queries, use checkpointFilter (plain string)
+    checkpointFilter: Yup.string().nullable(),
+    // For MBQL/Python queries, use checkpointFilterUniqueKey (prefixed format)
+    checkpointFilterUniqueKey: Yup.string().nullable(),
     sourceStrategy: Yup.mixed<"checkpoint">().oneOf(["checkpoint"]).required(),
     targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
   });
@@ -182,7 +179,7 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
           )}
           {!isMbqlQuery && libQuery && (
             <FormTextInput
-              name="checkpointFilterUniqueKey"
+              name="checkpointFilter"
               label={t`Source Filter Field`}
               placeholder={t`e.g., id, updated_at`}
               description={t`Column name to use in the incremental filter`}
@@ -335,7 +332,8 @@ function getInitialValues(
     targetSchema: suggestedTransform
       ? suggestedTransform.target.schema
       : schemas?.[0] || null,
-      checkpointFilterUniqueKey: null,
+    checkpointFilter: null,
+    checkpointFilterUniqueKey: null,
     incremental: false,
     sourceStrategy: "checkpoint",
     targetStrategy: "append",
@@ -350,19 +348,32 @@ function getCreateRequest(
     targetName,
     targetSchema,
     incremental,
+    checkpointFilter,
     checkpointFilterUniqueKey,
     sourceStrategy,
     targetStrategy,
   }: NewTransformValues,
   databaseId: number,
 ): CreateTransformRequest {
+  // For native queries, use checkpoint-filter (plain string)
+  // For MBQL/Python queries, use checkpoint-filter-unique-key (prefixed format)
+  let isNativeQuery = false;
+  if (source.type === "query") {
+    const { isNative } = Lib.queryDisplayInfo(source.query);
+    isNativeQuery = isNative;
+  }
+
+  const checkpointStrategy = isNativeQuery
+    ? { "checkpoint-filter": checkpointFilter! }
+    : { "checkpoint-filter-unique-key": checkpointFilterUniqueKey! };
+
   // Build the source with incremental strategy if enabled
   const transformSource: TransformSource = incremental
     ? {
         ...source,
         "source-incremental-strategy": {
           type: sourceStrategy,
-          "checkpoint-filter-unique-key": checkpointFilterUniqueKey!,
+          ...checkpointStrategy,
         },
       }
     : source;

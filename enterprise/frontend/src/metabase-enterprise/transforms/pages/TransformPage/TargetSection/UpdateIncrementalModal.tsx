@@ -63,6 +63,7 @@ export function UpdateIncrementalModal({
 type IncrementalValues = {
   incremental: boolean;
   sourceStrategy: "checkpoint";
+  checkpointFilter: string | null;
   checkpointFilterUniqueKey: string | null;
   targetStrategy: "append";
 };
@@ -76,13 +77,10 @@ function getValidationSchema(transform: Transform) {
   return Yup.object({
     incremental: Yup.boolean().required(),
     sourceStrategy: Yup.string().oneOf(["checkpoint"]).required(),
-    checkpointFilterUniqueKey: Yup.string()
-      .nullable()
-      .when("incremental", {
-        is: true,
-        then: (schema) => schema.required(Errors.required),
-        otherwise: (schema) => schema.nullable(),
-      }),
+    // For native queries, use checkpointFilter (plain string)
+    checkpointFilter: Yup.string().nullable(),
+    // For MBQL/Python queries, use checkpointFilterUniqueKey (prefixed format)
+    checkpointFilterUniqueKey: Yup.string().nullable(),
     targetStrategy: Yup.string().oneOf(["append"]).required(),
   });
 }
@@ -150,13 +148,25 @@ function UpdateIncrementalForm({
   }, [transform.source]);
 
   const handleSubmit = async (values: IncrementalValues) => {
+    // For native queries, use checkpoint-filter (plain string)
+    // For MBQL/Python queries, use checkpoint-filter-unique-key (prefixed format)
+    let isNativeQuery = false;
+    if (transform.source.type === "query") {
+      const { isNative } = Lib.queryDisplayInfo(transform.source.query);
+      isNativeQuery = isNative;
+    }
+
+    const checkpointStrategy = isNativeQuery
+      ? { "checkpoint-filter": values.checkpointFilter! }
+      : { "checkpoint-filter-unique-key": values.checkpointFilterUniqueKey! };
+
     // Build the source with incremental strategy if enabled
     const source = values.incremental
       ? {
           ...transform.source,
           "source-incremental-strategy": {
             type: "checkpoint" as const,
-            "checkpoint-filter-unique-key": values.checkpointFilterUniqueKey!,
+            ...checkpointStrategy,
           },
         }
       : {
@@ -226,7 +236,7 @@ function UpdateIncrementalForm({
                     )}
                     {!isMbqlQuery && libQuery && (
                         <FormTextInput
-                        name="checkpointFilterUniqueKey"
+                        name="checkpointFilter"
                         label={t`Source Filter Field`}
                         placeholder={t`e.g., id, updated_at`}
                         description={t`Column name to use in the incremental filter`}
@@ -270,14 +280,30 @@ function UpdateIncrementalForm({
 function getInitialValues(transform: Transform): IncrementalValues {
   const isIncremental = transform.target.type === "table-incremental";
   const strategy = transform.source["source-incremental-strategy"];
-  const filterUniqueKey =
-    strategy?.type === "checkpoint" && strategy["checkpoint-filter-unique-key"]
+
+  // For native queries, read from checkpoint-filter (plain string)
+  // For MBQL/Python queries, read from checkpoint-filter-unique-key (prefixed format)
+  let isNativeQuery = false;
+  if (transform.source.type === "query") {
+    const { isNative } = Lib.queryDisplayInfo(transform.source.query);
+    isNativeQuery = isNative;
+  }
+
+  const checkpointFilter =
+    strategy?.type === "checkpoint" && isNativeQuery
+      ? strategy["checkpoint-filter"]
+      : null;
+
+  const checkpointFilterUniqueKey =
+    strategy?.type === "checkpoint" && !isNativeQuery
       ? strategy["checkpoint-filter-unique-key"]
       : null;
+
   return {
     incremental: isIncremental,
     sourceStrategy: "checkpoint",
-    checkpointFilterUniqueKey: isIncremental ? filterUniqueKey : null,
+    checkpointFilter: isIncremental ? checkpointFilter : null,
+    checkpointFilterUniqueKey: isIncremental ? checkpointFilterUniqueKey : null,
     targetStrategy: "append",
   };
 }
