@@ -191,15 +191,15 @@
   ([]
    (weights {}))
   ([{request-overrides :weights, :keys [context]}]
-   (let [context   (or context :default)
-         overrides (search.settings/experimental-search-weight-overrides)]
+   (let [context          (or context :default)
+         system-overrides (search.settings/experimental-search-weight-overrides)]
      (if (= :all context)
-       (merge-with merge static-weights overrides)
+       (merge-with merge static-weights system-overrides)
        (merge (get static-weights :default)
               ;; Not sure which of the next two should have precedence, arguments for both "¯\_(ツ)_/¯"
-              (get overrides :default)
+              (get system-overrides :default)
               (get static-weights context)
-              (get overrides context)
+              (get system-overrides context)
               request-overrides)))))
 
 (defn weight
