@@ -2,6 +2,7 @@ import { type ReactNode, useState } from "react";
 import { c, t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -25,6 +26,7 @@ type CardMenuProps = {
 
 function CardMenu({ card, onOpenModal }: CardMenuProps) {
   const menuItems: ReactNode[] = [];
+  menuItems.push(...PLUGIN_MODERATION.useCardMenuItems(card));
 
   const metadata = useSelector(getMetadata);
   const query = Lib.fromJsQueryAndMetadata(metadata, card.dataset_query);
