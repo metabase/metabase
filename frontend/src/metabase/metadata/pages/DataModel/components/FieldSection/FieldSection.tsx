@@ -95,7 +95,7 @@ const FieldSectionBase = ({
         pb={12}
         pos="sticky"
         pt="xl"
-        px="xl"
+        px="lg"
         top={0}
       >
         <NameDescriptionInput
@@ -146,7 +146,7 @@ const FieldSectionBase = ({
         </Group>
       </Stack>
 
-      <Stack gap="xl" px="xl">
+      <Stack gap="xl" px="lg">
         <DataSection field={field} />
         <MetadataSection databaseId={databaseId} field={field} table={table} />
         <BehaviorSection databaseId={databaseId} field={field} />

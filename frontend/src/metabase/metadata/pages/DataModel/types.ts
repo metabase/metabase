@@ -25,7 +25,7 @@ export type Column = "nav" | "table" | "field" | "preview";
 export interface ColumnSizeConfig {
   flex: number | string;
   min: number;
-  max: number;
+  max: number | string;
 }
 
 export type MetadataEditAnalyticsDetail =

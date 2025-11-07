@@ -79,8 +79,19 @@ function DataModelContent({ children, location, params }: Props) {
   const metadataTableId = Array.from(selectedTables)[0] ?? queryTableId;
   // But keep the URL tableId for navigation/path to avoid auto-expansion when selecting/deselecting
   const navigationTableId = hasSelectedItems ? queryTableId : queryTableId;
+  const isEmptyStateShown1 =
+    (databaseId == null || metadataTableId == null || fieldId == null) &&
+    !hasSelectedItems;
+
   const isEmptyStateShown =
-    databaseId == null || metadataTableId == null || fieldId == null;
+    metadataTableId == null && fieldId == null && !hasSelectedItems;
+  console.log({
+    isEmptyStateShown,
+    databaseId,
+    metadataTableId,
+    fieldId,
+    hasSelectedItems,
+  });
   const {
     data: table,
     error,
@@ -119,6 +130,19 @@ function DataModelContent({ children, location, params }: Props) {
   if (databasesData?.data?.length === 0) {
     return <NoDatabasesEmptyState />;
   }
+
+  const showFieldPreview =
+    !isEmptyStateShown && field && table && isPreviewOpen;
+
+  const showBulkTableEdit =
+    hasSelectedItems && !hasOnlyOneTableSelected && !showFieldPreview;
+  const showFieldDetails =
+    field && !showBulkTableEdit && !isEmptyStateShown && !showFieldPreview;
+  const showTableDetailsSection =
+    metadataTableId &&
+    !hasSelectedMoreThanOneTable &&
+    !showFieldPreview &&
+    !showFieldDetails;
 
   return (
     <Flex bg="accent-gray-light" data-testid="data-model" h="100%">
@@ -162,7 +186,7 @@ function DataModelContent({ children, location, params }: Props) {
               </Stack>
             )}
 
-          {hasSelectedItems && !hasOnlyOneTableSelected && (
+          {showBulkTableEdit && (
             <Stack
               className={S.column}
               flex={COLUMN_CONFIG.table.flex}
@@ -174,7 +198,7 @@ function DataModelContent({ children, location, params }: Props) {
               <EditTableMetadata />
             </Stack>
           )}
-          {metadataTableId && !hasSelectedMoreThanOneTable && (
+          {showTableDetailsSection && (
             <Stack
               className={S.column}
               flex={COLUMN_CONFIG.table.flex}
@@ -199,7 +223,7 @@ function DataModelContent({ children, location, params }: Props) {
             </Stack>
           )}
 
-          {!isEmptyStateShown && (
+          {showFieldDetails && (
             <Stack
               className={S.column}
               flex={COLUMN_CONFIG.field.flex}
@@ -236,7 +260,7 @@ function DataModelContent({ children, location, params }: Props) {
             </Stack>
           )}
 
-          {!isEmptyStateShown && field && table && isPreviewOpen && (
+          {showFieldPreview && (
             <Box
               bg="accent-gray-light"
               flex={COLUMN_CONFIG.preview.flex}
