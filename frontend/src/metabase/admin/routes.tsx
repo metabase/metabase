@@ -14,6 +14,7 @@ import { DatabasePage } from "metabase/admin/databases/containers/DatabasePage";
 import { RevisionHistoryApp } from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import { SegmentApp } from "metabase/admin/datamodel/containers/SegmentApp";
 import { SegmentListApp } from "metabase/admin/datamodel/containers/SegmentListApp";
+import { EmbeddingThemeListingApp } from "metabase/admin/embedding/components/ThemeListing";
 import { AdminEmbeddingApp } from "metabase/admin/embedding/containers/AdminEmbeddingApp";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
@@ -205,6 +206,7 @@ export const getRoutes = (
             )}
 
             <Route path="security" component={EmbeddingSecuritySettings} />
+            <Route path="themes" component={EmbeddingThemeListingApp} />
           </Route>
         </Route>
 
