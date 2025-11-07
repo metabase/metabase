@@ -47,6 +47,16 @@
   flex-shrink: 0;
 }
 
+.database,
+.schema,
+.table,
+.field {
+  .icon {
+    opacity: 1;
+    color: var(--mb-color-text-dark);
+  }
+}
+
 .checkbox {
   flex-shrink: 0;
 }

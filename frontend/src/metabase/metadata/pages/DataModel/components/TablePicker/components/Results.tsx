@@ -447,14 +447,11 @@ const ResultsItem = ({
       >
         <Flex align="flex-start" gap="xs" w="100%">
           <Flex align="center" gap="xs">
-            <Box
-              className={S.chevronSlot}
-              style={{ width: `${INDENT_OFFSET}px` }}
-            >
+            <Box className={S.chevronSlot} w={INDENT_OFFSET}>
               {hasToggle && (
                 <Icon
                   name="chevronright"
-                  size={10}
+                  size={16}
                   color="var(--mb-color-text-light)"
                   className={cx(S.chevron, {
                     [S.expanded]: isExpanded,
