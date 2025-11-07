@@ -4,13 +4,9 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
-import CheckBox from "metabase/common/components/CheckBox";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { Button, Flex, Modal } from "metabase/ui";
+import { Button, Checkbox, Flex, Modal } from "metabase/ui";
 import type { Channel, Pulse } from "metabase-types/api";
-
-import { CheckboxLabel } from "../../common/components/DeleteModalWithConfirm/DeleteModalWithConfirm.styled";
 
 interface PulseWithMetadata extends Pulse {
   id?: number | null;
@@ -83,21 +79,11 @@ export function DeleteSubscriptionAction({
 
   return (
     <>
-      <div className={cx(CS.borderTop, CS.pt1, CS.pb3, CS.flex, CS.justifyEnd)}>
-        <button
-          className={cx(
-            ButtonsS.Button,
-            ButtonsS.ButtonBorderless,
-            CS.textLight,
-            CS.textErrorHover,
-            CS.flexAlignRight,
-            CS.flexNoShrink,
-          )}
-          onClick={openModal}
-        >
+      <Flex className={cx(CS.borderTop, CS.pt1, CS.pb3)} justify="flex-end">
+        <Button variant="subtle" c="text-light" onClick={openModal}>
           {t`Delete this subscription`}
-        </button>
-      </div>
+        </Button>
+      </Flex>
       <Modal
         opened={modalOpened}
         onClose={closeModal}
@@ -105,7 +91,7 @@ export function DeleteSubscriptionAction({
         size="lg"
         data-testid="delete-confirmation-modal-pulse"
       >
-        <Flex direction="column" gap="md">
+        <Flex direction="column" gap="md" mt="md">
           <ul>
             {confirmItems.map((item, index) => (
               <li
@@ -118,16 +104,13 @@ export function DeleteSubscriptionAction({
                   CS.alignCenter,
                 )}
               >
-                <CheckBox
-                  label={<CheckboxLabel>{item}</CheckboxLabel>}
-                  size={20}
-                  checkedColor="danger"
-                  uncheckedColor="danger"
+                <Checkbox
+                  label={item}
                   checked={checked[index]}
                   onChange={(e) =>
                     setChecked({
                       ...checked,
-                      [index]: e.target.checked,
+                      [index]: e.currentTarget.checked,
                     })
                   }
                 />
