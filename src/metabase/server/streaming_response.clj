@@ -19,6 +19,7 @@
    (jakarta.servlet AsyncContext)
    (jakarta.servlet.http HttpServletResponse)
    (java.io BufferedWriter OutputStream OutputStreamWriter)
+   (java.net SocketException)
    (java.nio ByteBuffer)
    (java.nio.channels ClosedChannelException SocketChannel)
    (java.nio.charset StandardCharsets)
@@ -188,6 +189,7 @@
           false)))
     (catch InterruptedException _ false)
     (catch ClosedChannelException _ true)
+    (catch SocketException _ true)
     (catch Throwable e
       (log/error e "Error determining whether HTTP request was canceled")
       false)))
