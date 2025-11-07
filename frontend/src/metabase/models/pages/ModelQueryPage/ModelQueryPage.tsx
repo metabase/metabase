@@ -90,13 +90,10 @@ function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
     handleCloseConfirmation,
   } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
     onSave: async (question) => {
-      const { display, settings } = Lib.defaultDisplay(question.query());
       const { error } = await updateCard({
         id: card.id,
         dataset_query: question.datasetQuery(),
         result_metadata: resultMetadata ? question.getResultMetadata() : null,
-        display,
-        visualization_settings: settings,
       });
       if (error) {
         sendErrorToast(t`Failed to update model query`);
