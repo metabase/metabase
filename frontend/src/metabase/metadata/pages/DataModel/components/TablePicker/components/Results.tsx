@@ -17,7 +17,7 @@ import { hasChildren } from "../utils";
 import S from "./Results.module.css";
 
 const VIRTUAL_OVERSCAN = 5;
-const ITEM_MIN_HEIGHT = 32; // items can vary in size because of text wrapping
+const ITEM_MIN_HEIGHT = 39; // items can vary in size because of text wrapping
 const INDENT_OFFSET = 18;
 
 interface Props {
@@ -88,15 +88,19 @@ export function TablePickerResults({
   }, [selectedIndex]);
 
   return (
-    <Box ref={ref} px="xl" pb="lg" className={S.results}>
+    <Box ref={ref} pb="lg" className={S.results}>
       <Box style={{ height: virtual.getTotalSize() }}>
         {virtualItems.map(({ start, index }) => {
           const item = items[index];
+          const parentIndex = items.findIndex(
+            (item) => item.key === item.parent,
+          );
+
           return (
             <ResultsItem
               key={item.key}
               item={item}
-              items={items}
+              parentIndex={parentIndex}
               path={path}
               start={start}
               index={index}
@@ -176,8 +180,8 @@ function getIconForField(field: Field) {
 
 interface ResultsItemProps {
   item: FlatItem;
-  items: FlatItem[];
   path: TreePath;
+  parentIndex: number;
   start: number;
   index: number;
   selectedIndex?: number;
@@ -188,13 +192,82 @@ interface ResultsItemProps {
   ref: React.RefObject<HTMLDivElement>;
 }
 
+function isDatabaseActive(
+  item: FlatItem,
+  path: TreePath,
+  selectedItemsCount: number,
+): boolean {
+  return (
+    selectedItemsCount === 0 &&
+    item.type === "database" &&
+    item.value?.databaseId === path.databaseId &&
+    path.tableId == null &&
+    path.fieldId == null &&
+    (path.schemaName == null || item.children.length === 1)
+  );
+}
+
+function isSchemaActive(
+  item: FlatItem,
+  path: TreePath,
+  selectedItemsCount: number,
+): boolean {
+  return (
+    selectedItemsCount === 0 &&
+    item.type === "schema" &&
+    item.value?.databaseId === path.databaseId &&
+    item.value?.schemaName === path.schemaName &&
+    path.tableId == null &&
+    path.fieldId == null
+  );
+}
+
+function isTableActive(
+  item: FlatItem,
+  path: TreePath,
+  selectedItemsCount: number,
+): boolean {
+  return (
+    selectedItemsCount === 0 &&
+    item.type === "table" &&
+    item.value?.tableId === path.tableId &&
+    path.fieldId == null
+  );
+}
+
+function isFieldActive(
+  item: FlatItem,
+  path: TreePath,
+  selectedItemsCount: number,
+): boolean {
+  return (
+    selectedItemsCount === 0 &&
+    item.type === "field" &&
+    item.value?.tableId === path.tableId &&
+    item.value?.fieldId === path.fieldId
+  );
+}
+
+function isItemActive(
+  item: FlatItem,
+  path: TreePath,
+  selectedItemsCount: number,
+): boolean {
+  return (
+    isDatabaseActive(item, path, selectedItemsCount) ||
+    isSchemaActive(item, path, selectedItemsCount) ||
+    isTableActive(item, path, selectedItemsCount) ||
+    isFieldActive(item, path, selectedItemsCount)
+  );
+}
+
 const ResultsItem = ({
   item,
-  items,
   path,
   start,
   index,
   selectedIndex,
+  parentIndex,
   toggle,
   onItemClick,
   onSelectedIndexChange,
@@ -203,50 +276,10 @@ const ResultsItem = ({
 }: ResultsItemProps) => {
   const { selectedItemsCount } = useSelection();
 
-  const {
-    value,
-    label,
-    type,
-    isExpanded,
-    isLoading,
-    key,
-    level,
-    parent,
-    disabled,
-    children,
-  } = item;
+  const { value, label, type, isExpanded, isLoading, key, level, disabled } =
+    item;
 
-  // Database is active when:
-  // 1. We're at /database/X (no schema in URL), OR
-  // 2. We're at /database/X/schema/Y AND the database has only one schema (auto-selected)
-  const isDatabaseActive =
-    selectedItemsCount === 0 &&
-    type === "database" &&
-    value?.databaseId === path.databaseId &&
-    path.tableId == null &&
-    path.fieldId == null &&
-    (path.schemaName == null || children.length === 1);
-  const isSchemaActive =
-    selectedItemsCount === 0 &&
-    type === "schema" &&
-    value?.databaseId === path.databaseId &&
-    value?.schemaName === path.schemaName &&
-    path.tableId == null &&
-    path.fieldId == null;
-  const isTableActive =
-    selectedItemsCount === 0 &&
-    type === "table" &&
-    value?.tableId === path.tableId &&
-    path.fieldId == null;
-  const isFieldActive =
-    selectedItemsCount === 0 &&
-    type === "field" &&
-    value?.tableId === path.tableId &&
-    value?.fieldId === path.fieldId;
-  const isActive =
-    isDatabaseActive || isSchemaActive || isTableActive || isFieldActive;
-
-  const parentIndex = items.findIndex((item) => item.key === parent);
+  const isActive = isItemActive(item, path, selectedItemsCount);
   const indent = level * INDENT_OFFSET;
   const hasToggle = hasChildren(type);
 
@@ -366,6 +399,8 @@ const ResultsItem = ({
       align="center"
       justify="flex-start"
       gap={0}
+      w="100%"
+      pl="md"
       className={cx(S.item, S[type], {
         [S.active]: isActive,
         [S.selected]: selectedIndex === index,

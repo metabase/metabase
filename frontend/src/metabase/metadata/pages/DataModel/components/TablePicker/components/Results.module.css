@@ -5,30 +5,40 @@
 }
 
 .item {
+  --item-top-border-color: transparent;
+  /* box-shadow is a way to avoid layout shifts and doubled borders in the items */
+  box-shadow: inset 0 1px 0 var(--item-top-border-color);
+  /* TODO: probably we can avoid using absolute positioning */
   position: absolute;
-  border-radius: 8px;
   cursor: pointer;
-  padding-left: 0;
-  padding-right: var(--mantine-spacing-sm);
-  left: var(--mantine-spacing-xl);
-  right: var(--mantine-spacing-xl);
+  border-bottom: 1px solid var(--mb-color-border);
 
   &:focus-visible,
   &.selected {
     outline: 2px solid var(--mb-color-focus);
+
+    --item-top-border-color: var(--mb-color-border);
   }
 
   &:hover {
     background-color: var(--mb-color-brand-lighter);
+
+    --item-top-border-color: var(--mb-color-border);
   }
 
   &.active {
     color: var(--mb-color-brand);
     background-color: var(--mb-color-brand-light);
 
+    --item-top-border-color: var(--mb-color-border);
+
     .icon {
       opacity: 1;
     }
+  }
+
+  &:first-of-type {
+    --item-top-border-color: var(--mb-color-border);
   }
 }
 
