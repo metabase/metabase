@@ -79,8 +79,8 @@
                              (mtx/transformer
                               mtx/string-transformer
                               (mtx/transformer {:name :perm-graph})))]
-    (when-not (mr/validate ::permissions-rest.schema/data-permission-graph new-graph)
-      (let [explained (mu/explain ::permissions-rest.schema/data-permission-graph new-graph)]
+    (when-not (mr/validate ::permissions-rest.schema/data-permissions-graph new-graph)
+      (let [explained (mu/explain ::permissions-rest.schema/data-permissions-graph new-graph)]
         (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}" (pr-str explained))
                         {:status-code 400}))))
     (t2/with-transaction [_conn]

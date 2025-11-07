@@ -457,7 +457,9 @@
     {api      []                         ; settings depends on api directly
      api-keys [permissions collections]} ; settings depends on permissions which depends on collections which depends on api-keys"
   ([module]
-   (all-module-deps-paths (dependencies) module (sorted-map) (atom #{}) []))
+   (all-module-deps-paths (dependencies) module))
+  ([deps module]
+   (all-module-deps-paths deps module (sorted-map) (atom #{}) []))
   ([deps module acc already-seen path]
    (let [module-deps  (module-dependencies deps module)
          new-deps     (remove @already-seen module-deps)
@@ -513,3 +515,23 @@
                   (when (empty? (set/difference namespaces namespace-symbs))
                     dep)))
           dep->namespaces)))
+
+(defn leaf-modules
+  "Modules that are leaf nodes in the module dependency tree -- nothing else depends on them."
+  []
+  (let [deps (dependencies)]
+    (into (sorted-set)
+          (comp (map :module)
+                (keep (fn [module]
+                        (when (zero? (count (external-usages deps module)))
+                          module))))
+          deps)))
+
+(defn non-dependencies
+  "Modules that `module` does not depend on, either directly or indirectly."
+  [module]
+  (let [deps        (dependencies)
+        all-modules (into (sorted-set) (map :module) deps)]
+    (set/difference
+     all-modules
+     (set (keys (all-module-deps-paths deps module))))))

@@ -93,9 +93,9 @@
     [:map
      [:view-data      {:optional true} [:ref ::schemas]]
      [:create-queries {:optional true} [:ref ::schemas]]
-     [:data           {:optional true} [:ref ::string-data-perms]]
-     [:download       {:optional true} [:ref ::string-data-perms]]
-     [:data-model     {:optional true} [:ref ::string-data-perms]]
+     [:data           {:optional true} [:ref ::strict-data-perms]]
+     [:download       {:optional true} [:ref ::strict-data-perms]]
+     [:data-model     {:optional true} [:ref ::strict-data-perms]]
      [:details        {:optional true} [:enum :yes :no]]]
     [:fn {:error/fn (fn [_ _] (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))}
      (fn [db-entry]

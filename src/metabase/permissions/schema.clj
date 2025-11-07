@@ -1,5 +1,6 @@
 (ns metabase.permissions.schema
-  (:require [metabase.util.malli.registry :as mr]))
+  (:require
+   [metabase.util.malli.registry :as mr]))
 
 ;;; ---------------------------------------- Permission definitions ---------------------------------------------------
 

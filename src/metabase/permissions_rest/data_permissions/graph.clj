@@ -195,7 +195,7 @@
      {}
      data-perms)))
 
-(mu/defn api-graph :- ::permissions-rest.schema/data-permission-graph
+(mu/defn api-graph :- ::permissions-rest.schema/data-permissions-graph
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
   renames permission types and values from the names stored in the database to the ones expected by the frontend.
   - Converts DB key names to API key names
@@ -431,7 +431,7 @@
 (mu/defn update-data-perms-graph!
   "Takes an API-style perms graph and sets the permissions in the database accordingly. Additionally ensures
   impersonations and sandboxes are consistent if necessary."
-  ([graph-updates :- ::permissions-rest.schema/data-permission-graph]
+  ([graph-updates :- ::permissions-rest.schema/data-permissions-graph]
    (when (seq graph-updates)
      (let [group-updates (:groups graph-updates)]
        (check-audit-db-permissions group-updates)
