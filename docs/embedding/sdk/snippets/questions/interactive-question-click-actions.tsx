@@ -1,6 +1,6 @@
 import {
   defineMetabaseAuthConfig,
-  InteractiveDashboard,
+  InteractiveQuestion,
   MetabaseProvider,
 } from "@metabase/embedding-sdk-react";
 

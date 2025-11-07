@@ -29,7 +29,36 @@ To use a plugin on a per-component basis, pass the plugin as a prop to the compo
 To customize what happens when people click a link in your embedded questions and dashboards, use the global plugin `handleLink`:
 
 ```typescript
-{% include_file "{{ dirname }}/snippets/plugins/handlelink.tsx" snippet="example" %}
+export default function App() {
+  const navigate = useNavigate(); // coming from whatever routing lib you're using
+
+  const plugins = {
+    handleLink: (urlString: string) => {
+      const url = new URL(urlString, window.location.origin);
+      const isInternal = url.origin === window.location.origin;
+      if (isInternal) {
+        // client side navigation
+        navigate(url.pathname + url.search + url.hash);
+
+        return { handled: true }; // prevent default navigation
+      }
+      return { handled: false }; // let the sdk do the default behavior
+    },
+  };
+
+  return (
+    <MetabaseProvider authConfig={authConfig} pluginsConfig={plugins}>
+      <nav style={{ display: "flex", gap: 12, padding: 12 }}>
+        <Link to="/">Home</Link>
+        <Link to="/question">Question</Link>
+        <Link to="/about">About</Link>
+      </nav>
+      <div style={{ padding: 12 }}>
+        <Outlet />
+      </div>
+    </MetabaseProvider>
+  );
+}
 ```
 
 ## Further reading
