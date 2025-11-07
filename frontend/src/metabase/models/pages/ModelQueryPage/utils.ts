@@ -1,4 +1,4 @@
-import type { Field } from "metabase-types/api";
+import type { Dataset, DatasetColumn, Field } from "metabase-types/api";
 
 import type { FieldOverrides } from "../../types";
 
@@ -21,14 +21,41 @@ function getFieldOverrides(field: Field): FieldOverrides {
   };
 }
 
-export function applyFieldOverrides(fields: Field[], overrides: Field[]) {
-  const overridesByName = Object.fromEntries(
-    overrides.map((field) => [field.name, field]),
+function applyFieldOverrides<T extends Field | DatasetColumn>(
+  queryFields: T[],
+  savedFields: Field[],
+): T[] {
+  const savedFieldByName = Object.fromEntries(
+    savedFields.map((field) => [field.name, field]),
   );
-  return fields.map((field) => {
-    const override = overridesByName[field.name];
-    return override == null
-      ? field
-      : { ...field, ...getFieldOverrides(override) };
+  return queryFields.map((queryField) => {
+    const savedField = savedFieldByName[queryField.name];
+    return savedField == null
+      ? queryField
+      : { ...queryField, ...getFieldOverrides(savedField) };
   });
+}
+
+export function applyFieldOverridesInDataset(
+  dataset: Dataset,
+  savedMetadata: Field[],
+) {
+  if (dataset.data == null) {
+    return dataset;
+  }
+
+  return {
+    ...dataset,
+    data: {
+      ...dataset.data,
+      cols: applyFieldOverrides(dataset.data.cols, savedMetadata),
+    },
+  };
+}
+
+export function applyFieldOverridesInResultMetadata(
+  queryMetadata: Field[],
+  savedMetadata: Field[],
+) {
+  return applyFieldOverrides(queryMetadata, savedMetadata);
 }

@@ -11,7 +11,10 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import {
+  type QueryEditorUiState,
+  getInitialUiState,
+} from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Center, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -23,7 +26,10 @@ import { ModelQueryEditor } from "../../components/ModelQueryEditor";
 import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";
 import { getResultMetadata, getValidationResult } from "../../utils";
 
-import { applyFieldOverrides } from "./utils";
+import {
+  applyFieldOverridesInDataset,
+  applyFieldOverridesInResultMetadata,
+} from "./utils";
 
 type ModelQueryPageParams = {
   cardId: string;
@@ -74,7 +80,7 @@ function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
     if (fields == null || card.result_metadata == null) {
       return fields;
     }
-    return applyFieldOverrides(fields, card.result_metadata);
+    return applyFieldOverridesInResultMetadata(fields, card.result_metadata);
   }, [card, datasetQuery, uiState.lastRunResult, uiState.lastRunQuery]);
 
   const validationResult = useMemo(
@@ -108,8 +114,26 @@ function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
     },
   });
 
-  const handleChangeQuery = (query: Lib.Query) => {
-    setDatasetQuery(Lib.toJsQuery(query));
+  const handleChangeQuery = (newQuery: Lib.Query) => {
+    setDatasetQuery(Lib.toJsQuery(newQuery));
+  };
+
+  const handleChangeUiState = (newUiState: QueryEditorUiState) => {
+    if (
+      card.result_metadata != null &&
+      newUiState.lastRunResult != null &&
+      newUiState.lastRunResult !== uiState.lastRunResult
+    ) {
+      setUiState({
+        ...newUiState,
+        lastRunResult: applyFieldOverridesInDataset(
+          newUiState.lastRunResult,
+          card.result_metadata,
+        ),
+      });
+    } else {
+      setUiState(newUiState);
+    }
   };
 
   const handleSave = () => {
@@ -157,7 +181,7 @@ function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
           uiState={uiState}
           readOnly={!card.can_write}
           onChangeQuery={handleChangeQuery}
-          onChangeUiState={setUiState}
+          onChangeUiState={handleChangeUiState}
         />
       </Stack>
       {isConfirmationShown && checkData != null && (
