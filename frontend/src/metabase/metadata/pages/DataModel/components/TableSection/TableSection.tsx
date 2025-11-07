@@ -14,6 +14,7 @@ import type { Table, TableFieldOrder } from "metabase-types/api";
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 import { SubstituteModelModal } from "../TablePicker/components/SubstituteModelModal";
 
+import { TableMetadataInfo } from "./TableMetadataInfo";
 import { TableMetadataSettings } from "./TableMetadataSection";
 import { TableModels } from "./TableModels";
 import S from "./TableSection.module.css";
@@ -156,7 +157,9 @@ const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
       <TransformLink table={table} />
 
       <Box px="lg">
-        <TableSectionGroup title={t`Metadata`}>TODO</TableSectionGroup>
+        <TableSectionGroup title={t`Metadata`}>
+          <TableMetadataInfo table={table} />
+        </TableSectionGroup>
       </Box>
 
       <Box px="lg">
