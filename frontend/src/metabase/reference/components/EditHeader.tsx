@@ -3,9 +3,9 @@ import cx from "classnames";
 import { memo } from "react";
 import { t } from "ttag";
 
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { RevisionMessageModal } from "metabase/reference/components/RevisionMessageModal";
+import { Button } from "metabase/ui";
 
 import S from "./EditHeader.module.css";
 
@@ -38,43 +38,23 @@ export const EditHeader = memo(function EditHeader({
     <>
       <div className={cx(CS.wrapper, CS.px3, S.editHeader)}>
         <div className={S.editHeaderButtons}>
-          <button
-            type="button"
-            className={cx(ButtonsS.Button, S.cancelButton)}
+          <Button
+            variant="outline"
             onClick={() => {
               endEditing();
               reinitializeForm();
             }}
           >
             {t`Cancel`}
-          </button>
-
+          </Button>
           {hasRevisionHistory ? (
-            <button
-              className={cx(
-                ButtonsS.Button,
-                ButtonsS.ButtonPrimary,
-                S.saveButton,
-              )}
-              type="button"
-              disabled={submitting}
-              onClick={openModal}
-            >
+            <Button variant="filled" disabled={submitting} onClick={openModal}>
               {t`Save`}
-            </button>
+            </Button>
           ) : (
-            <button
-              className={cx(
-                ButtonsS.Button,
-                ButtonsS.ButtonPrimary,
-                ButtonsS.ButtonWhite,
-                S.saveButton,
-              )}
-              type="submit"
-              disabled={submitting}
-            >
+            <Button type="submit" variant="filled" disabled={submitting}>
               {t`Save`}
-            </button>
+            </Button>
           )}
         </div>
       </div>
