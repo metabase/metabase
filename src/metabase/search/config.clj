@@ -252,7 +252,7 @@
    ;; TODO this is optional only for tests, clean those up!
    [:search-engine      {:optional true} keyword?]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
-   [:weights                             [:maybe [:map-of :keyword number?]]]
+   [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]
    ;;
    ;; optional
    ;;
