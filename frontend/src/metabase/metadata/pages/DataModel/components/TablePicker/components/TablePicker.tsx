@@ -103,7 +103,7 @@ export function TablePicker({
         <Input
           flex="1"
           leftSection={<Icon name="search" />}
-          placeholder={t`Search tables and models`}
+          placeholder={t`Search tables`}
           rightSection={
             <Tooltip
               label={
