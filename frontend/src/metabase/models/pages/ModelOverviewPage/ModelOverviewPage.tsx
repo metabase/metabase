@@ -6,8 +6,6 @@ import { CardOverview } from "../../components/CardOverview";
 import { ModelHeader } from "../../components/ModelHeader";
 import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";
 
-import S from "./ModelOverviewPage.module.css";
-
 type ModelOverviewPageParams = {
   cardId: string;
 };
@@ -29,8 +27,8 @@ export function ModelOverviewPage({ params }: ModelOverviewPageProps) {
   }
 
   return (
-    <Flex direction="column" h="100%" bg="var(--mb-color-bg-light)">
-      <ModelHeader card={card} className={S.header} />
+    <Flex direction="column" h="100%">
+      <ModelHeader card={card} />
       <CardOverview card={card} />
     </Flex>
   );

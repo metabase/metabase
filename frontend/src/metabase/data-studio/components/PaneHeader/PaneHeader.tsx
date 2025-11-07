@@ -22,13 +22,13 @@ interface PaneHeaderProps extends Omit<GroupProps, "title"> {
 }
 
 export const PaneHeader = ({
+  className,
   title,
   description,
   icon,
   menu,
   tabs,
   actions,
-  className,
   ...rest
 }: PaneHeaderProps) => {
   return (
