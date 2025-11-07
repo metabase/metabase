@@ -300,7 +300,7 @@
    (into (sorted-set) (map :depends-on-namespace) (external-usages deps module-symb))))
 
 (defn module-dependencies
-  "Build a graph of module => set of modules it refers to."
+  "Build a graph of module => set of modules it directly depends on."
   ([deps]
    (letfn [(reduce-module-deps [module-deps module deps]
              (reduce
@@ -528,7 +528,8 @@
           deps)))
 
 (defn non-dependencies
-  "Modules that `module` does not depend on, either directly or indirectly."
+  "Modules that `module` does not depend on, either directly or indirectly -- changes to any of these modules should not
+  affect `module`."
   [module]
   (let [deps        (dependencies)
         all-modules (into (sorted-set) (map :module) deps)]
