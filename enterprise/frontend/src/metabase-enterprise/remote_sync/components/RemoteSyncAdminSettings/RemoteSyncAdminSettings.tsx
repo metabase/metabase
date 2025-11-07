@@ -42,6 +42,11 @@ import type {
 } from "metabase-types/api";
 
 import {
+  trackBranchSwitched,
+  trackRemoteSyncDeactivated,
+  trackRemoteSyncSettingsChanged,
+} from "../../analytics";
+import {
   AUTO_IMPORT_KEY,
   BRANCH_KEY,
   REMOTE_SYNC_KEY,
@@ -82,6 +87,19 @@ export const RemoteSyncAdminSettings = () => {
       const saveSettings = async (values: RemoteSyncConfigurationSettings) => {
         try {
           await updateRemoteSyncSettings(values).unwrap();
+
+          trackRemoteSyncSettingsChanged();
+
+          if (
+            didBranchChange &&
+            settingValues?.[BRANCH_KEY] &&
+            values[BRANCH_KEY]
+          ) {
+            trackBranchSwitched({
+              triggeredFrom: "admin-settings",
+            });
+          }
+
           sendToast({ message: t`Settings saved successfully`, icon: "check" });
         } catch (error) {
           sendToast({
@@ -136,6 +154,7 @@ export const RemoteSyncAdminSettings = () => {
       onConfirm: async () => {
         try {
           await updateRemoteSyncSettings({ [URL_KEY]: "" }).unwrap();
+          trackRemoteSyncDeactivated();
           sendToast({ message: t`Remote Sync disabled`, icon: "check" });
         } catch (error) {
           console.error(error);

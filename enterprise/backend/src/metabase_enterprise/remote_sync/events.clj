@@ -31,18 +31,21 @@
   [model-type model-id status & [_user-id]]
   (let [existing (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)]
     (cond
-      (or (and existing (not= "create" (:status existing)))
-          (and (= "create" (:status existing))
-               (contains? #{"removed" "delete"} status)))
-      (t2/update! :model/RemoteSyncObject (:id existing)
-                  {:status status
-                   :status_changed_at (t/offset-date-time)})
-
       (not existing)
       (t2/insert! :model/RemoteSyncObject
                   {:model_type model-type
                    :model_id model-id
                    :status status
+                   :status_changed_at (t/offset-date-time)})
+
+      ;; If the entity was created and then removed/deleted before sync, just delete the entry from tracking
+      (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
+      (t2/delete! :model/RemoteSyncObject (:id existing))
+
+      ;; If the entry was created, the status should remain create until synced
+      (not (= "create" (:status existing)))
+      (t2/update! :model/RemoteSyncObject (:id existing)
+                  {:status status
                    :status_changed_at (t/offset-date-time)}))))
 
 ;; Model change tracking event handlers

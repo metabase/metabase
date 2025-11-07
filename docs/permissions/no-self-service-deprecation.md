@@ -83,13 +83,13 @@ We could migrate the permissions like so:
 | **View data**      | Can view           | ?           | Blocked     | Row and column security | Impersonated       |
 | **Create queries** | Query Builder only | No          | No          | Query Builder only      | Query Builder only |
 
-We can't really make a call on what Group B's View data should be. If we switch it to **Can view**, the person won't be affected by the Blocked, Row and column security, or Impersonated settings in their other group. If we set it to **Blocked**, they could lose access to data that you think they should have access to. So we created an interim setting, `No self-service (legacy)` to manage this (temporarily) awkward transition.
+We can't make a call on what Group B's View data should be. If we switch it to **Can view**, the person won't be affected by the Blocked, Row and column security, or Impersonated settings in their other group. If we set it to **Blocked**, they could lose access to data that you think they should have access to. So we created an interim setting, `No self-service (legacy)` to manage this (temporarily) awkward transition.
 
 ### For some permission setups with groups that have "No self-service" and "Sandboxed" data access, you may need to create a new group to replicate the setup in 50 or higher
 
 In Metabase 49, the (more permissive) "No self-service" data access couldn't override the (less permissive) "Sandboxed" access, you could set up Metabase 49 in ways that were difficult to reason about.
 
-In the new permission system starting in Metabase 50, more permissive settings _always_ override less permissive settings. This consistent behavior makes permissions a _lot_ easier to reason about. One consequence of this improvement, however, is that in order to recreate certain permissions setups when upgrading to Metabase 50, you may need to create an _additional_ group.
+In the new permission system starting in Metabase 50, more permissive settings _always_ override less permissive settings. This consistent behavior makes permissions easier to reason about. One consequence of this improvement, however, is that to recreate certain permissions setups when upgrading to Metabase 50, you may need to create an _additional_ group.
 
 For example, let's say you have two groups in Metabase 49 under the old data access permission, the All users group and the Foo group.
 
@@ -100,7 +100,7 @@ For example, let's say you have two groups in Metabase 49 under the old data acc
 
 This data access setup in 49 would allow people to view questions and dashboards in collections they have access to. People in the Foo group, however, would get a sandboxed view of the items. In this case, the less permissive "Sandboxed" data access in the Foo group overrode the more permissive "No self-service" in the All users group.
 
-Starting with Metabase 50, however, more permissive settings _always_ override less permissive settings. So in order to keep Foo's sandboxes in tact, we'd need to make the All users group have a View data permission setting that is _less_ permissive than the "Sandboxed" setting. So we'll need to set the View data permission for All users to "Blocked."
+Starting with Metabase 50, however, more permissive settings _always_ override less permissive settings. So to keep Foo's sandboxes in tact, we'd need to make the All users group have a View data permission setting that is _less_ permissive than the "Sandboxed" setting. So we'll need to set the View data permission for All users to "Blocked."
 
 But if you still want everyone else who _isn't_ in the Foo group to view items in collections they have access to, you'll need to create an additional group, Bar, that contains everyone _except for_ people in the Foo group, and grant that Bar group "Can view" access to the Sample database. The Bar group's "Can view" access will override the All Users group's "Blocked" setting, and they'll be able to view the questions and dashboards. Meanwhile, Foo group still has its sandboxes. Here's a summary of the settings for 50 that you'd need:
 
