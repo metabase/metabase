@@ -20,7 +20,7 @@ import type {
 } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../../constants";
-import type { FieldPatch } from "../../../types";
+import type { FieldOverrides } from "../../../types";
 
 import S from "./ModelFieldDetails.module.css";
 
@@ -28,7 +28,7 @@ type ModelFieldDetailsProps = {
   field: Field;
   idFields: Field[];
   isReadOnly: boolean;
-  onChangeField: (field: Field, patch: FieldPatch) => void;
+  onChangeField: (field: Field, overrides: FieldOverrides) => void;
 };
 
 export function ModelFieldDetails({
@@ -47,8 +47,8 @@ export function ModelFieldDetails({
     return getGlobalSettingsForColumn();
   }, []);
 
-  const handleChange = (patch: FieldPatch) => {
-    onChangeField(field, patch);
+  const handleChange = (overrides: FieldOverrides) => {
+    onChangeField(field, overrides);
   };
 
   const handleNameChange = (name: string) => {

@@ -23,6 +23,8 @@ import { ModelQueryEditor } from "../../components/ModelQueryEditor";
 import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";
 import { getResultMetadata, getValidationResult } from "../../utils";
 
+import { applyFieldOverrides } from "./utils";
+
 type ModelQueryPageParams = {
   cardId: string;
 };
@@ -64,12 +66,16 @@ function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
   }, [card, metadata, datasetQuery]);
 
   const resultMetadata = useMemo(() => {
-    return getResultMetadata(
+    const fields = getResultMetadata(
       datasetQuery,
       uiState.lastRunQuery,
       uiState.lastRunResult,
     );
-  }, [datasetQuery, uiState.lastRunResult, uiState.lastRunQuery]);
+    if (fields == null || card.result_metadata == null) {
+      return fields;
+    }
+    return applyFieldOverrides(fields, card.result_metadata);
+  }, [card, datasetQuery, uiState.lastRunResult, uiState.lastRunQuery]);
 
   const validationResult = useMemo(
     () => getValidationResult(question.query(), resultMetadata),

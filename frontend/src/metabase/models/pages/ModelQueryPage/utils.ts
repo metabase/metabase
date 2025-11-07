@@ -1,8 +1,8 @@
 import type { Field } from "metabase-types/api";
 
-import type { FieldPatch } from "../../types";
+import type { FieldOverrides } from "../../types";
 
-function getFieldPatch(field: Field): FieldPatch {
+function getFieldOverrides(field: Field): FieldOverrides {
   const {
     display_name,
     description,
@@ -21,21 +21,14 @@ function getFieldPatch(field: Field): FieldPatch {
   };
 }
 
-export function mergeFieldMetadata(
-  queryMetadata: Field[] | null,
-  savedMetadata: Field[] | null,
-) {
-  if (queryMetadata == null || savedMetadata == null) {
-    return queryMetadata;
-  }
-
-  const savedFieldByName = Object.fromEntries(
-    savedMetadata.map((savedField) => [savedField.name, savedField]),
+export function applyFieldOverrides(fields: Field[], overrides: Field[]) {
+  const overridesByName = Object.fromEntries(
+    overrides.map((field) => [field.name, field]),
   );
-  return queryMetadata.map((queryField) => {
-    const savedField = savedFieldByName[queryField.name];
-    return savedField == null
-      ? queryField
-      : { ...queryField, ...getFieldPatch(savedField) };
+  return fields.map((field) => {
+    const override = overridesByName[field.name];
+    return override == null
+      ? field
+      : { ...field, ...getFieldOverrides(override) };
   });
 }

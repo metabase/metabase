@@ -1,6 +1,6 @@
 import type { Field } from "metabase-types/api";
 
-export type FieldPatch = Partial<
+export type FieldOverrides = Partial<
   Pick<
     Field,
     | "display_name"

@@ -5,7 +5,7 @@ import { FieldList } from "metabase/metadata/components/FieldList";
 import { Box, Button, Flex, Group, Icon } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
-import type { FieldPatch } from "../../../types";
+import type { FieldOverrides } from "../../../types";
 
 import S from "./ModelFieldList.module.css";
 
@@ -15,7 +15,7 @@ type ModelFieldListProps = {
   isSorting: boolean;
   isReadOnly: boolean;
   onSelectField: (field: Field) => void;
-  onChangeField: (field: Field, patch: FieldPatch) => void;
+  onChangeField: (field: Field, overrides: FieldOverrides) => void;
   onChangeSorting: (fields: Field[]) => void;
   onToggleSorting: (isSorting: boolean) => void;
 };
