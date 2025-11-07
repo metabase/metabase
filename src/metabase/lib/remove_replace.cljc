@@ -230,6 +230,9 @@
      (stage-paths query stage-number))))
 
 (defn- simplify-query [query]
+  ;; Note that this is a fairly narrowly-scoped change to fix #45041
+  ;; Merging more stages would be plausible, but this approach is enough to fix the current bug
+  ;; and I'm trying to minimize the chances of breaking anything else.
   (let [first-stage (lib.util/query-stage query 0)
         stage-keys (-> first-stage keys set)
         next-stage (when-not (lib.util/last-stage? query 0)
