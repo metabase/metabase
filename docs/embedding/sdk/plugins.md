@@ -24,6 +24,14 @@ To use a plugin on a per-component basis, pass the plugin as a prop to the compo
 {% include_file "{{ dirname }}/snippets/plugins/component-plugins.tsx" snippet="example" %}
 ```
 
+## `handleLink`
+
+You can use the global plugin `handleLink` to customize what happens when people click a link in your embedded questions and dashboards:
+
+```typescript
+{% include_file "{{ dirname }}/snippets/plugins/handlelink.tsx" snippet="example" %}
+```
+
 ## Further reading
 
 - [Interactive question plugins](./questions.md#interactive-question-plugins)
