@@ -193,9 +193,18 @@
 (defn- is-checkpoint-incremental? [source]
   (= :checkpoint (some-> source :source-incremental-strategy :type keyword)))
 
-(defn- source->checkpoint-filter-unique-key
-  [query source-incremental-strategy]
+(defn- source->checkpoint-filter-unique-key [query source-incremental-strategy]
   (some->> source-incremental-strategy :checkpoint-filter-unique-key (lib/column-with-unique-key query)))
+
+(defn- source->checkpoint-filter-column
+  [query source-incremental-strategy table metadata-provider]
+  (or
+   (source->checkpoint-filter-unique-key query source-incremental-strategy)
+   (when-let [field-name (-> source-incremental-strategy :checkpoint-filter)]
+     (when-let [field-id (t2/select-one-pk :model/Field
+                                           :table_id (:id table)
+                                           :name field-name)]
+       (lib.metadata/field metadata-provider field-id)))))
 
 (defn- next-watermark-value
   [transform-id]
@@ -206,8 +215,9 @@
         (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
               table-metadata (lib.metadata/table metadata-provider (:id table))
               mbql-query (-> (lib/query metadata-provider table-metadata)
-                             (as-> query
-                                   (lib/aggregate query (lib/max (source->checkpoint-filter-unique-key query (:source-incremental-strategy source))))))]
+                             (lib/aggregate (lib/max (source->checkpoint-filter-column (:query source)
+                                                                                       (:source-incremental-strategy source)
+                                                                                       table metadata-provider))))]
           (some-> mbql-query qp/process-query :data :rows first first bigint))))))
 
 (defn preprocess-incremental-query
@@ -224,12 +234,7 @@
   [query source-incremental-strategy transform-id]
   (let [watermark-value (next-watermark-value transform-id)]
     (if (lib.query/native? query)
-      (cond-> query
-        watermark-value
-        (update :parameters conj
-                {:type :number
-                 :target [:variable [:template-tag "watermark"]]
-                 :value watermark-value}))
+      (update-in query [:stages 0 :native] (fn [sql] (format "SELECT * FROM (%s) WHERE %s > %s" sql (-> source-incremental-strategy :checkpoint-filter) watermark-value)))
       (cond-> query
         watermark-value
         (lib/filter (lib/> (source->checkpoint-filter-unique-key query source-incremental-strategy) watermark-value))))))

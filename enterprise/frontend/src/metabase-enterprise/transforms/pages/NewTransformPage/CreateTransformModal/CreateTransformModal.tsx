@@ -355,28 +355,27 @@ function getCreateRequest(
   }: NewTransformValues,
   databaseId: number,
 ): CreateTransformRequest {
-  // For native queries, use checkpoint-filter (plain string)
-  // For MBQL/Python queries, use checkpoint-filter-unique-key (prefixed format)
-  let isNativeQuery = false;
-  if (source.type === "query") {
-    const { isNative } = Lib.queryDisplayInfo(source.query);
-    isNativeQuery = isNative;
-  }
-
-  const checkpointStrategy = isNativeQuery
-    ? { "checkpoint-filter": checkpointFilter! }
-    : { "checkpoint-filter-unique-key": checkpointFilterUniqueKey! };
-
   // Build the source with incremental strategy if enabled
-  const transformSource: TransformSource = incremental
-    ? {
-        ...source,
-        "source-incremental-strategy": {
-          type: sourceStrategy,
-          ...checkpointStrategy,
-        },
-      }
-    : source;
+  let transformSource: TransformSource;
+  if (incremental) {
+    // For native queries, use checkpoint-filter (plain string)
+    // For MBQL/Python queries, use checkpoint-filter-unique-key (prefixed format)
+    const strategyFields = checkpointFilter
+      ? { "checkpoint-filter": checkpointFilter }
+      : checkpointFilterUniqueKey
+      ? { "checkpoint-filter-unique-key": checkpointFilterUniqueKey }
+      : {};
+
+    transformSource = {
+      ...source,
+      "source-incremental-strategy": {
+        type: sourceStrategy,
+        ...strategyFields,
+      },
+    };
+  } else {
+    transformSource = source;
+  }
 
   // Build the target with incremental strategy if enabled
   const transformTarget: CreateTransformRequest["target"] = incremental
