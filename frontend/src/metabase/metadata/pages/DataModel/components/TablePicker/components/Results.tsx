@@ -201,7 +201,8 @@ const ResultsItem = ({
   onItemToggle,
   ref,
 }: ResultsItemProps) => {
-  const { selectedItemsCount } = useSelection();
+  const { selectedItemsCount, hasOnlyOneTableSelected, selectedTables } =
+    useSelection();
 
   const {
     value,
@@ -213,41 +214,80 @@ const ResultsItem = ({
     level,
     parent,
     disabled,
+    children,
   } = item;
 
-  const isTableActive =
+  // Database is active when:
+  // 1. We're at /database/X (no schema in URL), OR
+  // 2. We're at /database/X/schema/Y AND the database has only one schema (auto-selected)
+  const isDatabaseActive =
     selectedItemsCount === 0 &&
-    type === "table" &&
-    value?.tableId === path.tableId &&
+    type === "database" &&
+    value?.databaseId === path.databaseId &&
+    path.tableId == null &&
+    path.fieldId == null &&
+    (path.schemaName == null || children.length === 1);
+  const isSchemaActive =
+    selectedItemsCount === 0 &&
+    type === "schema" &&
+    value?.databaseId === path.databaseId &&
+    value?.schemaName === path.schemaName &&
+    path.tableId == null &&
     path.fieldId == null;
+  const isTableActive =
+    (selectedItemsCount === 0 &&
+      type === "table" &&
+      value?.tableId === path.tableId &&
+      path.fieldId == null) ||
+    (hasOnlyOneTableSelected &&
+      type === "table" &&
+      value?.tableId != null &&
+      selectedTables.has(value.tableId));
   const isFieldActive =
     selectedItemsCount === 0 &&
     type === "field" &&
     value?.tableId === path.tableId &&
     value?.fieldId === path.fieldId;
-  const isActive = isTableActive || isFieldActive;
+  const isActive =
+    isDatabaseActive || isSchemaActive || isTableActive || isFieldActive;
 
   const parentIndex = items.findIndex((item) => item.key === parent);
   const indent = level * INDENT_OFFSET;
   const hasToggle = hasChildren(type);
 
-  const handleItemSelect = (open?: boolean) => {
+  const handleItemSelect = (open?: boolean, event?: React.MouseEvent) => {
     if (disabled) {
       return;
     }
 
-    const isExpanding = hasChildren(type) && !isExpanded && open !== false;
+    // If the item is already active, toggle its expansion state
+    // Otherwise, navigate to make it active
+    if (isActive && hasChildren(type)) {
+      // Second click on active item: toggle expansion
+      if (open !== undefined) {
+        toggle?.(key, open);
+      } else {
+        toggle?.(key);
+      }
 
-    toggle?.(key, open);
+      // Prevent Link navigation when toggling
+      if (event) {
+        event.preventDefault();
+      }
+    } else {
+      // First click or clicking on a field: navigate
+      if (open !== undefined) {
+        toggle?.(key, open);
+      }
 
-    // Don't navigate when items are checked (multi-select mode)
-    if (
-      selectedItemsCount === 0 &&
-      value &&
-      (!isExpanded || type === "field") &&
-      !isExpanding
-    ) {
-      onItemClick?.(value);
+      // Don't navigate when items are checked (multi-select mode)
+      if (selectedItemsCount === 0 && value) {
+        // Expand collapsed items when navigating to them
+        if (!isExpanded && hasChildren(type)) {
+          toggle?.(key, true);
+        }
+        onItemClick?.(value);
+      }
     }
   };
 
@@ -337,8 +377,8 @@ const ResultsItem = ({
       data-testid="tree-item"
       data-type={type}
       onKeyDown={handleKeyDown}
-      onClick={() => {
-        handleItemSelect();
+      onClick={(e) => {
+        handleItemSelect(undefined, e);
       }}
       onFocus={() => onSelectedIndexChange?.(index)}
     >
