@@ -291,4 +291,34 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
     cy.wait(500);
     cy.get("@datasetQuery.all").should("have.length", 1);
   });
+
+  idTypes.forEach(({ idType, dashboardIdAlias }) => {
+    it(`should be able to download dashcard results using ${idType}`, () => {
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query/xlsx").as(
+        "dashcardDownload",
+      );
+
+      cy.get(dashboardIdAlias).then((dashboardId) => {
+        mountSdkContent(
+          <InteractiveDashboard dashboardId={dashboardId} withDownloads />,
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+
+        // Open dashcard menu
+        H.getDashboardCard().realHover();
+        H.getEmbeddedDashboardCardMenu().click();
+
+        H.popover().findByText("Download results").click();
+        H.popover().findByText(".xlsx").click();
+        H.popover().findByText("Download").click();
+      });
+
+      cy.wait("@dashcardDownload").then((interception) => {
+        expect(interception.response?.statusCode).to.equal(200);
+      });
+    });
+  });
 });
