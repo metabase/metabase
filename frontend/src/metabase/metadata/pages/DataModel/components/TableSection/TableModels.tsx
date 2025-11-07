@@ -45,7 +45,7 @@ export function TableModels({ table }: Props) {
   }
 
   return (
-    <Box px="xl">
+    <Box px="lg">
       <TableSectionGroup title={t`This table has been published as a model`}>
         <Stack gap={8}>
           {models.map((model) => {
