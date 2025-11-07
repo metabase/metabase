@@ -16,7 +16,7 @@ import { getInitialUiState } from "metabase/querying/editor/components/QueryEdit
 import { getMetadata } from "metabase/selectors/metadata";
 import { Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { Card, DatasetColumn } from "metabase-types/api";
+import type { Card, Field } from "metabase-types/api";
 
 import { ModelQueryEditor } from "../../components/ModelQueryEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
@@ -41,9 +41,7 @@ function NewModelPage({
     Lib.toJsQuery(initialQuery),
   );
   const [uiState, setUiState] = useState(getInitialUiState);
-  const [resultMetadata, setResultMetadata] = useState<DatasetColumn[] | null>(
-    null,
-  );
+  const [resultMetadata, setResultMetadata] = useState<Field[] | null>(null);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const metadata = useSelector(getMetadata);

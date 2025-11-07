@@ -4,7 +4,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
 import { Center, Flex, Modal } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type { DatasetColumn } from "metabase-types/api";
+import type { Field } from "metabase-types/api";
 
 import { useQueryEditor } from "../../hooks/use-query-editor";
 import type { QueryEditorUiOptions, QueryEditorUiState } from "../../types";
@@ -24,7 +24,7 @@ type QueryEditorProps = {
   proposedQuery?: Lib.Query;
   onChangeQuery: (newQuery: Lib.Query) => void;
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
-  onChangeResultMetadata?: (newResultMetadata: DatasetColumn[] | null) => void;
+  onChangeResultMetadata?: (newResultMetadata: Field[] | null) => void;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
 };

@@ -4,7 +4,7 @@ import { useLazyGetAdhocQueryQuery } from "metabase/api";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { Dataset, DatasetColumn, DatasetQuery } from "metabase-types/api";
+import type { Dataset, DatasetQuery, Field } from "metabase-types/api";
 
 import type { QueryEditorUiState } from "../../types";
 
@@ -13,7 +13,7 @@ export function useQueryResults(
   uiState: QueryEditorUiState,
   onChangeQuestion: (newQuestion: Question) => void,
   onChangeUiState: (newUiState: QueryEditorUiState) => void,
-  onChangeResultMetadata?: (newResultMetadata: DatasetColumn[] | null) => void,
+  onChangeResultMetadata?: (newResultMetadata: Field[] | null) => void,
 ) {
   const { lastRunQuery } = uiState;
   const [runAdhocQuery, { data = null, isFetching: isRunning = false }] =

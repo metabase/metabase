@@ -1,7 +1,7 @@
-import type { DatasetColumn } from "metabase-types/api";
+import type { Field } from "metabase-types/api";
 
 export type NewMetricValues = {
   name: string;
   description: string | null;
-  resultMetadata: DatasetColumn[] | null;
+  resultMetadata: Field[] | null;
 };

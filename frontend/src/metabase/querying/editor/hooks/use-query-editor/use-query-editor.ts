@@ -1,5 +1,5 @@
 import * as Lib from "metabase-lib";
-import type { DatasetColumn } from "metabase-types/api";
+import type { Field } from "metabase-types/api";
 
 import type { QueryEditorUiOptions, QueryEditorUiState } from "../../types";
 import { useQueryControls } from "../use-query-controls";
@@ -14,7 +14,7 @@ type UseQueryEditorProps = {
   proposedQuery?: Lib.Query;
   onChangeQuery: (newQuery: Lib.Query) => void;
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
-  onChangeResultMetadata?: (newResultMetadata: DatasetColumn[] | null) => void;
+  onChangeResultMetadata?: (newResultMetadata: Field[] | null) => void;
 };
 
 export function useQueryEditor({
