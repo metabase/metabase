@@ -75,6 +75,59 @@ describe("scenarios > metabot > transforms codegen", () => {
 
   describe("Native SQL transform tests", () => {
     describe("create new transform", () => {
+      it("should create SQL transform with model reference via metabot and run successfully", () => {
+        // Create a model first
+        H.getTableId({ name: SOURCE_TABLE, databaseId: WRITABLE_DB_ID }).then(
+          (tableId) => {
+            H.createQuestion({
+              name: "Test Model",
+              type: "model",
+              query: {
+                "source-table": tableId,
+                limit: 5,
+              },
+            }).then(({ body: model }) => {
+              visitTransformListPage();
+              H.openMetabotViaSearchButton(true);
+
+              cy.log(
+                "Ask metabot for a new transform that references the model",
+              );
+              const modelTagName = `#${model.id}-test-model`;
+              const queryWithModelRef = `SELECT * FROM {{${modelTagName}}}`;
+
+              H.mockMetabotResponse({
+                body: createMockTransformSuggestionResponse(
+                  "I'll create a transform that queries your model.",
+                  createMockNativeTransformJSON(
+                    null,
+                    WRITABLE_DB_ID,
+                    queryWithModelRef,
+                  ),
+                ),
+              });
+              H.sendMetabotMessage(
+                "Create a transform that queries the Test Model",
+              );
+              assertSuggestionInSidebar({ newSourcePartial: "SELECT * FROM" });
+
+              cy.log("Should be able to visit the new transform");
+              viewLastSuggestion();
+              cy.url().should("include", "/admin/transforms/new/native");
+              assertEditorContent("native", "SELECT * FROM");
+
+              cy.log(
+                "Should be able to run the transform successfully (verifies template tags were parsed)",
+              );
+              cy.findByTestId("native-query-editor-container")
+                .icon("play")
+                .click();
+              cy.findByTestId("query-visualization-root").should("be.visible");
+            });
+          },
+        );
+      });
+
       it("should create SQL transform via metabot", () => {
         visitTransformListPage();
         H.openMetabotViaSearchButton(true);
