@@ -210,7 +210,16 @@
   [driver {:keys [details]}]
   (assoc details :role (impersonation-default-user driver)))
 
-(doseq [driver [:postgres :snowflake]]
+(defmethod impersonation-details :snowflake
+  [driver {:keys [details]}]
+  (let [priv-key (tx/db-test-env-var-or-throw driver :private-key)]
+    (-> details
+        (dissoc :private-key-id)
+        (assoc :private-key-options "uploaded")
+        (assoc :private-key-value (mt/priv-key->base64-uri priv-key))
+        (assoc :use-password false))))
+
+(doseq [driver [:postgres]]
   (defmethod impersonation-details driver
     [_driver {:keys [details]}]
     details))
@@ -778,7 +787,7 @@
               (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                 (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
               (sync/sync-database! database {:scan :schema})
-              ;; this creates impersonations for the rasta user by default, and does `(request/with-test-user :rasta ...)`
+                              ;; this creates impersonations for the rasta user by default, and does `(request/with-test-user :rasta ...)`
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                              :attributes     {"impersonation_attr" role-a}}
                 (mt/with-premium-features #{}
