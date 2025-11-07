@@ -55,7 +55,7 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   "text-tertiary": ["text-light", "text-tertiary"],
   background: ["bg-white", "bg-primary", "background"],
   "background-hover": ["bg-light", "background-hover"],
-  "background-secondary": ["bg-medium", "bg-secondary"],
+  "background-secondary": ["bg-secondary", "bg-medium"],
   "background-disabled": ["background-disabled"],
   "background-light": ["background-light"],
   shadow: ["shadow"],

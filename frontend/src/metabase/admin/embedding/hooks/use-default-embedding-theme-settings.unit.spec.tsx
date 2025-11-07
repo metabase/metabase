@@ -27,10 +27,10 @@ describe("useDefaultEmbeddingThemeSettings", () => {
       expectedColors["text-secondary"],
     );
 
-    // The SDK maps background-secondary as [bg-medium, bg-secondary]
-    // It should use the first defined value which is "bg-medium"
+    // The SDK maps background-secondary as [bg-secondary, bg-medium]
+    // It should use the first defined value which is "bg-secondary"
     expect(theme?.colors?.["background-secondary"]).toBe(
-      expectedColors["bg-medium"],
+      expectedColors["bg-secondary"],
     );
   });
 
