@@ -1,11 +1,11 @@
 import { useDebouncedValue } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
-import { useLocalStorage } from "react-use";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
+import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Button, Flex, Icon } from "metabase/ui";
@@ -15,11 +15,7 @@ import { ListEmptyState } from "../ListEmptyState";
 import { SidebarContainer } from "../SidebarContainer";
 import { SidebarLoadingState } from "../SidebarLoadingState";
 import { SidebarSearch } from "../SidebarSearch";
-import {
-  JOB_SORT_OPTIONS,
-  SidebarSortControl,
-  type SortOption,
-} from "../SidebarSortControl";
+import { JOB_SORT_OPTIONS, SidebarSortControl } from "../SidebarSortControl";
 import { TransformsInnerNav } from "../TransformsInnerNav";
 import { SidebarList } from "../TransformsSidebarLayout/SidebarList";
 import { SidebarListItem } from "../TransformsSidebarLayout/SidebarListItem/SidebarListItem";
@@ -36,9 +32,11 @@ export const JobsSidebar = ({ selectedJobId }: JobsSidebarProps) => {
   const systemTimezone = useSetting("system-timezone");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebouncedValue(searchQuery, 300);
-  // TODO use useUserKeyValue
-  const [sortType = DEFAULT_SORT_TYPE, setSortType] =
-    useLocalStorage<SortOption>("metabase-jobs-display", DEFAULT_SORT_TYPE);
+  const { value: sortType, setValue: setSortType } = useUserKeyValue({
+    namespace: "transforms",
+    key: "jobs-sort-type",
+    defaultValue: DEFAULT_SORT_TYPE,
+  });
 
   const { data: jobs, error, isLoading } = useListTransformJobsQuery({});
 

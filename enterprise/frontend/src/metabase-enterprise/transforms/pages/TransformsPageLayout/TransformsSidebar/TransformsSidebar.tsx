@@ -1,13 +1,13 @@
 import { useDebouncedValue } from "@mantine/hooks";
 import { useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
-import { useLocalStorage } from "react-use";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedTree } from "metabase/common/components/tree/VirtualizedTree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
@@ -23,7 +23,6 @@ import { SidebarLoadingState } from "../SidebarLoadingState";
 import { SidebarSearch } from "../SidebarSearch";
 import {
   SidebarSortControl,
-  type SortOption,
   TRANSFORM_SORT_OPTIONS,
 } from "../SidebarSortControl";
 import { TransformsInnerNav } from "../TransformsInnerNav";
@@ -48,12 +47,11 @@ export const TransformsSidebar = ({
   const isAdmin = useSelector(getUserIsAdmin);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebouncedValue(searchQuery, 300);
-  // TODO use useUserKeyValue
-  const [sortType = DEFAULT_SORT_TYPE, setSortType] =
-    useLocalStorage<SortOption>(
-      "metabase-transforms-display",
-      DEFAULT_SORT_TYPE,
-    );
+  const { value: sortType, setValue: setSortType } = useUserKeyValue({
+    namespace: "transforms",
+    key: "transforms-sort-type",
+    defaultValue: DEFAULT_SORT_TYPE,
+  });
 
   const { data: transforms, error, isLoading } = useListTransformsQuery({});
   const { data: databaseData } = useListDatabasesQuery();
