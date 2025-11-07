@@ -7,6 +7,7 @@ import type {
   CollectionAuthorityLevelConfig,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  CollectionType,
 } from "metabase-types/api";
 
 import {
@@ -55,7 +56,7 @@ export function isSyncedCollection(
 
 export const getIcon = (item: ObjectWithModel): IconData => {
   const collectionType = getCollectionType({
-    type: item.type || item.collection_type,
+    type: (item.type as CollectionType) || item.collection_type,
   }).type;
   if (collectionType === "instance-analytics") {
     return {
