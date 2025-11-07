@@ -18,6 +18,7 @@ import {
   generateDraftCardId,
   loadMetadataForDocumentCard,
 } from "metabase-enterprise/documents/documents.slice";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { Card, DatabaseId, Dataset, RawSeries } from "metabase-types/api";
@@ -164,6 +165,10 @@ export const NativeQueryModal = ({
     }
     return baseQuestion;
   }, [card, metadata, isOpen, modifiedQuestion]);
+
+  const canSave =
+    modifiedQuestion &&
+    Lib.canSave(modifiedQuestion.query(), modifiedQuestion.type());
 
   useEffect(() => {
     if (isOpen) {
@@ -477,7 +482,7 @@ export const NativeQueryModal = ({
           <Button
             variant="filled"
             onClick={handleSave}
-            disabled={!modifiedQuestion}
+            disabled={!canSave || !modifiedQuestion}
           >
             {t`Save and use`}
           </Button>

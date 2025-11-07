@@ -58,9 +58,9 @@ import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 import CS from "../extensions.module.css";
 
 import styles from "./CardEmbedNode.module.css";
-import { ModifyQuestionModal } from "./ModifyQuestionModal";
-import { NativeQueryModal } from "./NativeQueryModal";
 import { PublicDocumentCardMenu } from "./PublicDocumentCardMenu";
+import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
+import { NativeQueryModal } from "./modals/NativeQueryModal";
 import { useDndHelpers } from "./use-dnd-helpers";
 import { useUpdateCardOperations } from "./use-update-card-operations";
 import { getEmbedIndex } from "./utils";

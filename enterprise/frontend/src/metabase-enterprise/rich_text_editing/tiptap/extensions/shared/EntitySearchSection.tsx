@@ -9,7 +9,6 @@ import {
   MenuItemComponent,
   SearchResultsFooter,
 } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
-import { CreateQuestionModal } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/CreateQuestionModal";
 import type { SearchResult } from "metabase-types/api";
 
 interface EntitySearchSectionProps {
@@ -24,9 +23,9 @@ interface EntitySearchSectionProps {
   onModalClose: () => void;
   onItemHover: (index: number) => void;
   canBrowseAll?: boolean;
+  canCreateNewQuestion?: boolean;
   selectedSearchModelName?: string;
   onTriggerCreateNew: () => void;
-  onSaveNewQuestion: (id: number, name: string) => void;
 }
 
 export function EntitySearchSection({
@@ -42,8 +41,8 @@ export function EntitySearchSection({
   onItemHover,
   selectedSearchModelName,
   canBrowseAll,
+  canCreateNewQuestion,
   onTriggerCreateNew,
-  onSaveNewQuestion,
 }: EntitySearchSectionProps) {
   return (
     <>
@@ -64,7 +63,6 @@ export function EntitySearchSection({
         />
       ))}
 
-      <Divider my="sm" mx="sm" />
       {query.length > 0 &&
       menuItems.length === 0 &&
       searchResults.length === 0 ? (
@@ -72,15 +70,14 @@ export function EntitySearchSection({
           <Text size="md" c="text-medium">{t`No results found`}</Text>
         </Box>
       ) : null}
-      <CreateNewQuestionFooter
-        isSelected={selectedIndex === menuItems.length}
-        onClick={onTriggerCreateNew}
-        onMouseEnter={() => onItemHover(menuItems.length)}
-      />
-      {modal === "new-question-type" && (
-        <CreateQuestionModal
-          onSave={onSaveNewQuestion}
-          onClose={onModalClose}
+
+      {(canCreateNewQuestion || canBrowseAll) && <Divider my="sm" mx="sm" />}
+
+      {canCreateNewQuestion && (
+        <CreateNewQuestionFooter
+          isSelected={selectedIndex === menuItems.length}
+          onClick={onTriggerCreateNew}
+          onMouseEnter={() => onItemHover(menuItems.length)}
         />
       )}
 

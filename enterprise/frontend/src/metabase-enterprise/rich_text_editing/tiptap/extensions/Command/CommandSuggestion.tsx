@@ -12,13 +12,11 @@ import {
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_METABOT } from "metabase/plugins";
 import {
   Box,
   Divider,
   Group,
   Icon,
-  type IconName,
   Stack,
   Text,
   UnstyledButton,
@@ -33,6 +31,12 @@ import {
   SuggestionPaper,
 } from "metabase-enterprise/documents/components/Editor/shared/SuggestionPaper";
 import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
+import { NewQuestionTypeMenuView } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/NewQuestionTypeMenuView";
+import type {
+  CommandOption,
+  CommandSection,
+} from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/types";
+import { getAllCommandSections } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/utils";
 import type { SearchResult } from "metabase-types/api";
 
 import { EntitySearchSection } from "../shared/EntitySearchSection";
@@ -52,18 +56,6 @@ export interface CommandSuggestionProps {
 
 interface SuggestionRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
-}
-
-interface CommandOption {
-  icon?: IconName;
-  text?: string;
-  label: string;
-  command: string;
-}
-
-interface CommandSection {
-  title?: string;
-  items: CommandOption[];
 }
 
 const CommandMenuItem = forwardRef<
@@ -110,76 +102,17 @@ export const CommandSuggestion = forwardRef<
 >(function CommandSuggestionComponent({ command, editor, query }, ref) {
   const document = useSelector(getCurrentDocument);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [showLinkSearch, setShowLinkSearch] = useState(false);
-  const [showEmbedSearch, setShowEmbedSearch] = useState(false);
+
+  const [viewMode, setViewMode] = useState<
+    "linkTo" | "embedQuestion" | "newQuestionType" | null
+  >(null);
+
+  // const [showLinkSearch, setShowLinkSearch] = useState(false);
+  // const [showEmbedSearch, setShowEmbedSearch] = useState(false);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const allCommandSections: CommandSection[] = useMemo(
-    () => [
-      {
-        items: [
-          ...(PLUGIN_METABOT.isEnabled()
-            ? ([
-                {
-                  icon: "metabot",
-                  label: t`Ask Metabot`,
-                  command: "metabot",
-                },
-              ] as const)
-            : []),
-          {
-            icon: "lineandbar",
-            label: t`Chart`,
-            command: "embedQuestion",
-          },
-          {
-            icon: "link",
-            label: t`Link`,
-            command: "linkTo",
-          },
-        ],
-      },
-      {
-        title: t`Formatting`,
-        items: [
-          {
-            text: "H1",
-            label: t`Heading 1`,
-            command: "heading1",
-          },
-          {
-            text: "H2",
-            label: t`Heading 2`,
-            command: "heading2",
-          },
-          {
-            text: "H3",
-            label: t`Heading 3`,
-            command: "heading3",
-          },
-          {
-            icon: "list",
-            label: t`Bullet list`,
-            command: "bulletList",
-          },
-          {
-            icon: "ordered_list",
-            label: t`Numbered list`,
-            command: "orderedList",
-          },
-          {
-            icon: "quote",
-            label: t`Quote`,
-            command: "blockquote",
-          },
-          {
-            icon: "code_block",
-            label: t`Code block`,
-            command: "codeBlock",
-          },
-        ],
-      },
-    ],
+    getAllCommandSections,
     [],
   );
 
@@ -190,7 +123,7 @@ export const CommandSuggestion = forwardRef<
 
   // Filter command options based on query when not in link search mode
   const commandOptions = useMemo(() => {
-    if (showLinkSearch || showEmbedSearch) {
+    if (viewMode === "linkTo" || viewMode === "embedQuestion") {
       return allCommandOptions;
     }
 
@@ -202,11 +135,13 @@ export const CommandSuggestion = forwardRef<
     return allCommandOptions.filter((option) =>
       option.label.toLowerCase().includes(lowerQuery),
     );
-  }, [allCommandOptions, query, showLinkSearch, showEmbedSearch]);
+  }, [viewMode, query, allCommandOptions]);
+
+  const canCreateNewQuestion = viewMode === "embedQuestion";
 
   const onSelectLinkEntity = useCallback(
     (item: { id: number | string; model: string }) => {
-      if (showLinkSearch) {
+      if (viewMode === "linkTo") {
         command({
           selectItem: true,
           entityId: item.id,
@@ -222,8 +157,12 @@ export const CommandSuggestion = forwardRef<
         });
       }
     },
-    [command, showLinkSearch, document],
+    [viewMode, command, document],
   );
+
+  const onTriggerCreateNewQuestion = useCallback(() => {
+    setViewMode("newQuestionType");
+  }, []);
 
   // Use shared entity suggestions for link/embed mode and browse all functionality
   const entitySuggestions = useEntitySuggestions({
@@ -231,9 +170,12 @@ export const CommandSuggestion = forwardRef<
     editor,
     onSelectEntity: onSelectLinkEntity,
     enabled: true,
-    searchModels: showLinkSearch ? LINK_SEARCH_MODELS : EMBED_SEARCH_MODELS,
+    searchModels:
+      viewMode === "linkTo" ? LINK_SEARCH_MODELS : EMBED_SEARCH_MODELS,
     canFilterSearchModels: false,
     canBrowseAll: true,
+    canCreateNewQuestion,
+    onTriggerCreateNewQuestion,
   });
 
   const {
@@ -251,7 +193,7 @@ export const CommandSuggestion = forwardRef<
         clearQuery: true,
         switchToLinkMode: true,
       });
-      setShowLinkSearch(true);
+      setViewMode("linkTo");
       return;
     }
 
@@ -264,7 +206,7 @@ export const CommandSuggestion = forwardRef<
       if (searchMenuItems.length === 0) {
         entityHandlers.openModal();
       }
-      setShowEmbedSearch(true);
+      setViewMode("embedQuestion");
       return;
     }
 
@@ -282,7 +224,7 @@ export const CommandSuggestion = forwardRef<
   };
 
   const currentItems = useMemo(() => {
-    if (showLinkSearch || showEmbedSearch) {
+    if (viewMode === "linkTo" || viewMode === "embedQuestion") {
       return searchMenuItems;
     }
 
@@ -293,17 +235,18 @@ export const CommandSuggestion = forwardRef<
     }
 
     return commandOptions;
-  }, [showLinkSearch, showEmbedSearch, query, searchMenuItems, commandOptions]);
+  }, [viewMode, query, searchMenuItems, commandOptions]);
+
   let totalItems = currentItems.length;
 
-  if (showLinkSearch || showEmbedSearch) {
+  if (viewMode === "linkTo" || viewMode === "embedQuestion") {
     totalItems = searchMenuItems.length + 2;
   } else if (currentItems.length === 0 && query) {
     totalItems = 2; // "Browse all" footer and "New chart"
   }
 
   const selectItem = (index: number) => {
-    if (showLinkSearch || showEmbedSearch) {
+    if (viewMode === "linkTo" || viewMode === "embedQuestion") {
       entityHandlers.selectItem(index);
     } else {
       // When searching in command mode, handle both entity results and commands
@@ -319,7 +262,7 @@ export const CommandSuggestion = forwardRef<
       } else if (currentItems.length === 0 && query && index === 0) {
         // Handle browse all when no results
         // Switch to embed mode so selected questions get embedded
-        setShowEmbedSearch(true);
+        setViewMode("embedQuestion");
         entityHandlers.openModal();
       } else {
         if (index < commandOptions.length) {
@@ -343,12 +286,7 @@ export const CommandSuggestion = forwardRef<
 
   useEffect(() => {
     setSelectedIndex(0);
-  }, [
-    currentItems.length,
-    showLinkSearch,
-    showEmbedSearch,
-    searchMenuItems.length,
-  ]);
+  }, [currentItems.length, viewMode, searchMenuItems.length]);
 
   useEffect(() => {
     const selectedItem = itemRefs.current[selectedIndex];
@@ -359,7 +297,7 @@ export const CommandSuggestion = forwardRef<
 
   useImperativeHandle(ref, () => ({
     onKeyDown: ({ event }: { event: KeyboardEvent }) => {
-      if (showLinkSearch || showEmbedSearch) {
+      if (viewMode === "linkTo" || viewMode === "embedQuestion") {
         return entityHandlers.onKeyDown({ event });
       }
 
@@ -382,13 +320,16 @@ export const CommandSuggestion = forwardRef<
     },
   }));
 
-  if ((showLinkSearch || showEmbedSearch) && isSearchLoading) {
+  if (
+    (viewMode === "linkTo" || viewMode === "embedQuestion") &&
+    isSearchLoading
+  ) {
     return <LoadingSuggestionPaper aria-label={t`Command Dialog`} />;
   }
 
   return (
     <SuggestionPaper aria-label={t`Command Dialog`}>
-      {showLinkSearch || showEmbedSearch ? (
+      {(viewMode === "linkTo" || viewMode === "embedQuestion") && (
         <EntitySearchSection
           menuItems={searchMenuItems}
           selectedIndex={entitySelectedIndex}
@@ -401,10 +342,21 @@ export const CommandSuggestion = forwardRef<
           onModalSelect={entityHandlers.handleModalSelect}
           onModalClose={entityHandlers.handleModalClose}
           canBrowseAll
-          onTriggerCreateNew={entityHandlers.onTriggerCreateQuestion}
-          onSaveNewQuestion={entityHandlers.onSaveNewQuestion}
+          canCreateNewQuestion={canCreateNewQuestion}
+          onTriggerCreateNew={onTriggerCreateNewQuestion}
         />
-      ) : (
+      )}
+
+      {viewMode === "newQuestionType" && (
+        <NewQuestionTypeMenuView
+          selectedIndex={selectedIndex}
+          setSelectedIndex={setSelectedIndex}
+          onSave={entityHandlers.onSaveNewQuestion}
+          onClose={() => setViewMode(null)}
+        />
+      )}
+
+      {!viewMode && (
         <>
           {commandOptions.length > 0 ||
           (query && searchMenuItems.length > 0) ? (
@@ -494,15 +446,15 @@ export const CommandSuggestion = forwardRef<
                     isSelected={selectedIndex === currentItems.length}
                     onClick={() => {
                       // Switch to embed mode so selected questions get embedded
-                      setShowEmbedSearch(true);
-                      entityHandlers.onTriggerCreateQuestion();
+                      setViewMode("embedQuestion");
+                      onTriggerCreateNewQuestion();
                     }}
                   />
                   <SearchResultsFooter
                     isSelected={selectedIndex === currentItems.length + 1}
                     onClick={() => {
                       // Switch to embed mode so selected questions get embedded
-                      setShowEmbedSearch(true);
+                      setViewMode("embedQuestion");
                       entityHandlers.openModal();
                     }}
                   />

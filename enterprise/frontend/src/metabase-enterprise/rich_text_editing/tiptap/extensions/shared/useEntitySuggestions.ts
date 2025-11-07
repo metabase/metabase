@@ -31,6 +31,8 @@ interface UseEntitySuggestionsOptions {
   searchModels?: SuggestionModel[];
   canFilterSearchModels: boolean;
   canBrowseAll: boolean;
+  canCreateNewQuestion?: boolean;
+  onTriggerCreateNewQuestion?: () => void;
 }
 
 interface UseEntitySuggestionsResult {
@@ -38,7 +40,7 @@ interface UseEntitySuggestionsResult {
   isLoading: boolean;
   searchResults: SearchResult[];
   selectedIndex: number;
-  modal: "question-picker" | "new-question-type" | null;
+  modal: "question-picker" | null;
   totalItems: number;
   selectedSearchModelName?: string;
   handlers: {
@@ -51,7 +53,7 @@ interface UseEntitySuggestionsResult {
     handleModalClose: () => void;
     openModal: () => void;
     hoverHandler: (index: number) => void;
-    onTriggerCreateQuestion: () => void;
+    onPickQuestionType: () => void;
     onSaveNewQuestion: (id: number, name: string) => void;
   };
 }
@@ -65,11 +67,11 @@ export function useEntitySuggestions({
   searchModels,
   canFilterSearchModels,
   canBrowseAll,
+  canCreateNewQuestion,
+  onTriggerCreateNewQuestion,
 }: UseEntitySuggestionsOptions): UseEntitySuggestionsResult {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [modal, setModal] = useState<
-    "question-picker" | "new-question-type" | null
-  >(null);
+  const [modal, setModal] = useState<"question-picker" | null>(null);
   const [selectedSearchModel, setSelectedSearchModel] =
     useState<SuggestionModel | null>(null);
 
@@ -185,20 +187,31 @@ export function useEntitySuggestions({
     return entityMenuItems;
   }, [isInModelSelectionMode, searchModelMenuItems, entityMenuItems]);
 
-  const totalItems = menuItems.length + Number(canBrowseAll) + 1; // Adding "New Chart" item
+  const totalItems =
+    menuItems.length + Number(canBrowseAll) + Number(canCreateNewQuestion);
 
   const selectItem = useCallback(
     (index: number) => {
       if (index < menuItems.length) {
         menuItems[index].action();
-      } else if (index === menuItems.length) {
-        setModal("new-question-type");
-      } else if (index === menuItems.length + 1) {
+        return;
+      }
+
+      if (index === menuItems.length) {
+        if (canCreateNewQuestion) {
+          onTriggerCreateNewQuestion?.();
+        } else {
+          setModal("question-picker");
+        }
+        return;
+      }
+
+      if (index === menuItems.length + 1) {
         // TODO: add proper index getters
         setModal("question-picker");
       }
     },
-    [menuItems],
+    [canCreateNewQuestion, menuItems, onTriggerCreateNewQuestion],
   );
 
   const upHandler = useCallback(() => {
@@ -265,10 +278,6 @@ export function useEntitySuggestions({
     setModal("question-picker");
   }, []);
 
-  const onTriggerCreateQuestion = useCallback(() => {
-    setModal("new-question-type");
-  }, []);
-
   const onSaveNewQuestion = (id: number, name: string, db_id: number) => {
     onSelectEntity({
       id: id,
@@ -306,7 +315,6 @@ export function useEntitySuggestions({
       handleModalClose,
       openModal,
       hoverHandler,
-      onTriggerCreateQuestion,
       onSaveNewQuestion,
     },
   };
