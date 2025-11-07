@@ -79,19 +79,7 @@ function DataModelContent({ children, location, params }: Props) {
   const metadataTableId = Array.from(selectedTables)[0] ?? queryTableId;
   // But keep the URL tableId for navigation/path to avoid auto-expansion when selecting/deselecting
   const navigationTableId = hasSelectedItems ? queryTableId : queryTableId;
-  const isEmptyStateShown1 =
-    (databaseId == null || metadataTableId == null || fieldId == null) &&
-    !hasSelectedItems;
 
-  const isEmptyStateShown =
-    metadataTableId == null && fieldId == null && !hasSelectedItems;
-  console.log({
-    isEmptyStateShown,
-    databaseId,
-    metadataTableId,
-    fieldId,
-    hasSelectedItems,
-  });
   const {
     data: table,
     error,
@@ -131,13 +119,14 @@ function DataModelContent({ children, location, params }: Props) {
     return <NoDatabasesEmptyState />;
   }
 
+  const isEmptyStateShown =
+    metadataTableId == null && fieldId == null && !hasSelectedItems;
   const showFieldPreview =
     !isEmptyStateShown && field && table && isPreviewOpen;
 
   const showBulkTableEdit =
     hasSelectedItems && !hasOnlyOneTableSelected && !showFieldPreview;
-  const showFieldDetails =
-    field && !showBulkTableEdit && !isEmptyStateShown && !showFieldPreview;
+  const showFieldDetails = field && !showBulkTableEdit && !isEmptyStateShown;
   const showTableDetailsSection =
     metadataTableId &&
     !hasSelectedMoreThanOneTable &&
