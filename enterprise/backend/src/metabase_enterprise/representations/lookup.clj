@@ -32,11 +32,18 @@
 (defn lookup-database-id
   "Looks up a database-id from some reference to a database (ref, id, or entity-id)."
   [ref-index database]
-  (if (integer? database)
-    database
-    (let [database (or (v0-common/lookup-entity ref-index database)
-                       (lookup-by-name :model/Database database)
-                       (lookup-by-entity-id :model/Database database))]
-      (-> (v0-common/ensure-correct-type database :database)
-          :id
-          (v0-common/ensure-not-nil)))))
+  (v0-common/ensure-not-nil
+   (cond
+     (integer? database)
+     database
+
+     (v0-common/ref? database)
+     (-> (v0-common/lookup-entity ref-index database)
+         (v0-common/ensure-correct-type :database)
+         :id)
+
+     (string? database)
+     (-> (or (lookup-by-name      :model/Database database)
+             (lookup-by-entity-id :model/Database database))
+         (v0-common/ensure-correct-type :database)
+         :id))))

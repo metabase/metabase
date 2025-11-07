@@ -44,6 +44,7 @@
    [metabase.lib.page]
    [metabase.lib.parameters]
    [metabase.lib.parse :as lib.parse]
+   [metabase.lib.portable :as lib.portable]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
@@ -418,6 +419,11 @@
   update-parameter-target-dimension-options]
  [lib.parse
   parse]
+ [lib.portable
+  export-walk
+  ExportVisitor
+  import-walk
+  ImportVisitor]
  [lib.query
   ->query
   can-preview
