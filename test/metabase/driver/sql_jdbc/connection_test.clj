@@ -415,6 +415,17 @@
                                                     :user "root"
                                                     :auth-provider :aws-iam
                                                     :ssl false
+                                                    :db "metabase"})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"sslMode must be VERIFY_CA in order to use AWS IAM authentication"
+           (sql-jdbc.conn/connection-details->spec :mysql
+                                                   {:host "localhost"
+                                                    :port 3306
+                                                    :user "root"
+                                                    :auth-provider :aws-iam
+                                                    :ssl true
+                                                    :additional-options "sslMode=require"
                                                     :db "metabase"}))))))
 
 (defmacro ^:private with-tunnel-details!
