@@ -48,17 +48,17 @@
    [:re RemoteCheckedToken]
    [:re AirgapToken]])
 
-(def token-check-url
+(def ^:private ^String token-check-url
   "Base URL to use for token checks. Hardcoded by default but for development purposes you can use a local server.
-  Specify the env var `METASTORE_DEV_SERVER_URL`."
-  (or
-   ;; only enable changing the token check url during dev because we don't want people switching it out in production!
-   ;; additionally, we want to be able to run e2e tests against a staging server.
-   (when (or config/is-dev? config/is-e2e?)
-     (some-> (env :metastore-dev-server-url)
-             ;; remove trailing slashes
-             (str/replace  #"/$" "")))
-   "https://token-check.metabase.com"))
+  Specify the env var `METASTORE_DEV_SERVER_URL`. If no server is defined, it uses the staging token check url."
+  (let [dev-server-url          (some-> (env :metastore-dev-server-url) (str/replace #"/$" ""))
+        prod-token-check-url    "https://token-check.metabase.com"
+        staging-token-check-url "https://token-check.staging.metabase.com"]
+    ;; only enable changing the token check url during dev because we don't want people switching it out in production!
+    ;; additionally, we want to be able to run e2e tests against a staging server.
+    (if config/is-prod?
+      prod-token-check-url
+      (or dev-server-url staging-token-check-url))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                TOKEN VALIDATION                                                |
