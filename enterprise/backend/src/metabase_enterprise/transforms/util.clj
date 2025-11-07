@@ -193,26 +193,22 @@
 (defn- is-keyset-incremental? [source]
   (= :keyset (some-> source :source-incremental-strategy :type keyword)))
 
-(defn- next-watermark-value
-  [transform-id]
-  (let [{:keys [source target] :as transform} (t2/select-one :model/Transform transform-id)
-        db-id (transforms.i/target-db-id transform)
-        watermark-field-name (-> source :source-incremental-strategy :keyset-column)]
-    (when (is-keyset-incremental? source)
-      (when-let [table (target-table db-id target)]
-        (when-let [field (t2/select-one :model/Field
-                                        :table_id (:id table)
-                                        :name watermark-field-name)]
-          (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
-                table-metadata (lib.metadata/table metadata-provider (:id table))
-                field-metadata (lib.metadata/field metadata-provider (:id field))
-                mbql-query (-> (lib/query metadata-provider table-metadata)
-                               (lib/aggregate (lib/max field-metadata)))]
-            (some-> mbql-query qp/process-query :data :rows first first bigint)))))))
-
 (defn- source->keyset-filter-unique-key
   [query source-incremental-strategy]
   (some->> source-incremental-strategy :keyset-filter-unique-key (lib/column-with-unique-key query)))
+
+(defn- next-watermark-value
+  [transform-id]
+  (let [{:keys [source target] :as transform} (t2/select-one :model/Transform transform-id)
+        db-id (transforms.i/target-db-id transform)]
+    (when (is-keyset-incremental? source)
+      (when-let [table (target-table db-id target)]
+        (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+              table-metadata (lib.metadata/table metadata-provider (:id table))
+              mbql-query (-> (lib/query metadata-provider table-metadata)
+                             (as-> query
+                                   (lib/aggregate query (lib/max (source->keyset-filter-unique-key query (:source-incremental-strategy source))))))]
+          (some-> mbql-query qp/process-query :data :rows first first bigint))))))
 
 (defn preprocess-incremental-query
   "Preprocess a query for incremental transform execution by adding watermark filtering.

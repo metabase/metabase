@@ -8,9 +8,7 @@
 (mr/def ::keyset-strategy
   [:map
    [:type [:= "keyset"]]
-   [:keyset-column :string]
-   ;; required for mbql and python transforms
-   [:keyset-filter-unique-key {:optional true} ::lib.metadata.column/column-unique-key]])
+   [:keyset-filter-unique-key ::lib.metadata.column/column-unique-key]])
 
 (mr/def ::source-incremental-strategy
   [:multi {:dispatch :type}
