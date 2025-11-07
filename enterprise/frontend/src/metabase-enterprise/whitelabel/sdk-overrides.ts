@@ -6,6 +6,11 @@ import type { State } from "metabase-types/store";
 // Flag to ensure initialization happens only once
 let isInitialized = false;
 
+// For testing purposes - allows resetting initialization state
+export const resetInitialization = () => {
+  isInitialized = false;
+};
+
 /**
  * Initialize SDK plugins by overriding core plugin selectors to be SDK-aware.
  * This allows the SDK to provide custom implementations while maintaining
