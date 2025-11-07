@@ -9,11 +9,10 @@ import {
 } from "metabase/collections/utils";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useHasDashboardQuestionCandidates } from "metabase/common/components/MoveQuestionsIntoDashboardsModal/hooks";
-import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
 import { UserHasSeenAll } from "metabase/common/components/UserHasSeen/UserHasSeenAll";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { ActionIcon, Badge, Icon, Indicator, Menu, Tooltip } from "metabase/ui";
+import { ActionIcon, Icon, Indicator, Menu, Tooltip } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
 export interface CollectionMenuProps {
@@ -96,17 +95,11 @@ export const CollectionMenu = ({
 
   if (hasDqCandidates) {
     cleanupItems.push(
-      <UserHasSeen key="move-to-dashboard" id="move-to-dashboard">
-        {({ hasSeen, ack }) => (
-          <Menu.Item
-            leftSection={<Icon name="add_to_dash" />}
-            component={ForwardRefLink}
-            to={`${url}/move-questions-dashboard`}
-            onClick={ack}
-            rightSection={!hasSeen ? <Badge>{t`New`}</Badge> : null}
-          >{t`Move questions into their dashboards`}</Menu.Item>
-        )}
-      </UserHasSeen>,
+      <Menu.Item
+        leftSection={<Icon name="add_to_dash" />}
+        component={ForwardRefLink}
+        to={`${url}/move-questions-dashboard`}
+      >{t`Move questions into their dashboards`}</Menu.Item>,
     );
   }
 

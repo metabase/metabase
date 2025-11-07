@@ -185,7 +185,11 @@
             (testing "POST /api/ee/serialization/export"
               (mt/with-temp [:model/Collection coll  {}
                              :model/Dashboard  dash  {:collection_id (:id coll), :name "thraddash"}
-                             :model/Card       card  {:collection_id (:id coll), :name "frobinate", :type :model}]
+                             :model/Card       card  {:collection_id (:id coll), :name "frobinate", :type :model
+                                                      :query_type    :native
+                                                      :dataset_query {:type     :native
+                                                                      :database (t2/select-one-pk :model/Database)
+                                                                      :native   {:query "SELECT 1"}}}]
 
                 (testing "We clear the card from the search index"
                   (is (= 1 (search-result-count "dashboard" "thraddash")))
@@ -235,9 +239,11 @@
                     (t2/update! :model/Dashboard {:id (:id dash)} {:name "urquan"})
                     (t2/delete! :model/Card (:id card))
 
-                    (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
-                                                    {:request-options {:headers {"content-type" "multipart/form-data"}}}
-                                                    {:file ba})]
+                    (let [re-indexed? (atom false)
+                          res         (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (reset! re-indexed? true) (future nil))]
+                                        (mt/user-http-request :crowberto :post 200 "ee/serialization/import?reindex=false"
+                                                              {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                                              {:file ba}))]
                       (testing "We get our data items back"
                         (is (= #{"Collection" "Dashboard" "Card" "TransformTag" "TransformJob"}
                                (log-types (line-seq (io/reader (io/input-stream res)))))))
@@ -254,12 +260,15 @@
                                  "error_count"   0
                                  "success"       true
                                  "error_message" nil}
-                                (-> (snowplow-test/pop-event-data-and-user-id!) last :data)))))
+                                (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))
 
-                    (testing "The loaded entities are added to the search index"
-                      (is (= 1 (search-result-count "dashboard" "thraddash")))
-                      (is (= 0 (search-result-count "dashboard" "urquan")))
-                      (is (= 1 (search-result-count "dataset" "frobinate")))))
+                      (testing "we did not re-index"
+                        (is (false? @re-indexed?)))
+
+                      (testing "The loaded entities are added to the search index"
+                        (is (= 1 (search-result-count "dashboard" "thraddash")))
+                        (is (= 0 (search-result-count "dashboard" "urquan")))
+                        (is (= 1 (search-result-count "dataset" "frobinate"))))))
 
                   (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (let [ingest-file (mt/dynamic-value #'v2.ingest/ingest-file)]
                                                                       (fn [^File file]
