@@ -29,16 +29,14 @@ export function getUrl(value: TreePath) {
 }
 
 // Returns a new state object with all the nodes along the path expanded.
+// Note: This only expands parent containers (database, schema) but NOT tables,
+// to prevent unwanted expansion when navigating via checkbox selection.
 export function expandPath(
   state: ExpandedState,
   path: TreePath,
 ): ExpandedState {
   return {
     ...state,
-    [toKey({
-      ...path,
-      fieldId: undefined,
-    })]: true,
     [toKey({
       ...path,
       fieldId: undefined,

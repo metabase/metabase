@@ -22,7 +22,6 @@ import type {
   SchemaItem,
   SchemaNode,
   TableItem,
-  TableNode,
   TreeNode,
   TreePath,
 } from "../types";
@@ -274,6 +273,13 @@ export function Tree({
       setSelectedTables((prev) => {
         const newSet = new Set(prev);
         isSelected === "yes" ? newSet.delete(tableId) : newSet.add(tableId);
+
+        // Navigate to the table when checking/unchecking in multi-select mode
+        // This keeps it active in the URL without expanding it
+        if (item.value) {
+          onChange(item.value);
+        }
+
         return newSet;
       });
     }
