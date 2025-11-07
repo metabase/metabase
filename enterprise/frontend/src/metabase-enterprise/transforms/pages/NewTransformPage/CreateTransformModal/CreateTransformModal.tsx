@@ -335,7 +335,8 @@ function getInitialValues(
     targetSchema: suggestedTransform
       ? suggestedTransform.target.schema
       : schemas?.[0] || null,
-    checkpointFilterUniqueKey: null,
+      checkpointFilterUniqueKey: null,
+    incremental: false,
     sourceStrategy: "checkpoint",
     targetStrategy: "append",
   };
