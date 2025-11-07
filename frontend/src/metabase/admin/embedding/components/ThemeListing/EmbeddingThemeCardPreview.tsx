@@ -7,7 +7,7 @@ import {
 } from "metabase/embedding-sdk/theme";
 import { getSizeInPx } from "metabase/visualizations/shared/utils/size-in-px";
 
-import { useDefaultEmbeddingTheme } from "../../hooks/use-default-embedding-theme";
+import { useDefaultEmbeddingThemeSettings } from "../../hooks";
 
 // TODO(EMB-942): add embedding theme preview placeholder card
 export const EmbeddingThemeCardPreview = ({
@@ -16,10 +16,10 @@ export const EmbeddingThemeCardPreview = ({
   theme: MetabaseTheme;
 }) => {
   const { colors } = theme ?? {};
-  const defaultTheme = useDefaultEmbeddingTheme();
+  const defaultThemeSettings = useDefaultEmbeddingThemeSettings();
 
   const colorOf = (key: Exclude<MetabaseColor, "charts">) =>
-    colors?.[key] ?? defaultTheme.colors?.[key];
+    colors?.[key] ?? defaultThemeSettings.colors?.[key];
 
   // Get preview font sizes.
   const getPreviewValue = useCallback(
@@ -39,7 +39,7 @@ export const EmbeddingThemeCardPreview = ({
 
   const chartColorOf = (index: number): string => {
     const color =
-      colors?.charts?.[index] ?? defaultTheme.colors?.charts?.[index];
+      colors?.charts?.[index] ?? defaultThemeSettings.colors?.charts?.[index];
 
     // The SDK can take an object of {base, tint?, shade?} for chart colors.
     if (typeof color === "object" && color.base) {
