@@ -13,7 +13,7 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { CardMoreMenu } from "metabase/models/components/CardMoreMenu";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PLUGIN_DEPENDENCIES, PLUGIN_MODERATION } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -36,6 +36,11 @@ export function MetricHeader({ card, actions }: MetricHeaderProps) {
         ) : (
           <PanelHeaderTitle>{card.name}</PanelHeaderTitle>
         )
+      }
+      badge={
+        <PLUGIN_MODERATION.EntityModerationIcon
+          moderationReviews={card.moderation_reviews}
+        />
       }
       menu={<CardMoreMenu card={card} />}
       tabs={<MetricTabs card={card} />}
