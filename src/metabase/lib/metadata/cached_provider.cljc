@@ -112,7 +112,7 @@
                              (u/prog1 (lib.metadata.protocols/metadatas uncached-provider metadata-spec)
                                (doseq [metadata <>
                                        k        [:id :name]]
-                                 (store-in-cache! cache [metadata-type (k metadata)] metadata)))))))
+                                 (store-in-cache! cache [metadata-type k (k metadata)] metadata)))))))
 
 (defn- cached-metadatas [cache metadata-type metadata-ids]
   (into []

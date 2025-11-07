@@ -283,11 +283,15 @@
     &match
 
     [:field opts _id-or-name]
-    (let [col (m/find-first #(lib.equality/= % (or (::resolved opts)
-                                                   (throw (ex-info "Missing ::resolved -- should have been added by add-source-aliases"
-                                                                   {:field-ref &match
-                                                                    :path      (concat path &parents)}))))
-                            returned-columns)]
+    (let [resolved (or (::resolved opts)
+                       (throw (ex-info "Missing ::resolved -- should have been added by add-source-aliases"
+                                       {:field-ref &match
+                                        :path      (concat path &parents)})))
+          ;; PERF: This is quadratic: O(refs-in-stage * returned-columns)!
+          ;; There's not a direct way to index this since [[lib.equality/=]] is too fuzzy for that.
+          ;; Even a partial fix like (group-by f returned-columns) so that this is scanning a small plausible set
+          ;; of matches instead of everything would go a long way!
+          col      (m/find-first #(lib.equality/= % resolved) returned-columns)]
       (-> &match
           (lib/update-options (fn [opts]
                                 (-> opts

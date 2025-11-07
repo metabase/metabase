@@ -522,7 +522,6 @@ describe("issue 40635", () => {
 
     cy.button("Save").click();
     H.modal().button("Save").click();
-    H.modal().findByText("Not now").click();
 
     assertSettingsSidebar();
     assertVisualizationColumns();
