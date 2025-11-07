@@ -1,13 +1,28 @@
 import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
-import type { DatasetColumn, Field } from "metabase-types/api";
+import type { Dataset, DatasetQuery, Field } from "metabase-types/api";
 
 import type { ValidationResult } from "./types";
 
+export function getResultMetadata(
+  currentQuery: DatasetQuery,
+  lastRunQuery: DatasetQuery | null,
+  lastRunResult: Dataset | null,
+) {
+  if (
+    lastRunQuery != null &&
+    lastRunResult != null &&
+    Lib.areLegacyQueriesEqual(currentQuery, lastRunQuery)
+  ) {
+    return lastRunResult.data.results_metadata.columns;
+  }
+  return null;
+}
+
 export function getValidationResult(
   query: Lib.Query,
-  resultMetadata: Field[] | DatasetColumn[] | null,
+  resultMetadata: Field[] | null,
 ): ValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {

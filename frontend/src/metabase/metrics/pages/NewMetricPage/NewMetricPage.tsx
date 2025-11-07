@@ -12,11 +12,12 @@ import {
 } from "metabase/data-studio/components/PaneHeader";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { getResultMetadata } from "metabase/models/utils";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { Card, Field } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 
 import { MetricQueryEditor } from "../../components/MetricQueryEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
@@ -36,7 +37,6 @@ export function NewMetricPage({ route }: NewMetricPageProps) {
     Lib.toJsQuery(getInitialQuery(metadata)),
   );
   const [uiState, setUiState] = useState(getInitialUiState);
-  const [resultMetadata, setResultMetadata] = useState<Field[] | null>(null);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const dispatch = useDispatch();
@@ -45,6 +45,14 @@ export function NewMetricPage({ route }: NewMetricPageProps) {
     () => getQuery(datasetQuery, metadata),
     [datasetQuery, metadata],
   );
+
+  const resultMetadata = useMemo(() => {
+    return getResultMetadata(
+      datasetQuery,
+      uiState.lastRunQuery,
+      uiState.lastRunResult,
+    );
+  }, [datasetQuery, uiState.lastRunResult, uiState.lastRunQuery]);
 
   const validationResult = useMemo(() => getValidationResult(query), [query]);
 
@@ -93,7 +101,6 @@ export function NewMetricPage({ route }: NewMetricPageProps) {
           uiState={uiState}
           onChangeQuery={handleChangeQuery}
           onChangeUiState={setUiState}
-          onChangeResultMetadata={setResultMetadata}
         />
       </Stack>
       {isModalOpened && (

@@ -11,13 +11,14 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useLoadCardWithMetadata } from "metabase/models/hooks/use-load-card-with-metadata";
+import { getResultMetadata } from "metabase/models/utils";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Center, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { Card, Field } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 
 import { MetricHeader } from "../../components/MetricHeader";
 import { MetricQueryEditor } from "../../components/MetricQueryEditor";
@@ -56,17 +57,20 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
   const metadata = useSelector(getMetadata);
   const [datasetQuery, setDatasetQuery] = useState(card.dataset_query);
   const [uiState, setUiState] = useState(getInitialUiState);
-  const [resultMetadata, setResultMetadata] = useState<
-    Field[] | Field[] | null
-  >(card.result_metadata);
   const [updateCard, { isLoading: isSaving }] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const question = useMemo(() => {
-    return new Question(card, metadata)
-      .setDatasetQuery(datasetQuery)
-      .setResultsMetadata({ columns: resultMetadata });
-  }, [card, metadata, datasetQuery, resultMetadata]);
+    return new Question(card, metadata).setDatasetQuery(datasetQuery);
+  }, [card, metadata, datasetQuery]);
+
+  const resultMetadata = useMemo(() => {
+    return getResultMetadata(
+      datasetQuery,
+      uiState.lastRunQuery,
+      uiState.lastRunResult,
+    );
+  }, [datasetQuery, uiState.lastRunResult, uiState.lastRunQuery]);
 
   const validationResult = useMemo(
     () => getValidationResult(question.query()),
@@ -107,7 +111,7 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
   };
 
   const handleSave = () => {
-    handleInitialSave(question);
+    handleInitialSave(question.setResultsMetadata({ columns: resultMetadata }));
   };
 
   const handleCancel = () => {
@@ -117,7 +121,6 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
   const handleResetRef = useLatest(() => {
     setDatasetQuery(card.dataset_query);
     setUiState(getInitialUiState());
-    setResultMetadata(card.result_metadata);
   });
 
   useLayoutEffect(() => {
@@ -153,7 +156,6 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
           readOnly={!card.can_write}
           onChangeQuery={handleChangeQuery}
           onChangeUiState={setUiState}
-          onChangeResultMetadata={setResultMetadata}
         />
       </Stack>
       {isConfirmationShown && checkData != null && (

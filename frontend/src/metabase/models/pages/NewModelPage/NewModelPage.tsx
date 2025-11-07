@@ -16,11 +16,11 @@ import { getInitialUiState } from "metabase/querying/editor/components/QueryEdit
 import { getMetadata } from "metabase/selectors/metadata";
 import { Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { Card, Field } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 
 import { ModelQueryEditor } from "../../components/ModelQueryEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
-import { getValidationResult } from "../../utils";
+import { getResultMetadata, getValidationResult } from "../../utils";
 
 import { CreateModelModal } from "./CreateModelModal";
 import { getInitialNativeQuery, getInitialQuery, getQuery } from "./utils";
@@ -41,7 +41,6 @@ function NewModelPage({
     Lib.toJsQuery(initialQuery),
   );
   const [uiState, setUiState] = useState(getInitialUiState);
-  const [resultMetadata, setResultMetadata] = useState<Field[] | null>(null);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const metadata = useSelector(getMetadata);
@@ -51,6 +50,14 @@ function NewModelPage({
     () => getQuery(datasetQuery, metadata),
     [datasetQuery, metadata],
   );
+
+  const resultMetadata = useMemo(() => {
+    return getResultMetadata(
+      datasetQuery,
+      uiState.lastRunQuery,
+      uiState.lastRunResult,
+    );
+  }, [datasetQuery, uiState.lastRunResult, uiState.lastRunQuery]);
 
   const validationResult = useMemo(
     () => getValidationResult(query, resultMetadata),
@@ -102,7 +109,6 @@ function NewModelPage({
           uiState={uiState}
           onChangeQuery={handleChangeQuery}
           onChangeUiState={setUiState}
-          onChangeResultMetadata={setResultMetadata}
         />
       </Stack>
       {isModalOpened && (

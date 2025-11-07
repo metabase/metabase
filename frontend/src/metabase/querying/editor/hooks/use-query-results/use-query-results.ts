@@ -4,25 +4,22 @@ import { useLazyGetAdhocQueryQuery } from "metabase/api";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { Dataset, DatasetQuery, Field } from "metabase-types/api";
 
 import type { QueryEditorUiState } from "../../types";
 
 export function useQueryResults(
   question: Question,
   uiState: QueryEditorUiState,
-  onChangeQuestion: (newQuestion: Question) => void,
   onChangeUiState: (newUiState: QueryEditorUiState) => void,
-  onChangeResultMetadata?: (newResultMetadata: Field[] | null) => void,
 ) {
-  const { lastRunQuery } = uiState;
-  const [runAdhocQuery, { data = null, isFetching: isRunning = false }] =
+  const { lastRunResult, lastRunQuery } = uiState;
+  const [runAdhocQuery, { isFetching: isRunning = false }] =
     useLazyGetAdhocQueryQuery();
   const questionRef = useRef(question);
   questionRef.current = question;
   const abortRef = useRef<() => void>();
 
-  const { result, rawSeries, isRunnable, isResultDirty } = useMemo(() => {
+  const { rawSeries, isRunnable, isResultDirty } = useMemo(() => {
     const lastRunQuestion = lastRunQuery
       ? Question.create({
           dataset_query: lastRunQuery,
@@ -33,8 +30,8 @@ export function useQueryResults(
         })
       : null;
     const rawSeries =
-      lastRunQuestion && data
-        ? [{ card: lastRunQuestion.card(), data: data.data }]
+      lastRunQuestion && lastRunResult
+        ? [{ card: lastRunQuestion.card(), data: lastRunResult.data }]
         : null;
     const isRunnable = Lib.canRun(question.query(), question.type());
     const isResultDirty =
@@ -45,29 +42,11 @@ export function useQueryResults(
       );
 
     return {
-      result: data,
       rawSeries,
       isRunnable,
       isResultDirty,
     };
-  }, [question, data, lastRunQuery]);
-
-  const setQueryResultState = (
-    result: Dataset | null,
-    currentQuery: DatasetQuery,
-    lastRunQuery: DatasetQuery | null,
-  ) => {
-    const isValid =
-      result != null &&
-      lastRunQuery != null &&
-      Lib.areLegacyQueriesEqual(lastRunQuery, currentQuery);
-
-    if (isValid) {
-      onChangeResultMetadata?.(result.data.results_metadata.columns);
-    } else {
-      onChangeResultMetadata?.(null);
-    }
-  };
+  }, [question, lastRunResult, lastRunQuery]);
 
   const runQuery = async () => {
     const lastRunQuery = question.datasetQuery();
@@ -76,11 +55,10 @@ export function useQueryResults(
       parameters: normalizeParameters(question.parameters()),
     });
     abortRef.current = action.abort;
-    const { data = null } = await action;
+    const { data: lastRunResult = null } = await action;
     abortRef.current = undefined;
 
-    onChangeUiState({ ...uiState, lastRunQuery });
-    setQueryResultState(data, questionRef.current.datasetQuery(), lastRunQuery);
+    onChangeUiState({ ...uiState, lastRunResult, lastRunQuery });
   };
 
   const cancelQuery = () => {
@@ -88,27 +66,17 @@ export function useQueryResults(
     abortRef.current = undefined;
   };
 
-  const setQuestionWithResultMetadata = (newQuestion: Question) => {
-    onChangeQuestion(newQuestion);
-    setQueryResultState(
-      result,
-      newQuestion.datasetQuery(),
-      uiState.lastRunQuery,
-    );
-  };
-
   useEffect(() => {
     return () => abortRef.current?.();
   }, []);
 
   return {
-    result,
+    result: lastRunResult,
     rawSeries,
     isRunnable,
     isRunning,
     isResultDirty,
     runQuery,
     cancelQuery,
-    setQuestionWithResultMetadata,
   };
 }

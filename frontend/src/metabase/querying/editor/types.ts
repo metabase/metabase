@@ -5,6 +5,7 @@ import type {
   CardDisplayType,
   CardType,
   Database,
+  Dataset,
   DatasetQuery,
   NativeQuerySnippet,
   RecentCollectionItem,
@@ -33,6 +34,7 @@ export type QueryEditorModalSnippet =
   | Partial<Omit<NativeQuerySnippet, "id">>;
 
 export type QueryEditorUiState = {
+  lastRunResult: Dataset | null;
   lastRunQuery: DatasetQuery | null;
   selectionRange: SelectionRange[];
   modalSnippet: QueryEditorModalSnippet | null;

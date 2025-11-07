@@ -1,5 +1,4 @@
 import * as Lib from "metabase-lib";
-import type { Field } from "metabase-types/api";
 
 import type { QueryEditorUiOptions, QueryEditorUiState } from "../../types";
 import { useQueryControls } from "../use-query-controls";
@@ -14,7 +13,6 @@ type UseQueryEditorProps = {
   proposedQuery?: Lib.Query;
   onChangeQuery: (newQuery: Lib.Query) => void;
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
-  onChangeResultMetadata?: (newResultMetadata: Field[] | null) => void;
 };
 
 export function useQueryEditor({
@@ -24,7 +22,6 @@ export function useQueryEditor({
   proposedQuery,
   onChangeQuery,
   onChangeUiState,
-  onChangeResultMetadata,
 }: UseQueryEditorProps) {
   const { question, proposedQuestion, setQuestion } = useQueryQuestion(
     query,
@@ -41,14 +38,7 @@ export function useQueryEditor({
     isResultDirty,
     runQuery,
     cancelQuery,
-    setQuestionWithResultMetadata,
-  } = useQueryResults(
-    question,
-    uiState,
-    setQuestion,
-    onChangeUiState,
-    onChangeResultMetadata,
-  );
+  } = useQueryResults(question, uiState, onChangeUiState);
   const {
     selectedText,
     openModal,
@@ -61,12 +51,7 @@ export function useQueryEditor({
     toggleSnippetSidebar,
     toggleNativeQuerySidebar,
     togglePreviewQueryModal,
-  } = useQueryControls(
-    question,
-    uiState,
-    setQuestionWithResultMetadata,
-    onChangeUiState,
-  );
+  } = useQueryControls(question, uiState, setQuestion, onChangeUiState);
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
   return {
@@ -81,7 +66,7 @@ export function useQueryEditor({
     isRunnable,
     isRunning,
     isResultDirty,
-    setQuestion: setQuestionWithResultMetadata,
+    setQuestion,
     runQuery,
     cancelQuery,
     openModal,

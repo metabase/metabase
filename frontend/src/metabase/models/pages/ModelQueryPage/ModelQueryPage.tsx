@@ -16,14 +16,12 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Center, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { Card, Field } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 
 import { ModelHeader } from "../../components/ModelHeader";
 import { ModelQueryEditor } from "../../components/ModelQueryEditor";
 import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";
-import { getValidationResult } from "../../utils";
-
-import { mergeFieldMetadata } from "./utils";
+import { getResultMetadata, getValidationResult } from "../../utils";
 
 type ModelQueryPageParams = {
   cardId: string;
@@ -58,19 +56,20 @@ function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
   const metadata = useSelector(getMetadata);
   const [datasetQuery, setDatasetQuery] = useState(card.dataset_query);
   const [uiState, setUiState] = useState(getInitialUiState);
-  const [resultMetadata, setResultMetadata] = useState<Field[] | null>(
-    card.result_metadata,
-  );
   const [updateCard, { isLoading: isSaving }] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const question = useMemo(() => {
-    return new Question(card, metadata)
-      .setDatasetQuery(datasetQuery)
-      .setResultsMetadata({
-        columns: mergeFieldMetadata(resultMetadata, card.result_metadata),
-      });
-  }, [card, metadata, datasetQuery, resultMetadata]);
+    return new Question(card, metadata).setDatasetQuery(datasetQuery);
+  }, [card, metadata, datasetQuery]);
+
+  const resultMetadata = useMemo(() => {
+    return getResultMetadata(
+      datasetQuery,
+      uiState.lastRunQuery,
+      uiState.lastRunResult,
+    );
+  }, [datasetQuery, uiState.lastRunResult, uiState.lastRunQuery]);
 
   const validationResult = useMemo(
     () => getValidationResult(question.query(), resultMetadata),
@@ -93,7 +92,7 @@ function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
       const { error } = await updateCard({
         id: card.id,
         dataset_query: question.datasetQuery(),
-        result_metadata: resultMetadata ? question.getResultMetadata() : null,
+        result_metadata: resultMetadata,
       });
       if (error) {
         sendErrorToast(t`Failed to update model query`);
@@ -108,7 +107,7 @@ function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
   };
 
   const handleSave = () => {
-    handleInitialSave(question);
+    handleInitialSave(question.setResultsMetadata({ columns: resultMetadata }));
   };
 
   const handleCancel = () => {
@@ -118,7 +117,6 @@ function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
   const handleResetRef = useLatest(() => {
     setDatasetQuery(card.dataset_query);
     setUiState(getInitialUiState());
-    setResultMetadata(card.result_metadata);
   });
 
   useLayoutEffect(() => {
@@ -154,7 +152,6 @@ function ModelQueryPageBody({ card, route }: ModelQueryPageBodyProps) {
           readOnly={!card.can_write}
           onChangeQuery={handleChangeQuery}
           onChangeUiState={setUiState}
-          onChangeResultMetadata={setResultMetadata}
         />
       </Stack>
       {isConfirmationShown && checkData != null && (
