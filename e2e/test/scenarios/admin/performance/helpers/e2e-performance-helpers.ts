@@ -85,7 +85,7 @@ export const saveQuestion = ({ withName }: { withName: string }) => {
   cy.findByTestId("qb-header").button(/^Save/).click();
   cy.findByLabelText("Name").type(withName);
   modal().button("Save").click();
-  cy.findByText("Not now").click();
+
   cy.wait("@saveQuestion");
 };
 
