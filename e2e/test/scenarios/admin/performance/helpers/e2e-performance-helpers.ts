@@ -177,6 +177,7 @@ export const millisecondsUntilEndOfHour = () => {
   return nextHour.getTime() - now.getTime();
 };
 
+/** Advances the server clock by a specific amount of milliseconds, then stops advancing automatically */
 export const advanceServerClockBy = (milliseconds: number) => {
   log(`Advancing clock by ${milliseconds}ms`);
   return cy.request("POST", "/api/testing/set-time", {
