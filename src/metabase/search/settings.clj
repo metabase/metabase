@@ -18,7 +18,7 @@
   :visibility :authenticated
   :export?    false
   :setter     :none
-  ;; TODO (Chris 07/11/2025) Would be good to remove the default and just use [search.engine/default-engine-precedence]
+  ;; TODO (Chris 2025/11/07) Would be good to remove the default and just use [search.engine/default-engine-precedence]
   :default    :appdb
   :type       :keyword)
 
