@@ -2,3 +2,7 @@
   border-right: 1px solid var(--mb-color-border);
   overflow-y: auto;
 }
+
+.section {
+  border-bottom: 1px solid var(--mb-color-border);
+}
