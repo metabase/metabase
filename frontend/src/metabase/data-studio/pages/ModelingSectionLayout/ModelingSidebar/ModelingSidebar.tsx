@@ -63,10 +63,10 @@ export function ModelingSidebar({
     const root = {
       ...ROOT_COLLECTION,
       icon: rootIcon,
-      children: [],
+      children: tree,
     };
 
-    return [root, ...tree];
+    return [root];
   }, [collections, currentUser]);
 
   const selectedCollectionId = useMemo(() => {

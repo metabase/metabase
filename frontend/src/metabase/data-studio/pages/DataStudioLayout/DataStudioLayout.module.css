@@ -4,11 +4,11 @@
 
 .item {
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--mb-color-bg-secondary);
 
   &:hover,
   &.selected {
-    color: var(--mb-color-text-selected);
-    background-color: var(--mb-color-bg-black);
+    color: var(--mb-color-brand);
+    background-color: var(--mb-color-brand-light);
   }
 }

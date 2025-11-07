@@ -14,6 +14,7 @@ interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
   selectedId?: ITreeNodeItem<TData>["id"];
   emptyState?: React.ReactNode;
   initiallyExpanded?: boolean;
+  initialExpandedIds?: ITreeNodeItem<TData>["id"][];
   role?: string;
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
@@ -26,6 +27,7 @@ function BaseTree<TData = unknown>({
   role = "menu",
   emptyState = null,
   initiallyExpanded = false,
+  initialExpandedIds,
   onSelect,
   TreeNode = DefaultTreeNode,
   rightSection,
@@ -34,6 +36,9 @@ function BaseTree<TData = unknown>({
   const [expandedIds, setExpandedIds] = useState(() => {
     if (initiallyExpanded) {
       return new Set(getAllExpandableIds(data));
+    }
+    if (initialExpandedIds) {
+      return new Set(initialExpandedIds);
     }
     return new Set(
       selectedId != null ? getInitialExpandedIds(selectedId, data) : [],

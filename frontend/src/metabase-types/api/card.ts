@@ -31,7 +31,6 @@ import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
 export type CardType = "model" | "question" | "metric";
 
-
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 
 export interface Card<Q extends DatasetQuery = DatasetQuery>

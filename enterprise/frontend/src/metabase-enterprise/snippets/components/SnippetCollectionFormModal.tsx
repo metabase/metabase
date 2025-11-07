@@ -6,7 +6,7 @@ import type { Collection } from "metabase-types/api";
 import SnippetCollectionForm from "./SnippetCollectionForm";
 
 interface SnippetCollectionFormModalProps {
-  collection: Collection;
+  collection: Partial<Collection>;
   onClose: () => void;
   onSaved?: () => void;
 }

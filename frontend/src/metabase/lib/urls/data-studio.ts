@@ -10,6 +10,10 @@ export function dataStudio() {
   return ROOT_URL;
 }
 
+export function dataStudioData() {
+  return `${ROOT_URL}/data`;
+}
+
 export function dataStudioModeling() {
   return `${ROOT_URL}/modeling`;
 }

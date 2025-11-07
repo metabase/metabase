@@ -9,22 +9,17 @@ import {
 import type { MoveDestination } from "metabase/collections/types";
 import { coerceCollectionId } from "metabase/collections/utils";
 import * as Urls from "metabase/lib/urls";
-import type Question from "metabase-lib/v1/Question";
-import type { CollectionId, DashboardId } from "metabase-types/api";
+import type { Card, CollectionId, DashboardId } from "metabase-types/api";
 
-import {
-  DestinationLink,
-  StyledIcon,
-  ToastRoot,
-} from "./QuestionMoveToast.styled";
+import { DestinationLink, StyledIcon, ToastRoot } from "./CardMoveToast.styled";
 
-type QuestionMoveToastProps = {
+type CardMoveToastProps = {
+  card: Card;
   destination?: MoveDestination;
-  question: Question;
 };
 
-function QuestionMoveToast({ destination, question }: QuestionMoveToastProps) {
-  const type = question.type();
+function CardMoveToast({ card, destination }: CardMoveToastProps) {
+  const type = card.type;
 
   if (!destination) {
     return (
@@ -90,4 +85,4 @@ const CollectionLink = ({ collectionId }: { collectionId: CollectionId }) => {
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default QuestionMoveToast;
+export default CardMoveToast;

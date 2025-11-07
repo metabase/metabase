@@ -12,6 +12,7 @@ import { getUrl } from "../../utils";
 export function getSemanticTypeError(
   table: Table,
   field: Field,
+  baseUrl: string,
 ): ReactNode | undefined {
   if (!isEntityName(field)) {
     return undefined;
@@ -37,7 +38,7 @@ export function getSemanticTypeError(
       {entityNameFields.map((field, index) => {
         const parentName = field.nfc_path?.[0] ?? "";
         const parentField = fieldsByName[parentName];
-        const href = getUrl({
+        const href = getUrl(baseUrl, {
           databaseId: table.db_id,
           schemaName: table.schema,
           tableId: table.id,

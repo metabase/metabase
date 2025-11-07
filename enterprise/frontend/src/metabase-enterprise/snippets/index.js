@@ -42,21 +42,15 @@ if (hasPremiumFeature("snippet_collections")) {
   PLUGIN_SNIPPET_SIDEBAR_MODALS.push(
     (snippetSidebar) =>
       snippetSidebar.state.modalSnippetCollection && (
-        <Modal
+        <SnippetCollectionFormModal
+          collection={snippetSidebar.state.modalSnippetCollection}
           onClose={() =>
             snippetSidebar.setState({ modalSnippetCollection: null })
           }
-        >
-          <SnippetCollectionFormModal
-            collection={snippetSidebar.state.modalSnippetCollection}
-            onClose={() =>
-              snippetSidebar.setState({ modalSnippetCollection: null })
-            }
-            onSaved={() => {
-              snippetSidebar.setState({ modalSnippetCollection: null });
-            }}
-          />
-        </Modal>
+          onSaved={() => {
+            snippetSidebar.setState({ modalSnippetCollection: null });
+          }}
+        />
       ),
     (snippetSidebar) =>
       snippetSidebar.state.permissionsModalCollectionId != null && (

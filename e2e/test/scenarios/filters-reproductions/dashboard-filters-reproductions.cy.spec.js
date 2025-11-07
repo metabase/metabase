@@ -1159,17 +1159,18 @@ describe("issue 21528", () => {
     H.popover().contains("Aerodynamic Bronze Hat - 144").should("be.visible");
 
     cy.log("The following scenario breaks on 46");
-    // Navigating to another page via JavaScript is faster than using `cy.visit("/data-studio/data")` to load the whole page again.
+    // Navigating to another page via JavaScript is faster than using `cy.visit("/admin/datamodel")` to load the whole page again.
     H.appBar().findByRole("button", { name: "Settings" }).click();
-    H.popover().findByText("Data studio").click();
+    H.popover().findByText("Admin settings").click();
+    H.appBar().findByText("Table Metadata").click();
     cy.findByRole("main")
       .findByText("Start by selecting data to model")
       .should("be.visible");
     cy.location("pathname").should(
       "eq",
-      `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}`,
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}`,
     );
-    H.DataStudio.exitButton().click();
+    cy.findByTestId("admin-navbar").findByText("Exit admin").click();
 
     H.openNavigationSidebar();
     H.navigationSidebar().findByText("Our analytics").click();

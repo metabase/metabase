@@ -57,7 +57,7 @@ describe("scenarios > admin > datamodel", () => {
     });
 
     cy.findByRole("link", { name: /Segments/ }).click();
-    cy.location("pathname").should("eq", "/data-studio/data/segments");
+    cy.location("pathname").should("eq", "/admin/datamodel/segments");
     cy.wait("@schema");
 
     H.DataModel.TablePicker.getTable("Reviews").click();
@@ -66,7 +66,7 @@ describe("scenarios > admin > datamodel", () => {
       .and("have.value", "Reviews");
     cy.location("pathname").should(
       "eq",
-      `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}`,
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}`,
     );
   });
 
@@ -79,7 +79,7 @@ describe("scenarios > admin > datamodel", () => {
       TablePicker.getDatabases().should("have.length", 1);
       TablePicker.getTables().should("have.length", 0);
       H.DataModel.get().findByText("Not found.").should("be.visible");
-      cy.location("pathname").should("eq", "/data-studio/data/database/54321");
+      cy.location("pathname").should("eq", "/admin/datamodel/database/54321");
     });
 
     it("should show 404 if table does not exist", () => {
@@ -97,7 +97,7 @@ describe("scenarios > admin > datamodel", () => {
       H.DataModel.get().findByText("Not found.").should("be.visible");
       cy.location("pathname").should(
         "eq",
-        `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/12345`,
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/12345`,
       );
       verifyTableSectionEmptyState();
     });
@@ -118,7 +118,7 @@ describe("scenarios > admin > datamodel", () => {
       H.DataModel.get().findByText("Not found.").should("be.visible");
       cy.location("pathname").should(
         "eq",
-        `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
       );
     });
 
@@ -192,7 +192,7 @@ describe("scenarios > admin > datamodel", () => {
         verifyTableSectionEmptyState();
         cy.location("pathname").should(
           "eq",
-          `/data-studio/data/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
+          `/admin/datamodel/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
         );
 
         TablePicker.getTable("Products").click();
@@ -200,7 +200,7 @@ describe("scenarios > admin > datamodel", () => {
         verifyFieldSectionEmptyState();
         cy.location("pathname").should((pathname) => {
           return pathname.startsWith(
-            `/data-studio/data/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
+            `/admin/datamodel/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
           );
         });
       });
@@ -220,7 +220,7 @@ describe("scenarios > admin > datamodel", () => {
         verifyFieldSectionEmptyState();
         cy.location("pathname").should((pathname) => {
           return pathname.startsWith(
-            `/data-studio/data/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
+            `/admin/datamodel/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
           );
         });
       });
@@ -235,13 +235,13 @@ describe("scenarios > admin > datamodel", () => {
         TablePicker.getDatabase("QA MySQL8").click();
         cy.location("pathname").should(
           "eq",
-          `/data-studio/data/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
+          `/admin/datamodel/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
         );
 
         TablePicker.getDatabase("QA MySQL8").click();
         cy.location("pathname").should(
           "eq",
-          `/data-studio/data/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
+          `/admin/datamodel/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
         );
 
         cy.log("ensure navigation to another db works");
@@ -257,7 +257,7 @@ describe("scenarios > admin > datamodel", () => {
         cy.log("should auto-open the only schema in the only database");
         cy.location("pathname").should(
           "eq",
-          `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}`,
+          `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}`,
         );
         verifyTableSectionEmptyState();
         TablePicker.getDatabases().should("have.length", 1);
@@ -269,7 +269,7 @@ describe("scenarios > admin > datamodel", () => {
 
         cy.location("pathname").should(
           "eq",
-          `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+          `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
         );
         TableSection.get().should("be.visible");
         verifyFieldSectionEmptyState();
@@ -277,7 +277,7 @@ describe("scenarios > admin > datamodel", () => {
         TablePicker.getTable("Products").should("be.visible").click();
         cy.location("pathname").should(
           "eq",
-          `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PRODUCTS_ID}`,
+          `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PRODUCTS_ID}`,
         );
         TableSection.get().should("be.visible");
         verifyFieldSectionEmptyState();
@@ -293,7 +293,7 @@ describe("scenarios > admin > datamodel", () => {
         TablePicker.getTable("Orders").should("be.visible").click();
         cy.location("pathname").should(
           "eq",
-          `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+          `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
         );
         TableSection.getNameInput().should("have.value", "Orders");
 
@@ -318,13 +318,13 @@ describe("scenarios > admin > datamodel", () => {
         TablePicker.getDatabase("Sample Database").click();
         cy.location("pathname").should(
           "eq",
-          `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+          `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
         );
 
         TablePicker.getDatabase("Sample Database").click();
         cy.location("pathname").should(
           "eq",
-          `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+          `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
         );
       });
     });
@@ -342,7 +342,7 @@ describe("scenarios > admin > datamodel", () => {
         it("should allow to navigate databases, schemas, and tables", () => {
           H.DataModel.visit();
 
-          cy.location("pathname").should("eq", "/data-studio/data");
+          cy.location("pathname").should("eq", "/admin/datamodel/database");
           TablePicker.getDatabases().should("have.length", 2);
           TablePicker.getSchemas().should("have.length", 0);
           TablePicker.getTables().should("have.length", 0);
@@ -354,7 +354,7 @@ describe("scenarios > admin > datamodel", () => {
             .click();
           cy.location("pathname").should(
             "eq",
-            `/data-studio/data/database/${WRITABLE_DB_ID}`,
+            `/admin/datamodel/database/${WRITABLE_DB_ID}`,
           );
           TablePicker.getDatabases().should("have.length", 2);
           TablePicker.getSchemas().should("have.length", 2);
@@ -366,7 +366,7 @@ describe("scenarios > admin > datamodel", () => {
           TablePicker.getSchema("Domestic").click();
           cy.location("pathname").should(
             "eq",
-            `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic`,
+            `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic`,
           );
           TablePicker.getDatabases().should("have.length", 2);
           TablePicker.getSchemas().should("have.length", 2);
@@ -377,7 +377,7 @@ describe("scenarios > admin > datamodel", () => {
           TablePicker.getTable("Animals").click();
           cy.location("pathname").should((pathname) => {
             return pathname.startsWith(
-              `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+              `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
           TableSection.getNameInput().should("have.value", "Animals");
@@ -389,12 +389,12 @@ describe("scenarios > admin > datamodel", () => {
           );
           cy.location("pathname").should((pathname) => {
             return pathname.startsWith(
-              `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+              `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
           cy.location("pathname").should(
             "not.eq",
-            `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Wild`,
+            `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Wild`,
           );
           TablePicker.getDatabases().should("have.length", 2);
           TablePicker.getSchemas().should("have.length", 2);
@@ -405,7 +405,7 @@ describe("scenarios > admin > datamodel", () => {
           TablePicker.getTable("Birds").click();
           cy.location("pathname").should((pathname) => {
             return pathname.startsWith(
-              `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+              `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
           TableSection.getNameInput().should("have.value", "Birds");
@@ -426,7 +426,7 @@ describe("scenarios > admin > datamodel", () => {
           cy.log("we still have a table opened");
           cy.location("pathname").should((pathname) => {
             return pathname.startsWith(
-              `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+              `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
 
@@ -438,21 +438,21 @@ describe("scenarios > admin > datamodel", () => {
             .and(
               "have.attr",
               "href",
-              `/data-studio/data/database/${WRITABLE_DB_ID}`,
+              `/admin/datamodel/database/${WRITABLE_DB_ID}`,
             );
           TablePicker.getSchema("Domestic")
             .should("have.prop", "tagName", "A")
             .and(
               "have.attr",
               "href",
-              `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic`,
+              `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic`,
             );
           TablePicker.getTable("Orders")
             .should("have.prop", "tagName", "A")
             .and(
               "have.attr",
               "href",
-              `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+              `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
             );
         });
 
@@ -474,7 +474,7 @@ describe("scenarios > admin > datamodel", () => {
 
           cy.location("pathname").should((pathname) => {
             return pathname.startsWith(
-              `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Wild/table/`,
+              `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Wild/table/`,
             );
           });
           TableSection.getNameInput().should("have.value", "Birds");

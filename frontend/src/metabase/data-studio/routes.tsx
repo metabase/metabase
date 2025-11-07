@@ -91,7 +91,7 @@ export function getDataStudioRoutes(
 
 function getIndexPath(state: State) {
   if (PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state)) {
-    return Urls.dataModel();
+    return Urls.dataStudioData();
   }
   if (PLUGIN_TRANSFORMS.canAccessTransforms(state)) {
     return Urls.transformList();

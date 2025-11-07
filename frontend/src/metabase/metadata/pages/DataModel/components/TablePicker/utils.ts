@@ -18,8 +18,8 @@ export function hasChildren(type: ItemType): boolean {
   return type !== "field";
 }
 
-export function getUrl(value: TreePath) {
-  return getUrl_({
+export function getUrl(baseUrl: string, value: TreePath) {
+  return getUrl_(baseUrl, {
     fieldId: undefined,
     tableId: undefined,
     databaseId: undefined,

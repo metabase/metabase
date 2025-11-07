@@ -133,7 +133,7 @@ function ModelFieldsPageBody({
 
   return (
     <>
-      <Flex direction="column" h="100%" bg="bg-light">
+      <Flex direction="column" h="100%">
         <ModelHeader
           card={card}
           actions={
@@ -145,7 +145,7 @@ function ModelFieldsPageBody({
             />
           }
         />
-        <Flex flex={1} mih={0}>
+        <Flex flex={1} mih={0} bg="bg-light">
           <ModelFieldList
             fields={fields}
             activeFieldName={activeFieldName}

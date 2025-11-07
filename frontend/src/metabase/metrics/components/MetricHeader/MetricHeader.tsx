@@ -12,7 +12,8 @@ import {
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { CardMoreMenu } from "metabase/models/components/CardMoreMenu";
+import { PLUGIN_DEPENDENCIES, PLUGIN_MODERATION } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -23,10 +24,9 @@ import { NAME_MAX_LENGTH } from "../../constants";
 type MetricHeaderProps = {
   card: Card;
   actions?: ReactNode;
-  className?: string;
 };
 
-export function MetricHeader({ card, actions, className }: MetricHeaderProps) {
+export function MetricHeader({ card, actions }: MetricHeaderProps) {
   return (
     <PaneHeader
       icon="metric"
@@ -37,9 +37,14 @@ export function MetricHeader({ card, actions, className }: MetricHeaderProps) {
           <PanelHeaderTitle>{card.name}</PanelHeaderTitle>
         )
       }
+      badge={
+        <PLUGIN_MODERATION.EntityModerationIcon
+          moderationReviews={card.moderation_reviews}
+        />
+      }
+      menu={<CardMoreMenu card={card} />}
       tabs={<MetricTabs card={card} />}
       actions={actions}
-      className={className}
     />
   );
 }

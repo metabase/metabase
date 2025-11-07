@@ -1,6 +1,12 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
-import { type KeyboardEvent, useEffect, useMemo, useRef } from "react";
+import {
+  type KeyboardEvent,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -14,6 +20,7 @@ import { Box, Checkbox, Flex, Icon, Skeleton, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field, UserId } from "metabase-types/api";
 
+import { DataModelContext } from "../../../DataModelContext";
 import { useSelection } from "../../../contexts/SelectionContext";
 import { getUrl } from "../../../utils";
 import { TYPE_ICONS } from "../constants";
@@ -302,7 +309,7 @@ const ResultsItem = ({
   ownerNameById,
 }: ResultsItemProps) => {
   const { selectedItemsCount } = useSelection();
-
+  const { baseUrl } = useContext(DataModelContext);
   const { value, label, type, isExpanded, isLoading, key, level, disabled } =
     item;
   const formatNumber = useNumberFormatter({ maximumFractionDigits: 0 });
@@ -442,7 +449,7 @@ const ResultsItem = ({
         top: start,
         pointerEvents: disabled ? "none" : undefined,
       }}
-      to={getUrl({
+      to={getUrl(baseUrl, {
         databaseId: value?.databaseId,
         schemaName:
           type === "schema" || type === "table" || type === "field"

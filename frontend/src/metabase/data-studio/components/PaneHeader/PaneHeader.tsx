@@ -7,28 +7,28 @@ import EditableText from "metabase/common/components/EditableText";
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
 import type { GroupProps, IconName } from "metabase/ui";
-import { Box, Button, Flex, Group, Icon, Stack, Tooltip } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Tooltip } from "metabase/ui";
 
 import S from "./PaneHeader.module.css";
 import type { PaneHeaderTab } from "./types";
 
 interface PaneHeaderProps extends Omit<GroupProps, "title"> {
   title: ReactNode;
-  description?: ReactNode;
   icon?: IconName;
+  badge?: ReactNode;
   menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
 }
 
 export const PaneHeader = ({
+  className,
   title,
-  description,
   icon,
+  badge,
   menu,
   tabs,
   actions,
-  className,
   ...rest
 }: PaneHeaderProps) => {
   return (
@@ -37,15 +37,14 @@ export const PaneHeader = ({
       p="md"
       justify="space-between"
       gap="sm"
+      wrap="nowrap"
       {...rest}
     >
       <Stack gap="sm">
-        <Group align="center" gap="xs">
+        <Group align="center" gap="xs" wrap="nowrap">
           {icon && <Icon name={icon} c="brand" size={20} />}
-          <Flex direction="column" gap="xs" align="flex-start">
-            {title}
-            {description}
-          </Flex>
+          {title}
+          {badge}
           {menu}
         </Group>
         {tabs}

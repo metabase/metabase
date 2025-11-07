@@ -9,10 +9,7 @@ import {
 } from "./components/ModerationReviewBanner";
 import { ModerationStatusIcon } from "./components/ModerationStatusIcon";
 import QuestionModerationSection from "./components/QuestionModerationSection";
-import {
-  useDashboardMenuItems,
-  useQuestionMenuItems,
-} from "./hooks/useMenuItems";
+import { useCardMenuItems, useDashboardMenuItems } from "./hooks/useMenuItems";
 import {
   getModerationTimelineEvents,
   getQuestionIcon,
@@ -31,7 +28,7 @@ if (hasPremiumFeature("content_verification")) {
     getStatusIcon,
     getQuestionIcon,
     getModerationTimelineEvents,
-    useQuestionMenuItems,
+    useCardMenuItems,
     useDashboardMenuItems,
   });
 }

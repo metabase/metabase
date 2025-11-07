@@ -19,6 +19,7 @@ import { PreviewQueryModal } from "metabase/query_builder/components/view/Previe
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
+import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
@@ -29,7 +30,6 @@ import type { Card, DashboardTabId } from "metabase-types/api";
 import type { QueryBuilderMode } from "metabase-types/store";
 
 import { AddToDashSelectDashModal } from "../AddToDashSelectDashModal";
-import { MoveQuestionModal } from "../MoveQuestionModal";
 
 type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
 
@@ -225,7 +225,7 @@ export function QueryModals({
         />
       );
     case MODAL_TYPES.MOVE:
-      return <MoveQuestionModal question={question} onClose={onCloseModal} />;
+      return <MoveCardModal card={question.card()} onClose={onCloseModal} />;
     case MODAL_TYPES.ARCHIVE:
       return (
         <Modal onClose={onCloseModal}>

@@ -10,7 +10,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Button, Flex, Icon, Menu } from "metabase/ui";
+import { Button, Flex, Icon, Menu, Tooltip } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { ModelingSidebarSection } from "../../ModelingSidebarSection";
@@ -65,82 +65,86 @@ export function SnippetsSection({ selectedSnippetId }: SnippetsSectionProps) {
 
   return (
     <>
-      <Menu position="bottom-end">
-        <ModelingSidebarSection
-          icon="snippet"
-          title={t`SQL snippets`}
-          rightSection={
-            <Flex gap="xs">
-              {isAdmin && (
-                <Menu position="bottom-end">
-                  <Menu.Target>
-                    <Button
-                      w={32}
-                      h={32}
-                      c="text-primary"
-                      size="compact-md"
-                      variant="subtle"
-                      leftSection={<Icon name="ellipsis" />}
-                      aria-label={t`Snippet collection options`}
-                    />
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    <Menu.Item
-                      leftSection={<Icon name="lock" />}
-                      onClick={() => {
-                        setPermissionsCollectionId(rootCollection?.id ?? null);
-                      }}
-                    >
-                      {t`Change permissions`}
-                    </Menu.Item>
-                  </Menu.Dropdown>
-                </Menu>
-              )}
-              {rootCollection?.can_write && (
+      <ModelingSidebarSection
+        icon="snippet"
+        title={t`SQL snippets`}
+        rightSection={
+          <Flex gap="xs" align="center">
+            {isAdmin && (
+              <Menu position="bottom-end">
                 <Menu.Target>
                   <Button
-                    w={32}
-                    h={32}
-                    size="compact-md"
-                    variant="filled"
-                    leftSection={<Icon name="add" />}
-                    aria-label={t`Create snippet`}
+                    w={24}
+                    h={24}
+                    c="text-medium"
+                    size="compact-xs"
+                    variant="subtle"
+                    leftSection={<Icon name="ellipsis" size={16} />}
+                    aria-label={t`Snippet collection options`}
                   />
                 </Menu.Target>
-              )}
-            </Flex>
-          }
-        >
-          <Tree
-            data={snippetTree}
-            selectedId={selectedSnippetId}
-            onSelect={handleSnippetSelect}
-            TreeNode={ModelingSidebarTreeNode}
-            rightSection={(item: ITreeNodeItem<TreeItem>) => {
-              if (!item.data || !isCollectionTreeItem(item.data)) {
-                return null;
-              }
-              return (
-                <PLUGIN_SNIPPET_FOLDERS.CollectionMenu
-                  collection={item.data}
-                  onEditDetails={setEditingCollection}
-                  onChangePermissions={setPermissionsCollectionId}
-                />
-              );
-            }}
-            role="tree"
-            aria-label="modeling-snippets-tree"
-          />
-        </ModelingSidebarSection>
-        <Menu.Dropdown>
-          <Menu.Item
-            leftSection={<Icon name="snippet" />}
-            onClick={handleCreateSnippet}
-          >
-            {t`New snippet`}
-          </Menu.Item>
-        </Menu.Dropdown>
-      </Menu>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={<Icon name="lock" />}
+                    onClick={() => {
+                      setPermissionsCollectionId(rootCollection?.id ?? null);
+                    }}
+                  >
+                    {t`Change permissions`}
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            )}
+            {rootCollection?.can_write && (
+              <Menu position="bottom-end">
+                <Tooltip label={t`Create snippet`}>
+                  <Menu.Target>
+                    <Button
+                      w={24}
+                      h={24}
+                      size="compact-xs"
+                      variant="subtle"
+                      c="text-medium"
+                      leftSection={<Icon name="add" size={16} />}
+                      aria-label={t`Create snippet`}
+                    />
+                  </Menu.Target>
+                </Tooltip>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={<Icon name="snippet" />}
+                    onClick={handleCreateSnippet}
+                    aria-label={t`Create new snippet`}
+                  >
+                    {t`New snippet`}
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            )}
+          </Flex>
+        }
+      >
+        <Tree
+          data={snippetTree}
+          selectedId={selectedSnippetId}
+          onSelect={handleSnippetSelect}
+          TreeNode={ModelingSidebarTreeNode}
+          rightSection={(item: ITreeNodeItem<TreeItem>) => {
+            if (!item.data || !isCollectionTreeItem(item.data)) {
+              return null;
+            }
+            return (
+              <PLUGIN_SNIPPET_FOLDERS.CollectionMenu
+                collection={item.data}
+                onEditDetails={setEditingCollection}
+                onChangePermissions={setPermissionsCollectionId}
+              />
+            );
+          }}
+          role="tree"
+          aria-label="modeling-snippets-tree"
+        />
+      </ModelingSidebarSection>
       {editingCollection && (
         <PLUGIN_SNIPPET_FOLDERS.CollectionFormModal
           collection={editingCollection}

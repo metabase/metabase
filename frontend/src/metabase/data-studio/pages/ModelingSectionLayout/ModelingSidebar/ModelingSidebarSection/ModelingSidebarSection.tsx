@@ -29,7 +29,7 @@ export function ModelingSidebarSection({
   rightSection = null,
 }: ModelingSidebarSectionProps) {
   const titleContent = (
-    <Flex align="center" gap="sm" pl="sm">
+    <Flex align="center" gap="sm" px="sm" py="xs">
       <Icon name={icon} size={16} />
       <Text fw="bold" className={S.titleText}>
         {title}
@@ -42,14 +42,13 @@ export function ModelingSidebarSection({
     <Box
       component={Link}
       to={to}
-      py="xs"
       className={S.sectionLink}
       data-active={isActive || undefined}
     >
       {titleContent}
     </Box>
   ) : (
-    <Box py="xs">{titleContent}</Box>
+    <Box>{titleContent}</Box>
   );
 
   return (

@@ -17,6 +17,12 @@ export const canAccessDataModel = (state: State): boolean => {
   return user != null && canUserAccessDataModel(user);
 };
 
+export const dataModelPermissionAllowedPathGetter = (
+  user?: UserWithFeaturePermissions,
+): AdminPathKey[] => {
+  return canUserAccessDataModel(user) ? ["data-model"] : [];
+};
+
 export const databaseManagementPermissionAllowedPathGetter = (
   user?: UserWithFeaturePermissions,
 ): AdminPathKey[] => {

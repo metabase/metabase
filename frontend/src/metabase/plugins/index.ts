@@ -60,6 +60,7 @@ import type {
   Bookmark,
   CacheableDashboard,
   CacheableModel,
+  Card,
   CheckDependenciesResponse,
   Collection,
   CollectionAuthorityLevelConfig,
@@ -473,7 +474,7 @@ export const PLUGIN_MODERATION = {
   getModerationTimelineEvents: (_reviews: any, _currentUser: BaseUser | null) =>
     [] as RevisionOrModerationEvent[],
   useDashboardMenuItems: (_model?: Dashboard, _reload?: () => void) => [],
-  useQuestionMenuItems: (_model?: Question, _reload?: () => void) => [],
+  useCardMenuItems: (_model?: Card, _reload?: () => void) => [],
 };
 
 export type InvalidateNowButtonProps = {
