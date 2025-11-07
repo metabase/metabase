@@ -43,7 +43,7 @@ export const DataModel = ({ children, location, params }: Props) => {
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
-  const isSegments = location.pathname.startsWith("/data-studio/data/segment");
+  const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
   const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =
     useDisclosure();
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
@@ -111,7 +111,7 @@ export const DataModel = ({ children, location, params }: Props) => {
         />
 
         <Box className={S.footer} mx="xl" py="sm">
-          <SegmentsLink active={isSegments} to="/data-studio/data/segments" />
+          <SegmentsLink active={isSegments} to="/admin/datamodel/segments" />
         </Box>
       </Stack>
 
