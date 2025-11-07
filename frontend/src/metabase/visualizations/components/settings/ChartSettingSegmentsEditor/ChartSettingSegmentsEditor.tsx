@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -19,17 +18,12 @@ export type Segment = {
 };
 
 export const ChartSettingSegmentsEditor = ({
-  value: _segments,
+  value: segments,
   onChange,
 }: {
   value: Segment[];
   onChange: (value: Segment[]) => void;
 }) => {
-  const segments = useMemo(
-    () => _segments.map((s) => ({ ...s, key: newSegmentKey() })),
-    [_segments],
-  );
-
   const onChangeProperty = (
     index: number,
     property: keyof Segment,
@@ -54,7 +48,7 @@ export const ChartSettingSegmentsEditor = ({
         </thead>
         <tbody>
           {segments.map((segment, index) => (
-            <tr key={segment.key}>
+            <tr key={index}>
               <td>
                 <ColorSelector
                   pillSize="large"
