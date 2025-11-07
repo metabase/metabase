@@ -177,16 +177,16 @@
 
 (defmulti filtered-db-details
   "Returns database details for the filtered database tests."
-  {:arglists '([driver filter-type-prop patterns-type-prop])}
+  {:arglists '([driver filter-type-prop filter-type patterns-type-prop pattern])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
 (defmethod filtered-db-details :default
-  [_driver filter-type-prop patterns-type-prop]
+  [_driver filter-type-prop filter-type patterns-type-prop pattern]
   (-> (mt/db)
       :details
-      (assoc filter-type-prop "inclusion"
-             patterns-type-prop "s*,v*,2*")))
+      (assoc filter-type-prop filter-type
+             patterns-type-prop pattern)))
 
 (defmethod filtered-db-details :snowflake
   [_driver filter-type-prop filter-type patterns-type-prop pattern]
