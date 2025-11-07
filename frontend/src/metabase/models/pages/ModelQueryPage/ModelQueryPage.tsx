@@ -21,7 +21,9 @@ import type { Card, DatasetColumn, Field } from "metabase-types/api";
 import { ModelHeader } from "../../components/ModelHeader";
 import { ModelQueryEditor } from "../../components/ModelQueryEditor";
 import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";
-import { getValidationResult, mergeFieldMetadata } from "../../utils";
+import { getValidationResult } from "../../utils";
+
+import { mergeFieldMetadata } from "./utils";
 
 type ModelQueryPageParams = {
   cardId: string;
