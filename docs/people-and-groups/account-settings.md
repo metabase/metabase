@@ -17,6 +17,8 @@ You can set your first and last names, change your email address, and set your l
 
 You can choose to display Metabase in light or dark mode.
 
+To quickly toggle dark mode, use the [command palette](../exploration-and-organization/exploration.md#command-palette).
+
 The theme only applies to your account. The theme doesn't apply to chart colors or embedded Metabases.
 
 ## Account password
