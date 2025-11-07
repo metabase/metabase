@@ -2,12 +2,14 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase-enterprise.transforms.canceling :as canceling]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -21,6 +23,7 @@
    [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -224,8 +227,8 @@
 (defn preprocess-incremental-query
   "Preprocess a query for incremental transform execution by adding watermark filtering.
 
-  For native queries, injects the watermark value into the query's :parameters vector as a
-  template tag variable named `watermark`
+  For native queries, wraps the query with a SELECT * FROM (...) WHERE checkpoint-column > watermark
+  using HoneySQL to properly format the SQL with driver-specific quoting.
 
   For MBQL queries, adds a filter clause that constrains the checkpoint column to values greater
   than the current watermark.
@@ -236,8 +239,15 @@
   (let [watermark-value (next-watermark-value transform-id)]
     (if watermark-value
       (if (lib.query/native? query)
-        ;; TODO
-        (update-in query [:stages 0 :native] (fn [sql] (format "SELECT * FROM (%s) WHERE %s > %s" sql (-> source-incremental-strategy :checkpoint-filter) watermark-value)))
+        (let [native-sql (get-in query [:stages 0 :native])
+              checkpoint-col-name (-> source-incremental-strategy :checkpoint-filter)
+              driver (some->> query :database (t2/select-one :model/Database) :engine keyword)
+              honeysql-query {:select [:*]
+                              :from [[[:raw (str "(" native-sql ")")]]]
+                              :where [:> (h2x/identifier :field checkpoint-col-name) watermark-value]}
+              [formatted-sql] (binding [driver/*compile-with-inline-parameters* true]
+                                (sql.qp/format-honeysql driver honeysql-query))]
+          (assoc-in query [:stages 0 :native] formatted-sql))
         (lib/filter query (lib/> (source->checkpoint-filter-unique-key query source-incremental-strategy) watermark-value)))
       query)))
 
