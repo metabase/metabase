@@ -80,6 +80,10 @@ function CardMenu({ card, onOpenModal }: CardMenuProps) {
     );
   }
 
+  if (menuItems.length === 0) {
+    return null;
+  }
+
   return (
     <Menu>
       <Menu.Target>
