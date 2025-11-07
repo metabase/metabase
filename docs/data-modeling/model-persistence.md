@@ -10,7 +10,7 @@ Metabase will store model results in tables in a bespoke schema in your data war
 
 > Model persistence doesn't work with [row and column security](../permissions/row-and-column-security.md) or [impersonation](../permissions/impersonation.md).
 
-## Database that support model persistence
+## Databases that support model persistence
 
 Currently, model persistence is only available for the following databases:
 

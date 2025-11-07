@@ -129,6 +129,10 @@ If you want to replace the existing menu with your own component, you can do so 
 {% include_file "{{ dirname }}/snippets/dashboards/plugins.tsx" snippet="example-custom-actions-menu" %}
 ```
 
+### `mapQuestionClickActions`
+
+You can customize what happens when people click on a data point on a dashboard with the `mapQuestionClickActions` plugin. See [mapQuestionClickActions](./questions.md#mapquestionclickactions).
+
 ## Creating dashboards
 
 Creating a dashboard could be done with `useCreateDashboardApi` hook or `CreateDashboardModal` component.
