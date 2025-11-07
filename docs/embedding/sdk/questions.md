@@ -126,17 +126,17 @@ You can use [plugins](./plugins.md) to add custom functionality to your question
 
 When people click on a data point in the embedded interactive chart, Metabase shows them a menu of actions by default. The plugin `mapQuestionClickActions` allows you to customize this behavior. You can choose to:
 
-- open the default Metabase menu;
-- add custom actions to that click-through menu;
-- perform immediate action without opening a menu.
+- Open the default Metabase menu.
+- Add custom actions to that click-through menu.
+- Perform immediate action without opening a menu.
 
-The plugin `mapQuestionClickActions` can be used globally on provider level, or on the component level for `InteractiveQuestion` or `InteractiveDashboard` components. See [Plugins](./plugins.md) for more info on provider scope.
+Use `mapQuestionClickActions` globally at the provider level, or on individual `InteractiveQuestion` or `InteractiveDashboard` components. For more on provider scope, see [Plugins](./plugins.md)
 
 The example below shows all the options for click action behavior. This example will:
 
-- Open a menu with custom actions when "Last Name" column is clicked;
-- Perform an immediate action (show an alert) when the "Plan" column is clicked
-- Shows the default menu (available as `clickActions`) in all other cases
+- Open a menu with custom actions when "Last Name" column is clicked.
+- Perform an immediate action (show an alert) when the "Plan" column is clicked.
+- Shows the default menu (available as `clickActions`) in all other cases.
 
 The behavior is determined by what `mapQuestionClickActions` returns: array of actions to open a menu, or a single action to trigger an immediate action.
 
@@ -144,7 +144,7 @@ The behavior is determined by what `mapQuestionClickActions` returns: array of a
 {% include_file "{{ dirname }}/snippets/questions/interactive-question-click-actions.tsx" snippet="example" %}
 ```
 
-You can also customize the appearance of custom actions int he click menu. Example below shows an example of click menu that has the default actions, a custom action, and a custom action with customized appearance:
+You can also customize the appearance of custom actions in the click menu. The example below shows an example of a click menu with default actions, a custom action, and a custom action with customized appearance:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/questions/interactive-question-plugins.tsx" snippet="example" %}

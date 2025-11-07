@@ -29,7 +29,7 @@ const Example = () => {
           }
 
           if (clicked?.column?.display_name === "Plan") {
-            // This performs an immediate action on "Plan" column insttad of opening the menu
+            // This performs an immediate action on "Plan" column instead of opening the menu
             return {
               onClick: () => alert("You clicked the Plan column!"),
             };
