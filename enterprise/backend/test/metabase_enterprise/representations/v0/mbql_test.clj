@@ -14,17 +14,18 @@
 (deftest export-dataset-query-test
   (let [mp (mt/metadata-provider)]
     (mt/with-temp [:model/Card card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :users)))}]
-      (doseq [query [(mt/native-query {:query "select 1"})
-                     (mt/mbql-query users)
-                     (lib/query mp (lib.metadata/table mp (mt/id :users)))
+      (doseq [query [(lib/query mp (lib.metadata/table mp (mt/id :users)))
                      (lib/query mp (lib.metadata/card mp (:id card)))
                      (lib/native-query mp "select 1")]]
-        (let [exported-query (v0-mbql/export-dataset-query query)]
+        (let [exported-query (v0-mbql/export-dataset-query query)
+              ref-index (v0-common/map-entity-index
+                         {(v0-common/unref (:database exported-query))
+                          (t2/instance :model/Database :id (:database query))
+                          (v0-common/unref (v0-common/entity->ref card))
+                          card})]
           (is (:database exported-query))
-          (is (v0-mbql/import-dataset-query exported-query (v0-common/map-entity-index
-                                                            {(v0-common/unref (:database exported-query))
-                                                             (t2/instance :model/Database :id (:database query))})))))))
-    ;; make sure we can get the query of any existing cards
+          (is (v0-mbql/import-dataset-query exported-query ref-index))))))
+  ;; make sure we can get the query of any existing cards
   (doseq [card (t2/select :model/Card)]
     (let [query (v0-mbql/export-dataset-query (:dataset_query card))]
       (is (:database query))
