@@ -668,7 +668,7 @@
       (throw (ex-info "You must enable SSL in order to use AWS IAM authentication" {})))
     (when (and use-iam?
                (contains? addl-opts-map "sslMode")
-               (not (contains? addl-opts-map "sslMode=VERIFY_CA")))
+               (not= (get addl-opts-map "sslMode") "VERIFY_CA"))
       (throw (ex-info "sslMode must be VERIFY_CA in order to use AWS IAM authentication" {})))
     (merge
      default-connection-args
