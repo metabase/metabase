@@ -253,9 +253,13 @@
   (mt/test-driver :snowflake
     (qp.store/with-metadata-provider (mt/id)
       (let [schema "INFORMATION_SCHEMA"
-            details (-> (mt/db)
-                        (assoc-in [:details :additional-options] (format "schema=%s" schema))
-                        :details)]
+            db-details (:details (mt/db))
+            details (-> db-details
+                        (assoc :additional-options (format "schema=%s" schema))
+                        (dissoc :private-key-id)
+                        (assoc :private-key-options "uploaded")
+                        (assoc :private-key-value (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key)))
+                        (assoc :use-password false))]
         (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [:snowflake details]]
           (is (= [{:s schema}] (jdbc/query spec ["select CURRENT_SCHEMA() s"])))
           (is (= 1 (count (jdbc/query spec ["select * from \"TABLES\" limit 1"])))))))))
