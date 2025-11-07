@@ -2,9 +2,11 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.computed :as lib.computed]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -75,6 +77,29 @@
     (when (every? some? path)
       (str/join ": " path))))
 
+(defn- clauses-in-stage-by-uuid
+  [query stage-number]
+  (lib.computed/with-cache-ephemeral* query [::clauses-in-stage-by-uuid stage-number]
+    (fn []
+      (let [clauses (volatile! (transient {}))]
+        (walk/postwalk (fn [x]
+                         (when-let [the-uuid (and (vector? x) (keyword? (first x)) (lib.options/uuid x))]
+                           (vswap! clauses assoc! the-uuid x))
+                         x)
+                       (lib.util/query-stage query stage-number))
+        (persistent! @clauses)))))
+
+(defn- find-stage-index-and-clause-by-uuid
+  "Find the clause in `query` with the given `lib-uuid`. Return a [stage-index clause] pair, if found."
+  [query stage-number lib-uuid]
+  (let [max-stage (lib.util/canonical-stage-index query stage-number)]
+    (loop [stage-number 0]
+      (if (> stage-number max-stage)
+        nil
+        (if-let [clause (get (clauses-in-stage-by-uuid query stage-number) lib-uuid)]
+          [stage-number clause]
+          (recur (inc stage-number)))))))
+
 (defn- field-display-name-initial-display-name
   [query
    stage-number
@@ -115,7 +140,7 @@
                         (not (or fk-field-id join-alias))
                         (not (str/includes? field-display-name " → "))
                         (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-                          (lib.util/find-stage-index-and-clause-by-uuid query previous-stage-number source-uuid)))]
+                          (find-stage-index-and-clause-by-uuid query previous-stage-number source-uuid)))]
           ;; The :display-name from the field metadata is probably not a :long display name, so
           ;; if the caller requested a :long name and we can lookup the original clause by the
           ;; source-uuid, use that to get the :long name. This allows display-info to get the

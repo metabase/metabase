@@ -1,5 +1,6 @@
 (ns metabase.lib.metadata
   (:require
+   [metabase.lib.computed :as lib.computed]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -93,7 +94,9 @@
   "Get metadata for a Card, aka Saved Question, with `card-id`, if it can be found."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-id               :- ::lib.schema.id/card]
-  (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id))
+  (lib.computed/with-cache-sticky* metadata-providerable [:metadata/card card-id :metadata]
+    (fn []
+      (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id))))
 
 (mu/defn segment :- [:maybe ::lib.schema.metadata/segment]
   "Get metadata for the Segment with `segment-id`, if it can be found."

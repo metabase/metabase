@@ -3,6 +3,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.computed :as lib.computed]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -58,20 +59,25 @@
 (defmethod lib.metadata.calculation/metadata-method :aggregation
   [query
    stage-number
-   [_ag {:keys [base-type effective-type display-name], agg-name :name, :as _opts} index, :as _aggregation-ref]]
-  (let [aggregation (resolve-aggregation query stage-number index)]
-    (merge
-     (lib.metadata.calculation/metadata query stage-number aggregation)
-     {:lib/source :source/aggregations
-      :lib/source-uuid (:lib/uuid (second aggregation))}
-     (when base-type
-       {:base-type base-type})
-     (when effective-type
-       {:effective-type effective-type})
-     (when agg-name
-       {:name agg-name})
-     (when display-name
-       {:display-name display-name}))))
+   [_ag {:keys [base-type effective-type display-name], agg-name :name, :as _opts} ag-uuid, :as ag-ref]]
+  ;; PERF: This could be split into two, separately-cache operations: One for the underlying aggregation's metadata
+  ;; and one for the remix created by the ref's customized `:display-name` etc.
+  ;; Note that there's cache eviction issues with indexing just by the UUID here - it needs to be the whole ref.
+  (lib.computed/with-cache-ephemeral* query [:aggregation-metadata/by-ref stage-number ag-ref]
+    (fn []
+      (let [aggregation (resolve-aggregation query stage-number ag-uuid)]
+        (merge
+         (lib.metadata.calculation/metadata query stage-number aggregation)
+         {:lib/source :source/aggregations
+          :lib/source-uuid (:lib/uuid (second aggregation))}
+         (when base-type
+           {:base-type base-type})
+         (when effective-type
+           {:effective-type effective-type})
+         (when agg-name
+           {:name agg-name})
+         (when display-name
+           {:display-name display-name}))))))
 
 ;;; TODO -- merge this stuff into `defop` somehow.
 

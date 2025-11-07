@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.computed :as lib.computed]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
@@ -257,17 +258,20 @@
    _stage-number :- :int
    card          :- ::lib.schema.metadata/card
    options       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
-  (mapv (fn [col]
-          (assoc col :lib/source :source/card, :lib/card-id (:id card)))
-        (if (= (:type card) :metric)
-          (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
-                                 (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
-            (lib.metadata.calculation/returned-columns
-             (assoc metric-query :lib/metadata (:lib/metadata query))
-             -1
-             (lib.util/query-stage metric-query -1)
-             options))
-          (card-metadata-columns query card))))
+  (lib.computed/with-cache-sticky* query
+    [::returned-columns (:id card) (lib.metadata.calculation/cacheable-options options)]
+    (fn []
+      (mapv (fn [col]
+              (assoc col :lib/source :source/card, :lib/card-id (:id card)))
+            (if (= (:type card) :metric)
+              (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
+                                     (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
+                (lib.metadata.calculation/returned-columns
+                 (assoc metric-query :lib/metadata (:lib/metadata query))
+                 -1
+                 (lib.util/query-stage metric-query -1)
+                 options))
+              (card-metadata-columns query card))))))
 
 (mu/defn source-card-type :- [:maybe ::lib.schema.metadata/card.type]
   "The type of the query's source-card, if it has one."
