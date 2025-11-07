@@ -219,14 +219,8 @@
 (defn default-engine
   "In the absence of an explicit engine argument in a request, which engine should be used?"
   []
-  (if-let [s (search.settings/search-engine)]
-    (let [engine (keyword "search.engine" (name s))]
-      (if (search.engine/supported-engine? engine)
-        engine
-        ;; It would be good to have a warning on start up for this.
-        :search.engine/in-place))
-    (first (filter search.engine/supported-engine?
-                   search.engine/fallback-engine-priority))))
+  ;; TODO (Chris 07/11/2025) It would be good to have a warning on start up whenever this is *not* what's configured.
+  (first (search.engine/active-engines)))
 
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)

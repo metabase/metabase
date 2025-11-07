@@ -14,10 +14,11 @@
   :audit      :getter)
 
 (defsetting search-engine
-  (i18n/deferred-tru "Which engine to use by default when performing search. Supported values are :in-place, :appdb, and :semantic")
+  (i18n/deferred-tru "Which engine to use by default for search. Supported values are :in-place, :appdb, and :semantic")
   :visibility :authenticated
   :export?    false
   :setter     :none
+  ;; TODO (Chris 07/11/2025) Would be good to remove the default and just use [search.engine/default-engine-precedence]
   :default    :appdb
   :type       :keyword)
 

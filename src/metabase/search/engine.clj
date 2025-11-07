@@ -3,9 +3,10 @@
   (:require
    [metabase.search.settings :as settings]))
 
-(def fallback-engine-priority
-  "Search engines in order of preference for fallback scenarios."
-  [:search.engine/appdb
+(def ^:private default-engine-precedence
+  "In the absence of explicit configuration, these are the engines to try using, in decreasing order of preference."
+  [:search.engine/semantic
+   :search.engine/appdb
    :search.engine/in-place])
 
 (defmulti supported-engine?
@@ -74,11 +75,17 @@
   (keys (dissoc (methods supported-engine?) :default)))
 
 (defn active-engines
-  "List the search engines that are supported. Does not mention the legacy in-place engine.
-   Default engine comes first."
+  "List the search engines that are supported, in order of preference.
+   The configured engine comes first, if it is supported."
   []
-  (->> (for [[k p] (dissoc (methods supported-engine?) :default :search.engine/in-place) :when (p k)] k)
-       (sort-by #(if (= (name %) (name (settings/search-engine))) 0 1))))
+  (let [configured-engine (some->> (settings/search-engine) name (keyword "search.engine"))
+        potential-engines (cond->> default-engine-precedence configured-engine (cons configured-engine))]
+    (distinct (filter supported-engine? potential-engines))))
+
+(defn active-indexes
+  "A list of supported search engines, in order of preference. Excludes :search.engine/in-place, which does not use an index."
+  []
+  (remove #{:search.engine/in-place} (active-engines)))
 
 (defn known-engine?
   "Is the given engine recognized?"

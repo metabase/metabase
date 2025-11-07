@@ -79,7 +79,7 @@
 (defn supports-index?
   "Does this instance support a search index, of any sort?"
   []
-  (seq (search.engine/active-engines)))
+  (seq (search.engine/active-indexes)))
 
 (defn init-index!
   "Ensure there is an index ready to be populated."
@@ -91,7 +91,7 @@
       (let [timer (u/start-timer)
             report (reduce (partial merge-with max)
                            nil
-                           (for [e (search.engine/active-engines)]
+                           (for [e (search.engine/active-indexes)]
                              (search.engine/init! e opts)))
             duration (u/since-ms timer)]
         (if (seq report)
@@ -114,7 +114,7 @@
       (let [timer (u/start-timer)
             report (reduce (partial merge-with max)
                            nil
-                           (for [e (search.engine/active-engines)]
+                           (for [e (search.engine/active-indexes)]
                              (search.engine/reindex! e opts)))
             duration (u/since-ms timer)]
         (analytics/inc! :metabase-search/index-reindex-ms duration)
@@ -148,7 +148,7 @@
   "Stop tracking the current indexes. Used when resetting the appdb."
   []
   (when (supports-index?)
-    (doseq [e (search.engine/active-engines)]
+    (doseq [e (search.engine/active-indexes)]
       (search.engine/reset-tracking! e))))
 
 (defn update!
@@ -165,7 +165,7 @@
   "Given a model and a list of model's ids, remove corresponding search entries."
   [model ids]
   (when (supports-index?)
-    (doseq [e            (search.engine/active-engines)
+    (doseq [e            (search.engine/active-indexes)
             search-model (->> (vals (search.spec/specifications))
                               (filter (comp #{model} :model))
                               (map :name))]

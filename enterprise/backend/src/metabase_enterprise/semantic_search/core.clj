@@ -12,14 +12,14 @@
    [metabase.analytics.core :as analytics]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.engine :as search.engine]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.realize :as t2.realize]))
 
 (defn- fallback-engine
   "Find the highest priority search engine available for fallback."
   []
-  (first (filter search.engine/supported-engine?
-                 search.engine/fallback-engine-priority)))
+  (u/seek (comp not #{:search.engine/semantic}) (search.engine/active-engines)))
 
 (defn- index-active? [pgvector index-metadata]
   (boolean (semantic.index-metadata/get-active-index-state pgvector index-metadata)))
