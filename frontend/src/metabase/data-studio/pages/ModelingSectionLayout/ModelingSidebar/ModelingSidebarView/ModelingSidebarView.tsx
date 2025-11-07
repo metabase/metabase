@@ -74,6 +74,7 @@ export function ModelingSidebarView({
     (item: ITreeNodeItem) => {
       if (
         item.data &&
+        typeof item.data === "object" &&
         "model" in item.data &&
         item.data.model === "snippet" &&
         typeof item.id === "number"
