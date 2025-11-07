@@ -263,7 +263,7 @@ function getQueryBuilderUrl(table: Table) {
 }
 
 function getDependencyGraphUrl(table: Table) {
-  return `/admin/tools/dependencies?id=${table.id}&type=table`;
+  return `/data-studio/dependencies?id=${table.id}&type=table`;
 }
 
 export const TableSection = memo(TableSectionBase);
