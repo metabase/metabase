@@ -3,20 +3,32 @@ import { c, t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { getMetadata } from "metabase/selectors/metadata";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
 
-type CardModalType = "add-to-dashboard" | "move" | "duplicate" | "archive";
+type CardModalType = "add-to-dashboard" | "move" | "copy" | "archive";
 
 type CardMoreMenuProps = {
   card: Card;
 };
 
 export function CardMoreMenu({ card }: CardMoreMenuProps) {
-  const [_modalType, setModalType] = useState<CardModalType>();
-  return <CardMenu card={card} onOpenModal={setModalType} />;
+  const [modalType, setModalType] = useState<CardModalType>();
+  return (
+    <>
+      <CardMenu card={card} onOpenModal={setModalType} />
+      {modalType != null && (
+        <CardModal
+          card={card}
+          modalType={modalType}
+          onClose={() => setModalType(undefined)}
+        />
+      )}
+    </>
+  );
 }
 
 type CardMenuProps = {
@@ -61,7 +73,7 @@ function CardMenu({ card, onOpenModal }: CardMenuProps) {
       <Menu.Item
         key="duplicate"
         leftSection={<Icon name="clone" />}
-        onClick={() => onOpenModal("duplicate")}
+        onClick={() => onOpenModal("copy")}
       >
         {c("A verb, not a noun").t`Duplicate`}
       </Menu.Item>,
@@ -94,4 +106,19 @@ function CardMenu({ card, onOpenModal }: CardMenuProps) {
       <Menu.Dropdown>{menuItems}</Menu.Dropdown>
     </Menu>
   );
+}
+
+type CardModalProps = {
+  card: Card;
+  modalType: CardModalType;
+  onClose: () => void;
+};
+
+function CardModal({ card, modalType, onClose }: CardModalProps) {
+  switch (modalType) {
+    case "move":
+      return <MoveCardModal card={card} onClose={onClose} />;
+    default:
+      return null;
+  }
 }

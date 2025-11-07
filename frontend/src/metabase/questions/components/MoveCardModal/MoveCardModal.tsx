@@ -16,13 +16,14 @@ import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { API_UPDATE_QUESTION } from "metabase/query_builder/actions";
-import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Icon, Radio, Title } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
+import type { Card } from "metabase-types/api";
 
-interface MoveQuestionModalProps {
-  question: Question;
+import CardMoveToast from "../CardMoveToast";
+
+interface MoveCardModalProps {
+  card: Card;
   onClose: () => void;
 }
 
@@ -31,13 +32,10 @@ type ConfirmationTypes =
   | "dashboard-to-collection"
   | "collection-to-dashboard";
 
-export const MoveQuestionModal = ({
-  question,
-  onClose,
-}: MoveQuestionModalProps) => {
+export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
   const dispatch = useDispatch();
 
-  const [updateQuestion] = useUpdateCardMutation();
+  const [updateCard] = useUpdateCardMutation();
 
   const [confirmMoveState, setConfirmMoveState] = useState<{
     type: ConfirmationTypes;
@@ -63,8 +61,8 @@ export const MoveQuestionModal = ({
             collection_id: canonicalCollectionId(destination.id),
           };
 
-    return updateQuestion({
-      id: question.id(),
+    return updateCard({
+      id: card.id,
       delete_old_dashcards: deleteOldDashcards,
       ...update,
     })
@@ -80,12 +78,7 @@ export const MoveQuestionModal = ({
 
         dispatch(
           addUndo({
-            message: (
-              <QuestionMoveToast
-                destination={destination}
-                question={question}
-              />
-            ),
+            message: <CardMoveToast card={card} destination={destination} />,
             undo: false,
           }),
         );
@@ -97,7 +90,7 @@ export const MoveQuestionModal = ({
             .unwrap()
             .catch(() => undefined); // we can fallback to navigation w/o this info
           const dashcard = dashboard?.dashcards.find(
-            (c) => c.card_id === question.id(),
+            (c) => c.card_id === card.id,
           );
 
           if (!dashboard || !dashcard) {
@@ -132,9 +125,9 @@ export const MoveQuestionModal = ({
   };
 
   const handleChooseMoveLocation = async (destination: MoveDestination) => {
-    const wasDq = _.isNumber(question.dashboardId());
+    const wasDq = _.isNumber(card.dashboard_id);
     const isDq = destination.model === "dashboard";
-    const dashCount = question.dashboardCount();
+    const dashCount = card.dashboard_count ?? 0;
 
     if (wasDq && !isDq) {
       setConfirmMoveState({ type: "dashboard-to-collection", destination });
@@ -173,7 +166,7 @@ export const MoveQuestionModal = ({
                   style={{ marginBottom: -2 }}
                   size={20}
                 />{" "}
-                <Dashboards.Name key="name" id={question.dashboardId()} />
+                <Dashboards.Name key="name" id={card.dashboard_id} />
               </>
             )}?`}
           </Title>
@@ -224,7 +217,7 @@ export const MoveQuestionModal = ({
                   style={{ marginBottom: -2 }}
                   size={20}
                 />{" "}
-                <Dashboards.Name key="name" id={question.dashboardId()} />
+                <Dashboards.Name key="name" id={card.dashboard_id} />
               </>
             )}`}
           </Title>
@@ -241,8 +234,8 @@ export const MoveQuestionModal = ({
       <QuestionMoveConfirmModal
         selectedItems={[
           {
-            name: question.displayName() as string,
-            id: question.id(),
+            name: card.name,
+            id: card.id,
             model: "card",
           },
         ]}
@@ -255,22 +248,22 @@ export const MoveQuestionModal = ({
   }
 
   const recentAndSearchFilter = (item: CollectionPickerItem) => {
-    const dashboardId = question.dashboardId();
+    const dashboardId = card.dashboard_id;
 
     if (dashboardId) {
       return item.model === "dashboard" && item.id === dashboardId;
     } else {
-      return item.model === "collection" && item.id === question.collectionId();
+      return item.model === "collection" && item.id === card.collection_id;
     }
   };
 
   return (
     <MoveModal
       title={t`Where do you want to save this?`}
-      initialCollectionId={question.collectionId() ?? "root"}
+      initialCollectionId={card.collection_id ?? "root"}
       onClose={onClose}
       onMove={handleChooseMoveLocation}
-      canMoveToDashboard={question.type() === "question"}
+      canMoveToDashboard={card.type === "question"}
       recentAndSearchFilter={recentAndSearchFilter}
     />
   );
