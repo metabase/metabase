@@ -2,7 +2,6 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase-enterprise.transforms.canceling :as canceling]
    [metabase-enterprise.transforms.interface :as transforms.i]
