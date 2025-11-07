@@ -115,7 +115,6 @@ describe("SearchResult > Collections", () => {
   describe("EE", () => {
     const resultInOfficalCollectionEE: WrappedResult = {
       ...resultInOfficalCollection,
-      getIcon: () => ({ name: "table" }),
     };
 
     it("renders regular collection correctly", async () => {

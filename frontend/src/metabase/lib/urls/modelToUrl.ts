@@ -19,7 +19,9 @@ export type UrlableModel = {
   collection_id?: CollectionId | null;
 };
 
-export function modelToUrl(item: UrlableModel) {
+const NOT_FOUND_URL = "/404";
+
+export function modelToUrl(item: UrlableModel): string {
   switch (item.model) {
     case "card":
       return question({
@@ -38,7 +40,7 @@ export function modelToUrl(item: UrlableModel) {
       if (item?.database?.id) {
         return tableRowsQuery(item.database.id, item.id);
       }
-      return null;
+      return NOT_FOUND_URL;
     case "collection":
       return collection(item);
     case "document":
@@ -46,10 +48,10 @@ export function modelToUrl(item: UrlableModel) {
     case "timeline":
       return timeline(item);
     case "user":
-      return null;
+      return NOT_FOUND_URL;
     case "transform":
       return transform(item.id);
     default:
-      return null;
+      return NOT_FOUND_URL;
   }
 }

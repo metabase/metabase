@@ -2,6 +2,7 @@ import type { ComponentType, PropsWithChildren } from "react";
 
 import { Badge } from "metabase/common/components/Badge";
 import Collections from "metabase/entities/collections";
+import { getIcon } from "metabase/lib/icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {
   CollectionId,
@@ -38,7 +39,7 @@ const CollectionBadgeInner = ({
 
   const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(collection);
   const icon = {
-    ...collection.getIcon(),
+    ...getIcon({ ...collection, model: "collection" }),
     ...(isRegular ? { size: 16 } : IRREGULAR_ICON_PROPS),
   };
 
