@@ -8,9 +8,9 @@ on:
         description: "Branch we want to release the SDK from (to release from other branches use the workflow from those branches)"
         type: choice
         required: true
-        default: "master"
+        default: release-x.57.x
         options:
-          - master
+          - release-x.57.x
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
@@ -345,8 +345,9 @@ jobs:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Edit PR adding useful information (using Metabase bot app)
+        # metabase/embedding team is added automatically as code owner of updated `package.template.json` file
         run: |
-          gh pr edit --add-reviewer @metabase/embedding,albertoperdomo --add-label no-backport
+          gh pr edit --add-reviewer albertoperdomo --add-label no-backport
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
@@ -392,7 +393,8 @@ jobs:
               "release-x.53.x": "53-stable",
               "release-x.54.x": "54-stable",
               "release-x.55.x": "55-stable",
-              "release-x.56.x": "56-stable"
+              "release-x.56.x": "56-stable",
+              "release-x.57.x": "57-beta"
             }[$branch]'
           )
 

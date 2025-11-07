@@ -1,11 +1,11 @@
 (ns metabase.lib.schema.util
-  (:refer-clojure :exclude [ref run! every? mapv])
+  (:refer-clojure :exclude [ref run! every? mapv empty?])
   (:require
    [medley.core :as m]
    [metabase.lib.options :as lib.options]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [run! every? mapv]]))
+   [metabase.util.performance :as perf :refer [run! every? mapv empty?]]))
 
 (declare collect-uuids*)
 

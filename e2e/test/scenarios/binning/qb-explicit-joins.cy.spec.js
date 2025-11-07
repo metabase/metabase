@@ -174,7 +174,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       assertQueryBuilderState({
         mode: "notebook",
         title: "Count by Products → Price: 50 bins",
-        values: ["14", "18", "20", "100"],
+        values: ["14", "20", "24", "100"],
       });
     });
 

@@ -1,8 +1,8 @@
 diff --git a/node_modules/echarts/lib/chart/line/LineView.js b/node_modules/echarts/lib/chart/line/LineView.js
-index 9da26b6..edf6ed7 100644
+index 79ac429..4075c93 100644
 --- a/node_modules/echarts/lib/chart/line/LineView.js
 +++ b/node_modules/echarts/lib/chart/line/LineView.js
-@@ -140,6 +140,9 @@ function turnPointsIntoStep(points, coordSys, stepTurnAt, connectNulls) {
+@@ -156,6 +156,9 @@ function turnPointsIntoStep(points, basePoints, coordSys, stepTurnAt, connectNul
      pt[0] = points[i];
      pt[1] = points[i + 1];
      stepPoints.push(pt[0], pt[1]);
@@ -13,10 +13,10 @@ index 9da26b6..edf6ed7 100644
        case 'end':
          stepPt[baseIndex] = nextPt[baseIndex];
 diff --git a/node_modules/echarts/lib/chart/line/helper.js b/node_modules/echarts/lib/chart/line/helper.js
-index fa02e2f..c84b0ac 100644
+index b9cef72..4729614 100644
 --- a/node_modules/echarts/lib/chart/line/helper.js
 +++ b/node_modules/echarts/lib/chart/line/helper.js
-@@ -108,16 +108,20 @@ function getValueStart(valueAxis, valueOrigin) {
+@@ -107,16 +107,20 @@ function getValueStart(valueAxis, valueOrigin) {
    return valueStart;
  }
  export function getStackedOnPoint(dataCoordInfo, coordSys, data, idx) {
@@ -43,14 +43,13 @@ index fa02e2f..c84b0ac 100644
    return coordSys.dataToPoint(stackedData);
  }
 diff --git a/node_modules/echarts/lib/data/helper/dataStackHelper.js b/node_modules/echarts/lib/data/helper/dataStackHelper.js
-index c25de1b..a3ced22 100644
+index c25de1b..454a3d3 100644
 --- a/node_modules/echarts/lib/data/helper/dataStackHelper.js
 +++ b/node_modules/echarts/lib/data/helper/dataStackHelper.js
-@@ -83,6 +83,13 @@ export function enableDataStack(seriesModel, dimensionsInput, opt) {
+@@ -83,6 +83,12 @@ export function enableDataStack(seriesModel, dimensionsInput, opt) {
    var stackedDimInfo;
    var stackResultDimension;
    var stackedOverDimension;
-+
 +  var yCoordDimension = dimensionDefineList.find(
 +    dimensionInfo => !isString(dimensionInfo) && dimensionInfo.coordDim === 'y'
 +  );
@@ -60,7 +59,7 @@ index c25de1b..a3ced22 100644
    each(dimensionDefineList, function (dimensionInfo, index) {
      if (isString(dimensionInfo)) {
        dimensionDefineList[index] = dimensionInfo = {
-@@ -95,7 +102,10 @@ export function enableDataStack(seriesModel, dimensionsInput, opt) {
+@@ -95,7 +101,10 @@ export function enableDataStack(seriesModel, dimensionsInput, opt) {
          stackedByDimInfo = dimensionInfo;
        }
        // Find the first stackable dimension as the stackedDimInfo.
@@ -72,33 +71,33 @@ index c25de1b..a3ced22 100644
          stackedDimInfo = dimensionInfo;
        }
      }
-@@ -105,6 +115,11 @@ export function enableDataStack(seriesModel, dimensionsInput, opt) {
+@@ -103,7 +112,11 @@ export function enableDataStack(seriesModel, dimensionsInput, opt) {
+   if (stackedDimInfo && !byIndex && !stackedByDimInfo) {
+     // Compatible with previous design, value axis (time axis) only stack by index.
      // It may make sense if the user provides elaborately constructed data.
-     byIndex = true;
+-    byIndex = true;
++    if (stackedDimInfo && !byIndex && !stackedByDimInfo) {
++      // Compatible with previous design, value axis (time axis) only stack by index.
++      // It may make sense if the user provides elaborately constructed data.
++      byIndex = true;
++    }
    }
-+  if (stackedDimInfo && !byIndex && !stackedByDimInfo) {
-+    // Compatible with previous design, value axis (time axis) only stack by index.
-+    // It may make sense if the user provides elaborately constructed data.
-+    byIndex = true;
-+  }
    // Add stack dimension, they can be both calculated by coordinate system in `unionExtent`.
    // That put stack logic in List is for using conveniently in echarts extensions, but it
-   // might not be a good way.
 diff --git a/node_modules/echarts/lib/label/labelLayoutHelper.js b/node_modules/echarts/lib/label/labelLayoutHelper.js
-index a75f606..52c5a0b 100644
+index 8927284..3ba88fc 100644
 --- a/node_modules/echarts/lib/label/labelLayoutHelper.js
 +++ b/node_modules/echarts/lib/label/labelLayoutHelper.js
-@@ -256,6 +256,13 @@ export function hideOverlap(labelList) {
-     var transform = labelItem.transform;
+@@ -411,6 +411,12 @@ export function hideOverlap(labelList) {
+     }
      var label = labelItem.label;
      var labelLine = labelItem.labelLine;
-+    
 +    if (label.style.text === "") {
 +      hideEl(label);
 +      labelLine && hideEl(labelLine);
 +      continue;
 +    }
-+    
-     globalRect.copy(labelItem.rect);
-     // Add a threshold because layout may be aligned precisely.
-     globalRect.width -= 0.1;
++
+     // NOTICE: even when the with/height of globalRect of a label is 0, the label line should
+     // still be displayed, since we should follow the concept of "truncation", meaning that
+     // something exists even if it cannot be fully displayed. A visible label line is necessary

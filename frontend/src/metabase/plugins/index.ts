@@ -104,7 +104,11 @@ import type {
 } from "metabase-types/store";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
-import type { GetAuthProviders, PluginGroupManagersType } from "./types";
+import type {
+  GetAuthProviders,
+  PluginGroupManagersType,
+  SyncedCollectionsSidebarSectionProps,
+} from "./types";
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUNCTIONS: (() => void)[] = [];
@@ -578,6 +582,9 @@ export interface SimpleDataPickerProps {
 
 export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
+  onBeforeRequestHandlers: {
+    getOrRefreshSessionHandler: async () => {},
+  },
 };
 
 export const PLUGIN_EMBEDDING_IFRAME_SDK = {
@@ -914,11 +921,7 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
 export const PLUGIN_REMOTE_SYNC: {
   LibraryNav: ComponentType;
   RemoteSyncSettings: ComponentType;
-  SyncedCollectionsSidebarSection: ComponentType<{
-    syncedCollections: any[];
-    collectionItem: any;
-    onItemSelect: () => void;
-  }>;
+  SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
   REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
   useSyncStatus: () => {
     isIdle: boolean;

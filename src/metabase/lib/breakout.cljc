@@ -1,5 +1,5 @@
 (ns metabase.lib.breakout
-  (:refer-clojure :exclude [mapv #?(:clj for)])
+  (:refer-clojure :exclude [mapv not-empty #?(:clj for)])
   (:require
    [clojure.string :as str]
    [metabase.lib.binning :as lib.binning]
@@ -16,7 +16,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv #?(:clj for)]]))
+   [metabase.util.performance :refer [mapv not-empty #?(:clj for)]]))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :breakout
   [query stage-number _k]
