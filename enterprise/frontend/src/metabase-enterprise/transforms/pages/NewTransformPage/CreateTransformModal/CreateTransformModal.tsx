@@ -202,41 +202,6 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
   );
 }
 
-type IncrementalNoticeProps = {
-  source: TransformSource;
-};
-
-function IncrementalNotice({ source }: IncrementalNoticeProps) {
-  const { values } = useFormikContext<NewTransformValues>();
-
-  if (!values.incremental) {
-    return null;
-  }
-
-  // Only show the note for SQL/native queries
-  // MBQL queries will have the filter automatically added
-  if (source.type !== "query") {
-    return null;
-  }
-
-  // Check if this is a native query by looking at the stages
-  const query = source.query as any;
-  const isNativeQuery =
-    query.stages?.[0]?.["lib/type"] === "mbql.stage/native" ||
-    query.stages?.[0]?.native != null;
-
-  if (!isNativeQuery) {
-    return null;
-  }
-
-  return (
-    <Alert variant="info" icon="info">
-      {t`Ensure your query contains WHERE filter on the keyset column. You may want to use:`}{" "}
-      <strong>{`[[AND id > {{watermark}}]]`}</strong>
-    </Alert>
-  );
-}
-
 function TargetStrategyFields() {
   const { values } = useFormikContext<NewTransformValues>();
 
@@ -343,7 +308,6 @@ function CreateTransformForm({
             placeholder={t`descriptive_name`}
           />
           <FormSwitch name="incremental" label={t`Incremental?`} />
-          <IncrementalNotice source={source} />
           <SourceStrategyFields source={source} />
           <TargetStrategyFields />
           <Group>

@@ -212,23 +212,6 @@ function UpdateIncrementalForm({
             />
             {values.incremental && (
               <>
-                {(() => {
-                  // Check if this is a native query
-                  if (transform.source.type !== "query") {
-                    return null;
-                  }
-                  const query = transform.source.query as any;
-                  const isNativeQuery =
-                    query.stages?.[0]?.["lib/type"] === "mbql.stage/native" ||
-                    query.stages?.[0]?.native != null;
-
-                  return isNativeQuery ? (
-                    <Alert variant="info" icon="info">
-                      {t`Ensure your query contains WHERE filter on the keyset column. You may want to use:`}{" "}
-                      <strong>{`[[AND id > {{watermark}}]]`}</strong>
-                    </Alert>
-                  ) : null;
-                })()}
                 <FormSelect
                   name="sourceStrategy"
                   label={t`Source Strategy`}
