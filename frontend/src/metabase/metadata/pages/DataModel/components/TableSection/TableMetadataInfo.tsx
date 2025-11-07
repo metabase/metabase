@@ -5,6 +5,7 @@ import { skipToken } from "metabase/api";
 import { Group, Stack, Text } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { Table } from "metabase-types/api";
+import { isNil } from "lodash";
 
 interface Props {
   table: Table;
@@ -46,10 +47,12 @@ export function TableMetadataInfo({ table }: Props) {
       <MetadataRow label={t`Name on disk`} value={table.name} />
       <MetadataRow label={t`Last updated at`} value={formattedDate} />
       <MetadataRow label={t`View count`} value={table.view_count} />
-      <MetadataRow
-        label={t`Est. row count`}
-        value={String(table.estimated_row_count)}
-      />
+      {!isNil(table.estimated_row_count) ? (
+        <MetadataRow
+          label={t`Est. row count`}
+          value={table.estimated_row_count}
+        />
+      ) : null}
       <MetadataRow label={t`Dependencies`} value={dependenciesCount} />
       <MetadataRow label={t`Dependents`} value={dependentsCount} />
     </Stack>
@@ -61,7 +64,7 @@ function MetadataRow({
   value,
 }: {
   label: string;
-  value: string | number;
+  value: string | number | null | undefined;
 }) {
   return (
     <Group justify="space-between">
