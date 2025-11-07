@@ -214,8 +214,9 @@
       (when-let [table (target-table db-id target)]
         (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
               table-metadata (lib.metadata/table metadata-provider (:id table))
-              mbql-query (-> (lib/query metadata-provider table-metadata)
-                             (lib/aggregate (lib/max (source->checkpoint-filter-column (:query source)
+              query (lib/query metadata-provider table-metadata)
+              mbql-query (-> query
+                             (lib/aggregate (lib/max (source->checkpoint-filter-column query
                                                                                        (:source-incremental-strategy source)
                                                                                        table metadata-provider))))]
           (some-> mbql-query qp/process-query :data :rows first first bigint))))))
@@ -233,11 +234,12 @@
   query unchanged to allow a full initial load."
   [query source-incremental-strategy transform-id]
   (let [watermark-value (next-watermark-value transform-id)]
-    (if (lib.query/native? query)
-      (update-in query [:stages 0 :native] (fn [sql] (format "SELECT * FROM (%s) WHERE %s > %s" sql (-> source-incremental-strategy :checkpoint-filter) watermark-value)))
-      (cond-> query
-        watermark-value
-        (lib/filter (lib/> (source->checkpoint-filter-unique-key query source-incremental-strategy) watermark-value))))))
+    (if watermark-value
+      (if (lib.query/native? query)
+        ;; TODO
+        (update-in query [:stages 0 :native] (fn [sql] (format "SELECT * FROM (%s) WHERE %s > %s" sql (-> source-incremental-strategy :checkpoint-filter) watermark-value)))
+        (lib/filter query (lib/> (source->checkpoint-filter-unique-key query source-incremental-strategy) watermark-value)))
+      query)))
 
 (defn compile-source
   "Compile the source query of a transform."
