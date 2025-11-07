@@ -200,12 +200,9 @@
    (create-context context nil))
   ([context :- ::context
     opts    :- [:maybe [:map-of :keyword :any]]]
-   (def context context)
-   (def res
-     (-> context
-         enhance-context-with-schema
-         annotate-transform-source-types
-         add-backend-capabilities
-         add-recent-views
-         (set-user-time opts)))
-   res))
+   (-> context
+       enhance-context-with-schema
+       annotate-transform-source-types
+       add-backend-capabilities
+       add-recent-views
+       (set-user-time opts))))
