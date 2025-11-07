@@ -31,6 +31,7 @@ const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 const isQaDatabase = process.env["QA_DB_ENABLED"] === "true";
 
 const isEmbeddingSdk = process.env.CYPRESS_IS_EMBEDDING_SDK === "true";
+const backendPort = process.env.MB_JETTY_PORT || 4000;
 
 // docs say that tsconfig paths should handle aliases, but they don't
 const assetsResolverPlugin = {
@@ -172,6 +173,7 @@ const defaultConfig = {
   // enable video recording in run mode
   video: true,
   videoCompression: true,
+  baseUrl: `http://localhost:${backendPort}`,
 };
 
 const mainConfig = {

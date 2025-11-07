@@ -84,21 +84,17 @@ jobs:
           mysql: ${{ inputs.name != 'mongo' }}
           mongo: ${{ inputs.name == 'mongo' }}
 
-      - name: Retrieve uberjar artifact for ${{ inputs.edition }}
-        uses: ./.github/actions/fetch-artifact
-        with:
-          name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-          extract-path: "target/uberjar"
-          output-name: "metabase.jar"
+      # - name: Retrieve uberjar artifact for ${{ inputs.edition }}
+      #   uses: ./.github/actions/fetch-artifact
+      #   with:
+      #     name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+      #     extract-path: "target/uberjar"
+      #     output-name: "metabase.jar"
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-
-      - name: Prepare JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: "temurin"
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
 
       - name: Prepare Cypress environment
         id: cypress-prep
@@ -116,8 +112,21 @@ jobs:
         if: github.run_attempt != '1'
         run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
 
-      - name: Run Metabase
-        run: node e2e/runner/run_cypress_ci.js start
+      - name: Build frontend
+        run: |
+          yarn build-release
+      - name: Run live backend
+        env:
+          MB_DB_TYPE: h2
+          MB_ENABLE_TEST_ENDPOINTS: true
+          MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE: true
+          MB_JETTY_HOST: 0.0.0.0
+          MB_JETTY_PORT: 4000
+          MB_HTTP_CHANNEL_HOST_STRATEGY: "allow-all"
+          MB_LAST_ANALYTICS_CHECKSUM: -1
+        # FIXME: do the separate invocation for OSS
+        run: |
+          clojure -M:dev:drivers:ee:run
 
       - name: Generate database snapshots
         run: node e2e/runner/run_cypress_ci.js snapshot
