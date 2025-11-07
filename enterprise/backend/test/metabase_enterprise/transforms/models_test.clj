@@ -5,6 +5,7 @@
    [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.models.transform-job :as transform-job]
    [metabase-enterprise.transforms.models.transform-tag :as transform-tag]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -111,6 +112,9 @@
                      :model/TransformTag tag3 {:name "tag3"}
                      :model/TransformTag tag4 {:name "tag4"}]
         (let [transform-id (:id transform)]
+
+          (testing "Transform created without creator_id defaults to internal user"
+            (is (= config/internal-mb-user-id (:creator_id transform))))
 
           (testing "Initial tag order is preserved"
             (transform.model/update-transform-tags! transform-id [(:id tag2) (:id tag1) (:id tag3)])
@@ -220,3 +224,50 @@
         (let [hydrated (t2/hydrate transform1 :table-with-db-and-fields)]
           (is (not= other-table-id (-> hydrated :table :id))
               "Should not hydrate unrelated table"))))))
+
+(deftest creator-hydration-test
+  (testing "Transform creator hydration returns user details"
+    (let [user1-data {:first_name "Test"
+                      :last_name  "Creator"
+                      :email      "test.creator@example.com"}
+          user2-data {:first_name "Second"
+                      :last_name  "User"
+                      :email      "second.user@example.com"}]
+      (mt/with-temp [:model/User {user1-id :id} user1-data
+                     :model/Database {db-id :id} {}
+                     :model/Transform transform1 {:name       "Transform with creator"
+                                                  :creator_id user1-id
+                                                  :source     {:type  "query"
+                                                               :query {:database db-id
+                                                                       :type     "native"
+                                                                       :native   {:query         "SELECT 1"
+                                                                                  :template-tags {}}}}
+                                                  :target     {:type   "table"
+                                                               :schema "public"
+                                                               :name   "test_table"
+                                                               :db_id  db-id}}
+                     :model/User {user2-id :id} user2-data
+                     :model/Transform transform2 {:name       "Second transform"
+                                                  :creator_id user2-id
+                                                  :source     {:type  "query"
+                                                               :query {:database db-id
+                                                                       :type     "native"
+                                                                       :native   {:query         "SELECT 2"
+                                                                                  :template-tags {}}}}
+                                                  :target     {:type   "table"
+                                                               :schema "public"
+                                                               :name   "test_table2"
+                                                               :db_id  db-id}}]
+        (testing "Hydrates creator with user details"
+          (is (=? (assoc user1-data :id user1-id)
+                  (:creator (t2/hydrate transform1 :creator)))))
+        (testing "Hydrates multiple transforms with creators in batch"
+          (let [hydrated (t2/hydrate [transform1 transform2] :creator)]
+            (is (= 2 (count hydrated))
+                "Should hydrate both transforms")
+            (is (=? (assoc user1-data :id user1-id)
+                    (:creator (first hydrated)))
+                "First hydrated should match the first user's data")
+            (is (=? (assoc user2-data :id user2-id)
+                    (:creator (second hydrated)))
+                "Second hydrated should match the second user's data")))))))

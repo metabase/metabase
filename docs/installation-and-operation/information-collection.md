@@ -10,7 +10,7 @@ If you're self-hosting Metabase and you've opted in to provide us with anonymous
 
 **[We only collect anonymous Metabase data; we don't collect any of your data](https://www.metabase.com/security).** We don't collect any usernames, emails, server IPs, database details of any kind, or any personally identifiable information (PII).
 
-This anonymous data helps us understand how people are actually using Metabase, which in turn helps us prioritize what to work on next.
+This anonymous data helps us understand how people are using Metabase, which in turn helps us prioritize what to work on next.
 
 ## Examples of the anonymous data we collect and how we use it
 
@@ -54,7 +54,7 @@ The token validation request includes:
 - Count of internal users
 - Count of email domains
 - Count of embedded dashboards and questions
-- Types of embedding (static, interactive, Embedded analtyics SDK, Embedded analytics JS)
+- Types of embedding (static, interactive, Embedded analytics SDK, Embedded analytics JS)
 - Site UUID (just an identifier for your Metabase)
 - Metabase version
 - Query execution timestamp (last UTC day)

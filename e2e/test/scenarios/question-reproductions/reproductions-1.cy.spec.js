@@ -669,10 +669,6 @@ describe("issue 17910", () => {
     });
     cy.wait("@card");
 
-    cy.get("#QuestionSavedModal").within(() => {
-      cy.findByText("Not now").click();
-    });
-
     H.questionInfoButton().click();
 
     H.sidesheet().within(() => {

@@ -80,7 +80,7 @@ Custom colors are unavailable for:
 
 ## Logo
 
-You can replace Metabase’s familiar, tasteful, inspired-yet-not-threateningly-avant-garde dotted M logo with your very own logo. For things to work best, the logo you upload should be an SVG file that looks good when it’s around 60px tall. (In other words, ask the nearest designer for help.)
+You can replace Metabase's familiar, tasteful, inspired-yet-not-threateningly-avant-garde dotted M logo with your very own logo. For things to work best, the logo you upload should be an SVG file that looks good when it's around 60px tall. (In other words, ask the nearest designer for help.)
 
 ## Font
 
