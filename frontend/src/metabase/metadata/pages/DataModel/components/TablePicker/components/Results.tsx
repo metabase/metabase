@@ -260,6 +260,24 @@ const ResultsItem = ({
       return;
     }
 
+    // In multi-select mode, prevent navigation and allow toggling for items with children
+    if (selectedItemsCount > 0) {
+      if (hasChildren(type)) {
+        // Toggle expansion for items with children
+        if (open !== undefined) {
+          toggle?.(key, open);
+        } else {
+          toggle?.(key);
+        }
+      }
+      // Prevent Link navigation in multi-select mode
+      if (event) {
+        event.preventDefault();
+      }
+      return;
+    }
+
+    // In single-select mode:
     // If the item is already active, toggle its expansion state
     // Otherwise, navigate to make it active
     if (isActive && hasChildren(type)) {
@@ -280,7 +298,7 @@ const ResultsItem = ({
         toggle?.(key, open);
       }
 
-      // Don't navigate when items are checked (multi-select mode)
+      // Only navigate in single-select mode
       if (selectedItemsCount === 0 && value) {
         // Expand collapsed items when navigating to them
         if (!isExpanded && hasChildren(type)) {
