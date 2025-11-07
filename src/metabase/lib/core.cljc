@@ -421,9 +421,8 @@
   parse]
  [lib.portable
   export-walk
-  ExportVisitor
   import-walk
-  ImportVisitor]
+  QueryVisitor]
  [lib.query
   ->query
   can-preview

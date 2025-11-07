@@ -9,12 +9,11 @@
 (set! *warn-on-reflection* true)
 
 (defmulti representation-type
-  "Returns the representation type (e.g., :question, :model, :metric) for a toucan entity or metadata-provider entity.
-   Dispatches on the toucan model type or the `:lib/type`."
+  "Returns the representation type (e.g., :question, :model, :metric) for a toucan entity.
+
+  Dispatches on the toucan model type."
   {:arglists '[[entity]]}
-  (fn [entity]
-    (or (t2/model entity)
-        (:lib/type entity))))
+  t2/model)
 
 (defmethod representation-type :default [entity]
   (throw (ex-info (str "Unknown entity type: " (t2/model entity))

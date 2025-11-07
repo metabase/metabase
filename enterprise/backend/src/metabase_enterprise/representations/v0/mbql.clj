@@ -45,15 +45,19 @@
            v0-common/ensure-not-nil))))
 
 (defrecord V0ImportVisitor []
-  lib/ImportVisitor
-  (import-database [_ _mp ref-index database-ref]
-    (lookup/lookup-database-id ref-index database-ref))
-  (import-source-table [_ mp ref-index source-table-info]
-    (resolve-source-table source-table-info ref-index mp))
-  (import-source-card [_ mp ref-index source-card-info]
-    (resolve-source-card source-card-info ref-index mp))
-  (import-field [_ mp ref-index field-ref]
-    (resolve-field field-ref ref-index mp)))
+  lib/QueryVisitor
+  (visit-database-id [_ _mp ref-index database-ref]
+    (when (v0-common/ref? database-ref)
+      (lookup/lookup-database-id ref-index database-ref)))
+  (visit-table-id [_ mp ref-index table-ref]
+    (when (v0-common/table-ref? table-ref)
+      (resolve-source-table table-ref ref-index mp)))
+  (visit-card-id [_ mp ref-index card-ref]
+    (when (v0-common/ref? card-ref)
+      (resolve-source-card card-ref ref-index mp)))
+  (visit-field-id [_ mp ref-index field-ref]
+    (when (v0-common/field-ref? field-ref)
+      (resolve-field field-ref ref-index mp))))
 
 (def ^:private import-visitor (->V0ImportVisitor))
 
@@ -90,15 +94,19 @@
     (assoc tr :field (:name field))))
 
 (defrecord V0MBQLExportVisitor []
-  lib/ExportVisitor
-  (export-database [_ _mp _context database-id]
-    (v0-common/->ref database-id :database))
-  (export-source-table [_ mp _context source-table-id]
-    (table-ref mp source-table-id))
-  (export-source-card  [_ mp _context source-card-id]
-    (v0-common/entity->ref (lib.metadata/card mp source-card-id)))
-  (export-field [_ mp _context field-id]
-    (field-ref mp field-id)))
+  lib/QueryVisitor
+  (visit-database-id [_ _mp _context database-id]
+    (when (int? database-id)
+      (v0-common/->ref database-id :database)))
+  (visit-table-id [_ mp _context table-id]
+    (when (int? table-id)
+      (table-ref mp table-id)))
+  (visit-card-id  [_ mp _context card-id]
+    (when-some [card (lib.metadata/card mp card-id)]
+      (v0-common/->ref (:id card) (:type card))))
+  (visit-field-id [_ mp _context field-id]
+    (when (int? field-id)
+      (field-ref mp field-id))))
 
 (def ^:private export-visitor (->V0MBQLExportVisitor))
 
@@ -111,4 +119,3 @@
      :query (if (lib/native-only-query? query)
               (lib/raw-native-query query)
               (:stages patched-query))}))
-
