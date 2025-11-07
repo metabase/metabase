@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "branch",
+        "restack"
+      ],
+      "branch": "emb-962-compute-default-theme-colors-based-on-appearance-settings"
+    }
+  ]
 }
