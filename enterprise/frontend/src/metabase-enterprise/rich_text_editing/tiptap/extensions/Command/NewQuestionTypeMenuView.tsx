@@ -1,85 +1,68 @@
-import { useMemo, useState } from "react";
-import { t } from "ttag";
-import _ from "underscore";
+import { useCallback, useLayoutEffect } from "react";
 
-import { useListDatabasesQuery } from "metabase/api";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
-import {
-  type MenuItem,
-  MenuItemComponent,
-} from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
+import { MenuItemComponent } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
 import { CreateNativeQuestionModal } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/modals/CreateNativeQuestionModal";
 import { CreateStructuredQuestionModal } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/modals/CreateStructuredQuestionModal";
 
+import type { NewQuestionMenuItem } from "./types";
+
 interface Props {
+  menuItems: NewQuestionMenuItem[];
   selectedIndex: number;
-  setSelectedIndex: (newValue: number) => void;
+  setSelectedIndex: (index: number) => void;
+  newQuestionType: "notebook" | "native" | null;
+  setNewQuestionType: (type: "notebook" | "native" | null) => void;
   onSave: (id: number, name: string) => void;
   onClose: () => void;
 }
 
-interface CustomMenuItem extends MenuItem {
-  value: "native" | "notebook";
-}
-
 export const NewQuestionTypeMenuView = ({
+  menuItems,
   selectedIndex,
   setSelectedIndex,
+  newQuestionType,
+  setNewQuestionType,
   onSave,
   onClose,
 }: Props) => {
-  const [modal, setModal] = useState<"native" | "notebook" | undefined>();
-
-  const { data } = useListDatabasesQuery();
-  const databases = useMemo(() => data?.data ?? [], [data]);
-  const hasDataAccess = useMemo(() => getHasDataAccess(databases), [databases]);
-  const hasNativeWrite = useMemo(
-    () => getHasNativeWrite(databases),
-    [databases],
+  const handleSaveNewQuestion = useCallback(
+    (id: number, name: string) => {
+      setNewQuestionType(null);
+      onSave(id, name);
+    },
+    [onSave, setNewQuestionType],
   );
 
-  const items = useMemo(() => {
-    const result: CustomMenuItem[] = [];
-
-    if (hasDataAccess) {
-      result.push({
-        label: t`New Question`,
-        icon: "insight",
-        value: "notebook" as const,
-        action: _.noop,
-      });
+  useLayoutEffect(() => {
+    if (menuItems.length === 1) {
+      setNewQuestionType(menuItems[0].value);
     }
-
-    if (hasNativeWrite) {
-      result.push({
-        label: t`New SQL query`,
-        icon: "sql",
-        value: "native" as const,
-        action: _.noop,
-      });
-    }
-
-    return result;
-  }, [hasDataAccess, hasNativeWrite]);
+  }, [menuItems, setNewQuestionType]);
 
   return (
     <>
-      {items.map((item, index) => (
+      {menuItems.map((item, index) => (
         <MenuItemComponent
           key={item.value}
           item={item}
           isSelected={selectedIndex === index}
-          onClick={() => setModal(item.value)}
+          onClick={() => setNewQuestionType(item.value)}
           onMouseEnter={() => setSelectedIndex(index)}
         />
       ))}
 
-      {modal === "notebook" && (
-        <CreateStructuredQuestionModal onSave={onSave} onClose={onClose} />
+      {newQuestionType === "notebook" && (
+        <CreateStructuredQuestionModal
+          onSave={handleSaveNewQuestion}
+          onClose={onClose}
+        />
       )}
 
-      {modal === "native" && (
-        <CreateNativeQuestionModal onSave={onSave} onClose={onClose} />
+      {newQuestionType === "native" && (
+        <CreateNativeQuestionModal
+          onSave={handleSaveNewQuestion}
+          onClose={onClose}
+        />
       )}
     </>
   );

@@ -31,12 +31,6 @@ import {
   SuggestionPaper,
 } from "metabase-enterprise/documents/components/Editor/shared/SuggestionPaper";
 import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
-import { NewQuestionTypeMenuView } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/NewQuestionTypeMenuView";
-import type {
-  CommandOption,
-  CommandSection,
-} from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/types";
-import { getAllCommandSections } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/utils";
 import type { SearchResult } from "metabase-types/api";
 
 import { EntitySearchSection } from "../shared/EntitySearchSection";
@@ -45,6 +39,10 @@ import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 
 import type { CommandProps } from "./CommandExtension";
 import CommandS from "./CommandSuggestion.module.css";
+import { NewQuestionTypeMenuView } from "./NewQuestionTypeMenuView";
+import type { CommandOption, CommandSection } from "./types";
+import { useCreateQuestionsMenuItems } from "./use-create-questions-menu-items";
+import { getAllCommandSections } from "./utils";
 
 export interface CommandSuggestionProps {
   items: SearchResult[];
@@ -106,9 +104,10 @@ export const CommandSuggestion = forwardRef<
   const [viewMode, setViewMode] = useState<
     "linkTo" | "embedQuestion" | "newQuestionType" | null
   >(null);
+  const [newQuestionType, setNewQuestionType] = useState<
+    "notebook" | "native" | null
+  >(null);
 
-  // const [showLinkSearch, setShowLinkSearch] = useState(false);
-  // const [showEmbedSearch, setShowEmbedSearch] = useState(false);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const allCommandSections: CommandSection[] = useMemo(
@@ -137,7 +136,12 @@ export const CommandSuggestion = forwardRef<
     );
   }, [viewMode, query, allCommandOptions]);
 
-  const canCreateNewQuestion = viewMode === "embedQuestion";
+  const createQuestionsMenuItems = useCreateQuestionsMenuItems({
+    onSelectItem: setNewQuestionType,
+  });
+
+  const canCreateNewQuestion =
+    createQuestionsMenuItems.length > 0 && viewMode === "embedQuestion";
 
   const onSelectLinkEntity = useCallback(
     (item: { id: number | string; model: string }) => {
@@ -228,6 +232,10 @@ export const CommandSuggestion = forwardRef<
       return searchMenuItems;
     }
 
+    if (viewMode === "newQuestionType") {
+      return createQuestionsMenuItems;
+    }
+
     // When searching in command mode, combine search results with matching commands
     if (query && searchMenuItems.length > 0) {
       // Show search results (questions) followed by matching commands
@@ -235,7 +243,13 @@ export const CommandSuggestion = forwardRef<
     }
 
     return commandOptions;
-  }, [viewMode, query, searchMenuItems, commandOptions]);
+  }, [
+    viewMode,
+    query,
+    searchMenuItems,
+    commandOptions,
+    createQuestionsMenuItems,
+  ]);
 
   let totalItems = currentItems.length;
 
@@ -246,7 +260,7 @@ export const CommandSuggestion = forwardRef<
   }
 
   const selectItem = (index: number) => {
-    if (viewMode === "linkTo" || viewMode === "embedQuestion") {
+    if (viewMode) {
       entityHandlers.selectItem(index);
     } else {
       // When searching in command mode, handle both entity results and commands
@@ -301,6 +315,11 @@ export const CommandSuggestion = forwardRef<
         return entityHandlers.onKeyDown({ event });
       }
 
+      if (viewMode === "newQuestionType" && event.key === "Enter") {
+        createQuestionsMenuItems[selectedIndex]?.action();
+        return true;
+      }
+
       if (event.key === "ArrowUp") {
         upHandler();
         return true;
@@ -349,10 +368,16 @@ export const CommandSuggestion = forwardRef<
 
       {viewMode === "newQuestionType" && (
         <NewQuestionTypeMenuView
+          menuItems={createQuestionsMenuItems}
           selectedIndex={selectedIndex}
           setSelectedIndex={setSelectedIndex}
+          newQuestionType={newQuestionType}
+          setNewQuestionType={setNewQuestionType}
           onSave={entityHandlers.onSaveNewQuestion}
-          onClose={() => setViewMode(null)}
+          onClose={() => {
+            setNewQuestionType(null);
+            setViewMode(null);
+          }}
         />
       )}
 
