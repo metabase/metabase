@@ -19,6 +19,7 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";
+import { CardMoreMenu } from "../CardMoreMenu";
 
 type ModelHeaderProps = {
   card: Card;
@@ -36,6 +37,7 @@ export function ModelHeader({ card, actions }: ModelHeaderProps) {
           <PanelHeaderTitle>{card.name}</PanelHeaderTitle>
         )
       }
+      menu={<CardMoreMenu card={card} />}
       tabs={<ModelTabs card={card} />}
       actions={actions}
     />
