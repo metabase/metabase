@@ -10,6 +10,7 @@ import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHist
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
 import { EmbeddingThemeListingApp } from "metabase/admin/embedding/components/ThemeListing";
+import { EmbeddingThemeEditor } from "metabase/admin/embedding/components/ThemeEditor";
 import { AdminEmbeddingApp } from "metabase/admin/embedding/containers/AdminEmbeddingApp";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
@@ -295,6 +296,13 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         </Route>
       </Route>
     </Route>
+
+    {/* Full-screen routes without AdminApp wrapper */}
+    <Route
+      path="embedding/themes/:id"
+      title={t`Edit Theme`}
+      component={EmbeddingThemeEditor}
+    />
   </Route>
 );
 

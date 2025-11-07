@@ -9,6 +9,7 @@ import { ColorPill } from "../ColorPill";
 import type { ColorPickerAttributes } from "./ColorPicker";
 import ColorPickerContent from "./ColorPickerContent";
 import S from "./ColorPillPicker.module.css";
+import { ColorPillProps } from "../ColorPill/ColorPill";
 
 export interface ColorPillPickerProps extends ColorPickerAttributes {
   onChange: (color?: string) => void;
@@ -28,6 +29,8 @@ export interface ColorPillPickerProps extends ColorPickerAttributes {
   onPreviewChange: (color: string) => void;
 
   debounceMs?: number;
+
+  pillProps?: Omit<ColorPillProps, "color">;
 }
 
 const COLOR_PICKER_DEBOUNCE_MS = 300;
@@ -39,6 +42,7 @@ export const ColorPillPicker = forwardRef(function ColorPillPicker(
     originalColor,
     previewValue,
     onPreviewChange,
+    pillProps,
     ...props
   }: ColorPillPickerProps,
   ref: Ref<HTMLDivElement>,
@@ -51,7 +55,7 @@ export const ColorPillPicker = forwardRef(function ColorPillPicker(
       disableContentSandbox
       renderTrigger={({ onClick }) => (
         <Group {...props} ref={ref} wrap="nowrap">
-          <ColorPill color={color} onClick={onClick} />
+          <ColorPill {...pillProps} color={color} onClick={onClick} />
         </Group>
       )}
       popoverContent={

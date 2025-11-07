@@ -1,3 +1,5 @@
+import type { InjectedRouter } from "react-router";
+import { withRouter } from "react-router";
 import { t } from "ttag";
 
 import { useDefaultEmbeddingThemeSettings } from "metabase/admin/embedding/hooks";
@@ -21,7 +23,13 @@ import {
 
 import { EmbeddingThemeCard } from "./EmbeddingThemeCard";
 
-export function EmbeddingThemeListingApp() {
+interface EmbeddingThemeListingAppProps {
+  router: InjectedRouter;
+}
+
+const EmbeddingThemeListingAppBase = ({
+  router,
+}: EmbeddingThemeListingAppProps) => {
   const { data: themes, isLoading } = useListEmbeddingThemesQuery();
   const [createTheme] = useCreateEmbeddingThemeMutation();
   const [sendToast] = useToast();
@@ -29,16 +37,20 @@ export function EmbeddingThemeListingApp() {
 
   const handleCreateTheme = async () => {
     try {
-      await createTheme({
+      const newTheme = await createTheme({
         name: t`Untitled theme`,
         settings: defaultThemeSettings,
       }).unwrap();
 
-      // TODO(EMB-946): Navigate to the theme editor to edit the newly created theme.
+      router.push(`/admin/embedding/themes/${newTheme.id}`);
     } catch (error) {
       console.error("Failed to create theme:", error);
       sendToast({ message: t`Failed to create theme`, icon: "warning" });
     }
+  };
+
+  const handleEdit = (id: number) => {
+    router.push(`/admin/embedding/themes/${id}`);
   };
 
   if (isLoading) {
@@ -74,8 +86,7 @@ export function EmbeddingThemeListingApp() {
             <EmbeddingThemeCard
               key={theme.id}
               theme={theme}
-              // TODO(EMB-946): navigate to visual editor
-              onEdit={() => {}}
+              onEdit={handleEdit}
               // TODO(EMB-944): add ability to duplicate and delete named themes
               onDuplicate={() => {}}
               onDelete={() => {}}
@@ -93,4 +104,8 @@ export function EmbeddingThemeListingApp() {
       )}
     </Stack>
   );
-}
+};
+
+export const EmbeddingThemeListingApp = withRouter(
+  EmbeddingThemeListingAppBase,
+);

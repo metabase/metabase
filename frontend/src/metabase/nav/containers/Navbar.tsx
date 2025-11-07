@@ -35,7 +35,17 @@ function Navbar({ isOpen, user, location, params, adminPaths }: NavbarProps) {
     [location.pathname],
   );
 
+  const isFullScreenAdminPage = useMemo(
+    () => location.pathname.match(/^\/admin\/embedding\/themes\/\d+$/),
+    [location.pathname],
+  );
+
   if (!user) {
+    return null;
+  }
+
+  // Don't show navbar for full-screen admin pages
+  if (isFullScreenAdminPage) {
     return null;
   }
 
