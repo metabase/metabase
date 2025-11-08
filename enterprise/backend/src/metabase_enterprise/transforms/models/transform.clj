@@ -97,18 +97,28 @@
   (if-not (seq transforms)
     transforms
     (let [transform-ids (into #{} (map :id) transforms)
-          tag-associations (when (seq transform-ids)
-                             (t2/select
-                              [:model/TransformTransformTag :transform_id :tag_id :position]
-                              :transform_id
-                              [:in transform-ids]
-                              {:order-by [[:position :asc]]}))
+          tag-associations (t2/select
+                            [:model/TransformTransformTag :transform_id :tag_id :position]
+                            :transform_id
+                            [:in transform-ids]
+                            {:order-by [[:position :asc]]})
           transform-id->tag-ids (reduce
                                  (fn [acc {:keys [transform_id tag_id]}]
                                    (update acc transform_id (fnil conj []) tag_id))
                                  {}
                                  tag-associations)]
       (for [transform transforms] (assoc transform :tag_ids (vec (get transform-id->tag-ids (:id transform) [])))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Transform :creator]
+  "Add creator (user) to a transform"
+  [_model _k transforms]
+  (if-not (seq transforms)
+    transforms
+    (let [creator-ids (into #{} (map :creator_id) transforms)
+          id->creator (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
+                                        :id [:in creator-ids])]
+      (for [transform transforms]
+        (assoc transform :creator (get id->creator (:creator_id transform)))))))
 
 (t2/define-after-insert :model/Transform [transform]
   (events/publish-event! :event/create-transform {:object transform})
@@ -223,10 +233,11 @@
   {:copy [:name :description :entity_id]
    :skip [:dependency_analysis_version :source_type]
    :transform {:created_at (serdes/date)
-               :source {:export #(update % :query serdes/export-mbql)
-                        :import #(update % :query serdes/import-mbql)}
-               :target {:export serdes/export-mbql :import serdes/import-mbql}
-               :tags (serdes/nested :model/TransformTransformTag :transform_id opts)}})
+               :creator_id (serdes/fk :model/User)
+               :source     {:export #(update % :query serdes/export-mbql)
+                            :import #(update % :query serdes/import-mbql)}
+               :target     {:export serdes/export-mbql :import serdes/import-mbql}
+               :tags       (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 
 (defmethod serdes/dependencies "Transform"
   [{:keys [source tags]}]

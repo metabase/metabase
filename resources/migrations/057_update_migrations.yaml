@@ -2418,6 +2418,46 @@ databaseChangeLog:
             path: instance_analytics_views/content/v3/h2-content.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v57.2025-11-03T10:00:00
+      author: metamben
+      comment: Add creator_id column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: creator_id
+                  remarks: User who created this transform
+                  type: int
+                  defaultValue: 13371338
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-11-03T10:00:01
+      author: metamben
+      comment: Add index on transform.creator_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v57.2025-11-03T10:00:02
+      author: metamben
+      comment: Add foreign key constraint for transform.creator_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_transform_ref_creator_id
+            onDelete: CASCADE
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

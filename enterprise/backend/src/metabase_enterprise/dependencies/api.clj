@@ -144,7 +144,7 @@
                :collection :collection_id :dashboard :dashboard_id
                :moderation_reviews]
    :snippet   [:name :description]
-   :transform [:name :description :table]
+   :transform [:name :description :creator :table]
    :dashboard [:name :description :view_count
                :created_at :creator :creator_id :last-edit-info
                :collection :collection_id
@@ -192,7 +192,9 @@
    :dashboard [:id :name :description :created_at :creator_id :collection_id]
    :document  [:id :name :created_at :creator_id :collection_id]
    :table     [:id :name :description :display_name :db_id :schema]
-   :transform [:id :name :description]
+   :transform [:id :name :description :creator_id
+               ;; :source has to be selected otherwise the BE won't know what DB it belongs to
+               :source]
    :snippet   [:id :name :description]
    :sandbox   [:id :table_id]})
 
@@ -326,7 +328,7 @@
                                                  (->> (map collection.root/hydrate-root-collection))
                                                  (revisions/with-last-edit-info :card))
                        (= entity-type :table) (t2/hydrate :fields :db)
-                       (= entity-type :transform) (t2/hydrate :table-with-db-and-fields)
+                       (= entity-type :transform) (t2/hydrate :creator :table-with-db-and-fields)
                        (= entity-type :dashboard) (-> (t2/hydrate :creator [:collection :is_personal] :moderation_reviews)
                                                       (->> (map collection.root/hydrate-root-collection))
                                                       (revisions/with-last-edit-info :dashboard))
