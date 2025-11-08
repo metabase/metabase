@@ -15,6 +15,7 @@ interface ModelingSidebarViewProps {
   selectedCollectionId: string | number | undefined;
   selectedSnippetId?: number;
   isGlossaryActive: boolean;
+  isSegmentsActive: boolean;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
 }
@@ -24,6 +25,7 @@ export function ModelingSidebarView({
   selectedCollectionId,
   selectedSnippetId,
   isGlossaryActive,
+  isSegmentsActive,
   hasDataAccess,
   hasNativeWrite,
 }: ModelingSidebarViewProps) {
@@ -45,7 +47,16 @@ export function ModelingSidebarView({
           </Box>
         )}
 
-        <Box p="md">
+        <Box className={S.section} p="md">
+          <ModelingSidebarSection
+            icon="pie"
+            title={t`Segments`}
+            to={Urls.dataStudioSegments()}
+            isActive={isSegmentsActive}
+          />
+        </Box>
+
+        <Box className={S.section} p="md">
           <ModelingSidebarSection
             icon="book_open"
             title={t`Glossary`}
