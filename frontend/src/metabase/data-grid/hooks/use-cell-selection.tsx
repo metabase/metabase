@@ -18,7 +18,7 @@ const noopHandlers: DataGridSelection["handlers"] = {
   handleCellDoubleClick: _.noop,
 };
 
-export type SelectedCellRowMap = Record<string, CellId[]>;
+type CellsMap = Record<string, CellId[]>;
 
 /**
  * Configuration options for the cell selection hook.
@@ -245,17 +245,7 @@ export const useCellSelection = ({
         getCellSelectionData(cell),
       ) as CellId[];
 
-      setSelectedCells((prev) => {
-        const startIndex = prev.findIndex(
-          (c) => c.cellId === selectedStartCell.cellId,
-        );
-        const prevSelectedCells = prev.slice(0, startIndex);
-        const newCellSelection = selectedCellsInRange.filter(
-          (c) => c.cellId !== selectedStartCell.cellId,
-        );
-
-        return [...prevSelectedCells, selectedStartCell, ...newCellSelection];
-      });
+      setSelectedCells(selectedCellsInRange);
     },
     [selectedStartCell, table],
   );
@@ -459,12 +449,22 @@ export const useCellSelection = ({
   );
 };
 
-const groupCellsByRow = (cells: CellId[]): SelectedCellRowMap => {
-  return cells.reduce<SelectedCellRowMap>((acc, cellData) => {
+const groupCellsByRow = (cells: CellId[]) => {
+  return cells.reduce<CellsMap>((acc, cellData) => {
     const cellsForRow = acc[cellData.rowId] ?? [];
     return {
       ...acc,
       [cellData.rowId]: [...cellsForRow, cellData],
+    };
+  }, {});
+};
+
+const groupCellsByColumn = (cells: CellId[]) => {
+  return cells.reduce<CellsMap>((acc, cellData) => {
+    const cellsForColumn = acc[cellData.columnId] ?? [];
+    return {
+      ...acc,
+      [cellData.columnId]: [...cellsForColumn, cellData],
     };
   }, {});
 };
@@ -482,22 +482,28 @@ const extractRowCellValues = (
 
   for (const cell of row.getAllCells()) {
     if (selectedCellIds.has(cell.id)) {
-      const rawValue = cell.getValue();
-      const clipboardFormatter = useRawValues
-        ? undefined
-        : cell.column.columnDef.meta?.clipboardFormatter;
-      const formattedValue = formatCellValueForCopy(
-        rawValue,
-        clipboardFormatter,
-        row.index,
-        cell.column.id,
-      );
-
-      cellValues.push(formattedValue);
+      cellValues.push(extractCellValue(row.index, cell, useRawValues));
     }
   }
 
   return cellValues;
+};
+
+const extractCellValue = (
+  rowIndex: number,
+  cell: Cell<unknown, unknown>,
+  useRawValues: boolean,
+) => {
+  const rawValue = cell.getValue();
+  const clipboardFormatter = useRawValues
+    ? undefined
+    : cell.column.columnDef.meta?.clipboardFormatter;
+  return formatCellValueForCopy(
+    rawValue,
+    clipboardFormatter,
+    rowIndex,
+    cell.column.id,
+  );
 };
 
 /**
@@ -520,40 +526,68 @@ const getCellValues = (
   }
 
   const rowGroups = groupCellsByRow(cells);
+  const columnGroups = groupCellsByColumn(cells);
+
+  const columnIds = Object.keys(columnGroups);
+
+  const headerRow = columnIds
+    .map((columnId) => {
+      return columnId
+        ? gridRef.current?.querySelector(`[data-header-id="${columnId}"]`)
+            ?.textContent
+        : undefined;
+    })
+    .filter(Boolean) as string[];
+
+  if (columnIds.length !== headerRow.length) {
+    // Couldn't retrieve all headers: copy the data only
+    return Object.keys(rowGroups)
+      .map((rowId) => {
+        try {
+          const row = table.getRow(rowId);
+          const selectedCells = rowGroups[rowId]!;
+          const cellValues = extractRowCellValues(
+            row,
+            selectedCells,
+            useRawValues,
+          );
+          return cellValues.join("\t");
+        } catch (error) {
+          console.warn(`Error processing row ${rowId}:`, error);
+          return "";
+        }
+      })
+      .filter((rowText) => rowText.length > 0)
+      .join("\n");
+  }
 
   const dataRows = Object.keys(rowGroups)
     .map((rowId) => {
       try {
         const row = table.getRow(rowId);
-        const selectedCells = rowGroups[rowId]!;
-        const cellValues = extractRowCellValues(
-          row,
-          selectedCells,
-          useRawValues,
-        );
-        return cellValues.join("\t");
+        const cellByColumnId = row._getAllCellsByColumnId();
+        return columnIds
+          .map((columnId) => {
+            if (
+              cellByColumnId[columnId] &&
+              rowGroups[rowId].some((cellId) => cellId.columnId === columnId)
+            ) {
+              return extractCellValue(
+                row.index,
+                cellByColumnId[columnId],
+                useRawValues,
+              );
+            }
+
+            return "";
+          })
+          .join("\t");
       } catch (error) {
         console.warn(`Error processing row ${rowId}:`, error);
         return "";
       }
     })
     .filter((rowText) => rowText.length > 0);
-
-  const refDataRow = Object.values(rowGroups)[0];
-  const headerRow = refDataRow
-    .map((cell) => table.getColumn(cell.columnId)?.id)
-    .map((headerId) => {
-      return headerId
-        ? gridRef.current?.querySelector(`[data-header-id="${headerId}"]`)
-            ?.textContent
-        : undefined;
-    })
-    .filter(Boolean) as string[];
-
-  if (headerRow.length !== refDataRow.length) {
-    // Couldn't retrieve all headers: copy the data only
-    return dataRows.join("\n");
-  }
 
   // Combine headers and data
   return [headerRow.join("\t"), ...dataRows].join("\n");
