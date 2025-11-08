@@ -12,8 +12,8 @@ import {
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { CardMoreMenu } from "metabase/models/components/CardMoreMenu";
 import { PLUGIN_DEPENDENCIES, PLUGIN_MODERATION } from "metabase/plugins";
+import { CardMoreMenu } from "metabase/questions/components/CardMoreMenu";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";

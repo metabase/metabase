@@ -3,11 +3,12 @@ import { c, t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { getMetadata } from "metabase/selectors/metadata";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
+
+import { MoveCardModal } from "../MoveCardModal";
 
 type CardModalType = "add-to-dashboard" | "move" | "copy" | "archive";
 
