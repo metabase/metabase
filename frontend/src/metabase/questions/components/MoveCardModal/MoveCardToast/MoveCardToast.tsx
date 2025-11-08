@@ -11,14 +11,14 @@ import { coerceCollectionId } from "metabase/collections/utils";
 import * as Urls from "metabase/lib/urls";
 import type { Card, CollectionId, DashboardId } from "metabase-types/api";
 
-import { DestinationLink, StyledIcon, ToastRoot } from "./CardMoveToast.styled";
+import { DestinationLink, StyledIcon, ToastRoot } from "./MoveCardToast.styled";
 
-type CardMoveToastProps = {
+type MoveCardToastProps = {
   card: Card;
   destination?: MoveDestination;
 };
 
-function CardMoveToast({ card, destination }: CardMoveToastProps) {
+function MoveCardToast({ card, destination }: MoveCardToastProps) {
   const type = card.type;
 
   if (!destination) {
@@ -85,4 +85,4 @@ const CollectionLink = ({ collectionId }: { collectionId: CollectionId }) => {
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default CardMoveToast;
+export default MoveCardToast;
