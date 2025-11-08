@@ -943,6 +943,12 @@ export const PLUGIN_REMOTE_SYNC: {
   }),
 };
 
+export const PLUGIN_PREMIUM_SUPPORT: {
+  SupportSettings: ComponentType;
+} = {
+  SupportSettings: NotFoundPlaceholder,
+};
+
 export type PythonTransformEditorProps = {
   name?: string;
   source: PythonTransformSourceDraft;

@@ -309,7 +309,8 @@
 
 (define-premium-feature ^{:added "0.57.1"} enable-support-users?
   "Should users be allowed to enable support users in-app?"
-  :support-users)
+  :support-users
+  :getter (constantly true))
 
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)

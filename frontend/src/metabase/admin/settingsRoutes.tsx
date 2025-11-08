@@ -4,6 +4,7 @@ import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/Admi
 import { NotFound } from "metabase/common/components/ErrorPages";
 import {
   PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_PREMIUM_SUPPORT,
   PLUGIN_REMOTE_SYNC,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
@@ -86,6 +87,7 @@ export const getSettingsRoutes = () => (
       component={() => <AppearanceSettingsPage tab="conceal-metabase" />}
     />
     <Route path="cloud" component={CloudSettingsPage} />
+    <Route path="support" component={PLUGIN_PREMIUM_SUPPORT.SupportSettings} />
     <Route path="*" component={NotFound} />
   </Route>
 );
