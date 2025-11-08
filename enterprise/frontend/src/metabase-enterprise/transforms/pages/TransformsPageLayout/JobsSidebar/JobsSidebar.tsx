@@ -8,18 +8,20 @@ import { useSetting } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Button, Flex, Icon } from "metabase/ui";
+import { Button, Flex, Icon, Tooltip } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
 
 import { ListEmptyState } from "../ListEmptyState";
 import { SidebarContainer } from "../SidebarContainer";
 import { SidebarLoadingState } from "../SidebarLoadingState";
-import { SidebarSearch } from "../SidebarSearch";
-import { JOB_SORT_OPTIONS, SidebarSortControl } from "../SidebarSortControl";
+import { SidebarSearchAndControls } from "../SidebarSearchAndControls";
+import { JOB_SORT_OPTIONS } from "../SidebarSortControl";
 import { TransformsInnerNav } from "../TransformsInnerNav";
 import { SidebarList } from "../TransformsSidebarLayout/SidebarList";
 import { SidebarListItem } from "../TransformsSidebarLayout/SidebarListItem/SidebarListItem";
 import { lastModifiedSorter, nameSorter } from "../utils";
+
+import S from "./JobsSidebar.module.css";
 
 const DEFAULT_SORT_TYPE = "alphabetical";
 
@@ -72,21 +74,27 @@ export const JobsSidebar = ({ selectedJobId }: JobsSidebarProps) => {
     <SidebarContainer data-testid="jobs-sidebar">
       <Flex direction="column" gap="md" px="md" pt="md" pb="md">
         <TransformsInnerNav />
-        <SidebarSearch value={searchQuery} onChange={setSearchQuery} />
-        <SidebarSortControl
-          value={sortType}
-          options={JOB_SORT_OPTIONS}
+        <SidebarSearchAndControls
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          sortValue={sortType}
+          sortOptions={JOB_SORT_OPTIONS}
+          onSortChange={setSortType}
+          sortLabel={t`Sort jobs`}
           addButton={
-            <Button
-              p="sm"
-              w={40}
-              h={40}
-              leftSection={<Icon name="add" size={16} />}
-              aria-label={t`Create a job`}
-              onClick={handleAdd}
-            />
+            <Tooltip label={t`Create a job`}>
+              <Button
+                variant="filled"
+                p="sm"
+                w={32}
+                h={32}
+                leftSection={<Icon name="add" size={16} />}
+                aria-label={t`Create a job`}
+                onClick={handleAdd}
+                classNames={{ root: S.button }}
+              />
+            </Tooltip>
           }
-          onChange={setSortType}
         />
       </Flex>
       <Flex direction="column" flex={1} mih={0}>
