@@ -1,13 +1,13 @@
 import { useDebouncedValue } from "@mantine/hooks";
 import { useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
-import { useLocalStorage } from "react-use";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedTree } from "metabase/common/components/tree/VirtualizedTree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
@@ -20,18 +20,15 @@ import { CreateTransformMenu } from "../CreateTransformMenu";
 import { ListEmptyState } from "../ListEmptyState";
 import { SidebarContainer } from "../SidebarContainer";
 import { SidebarLoadingState } from "../SidebarLoadingState";
-import { SidebarSearch } from "../SidebarSearch";
-import {
-  SidebarSortControl,
-  type SortOption,
-  TRANSFORM_SORT_OPTIONS,
-} from "../SidebarSortControl";
+import { SidebarSearchAndControls } from "../SidebarSearchAndControls";
+import { TRANSFORM_SORT_OPTIONS } from "../SidebarSortControl";
 import { TransformsInnerNav } from "../TransformsInnerNav";
 import { SidebarList } from "../TransformsSidebarLayout/SidebarList";
 import { SidebarListItem } from "../TransformsSidebarLayout/SidebarListItem/SidebarListItem";
 import { TransformListItem } from "../TransformsSidebarLayout/SidebarListItem/TransformListItem";
 import { lastModifiedSorter, nameSorter } from "../utils";
 
+import S from "./TransformsSidebar.module.css";
 import { TransformsTreeNode } from "./TransformsTreeNode";
 import { buildTreeData } from "./utils";
 
@@ -48,12 +45,11 @@ export const TransformsSidebar = ({
   const isAdmin = useSelector(getUserIsAdmin);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebouncedValue(searchQuery, 300);
-  // TODO use useUserKeyValue
-  const [sortType = DEFAULT_SORT_TYPE, setSortType] =
-    useLocalStorage<SortOption>(
-      "metabase-transforms-display",
-      DEFAULT_SORT_TYPE,
-    );
+  const { value: sortType, setValue: setSortType } = useUserKeyValue({
+    namespace: "transforms",
+    key: "transforms-sort-type",
+    defaultValue: DEFAULT_SORT_TYPE,
+  });
 
   const { data: transforms, error, isLoading } = useListTransformsQuery({});
   const { data: databaseData } = useListDatabasesQuery();
@@ -102,12 +98,14 @@ export const TransformsSidebar = ({
     <SidebarContainer data-testid="transforms-sidebar">
       <Flex direction="column" gap="md" p="md">
         <TransformsInnerNav />
-        <SidebarSearch value={searchQuery} onChange={setSearchQuery} />
-        <SidebarSortControl
-          value={sortType}
-          onChange={setSortType}
-          options={TRANSFORM_SORT_OPTIONS}
+        <SidebarSearchAndControls
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          sortValue={sortType}
+          sortOptions={TRANSFORM_SORT_OPTIONS}
+          onSortChange={setSortType}
           addButton={<CreateTransformMenu />}
+          sortLabel={t`Sort transforms`}
         />
       </Flex>
       <Flex direction="column" flex={1} mih={0}>
@@ -147,7 +145,7 @@ export const TransformsSidebar = ({
         )}
       </Flex>
       {isAdmin && PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
-        <Box p="sm" style={{ borderTop: "1px solid var(--mb-color-border)" }}>
+        <Box p="sm" className={S.footer}>
           <SidebarListItem
             icon="code_block"
             href={Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })}
