@@ -4,11 +4,7 @@ import CollectionPermissionsModal from "metabase/admin/permissions/components/Co
 import Modal from "metabase/common/components/Modal";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import { useDispatch } from "metabase/lib/redux";
-
-type SnippetCollectionPermissionsModalProps = {
-  collectionId: number | string;
-  onClose: () => void;
-};
+import type { SnippetCollectionPermissionsModalProps } from "metabase/plugins";
 
 export function SnippetCollectionPermissionsModal({
   collectionId,

@@ -3,13 +3,8 @@ import { t } from "ttag";
 
 import type { CollectionPickerValueItem } from "metabase/common/components/Pickers/CollectionPicker";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
-import type { RegularCollectionId } from "metabase-types/api";
-
-interface SnippetCollectionPickerModalProps {
-  isOpen: boolean;
-  onSelect: (collectionId: RegularCollectionId | null) => void;
-  onClose: () => void;
-}
+import type { SnippetCollectionPickerModalProps } from "metabase/plugins";
+import type { CollectionId } from "metabase-types/api";
 
 export function SnippetCollectionPickerModal({
   isOpen,
@@ -18,7 +13,7 @@ export function SnippetCollectionPickerModal({
 }: SnippetCollectionPickerModalProps) {
   const handleChange = useCallback(
     (item: CollectionPickerValueItem) => {
-      const collectionId = item.id === "root" ? null : item.id;
+      const collectionId: CollectionId | null = item.id === "root" ? null : item.id;
       onSelect(collectionId);
     },
     [onSelect],

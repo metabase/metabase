@@ -1,4 +1,4 @@
-import { type MouseEvent, useCallback, useState } from "react";
+import { type MouseEvent, useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -90,7 +90,10 @@ export function ModelingItemsTable({
 }: ModelingItemsTableProps) {
   const [sortingOptions, setSortingOptions] = useState(DEFAULT_SORTING_OPTIONS);
 
-  const sortedItems = sortItems(items, sortingOptions);
+  const sortedItems = useMemo(
+    () => sortItems(items, sortingOptions),
+    [items, sortingOptions],
+  );
 
   const handleSortingOptionsChange = skeleton ? undefined : setSortingOptions;
 

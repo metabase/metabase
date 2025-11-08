@@ -1,21 +1,15 @@
 import { t } from "ttag";
 
+import type { SnippetFormModalProps } from "metabase/plugins";
 import { Modal } from "metabase/ui";
-import type { Collection } from "metabase-types/api";
 
 import SnippetCollectionForm from "./SnippetCollectionForm";
-
-interface SnippetCollectionFormModalProps {
-  collection: Partial<Collection>;
-  onClose: () => void;
-  onSaved?: () => void;
-}
 
 function SnippetFormModal({
   collection,
   onSaved,
   onClose,
-}: SnippetCollectionFormModalProps) {
+}: SnippetFormModalProps) {
   const isEditing = collection.id != null;
   const title = isEditing
     ? t`Editing ${collection.name}`
