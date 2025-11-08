@@ -21,10 +21,7 @@ export function SnippetDependenciesPage({
   params,
   children,
 }: SnippetDependenciesPageProps) {
-  const snippetId =
-    params?.snippetId && params.snippetId !== "new"
-      ? parseInt(params.snippetId, 10)
-      : undefined;
+  const snippetId = Urls.extractEntityId(params?.snippetId);
 
   const {
     data: snippet,

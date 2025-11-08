@@ -15,6 +15,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { PaneHeaderActions } from "metabase/data-studio/components/PaneHeader";
+import * as Urls from "metabase/lib/urls";
 import { Box, Center, Flex, Stack } from "metabase/ui";
 
 import { SnippetDescriptionSection } from "../SnippetDescriptionSection";
@@ -32,14 +33,14 @@ type EditSnippetPageProps = {
 };
 
 export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
-  const snippetId = parseInt(params.snippetId, 10);
+  const snippetId = Urls.extractEntityId(params.snippetId);
   const [sendToast] = useToast();
 
   const {
     data: snippet,
     isLoading,
     error,
-  } = useGetSnippetQuery(isNaN(snippetId) ? skipToken : snippetId);
+  } = useGetSnippetQuery(snippetId ?? skipToken);
 
   const [content, setContent] = useState(snippet?.content ?? "");
   const [updateSnippet, { isLoading: isSaving }] = useUpdateSnippetMutation();
