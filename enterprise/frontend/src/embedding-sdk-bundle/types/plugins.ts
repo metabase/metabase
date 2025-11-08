@@ -38,6 +38,10 @@ export type MetabaseDashboardPluginsConfig = {
 export type MetabasePluginsConfig = {
   mapQuestionClickActions?: MetabaseClickActionPluginsConfig;
   dashboard?: MetabaseDashboardPluginsConfig;
+};
+
+export type MetabaseGlobalPluginsConfig = MetabasePluginsConfig & {
+  handleLink?: (url: string) => { handled: boolean };
   /**
    * Provides a custom illustration to display when there is no data.
    *
@@ -51,8 +55,4 @@ export type MetabasePluginsConfig = {
    * @returns A base64-encoded image string, or null to use the default illustration
    */
   getNoObjectIllustration?: () => string | null | undefined;
-};
-
-export type MetabaseGlobalPluginsConfig = MetabasePluginsConfig & {
-  handleLink?: (url: string) => { handled: boolean };
 };
