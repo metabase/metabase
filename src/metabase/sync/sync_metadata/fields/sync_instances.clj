@@ -42,70 +42,78 @@
 (mu/defn- insert-new-fields! :- [:maybe [:sequential ::lib.schema.id/field]]
   "Insert new Field rows for for all the Fields described by `new-field-metadatas`. Returns IDs of newly inserted
   Fields."
-  [table               :- i/TableInstance
+  [database
+   table               :- i/TableInstance
    new-field-metadatas :- [:maybe [:sequential i/TableMetadataField]]
    parent-id           :- common/ParentID]
   (when (seq new-field-metadatas)
-    (t2/insert-returning-pks! :model/Field
-                              (for [{:keys [base-type coercion-strategy database-is-auto-increment database-partitioned database-position
-                                            database-is-generated database-is-nullable database-default pk?
-                                            database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
-                                     field-name :name :as field} (sort-by :database-position new-field-metadatas)
-                                    :let [semantic-type (common/semantic-type field)
-                                          has-field-values (when (sync-util/can-be-list? base-type semantic-type)
-                                                             :auto-list)]]
-                                (do
-                                  (when (and effective-type
-                                             base-type
-                                             (not= effective-type base-type)
-                                             (nil? coercion-strategy))
-                                    (log/warn (u/format-color 'red
-                                                              (str
-                                                               "WARNING: Field `%s`: effective type `%s` provided but no coercion strategy provided."
-                                                               " Using base-type: `%s`")
-                                                              field-name
-                                                              effective-type
-                                                              base-type)))
-                                  {:table_id                   (u/the-id table)
-                                   :name                       field-name
-                                   :display_name               (humanization/name->human-readable-name field-name)
-                                   :database_type              (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
-                                   :base_type                  base-type
+    (let [active-subset? (driver/should-sync-active-subset? (driver.u/database->driver database))]
+      (t2/insert-returning-pks! :model/Field
+                                (for [{:keys [base-type coercion-strategy database-is-auto-increment database-partitioned database-position
+                                              database-is-generated database-is-nullable database-default pk?
+                                              database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
+                                       field-name :name :as field} (sort-by :database-position new-field-metadatas)
+                                      :let [semantic-type (common/semantic-type field)
+                                            has-field-values (when (sync-util/can-be-list? base-type semantic-type)
+                                                               :auto-list)]]
+                                  (do
+                                    (when (and effective-type
+                                               base-type
+                                               (not= effective-type base-type)
+                                               (nil? coercion-strategy))
+                                      (log/warn (u/format-color 'red
+                                                                (str
+                                                                 "WARNING: Field `%s`: effective type `%s` provided but no coercion strategy provided."
+                                                                 " Using base-type: `%s`")
+                                                                field-name
+                                                                effective-type
+                                                                base-type)))
+                                    (merge
+                                     {:table_id                   (u/the-id table)
+                                      :name                       field-name
+                                      :display_name               (humanization/name->human-readable-name field-name)
+                                      :database_type              (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
+                                      :base_type                  base-type
            ;; todo test this?
-                                   :effective_type             (if (and effective-type coercion-strategy) effective-type base-type)
-                                   :coercion_strategy          (when effective-type coercion-strategy)
-                                   :semantic_type              semantic-type
-                                   :parent_id                  parent-id
-                                   :nfc_path                   nfc-path
-                                   :description                field-comment
-                                   :position                   database-position
-                                   :database_position          database-position
-                                   :json_unfolding             (or json-unfolding false)
-                                   :database_is_auto_increment (or database-is-auto-increment false)
-                                   :database_is_generated      database-is-generated
-                                   :database_is_nullable       database-is-nullable
-                                   :database_is_pk             pk?
-                                   :database_default           database-default
-                                   :database_required          (or database-required false)
-                                   :database_partitioned       database-partitioned ;; nullable for database that doesn't support partitioned fields
-                                   :has_field_values           has-field-values
-                                   :visibility_type            (or visibility-type :normal)})))))
+                                      :effective_type             (if (and effective-type coercion-strategy) effective-type base-type)
+                                      :coercion_strategy          (when effective-type coercion-strategy)
+                                      :semantic_type              semantic-type
+                                      :parent_id                  parent-id
+                                      :nfc_path                   nfc-path
+                                      :description                field-comment
+                                      :position                   database-position
+                                      :database_position          database-position
+                                      :json_unfolding             (or json-unfolding false)
+                                      :database_is_auto_increment (or database-is-auto-increment false)
+                                      :database_is_generated      database-is-generated
+                                      :database_is_nullable       database-is-nullable
+                                      :database_is_pk             pk?
+                                      :database_default           database-default
+                                      :database_required          (or database-required false)
+                                      :database_partitioned       database-partitioned ;; nullable for database that doesn't support partitioned fields
+                                      :has_field_values           has-field-values
+                                      :visibility_type            (or visibility-type :normal)}
+                                     (when active-subset?
+                                       {:active_subset true}))))))))
 
 (mu/defn- create-or-reactivate-fields! :- [:maybe [:sequential i/FieldInstance]]
   "Create (or reactivate) Metabase Field object(s) for any Fields in `new-field-metadatas`. Does *NOT* recursively
   handle nested Fields."
-  [table               :- i/TableInstance
+  [database
+   table               :- i/TableInstance
    new-field-metadatas :- [:maybe [:sequential i/TableMetadataField]]
    parent-id           :- common/ParentID]
   (let [fields-to-reactivate (matching-inactive-fields table new-field-metadatas parent-id)]
     ;; if the fields already exist but were just marked inactive then reäctivate them
     (when (seq fields-to-reactivate)
       (t2/update! :model/Field {:id [:in (map u/the-id fields-to-reactivate)]}
-                  {:active true}))
+                  (merge {:active true}
+                         (when (driver/should-sync-active-subset? (driver.u/database->driver database))
+                           {:active_subset true}))))
     (let [reactivated?  (comp (set (map common/canonical-name fields-to-reactivate))
                               common/canonical-name)
           ;; If we reactivated the fields, no need to insert them; insert new rows for any that weren't reactivated
-          new-field-ids (insert-new-fields! table (remove reactivated? new-field-metadatas) parent-id)]
+          new-field-ids (insert-new-fields! database table (remove reactivated? new-field-metadatas) parent-id)]
       ;; now return the newly created or reactivated Fields
       (when-let [new-and-updated-fields (seq (map u/the-id (concat fields-to-reactivate new-field-ids)))]
         (t2/select :model/Field :id [:in new-and-updated-fields])))))
@@ -126,7 +134,8 @@
   "Sync instances of `Field` in the application database with 'active' Fields in the DB being synced (i.e., ones that
   are returned as part of the `db-metadata`). Creates or reactivates Fields as needed. Returns number of Fields
   synced and updated `our-metadata` including the new Fields and their IDs."
-  [table        :- i/TableInstance
+  [database
+   table        :- i/TableInstance
    db-metadata  :- [:set i/TableMetadataField]
    our-metadata :- [:set common/TableMetadataFieldWithID]
    parent-id    :- common/ParentID]
@@ -135,12 +144,13 @@
     {:num-updates
      ;; Field sync logic below is broken out into chunks of 1000 fields for huge star schemas or other situations
      ;; where we don't want to be updating way too many rows at once
-     (sync-util/sum-for [db-field-chunk (partition-all 1000 db-metadata)]
+     (sync-util/sum-for
+      [db-field-chunk (partition-all 1000 db-metadata)]
        (sync-util/with-error-handling (format "Error checking if Fields %s need to be created or reactivated"
                                               (pr-str (map :name db-field-chunk)))
          (let [known-field?        (comp known-fields common/canonical-name)
                new-fields          (remove known-field? db-field-chunk)
-               new-field-instances (create-or-reactivate-fields! table new-fields parent-id)]
+               new-field-instances (create-or-reactivate-fields! database table new-fields parent-id)]
            ;; save any updates to `our-metadata`
            (swap! our-metadata into (fields.our-metadata/fields->our-metadata new-field-instances parent-id))
            ;; now return count of rows updated
@@ -257,7 +267,7 @@
                (sync-util/name-for-logging table)
                (pr-str (sort (map common/canonical-name db-metadata)))
                (pr-str (sort (map common/canonical-name our-metadata))))
-   (let [{:keys [num-updates our-metadata]} (sync-active-instances! table db-metadata our-metadata parent-id)]
+   (let [{:keys [num-updates our-metadata]} (sync-active-instances! database table db-metadata our-metadata parent-id)]
      ;; TODO: instead of retire fields, remove from active subset
      ;; TODO: to handle 5M, need to make `our-metadata` reducible.
      (+ num-updates
