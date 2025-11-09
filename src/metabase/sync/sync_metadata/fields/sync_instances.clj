@@ -8,6 +8,8 @@
   namespace should ignore nested fields entirely; the will be invoked with those Fields as appropriate."
   (:require
    [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.humanization :as humanization]
    [metabase.sync.interface :as i]
@@ -183,7 +185,8 @@
 (mu/defn- sync-nested-fields-of-one-field! :- [:maybe ms/IntGreaterThanOrEqualToZero]
   "Recursively sync Field instances (i.e., rows in application DB) for nested Fields of a single Field, one or both
   `field-metadata` (from synced DB) and `metabase-field` (from application DB)."
-  [table          :- i/TableInstance
+  [database
+   table          :- i/TableInstance
    field-metadata :- [:maybe i/TableMetadataField]
    metabase-field :- [:maybe common/TableMetadataFieldWithID]]
   (let [nested-fields-metadata (:nested-fields field-metadata)
@@ -191,6 +194,7 @@
     (when (or (seq nested-fields-metadata)
               (seq metabase-nested-fields))
       (sync-instances!
+       database
        table
        (set nested-fields-metadata)
        (set metabase-nested-fields)
@@ -200,7 +204,8 @@
   "Recursively sync Field instances (i.e., rows in application DB) for *all* the nested Fields of all Fields in
   `db-metadata` and `our-metadata`.
   Not for the flattened nested fields for JSON columns in normal RDBMSes (nested field columns)"
-  [table        :- i/TableInstance
+  [database
+   table        :- i/TableInstance
    db-metadata  :- [:set i/TableMetadataField]
    our-metadata :- [:set common/TableMetadataFieldWithID]]
   (let [name->field-metadata (m/index-by common/canonical-name db-metadata)
@@ -210,17 +215,38 @@
     (sync-util/sum-for [field-name all-field-names
                         :let [field-metadata (get name->field-metadata field-name)
                               metabase-field (get name->metabase-field field-name)]]
-      (sync-nested-fields-of-one-field! table field-metadata metabase-field))))
+      (sync-nested-fields-of-one-field! database table field-metadata metabase-field))))
+
+(mu/defn- remove-field-from-active-subset!
+  [table          :- i/TableInstance
+   metabase-field :- common/TableMetadataFieldWithID]
+  ;; TODO: Can following poison logs?s
+  (log/debugf "Removing Field ''%s'' from active subset."
+              (common/field-metadata-name-for-logging table metabase-field))
+  (when (pos? (t2/update! :model/Field (u/the-id metabase-field) {:active_subset false}))
+    1))
+
+(defn- adjust-active-subset!
+  [table db-metadata our-metadata]
+  (sync-util/sum-for
+   [metabase-field our-metadata
+    :when          (not (common/matching-field-metadata metabase-field db-metadata))]
+   ;; TODO: Can following poison logs?
+    (sync-util/with-error-handling (format "Error removing %s from active subset"
+                                           (common/field-metadata-name-for-logging table metabase-field))
+      (remove-field-from-active-subset! table metabase-field))))
 
 (mu/defn sync-instances! :- ms/IntGreaterThanOrEqualToZero
   "Sync rows in the Field table with `db-metadata` describing the current schema of the Table currently being synced,
   creating Field objects or marking them active/inactive as needed."
-  ([table        :- i/TableInstance
+  ([database
+    table        :- i/TableInstance
     db-metadata  :- [:set i/TableMetadataField]
     our-metadata :- [:set common/TableMetadataFieldWithID]]
-   (sync-instances! table db-metadata our-metadata nil))
+   (sync-instances! database table db-metadata our-metadata nil))
 
-  ([table        :- i/TableInstance
+  ([database
+    table        :- i/TableInstance
     db-metadata  :- [:set i/TableMetadataField]
     our-metadata :- [:set common/TableMetadataFieldWithID]
     parent-id    :- common/ParentID]
@@ -232,6 +258,10 @@
                (pr-str (sort (map common/canonical-name db-metadata)))
                (pr-str (sort (map common/canonical-name our-metadata))))
    (let [{:keys [num-updates our-metadata]} (sync-active-instances! table db-metadata our-metadata parent-id)]
+     ;; TODO: instead of retire fields, remove from active subset
+     ;; TODO: to handle 5M, need to make `our-metadata` reducible.
      (+ num-updates
-        (retire-fields! table db-metadata our-metadata)
-        (sync-nested-field-instances! table db-metadata our-metadata)))))
+        (if (driver/should-sync-active-subset? (driver.u/database->driver database))
+          (adjust-active-subset! table db-metadata our-metadata)
+          (retire-fields! table db-metadata our-metadata))
+        (sync-nested-field-instances! database table db-metadata our-metadata)))))
