@@ -414,6 +414,8 @@
    :name (:name table)
    :fields (-> (fetch-dbfields database table) dbfields->ftree ftree->nested-fields)})
 
+(defmethod driver/should-sync-active-subset? :mongo [_driver] true)
+
 ;; describe-table impl end
 
 (doseq [[feature supported?] {:basic-aggregations              true
