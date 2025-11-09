@@ -1660,3 +1660,24 @@
       (if (table-known-to-not-exist? driver e)
         false
         (throw e)))))
+
+(defmulti should-sync-active-subset?
+  "For some drivers we sync only a subset of fields available for a table. This method is meant to decide whether
+  the alternative, _active subset_, codepath should be taken, or the standard sync codepath.
+
+  # Problem
+
+  I may have happend than _active subset_ has changed during sync. That _could_ result in saved questions not working
+  as fields they use may have been deactivated.
+
+
+  # Solution
+  We've decided to address that as follows: (1) for database that sync _active subset_, we do not deactivate any
+  fields. Instead we decide what the current active subset is during sync (2) and fingerprint only those fields.
+
+  As a result, (1) the existing questions will not break as their fields are not deactivated and (2) fignerprinting
+  process should not get overloaded, possbily resulting in OOMs, because number of fields it processes will not
+  get excessively large."
+  {:added "0.57.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
