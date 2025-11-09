@@ -485,7 +485,7 @@ describe("issue 22727", () => {
 
     cy.findByTestId("save-question-modal").then((modal) => {
       // This part reproduces https://github.com/metabase/metabase/issues/20717
-      cy.findByText(/^Replace original qeustion/).should("not.exist");
+      cy.findByText(/^Replace original question/).should("not.exist");
 
       // This part is an actual repro for https://github.com/metabase/metabase/issues/22727
       cy.findByLabelText(/Where do you want to save this/)

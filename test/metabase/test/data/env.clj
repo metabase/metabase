@@ -42,7 +42,7 @@
 
 (def ^{:arglists '([])} test-drivers
   "Set of keyword names of drivers we should run tests against. By default, this is `#{:h2}` but it can be
-  overriden
+  overridden
 
   *  by setting env var `DRIVERS` when running tests from the command line or CI.
 

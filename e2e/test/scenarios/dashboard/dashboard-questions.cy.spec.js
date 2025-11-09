@@ -837,7 +837,7 @@ describe("Dashboard > Dashboard Questions", () => {
         H.visitDashboard(blueDashboardId);
       });
 
-      // add the quanity question to the blue dashboard
+      // add the quantity question to the blue dashboard
       H.editDashboard();
       H.openQuestionsSidebar();
 

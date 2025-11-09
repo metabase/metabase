@@ -64,7 +64,7 @@ describe("getParentPath", () => {
     // like "data" that is also used within Metabase's routes
     // e.g. If the site-url is "https://corp.com/data", it should not
     // remove the second "data" from the path in "https://corp.com/data/admin/permissions/data/groups"
-    it("without leading url subpath while preserving later occurances", () => {
+    it("without leading url subpath while preserving later occurrences", () => {
       const parentPath = setup(
         "groups",
         "data/admin/permissions/data/groups",

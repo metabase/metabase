@@ -15,14 +15,14 @@
 (def ^:private valid-csv
   (.getBytes
    (str "Language,String,Translation"
-        "\nde,Title,Titel"
+        "\nde,Title,Titel" ; codespell:ignore
         "\nde,Rating,Bewertung"
         "\nde,Vendor,Anbieter")))
 
 (def ^:private csv-with-duplicate-translation
   (.getBytes
    (str "Language,String,Translation"
-        "\nde,Title,Titel"
+        "\nde,Title,Titel" ; codespell:ignore
         "\nde,Rating,Bewertung"
         "\nde,Vendor,Anbieter"
         "\nde,Vendor,Verkäufer")))
@@ -30,14 +30,14 @@
 (def ^:private csv-with-invalid-locale
   (.getBytes
    (str "Language,String,Translation"
-        "\nde,Title,Titel"
+        "\nde,Title,Titel" ; codespell:ignore
         "\nde,Rating,Bewertung"
         "\nXX,Vendor,Anbieter")))
 
 (def ^:private invalid-csv
   (.getBytes
    (str "Language,String,Translation"
-        "\nde,Title,Titel"
+        "\nde,Title,Titel" ; codespell:ignore
         "\nde,Rating,Bewertung"
         "\nde,Vendor,\"Anbieter\"!"))) ; Trailing character
 

@@ -351,7 +351,7 @@ describe("scenarios > setup", () => {
     });
 
     cy.findByTestId("setup-forms").within(() => {
-      cy.findByLabelText("Hallo, John. Leuk je te ontmoeten!").should(
+      cy.findByLabelText("Hallo, John. Leuk je te ontmoeten!").should( // codespell:ignore
         "be.visible",
       );
 
@@ -363,7 +363,7 @@ describe("scenarios > setup", () => {
       cy.findByText("Breng me naar Metabase").click();
     });
 
-    cy.log("Locale is preserved upon succesful setup");
+    cy.log("Locale is preserved upon successful setup");
     cy.location("pathname").should("eq", "/");
     H.main()
       .findByText("Aan de slag met het opnemen van Metabase in uw app")
@@ -397,7 +397,7 @@ describe("scenarios > setup", () => {
       cy.findByLabelText("Bevestig je wachtwoord").type(password);
       cy.button("Volgende").click();
 
-      cy.findByLabelText("Hallo, John. Leuk je te ontmoeten!").should(
+      cy.findByLabelText("Hallo, John. Leuk je te ontmoeten!").should( // codespell:ignore
         "be.visible",
       );
     });

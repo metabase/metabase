@@ -3462,7 +3462,7 @@ databaseChangeLog:
               - column:
                   name: public_uuid
                   type: char(36)
-                  remarks: 'Unique UUID used to in publically-accessible links to this Card.'
+                  remarks: 'Unique UUID used to in publicly-accessible links to this Card.'
                   constraints:
                     unique: true
         - addColumn:
@@ -3471,7 +3471,7 @@ databaseChangeLog:
               - column:
                   name: made_public_by_id
                   type: int
-                  remarks: 'The ID of the User who first publically shared this Card.'
+                  remarks: 'The ID of the User who first publicly shared this Card.'
                   constraints:
                     referencedTableName: core_user
                     referencedColumnNames: id
@@ -3489,7 +3489,7 @@ databaseChangeLog:
               - column:
                   name: public_uuid
                   type: char(36)
-                  remarks: 'Unique UUID used to in publically-accessible links to this Dashboard.'
+                  remarks: 'Unique UUID used to in publicly-accessible links to this Dashboard.'
                   constraints:
                     unique: true
         - addColumn:
@@ -3498,7 +3498,7 @@ databaseChangeLog:
               - column:
                   name: made_public_by_id
                   type: int
-                  remarks: 'The ID of the User who first publically shared this Dashboard.'
+                  remarks: 'The ID of the User who first publicly shared this Dashboard.'
                   constraints:
                     referencedTableName: core_user
                     referencedColumnNames: id
@@ -6918,7 +6918,7 @@ databaseChangeLog:
               - column:
                   name: namespace
                   type: varchar(254)
-                  remarks: 'The namespace (hierachy) this Collection belongs to. NULL means the Collection is in the default namespace.'
+                  remarks: 'The namespace (hierarchy) this Collection belongs to. NULL means the Collection is in the default namespace.'
                   constraints:
                     nullable: true
 

@@ -59,7 +59,7 @@
                                                   (add-nested-fields nested-field parent-id->fields)))))))
 
 (mu/defn fields->our-metadata :- [:set common/TableMetadataFieldWithID]
-  "Given a sequence of Metabase Fields, format them and return them in a hierachy so the format matches the one
+  "Given a sequence of Metabase Fields, format them and return them in a hierarchy so the format matches the one
   `db-metadata` comes back in."
   ([fields :- [:maybe [:sequential i/FieldInstance]]]
    (fields->our-metadata fields nil))

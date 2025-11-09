@@ -204,7 +204,7 @@ function visitDashboardById(dashboard_id, config) {
 
     if (canViewDashboard && validQuestions) {
       // If dashboard has valid questions (GUI or native),
-      // we need to alias each request and wait for their reponses
+      // we need to alias each request and wait for their responses
       const aliases = validQuestions.map(
         ({ id, card_id, card: { display } }) => {
           const baseUrl =

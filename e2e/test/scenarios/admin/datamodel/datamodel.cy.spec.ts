@@ -330,7 +330,7 @@ describe("scenarios > admin > datamodel", () => {
     });
 
     describe(
-      "mutliple databases, with single and multiple schemas",
+      "multiple databases, with single and multiple schemas",
       { tags: "@external" },
       () => {
         beforeEach(() => {
@@ -2583,7 +2583,7 @@ describe("scenarios > admin > datamodel", () => {
         });
 
         it("should allow 'Custom mapping' null values", () => {
-          const remappedNullValue = "nothin";
+          const remappedNullValue = "nothin"; // codespell:ignore
 
           cy.signInAsAdmin();
           H.addSqliteDatabase();
@@ -3143,7 +3143,7 @@ describe("scenarios > admin > datamodel", () => {
         cy.findByTestId("column-settings")
           .scrollIntoView()
           .within(() => {
-            // shouldnt show currency settings by default for quantity field
+            // shouldn't show currency settings by default for quantity field
             cy.findByText("Unit of currency").should("not.be.visible");
             cy.findByText("Currency label style").should("not.be.visible");
 

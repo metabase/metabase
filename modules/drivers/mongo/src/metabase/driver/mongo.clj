@@ -180,7 +180,7 @@
   "Sequence of stages repeated in _search_ phase of [[describe-table-pipeline]]
     for [[describe-table-query-depth]] times.
 
-    Each repetion $unwinds documents having `val` of type \"object\", so those are __swapped__ for sequence
+    Each repetition $unwinds documents having `val` of type \"object\", so those are __swapped__ for sequence
     of their children.
 
     Documents with non-object val are left untouched.

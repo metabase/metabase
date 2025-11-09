@@ -54,7 +54,7 @@
    (:id table)))
 
 (defn with-advanced-permissions
-  "Adds to `user` a set of boolean flag indiciate whether or not current user has access to an advanced permissions.
+  "Adds to `user` a set of boolean flag indicate whether or not current user has access to an advanced permissions.
   This function is meant to be used for GET /api/user/current "
   [user]
   (let [permissions-set @api/*current-user-permissions-set*]

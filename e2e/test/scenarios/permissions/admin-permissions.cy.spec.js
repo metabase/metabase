@@ -577,7 +577,7 @@ describe("scenarios > admin > permissions", () => {
     });
   });
 
-  it("should show a dismissable modal and banner showing split permisson changes (#metabase#45073", () => {
+  it("should show a dismissable modal and banner showing split permission changes (#metabase#45073", () => {
     // We need a way to pass true values for these settings in CI. Generally in CI, these values will always be false
     // because we always start with a fresh instance. However, to test the flow of someone who has upgraded from 49 -> current
     // we set them to false and ensure a modal is shown explaining the new permissions structure
@@ -629,7 +629,7 @@ describe("scenarios > admin > permissions", () => {
     cy.findByRole("alert").should("not.exist");
   });
 
-  it("split permisson change modal should dismiss even if network request fails", () => {
+  it("split permission change modal should dismiss even if network request fails", () => {
     // We need a way to pass true values for these settings in CI. Generally in CI, these values will always be false
     // because we always start with a fresh instance. However, to test the flow of someone who has upgraded from 49 -> current
     // we set them to false and ensure a modal is shown explaining the new permissions structure

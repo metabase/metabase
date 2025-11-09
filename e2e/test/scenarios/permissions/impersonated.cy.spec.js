@@ -140,7 +140,7 @@ describe("impersonated permission", { tags: "@external" }, () => {
         cy.signInAsImpersonatedUser();
         cy.reload();
 
-        cy.log("check that impersonation enforcement occurrs");
+        cy.log("check that impersonation enforcement occurs");
         cy.findByTestId("query-builder-main").within(() => {
           cy.findByText("An error occurred in your query");
           cy.findByText("ERROR: permission denied for table reviews");

@@ -517,7 +517,7 @@
              enabled? :enabled} funnel-viz
             :when               enabled?]
         [k (get rows k)]))
-    ;; re-create the rows with the label/visibilty specified in the funnel-viz
+    ;; re-create the rows with the label/visibility specified in the funnel-viz
     (let [rows-data (map (fn [{k :key enabled? :enabled} [_ value]]
                            (when enabled?
                              [k value])) funnel-viz raw-rows)]

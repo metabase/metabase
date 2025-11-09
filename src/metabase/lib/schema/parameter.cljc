@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.parameter
-  "`:parameters` specify the *values* of parameters previously definied for a Dashboard or Card (native query template
+  "`:parameters` specify the *values* of parameters previously defined for a Dashboard or Card (native query template
   tag parameters.) See [[metabase.lib.schema.template-tag]] above for more information on the later.
 
   There are three things called 'type' in play when we talk about parameters and template tags.

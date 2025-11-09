@@ -360,7 +360,7 @@
   (:columns aggregation-operator))
 
 (mu/defn available-aggregation-operators :- [:maybe [:sequential OperatorWithColumns]]
-  "Returns the available aggegation operators for the stage with `stage-number` of `query`.
+  "Returns the available aggregation operators for the stage with `stage-number` of `query`.
   If `stage-number` is omitted, uses the last stage."
   ([query]
    (available-aggregation-operators query -1))

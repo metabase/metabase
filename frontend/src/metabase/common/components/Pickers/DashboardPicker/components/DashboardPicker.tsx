@@ -127,7 +127,7 @@ const DashboardPickerInner = (
 
   useDeepCompareEffect(
     function setInitialPath() {
-      // This can reallly be driven from currentDashboard.collection, and we should not be looking at currentCollection at all.
+      // This can really be driven from currentDashboard.collection, and we should not be looking at currentCollection at all.
       if (currentCollection?.id) {
         const idPath = getCollectionIdPath(
           {

@@ -104,7 +104,7 @@
                            "dashboard" [:= :qe.dashboard_id model_id])
                          [:<= :qc.updated_at rerun-cutoff]
                          ;; This is a safety check so that we don't scan all of query_execution -- if a query
-                         ;; has not been excuted at all in the last month (including cache hits) we won't bother
+                         ;; has not been executed at all in the last month (including cache hits) we won't bother
                          ;; refreshing it again.
                          [:>= :qe.started_at (duration-ago {:duration 30 :unit "days"})]
                          [:= :qe.error nil]
@@ -180,7 +180,7 @@
             [:= :qe.error nil]
             [:= :qe.is_sandboxed false]
             ;; Was the query executed at least once in the last month?
-            ;; This is a safety check so that we don't scan all of query_execution -- if a query has not been excuted at
+            ;; This is a safety check so that we don't scan all of query_execution -- if a query has not been executed at
             ;; all in the last month (including cache hits) we won't bother refreshing it again.
             [:>= :qe.started_at (duration-ago {:duration 30 :unit "days"})]]
    :order-by [[:qe.started_at :desc]]

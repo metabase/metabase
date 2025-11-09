@@ -31,8 +31,8 @@
 
 (defn- db-identifier->name
   "Get the name of identifier from JDBC error message.
-  An identifier can contains quote and full schema, database, table , etc.
-  This formats so that we get  only the identifer name with quote removed.
+   An identifier can contain quote and full schema, database, table, etc.
+   This formats so that we get only the identifier name with quote removed.
 
 
     (db-identifier->name \"PUBLIC.TABLE\" ) => \"TABLE\""

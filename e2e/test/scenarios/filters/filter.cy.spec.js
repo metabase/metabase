@@ -323,7 +323,7 @@ describe("scenarios > question > filter", () => {
       .findByText("P")
       .should("be.visible");
     H.CustomExpressionEditor.completion("Product ID")
-      .findByText("roduct ID")
+      .findByText("roduct ID") // codespell:ignore
       .should("be.visible");
   });
 

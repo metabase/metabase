@@ -120,7 +120,8 @@
              Exception #"This file could not be uploaded due to the following error\(s\):"
              (dictionary/read-and-import-csv! file)))))
     (testing "Reads CSV with invalid data row and throws informative error"
-      (let [file (.getBytes "Language,String,Translation\nde,Title,Titel\nde,Vendor,\"Anbieter\"X")] ; character outside quotation marks
+      ;; character outside quotation marks
+      (let [file (.getBytes "Language,String,Translation\nde,Title,Titel\nde,Vendor,\"Anbieter\"X")] ; codespell:ignore
         (is (thrown-with-msg?
              Exception #"Row 3.*CSV error.*unexpected character.*X"
              (dictionary/read-and-import-csv! file)))))))

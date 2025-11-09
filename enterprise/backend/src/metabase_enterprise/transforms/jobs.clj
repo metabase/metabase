@@ -125,7 +125,7 @@
 
 (def ^:private job-key "metabase-enterprise.transforms.jobs.timeout-job")
 
-(task/defjob  ^{:doc "Times out transform jobs when necesssary."
+(task/defjob  ^{:doc "Times out transform jobs when necessary."
                 org.quartz.DisallowConcurrentExecution true}
   TimeoutOldRuns [_ctx]
   (transforms.job-run/timeout-old-runs! (transforms.settings/transform-timeout) :minute))

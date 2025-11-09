@@ -94,11 +94,11 @@
 
 (def ^:private Steps
   [:map-of
-   {:decode/tranform-spec (fn [source->step]
-                            (->> source->step
-                                 stringify-keys
-                                 (u/topological-sort (fn [{:keys [source joins]}]
-                                                       (conj (map :source joins) source)))))}
+   {:decode/transform-spec (fn [source->step]
+                             (->> source->step
+                                  stringify-keys
+                                  (u/topological-sort (fn [{:keys [source joins]}]
+                                                        (conj (map :source joins) source)))))}
    Source
    Step])
 

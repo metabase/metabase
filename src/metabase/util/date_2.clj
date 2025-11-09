@@ -322,7 +322,7 @@
 (alter-var-root #'t/truncate-to (constantly t.core/truncate-to))
 
 (def truncate-units
-  "Valid date trucation units"
+  "Valid date truncation units"
   #{:millisecond :second :minute :hour :day :week :month :quarter :year})
 
 (mu/defn truncate :- TemporalInstance
@@ -471,7 +471,7 @@
 
     (u.date/compare-period-durations (u.date/period-duration #t \"2019-01-01\" #t \"2019-07-01\") \"P11M\") ; -> -1
 
-  Note that this calculation is inexact, since it calclates relative to a fixed point in time, but should be
+  Note that this calculation is inexact, since it calculates relative to a fixed point in time, but should be
   sufficient for most if not all use cases."
   [d1 d2]
   (when (and d1 d2)

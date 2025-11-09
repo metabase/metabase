@@ -171,7 +171,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     H.CustomExpressionEditor.type(', "baz"', { focus: false });
     verifyHelptextPosition('"baz"');
 
-    cy.log("move curser into baz");
+    cy.log("move cursor into baz");
     H.CustomExpressionEditor.type("{leftarrow}".repeat(3), { focus: false });
     verifyHelptextPosition('"baz"');
 

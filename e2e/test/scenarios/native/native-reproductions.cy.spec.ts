@@ -435,7 +435,7 @@ describe("issue 55951", () => {
         request.continue((response) => {
           response.body.data = mockResponseData(response.body.data);
 
-          // Setting this to be arbitrarly long so that H.repeatAssertion is guaranteed to detect the issue
+          // Setting this to be arbitrarily long so that H.repeatAssertion is guaranteed to detect the issue
           return new Promise((resolve) => setTimeout(resolve, 2000));
         });
       },

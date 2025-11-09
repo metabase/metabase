@@ -108,7 +108,7 @@
     [#"CLOB"      :type/Text]
     [#"BLOB"      :type/*]
     [#"REAL"      :type/Float]
-    [#"DOUB"      :type/Float]
+    [#"DOUB"      :type/Float] ; codespell:ignore
     [#"FLOA"      :type/Float]
     [#"NUMERIC"   :type/Float]
     [#"DECIMAL"   :type/Decimal]

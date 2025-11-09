@@ -40,7 +40,7 @@
                                 :where  :wr.is_active}]))
 
 (defn delete-old-canceling-runs!
-  "Delete cancelations for runs that are no longer running."
+  "Delete cancellations for runs that are no longer running."
   []
   (t2/delete! :model/TransformRunCancelation
               :run_id [:not-in {:select :wr.id

@@ -22,7 +22,7 @@
   (cond->> s
     (not (str/starts-with? s "/")) (str "/")))
 
-(mu/defn- ->requestor [method]
+(mu/defn- ->requester [method]
   (case method
     :get     http/get
     :head    http/head
@@ -113,7 +113,7 @@
         request           (cond-> {:headers {"Authorization" (str "Bearer " api-key)
                                              "Content-Type" "application/json"}}
                             body (assoc :body (json/encode body)))
-        request-method-fn (->requestor method)
+        request-method-fn (->requester method)
         unparsed-response (send-request request-method-fn store-api-url url request)
         response          (decode-response unparsed-response url request)
         success?          (calculate-success response url request)]

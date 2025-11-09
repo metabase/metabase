@@ -80,7 +80,7 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
       label={stepLabel}
     >
       <Text mt="sm" mb="md">
-        {c("{0} referes to the word '(optional)'")
+        {c("{0} refers to the word '(optional)'")
           .jt`Are you ready to start exploring your data? Add it below ${optional}.`}
       </Text>
 

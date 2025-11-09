@@ -176,7 +176,7 @@ several properties that can be set as environment variables or in a `deps.edn`. 
     "-Dmb.db.pass="]}}}
 ```
 
-You could also pass a full conection string in as the `mb.db.connection.uri`:
+You could also pass a full connection string in as the `mb.db.connection.uri`:
 
 ```
 "-Dmb.db.connection.uri=postgres://<user>:<password>@localhost:5432/<dbname>"

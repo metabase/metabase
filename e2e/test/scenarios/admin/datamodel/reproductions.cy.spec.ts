@@ -219,7 +219,7 @@ describe("issue 53595", () => {
     cy.intercept("GET", "/api/database/*/schema/*").as("getSchema");
   });
 
-  it("all options are visibile while filtering the list of entity types (metabase#53595)", () => {
+  it("all options are visible while filtering the list of entity types (metabase#53595)", () => {
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
       schemaId: SAMPLE_DB_SCHEMA_ID,

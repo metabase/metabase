@@ -8,7 +8,7 @@
    [net.cgrand.macrovich :as macros]))
 
 (defn- generate-pattern
-  "Generate a single approprate pattern for use with core.match based on the `pattern` input passed into `match` or
+  "Generate a single appropriate pattern for use with core.match based on the `pattern` input passed into `match` or
   `replace`."
   [pattern]
   (cond
@@ -152,7 +152,7 @@
      automatically recurse, use a catch-all pattern (such as `_`). Our macro implementation will optimize out this
      `:else` clause if the last pattern is `_`
 
-  ### Returing something other than the exact match with result body
+  ### Returning something other than the exact match with result body
 
   By default, `match` returns whatever matches the pattern you pass in. But what if you only want to return part of
   the match? You can, using `core.match` binding facilities. Bind relevant things in your pattern and pass in the
@@ -187,7 +187,7 @@
     ;; -> [[:field 1 nil]]"
   {:style/indent :defn}
   [x & patterns-and-results]
-  ;; Actual implementation of these macros is in `mbql.util.match`. They're in a seperate namespace because they have
+  ;; Actual implementation of these macros is in `mbql.util.match`. They're in a separate namespace because they have
   ;; lots of other functions and macros they use for their implementation (which means they have to be public) that we
   ;; would like to discourage you from using directly.
   `(match* ~x ~patterns-and-results))

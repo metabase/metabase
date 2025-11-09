@@ -214,7 +214,7 @@
                             (some? remove-pc-ids) (set/difference (set remove-pc-ids)))
                           (set add-pc-ids))]
     (cond
-     ;; no op when new-pc-ids doesnt't change
+     ;; no op when new-pc-ids doesn't change
       (= new-pc-ids existing-pc-ids) nil
 
      ;; delete if no new pc-ids and there is an existing trigger

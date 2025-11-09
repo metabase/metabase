@@ -632,7 +632,7 @@ describe("issue 57398", () => {
       cy.findByText("Widget").click();
       cy.findByLabelText("Add another filter").click();
 
-      cy.log("2st filter");
+      cy.log("2nd filter");
       cy.findByText("Vendor").click();
       cy.findByText("Alfreda Konopelski II Group").click();
       cy.findByLabelText("Add another filter").click();
@@ -1170,7 +1170,7 @@ describe("issue 42723", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should be able to change the query without loosing the viz type (metabase#42723)", () => {
+  it("should be able to change the query without losing the viz type (metabase#42723)", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
     H.queryBuilderFooter().findByLabelText("Switch to data").click();
     H.tableHeaderClick("Count");

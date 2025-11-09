@@ -796,7 +796,7 @@ describe("scenarios > organization > entity picker", () => {
       });
     });
 
-    it("should show dashboards in personal collections when apropriate, even if there are no sub collections", () => {
+    it("should show dashboards in personal collections when appropriate, even if there are no sub collections", () => {
       cy.intercept("/api/database/*").as("database");
       cy.signInAsAdmin();
       H.createDashboard({

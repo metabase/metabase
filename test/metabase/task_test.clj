@@ -20,7 +20,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-;; make sure we attempt to reschedule tasks so changes made in source are propogated to JDBC backend
+;; make sure we attempt to reschedule tasks so changes made in source are propagated to JDBC backend
 
 (task/defjob TestJob [_])
 

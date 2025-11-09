@@ -393,7 +393,7 @@ describe("issues 20845, 25031", () => {
 
         H.visitQuestion(card_id);
 
-        // Connect dashbaord filter to the card
+        // Connect dashboard filter to the card
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
           dashcards: [
             {

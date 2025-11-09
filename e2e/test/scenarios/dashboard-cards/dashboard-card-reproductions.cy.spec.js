@@ -137,7 +137,7 @@ describe("issue 16334", () => {
     );
   });
 
-  it("should not change the visualization type in a targetted question with mapped filter (metabase#16334)", () => {
+  it("should not change the visualization type in a targeted question with mapped filter (metabase#16334)", () => {
     // Question 2, that we're adding to the dashboard
     const questionDetails = {
       query: {

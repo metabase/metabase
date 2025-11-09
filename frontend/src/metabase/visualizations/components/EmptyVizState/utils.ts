@@ -22,7 +22,7 @@ type EmptyVizConfig = {
 
 // We should not import these large empty-state images directly,
 // because we don't need to inline them as base64 to the SDK bundle.
-// Insead we just define paths to them that is passed to the <img> tag directly.
+// Instead we just define paths to them that is passed to the <img> tag directly.
 const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
   area: {
     get imgSrc() {

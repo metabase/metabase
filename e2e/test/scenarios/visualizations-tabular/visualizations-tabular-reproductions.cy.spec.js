@@ -1341,7 +1341,7 @@ describe("issue 57132", () => {
     });
   });
 
-  it("should render more values when hovering colum header without description (metabase#57132)", () => {
+  it("should render more values when hovering column header without description (metabase#57132)", () => {
     H.openProductsTable();
     H.tableInteractive().findByText("Category").realHover();
 

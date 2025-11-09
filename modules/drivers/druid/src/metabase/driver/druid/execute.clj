@@ -99,7 +99,7 @@
            k))))))
 
 (defn- result-metadata [col-names]
-  ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about
+  ;; rename any occurrences of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about
   ;; our behind-the-scenes conversion and apply any other post-processing on the value such as parsing some
   ;; units to int and rounding up approximate cardinality values.
   (let [fixed-col-names (for [col-name col-names]

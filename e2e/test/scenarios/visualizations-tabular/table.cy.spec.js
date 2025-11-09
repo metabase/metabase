@@ -443,7 +443,7 @@ describe("scenarios > visualizations > table", () => {
       .and("contain", "No description");
   });
 
-  it("should close the colum popover on subsequent click (metabase#16789)", () => {
+  it("should close the column popover on subsequent click (metabase#16789)", () => {
     H.openPeopleTable({ limit: 2 });
 
     H.tableHeaderColumn("City").click();

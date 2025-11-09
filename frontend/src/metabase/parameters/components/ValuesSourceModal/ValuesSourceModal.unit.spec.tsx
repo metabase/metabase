@@ -42,7 +42,7 @@ import { createMockState } from "metabase-types/store/mocks";
 import ValuesSourceModal from "./ValuesSourceModal";
 
 describe("ValuesSourceModal", () => {
-  describe("string paramter", () => {
+  describe("string parameter", () => {
     const metadata = createMockMetadata({
       fields: [
         createMockField({

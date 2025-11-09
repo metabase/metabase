@@ -269,7 +269,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.dashboardHeader()
         .findByText(TARGET_DASHBOARD.name)
         .should("be.visible");
-      // If the page was reloaded, many API request would have been made and theses
+      // If the page was reloaded, many API request would have been made and these
       // calls are 2 of those.
       cy.get("@rootCollection").should("not.have.been.called");
       cy.get("@collections").should("not.have.been.called");
@@ -871,7 +871,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.log("Should navigate to question using router (metabase#33379)");
       cy.findByTestId("view-footer").should("contain", "Showing 5 rows");
-      // If the page was reloaded, many API request would have been made and theses
+      // If the page was reloaded, many API request would have been made and these
       // calls are 2 of those.
       cy.get("@rootCollection").should("not.have.been.called");
       cy.get("@collections").should("not.have.been.called");

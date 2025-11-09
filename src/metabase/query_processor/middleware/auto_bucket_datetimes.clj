@@ -148,7 +148,7 @@
 
 (mu/defn- wrap-unbucketed-clauses :- ::lib.schema/stage
   "Add `:temporal-unit` to `:field`s and `:expression`s in breakouts and filters if appropriate; for fields, look
-  at corresponing type information in `field-id->type-info` to see if we should do so. For expressions examine the clause
+  at corresponding type information in `field-id->type-info` to see if we should do so. For expressions examine the clause
   options."
   ;; we only want to wrap clauses in `:breakout` and `:filter` so just make a 3-arg version of this fn that takes the
   ;; name of the clause to rewrite and call that twice

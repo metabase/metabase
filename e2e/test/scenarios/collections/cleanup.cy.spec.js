@@ -304,7 +304,7 @@ describe("scenarios > collections > clean up", () => {
           );
           closeCleanUpModal();
 
-          // Ensure that stale items in Our Analytics are maked with a null collection id
+          // Ensure that stale items in Our Analytics are marked with a null collection id
           H.expectUnstructuredSnowplowEvent(
             (event) =>
               event &&

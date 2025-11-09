@@ -8,7 +8,8 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [clojure.string :as str]))
 
 (defn- make-transform [query & [name schema]]
   (let [name (or name (mt/random-name))
@@ -71,18 +72,18 @@
                      :model/Transform {t3 :id} (make-transform
                                                 {:database (mt/id),
                                                  :type :native,
-                                                 :native {:query "SELECT * FROM orders_transform ot
-                                                                  LEFT JOIN products p
-                                                                  ON ot.product_id = p.id
-                                                                  LIMIT 100"}}
+                                                 :native {:query (str/join "\n" ["SELECT * FROM orders_transform ot" ; codespell:ignore
+                                                                                 "LEFT JOIN products p"
+                                                                                 "ON ot.product_id = p.id" ; codespell:ignore
+                                                                                 "LIMIT 100"])}}
                                                 "orders_transform_products")
                      :model/Transform {t4 :id} (make-transform
                                                 {:database (mt/id),
                                                  :type :native,
-                                                 :native {:query "SELECT * FROM orders_transform ot
-                                                                  LEFT JOIN products_transform pt
-                                                                  ON ot.product_id = pt.id
-                                                                  LIMIT 100"}}
+                                                 :native {:query (str/join "\n" ["SELECT * FROM orders_transform ot" ; codespell:ignore
+                                                                                 "LEFT JOIN products_transform pt"
+                                                                                 "ON ot.product_id = pt.id" ; codespell:ignore
+                                                                                 "LIMIT 100"])}}
                                                 "orders_transform_products_transform")]
         (is (= #{{:transform t1} {:transform t2}}
                (transform-deps-for-db (t2/select-one :model/Transform  t4))))

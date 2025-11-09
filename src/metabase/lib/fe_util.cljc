@@ -77,7 +77,7 @@
   "Modify expression in a way, that its resulting [[expression-parts]] are digestable by filter picker.
 
    Current filter picker implementation is unable to handle expression parts of expressions of a form
-   `[:= {...} [:field {:temporal-unit :week} 11] \"2024-05-12\"]` -- expresions that check for equality of a column
+   `[:= {...} [:field {:temporal-unit :week} 11] \"2024-05-12\"]` -- expressions that check for equality of a column
    with `:temporal-unit` set to value other than `:day` or `:minute` to some date time value.
 
    To mitigate that expressions are converted to `:between` form which is handled correctly by filter picker. For more

@@ -153,7 +153,7 @@ describe("scenarios > question > nested", () => {
     });
 
     cy.get("@metricId").then((metricId) => {
-      // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
+      // "capture" the original query because we will need to reuse it later in a nested question as "source-query"
       const baseQuestionDetails = {
         name: "12507",
         query: {

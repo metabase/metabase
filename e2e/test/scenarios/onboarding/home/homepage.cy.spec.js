@@ -139,8 +139,8 @@ describe("scenarios > home > homepage", () => {
           return new Promise((resolve) => {
             setTimeout(() => {
               resolve();
-              // Setting this to be arbitrarly long so that the repeat assertion
-              // has a guarentee of finding it.
+              // Setting this to be arbitrarily long so that the repeat assertion
+              // has a guarantee of finding it.
             }, 1000);
           });
         });

@@ -70,8 +70,8 @@ export const ListField = ({
    * option.
    */
   const sortOptions = useCallback(
-    (optionA: Option, optionB: Option) => {
-      const aSelected = selectedValues.has(optionA[0]),
+    (optionA: Option, optionB: Option) => { // codespell:ignore
+      const aSelected = selectedValues.has(optionA[0]), // codespell:ignore
         bSelected = selectedValues.has(optionB[0]);
 
       if (aSelected && !bSelected) {
@@ -87,7 +87,7 @@ export const ListField = ({
         return 0;
       }
 
-      const aName = getOptionDisplayName(optionA),
+      const aName = getOptionDisplayName(optionA), // codespell:ignore
         bName = getOptionDisplayName(optionB);
       return typeof aName === "string" && typeof bName === "string"
         ? sortByTranslation(aName, bName)

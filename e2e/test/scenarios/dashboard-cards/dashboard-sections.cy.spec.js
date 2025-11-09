@@ -111,7 +111,7 @@ describe("scenarios > dashboard cards > sections > read only collections", () =>
     cy.signIn("readonly");
   });
 
-  it("Should allow you to select entites in collections you have read access to (metabase#50602)", () => {
+  it("Should allow you to select entities in collections you have read access to (metabase#50602)", () => {
     H.createDashboard({ collection_id: READ_ONLY_PERSONAL_COLLECTION_ID }).then(
       ({ body }) => {
         H.visitDashboard(body.id);

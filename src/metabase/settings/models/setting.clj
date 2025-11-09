@@ -198,7 +198,7 @@
 
    ;; description is validated via the macro, not schema
    ;; Use `:doc` to include a map with additional documentation, for use when generating the environment variable docs
-   ;; from source. To exclude a setting from documenation, set to `false`. See metabase.cmd.env-var-dox.
+   ;; from source. To exclude a setting from documentation, set to `false`. See metabase.cmd.env-var-dox.
    [:description :any]
 
    [:doc     :any]
@@ -1238,7 +1238,7 @@
 
   ###### `:visibility`
 
-  Controls where this setting is visibile, and who can update it. Possible values are:
+  Controls where this setting is visible, and who can update it. Possible values are:
 
     Visibility       | Who Can See It?              | Who Can Update It?
     ---------------- | ---------------------------- | --------------------
@@ -1275,7 +1275,7 @@
 
   Is this a sensitive setting, such as a password, that we should never return in plaintext? (Default: `false`).
   Obfuscation is not done by getter functions, but instead by functions that ultimately return these values via the
-  API, such as [[writable-settings]] below. (In other words, code in the backend can continute to consume
+  API, such as [[writable-settings]] below. (In other words, code in the backend can continue to consume
   sensitive Settings normally; sensitivity is a purely user-facing option.)
 
   ###### `:database-local`

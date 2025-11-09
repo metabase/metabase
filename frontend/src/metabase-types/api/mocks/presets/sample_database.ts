@@ -207,7 +207,7 @@ export const PEOPLE_STATE_VALUES: GetFieldValuesResponse = {
     ["MS"],
     ["MT"],
     ["NC"],
-    ["ND"],
+    ["ND"], // codespell:ignore
     ["NE"],
     ["NH"],
     ["NJ"],

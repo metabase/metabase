@@ -30,7 +30,7 @@ configure({
 Cypress.on("uncaught:exception", (err, runnable) => false);
 
 Cypress.on("test:before:run", () => {
-  // Check wether FE is running in dev mode
+  // Check whether FE is running in dev mode
   const feHealthcheck = Cypress.env().feHealthcheck;
   if (feHealthcheck?.enabled) {
     fetch(feHealthcheck.url).catch(() =>

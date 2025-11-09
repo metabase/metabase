@@ -4569,12 +4569,12 @@ describe("issue 48824", { tags: "@skip" }, () => {
     });
 
     cy.log("Previous 30 days");
-    H.filterWidget().findByText("Vorheriger 30 Tage").should("be.visible");
+    H.filterWidget().findByText("Vorheriger 30 Tage").should("be.visible"); // codespell:ignore
     H.filterWidget().icon("revert").click();
 
     cy.log("Previous 30 days, starting 7 days ago");
     H.filterWidget()
-      .findByText("Vorheriger 30 Tage, ab vor 7 tage")
+      .findByText("Vorheriger 30 Tage, ab vor 7 tage") // codespell:ignore
       .should("be.visible");
   });
 });

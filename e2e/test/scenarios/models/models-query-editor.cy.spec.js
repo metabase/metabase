@@ -207,7 +207,7 @@ describe("scenarios > models query editor", () => {
           name: "Erroring Model",
           type: "model",
           native: {
-            // Let's use API to type the most of the query, but stil make it invalid
+            // Let's use API to type the most of the query, but still make it invalid
             query: "SELECT 1 FROM",
           },
         },

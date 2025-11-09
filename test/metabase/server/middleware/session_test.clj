@@ -274,7 +274,7 @@
         (t2/delete! :model/Session :id test-session-id)))))
 
 (deftest current-user-info-for-session-test-4
-  (testing "full-app-embed sessions shouldn't come back if we don't explicitly specifiy the anti-csrf token"
+  (testing "full-app-embed sessions shouldn't come back if we don't explicitly specify the anti-csrf token"
     (try
       (t2/insert! :model/Session {:id              test-session-id
                                   :key_hashed      test-session-key-hashed
@@ -285,7 +285,7 @@
       (finally
         (t2/delete! :model/Session :id test-session-id)))
 
-    (testing "...but if we do specifiy the token, they should come back"
+    (testing "...but if we do specify the token, they should come back"
       (try
         (t2/insert! :model/Session {:id              test-session-id
                                     :key_hashed      test-session-key-hashed

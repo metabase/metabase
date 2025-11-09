@@ -308,7 +308,7 @@ describe("useSnippetCompletion", () => {
     const { complete } = await setup();
 
     await waitFor(async () => {
-      const results = await complete("{{ snippet: fo| ");
+      const results = await complete("{{ snippet: fo| "); // codespell:ignore
       expect(results).toEqual({
         from: 12,
         to: 14,
@@ -327,7 +327,7 @@ describe("useSnippetCompletion", () => {
     const { complete } = await setup();
 
     await waitFor(async () => {
-      const results = await complete("{{ snippet: fo|o ");
+      const results = await complete("{{ snippet: fo|o "); // codespell:ignore
       expect(results).toEqual({
         from: 12,
         to: 15,
@@ -346,7 +346,7 @@ describe("useSnippetCompletion", () => {
     const { complete } = await setup();
 
     await waitFor(async () => {
-      const results = await complete("{{ snippet: fo| }}");
+      const results = await complete("{{ snippet: fo| }}"); // codespell:ignore
       expect(results).toEqual({
         from: 12,
         to: 14,
@@ -365,7 +365,7 @@ describe("useSnippetCompletion", () => {
     const { complete } = await setup();
 
     await waitFor(async () => {
-      const results = await complete("{{ snippet: fo|o }}");
+      const results = await complete("{{ snippet: fo|o }}"); // codespell:ignore
       expect(results).toEqual({
         from: 12,
         to: 15,
@@ -416,11 +416,11 @@ describe("useCardTagCompletion", () => {
   it("should not call card completion endpoint when not in a card tag", async () => {
     const queries = [
       // none of these should trigger a call
-      "SELECT Fo|",
-      "SELECT {{ snippet: Fo|",
-      "SELECT {{ snippet: Fo| }}",
-      "SELECT {{ Fo|",
-      "SELECT {{ Fo| }}",
+      "SELECT Fo|", // codespell:ignore
+      "SELECT {{ snippet: Fo|", // codespell:ignore
+      "SELECT {{ snippet: Fo| }}", // codespell:ignore
+      "SELECT {{ Fo|", // codespell:ignore
+      "SELECT {{ Fo| }}", // codespell:ignore
     ];
     const { complete, url } = setup();
 
@@ -575,10 +575,10 @@ describe("useReferencedCardCompletion", () => {
       // none of these should trigger a call
       "SELECT {{ #foo|",
       "SELECT {{ #foo| }}",
-      "SELECT {{ snippet: Fo|",
-      "SELECT {{ snippet: Fo| }}",
-      "SELECT {{ Fo|",
-      "SELECT {{ Fo| }}",
+      "SELECT {{ snippet: Fo|", // codespell:ignore
+      "SELECT {{ snippet: Fo| }}", // codespell:ignore
+      "SELECT {{ Fo|", // codespell:ignore
+      "SELECT {{ Fo| }}", // codespell:ignore
     ];
     const { complete } = setup();
 
@@ -743,10 +743,10 @@ describe("useKeywordsCompletion", () => {
         // none of these should trigger a call
         "SELECT {{ #foo|",
         "SELECT {{ #foo| }}",
-        "SELECT {{ snippet: Fo|",
-        "SELECT {{ snippet: Fo| }}",
-        "SELECT {{ Fo|",
-        "SELECT {{ Fo| }}",
+        "SELECT {{ snippet: Fo|", // codespell:ignore
+        "SELECT {{ snippet: Fo| }}", // codespell:ignore
+        "SELECT {{ Fo|", // codespell:ignore
+        "SELECT {{ Fo| }}", // codespell:ignore
       ];
       const { complete } = setup();
 

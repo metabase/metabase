@@ -73,7 +73,7 @@
               ;; manually inserted many
 
               (is (> (review-count) moderation-review/max-moderation-reviews))
-              (moderate! "verified" "lookin good")
+              (moderate! "verified" "lookin good") ; codespell:ignore
               ;; api ensures we never have more than our limit
 
               (is (<= (review-count) moderation-review/max-moderation-reviews)))

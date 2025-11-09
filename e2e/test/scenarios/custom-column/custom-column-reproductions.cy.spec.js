@@ -147,7 +147,7 @@ describe(
     const PG_DB_NAME = "QA Postgres12";
 
     // Ironically, both Prettier and Cypress remove escape characters from our code as well
-    // We're testing for the literal sting `(?<=\/\/)[^\/]*`, but we need to escape the escape characters to make it work
+    // We're testing for the literal string `(?<=\/\/)[^\/]*`, but we need to escape the escape characters to make it work
     const ESCAPED_REGEX = "(?<=\\/\\/)[^\\/]*";
 
     beforeEach(() => {
@@ -2438,7 +2438,7 @@ describe("issue 61010", () => {
 
   it("should not be possible to reference a custom expression in itself (metabase#61010)", () => {
     H.getNotebookStep("expression").findByText(CUSTOM_COLUMN_NAME).click();
-    H.CustomExpressionEditor.clear().type("[Fo");
+    H.CustomExpressionEditor.clear().type("[Fo"); // codespell:ignore
     H.CustomExpressionEditor.completions()
       .findByText("Foo")
       .should("not.exist");

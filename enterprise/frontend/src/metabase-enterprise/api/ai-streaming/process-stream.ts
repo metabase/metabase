@@ -50,7 +50,7 @@ function parseDataStreamPart(line: string) {
 
   const prefix = line.slice(0, firstSeparatorIndex);
   if (!StreamingPartTypes.includes(prefix as StreamingPartType)) {
-    console.warn(`Recieved invalid message code: ${prefix}`);
+    console.warn(`Received invalid message code: ${prefix}`);
     return;
   }
 
@@ -190,7 +190,7 @@ type StreamPartValue<name extends ParsedStreamPartName> = Extract<
 
 export type AIStreamingConfig = {
   onTextPart?: (part: StreamPartValue<"text">) => void;
-  // callback is only called if this version of the client is aware of the recieved data part type
+  // callback is only called if this version of the client is aware of the received data part type
   onDataPart?: (part: KnownDataPart) => void;
   onToolCallPart?: (part: StreamPartValue<"tool_call">) => void;
   onToolResultPart?: (part: StreamPartValue<"tool_result">) => void;

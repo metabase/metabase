@@ -72,7 +72,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
       }}
       styles={{
         header: {
-          paddingRight: "2.5rem", // Needed for increased specifity
+          paddingRight: "2.5rem", // Needed for increased specificity
         },
       }}
     >

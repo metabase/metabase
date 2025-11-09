@@ -1050,7 +1050,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
 
     cy.wait("@deLocale");
 
-    H.main().findByText("Februar 11, 2025, 9:40 PM");
+    H.main().findByText("Februar 11, 2025, 9:40 PM"); // codespell:ignore
 
     cy.findByRole("button", {
       name: "Automatische Aktualisierung",

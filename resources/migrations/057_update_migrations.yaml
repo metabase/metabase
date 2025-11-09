@@ -909,6 +909,7 @@ databaseChangeLog:
       id: v57.2025-08-22T00:12:00
       author: william
       comment: Create transform_job_run table in app database to track transform job execution
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: transform_job_run
@@ -957,7 +958,7 @@ databaseChangeLog:
               - column:
                   name: end_time
                   type: ${timestamp_type}
-                  remarks: "When the tranform job completed (null if still running)"
+                  remarks: "When the transform job completed (null if still running)"
                   constraints:
                     nullable: true
               - column:

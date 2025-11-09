@@ -48,7 +48,7 @@ H.describeWithSnowplow("scenarios > question > bookmarks", () => {
     cy.findByRole("dialog").contains("Turn this into a model").click();
 
     H.undoToastList().findByText("This is a model now.");
-    // Close this toast as soon we confim it exists!
+    // Close this toast as soon we confirm it exists!
     // It lingers in the UI far too long which is causing flakiness later on
     // when we assert on the next toast (when we turn the model back to the question).
     H.undoToastList().icon("close").click();
