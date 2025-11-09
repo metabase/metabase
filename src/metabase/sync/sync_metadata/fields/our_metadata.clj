@@ -22,6 +22,7 @@
          (merge
           {:parent-id                  (:parent_id field)
            :id                         (:id field)
+           :active-subset              (:active_subset field)
            :name                       (:name field)
            :database-type              (:database_type field)
            :effective-type             (:effective_type field)
@@ -74,7 +75,7 @@
   "Fetch active Fields from the Metabase application database for a given `table`."
   [table :- i/TableInstance]
   (t2/select [:model/Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
-              :parent_id :id :description :database_position :nfc_path
+              :parent_id :id :description :database_position :nfc_path :active_subset
               :database_is_auto_increment :database_required
               :database_default :database_is_generated :database_is_nullable :database_is_pk
               :database_partitioned :json_unfolding :position]
