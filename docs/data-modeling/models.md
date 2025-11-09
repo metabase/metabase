@@ -119,6 +119,12 @@ There are some limitations to this indexing:
 
 You can edit a model's query by clicking on the down arrow next to the model's name and clicking on **Edit query definition**. When you're doing editing, be sure to save your changes. Unlike questions, which prompt you to save as a new question, any changes here will overwrite the existing model. If you want to create a new model from an existing model, select **Duplicate this model** from the model sidebar (the icon of two overlapping squares).
 
+### Checking for breaking changes
+
+> {% include plans-blockquote.html feature="Checking for breaking changes" %}
+
+When you save changes to a model, Metabase will try to detect whether your changes would break any other entities that depend on that model. For example, if you remove a column from the model, but other questions based on that model rely on that column, Metabase will warn you that those downstream questions will break. 
+
 ## Model list view
 
 ![Viewing a model as a list](./images/model-list.png)

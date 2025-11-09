@@ -1064,7 +1064,8 @@
    [:created_at {:optional true} [:maybe :string]]
    [:collection {:optional true} [:maybe [:map
                                           [:name {:optional true} [:maybe :string]]
-                                          [:authority_level {:optional true} [:maybe :string]]]]]])
+                                          [:authority_level {:optional true} [:maybe :string]]
+                                          [:description {:optional true} [:maybe :string]]]]]])
 
 (mr/def ::search-result
   [:or

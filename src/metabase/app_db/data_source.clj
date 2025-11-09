@@ -100,9 +100,11 @@
 (defn raw-connection-string->DataSource
   "Return a [[javax.sql.DataSource]] given a raw JDBC connection string."
   (^javax.sql.DataSource [s]
-   (raw-connection-string->DataSource s nil nil nil))
+   (raw-connection-string->DataSource s nil nil nil nil))
 
   (^javax.sql.DataSource [s username password azure-managed-identity-client-id]
+   (raw-connection-string->DataSource s username password azure-managed-identity-client-id nil))
+  (^javax.sql.DataSource [s username password azure-managed-identity-client-id aws-iam]
    {:pre [(string? s)]}
    ;; normalize the protocol in case someone is trying to trip us up. Heroku is known for this and passes stuff in
    ;; like `postgres:...` to screw with us.
@@ -138,7 +140,11 @@
                  (seq password)                               (assoc :password password)
                  (and (empty? password)
                       (seq azure-managed-identity-client-id)) (assoc :azure-managed-identity-client-id
-                                                                     azure-managed-identity-client-id))]
+                                                                     azure-managed-identity-client-id))
+         [s m] (if aws-iam
+                 [(str/replace s #"^jdbc:(postgresql|mysql):" "jdbc:aws-wrapper:$1:")
+                  (assoc m :wrapperPlugins "iam" :useSSL true)]
+                 [s m])]
      (update-h2/update-if-needed! s)
      (->DataSource s (some-> (not-empty m) connection-pool/map->properties)))))
 

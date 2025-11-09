@@ -531,10 +531,7 @@ describe("scenarios > question > new", () => {
 
       cy.findByTestId("save-question-modal").should("not.exist");
 
-      H.modal().within(() => {
-        cy.findByText(/add this to a dashboard/i);
-        cy.button("Yes please!").click();
-      });
+      H.checkSavedToCollectionQuestionToast(true);
 
       H.entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
@@ -565,7 +562,7 @@ describe("scenarios > question > new", () => {
       cy.findByTestId("save-question-modal").button("Save").click();
       cy.wait("@createQuestion");
 
-      cy.get("#QuestionSavedModal").findByText("Yes please!").click();
+      H.checkSavedToCollectionQuestionToast(true);
 
       H.entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
@@ -604,9 +601,7 @@ describe("scenarios > question > new", () => {
           cy.wait("@createQuestion");
         });
 
-        cy.get("#QuestionSavedModal").within(() => {
-          cy.findByText("Yes please!").click();
-        });
+        H.checkSavedToCollectionQuestionToast(true);
       });
 
       it("when selecting a collection", () => {
