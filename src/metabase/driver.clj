@@ -1681,3 +1681,5 @@
   {:added "0.57.0" :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmethod should-sync-active-subset? ::driver [_driver] false)
