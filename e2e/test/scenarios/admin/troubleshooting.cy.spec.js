@@ -523,4 +523,29 @@ describe("admin > tools", () => {
     }).should("be.visible");
     cy.findByRole("button", { name: "Try for free" });
   });
+
+  describe("issue 57113", () => {
+    it("should navigate to /admin/tools/tasks when closing Task details modal even with no browser history", () => {
+      cy.visit("/admin/tools/tasks");
+
+      cy.log("Pick an existing task url");
+
+      cy.findAllByTestId("task").should("be.visible").first().click();
+
+      cy.location("pathname")
+        .should("match", /\/admin\/tools\/tasks\/[0-9]+$/)
+        .then((pathname) => {
+          // Clear all history and navigate to the task detail modal page
+          cy.window().then((window) => {
+            window.history.replaceState(null, "", pathname);
+            // Clear the entire history stack by going to about:blank first
+            window.location.href = "about:blank";
+          });
+
+          cy.visit(pathname);
+          H.modal().findByRole("img", { name: "close icon" }).click();
+          cy.location("pathname").should("eq", "/admin/tools/tasks");
+        });
+    });
+  });
 });
