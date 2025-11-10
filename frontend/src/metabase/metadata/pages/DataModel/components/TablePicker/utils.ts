@@ -146,6 +146,11 @@ export function flatten(
 }
 
 export function sort(nodes: TreeNode[]): TreeNode[] {
+  if (nodes[0].type === "field") {
+    // sorting is done on BE
+    return nodes;
+  }
+
   return Array.from(nodes).sort((a, b) => {
     return a.label.localeCompare(b.label);
   });

@@ -139,7 +139,7 @@ export function TablePickerResults({
                 onItemClick={onItemClick}
                 onSelectedIndexChange={onSelectedIndexChange}
                 onItemToggle={onItemToggle}
-                ref={ref}
+                rootRef={ref}
                 ownerNameById={ownerNameById}
               />
             );
@@ -221,7 +221,7 @@ interface ResultsItemProps {
   onItemClick?: (path: TreePath) => void;
   onSelectedIndexChange?: (index: number) => void;
   onItemToggle?: (item: FlatItem) => void;
-  ref: React.RefObject<HTMLDivElement>;
+  rootRef: React.RefObject<HTMLDivElement>;
   ownerNameById: Map<UserId, string>;
 }
 
@@ -305,7 +305,7 @@ const ResultsItem = ({
   onItemClick,
   onSelectedIndexChange,
   onItemToggle,
-  ref,
+  rootRef,
   ownerNameById,
 }: ResultsItemProps) => {
   const { selectedItemsCount } = useSelection();
@@ -375,7 +375,7 @@ const ResultsItem = ({
   };
 
   function itemByIndex(index: number) {
-    return ref.current?.querySelector<HTMLAnchorElement>(
+    return rootRef.current?.querySelector<HTMLAnchorElement>(
       `[data-index='${index}']`,
     );
   }

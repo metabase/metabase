@@ -167,8 +167,8 @@ export function useTableLoader(path: TreePath) {
       );
 
       const fields = response.data?.fields ?? [];
-      // sorting is different to middle part, maybe not needed
-      return _.sortBy(fields, (field) => field.position).map((field) =>
+
+      return fields.map((field) =>
         node<FieldNode>({
           type: "field",
           label: field.display_name,
