@@ -1,12 +1,12 @@
-import { isNil } from "lodash";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
+import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
+import { isNullOrUndefined } from "metabase/lib/types";
 import { Group, Stack, Text } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { Table } from "metabase-types/api";
-import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 
 interface Props {
   table: Table;
@@ -52,7 +52,7 @@ export function TableMetadataInfo({ table }: Props) {
         label={t`View count`}
         value={formatNumber(table.view_count)}
       />
-      {!isNil(table.estimated_row_count) ? (
+      {!isNullOrUndefined(table.estimated_row_count) ? (
         <MetadataRow
           label={t`Est. row count`}
           value={formatNumber(table.estimated_row_count)}
