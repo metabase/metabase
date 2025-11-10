@@ -97,6 +97,8 @@
   (let [changes   (t2/changes dashboard)
         dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
         changes   (lib/normalize ::dashboards.schema/dashboard changes)]
+    (collection/check-allowed-content :dashboard (:collection_id changes))
+
     (u/prog1 (maybe-populate-initially-published-at dashboard)
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)

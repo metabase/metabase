@@ -1,16 +1,11 @@
 (ns metabase-enterprise.library.core
   (:require
-   [metabase.premium-features.core :refer [defenterprise]]
-   [toucan2.core :as t2]))
+   [metabase-enterprise.library.validation :as validation]
+   [potemkin :as p]))
 
-(defenterprise check-allowed-content
-  "Check if the collection's content matches the allowed_content.
-  Throws an exception if it does not"
-  :feature :library
-  [content-type collection-id]
-  (when collection-id
-    (when-let [allowed-content (t2/select-one-fn :allowed_content [:model/Collection :allowed_content] :id collection-id)]
-      (when-not (content-type allowed-content)
-        (throw (ex-info "Content type not allowed in this collection" {:content-type content-type, :allowed-content allowed-content})))))
+(comment
+  validation/keep-me)
 
-  true)
+(p/import-vars
+ [metabase-enterprise.library.validation
+  check-allowed-content])

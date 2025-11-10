@@ -381,7 +381,7 @@
 
 (defenterprise check-allowed-content
   "Checks contents of a collection before saving it. The OSS implementation is a no-op."
-  metabase-enterprise.library.core
+  metabase-enterprise.library.validation
   [_model-type _collection-id]
   true)
 
@@ -1518,7 +1518,7 @@
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
   (assert-valid-remote-synced-parent collection)
-  (check-allowed-content :collection (when-let [location (:location collection)] (location-path->parent-id location)))
+  (check-allowed-content :collection (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
   (assoc collection :slug (slugify collection-name)))
 
 (defn- copy-collection-permissions!
@@ -1692,6 +1692,8 @@
     (when-not *clearing-remote-sync*
       (let [merged-collection (merge collection-before-updates collection-updates)]
         (assert-valid-remote-synced-parent merged-collection)))
+    ;; (3.6) Check that the parent collection allows this collection to be there
+    (check-allowed-content :collection (when-let [location (:location collection)] (location-path->parent-id location)))
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)

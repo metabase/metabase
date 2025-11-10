@@ -171,5 +171,8 @@
                                            (map #(select-keys % [:type :item_id]))
                                            (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
 
-(t2/define-before-insert :model/CollectionBookmark [model]
-  (collection/check-allowed-content :collection-bookmark (:collection_id model)))
+(t2/define-before-insert :model/CollectionBookmark [bookmark]
+  (collection/check-allowed-content :collection-bookmark (:collection_id bookmark)))
+
+(t2/define-before-update :model/CollectionBookmark [model]
+  (collection/check-allowed-content :collection-bookmark (:collection_id (t2/changes model))))

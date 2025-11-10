@@ -83,6 +83,7 @@
   [notification]
   (let [{:keys [collection_id dashboard_id]} (t2/original notification)
         changes                              (t2/changes notification)]
+    (collection/check-allowed-content :pulse (:collection_id changes))
     (when (and dashboard_id
                (contains? notification :collection_id)
                (not= (:collection_id notification) collection_id)

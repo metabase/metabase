@@ -84,6 +84,7 @@
 
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
+  (collection/check-allowed-content :native-query-snippet (:collection_id (t2/changes snippet)))
   (u/prog1 (cond-> snippet
              (:content snippet) add-template-tags)
     ;; throw an Exception if someone tries to update creator_id
