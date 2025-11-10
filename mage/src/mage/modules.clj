@@ -16,12 +16,15 @@
    (when-let [[_match module] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^/]+)/.*$" filename)]
      (symbol "enterprise" (str/replace module #"_" "-")))))
 
+(defn- updated-files->updated-modules [updated-files]
+  (into (sorted-set)
+        (keep file->module)
+        updated-files))
+
 (defn- updated-modules [git-ref]
   (let [git-ref       (or git-ref "master")
         updated-files (u/updated-files git-ref)]
-    (into (sorted-set)
-          (keep file->module)
-          updated-files)))
+    (updated-files->updated-modules updated-files)))
 
 (defn- module->test-directory
   [module]
@@ -122,15 +125,28 @@
             filename))
         (u/updated-files (or git-ref "master"))))
 
+(defn- remove-non-driver-test-namespaces [files]
+  (filterv (fn [filename]
+             (when (and (some #(str/includes? filename %)
+                              ["test/" "enterprise/backend/test/"])
+                        (not (some #(str/includes? filename %)
+                                   ["query_processor"
+                                    "driver"])))
+               (printf "Ignorning changes in test namespace %s\n" (pr-str filename))
+               (flush)
+               filename))
+           files))
+
 (defn cli-can-skip-driver-tests
   "Exits with nonzero status code if we can skip "
   [[git-ref, :as _command-line-args]]
   (try
-    (let [deps        (dependencies)
-          git-ref     (or git-ref "master")
-          updated     (updated-modules git-ref)
-          unaffected  (unaffected-modules deps updated)
-          skip-tests? (skip-driver-tests? deps updated)]
+    (let [deps          (dependencies)
+          git-ref       (or git-ref "master")
+          updated-files (remove-non-driver-test-namespaces (u/updated-files git-ref))
+          updated       (updated-files->updated-modules updated-files)
+          unaffected    (unaffected-modules deps updated)
+          skip-tests?   (skip-driver-tests? deps updated)]
       ;; Not strictly necessary, but people looking at CI will appreciate having this extra info.
       (println "These modules have changed:" (pr-str updated))
       (println)

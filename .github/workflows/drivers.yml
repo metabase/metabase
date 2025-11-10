@@ -27,8 +27,6 @@ jobs:
           # Fetch the base branch to ensure its history is available for diffing
           git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
           # Only run this if it's a pull request and the base ref exists
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
       - name: Check if driver tests should run
         id: check_branch_and_files_changed
         run: |
