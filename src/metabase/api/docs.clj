@@ -47,6 +47,34 @@
     (catch Throwable e
       (log/error e "Failed to write OpenAPI specification to file"))))
 
+(defonce ^:private openapi-regen-state
+  (atom {:executing? false
+         :needs-regen? false}))
+
+(defn request-spec-regeneration!
+  "Request OpenAPI spec regeneration. Multiple rapid requests are coalesced into one execution."
+  [routes]
+  ;; Mark that we need regeneration
+  (swap! openapi-regen-state assoc :needs-regen? true)
+
+  ;; Only start execution if not already running
+  (when-not (:executing? @openapi-regen-state)
+    (swap! openapi-regen-state assoc :executing? true)
+    (future
+      (try
+        (when (:needs-regen? @openapi-regen-state)
+          (swap! openapi-regen-state assoc :needs-regen? false)
+          (log/info "Regenerating OpenAPI specification...")
+          (write-openapi-spec-to-file! routes)
+          (log/info "OpenAPI specification regenerated successfully"))
+        (catch Throwable e
+          (log/error e "Error regenerating OpenAPI specification"))
+        (finally
+          (swap! openapi-regen-state assoc :executing? false)
+          ;; Recursively handle any requests that came in during execution
+          (when (:needs-regen? @openapi-regen-state)
+            (request-spec-regeneration! routes)))))))
+
 (defn- read-openapi-spec-from-file
   "Read the OpenAPI specification from the local file.
   Returns the parsed JSON content, or nil if the file doesn't exist or can't be read."

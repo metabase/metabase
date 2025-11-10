@@ -9,7 +9,6 @@
    [metabase.actions.init]
    [metabase.activity-feed.init]
    [metabase.analytics.init]
-   [metabase.api-routes.init]
    [metabase.api.init]
    [metabase.app-db.init]
    [metabase.appearance.init]

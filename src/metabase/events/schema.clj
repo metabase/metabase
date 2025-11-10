@@ -195,3 +195,8 @@
 (mr/def :event/snippet-create ::snippet)
 (mr/def :event/snippet-update ::snippet)
 (mr/def :event/snippet-delete ::snippet)
+
+;; API events
+
+(mr/def :event/api-handler-update
+  [:map {:closed true}])

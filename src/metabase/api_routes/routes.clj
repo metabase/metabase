@@ -53,7 +53,6 @@
    [metabase.user-key-value.api]
    [metabase.users.api]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.log :as log]
    [metabase.warehouse-schema.api]
    [metabase.warehouses.api]
    [metabase.xrays.api]))
@@ -207,44 +206,3 @@
      (requiring-resolve 'dev.api.routes/routes)
      pass-thru-handler)
    not-found-handler))
-
-(defn regenerate-openapi-spec!
-  "Manually regenerate the OpenAPI specification file.
-  Call this in the REPL after updating endpoints during development."
-  []
-  (log/info "Regenerating OpenAPI specification...")
-  (api.docs/write-openapi-spec-to-file! routes)
-  (log/info "OpenAPI specification regenerated successfully"))
-
-(defonce ^:private openapi-regen-state
-  (atom {:last-regen-ms 0}))
-
-(defn- should-regenerate?
-  "Check if enough time has passed since the last regeneration to avoid duplicate work."
-  []
-  (let [now              (System/currentTimeMillis)
-        last-regen       (:last-regen-ms @openapi-regen-state)
-        debounce-period  2000] ; 2 seconds debounce
-    (> (- now last-regen) debounce-period)))
-
-(defn regenerate-with-debounce!
-  "Regenerate the OpenAPI spec with debouncing to avoid multiple regenerations for the same change.
-  This function is called automatically when endpoints are updated in dev mode."
-  []
-  (when (should-regenerate?)
-    (swap! openapi-regen-state assoc :last-regen-ms (System/currentTimeMillis))
-    (future
-      (try
-        (Thread/sleep 500) ; Small delay to let multiple file changes complete
-        (regenerate-openapi-spec!)
-        (catch Throwable e
-          (log/error e "Error regenerating OpenAPI specification"))))))
-
-(defn initialize-openapi-generation!
-  "Generate the initial OpenAPI specification file on application startup.
-  In development mode, endpoints will automatically regenerate the spec when they are updated."
-  []
-  (log/info "Generating initial OpenAPI specification...")
-  (api.docs/write-openapi-spec-to-file! routes)
-  (when config/is-dev?
-    (log/info "Development mode: OpenAPI spec will auto-regenerate when endpoints change")))
