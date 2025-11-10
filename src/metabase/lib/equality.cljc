@@ -164,9 +164,9 @@
 (defmethod = :metadata/column
   [col-1 col-2]
   (let [not-equal-reason (columns-not-equal-reason col-1 col-2)]
-    (if not-equal-reason
-      (log/debugf "Columns are not equal. Reason: %s" (pr-str not-equal-reason))
-      (log/debug "Columns are equal."))
+    #_(if not-equal-reason
+        (log/debugf "Columns are not equal. Reason: %s" (pr-str not-equal-reason))
+        (log/debug "Columns are equal."))
     (not not-equal-reason)))
 
 (mu/defn- resolve-field-id-in-source-card :- ::lib.schema.metadata/column
