@@ -130,3 +130,10 @@ export function entityToUrlableModel<
 export function isMentionableUser(value: unknown): value is MentionableUser {
   return isObject(value) && typeof value.common_name === "string";
 }
+
+export function getBrowseAllItemIndex(
+  menuItemsLength: number,
+  canCreateNewQuestion?: boolean,
+): number {
+  return canCreateNewQuestion ? menuItemsLength + 1 : menuItemsLength;
+}

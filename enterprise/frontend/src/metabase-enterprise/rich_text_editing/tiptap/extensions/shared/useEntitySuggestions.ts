@@ -13,6 +13,7 @@ import type {
 import {
   buildSearchModelMenuItems,
   entityToUrlableModel,
+  getBrowseAllItemIndex,
 } from "./suggestionUtils";
 import type { SuggestionModel } from "./types";
 import { useEntitySearch } from "./useEntitySearch";
@@ -196,17 +197,17 @@ export function useEntitySuggestions({
         return;
       }
 
-      if (index === menuItems.length) {
-        if (canCreateNewQuestion) {
-          onTriggerCreateNewQuestion?.();
-        } else {
-          setModal("question-picker");
-        }
+      if (index === menuItems.length && canCreateNewQuestion) {
+        onTriggerCreateNewQuestion?.();
         return;
       }
 
-      if (index === menuItems.length + 1) {
-        // TODO: add proper index getters
+      const browseAllItemIndex = getBrowseAllItemIndex(
+        menuItems.length,
+        canCreateNewQuestion,
+      );
+
+      if (index === browseAllItemIndex) {
         setModal("question-picker");
       }
     },

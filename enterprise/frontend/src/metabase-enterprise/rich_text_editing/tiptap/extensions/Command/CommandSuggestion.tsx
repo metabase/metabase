@@ -251,9 +251,9 @@ export const CommandSuggestion = forwardRef<
   let totalItems = currentItems.length;
 
   if (viewMode === "linkTo" || viewMode === "embedQuestion") {
-    totalItems = searchMenuItems.length + 2;
+    totalItems = searchMenuItems.length + 1 + Number(canCreateNewQuestion); // "Browse all" footer and "New chart"
   } else if (currentItems.length === 0 && query) {
-    totalItems = 2; // "Browse all" footer and "New chart"
+    totalItems = 1 + Number(canCreateNewQuestion); // "Browse all" footer and "New chart"
   }
 
   const selectItem = (index: number) => {

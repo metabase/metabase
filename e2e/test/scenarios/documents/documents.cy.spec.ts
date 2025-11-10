@@ -1,6 +1,8 @@
 import {
+  NO_SQL_PERSONAL_COLLECTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_QUESTION_ID,
+  READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   ACCOUNTS_COUNT_BY_CREATED_AT,
@@ -1054,6 +1056,84 @@ H.describeWithSnowplowEE("documents", () => {
 
       cy.log("Verify 'Browse all' footer is also visible");
       H.commandSuggestionItem(/Browse all/).should("be.visible");
+    });
+  });
+
+  describe("creating new questions - limited permissions", () => {
+    it("should not show 'Create new question' option for users without database permissions", () => {
+      cy.signIn("readonly");
+
+      H.createDocument({
+        name: "Test Document",
+        document: {
+          content: [],
+          type: "doc",
+        },
+        collection_id: READ_ONLY_PERSONAL_COLLECTION_ID,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+      H.documentContent().click();
+
+      cy.log("Trigger command menu and select Chart");
+      H.addToDocument("/", false);
+      H.commandSuggestionItem("Chart").click();
+
+      cy.log("Verify 'Create new question' footer is not visible");
+      H.commandSuggestionDialog()
+        .findByRole("button", { name: /New chart/ })
+        .should("not.exist");
+
+      cy.log("Search for something to verify footer doesn't appear");
+      H.addToDocument("xyznonexistent", false);
+
+      cy.log("Verify 'No results found' message appears");
+      H.commandSuggestionDialog().should("contain.text", "No results found");
+
+      cy.log(
+        "Verify 'Create new question' footer is still not visible for no-permission user",
+      );
+      H.commandSuggestionDialog()
+        .findByRole("button", { name: /New chart/ })
+        .should("not.exist");
+
+      cy.log("Verify 'Browse all' footer is still available");
+      H.commandSuggestionItem(/Browse all/).should("be.visible");
+    });
+
+    it("should not show native SQL question option for users without native query editing permissions", () => {
+      cy.signIn("nosql");
+
+      H.createDocument({
+        name: "Test Document",
+        document: {
+          content: [],
+          type: "doc",
+        },
+        collection_id: NO_SQL_PERSONAL_COLLECTION_ID,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+      H.documentContent().click();
+
+      cy.log("Trigger command menu and select Chart");
+      H.addToDocument("/", false);
+      H.commandSuggestionItem("Chart").click();
+
+      cy.log("Click 'New chart' to open question type menu");
+      H.commandSuggestionItem(/New chart/).click();
+
+      cy.log("Verify only notebook option is available, not SQL");
+      H.commandSuggestionItem(/New SQL query/).should("not.exist");
+
+      cy.log("Verify notebook modal opens automatically");
+      cy.findByRole("dialog", { name: "Pick your starting data" }).should(
+        "be.visible",
+      );
     });
   });
 

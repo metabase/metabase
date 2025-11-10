@@ -11,6 +11,8 @@ import {
 } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
 import type { SearchResult } from "metabase-types/api";
 
+import { getBrowseAllItemIndex } from "./suggestionUtils";
+
 interface EntitySearchSectionProps {
   menuItems: MenuItem[];
   selectedIndex: number;
@@ -47,6 +49,11 @@ export function EntitySearchSection({
   const hasNoItems = menuItems.length === 0 && searchResults.length === 0;
   const shouldShowNoResults = query.length > 0 && hasNoItems;
 
+  const browseAllItemIndex = getBrowseAllItemIndex(
+    menuItems.length,
+    canCreateNewQuestion,
+  );
+
   return (
     <>
       {selectedSearchModelName && (
@@ -75,7 +82,7 @@ export function EntitySearchSection({
       {(shouldShowNoResults || !hasNoItems) &&
         (canCreateNewQuestion || canBrowseAll) && <Divider my="sm" mx="sm" />}
 
-      {canCreateNewQuestion && onTriggerCreateNew && (
+      {canCreateNewQuestion && (
         <CreateNewQuestionFooter
           isSelected={selectedIndex === menuItems.length}
           onClick={onTriggerCreateNew}
@@ -86,9 +93,9 @@ export function EntitySearchSection({
       {canBrowseAll && (
         <>
           <SearchResultsFooter
-            isSelected={selectedIndex === menuItems.length + 1}
+            isSelected={selectedIndex === browseAllItemIndex}
             onClick={onFooterClick}
-            onMouseEnter={() => onItemHover(menuItems.length + 1)}
+            onMouseEnter={() => onItemHover(browseAllItemIndex)}
           />
 
           {modal === "question-picker" && (
