@@ -32,7 +32,7 @@ jobs:
         shell: bash
         run: |
           echo "date=$(/bin/date -u "+%Y%m%d")" >> $GITHUB_OUTPUT
-      - name: Restore M2 cache
+      - name: Restore Babashka cache
         uses: actions/cache/restore@v4
         with:
           path: |
