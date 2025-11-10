@@ -217,12 +217,12 @@ function UpdateIncrementalForm({
             />
             {values.incremental && (
               <>
-                <FormSelect
-                  name="sourceStrategy"
-                  label={t`Source Strategy`}
-                  description={t`How to track which rows to process`}
-                  data={[{ value: "checkpoint", label: t`Checkpoint` }]}
-                />
+                // <FormSelect
+                //   name="sourceStrategy"
+                //   label={t`Source Strategy`}
+                //   description={t`How to track which rows to process`}
+                //   data={[{ value: "checkpoint", label: t`Checkpoint` }]}
+                // />
                 {values.sourceStrategy === "checkpoint" && (
                   <>
                     {isMbqlQuery && libQuery && (
@@ -257,12 +257,12 @@ function UpdateIncrementalForm({
                       )}
                   </>
                 )}
-                <FormSelect
-                  name="targetStrategy"
-                  label={t`Target Strategy`}
-                  description={t`How to update the target table`}
-                  data={[{ value: "append", label: t`Append` }]}
-                />
+                // <FormSelect
+                //   name="targetStrategy"
+                //   label={t`Target Strategy`}
+                //   description={t`How to update the target table`}
+                //   data={[{ value: "append", label: t`Append` }]}
+                // />
               </>
             )}
             <Group>

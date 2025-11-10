@@ -161,12 +161,12 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
 
   return (
     <>
-      <FormSelect
-        name="sourceStrategy"
-        label={t`Source Strategy`}
-        description={t`How to track which rows to process`}
-        data={[{ value: "checkpoint", label: t`Checkpoint` }]}
-      />
+      // <FormSelect
+      //   name="sourceStrategy"
+      //   label={t`Source Strategy`}
+      //   description={t`How to track which rows to process`}
+      //   data={[{ value: "checkpoint", label: t`Checkpoint` }]}
+      // />
       {values.sourceStrategy === "checkpoint" && (
         <>
           {isMbqlQuery && libQuery && (
@@ -212,12 +212,12 @@ function TargetStrategyFields() {
 
   return (
     <>
-      <FormSelect
-        name="targetStrategy"
-        label={t`Target Strategy`}
-        description={t`How to update the target table`}
-        data={[{ value: "append", label: t`Append` }]}
-      />
+      // <FormSelect
+      //   name="targetStrategy"
+      //   label={t`Target Strategy`}
+      //   description={t`How to update the target table`}
+      //   data={[{ value: "append", label: t`Append` }]}
+      // />
       {/* Append strategy has no additional fields */}
       {/* Future strategies like "merge" could add fields here */}
     </>
