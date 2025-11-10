@@ -114,7 +114,7 @@ jobs:
 
       - name: Build frontend (in background)
         run: |
-          yarn build-release &
+          yarn build-release & yarn build-release:static-viz &
 
       - name: Run live backend
         env:
