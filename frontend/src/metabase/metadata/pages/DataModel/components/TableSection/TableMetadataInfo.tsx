@@ -1,3 +1,4 @@
+import { isNil } from "lodash";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -5,7 +6,7 @@ import { skipToken } from "metabase/api";
 import { Group, Stack, Text } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { Table } from "metabase-types/api";
-import { isNil } from "lodash";
+import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 
 interface Props {
   table: Table;
@@ -13,6 +14,7 @@ interface Props {
 
 export function TableMetadataInfo({ table }: Props) {
   const formattedDate = new Date(table.updated_at).toLocaleString();
+  const formatNumber = useNumberFormatter();
 
   const { data: dependencyGraph } = useGetDependencyGraphQuery(
     table.id != null ? { id: Number(table.id), type: "table" } : skipToken,
@@ -46,11 +48,14 @@ export function TableMetadataInfo({ table }: Props) {
     <Stack gap="md">
       <MetadataRow label={t`Name on disk`} value={table.name} />
       <MetadataRow label={t`Last updated at`} value={formattedDate} />
-      <MetadataRow label={t`View count`} value={table.view_count} />
+      <MetadataRow
+        label={t`View count`}
+        value={formatNumber(table.view_count)}
+      />
       {!isNil(table.estimated_row_count) ? (
         <MetadataRow
           label={t`Est. row count`}
-          value={table.estimated_row_count}
+          value={formatNumber(table.estimated_row_count)}
         />
       ) : null}
       <MetadataRow label={t`Dependencies`} value={dependenciesCount} />
