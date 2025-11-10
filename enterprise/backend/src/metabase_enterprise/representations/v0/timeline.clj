@@ -28,20 +28,17 @@
 (defn yaml->toucan
   "Convert a v0 timeline representation to Toucan-compatible data."
   [{timeline-name :display_name
-    :keys [name description icon default archived collection events] :as _representation}
+    :keys [name description icon default archived events] :as _representation}
    ref-index]
-  (let [collection-id (when collection
-                        (v0-common/find-collection-id collection))]
-    (u/remove-nils
-     {:name (or timeline-name name)
-      :description description
-      :icon icon
-      :default (or default false)
-      :archived (or archived false)
-      :collection_id collection-id
-      ::v0-common/delete-before-output
-      {:events (when events
-                 (mapv yaml->timeline-event events))}})))
+  (u/remove-nils
+   {:name (or timeline-name name)
+    :description description
+    :icon icon
+    :default (or default false)
+    :archived (or archived false)
+    ::v0-common/delete-before-output
+    {:events (when events
+               (mapv yaml->timeline-event events))}}))
 
 (defn persist!
   "Persist a v0 timeline representation by creating or updating it in the database."
@@ -52,12 +49,11 @@
         new-timeline (->> timeline-data-clean
                           (rep-t2/with-toucan-defaults :model/Timeline))
         timeline-name (:name new-timeline)
-        collection-id (:collection_id new-timeline)
-        existing (t2/select-one :model/Timeline :name timeline-name :collection_id collection-id)]
+        existing (t2/select-one :model/Timeline :name timeline-name)]
     (if existing
       (do
         (log/info "Updating existing timeline" timeline-name)
-        (t2/update! :model/Timeline (:id existing) (dissoc new-timeline :name :collection_id))
+        (t2/update! :model/Timeline (:id existing) (dissoc new-timeline :name))
         (when events
           (log/debug "Deleting old events for timeline" timeline-name)
           (t2/delete! :model/TimelineEvent :timeline_id (:id existing))
@@ -89,9 +85,7 @@
 (defn export-timeline
   "Export a Timeline Toucan entity to a v0 timeline representation."
   [t2-timeline]
-  (let [events (t2/select :model/TimelineEvent :timeline_id (:id t2-timeline))
-        collection-ref (when-let [coll-id (:collection_id t2-timeline)]
-                         (v0-common/->ref coll-id :collection))]
+  (let [events (t2/select :model/TimelineEvent :timeline_id (:id t2-timeline))]
     (-> {:type :timeline
          :version :v0
          :name (format "timeline-%s" (:id t2-timeline))
@@ -100,6 +94,5 @@
          :icon (:icon t2-timeline)
          :default (:default t2-timeline)
          :archived (:archived t2-timeline)
-         :collection collection-ref
          :events (mapv export-timeline-event events)}
         u/remove-nils)))

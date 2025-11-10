@@ -28,6 +28,11 @@ export const ModalToolbarLink = styled(Link)`
   margin-left: 1rem;
 `;
 
+export const ModalToolbarButton = styled.div`
+  flex: 0 0 auto;
+  margin-left: 1rem;
+`;
+
 interface ModalBodyProps {
   isTopAligned?: boolean;
 }

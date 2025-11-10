@@ -24,6 +24,7 @@ import {
   ModalBody,
   ModalRoot,
   ModalToolbar,
+  ModalToolbarButton,
   ModalToolbarInput,
   ModalToolbarLink,
 } from "./TimelineDetailsModal.styled";
@@ -84,11 +85,6 @@ const TimelineDetailsModal = ({
         onClose={onClose}
         onGoBack={canGoBack ? handleGoBack : undefined}
       >
-        {!isArchive && (
-          <Button onClick={() => setIsRepresentationsModalOpen(true)}>
-            {t`Representations`}
-          </Button>
-        )}
         {menuItems.length > 0 && (
           <EntityMenu items={menuItems} triggerIcon="ellipsis" />
         )}
@@ -108,6 +104,13 @@ const TimelineDetailsModal = ({
               to={Urls.newEventInCollection(timeline)}
               role="button"
             >{t`Create event`}</ModalToolbarLink>
+          )}
+          {!isArchive && (
+            <ModalToolbarButton>
+              <Button onClick={() => setIsRepresentationsModalOpen(true)}>
+                {t`Representations`}
+              </Button>
+            </ModalToolbarButton>
           )}
         </ModalToolbar>
       )}
