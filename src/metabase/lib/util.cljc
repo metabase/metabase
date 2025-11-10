@@ -548,4 +548,3 @@
          (update-query-stage stage-number u/assoc-dissoc
                              :lib/stage-metadata (when (seq new-stage-cols)
                                                    {:columns new-stage-cols}))))))
-
