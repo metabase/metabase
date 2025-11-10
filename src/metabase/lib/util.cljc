@@ -539,4 +539,13 @@
   ([query]
    (drop-summary-clauses query -1))
   ([query stage-number]
-   (update-query-stage query stage-number dissoc :aggregation :breakout)))
+   (let [stage (query-stage query stage-number)
+         stage-cols (-> stage :lib/stage-metadata :columns)
+         new-stage-cols (vec (remove (comp #{:source/breakouts :source/aggregations} :lib/source)
+                                     stage-cols))]
+     (-> query
+         (update-query-stage stage-number dissoc :aggregation :breakout)
+         (update-query-stage stage-number u/assoc-dissoc
+                             :lib/stage-metadata (when (seq new-stage-cols)
+                                                   {:columns new-stage-cols}))))))
+
