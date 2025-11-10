@@ -140,7 +140,9 @@
                   (try
                     (if (and (= (:type item) "transform")
                              (not (:source_type item)))
-                      (assoc item :source_type (transforms.util/transform-source-type (:source item)))
+                      (let [transform (transforms.util/normalize-transform item)]
+                        (assoc transform
+                               :source_type (transforms.util/transform-source-type (:source transform))))
                       item)
                     (catch Exception e
                       (log/error e "Error annotating transform source type for metabot context")

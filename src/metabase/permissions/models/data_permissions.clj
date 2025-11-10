@@ -663,6 +663,23 @@
             :to-insert [new-perm]}
            recursive-calls)))
 
+(def ^:private permission-batch-size 1000)
+
+(defn- batch-insert-permissions!
+  "In certain cases, when updating the permissions for many tables at once, we need to batch the insertions to avoid
+  hitting database limits for the number of parameters in a prepared statement. This is only really applicable when a DB
+  has more than ~10k tables and we're transitioning from database-level permissions to table-level permissions."
+  [new-perms]
+  (doseq [batched-new-perms (partition-all permission-batch-size new-perms)]
+    (t2/insert! :model/DataPermissions batched-new-perms)))
+
+(defn- batch-delete-permissions!
+  "Much like on insert, sometimes we have to delete more permission models than the psql limit of MAX 16-bit parameters.
+  This batches our deletes into groups of `permission-batch-size`."
+  [to-delete-ids]
+  (doseq [batched-to-delete-ids (partition-all permission-batch-size to-delete-ids)]
+    (t2/delete! :model/DataPermissions :id [:in batched-to-delete-ids])))
+
 (mu/defn set-database-permission!
   "Set a single permission to a specified
   value for a given group and database. If a permission value already exists for the specified group and object,
@@ -676,9 +693,9 @@
   (t2/with-transaction [_conn]
     (let [{:keys [to-insert to-delete]} (build-database-permission group-or-id db-or-id perm-type value)]
       (when (seq to-delete)
-        (t2/delete! :model/DataPermissions :id [:in (map :id to-delete)]))
-      (doseq [insert to-insert]
-        (t2/insert! :model/DataPermissions insert)))))
+        (batch-delete-permissions! (map :id to-delete)))
+      (when (seq to-insert)
+        (batch-insert-permissions! to-insert)))))
 
 (defn- lowest-permission-level-in-any-database
   "Given a group and a permission type, returns the lowest permission level for that group in any database, at the DB or table-level.
@@ -760,16 +777,6 @@
   [group-or-id db-or-id]
   (doseq [[perm-type perm-value] (new-database-permissions group-or-id)]
     (set-database-permission! group-or-id db-or-id perm-type perm-value)))
-
-(def ^:private permission-batch-size 1000)
-
-(defn- batch-insert-permissions!
-  "In certain cases, when updating the permissions for many tables at once, we need to batch the insertions to avoid
-  hitting database limits for the number of parameters in a prepared statement. This is only really applicable when a DB
-  has more than ~10k tables and we're transitioning from database-level permissions to table-level permissions."
-  [new-perms]
-  (doseq [batched-new-perms (partition-all permission-batch-size new-perms)]
-    (t2/insert! :model/DataPermissions batched-new-perms)))
 
 (defn- build-new-table-perms
   "Builds new permission entries for the given table permissions."
@@ -914,8 +921,7 @@
              (build-recursive-table-calls group-or-id perm-type table-perms)))))
 
 (mu/defn set-table-permissions!
-  "
-  Sets table permissions to specified values  for a given group. If a permission value already exists for a specified group and table,
+  "Sets table permissions to specified values for a given group. If a permission value already exists for a specified group and table,
   it will be updated to the new value.
 
   `table-perms` is a map from tables or table ID to the permission value for each table. All tables in the list must
@@ -930,7 +936,7 @@
   (t2/with-transaction [_conn]
     (let [{:keys [to-delete to-insert]} (build-table-permissions group-or-id perm-type table-perms)]
       (when (seq to-delete)
-        (t2/delete! :model/DataPermissions :id [:in (map :id to-delete)]))
+        (batch-delete-permissions! (map :id to-delete)))
       (when (seq to-insert)
         (batch-insert-permissions! to-insert)))))
 

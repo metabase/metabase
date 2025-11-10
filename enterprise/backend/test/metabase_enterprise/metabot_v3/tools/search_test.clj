@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-v3.tools.search-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.search :as search]
    [metabase.api.common :as api]
@@ -396,3 +397,20 @@
                 (let [no-desc-dash (u/seek #(= dash-3-id (:id %)) test-results)]
                   (is (nil? (get-in no-desc-dash [:collection :description])))
                   (is (= "No Description" (get-in no-desc-dash [:collection :name]))))))))))))
+
+(deftest weight-override-test
+  (testing "weights can be overridden on a per-tool-call basis"
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Dashboard  {id-1 :id}    {:name "Regular Dash (sh1b0le#h)",    :collection_id coll-id}
+                       :model/Dashboard  {id-2 :id}    {:name "Bookmarked Dash (sh1b0le#h)", :collection_id coll-id}
+                       :model/DashboardBookmark _      {:dashboard_id id-2, :user_id api/*current-user-id*}]
+          (let [base-query   {:term-queries ["sh1b0le#h"], :entity-types ["dashboard"]}
+                test-entity? (comp #{id-1 id-2} :id)
+                query        (fn [& [weights]]
+                               (->> (search/search (assoc base-query :weights weights))
+                                    (filter test-entity?)
+                                    (map (comp first #(str/split % #"\s") :name))))]
+            (is (= ["Bookmarked" "Regular"] (query)))
+            (is (= ["Regular" "Bookmarked"] (query {:bookmarked -1})))))))))

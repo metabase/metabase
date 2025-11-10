@@ -212,7 +212,6 @@ describe("scenarios > admin > datamodel > segments", () => {
         .find(".Icon-ellipsis")
         .click();
       H.popover().findByText("Retire Segment").click();
-      H.modal().find("textarea").type("delete it");
       H.modal().contains("button", "Retire").click();
     });
 
