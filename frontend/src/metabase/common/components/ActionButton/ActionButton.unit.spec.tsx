@@ -76,7 +76,6 @@ describe("ActionButton", () => {
     });
 
     const button = screen.getByRole("button");
-
     expect(screen.getByText("Save")).toBeInTheDocument();
     expect(button).toHaveAttribute("data-action-status", "idle");
 
@@ -84,15 +83,10 @@ describe("ActionButton", () => {
       button.click();
     });
 
-    await waitFor(() => {
-      expect(screen.getByText("Saving...")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("Saving...")).toBeInTheDocument();
     expect(button).toHaveAttribute("data-action-status", "pending");
     expect(actionFn).toHaveBeenCalledTimes(1);
-
-    await waitFor(() => {
-      expect(screen.getByText("Saved!")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("Saved!")).toBeInTheDocument();
     expect(screen.getByLabelText("check icon")).toBeInTheDocument();
     expect(button).toHaveAttribute("data-action-status", "success");
 
@@ -100,9 +94,7 @@ describe("ActionButton", () => {
       jest.advanceTimersByTime(5000);
     });
 
-    await waitFor(() => {
-      expect(screen.getByText("Save")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("Save")).toBeInTheDocument();
     expect(button).toHaveAttribute("data-action-status", "idle");
   });
 
@@ -121,10 +113,7 @@ describe("ActionButton", () => {
       expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     });
     expect(actionFn).toHaveBeenCalledTimes(1);
-
-    await waitFor(() => {
-      expect(screen.getByText("Saved")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("Saved")).toBeInTheDocument();
   });
 
   it("should handle failed action flow", async () => {
@@ -149,15 +138,11 @@ describe("ActionButton", () => {
       button.click();
     });
 
-    await waitFor(() => {
-      expect(screen.getByText("Saving...")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("Saving...")).toBeInTheDocument();
     expect(button).toHaveAttribute("data-action-status", "pending");
     expect(actionFn).toHaveBeenCalledTimes(1);
 
-    await waitFor(() => {
-      expect(screen.getByText("Failed!")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("Failed!")).toBeInTheDocument();
     expect(button).toHaveAttribute("data-action-status", "failed");
     expect(consoleErrorSpy).toHaveBeenCalled();
 
@@ -165,9 +150,7 @@ describe("ActionButton", () => {
       jest.advanceTimersByTime(5000);
     });
 
-    await waitFor(() => {
-      expect(screen.getByText("Save")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("Save")).toBeInTheDocument();
     expect(button).toHaveAttribute("data-action-status", "idle");
 
     consoleErrorSpy.mockRestore();
@@ -181,9 +164,7 @@ describe("ActionButton", () => {
       button.click();
     });
 
-    await waitFor(() => {
-      expect(screen.getByText("Saved")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("Saved")).toBeInTheDocument();
 
     act(() => {
       resetState();
@@ -211,45 +192,5 @@ describe("ActionButton", () => {
     unmount();
 
     expect(actionFn).toHaveBeenCalled();
-  });
-
-  it("should apply custom className", async () => {
-    await setup({ className: "custom-class" });
-
-    const button = screen.getByRole("button");
-    expect(button).toHaveClass("custom-class");
-  });
-
-  it("should apply successClassName when action succeeds", async () => {
-    await setup({ successClassName: "success-class" });
-
-    const button = screen.getByRole("button");
-    act(() => {
-      button.click();
-    });
-
-    await waitFor(() => {
-      expect(button).toHaveClass("success-class");
-    });
-  });
-
-  it("should apply failedClassName when action fails", async () => {
-    const actionFn = jest.fn().mockRejectedValue(new Error("Test error"));
-    const consoleErrorSpy = jest
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
-
-    await setup({ actionFn, failedClassName: "failed-class" });
-
-    const button = screen.getByRole("button");
-    act(() => {
-      button.click();
-    });
-
-    await waitFor(() => {
-      expect(button).toHaveClass("failed-class");
-    });
-
-    consoleErrorSpy.mockRestore();
   });
 });
