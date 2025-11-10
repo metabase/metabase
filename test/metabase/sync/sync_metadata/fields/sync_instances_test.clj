@@ -5,6 +5,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.core :as sync]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.test :as mt]
@@ -394,6 +395,62 @@
                   (is (every? (comp true? :active_subset) all-db-fields))
                   (is (every? (comp #{0 5} :fingerprint_version)
                               all-db-fields)))))))))))
+
+(deftest field-values-active-subset-test
+  (mt/test-drivers
+    (mt/normal-drivers)
+    (when (driver/should-sync-active-subset? driver/*driver*)
+      (mt/dataset
+        orderItemsDb
+        (let [users-active-subset #{(mt/id :users :_id)
+                                    (mt/id :users :email)
+                                    (mt/id :users :createdAt)}
+              orderItems-active-subset #{(mt/id :orderItems :_id)
+                                         (mt/id :orderItems :data)
+                                         (mt/id :orderItems :data :orderDate)
+                                         (mt/id :orderItems :data :price)}
+              products-active-subset #{(mt/id :products :_id)
+                                       (mt/id :products :name)
+                                       (mt/id :products :category)}
+              active-subset-field-ids (into #{} cat [users-active-subset
+                                                     orderItems-active-subset
+                                                     products-active-subset])
+              original-table->fields-to-scan @#'sync.field-values/table->fields-to-scan]
+          (try
+
+            (testing "... and now check that only active subset fields are picked for field values scan"
+              (with-redefs [driver.settings/sync-leaf-fields-limit (constantly 3)
+                            sync.field-values/table->fields-to-scan
+                            (fn [& args]
+                              (let [result (apply original-table->fields-to-scan args)]
+                                (throw (ex-info "For checking field values scanned fields"
+                                                {:fields-to-scan result
+                                                 :testing-exception true}))))]
+                (testing "... for that do full sync catching synthetic exception with considered fields"
+                  (try
+                    (sync/sync-database! (mt/db) {:scan :full})
+                    (catch clojure.lang.ExceptionInfo e
+                      (let [{:keys [testing-exception fields-to-scan]} (ex-data e)]
+                        (if testing-exception
+                          (testing "... and now the actual check"
+                            (is (= (count active-subset-field-ids)
+                                   (count fields-to-scan)))
+                            (loop [[first-exp-id & rest-exp-ids] active-subset-field-ids
+                                   returned-field-ids (set (map :id fields-to-scan))]
+                              (if (nil? first-exp-id)
+                                (is (empty? returned-field-ids))
+                                (do (is (contains? returned-field-ids first-exp-id))
+                                    (recur rest-exp-ids
+                                           (disj returned-field-ids first-exp-id))))))
+                          (throw e))))))))
+            (finally
+              (testing "Finally restore fields to the original state"
+              ;; Full sync should clean up active_subset of modified fields
+                (sync/sync-database! (mt/db) {:scan :full})
+                (let [all-db-fields (t2/select :model/Field :table_id
+                                               [:in (t2/select-fn-vec :id :model/Table :db_id (mt/id))])]
+                  (is (every? (comp true? :active) all-db-fields))
+                  (is (every? (comp true? :active_subset) all-db-fields)))))))))))
 
 (deftest ^:synchronized active-subset-null-on-unsupported-drivers-test
   (mt/test-drivers
