@@ -26,7 +26,7 @@
      [:query ::queries.schema/query]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
    [:python
-    [:map {:closed true}
+    [:map
      [:source-database {:optional true} :int]
      ;; NB: if source is checkpoint, only one table allowed
      [:source-tables   [:map-of :string :int]]

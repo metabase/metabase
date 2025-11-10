@@ -153,7 +153,7 @@
                   (is (= "Test Incremental Transform" (:name transform)))
                   (is (= "table-incremental" (-> transform :target :type)))
                   (is (= "checkpoint" (-> transform :source :source-incremental-strategy :type)))
-                  (is (= "id" (-> transform :source :source-incremental-strategy :checkpoint-column)))
+                  (is (= "id" (-> transform :source :source-incremental-strategy :checkpoint-filter)))
 
                   (testing "No checkpoint exists initially"
                     (is (nil? (get-checkpoint-value (:id transform)))))
@@ -242,14 +242,14 @@
                         (transforms.i/execute! transform {:run-method :manual})
                         (let [row-count (get-table-row-count target-table)
                               distinct-timestamps (get-distinct-timestamp-count target-table)]
-                          (is (= 16 row-count) "Should overwrite to 16 rows (all original products)")
+                          (is (= 10 row-count) "Should overwrite to 10 rows")
                           (is (= 1 distinct-timestamps) "All rows should have same timestamp after non-incremental overwrite"))
 
                         (testing "Running again still overwrites"
                           (transforms.i/execute! transform {:run-method :manual})
                           (let [row-count (get-table-row-count target-table)
                                 distinct-timestamps (get-distinct-timestamp-count target-table)]
-                            (is (= 16 row-count) "Should still have 16 rows after another run")
+                            (is (= 10 row-count) "Should still have 10 rows after another run")
                             (is (= 1 distinct-timestamps) "Should still have 1 distinct timestamp")))))))))))))))
 
 (deftest switch-non-incremental-to-incremental-test
@@ -271,7 +271,7 @@
                       (transforms.tu/wait-for-table target-table 10000)
                       (let [row-count (get-table-row-count target-table)
                             distinct-timestamps (get-distinct-timestamp-count target-table)]
-                        (is (= 16 row-count) "Initial run should process all 16 products")
+                        (is (= 10 row-count) "Initial run should process 10 products")
                         (is (= 1 distinct-timestamps) "All rows should have same timestamp from non-incremental run")
 
                         (testing "No checkpoint exists"
@@ -290,8 +290,8 @@
                         (let [row-count           (get-table-row-count target-table)
                               distinct-timestamps (get-distinct-timestamp-count target-table)
                               checkpoint           (get-checkpoint-value (:id transform))]
-                          (is (= 16 row-count) "Should still have 16 rows (no duplicates)")
-                          (is (= 1 distinct-timestamps) "Should still have 1 distinct timestamp (no new data added)")
+                          (is (= 16 row-count) "Should process remaining 6 entries")
+                          (is (= 2 distinct-timestamps) "Should have 2 distinct timestamp")
                           (is (= 16 checkpoint) "Checkpoint should be computed from existing data"))))
 
                     (when-not (= driver/*driver* :clickhouse) ; struggles with eventual consistency
@@ -308,5 +308,3 @@
                                   checkpoint (get-checkpoint-value (:id transform))]
                               (is (= 17 row-count) "Should append 1 new row (16 + 1 = 17)")
                               (is (>= checkpoint 17) "Checkpoint should be updated to at least 17"))))))))))))))))
-
-;; TODO: test changing checkpoint

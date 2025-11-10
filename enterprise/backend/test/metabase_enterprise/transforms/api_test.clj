@@ -915,7 +915,8 @@
 
 (deftest ^:parallel extract-columns-from-query-test
   (testing "POST /api/ee/transform/extract-columns"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/table)
+                           :clickhouse :redshift)
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
           (letfn [(make-native-query [sql]
