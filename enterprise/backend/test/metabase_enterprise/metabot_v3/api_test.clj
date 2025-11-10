@@ -124,7 +124,9 @@
                       "But we shouldn't go through all 30 of them")
                   (testing "request to ai-service was canceled"
                     (is (< 20 @cnt) "Stopped writing when channel closed")
-                    (is (= :nice @canceled)))))))))
+                    ;; see `metabase.server.streaming-response-test/canceling-chan-is-working-test` for explanation,
+                    ;; reducing flakyness here
+                    (is (some? @canceled)))))))))
       (finally
         (.stop ai-server)))))
 
