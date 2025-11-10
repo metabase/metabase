@@ -1079,13 +1079,19 @@
 
 (defn- join-lhs-display-name-from-condition-lhs
   [query stage-number join-or-joinable condition-lhs-or-nil]
-  (when-let [lhs-column-ref (or condition-lhs-or-nil
-                                (when (join? join-or-joinable)
-                                  (when-let [lhs (standard-join-condition-lhs (first (join-conditions join-or-joinable)))]
-                                    (when (lib.util/field-clause? lhs)
-                                      lhs))))]
-    (let [display-info (lib.metadata.calculation/display-info query stage-number lhs-column-ref)]
-      (get-in display-info [:table :display-name]))))
+  (when-let [lhs-column-refs (cond
+                               condition-lhs-or-nil [condition-lhs-or-nil]
+                               (join? join-or-joinable) (->> (join-conditions join-or-joinable)
+                                                             (keep #(let [lhs (standard-join-condition-lhs %)]
+                                                                      (when (and lhs (lib.util/field-clause? lhs))
+                                                                        lhs)))
+                                                             seq))]
+    (let [table-names (into #{}
+                            (map #(-> (lib.metadata.calculation/display-info query stage-number %)
+                                      (get-in [:table :display-name])))
+                            lhs-column-refs)]
+      (when (= (count table-names) 1)
+        (first table-names)))))
 
 (defn- first-join?
   "Whether a `join-or-joinable` is (or will be) the first join in a stage of a query.

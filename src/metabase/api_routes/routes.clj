@@ -29,7 +29,7 @@
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
    [metabase.notification.api]
-   [metabase.permissions.api]
+   [metabase.permissions-rest.api]
    [metabase.premium-features.api]
    [metabase.product-feedback.api]
    [metabase.public-sharing.api]
@@ -40,7 +40,7 @@
    [metabase.search.api]
    [metabase.segments.api]
    [metabase.session.api]
-   [metabase.settings.api]
+   [metabase.settings-rest.api]
    [metabase.setup.api]
    [metabase.sso.api]
    [metabase.sync.api]
@@ -76,13 +76,13 @@
          metabase.login-history.api/keep-me
          metabase.model-persistence.api/keep-me
          metabase.native-query-snippets.api/keep-me
-         metabase.permissions.api/keep-me
+         metabase.permissions-rest.api/keep-me
          metabase.product-feedback.api/keep-me
          metabase.public-sharing.api/keep-me
          metabase.query-processor.api/keep-me
          metabase.revisions.api/keep-me
          metabase.segments.api/keep-me
-         metabase.settings.api/keep-me
+         metabase.settings-rest.api/keep-me
          metabase.setup.api/keep-me
          metabase.task-history.api/keep-me
          metabase.testing-api.api/keep-me
@@ -160,7 +160,7 @@
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)
    "/notification"         metabase.notification.api/notification-routes
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
-   "/permissions"          (+auth 'metabase.permissions.api)
+   "/permissions"          (+auth 'metabase.permissions-rest.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.premium-features.api/routes)
    "/preview_embed"        (+auth metabase.embedding.api/preview-embedding-routes)
@@ -171,7 +171,7 @@
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.segments.api)
    "/session"              metabase.session.api/routes
-   "/setting"              (+auth 'metabase.settings.api)
+   "/setting"              (+auth 'metabase.settings-rest.api)
    "/setup"                'metabase.setup.api
    "/slack"                (+auth metabase.channel.api/slack-routes)
    "/table"                (+auth metabase.warehouse-schema.api/table-routes)
@@ -195,11 +195,11 @@
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for API endpoints."
-  ;; EE routes defined in [[metabase-enterprise.api.routes/routes]] always get the first chance to handle a request, if
-  ;; they exist. If they don't exist, this handler returns `nil` which means we will try the next handler.
+  ;; EE routes defined in [[metabase-enterprise.api-routes.routes/routes]] always get the first chance to handle a
+  ;; request, if they exist. If they don't exist, this handler returns `nil` which means we will try the next handler.
   (handlers/routes
    (if (and config/ee-available? (not *compile-files*))
-     (requiring-resolve 'metabase-enterprise.api.routes/routes)
+     (requiring-resolve 'metabase-enterprise.api-routes.routes/routes)
      pass-thru-handler)
    (handlers/route-map-handler route-map)
    (if (and config/dev-available? (not *compile-files*))

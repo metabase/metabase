@@ -1,4 +1,4 @@
-(ns metabase.permissions.api
+(ns metabase.permissions-rest.api
   "/api/permissions endpoints."
   (:require
    [clojure.data :as data]
@@ -7,16 +7,10 @@
    [malli.transform :as mtx]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
-   [metabase.permissions.api.permission-graph :as api.permission-graph]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions-rest.schema :as permissions-rest.schema]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.models.permissions-revision :as perms-revision]
-   [metabase.permissions.util :as perms.u]
-   [metabase.permissions.validation :as validation]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -80,13 +74,13 @@
                                   [:force      {:default false} [:maybe ms/BooleanValue]]]
    body :- :map]
   (api/check-superuser)
-  (let [new-graph (mc/decode api.permission-graph/StrictApiPermissionsGraph
+  (let [new-graph (mc/decode ::permissions-rest.schema/strict-api-permissions-graph
                              body
                              (mtx/transformer
                               mtx/string-transformer
                               (mtx/transformer {:name :perm-graph})))]
-    (when-not (mr/validate api.permission-graph/DataPermissionsGraph new-graph)
-      (let [explained (mu/explain api.permission-graph/DataPermissionsGraph new-graph)]
+    (when-not (mr/validate ::permissions-rest.schema/data-permissions-graph new-graph)
+      (let [explained (mu/explain ::permissions-rest.schema/data-permissions-graph new-graph)]
         (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}" (pr-str explained))
                         {:status-code 400}))))
     (t2/with-transaction [_conn]
@@ -96,10 +90,10 @@
                                  (:groups new-graph))
             old       (or old {})
             new       (or new {})]
-        (perms.u/log-permissions-changes old new)
-        (when-not force (perms.u/check-revision-numbers old-graph new-graph))
+        (perms/log-permissions-changes old new)
+        (when-not force (perms/check-revision-numbers old-graph new-graph))
         (data-perms.graph/update-data-perms-graph! {:groups new})
-        (perms.u/save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
+        (perms/save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
         (let [sandbox-updates        (:sandboxes new-graph)
               sandboxes              (when sandbox-updates
                                        (upsert-sandboxes! sandbox-updates))
@@ -107,7 +101,7 @@
               impersonations         (when impersonation-updates
                                        (insert-impersonations! impersonation-updates))
               group-ids (-> new-graph :groups keys)]
-          (merge {:revision (perms-revision/latest-id)}
+          (merge {:revision (perms/latest-permissions-revision-id)}
                  (when-not skip-graph {:groups (:groups (data-perms.graph/api-graph {:group-ids group-ids}))})
                  (when sandboxes {:sandboxes sandboxes})
                  (when impersonations {:impersonations impersonations})))))))
@@ -115,20 +109,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GROUP ENDPOINTS                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- group-id->num-members
-  "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty
-  groups.)"
-  []
-  (let [results (mdb/query
-                 {:select    [[:pgm.group_id :group_id] [[:count :pgm.id] :members]]
-                  :from      [[:permissions_group_membership :pgm]]
-                  :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
-                  :where     [:= :user.is_active true]
-                  :group-by  [:pgm.group_id]})]
-    (zipmap
-     (map :group_id results)
-     (map :members results))))
 
 (defn- ordered-groups
   "Return a sequence of ordered `PermissionsGroups`."
@@ -139,14 +119,6 @@
                (some? offset) (sql.helpers/offset offset)
                (some? query)  (sql.helpers/where query))))
 
-(mi/define-batched-hydration-method add-member-counts
-  :member_count
-  "Efficiently add `:member_count` to PermissionGroups."
-  [groups]
-  (let [group-id->num-members (group-id->num-members)]
-    (for [group groups]
-      (assoc group :member_count (get group-id->num-members (u/the-id group) 0)))))
-
 (api.macros/defendpoint :get "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.
   This API requires superuser or group manager of more than one group.
@@ -154,9 +126,9 @@
   is manager of."
   []
   (try
-    (validation/check-group-manager)
+    (perms/check-group-manager)
     (catch clojure.lang.ExceptionInfo _e
-      (validation/check-has-application-permission :setting)))
+      (perms/check-has-application-permission :setting)))
   (let [query (when (and (not api/*is-superuser?*)
                          (premium-features/enable-advanced-permissions?)
                          api/*is-group-manager?*)
@@ -172,7 +144,7 @@
   "Fetch the details for a certain permissions group."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (validation/check-group-manager id)
+  (perms/check-group-manager id)
   (api/check-404
    (-> (t2/select-one :model/PermissionsGroup :id id)
        (t2/hydrate :members))))
@@ -196,7 +168,7 @@
    _query-params
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
-  (validation/check-manager-of-group group-id)
+  (perms/check-manager-of-group group-id)
   (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
     (api/check-404 group)
     (t2/update! :model/PermissionsGroup group-id
@@ -212,7 +184,7 @@
   "Delete a specific `PermissionsGroup`."
   [{:keys [group-id]} :- [:map
                           [:group-id ms/PositiveInt]]]
-  (validation/check-manager-of-group group-id)
+  (perms/check-manager-of-group group-id)
   (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
     (t2/delete! :model/PermissionsGroup :id group-id)
     (events/publish-event! :event/group-delete {:object group
@@ -229,7 +201,7 @@
                  :group_id         <id>
                  :is_group_manager boolean}]}"
   []
-  (validation/check-group-manager)
+  (perms/check-group-manager)
   (group-by :user_id (t2/select [:model/PermissionsGroupMembership [:id :membership_id] :group_id :user_id :is_group_manager]
                                 (cond-> {}
                                   (and (not api/*is-superuser?*)
@@ -250,10 +222,10 @@
                                                    [:user_id          ms/PositiveInt]
                                                    [:is_group_manager {:default false} [:maybe :boolean]]]]
   (let [is_group_manager (boolean is_group_manager)]
-    (validation/check-manager-of-group group_id)
+    (perms/check-manager-of-group group_id)
     (when is_group_manager
       ;; enable `is_group_manager` require advanced-permissions enabled
-      (validation/check-advanced-permissions-enabled :group-manager)
+      (perms/check-advanced-permissions-enabled :group-manager)
       (api/check
        (t2/exists? :model/User :id user_id :is_superuser false)
        [400 (tru "Admin cant be a group manager.")]))
@@ -271,12 +243,12 @@
    {:keys [is_group_manager]} :- [:map
                                   [:is_group_manager :boolean]]]
   ;; currently this API is only used to update the `is_group_manager` flag and it requires advanced-permissions
-  (validation/check-advanced-permissions-enabled :group-manager)
+  (perms/check-advanced-permissions-enabled :group-manager)
   ;; Make sure only Super user or Group Managers can call this
-  (validation/check-group-manager)
+  (perms/check-group-manager)
   (let [old (t2/select-one :model/PermissionsGroupMembership :id id)]
     (api/check-404 old)
-    (validation/check-manager-of-group (:group_id old))
+    (perms/check-manager-of-group (:group_id old))
     (api/check
      (t2/exists? :model/User :id (:user_id old) :is_superuser false)
      [400 (tru "Admin cant be a group manager.")])
@@ -288,9 +260,9 @@
   "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
   [{:keys [group-id]} :- [:map
                           [:group-id ms/PositiveInt]]]
-  (validation/check-manager-of-group group-id)
+  (perms/check-manager-of-group group-id)
   (api/check-404 (t2/exists? :model/PermissionsGroup :id group-id))
-  (api/check-400 (not= group-id (u/the-id (perms-group/admin))))
+  (api/check-400 (not= group-id (u/the-id (perms/admin-group))))
   (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
   api/generic-204-no-content)
 
@@ -300,6 +272,6 @@
                     [:id ms/PositiveInt]]]
   (let [membership (t2/select-one :model/PermissionsGroupMembership :id id)]
     (api/check-404 membership)
-    (validation/check-manager-of-group (:group_id membership))
+    (perms/check-manager-of-group (:group_id membership))
     (t2/delete! :model/PermissionsGroupMembership :id id)
     api/generic-204-no-content))
