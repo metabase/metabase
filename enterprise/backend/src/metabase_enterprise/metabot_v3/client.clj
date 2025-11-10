@@ -176,7 +176,7 @@
           canceled (atom nil)]
       (metabot-v3.context/log (:body response) :llm.log/llm->be)
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
-      (when (< 299 (:status response))
+      (when-not (#{200 202} (:status response))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request  (assoc options :body body)
                          :response response})))
