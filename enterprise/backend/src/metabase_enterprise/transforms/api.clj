@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.api
   (:require
+   [macaw.core :as macaw]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.canceling :as transforms.canceling]
@@ -30,7 +31,8 @@
    [ring.util.response :as response]
    [toucan2.core :as t2])
   (:import
-   (java.sql PreparedStatement)))
+   (java.sql PreparedStatement)
+   (net.sf.jsqlparser.statement.select PlainSelect)))
 
 (comment metabase-enterprise.transforms.api.transform-job/keep-me
          metabase-enterprise.transforms.api.transform-tag/keep-me)
@@ -298,6 +300,42 @@
     (catch Exception e
       (log/debugf e "Failed to extract columns from query: %s" (ex-message e))
       nil)))
+
+(defn- simple-native-query?
+  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion."
+  [sql-string]
+  (try
+    (let [^PlainSelect parsed (macaw/parsed-query sql-string)]
+      (cond
+        (not (instance? PlainSelect parsed))
+        {:is_simple false
+         :reason "Not a simple SELECT"}
+
+        (.getLimit parsed)
+        {:is_simple false
+         :reason "Contains a LIMIT"}
+
+        (.getOffset ^PlainSelect parsed)
+        {:is_simple false
+         :reason "Contains an OFFSET"}
+
+        (seq (.getWithItemsList ^PlainSelect parsed))
+        {:is_simple false
+         :reason "Contains a CTE"}
+
+        :else
+        {:is_simple true}))
+    (catch Exception e
+      (log/debugf e "Failed to parse query: %s" (ex-message e))
+      {:is_simple false})))
+
+(api.macros/defendpoint :post "/is-simple-query"
+  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion"
+  [_route-params
+   _query-params
+   {:keys [query]} :- string?]
+  (api/check-superuser)
+  (simple-native-query? query))
 
 (api.macros/defendpoint :post "/extract-columns"
   "Extract column names from an MBQL query without executing it.
