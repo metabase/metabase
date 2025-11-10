@@ -14,9 +14,9 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { MetabaseSessionApiAvailableLocale } from "metabase-types/openapi";
 import { Box, Text } from "metabase/ui";
 import type { LocaleData, User } from "metabase-types/api";
+import { MetabaseSessionApiAvailableLocale } from "metabase-types/openapi";
 
 import type { UserProfileData } from "../../types";
 

@@ -68,6 +68,8 @@ jobs:
         uses: ./.github/actions/prepare-backend
       - run: yarn build-pure:cljs
         name: Compile CLJS
+      - run: yarn types:generate
+        name: Generate API types
       - run: yarn type-check-pure
         name: Check types
 
