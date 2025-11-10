@@ -74,7 +74,7 @@
   ;; If we end up with more "abstract" nodes, we may want a better way to filter them out.
   (keys (dissoc (methods supported-engine?) :default)))
 
-(defn active-engines
+(defn supported-engines
   "List the search engines that are supported, in order of preference.
    The configured engine comes first, if it is supported."
   []
@@ -82,10 +82,11 @@
         potential-engines (cond->> default-engine-precedence configured-engine (cons configured-engine))]
     (distinct (filter supported-engine? potential-engines))))
 
-(defn active-indexes
-  "A list of supported search engines, in order of preference. Excludes :search.engine/in-place, which does not use an index."
+(defn active-engines
+  "A list of supported search engines, in order of preference.
+   Excludes :search.engine/in-place, which does not use an index."
   []
-  (remove #{:search.engine/in-place} (active-engines)))
+  (remove #{:search.engine/in-place} (supported-engines)))
 
 (defn known-engine?
   "Is the given engine recognized?"

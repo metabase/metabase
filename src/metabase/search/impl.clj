@@ -220,7 +220,7 @@
   "In the absence of an explicit engine argument in a request, which engine should be used?"
   []
   ;; TODO (Chris 2025-11-07) It would be good to have a warning on start up whenever this is *not* what's configured.
-  (first (search.engine/active-engines)))
+  (first (search.engine/supported-engines)))
 
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)

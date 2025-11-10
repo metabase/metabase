@@ -50,7 +50,7 @@
 (defmacro with-index-disabled
   "Skip any index maintenance during this test."
   [& body]
-  `(mt/with-dynamic-fn-redefs [search.engine/active-indexes (constantly nil)]
+  `(mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly nil)]
      ~@body))
 
 (defmacro with-api-user [raw-ctx & body]

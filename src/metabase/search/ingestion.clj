@@ -226,7 +226,7 @@
 (defn update!
   "Update all active engines' existing indexes with the given documents. Passed remove-documents will be deleted from the index."
   [documents-reducible removed-models-reducible]
-  (doseq [e (seq (search.engine/active-indexes))]
+  (doseq [e (seq (search.engine/active-engines))]
     ;; We are partitioning the documents into batches at this level and sending each batch to all the engines
     ;; to avoid having to retain the head of the sequences as we work through all the documents.
     ;; Individual engines may also partition the documents further if they prefer
@@ -270,7 +270,7 @@
 (defn bulk-ingest!
   "Process the given search model updates."
   [updates]
-  (if (seq (search.engine/active-indexes))
+  (if (seq (search.engine/active-engines))
     (let [documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
                            (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
                          ;; init collection is only for clj-kondo, as we know that the list is non-empty
@@ -314,7 +314,7 @@
 (defn start-listener!
   "Starts the ingestion listener on the queue"
   []
-  (when (seq (search.engine/active-indexes))
+  (when (seq (search.engine/active-engines))
     (queue/listen! listener-name queue bulk-ingest!
                    {:success-handler     (fn [_result _duration _]
                                            (track-queue-size!))
