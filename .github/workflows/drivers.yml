@@ -47,6 +47,8 @@ jobs:
               echo 'skip=false' >> $GITHUB_OUTPUT
             fi
           fi
+
+          echo "GITHUB_OUTPUT = $GITHUB_OUTPUT"
         shell: bash
 
   be-tests-athena-ee:
