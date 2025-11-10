@@ -126,16 +126,17 @@
         (u/updated-files (or git-ref "master"))))
 
 (defn- remove-non-driver-test-namespaces [files]
-  (filterv (fn [filename]
-             (when (and (some #(str/includes? filename %)
-                              ["test/" "enterprise/backend/test/"])
-                        (not (some #(str/includes? filename %)
-                                   ["query_processor"
-                                    "driver"])))
-               (printf "Ignorning changes in test namespace %s\n" (pr-str filename))
-               (flush)
-               filename))
-           files))
+  (into []
+        (remove (fn [filename]
+                  (when (and (some #(str/includes? filename %)
+                                   ["test/" "enterprise/backend/test/"])
+                             (not (some #(str/includes? filename %)
+                                        ["query_processor"
+                                         "driver"])))
+                    (printf "Ignorning changes in test namespace %s\n" (pr-str filename))
+                    (flush)
+                    filename)))
+        files))
 
 (defn cli-can-skip-driver-tests
   "Exits with nonzero status code if we can skip "
