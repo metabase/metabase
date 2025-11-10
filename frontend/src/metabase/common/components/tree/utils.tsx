@@ -18,21 +18,3 @@ export const getInitialExpandedIds = (
       return [];
     })
     .flat();
-
-export const getAllExpandableIds = (
-  nodes: ITreeNodeItem[],
-): ITreeNodeItem["id"][] => {
-  const ids: ITreeNodeItem["id"][] = [];
-
-  const traverse = (items: ITreeNodeItem[]) => {
-    for (const item of items) {
-      if (item.children && item.children.length > 0) {
-        ids.push(item.id);
-        traverse(item.children);
-      }
-    }
-  };
-
-  traverse(nodes);
-  return ids;
-};

@@ -7,6 +7,7 @@
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.huge-query-metadata-providers :as lib.tu.huge]
    [metabase.lib.test-util.metadata-providers.mock :as lib.tu.mock]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.util.malli :as mu]))
@@ -16,9 +17,6 @@
   ;;   - What about 4 stages?
   ;; - Return only a few cols from a huge table
   ;; - Big daisy-chain of joins
-  ;; - White-label the user query from the original Oct 2025 perf issue and make it into a test
-  ;;   case here. It has huge `:case` clauses among other things that make it an excellent example
-  ;;   of a big, complicated, non-pathological query.
 
 (def ^:private ids-per-table 100000)
 (def ^:private db-id 1111)
@@ -150,4 +148,25 @@
    (mu/disable-enforcement
      (binding [lib.computed/*computed-cache* (computed-cache-off)]
        (-> (qp.compile/compile (trivial-query (mp-huge)))
-           (update :query count))))))
+           (update :query count)))))
+
+  ;; Using the "huge query" MetadataProvider, the big user query that came with QUE-2686.
+  ;; Starting point: 205ms
+  (compile-time (constantly nil)
+                (fn [_mp] (lib.tu.huge/huge-query))
+                computed-cache-off)
+
+  ;; Saving the result for comparison with optimized versions!
+  (defonce ^:private original-result (qp.compile/compile (lib.tu.huge/huge-query)))
+
+  (def optimized-result
+    (mu/disable-enforcement
+      (let [q (lib.tu.huge/huge-query)
+            [t result] (crit/time-body
+                        (qp.compile/compile q))]
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (println (format "%.2fms" (/ t 1000000.0)))
+        result)))
+
+  (= optimized-result
+     original-result))

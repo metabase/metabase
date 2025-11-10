@@ -1,5 +1,6 @@
 import {
   canonicalCollectionId,
+  canonicalCollectionIdOrEntityId,
   getCollectionPathAsString,
   isExamplesCollection,
   isItemCollection,
@@ -101,10 +102,42 @@ describe("Collections > utils", () => {
       expect(canonicalCollectionId("root")).toBe(null);
     });
 
+    it("returns NaN if the collection id is entity id", () => {
+      expect(canonicalCollectionId("HPAvJNTD9XTRkwJZUX9Fz")).toBe(NaN);
+    });
+
     it("returns null if the collection id is null or undefined", () => {
       expect(canonicalCollectionId(null)).toBe(null);
       /* @ts-expect-error checking if a race condition not returning expected data behaves as expected */
       expect(canonicalCollectionId()).toBe(null);
+    });
+  });
+
+  describe("canonicalCollectionIdOrEntityId", () => {
+    it("returns the id of the collection if it is not a root collection", () => {
+      expect(canonicalCollectionIdOrEntityId(1337)).toBe(1337);
+      expect(canonicalCollectionIdOrEntityId(1)).toBe(1);
+    });
+
+    it("handles string id inputs", () => {
+      expect(canonicalCollectionIdOrEntityId("1337")).toBe(1337);
+      expect(canonicalCollectionIdOrEntityId("1")).toBe(1);
+    });
+
+    it('returns null if the collection id is "root"', () => {
+      expect(canonicalCollectionIdOrEntityId("root")).toBe(null);
+    });
+
+    it("returns the id of the collection if the collection id is entity id", () => {
+      expect(canonicalCollectionIdOrEntityId("HPAvJNTD9XTRkwJZUX9Fz")).toBe(
+        "HPAvJNTD9XTRkwJZUX9Fz",
+      );
+    });
+
+    it("returns null if the collection id is null or undefined", () => {
+      expect(canonicalCollectionIdOrEntityId(null)).toBe(null);
+      /* @ts-expect-error checking if a race condition not returning expected data behaves as expected */
+      expect(canonicalCollectionIdOrEntityId()).toBe(null);
     });
   });
 
