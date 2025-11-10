@@ -333,7 +333,7 @@
   "Checks if a native SQL query string is simple enough for automatic checkpoint insertion"
   [_route-params
    _query-params
-   {:keys [query]} :- string?]
+   {:keys [query]} :- [:map [:query string?]]]
   (api/check-superuser)
   (simple-native-query? query))
 
