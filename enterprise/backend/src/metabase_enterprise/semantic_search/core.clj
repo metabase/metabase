@@ -58,21 +58,25 @@
                       final-count threshold raw-count fallback)
           (analytics/inc! :metabase-search/semantic-fallback-triggered {:fallback-engine fallback})
           (analytics/observe! :metabase-search/semantic-results-before-fallback final-count)
-          (let [fallback-results (try
+          (when (:offset-int search-ctx)
+            (log/warn "Using an offset with semantic search will produce strange results, e.g. missing expected results, or duplicating them across pages"))
+          (let [total-limit      (semantic.settings/semantic-search-results-limit)
+                fallback-results (try
+                                   ;; Note: we will get weird behaviour with :offset-in
                                    (cond->> (search.engine/results (assoc search-ctx :search-engine fallback))
                                      ;; The in-place engine returns a reducible (but not seqable) result that needs to
                                      ;; be realized before we concat and dedup with the semantic engine results.
                                      (= :search.engine/in-place fallback)
                                      (into [] (comp (map t2.realize/realize)
-                                                    (take (- (semantic.settings/semantic-search-results-limit) final-count)))))
+                                                    (take total-limit))))
                                    (catch Throwable t
                                      (log/warn t "Semantic search fallback errored, ignoring")
                                      []))
-                _ (analytics/observe! :metabase-search/semantic-fallback-results-usage
-                                      (count fallback-results))
+                fallback-results (take total-limit fallback-results)
+                _                (analytics/observe! :metabase-search/semantic-fallback-results-usage (count fallback-results))
                 combined-results (concat results fallback-results)
                 deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
-            (take (semantic.settings/semantic-search-results-limit) deduped-results)))))
+            (take total-limit deduped-results)))))
     (catch Exception e
       (log/error e "Error executing semantic search")
       (throw (ex-info "Error executing semantic search" {:type :semantic-search-error} e)))))
