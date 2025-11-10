@@ -331,3 +331,29 @@
               (is (every? (comp true? :active) all-db-fields)))
             (testing "... should make every field part of the active subset again"
               (is (every? (comp true? :active_subset) all-db-fields)))))))))
+
+(deftest ^:synchronized active-subset-null-on-unsupported-drivers-test
+  (mt/test-drivers
+    (mt/normal-drivers)
+    (when-not (driver/should-sync-active-subset? driver/*driver*)
+      (mt/dataset
+        test-data
+        (testing "active_subset key is null after sync on drivers that do not support it..."
+          (sync/sync-database! (mt/db))
+          (let [all-db-fields (t2/select :model/Field :table_id
+                                         [:in (t2/select-fn-vec :id :model/Table :db_id (mt/id))])]
+            (is (every? (comp true? :active) all-db-fields))
+            (is (every? (comp nil? :active_subset) all-db-fields)))
+
+          (let [field-id (mt/id :venues :price)]
+            (try
+              (testing "... even after a field was re-activated"
+                (t2/update! :model/Field :id field-id {:active false})
+                (sync/sync-database! (mt/db))
+                (let [all-db-fields (t2/select :model/Field :table_id
+                                               [:in (t2/select-fn-vec :id :model/Table :db_id (mt/id))])]
+                  (is (every? (comp true? :active) all-db-fields))
+                  (is (every? (comp nil? :active_subset) all-db-fields))))
+              (finally
+                (t2/update! :model/Field :id field-id {:active true})))))))))
+
