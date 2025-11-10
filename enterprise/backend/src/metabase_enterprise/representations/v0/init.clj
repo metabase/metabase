@@ -8,4 +8,5 @@
    [metabase-enterprise.representations.v0.model]
    [metabase-enterprise.representations.v0.question]
    [metabase-enterprise.representations.v0.snippet]
+   [metabase-enterprise.representations.v0.timeline]
    [metabase-enterprise.representations.v0.transform]))

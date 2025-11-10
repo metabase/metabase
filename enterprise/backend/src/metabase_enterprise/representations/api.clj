@@ -146,7 +146,7 @@
 
 (api.macros/defendpoint :get "/export-set/:type/:id"
   "Export an entity and its transitive dependencies as a JSON of YAMLs.
-   Type can be: question, model, metric, transform, collection, database, snippet."
+   Type can be: question, model, metric, transform, collection, database, snippet, timeline."
   [{:keys [type id]}
    _query-params
    _body-params

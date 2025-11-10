@@ -10,6 +10,7 @@
    [metabase-enterprise.representations.v0.model :as v0-model]
    [metabase-enterprise.representations.v0.question :as v0-question]
    [metabase-enterprise.representations.v0.snippet :as v0-snippet]
+   [metabase-enterprise.representations.v0.timeline :as v0-timeline]
    [metabase-enterprise.representations.v0.transform :as v0-transform]
    [toucan2.core :as t2]))
 
@@ -23,6 +24,7 @@
     :model v0-model/toucan-model
     :question v0-question/toucan-model
     :snippet v0-snippet/toucan-model
+    :timeline v0-timeline/toucan-model
     :transform v0-transform/toucan-model))
 
 (defn export-entity
@@ -38,6 +40,7 @@
     :model (v0-model/export-model t2-entity)
     :question (v0-question/export-question t2-entity)
     :snippet (v0-snippet/export-snippet t2-entity)
+    :timeline (v0-timeline/export-timeline t2-entity)
     :transform (v0-transform/export-transform t2-entity)))
 
 (defn yaml->toucan
@@ -51,6 +54,7 @@
     :model (v0-model/yaml->toucan representation ref-index)
     :question (v0-question/yaml->toucan representation ref-index)
     :snippet (v0-snippet/yaml->toucan representation ref-index)
+    :timeline (v0-timeline/yaml->toucan representation ref-index)
     :transform (v0-transform/yaml->toucan representation ref-index)))
 
 (defn persist!
@@ -64,6 +68,7 @@
     :model (v0-model/persist! representation ref-index)
     :question (v0-question/persist! representation ref-index)
     :snippet (v0-snippet/persist! representation ref-index)
+    :timeline (v0-timeline/persist! representation ref-index)
     :transform (v0-transform/persist! representation ref-index)))
 
 (defn insert!
