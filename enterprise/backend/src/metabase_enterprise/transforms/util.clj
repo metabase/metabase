@@ -250,15 +250,20 @@
   (let [watermark-value (next-watermark-value transform-id)]
     (if watermark-value
       (if (lib.query/native? query)
-        (let [native-sql (get-in query [:stages 0 :native])
-              checkpoint-col-name (-> source-incremental-strategy :checkpoint-filter)
-              driver (some->> query :database (t2/select-one :model/Database) :engine keyword)
-              honeysql-query {:select [:*]
-                              :from [[[:raw (str "(" native-sql ")")] :subquery]]
-                              :where [:> (h2x/identifier :field checkpoint-col-name) watermark-value]}
-              [formatted-sql] (binding [driver/*compile-with-inline-parameters* true]
-                                (sql.qp/format-honeysql driver honeysql-query))]
-          (assoc-in query [:stages 0 :native] formatted-sql))
+        (if (seq (get-in query [:stages 0 :template-tags]))
+          (update query :parameters conj
+                  {:type :number
+                   :target [:variable [:template-tag "checkpoint"]]
+                   :value watermark-value})
+          (let [native-sql (get-in query [:stages 0 :native])
+                checkpoint-col-name (-> source-incremental-strategy :checkpoint-filter)
+                driver (some->> query :database (t2/select-one :model/Database) :engine keyword)
+                honeysql-query {:select [:*]
+                                :from [[[:raw (str "(" native-sql ")")] :subquery]]
+                                :where [:> (h2x/identifier :field checkpoint-col-name) watermark-value]}
+                [formatted-sql] (binding [driver/*compile-with-inline-parameters* true]
+                                  (sql.qp/format-honeysql driver honeysql-query))]
+            (assoc-in query [:stages 0 :native] formatted-sql)))
         (lib/filter query (lib/> (source->checkpoint-filter-unique-key query source-incremental-strategy) watermark-value)))
       query)))
 

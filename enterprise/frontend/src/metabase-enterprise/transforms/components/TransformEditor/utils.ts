@@ -14,7 +14,7 @@ export function getQuery(source: QueryTransformSource, metadata: Metadata) {
   return Question.create({ dataset_query: source.query, metadata }).query();
 }
 
-const ALLOWED_TRANSFORM_VARIABLES = ["watermark"];
+const ALLOWED_TRANSFORM_VARIABLES = ["checkpoint"];
 
 export function getValidationResult(query: Lib.Query): QueryValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
