@@ -107,9 +107,8 @@ export function EditTableMetadata() {
           fs="lg"
           lh="normal"
           wrap="nowrap"
-          mt="lg"
           px="lg"
-          pt="md"
+          pt="lg"
           justify="space-between"
         >
           <Title

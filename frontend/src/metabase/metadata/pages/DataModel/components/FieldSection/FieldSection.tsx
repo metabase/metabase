@@ -94,7 +94,7 @@ const FieldSectionBase = ({
         gap="lg"
         pb={12}
         pos="sticky"
-        pt="xl"
+        pt="lg"
         px="lg"
         top={0}
       >
