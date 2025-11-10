@@ -172,3 +172,8 @@
              :weight       weight
              :contribution (* weight score)}))
         scorers))
+
+(defn no-scoring-required?
+  "Scoring is unnecessary unless we will return more than 1 result."
+  [{:keys [limit-int]}]
+  (and limit-int (<= limit-int 1)))
