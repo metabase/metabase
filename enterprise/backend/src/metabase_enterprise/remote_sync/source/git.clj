@@ -116,23 +116,20 @@
   second commit-ish argument which overrides the :commit-ish from the source map.
 
   Returns the full commit SHA string, or nil if the commit-ish cannot be resolved."
-  ([{:keys [^String commit-ish] :as source}]
-   (commit-sha source commit-ish))
-
-  ([{:keys [^Git git]} ^String commit-ish]
-   (when-let [ref (.resolve (.getRepository git) commit-ish)]
-     (.name ref))))
+  [{:keys [^Git git]} ^String commit-ish]
+  (when-let [ref (.resolve (.getRepository git) commit-ish)]
+    (.name ref)))
 
 (defn log
   "Retrieves the commit history log for a branch.
 
-  Takes a source map containing a :git Git instance and :commit-ish to retrieve logs from.
+  Takes a source OR snapshot to retrieve logs from.
 
   Returns a sequence of commit maps, each containing :message (full commit message), :author-name (commit author's
   name), :author-email (commit author's email), :id (abbreviated commit SHA, 8 characters), and :parent
   (abbreviated parent commit SHA, 8 characters, or nil if no parent)."
-  [{:keys [^Git git] :as source}]
-  (when-let [ref (commit-sha source)]
+  [{:keys [^Git git branch version] :as source-or-snapshot}]
+  (when-let [ref (commit-sha source-or-snapshot (or version branch))]
     (when-let [branch-id (.resolve (.getRepository git) ref)]
       (let [log-result (call-command (-> (.log git)
                                          (.add branch-id)))]
@@ -143,49 +140,47 @@
                                       :parent (when (< 0 (.getParentCount commit)) (.name (.abbreviate (.getParent commit 0) 8)))}) log-result)))))
 
 (defn list-files
-  "Lists all files in the git repository at the current commit.
+  "Lists all files in the git repository at the snapshot.
 
-  Takes a source map containing a :git Git instance and :commit-ish specifying which commit to list files from.
+  Takes a GitSnapshot containing a :git Git instance and :version specifying which commit to list files from.
 
   Returns a sorted sequence of relative file path strings from the repository root."
-  [{:keys [^Git git] :as source}]
-  (when-let [ref (commit-sha source)]
-    (let [repo (.getRepository git)
-          rev-walk (RevWalk. repo)
-          commit-id (.resolve repo ref)
-          commit (.parseCommit rev-walk commit-id)
-          tree-walk (TreeWalk. repo)]
-      (.addTree tree-walk (.getTree commit))
-      (.setRecursive tree-walk true)
-      (sort (loop [files []]
-              (if (.next tree-walk)
-                (recur (conj files (.getPathString tree-walk)))
-                files))))))
+  [{:keys [^Git git ^String version]}]
+  (let [repo (.getRepository git)
+        rev-walk (RevWalk. repo)
+        commit-id (.resolve repo version)
+        commit (.parseCommit rev-walk commit-id)
+        tree-walk (TreeWalk. repo)]
+    (.addTree tree-walk (.getTree commit))
+    (.setRecursive tree-walk true)
+    (sort (loop [files []]
+            (if (.next tree-walk)
+              (recur (conj files (.getPathString tree-walk)))
+              files)))))
 
 (defn read-file
-  "Reads the contents of a specific file from the git repository.
+  "Reads the contents of a specific file from the git snapshot.
 
-  Takes a source map containing a :git Git instance and :commit-ish specifying which commit to read from, and a path
+  Takes a GitSnapshot containing a :git Git instance and :version specifying which commit to read from, and a path
   string indicating the relative path to the file from the repository root.
 
   Returns the file contents as a UTF-8 string, or nil if the file does not exist at the specified path."
-  [{:keys [^Git git] :as source} ^String path]
+  [{:keys [^Git git ^String version]} ^String path]
   (let [repo (.getRepository git)]
-    (when-let [ref (commit-sha source)]
-      (when-let [object-id (.resolve repo (str ref ":" path))]
-        (let [loader (.open repo object-id)]
-          (String. (.getBytes loader) "UTF-8"))))))
+    (when-let [object-id (.resolve repo (str version ":" path))]
+      (let [loader (.open repo object-id)]
+        (String. (.getBytes loader) "UTF-8")))))
 
 (defn push-branch!
   "Pushes a local branch to the remote repository.
 
-  Takes a git-source map containing a :git Git instance, :commit-ish (branch name), and optional :token for
+  Takes a git-source map containing a :git Git instance, :branch, and optional :token for
   authentication.
 
   Returns the push response from JGit. Throws ExceptionInfo if the push operation fails or returns a
   non-OK/UP_TO_DATE status."
-  [{:keys [^Git git ^String commit-ish] :as git-source}]
-  (let [branch-name (qualify-branch commit-ish)
+  [{:keys [^Git git ^String branch] :as git-source}]
+  (let [branch-name (qualify-branch branch)
         push-response (call-remote-command
                        (-> (.push git)
                            (.setRemote "origin")
@@ -232,19 +227,17 @@
 (defn write-files!
   "Writes multiple files to the git repository and commits the changes.
 
-  Takes a source map containing a :git Git instance and :commit-ish (target branch name), a commit message string,
+  Takes a snapshot map containing a :git Git instance and :version, a commit message string,
   and a sequence of file maps each with :path and :content keys (paths should be relative to the repository root).
   Replaces all files in the branch organized by collection prefix - files not in the provided list but in the same
   collection prefix will be deleted.
 
-  Returns the result of pushing the branch to the remote repository. Throws ExceptionInfo if the write or push
+  Returns the version written. Throws ExceptionInfo if the write or push
   operation fails."
-  [{:keys [^Git git ^String commit-ish] :as source} ^String message files]
-  (fetch! source)
+  [{:keys [^Git git ^String version ^String branch] :as snapshot} ^String message files]
   (let [repo (.getRepository git)
-        branch-ref (qualify-branch commit-ish)
-        parent-id (or (.resolve repo branch-ref)
-                      (.resolve repo (qualify-branch (default-branch source))))]
+        branch-ref (qualify-branch branch)
+        parent-id (.resolve repo version)]
 
     (with-open [inserter (.newObjectInserter repo)]
       (let [index (DirCache/newInCore)
@@ -287,8 +280,9 @@
             (.flush inserter)
             (doto (.updateRef repo branch-ref)
               (.setNewObjectId commit-id)
-              (.update))))))
-    (push-branch! source)))
+              (.update))
+            (push-branch! snapshot)
+            (.name commit-id)))))))
 
 (defn branches
   "Retrieves all branch names from the remote repository.
@@ -321,7 +315,8 @@
                                      (when (not (remote-branches branch-name))
                                        branch-name)))
                                  local-refs)]
-    (log/info "Deleting local branches without remote:" {:branches branches-to-delete})
+    (when (seq branches-to-delete)
+      (log/info "Deleting local branches without remote:" {:branches branches-to-delete}))
     (doseq [branch-name branches-to-delete]
       (call-command (-> (.branchDelete git)
                         (.setBranchNames ^"[Ljava.lang.String;" (into-array String [branch-name]))
@@ -333,7 +328,7 @@
   "Creates a new branch in the git repository from an existing branch.
 
   Takes a source map containing a :git Git instance and optional :token for authentication, a branch-name string for
-  the new branch, and a base-commit-ish string (branch name, tag, or SHA) to use as the base for the new branch.
+  the new branch, and a base-branch to use as the base for the new branch.
 
   Returns the name of the newly created branch.
 
@@ -345,26 +340,19 @@
         new-branch-ref (qualify-branch branch-name)
         base-commit-id (.resolve repo base-commit-ish)]
     (when-not base-commit-id
-      (throw (ex-info (format "Base branch '%s' not found" base-commit-ish)
-                      {:base-branch base-commit-ish})))
+      (throw (ex-info (format "Branch base '%s' not found" base-commit-ish)
+                      {:base-commit-ish base-commit-ish})))
     (when (.resolve repo new-branch-ref)
       (throw (ex-info (format "Branch '%s' already exists" branch-name)
                       {:branch branch-name})))
     (doto (.updateRef repo new-branch-ref)
       (.setNewObjectId base-commit-id)
       (.update))
-    (push-branch! (assoc source :commit-ish branch-name))
+    (push-branch! (assoc source :branch branch-name))
     branch-name))
 
-(defrecord GitSource [git remote-url commit-ish token]
-  source.p/Source
-  (branches [source] (branches source))
-
-  (create-branch [source branch-name base-branch]
-    (create-branch source branch-name base-branch))
-
-  (default-branch [this]
-    (default-branch this))
+(defrecord GitSnapshot [git remote-url branch version token]
+  source.p/SourceSnapshot
 
   (list-files [this]
     (list-files this))
@@ -376,7 +364,28 @@
     (write-files! this message files))
 
   (version [this]
-    (commit-sha this)))
+    (:version this)))
+
+(defn- snapshot
+  [source]
+  (fetch! source)
+  (let [version (commit-sha source (:branch source))]
+    (if version
+      (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source))
+      (throw (ex-info (str "Invalid branch: " (:branch source)) {})))))
+
+(defrecord GitSource [git remote-url branch token]
+  source.p/Source
+  (branches [source] (branches source))
+
+  (create-branch [source branch-name base-commit-ish]
+    (create-branch source branch-name base-commit-ish))
+
+  (default-branch [this]
+    (default-branch this))
+
+  (snapshot [this]
+    (snapshot this)))
 
 (def ^:private jgit (atom {}))
 
@@ -393,10 +402,10 @@
 (defn git-source
   "Creates a new GitSource instance for a git repository.
 
-  Takes a URL string (the git repository URL), a commit-ish string (branch name, tag, or commit SHA to use), and an
+  Takes a URL string (the git repository URL), a branch, and an
   optional token string (authentication token for private repositories).
 
   Returns a GitSource record implementing the Source protocol."
-  [url commit-ish token]
+  [url branch token]
   (->GitSource (get-jgit (repo-path {:url url :token token}) {:url url :token token})
-               url commit-ish token))
+               url branch token))

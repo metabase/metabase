@@ -54,7 +54,7 @@ jobs:
 
             return ({
               runMode: oldTestToken ? 'prod' : 'e2e',
-              metastoreDevServer: oldTestToken ? '' : '${{ secrets.METASTORE_DEV_SERVER_URL }}'
+              metastoreDevServer: oldTestToken ? '' : '${{ vars.METASTORE_DEV_SERVER_URL }}'
             });
 
   release-artifact:

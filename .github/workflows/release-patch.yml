@@ -50,7 +50,7 @@ jobs:
                 majorVersion,
               });
 
-              const releaseCommit = overrideSha ?? await getLatestGreenCommit({
+              const releaseCommit = overrideSha || await getLatestGreenCommit({
                 github,
                 owner: context.repo.owner,
                 repo: context.repo.repo,

@@ -3,6 +3,7 @@
    [buddy.core.hash :as buddy-hash]
    [buddy.sign.jwt :as jwt]
    [clj-http.client :as http]
+   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -22,7 +23,10 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.o11y :refer [with-span]]))
+   [metabase.util.o11y :refer [with-span]])
+  (:import
+   (java.io BufferedReader)
+   (org.eclipse.jetty.io EofException)))
 
 (set! *warn-on-reflection* true)
 
@@ -152,29 +156,40 @@
                      *debug* (assoc :debug true))
           response (post! url options)
           lines    (when on-complete
-                     (atom []))]
+                     (atom []))
+          ;; NOTE: this atom is unused right now, but we potentially might put its value in database (see
+          ;; `on-complete`) to indicate which requests were canceled in flight
+          canceled (atom nil)]
       (metabot-v3.context/log (:body response) :llm.log/llm->be)
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
-      (if (= (:status response) 200)
-        ;; TODO: handle canceled-chan here?
-        (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
-          ;; Response from the AI Service will send response parts separated by newline
-          (with-open [response-reader (io/reader (:body response))]
-            (doseq [^String line (line-seq response-reader)]
-              (when on-complete
-                (swap! lines conj line))
-              (doto os
-                ;; Line we read from response will lack newline at the end, but FE will be confused without that, so
-                ;; we need to append it.
-                (.write (.getBytes line "UTF-8"))
-                (.write (.getBytes "\n"))
-                ;; Immediately flush so it feels fluid on the frontend
-                (.flush))))
-          (when on-complete
-            (on-complete @lines)))
+      (when-not (= (:status response) 200)
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request  (assoc options :body body)
-                         :response response}))))
+                         :response response})))
+      (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
+        ;; exiting with-open will close underlying request
+        (with-open [^BufferedReader response-reader (io/reader (:body response))]
+          ;; Response from the AI Service will send response parts separated by newline
+          (loop [^String line (.readLine response-reader)]
+            (cond
+              (nil? line)             nil
+              (a/poll! canceled-chan) (do (reset! canceled true)
+                                          (log/debug "Request cancelled"))
+              :else
+              (do
+                (when on-complete
+                  (swap! lines conj line))
+                (try
+                  (doto os
+                    ;; `line-seq` strips newlines, so we need to append it back.
+                    (.write (.getBytes line "UTF-8"))
+                    (.write (.getBytes "\n"))
+                    ;; Immediately flush so it feels fluid on the frontend
+                    (.flush))
+                  (catch EofException _ nil))
+                (recur (.readLine response-reader))))))
+        (when on-complete
+          (on-complete @lines))))
     (catch Throwable e
       (throw (ex-info (format "Error in request to AI Proxy: %s" (ex-message e)) {} e)))))
 
