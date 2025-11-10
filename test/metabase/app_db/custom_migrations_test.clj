@@ -41,7 +41,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
-   [metabase.warehouses.api-test :as api.database-test]
+   [metabase.warehouses-rest.api-test :as api.database-test]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import

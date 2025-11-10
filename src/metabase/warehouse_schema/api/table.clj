@@ -28,7 +28,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.table :as schema.table]
-   [metabase.warehouses.api :as warehouses]
+   [metabase.warehouses-rest.api :as warehouses]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))

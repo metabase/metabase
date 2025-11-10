@@ -433,10 +433,10 @@
        ddiff/minimize)))
 
 (defn print-kondo-config-diff
-    "Print the diff between how the config would look if regenerated with [[generate-config]] versus how it looks in
+  "Print the diff between how the config would look if regenerated with [[generate-config]] versus how it looks in
   reality ([[kondo-config]]). Use this to suggest updates to make to the config file."
-    []
-    (ddiff/pretty-print (kondo-config-diff)))
+  []
+  (ddiff/pretty-print (kondo-config-diff)))
 
 (comment
   (external-usages 'core)
@@ -532,7 +532,12 @@
   affect `module`."
   [module]
   (let [deps        (dependencies)
-        all-modules (into (sorted-set) (map :module) deps)]
-    (set/difference
-     all-modules
-     (set (keys (all-module-deps-paths deps module))))))
+        all-modules (into (sorted-set) (map :module) deps)
+        module-deps (set (keys (all-module-deps-paths deps module)))]
+    (printf "Module %s depends on %d/%d (%0.1f) other modules.\n"
+            module
+            (count module-deps)
+            (count all-modules)
+            (double (/ (count module-deps) (count all-modules))))
+    (flush)
+    (set/difference all-modules module-deps)))

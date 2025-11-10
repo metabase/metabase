@@ -1467,18 +1467,35 @@
            upload
            util
            warehouses
+           warehouses-rest
            xrays}}
 
   warehouses
   {:team "UX West"
-   :api  #{metabase.warehouses.api
-           metabase.warehouses.core
+   :api  #{metabase.warehouses.core
            metabase.warehouses.init
            metabase.warehouses.models.database}
    :uses #{analytics
            api
            app-db
            audit-app
+           driver
+           lib
+           models
+           permissions
+           premium-features
+           search
+           secrets
+           settings
+           sync
+           util}}
+
+  warehouses-rest
+  {:team "UX West"
+   :api  #{metabase.warehouses-rest.api}
+   :uses #{analytics
+           api
+           app-db
            classloader
            collections
            config
@@ -1493,14 +1510,15 @@
            queries
            request
            sample-data
-           search
            secrets
            settings
            sync
            upload
            util
+           warehouses
            warehouse-schema
            enterprise/advanced-permissions}}
+
 
   xrays
   {:team "Querying"
@@ -1746,7 +1764,7 @@
            settings
            util
            warehouse-schema
-           warehouses}}
+           warehouses-rest}}
 
   enterprise/dependencies
   {:team "Querying"
@@ -1901,7 +1919,7 @@
            users
            util
            warehouse-schema
-           warehouses
+           warehouses-rest
            enterprise/dependencies
            enterprise/documents
            enterprise/transforms

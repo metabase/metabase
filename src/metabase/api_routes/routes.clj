@@ -54,7 +54,7 @@
    [metabase.users.api]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.warehouse-schema.api]
-   [metabase.warehouses.api]
+   [metabase.warehouses-rest.api]
    [metabase.xrays.api]))
 
 (comment metabase.actions.api/keep-me
@@ -90,7 +90,7 @@
          metabase.upload.api/keep-me
          metabase.user-key-value.api/keep-me
          metabase.users.api/keep-me
-         metabase.warehouses.api/keep-me)
+         metabase.warehouses-rest.api/keep-me)
 
 (def ^:private ^{:arglists '([request respond raise])} pass-thru-handler
   "Always 'falls thru' to the next handler."
@@ -143,7 +143,7 @@
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections.api)
    "/dashboard"            (+auth 'metabase.dashboards.api)
-   "/database"             (+auth 'metabase.warehouses.api)
+   "/database"             (+auth 'metabase.warehouses-rest.api)
    "/dataset"              (+auth 'metabase.query-processor.api)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/eid-translation"      'metabase.eid-translation.api

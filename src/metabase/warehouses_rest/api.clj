@@ -1,4 +1,4 @@
-(ns metabase.warehouses.api
+(ns metabase.warehouses-rest.api
   "/api/database endpoints."
   (:require
    [clojure.string :as str]

@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.warehouses.api-test
+(ns ^:mb/driver-tests metabase.warehouses-rest.api-test
   "Tests for /api/database endpoints."
   (:require
    [clojure.string :as str]
@@ -39,7 +39,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.table :as schema.table]
-   [metabase.warehouses.api :as api.database]
+   [metabase.warehouses-rest.api :as api.database]
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
