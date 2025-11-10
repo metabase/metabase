@@ -27,15 +27,17 @@ jobs:
           # Fetch the base branch to ensure its history is available for diffing
           git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
           # Only run this if it's a pull request and the base ref exists
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
       - name: Check if tier3 drivers should run
-        id: check_team_and_branch
+        id: check_branch_and_files_changed
         run: |
           IS_MASTER_OR_RELEASE="${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}"
           HAS_TEAM_LABEL="${{ contains(github.event.pull_request.labels.*.name, '.Team/Drivers') || contains(github.event.pull_request.labels.*.name, '.Team/Querying') || contains(github.event.pull_request.labels.*.name, '.Team/SemanticLayer') || contains(github.event.pull_request.labels.*.name, '.Team/DevEx') }}"
 
-
           echo "Is master or release: ${IS_MASTER_OR_RELEASE}"
           echo "Has '.Team/Drivers' or '.Team/Querying' or '.Team/SemanticLayer' label: ${HAS_TEAM_LABEL}"
+
           if [[ "${IS_MASTER_OR_RELEASE}" == "true" ]]; then
             echo "skip=false" >> $GITHUB_OUTPUT
             echo "Merging into master or a release branch. Tier 3 driver tests will run."
@@ -43,27 +45,15 @@ jobs:
             echo "skip=false" >> $GITHUB_OUTPUT
             echo "A relevant team label is present. Tier 3 driver tests will run."
           else
-            echo "Checking for changes in relevant folders..."
-            CHANGED_FILES=$(git diff --name-only $(git merge-base ${{ github.event.pull_request.base.sha }} ${{ github.sha }}) ${{ github.sha }})
-
-            # Initialize an empty array to store folders with changes
-            CHANGED_FOLDERS=()
-            for folder in "src/metabase/lib" "src/metabase/query_processor" "modules/drivers" "src/metabase/driver"; do
-              if echo "$CHANGED_FILES" | grep -q "$folder"; then
-                CHANGED_FOLDERS+=("$folder")
-              fi
-            done
-
-            if [[ ${#CHANGED_FOLDERS[@]} -gt 0 ]]; then
-              echo "skip=false" >> $GITHUB_OUTPUT
-              echo "Changes detected in the following folders: ${CHANGED_FOLDERS[*]}."
-              echo "Tier 3 driver tests will run."
+            echo "Checking for changes in relevant modules..."
+            if [[ ./bin/mage can-skip-driver-tests ${{ github.event.pull_request.base.sha }} ]]; then
+              echo 'skip=true' >> $GITHUB_OUTPUT
             else
-              echo "skip=true" >> $GITHUB_OUTPUT
-              echo "No relevant team label, not merging into master/release, and no changes in relevant folders. Tier 3 driver tests will be skipped."
+              echo 'skip=false' >> $GITHUB_OUTPUT
             fi
           fi
         shell: bash
+
   be-tests-athena-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
@@ -104,7 +94,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-bigquery-cloud-sdk-ee:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -163,7 +153,7 @@ jobs:
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-clickhouse-ee:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -411,7 +401,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mysql-mariadb:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -964,7 +954,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-redshift-ee:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
