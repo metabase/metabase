@@ -1269,8 +1269,7 @@
                               (f candidate-tables)
                               candidate-tables)
                             (filter mi/can-read? candidate-tables))
-         hydration-keys   (cond-> []
-                            (premium-features/has-feature? :dependencies) (conj :published_as_model)
+         hydration-keys   (cond-> [:published_as_model]
                             (premium-features/has-feature? :transforms)   (conj :transform))]
      (if (seq hydration-keys)
        (apply t2/hydrate filtered-tables hydration-keys)

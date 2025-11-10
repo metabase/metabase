@@ -404,23 +404,12 @@
   (cond
     (empty? tables)                                     tables
     (not-every? :id tables)                             tables
-    (not (premium-features/has-feature? :dependencies)) tables
     :else
     (let [table-ids          (sort (set (map :id tables)))
-          ;; todo temporary: this logic is not well defined, seek clarity on what it means to be a model
-          ;; tested at api level but unsure about that or hydration as implementation
-          ;; archived? collection archived? permission / visibility
-          ;; open question on how best to achieve delivery of this data to client, work in progress
-          published-as-model (t2/select-fn-set :to_entity_id
-                                               [:model/Dependency :to_entity_id]
-                                               :to_entity_type "table"
-                                               :to_entity_id [:in table-ids]
-                                               :from_entity_type "card"
-                                               {:join [[:report_card :card]
-                                                       [:and
-                                                        [:= :dependency.from_entity_id :card.id]
-                                                        [:= :dependency.to_entity_id :card.table_id]]]
-                                                :where [:= "model" :card.type]})]
+          published-as-model (t2/select-fn-set :published_table_id [:model/Card :published_table_id]
+                                               :published_table_id [:in table-ids]
+                                               :archived false
+                                               :archived_directly false)]
       (map #(assoc % :published_as_model (contains? published-as-model (:id %))) tables))))
 
 ;;; ------------------------------------------------ Convenience Fns -------------------------------------------------

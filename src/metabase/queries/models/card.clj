@@ -903,7 +903,7 @@
                             (not (:dashboard_id input-card-data)))))
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
-                                             :cache_ttl :type :dashboard_id :document_id]
+                                             :cache_ttl :type :dashboard_id :document_id :published_table_id]
          position-info                      {:collection_id (:collection_id input-card-data)
                                              :collection_position (:collection_position input-card-data)}
          card-data                          (-> (select-keys input-card-data data-keys)
