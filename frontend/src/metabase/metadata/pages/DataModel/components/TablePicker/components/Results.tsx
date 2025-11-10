@@ -41,6 +41,7 @@ interface Props {
   onItemClick?: (path: TreePath) => void;
   onSelectedIndexChange?: (index: number) => void;
   onItemToggle?: (item: FlatItem) => void;
+  onRangeSelect?: (items: FlatItem[], targetItem: FlatItem) => void;
 }
 
 export function TablePickerResults({
@@ -51,8 +52,11 @@ export function TablePickerResults({
   onItemClick,
   onSelectedIndexChange,
   onItemToggle,
+  onRangeSelect,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  const { selectedItemsCount } = useSelection();
+  const lastSelectedTableIndex = useRef<number | null>(null);
   const virtual = useVirtualizer({
     count: items.length,
     getScrollElement: () => ref.current,
@@ -108,6 +112,54 @@ export function TablePickerResults({
     }
   }, [selectedIndex]);
 
+  // reset last selected table when there are no selected items
+  useEffect(() => {
+    if (selectedItemsCount === 0) {
+      lastSelectedTableIndex.current = null;
+    }
+  }, [selectedItemsCount]);
+
+  const handleCheckboxToggle = (
+    item: FlatItem,
+    itemIndex: number,
+    options?: { isShiftPressed?: boolean },
+  ) => {
+    if (!onItemToggle) {
+      return;
+    }
+
+    const isShiftPressed = Boolean(options?.isShiftPressed);
+    const isTable = item.type === "table";
+    const hasRangeAnchor =
+      lastSelectedTableIndex.current != null && onRangeSelect != null;
+    const isRangeSelection = isShiftPressed && isTable && hasRangeAnchor;
+
+    if (isRangeSelection) {
+      if (!lastSelectedTableIndex.current) {
+        return;
+      }
+
+      const start = Math.min(lastSelectedTableIndex.current, itemIndex);
+      const end = Math.max(lastSelectedTableIndex.current, itemIndex);
+      const rangeItems = items.slice(start, end + 1).filter((rangeItem) => {
+        return (
+          !rangeItem.disabled &&
+          !rangeItem.isLoading
+        );
+      });
+
+      if (rangeItems.length > 0) {
+        onRangeSelect?.(rangeItems, item);
+        lastSelectedTableIndex.current = itemIndex;
+        return;
+      }
+    }
+
+    // single checkbox toggle
+    onItemToggle(item);
+    lastSelectedTableIndex.current = isTable ? itemIndex : null;
+  };
+
   return (
     <>
       <Flex className={S.header} gap="sm">
@@ -138,7 +190,7 @@ export function TablePickerResults({
                 toggle={toggle}
                 onItemClick={onItemClick}
                 onSelectedIndexChange={onSelectedIndexChange}
-                onItemToggle={onItemToggle}
+                onCheckboxToggle={handleCheckboxToggle}
                 rootRef={ref}
                 ownerNameById={ownerNameById}
               />
@@ -152,11 +204,17 @@ export function TablePickerResults({
 
 function ElementCheckbox({
   item,
-  onItemToggle,
+  index,
   disabled = false,
+  onCheckboxToggle,
 }: {
   item: FlatItem;
-  onItemToggle: ((item: FlatItem) => void) | undefined;
+  index: number;
+  onCheckboxToggle?: (
+    item: FlatItem,
+    index: number,
+    options?: { isShiftPressed?: boolean },
+  ) => void;
   disabled?: boolean;
 }) {
   if (item.isLoading) {
@@ -168,9 +226,9 @@ function ElementCheckbox({
     return null;
   }
 
-  const indeterminate = item.isSelected === "some";
+  const indeterminate = !item.isLoading && item.isSelected === "some";
 
-  const { isSelected } = item;
+  const isSelected = !item.isLoading ? item.isSelected : undefined;
   return (
     <Checkbox
       size="sm"
@@ -185,25 +243,23 @@ function ElementCheckbox({
           if (disabled) {
             return;
           }
-          onItemToggle?.(item);
+          onCheckboxToggle?.(item, index, {
+            isShiftPressed: event.shiftKey,
+          });
         },
       }}
-      onChange={() => {
+      onChange={(event) => {
+        event.stopPropagation();
         if (disabled) {
           return;
         }
-        onItemToggle?.(item);
+        onCheckboxToggle?.(item, index, {
+          isShiftPressed: Boolean(
+            (event.nativeEvent as { shiftKey?: boolean }).shiftKey,
+          ),
+        });
       }}
       indeterminate={indeterminate}
-      styles={{
-        root: {
-          width: "40px",
-          height: "40px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        },
-      }}
     />
   );
 }
@@ -236,7 +292,11 @@ interface ResultsItemProps {
   toggle?: (key: string, value?: boolean) => void;
   onItemClick?: (path: TreePath) => void;
   onSelectedIndexChange?: (index: number) => void;
-  onItemToggle?: (item: FlatItem) => void;
+  onCheckboxToggle?: (
+    item: FlatItem,
+    index: number,
+    options?: { isShiftPressed?: boolean },
+  ) => void;
   rootRef: React.RefObject<HTMLDivElement>;
   ownerNameById: Map<UserId, string>;
 }
@@ -320,7 +380,7 @@ const ResultsItem = ({
   toggle,
   onItemClick,
   onSelectedIndexChange,
-  onItemToggle,
+  onCheckboxToggle,
   rootRef,
   ownerNameById,
 }: ResultsItemProps) => {
@@ -485,8 +545,9 @@ const ResultsItem = ({
       <Box className={S.checkboxColumn}>
         <ElementCheckbox
           item={item}
-          onItemToggle={onItemToggle}
+          index={index}
           disabled={disabled}
+          onCheckboxToggle={onCheckboxToggle}
         />
       </Box>
 
@@ -530,9 +591,9 @@ const ResultsItem = ({
               className={S.label}
               c={
                 type === "table" &&
-                item.table &&
-                item.table.visibility_type != null &&
-                !isActive
+                  item.table &&
+                  item.table.visibility_type != null &&
+                  !isActive
                   ? "text-secondary"
                   : undefined
               }

@@ -342,6 +342,28 @@ export function Tree({
     }
   }
 
+  function onItemRangeSelect(rangeItems: FlatItem[], targetItem: FlatItem) {
+    const tableIds = rangeItems
+      .map((rangeItem) => rangeItem.value?.tableId)
+      .filter((tableId): tableId is TableId => tableId != null);
+
+    if (tableIds.length === 0) {
+      return;
+    }
+
+    setSelectedTables((prev) => {
+      const newSet = new Set(prev);
+      tableIds.forEach((tableId) => {
+        newSet.add(tableId);
+      });
+      return newSet;
+    });
+
+    if (targetItem.type === "table" && targetItem.value) {
+      onChange(targetItem.value);
+    }
+  }
+
   return (
     <TablePickerResults
       items={items}
@@ -349,6 +371,7 @@ export function Tree({
       toggle={toggle}
       onItemClick={onChange}
       onItemToggle={onItemToggle}
+      onRangeSelect={onItemRangeSelect}
     />
   );
 }
