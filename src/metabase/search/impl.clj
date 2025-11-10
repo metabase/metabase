@@ -286,7 +286,8 @@
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
    [:non-temporal-dim-ids                {:optional true} [:maybe ms/NonBlankString]]
    [:has-temporal-dim                    {:optional true} [:maybe :boolean]]
-   [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]])
+   [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]
+   [:weights                             {:optional true} [:maybe [:map-of :keyword number?]]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -317,7 +318,8 @@
            table-db-id
            verified
            non-temporal-dim-ids
-           has-temporal-dim]} :- ::search-context.input]
+           has-temporal-dim
+           weights]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
@@ -340,7 +342,8 @@
                         :models                              models
                         :model-ancestors?                    (boolean model-ancestors?)
                         :search-engine                       engine
-                        :search-string                       search-string}
+                        :search-string                       search-string
+                        :weights                             weights}
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
