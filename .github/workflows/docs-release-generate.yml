@@ -1,5 +1,8 @@
 name: Auto-update documentation (release)
 
+env:
+  DEFAULT_RELEASE_BRANCH: "release-x.57.x"
+
 on:
   schedule:
     - cron: "0 2 * * 1-5" # Every Monday through Friday at 2 AM UTC
@@ -8,7 +11,7 @@ on:
       target_branch:
         description: "Target branch for documentation update"
         required: false
-        default: "release-x.56.x"
+        default: "${{ env.DEFAULT_RELEASE_BRANCH }}"
         type: string
 
 jobs:
@@ -16,6 +19,6 @@ jobs:
     name: Call documentation update for release branch
     uses: ./.github/workflows/docs-generate-base.yml
     with:
-      target_branch: ${{ inputs.target_branch || 'release-x.56.x' }}
+      target_branch: ${{ inputs.target_branch || env.DEFAULT_RELEASE_BRANCH }}
     secrets:
       automation_token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
