@@ -58,7 +58,7 @@
                       final-count threshold raw-count fallback)
           (analytics/inc! :metabase-search/semantic-fallback-triggered {:fallback-engine fallback})
           (analytics/observe! :metabase-search/semantic-results-before-fallback final-count)
-          (when (:offset-int search-ctx)
+          (when (some-> (:offset-int search-ctx) pos?)
             (log/warn "Using an offset with semantic search will produce strange results, e.g. missing expected results, or duplicating them across pages"))
           (let [total-limit      (semantic.settings/semantic-search-results-limit)
                 fallback-results (try
