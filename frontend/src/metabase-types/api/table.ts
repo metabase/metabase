@@ -1,4 +1,5 @@
 import type { Card, CardType } from "./card";
+import type { Collection } from "./collection";
 import type { Database, DatabaseId, InitialSyncStatus } from "./database";
 import type { DatasetData } from "./dataset";
 import type { Field, FieldId } from "./field";
@@ -217,6 +218,7 @@ export interface PublishModelsRequest {
 export interface PublishModelsResponse {
   created_count: number;
   models: Card[];
+  target_collection: Collection;
 }
 
 export interface SubstituteModelRequest {
