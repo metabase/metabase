@@ -54,24 +54,36 @@ export const SupportingText = Node.create<{
 
   addKeyboardShortcuts() {
     return {
+      // Select all the text inside a SupportingText block if the user pressed cmd/ctrl+a inside one
+      "mod-a": ({ editor }) => {
+        const match = findParentNode((n) => n.type.name === this.name)(
+          editor.state.selection,
+        );
+        if (match) {
+          const from = match.pos + 2;
+          const to = match.pos + match.node.nodeSize - 2;
+          editor.commands.setTextSelection({ from, to });
+          return true;
+        }
+        return false;
+      },
+
+      // Remove this SupportingText block if the user hit Backspace and there was nothing in it
       Backspace: ({ editor }) => {
         const { selection } = editor.state;
         if (!selection.empty) {
           return false;
         }
-        const parentSupportingText = findParentNode(
-          (n) => n.type === this.type,
-        )(selection);
-        if (!parentSupportingText) {
+        const match = findParentNode((n) => n.type === this.type)(selection);
+        if (!match) {
           return false;
         }
-        // Remove this SupportingText block if the user hit Backspace and there was nothing in it
-        if (isNodeEmpty(parentSupportingText.node)) {
+        if (isNodeEmpty(match.node)) {
           editor
             .chain()
-            .setNodeSelection(parentSupportingText.pos)
+            .setNodeSelection(match.pos)
             .deleteSelection()
-            .focus(parentSupportingText.pos)
+            .focus(match.pos)
             .run();
           return true;
         }
@@ -84,11 +96,7 @@ export const SupportingText = Node.create<{
 
 const isNodeEmpty = (node: ProseMirrorNode): boolean => {
   const [firstChild] = node.content.content;
-  return (
-    node.content.content.length === 1 &&
-    firstChild?.type.name === "paragraph" &&
-    !firstChild.content.size
-  );
+  return node.content.content.length === 1 && !firstChild.content.size;
 };
 
 const SupportingTextComponent = ({
