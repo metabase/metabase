@@ -50,7 +50,7 @@ export function PublishModelsModal({
   onSuccess,
 }: Props) {
   const [seenPublishModelsInfo, { ack: ackSeenPublishModelsInfo }] =
-    useUserAcknowledgement("seen-publish-models-info-2");
+    useUserAcknowledgement("seen-publish-models-info");
   const [showPublishInfo, setShowPublishInfo] = useState(
     !seenPublishModelsInfo,
   );
