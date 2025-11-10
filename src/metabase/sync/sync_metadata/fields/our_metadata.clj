@@ -5,6 +5,8 @@
   comparing the differences in the two sets of Metadata."
   (:require
    [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.common :as common]
    [metabase.util :as u]
@@ -22,7 +24,6 @@
          (merge
           {:parent-id                  (:parent_id field)
            :id                         (:id field)
-           :active-subset              (:active_subset field)
            :name                       (:name field)
            :database-type              (:database_type field)
            :effective-type             (:effective_type field)
@@ -71,17 +72,26 @@
      (set (for [metabase-field (get parent-id->fields top-level-parent-id)]
             (add-nested-fields metabase-field parent-id->fields))))))
 
+;; making this not select active_subset not true would ensure the activation happens outside of "updates"
 (mu/defn- table->fields :- [:maybe [:sequential i/FieldInstance]]
   "Fetch active Fields from the Metabase application database for a given `table`."
   [table :- i/TableInstance]
-  (t2/select [:model/Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
-              :parent_id :id :description :database_position :nfc_path :active_subset
-              :database_is_auto_increment :database_required
-              :database_default :database_is_generated :database_is_nullable :database_is_pk
-              :database_partitioned :json_unfolding :position]
-             :table_id  (u/the-id table)
-             :active    true
-             {:order-by table/field-order-rule}))
+  (let [database (table/database table)
+        should-use-active-subset? (driver/should-sync-active-subset? (driver.u/database->driver database))]
+    (t2/select [:model/Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
+                :parent_id :id :description :database_position :nfc_path
+                :database_is_auto_increment :database_required
+                :database_default :database_is_generated :database_is_nullable :database_is_pk
+                :database_partitioned :json_unfolding :position]
+               (cond-> {:where [:and
+                                [:= :table_id  (u/the-id table)]]
+                        :order-by table/field-order-rule}
+
+                 (not should-use-active-subset?)
+                 (update :where conj [:= :active true])
+
+                 should-use-active-subset?
+                 (update :where conj [:= :active_subset true])))))
 
 (mu/defn our-metadata :- [:set common/TableMetadataFieldWithID]
   "Return information we have about Fields for a `table` in the application database in (almost) exactly the same

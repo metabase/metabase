@@ -29,15 +29,26 @@
 (mu/defn- matching-inactive-fields :- [:maybe [:sequential i/FieldInstance]]
   "Return inactive Metabase Fields that match any of the Fields described by `new-field-metadatas`, if any such Fields
   exist."
-  [table               :- i/TableInstance
+  [database
+   table               :- i/TableInstance
    new-field-metadatas :- [:maybe [:sequential i/TableMetadataField]]
    parent-id           :- common/ParentID]
   (when (seq new-field-metadatas)
-    (t2/select     :model/Field
-                   :table_id    (u/the-id table)
-                   :%lower.name [:in (map common/canonical-name new-field-metadatas)]
-                   :parent_id   parent-id
-                   :active      false)))
+    (let [should-use-active-subset? (driver/should-sync-active-subset? (driver.u/database->driver database))]
+      (t2/select :model/Field
+                 (cond-> {:where
+                          [:and
+                           [:= :table_id (u/the-id table)]
+                           [:in :%lower.name (map common/canonical-name new-field-metadatas)]
+                           [:= :parent_id parent-id]]}
+
+                   (not should-use-active-subset?)
+                   (update :where conj [:= :active false])
+
+                   should-use-active-subset?
+                   (update :where conj [:or
+                                        [:= :active_subset false]
+                                        [:= :active_subset nil]]))))))
 
 (mu/defn- insert-new-fields! :- [:maybe [:sequential ::lib.schema.id/field]]
   "Insert new Field rows for for all the Fields described by `new-field-metadatas`. Returns IDs of newly inserted
@@ -103,7 +114,7 @@
    table               :- i/TableInstance
    new-field-metadatas :- [:maybe [:sequential i/TableMetadataField]]
    parent-id           :- common/ParentID]
-  (let [fields-to-reactivate (matching-inactive-fields table new-field-metadatas parent-id)]
+  (let [fields-to-reactivate (matching-inactive-fields database table new-field-metadatas parent-id)]
     ;; if the fields already exist but were just marked inactive then reäctivate them
     (when (seq fields-to-reactivate)
       (t2/update! :model/Field {:id [:in (map u/the-id fields-to-reactivate)]}

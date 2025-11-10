@@ -47,8 +47,7 @@
          old-database-is-nullable       :database-is-nullable
          old-db-partitioned             :database-partitioned
          old-db-required                :database-required
-         old-visibility-type            :visibility-type
-         old-active-subset              :active-subset} metabase-field
+         old-visibility-type            :visibility-type} metabase-field
         {new-database-type              :database-type
          new-base-type                  :base-type
          new-field-comment              :field-comment
@@ -66,15 +65,6 @@
         new-db-required                 (boolean new-db-required)
         new-database-type               (or new-database-type "NULL")
         new-semantic-type               (common/semantic-type field-metadata)
-
-        ;; If this function is called on `db-field` which has matching `our-field` that means the field is active
-        ;; hence its `:active_subset` should be `true`.
-        ;; Following expression handles situation right after migration to new logic. Namely, the field was and is
-        ;; active, but its `:active_subset` haven't been set yet.
-        ;; All of the other cases are handled during field creation, activation or deactivation.
-        adjust-active-subset-to-true?
-        (and (driver/should-sync-active-subset? (driver.u/database->driver database))
-             (nil? old-active-subset))
 
         new-db-type?
         (not= old-database-type new-database-type)
@@ -209,9 +199,7 @@
                       new-db-required)
            {:database_required new-db-required})
          (when new-visibility-type?
-           {:visibility_type new-visibility-type})
-         (when adjust-active-subset-to-true?
-           {:active_subset true}))]
+           {:visibility_type new-visibility-type}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
              (pos? (t2/update! :model/Field (u/the-id metabase-field) updates)))
