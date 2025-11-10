@@ -603,20 +603,17 @@
                                :with_metric_default_temporal_breakout :with-default-temporal-breakout?})}]])
 
 (mr/def ::table-result
-  [:schema
-   {:registry {::table-result
-               [:map
-                [:id :int]
-                [:type [:enum :model :table]]
-                [:name :string]
-                [:display_name :string]
-                [:database_id :int]
-                [:database_schema {:optional true} [:maybe :string]] ; Schema name, if applicable
-                [:fields ::columns]
-                [:related_tables {:optional true} [:sequential [:ref ::table-result]]]
-                [:description {:optional true} [:maybe :string]]
-                [:metrics {:optional true} [:sequential ::basic-metric]]]}}
-   ::table-result])
+  [:map
+   [:id :int]
+   [:type [:enum :model :table]]
+   [:name :string]
+   [:display_name :string]
+   [:database_id :int]
+   [:database_schema {:optional true} [:maybe :string]] ; Schema name, if applicable
+   [:fields ::columns]
+   [:related_tables {:optional true} [:sequential [:ref ::table-result]]]
+   [:description {:optional true} [:maybe :string]]
+   [:metrics {:optional true} [:sequential ::basic-metric]]])
 
 (mr/def ::get-table-details-result
   [:or

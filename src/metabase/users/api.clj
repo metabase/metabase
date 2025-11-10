@@ -510,36 +510,36 @@
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
-               (when (contains? body :email)
-                 (api/check-403 (valid-email-update? user-before-update email)))
+    (when (contains? body :email)
+      (api/check-403 (valid-email-update? user-before-update email)))
     ;; SSO users (JWT, SAML, LDAP, Google) can't change their first/last names
-               (when (contains? body :first_name)
-                 (api/checkp (valid-name-update? user-before-update :first_name first_name)
-                             "first_name" (tru "Editing first name is not allowed for SSO users.")))
-               (when (contains? body :last_name)
-                 (api/checkp (valid-name-update? user-before-update :last_name last_name)
-                             "last_name" (tru "Editing last name is not allowed for SSO users.")))
+    (when (contains? body :first_name)
+      (api/checkp (valid-name-update? user-before-update :first_name first_name)
+                  "first_name" (tru "Editing first name is not allowed for SSO users.")))
+    (when (contains? body :last_name)
+      (api/checkp (valid-name-update? user-before-update :last_name last_name)
+                  "last_name" (tru "Editing last name is not allowed for SSO users.")))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
-               (when email
-                 (api/checkp (not (t2/exists? :model/User, :%lower.email (u/lower-case-en email), :id [:not= id]))
-                             "email" (tru "Email address already associated to another user.")))
-               (t2/with-transaction [_conn]
+    (when email
+      (api/checkp (not (t2/exists? :model/User, :%lower.email (u/lower-case-en email), :id [:not= id]))
+                  "email" (tru "Email address already associated to another user.")))
+    (t2/with-transaction [_conn]
       ;; only superuser or self can update user info
       ;; implicitly prevent group manager from updating users' info
-                 (when (or (= id api/*current-user-id*)
-                           api/*is-superuser?*)
-                   (when-let [changes (not-empty
-                                       (u/select-keys-when body
-                                                           :present (cond-> #{:first_name :last_name :locale}
-                                                                      api/*is-superuser?* (conj :login_attributes))
-                                                           :non-nil (cond-> #{:email}
-                                                                      api/*is-superuser?* (conj :is_superuser))))]
-                     (t2/update! :model/User id changes)
-                     (events/publish-event! :event/user-update {:object (t2/select-one :model/User :id id)
-                                                                :previous-object user-before-update
-                                                                :user-id api/*current-user-id*}))
-                   (maybe-update-user-personal-collection-name! user-before-update body))
-                 (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
+      (when (or (= id api/*current-user-id*)
+                api/*is-superuser?*)
+        (when-let [changes (not-empty
+                            (u/select-keys-when body
+                                                :present (cond-> #{:first_name :last_name :locale}
+                                                           api/*is-superuser?* (conj :login_attributes))
+                                                :non-nil (cond-> #{:email}
+                                                           api/*is-superuser?* (conj :is_superuser))))]
+          (t2/update! :model/User id changes)
+          (events/publish-event! :event/user-update {:object (t2/select-one :model/User :id id)
+                                                     :previous-object user-before-update
+                                                     :user-id api/*current-user-id*}))
+        (maybe-update-user-personal-collection-name! user-before-update body))
+      (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
       (t2/hydrate :user_group_memberships)))
 
@@ -596,17 +596,17 @@
                                     :is_active true)]
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
-               (when-not api/*is-superuser?*
-                 (api/checkp (u.password/bcrypt-verify (str (:password_salt user) old_password) (:password user))
-                             "old_password"
-                             (tru "Invalid password")))
-               (user/set-password! id password)
+    (when-not api/*is-superuser?*
+      (api/checkp (u.password/bcrypt-verify (str (:password_salt user) old_password) (:password user))
+                  "old_password"
+                  (tru "Invalid password")))
+    (user/set-password! id password)
     ;; after a successful password update go ahead and offer the client a new session that they can use
-               (when (= id api/*current-user-id*)
-                 (let [{session-key :key, :as session} (session/create-session! :password user (request/device-info request))
-                       response                        {:success    true
-                                                        :session_id (str session-key)}]
-                   (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))
+    (when (= id api/*current-user-id*)
+      (let [{session-key :key, :as session} (session/create-session! :password user (request/device-info request))
+            response                        {:success    true
+                                             :session_id (str session-key)}]
+        (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
