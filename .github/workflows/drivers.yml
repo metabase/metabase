@@ -21,12 +21,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      # - name: Fetch base branch
-      #   if: github.event_name == 'pull_request' && github.event.pull_request.base.ref != ''
-      #   run: |
-      #     # Fetch the base branch to ensure its history is available for diffing
-      #     git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
-      #     # Only run this if it's a pull request and the base ref exists
+      # TODO (Cam 2025-11-10) this is really slow, it takes like a whole minute; the output suggest it fetches every
+      # branch in origin and not just a single ref like we expect. Figure out how to fix this
+      - name: Fetch base branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref != ''
+        run: |
+          # Fetch the base branch to ensure its history is available for diffing
+          git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
+          # Only run this if it's a pull request and the base ref exists
       - name: Check if driver tests should run
         id: check_branch_and_files_changed
         run: |
