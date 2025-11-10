@@ -1,9 +1,6 @@
-import type { MetabaseUsersApiUser } from "metabase-types/openapi";
-
 import type { CollectionId } from "./collection";
+import type { DashboardId } from "./dashboard";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-
-export type User = MetabaseUsersApiUser;
 
 export type UserId = number;
 export type UserAttributeKey = string;
@@ -44,19 +41,19 @@ export interface BaseUser {
   updated_at: string;
 }
 
-// export interface User extends BaseUser {
-//   login_attributes: UserAttributeMap | null;
-//   structured_attributes?: StructuredUserAttributes;
-//   user_group_memberships?: { id: number; is_group_manager: boolean }[];
-//   is_installer: boolean;
-//   has_invited_second_user: boolean;
-//   has_question_and_dashboard: boolean;
-//   personal_collection_id: CollectionId;
-//   sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | null;
-//   custom_homepage: {
-//     dashboard_id: DashboardId;
-//   } | null;
-// }
+export interface User extends BaseUser {
+  login_attributes: UserAttributeMap | null;
+  structured_attributes?: StructuredUserAttributes;
+  user_group_memberships?: { id: number; is_group_manager: boolean }[];
+  is_installer: boolean;
+  has_invited_second_user: boolean;
+  has_question_and_dashboard: boolean;
+  personal_collection_id: CollectionId;
+  sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | null;
+  custom_homepage: {
+    dashboard_id: DashboardId;
+  } | null;
+}
 
 export interface UserListResult {
   id: UserId;

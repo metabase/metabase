@@ -120,7 +120,6 @@ const UserProfileForm = ({
                 }
                 mb="md"
               />
-              {user.middle_name}
             </div>
             <FormSubmitButton
               label={t`Update`}

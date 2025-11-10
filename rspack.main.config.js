@@ -385,7 +385,6 @@ if (shouldEnableHotRefresh) {
   );
 }
 
-
 if (isDevMode) {
   if (!config.output || !config.resolve || !config.plugins) {
     throw new Error("webpack config is missing configuration");
