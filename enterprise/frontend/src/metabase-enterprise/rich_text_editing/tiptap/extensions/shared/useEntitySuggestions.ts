@@ -66,8 +66,8 @@ export function useEntitySuggestions({
   enabled = true,
   searchModels,
   canFilterSearchModels,
-  canBrowseAll,
-  canCreateNewQuestion,
+  canBrowseAll = false,
+  canCreateNewQuestion = false,
   onTriggerCreateNewQuestion,
 }: UseEntitySuggestionsOptions): UseEntitySuggestionsResult {
   const [selectedIndex, setSelectedIndex] = useState(0);
