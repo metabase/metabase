@@ -10,6 +10,7 @@ import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
+import cx from "classnames";
 import { t } from "ttag";
 
 import S from "./SupportingText.module.css";
@@ -95,9 +96,10 @@ const SupportingTextComponent = ({
   editor,
   getPos,
   node,
+  selected,
 }: NodeViewProps) => {
   return (
-    <NodeViewWrapper draggable className={S.wrapper}>
+    <NodeViewWrapper className={cx(S.wrapper, { [S.selected]: selected })}>
       <div className={S.scrollContainer}>
         {isNodeEmpty(node) && (
           <div contentEditable={false} className={S.placeholder}>
@@ -110,8 +112,9 @@ const SupportingTextComponent = ({
         contentEditable={false}
         aria-label={t`Supporting text`}
         className={S.handle}
-        onClick={(e) => {
-          e.currentTarget.focus();
+        onClick={() => {
+          const pos = getPos();
+          pos && editor.commands.setNodeSelection(pos);
         }}
         onKeyDown={(e) => {
           if (e.key === "Backspace" || e.key === "Delete") {

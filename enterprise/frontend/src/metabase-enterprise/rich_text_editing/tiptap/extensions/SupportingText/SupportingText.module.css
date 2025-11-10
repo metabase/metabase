@@ -13,7 +13,7 @@
     background-color: color-mix(in srgb, var(--mb-color-bg-light) 98%, #000);
   }
 
-  &:has(.handle:focus) {
+  &.selected {
     border-color: var(--mb-color-brand);
   }
 }
@@ -34,6 +34,10 @@
   position: absolute;
   top: 0;
   width: 100%;
+
+  &:focus-visible {
+    outline: none !important;
+  }
 
   &:active {
     cursor: grabbing;
