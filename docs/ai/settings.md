@@ -41,6 +41,7 @@ The best thing you can do to improve Metabot's performance is to prep your data 
 - [Add models and metrics to your Metabot collection](#add-models-and-metrics-to-your-metabot-collection)
 - [Add descriptions for your data and content](#add-descriptions-for-your-data-and-content)
 - [Make sure the semantic types for each field are correct](#make-sure-the-semantic-types-for-each-field-are-correct)
+- [Define domain-specific terms in the glossary](#define-domain-specific-terms-in-the-glossary)
 - [Curate prompt suggestions](#curate-prompt-suggestions)
 
 ### Add models and metrics to your Metabot collection
@@ -68,6 +69,12 @@ You can even ask Metabot to write descriptions for you. But Metabot will only ha
 Make sure the semantic types for each field accurately describe the field's "meaning". For example, if you have a field like `created_at`, you'd want the column type to be Creation date.
 
 Metabase will try to set semantic types automatically, but you should confirm that each field has the relevant semantic type. See [Data types and semantic types](../data-modeling/semantic-types.md). You can also set semantic types for [models](../data-modeling/models.md#add-metadata-to-columns-in-a-model).
+
+### Define domain-specific terms in the glossary
+
+Add your organization's terminology, acronyms, and business-specific terms to the [glossary](../exploration-and-organization/data-model-reference.md#glossary). When Metabot receives a prompt, it can look up terms in the glossary to better understand your request.
+
+For example, if you define "MRR" as "Monthly Recurring Revenue" in your glossary, Metabot will know what you mean when you ask "What's our MRR for Q4?" This is especially helpful for industry-specific jargon, internal product names, or abbreviations unique to your organization.
 
 ### Curate prompt suggestions
 

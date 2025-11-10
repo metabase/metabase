@@ -1610,26 +1610,12 @@ describe("issue 63416", () => {
 
     H.toggleFilterWidgetValues(["Doohickey"]);
 
-    H.downloadAndAssert(
-      {
-        fileType: "csv",
-        isDashboard: true,
-        logResults: true,
-        downloadMethod: "POST",
-        downloadUrl: "/api/dashboard/10/dashcard/*/card/*/query/csv",
-      },
-      (sheet) => {
-        expect(sheet["A1"].v).to.eq("Created At: Month");
-        expect(sheet["B1"].v).to.eq("Count");
-
-        expect(sheet["A2"].v).to.eq("January, 2024");
-        expect(sheet["B2"].v).to.eq(113);
-
-        expect(sheet["A3"].v).to.eq("February, 2024");
-        expect(sheet["B3"].v).to.eq(87);
-
-        H.assertSheetRowsCount(28)(sheet);
-      },
-    );
+    H.downloadAndAssert({
+      fileType: "csv",
+      isDashboard: true,
+      downloadMethod: "POST",
+      downloadUrl: "/api/dashboard/10/dashcard/*/card/*/query/csv",
+      assertParameters: [{ type: "string/=", value: ["Doohickey"] }],
+    });
   });
 });

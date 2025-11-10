@@ -95,7 +95,7 @@
                 (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
                 (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
                 (map #(update % :last_run transforms.util/localize-run-timestamps)))
-          (t2/hydrate transforms :last_run :transform_tag_ids))))
+          (t2/hydrate transforms :last_run :transform_tag_ids :creator))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -131,12 +131,13 @@
                     (let [tag-ids (:tag_ids body)
                           transform (t2/insert-returning-instance!
                                      :model/Transform
-                                     (select-keys body [:name :description :source :target :run_trigger]))]
+                                     (assoc (select-keys body [:name :description :source :target :run_trigger])
+                                            :creator_id api/*current-user-id*))]
                       ;; Add tag associations if provided
                       (when (seq tag-ids)
                         (transform.model/update-transform-tags! (:id transform) tag-ids))
                       ;; Return with hydrated tag_ids
-                      (t2/hydrate transform :transform_tag_ids)))]
+                      (t2/hydrate transform :transform_tag_ids :creator)))]
     (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
     transform))
 
@@ -147,7 +148,7 @@
   (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
         target-table (transforms.util/target-table (transforms.i/target-db-id transform) target :active true)]
     (-> transform
-        (t2/hydrate :last_run :transform_tag_ids)
+        (t2/hydrate :last_run :transform_tag_ids :creator)
         (u/update-some :last_run transforms.util/localize-run-timestamps)
         (assoc :table target-table))))
 
@@ -165,8 +166,9 @@
   (let [id->transform (t2/select-pk->fn identity :model/Transform)
         _ (api/check-404 (get id->transform id))
         global-ordering (transforms.ordering/transform-ordering (vals id->transform))
-        dep-ids (get global-ordering id)]
-    (map id->transform dep-ids)))
+        dep-ids (get global-ordering id)
+        dependencies (map id->transform dep-ids)]
+    (t2/hydrate dependencies :creator)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -223,7 +225,7 @@
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))
-                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids))]
+                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     transform))
 

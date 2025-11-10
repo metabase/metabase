@@ -813,8 +813,6 @@ describe("issue 23293", () => {
     cy.findByTestId("save-question-modal").button("Save").click();
 
     cy.wait("@saveQuestion").then(({ response }) => {
-      cy.button("Not now").click();
-
       const id = response.body.id;
       const questionDetails = {
         query: {
