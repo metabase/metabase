@@ -25,6 +25,7 @@ interface UseEntitySuggestionsOptions {
     id: number | string;
     model: string;
     label?: string;
+    db_id?: number;
     href: string | null;
   }) => void;
   enabled?: boolean;
@@ -54,7 +55,7 @@ interface UseEntitySuggestionsResult {
     openModal: () => void;
     hoverHandler: (index: number) => void;
     onPickQuestionType: () => void;
-    onSaveNewQuestion: (id: number, name: string) => void;
+    onSaveNewQuestion: (id: number, name: string, db_id: number) => void;
   };
 }
 

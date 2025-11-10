@@ -17,12 +17,11 @@ export const CreateNativeQuestionModal = ({
     () =>
       Question.create({
         DEPRECATED_RAW_MBQL_type: "native",
-        creationType: "native_question",
       }),
     [],
   );
 
-  const handleSaveNativeQuestion = async ({ card_id }) => {
+  const handleSaveNativeQuestion = async ({ card_id }: { card_id: number }) => {
     onSave(card_id, "New SQL query");
     onClose();
   };

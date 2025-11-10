@@ -110,7 +110,6 @@ const MentionSuggestionComponent = forwardRef<
         onItemHover={handlers.hoverHandler}
         selectedSearchModelName={selectedSearchModelName}
         canBrowseAll={canBrowseAll}
-        onSaveNewQuestion={handlers.onSaveNewQuestion}
       />
     </SuggestionPaper>
   );
