@@ -88,6 +88,10 @@ type ModelMoreMenuProps = {
 function ModelMoreMenu({ card }: ModelMoreMenuProps) {
   const dispatch = useDispatch();
 
+  const handleCopy = (newCard: Card) => {
+    dispatch(push(Urls.dataStudioModel(newCard.id)));
+  };
+
   const handleArchive = () => {
     dispatch(push(Urls.dataStudioModeling()));
   };
@@ -99,6 +103,7 @@ function ModelMoreMenu({ card }: ModelMoreMenuProps) {
   return (
     <CardMoreMenu
       card={card}
+      onCopy={handleCopy}
       onArchive={handleArchive}
       onUnarchive={handleUnarchive}
     />

@@ -241,7 +241,7 @@ export function QueryModals({
     case MODAL_TYPES.CLONE:
       return (
         <EntityCopyModal
-          entityType="questions"
+          entityType="cards"
           entityObject={{
             ...question.card(),
             collection_id: question.canWrite()
