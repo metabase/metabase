@@ -50,6 +50,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "remote-sync-current-task",
   "python-transform-library",
   "support-access-grant",
+  "support-access-grant-current",
 ] as const;
 
 export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];

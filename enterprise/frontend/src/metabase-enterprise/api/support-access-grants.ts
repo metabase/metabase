@@ -12,7 +12,7 @@ import {
   invalidateTags,
   listTag,
   provideSupportAccessGrantListTags,
-  provideSupportAccessGrantTags,
+  tag,
 } from "./tags";
 
 export const supportAccessGrantsApi = EnterpriseApi.injectEndpoints({
@@ -38,8 +38,7 @@ export const supportAccessGrantsApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: "/api/ee/support-access-grant/current",
       }),
-      providesTags: (response) =>
-        response ? provideSupportAccessGrantTags(response) : [],
+      providesTags: () => [tag("support-access-grant-current")],
     }),
 
     createSupportAccessGrant: builder.mutation<
@@ -52,7 +51,10 @@ export const supportAccessGrantsApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("support-access-grant")]),
+        invalidateTags(error, [
+          tag("support-access-grant-current"),
+          listTag("support-access-grant"),
+        ]),
     }),
 
     revokeSupportAccessGrant: builder.mutation<SupportAccessGrant, number>({
@@ -62,6 +64,7 @@ export const supportAccessGrantsApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [
+          tag("support-access-grant-current"),
           idTag("support-access-grant", id),
           listTag("support-access-grant"),
         ]),
