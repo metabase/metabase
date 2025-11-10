@@ -119,7 +119,7 @@ There are some limitations to this indexing:
 
 You can edit a model's query by clicking on the down arrow next to the model's name and clicking on **Edit query definition**. When you're doing editing, be sure to save your changes. Unlike questions, which prompt you to save as a new question, any changes here will overwrite the existing model. If you want to create a new model from an existing model, select **Duplicate this model** from the model sidebar (the icon of two overlapping squares).
 
-### Checking for for breaking changes
+### Checking for breaking changes
 
 > {% include plans-blockquote.html feature="Checking for breaking changes" %}
 

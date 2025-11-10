@@ -114,10 +114,8 @@
 (api.macros/defendpoint :get "/weights"
   "Return the current weights being used to rank the search results"
   [_route-params
-   {:keys [context]} :- [:map
-                         [:context {:default :default} :keyword]
-                         [:search_engine {:optional true} :any]]]
-  (search.config/weights context))
+   {:keys [context]} :- [:map [:context {:default :default} :keyword]]]
+  (search.config/weights {:context context}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -132,7 +130,7 @@
   (let [overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
     (when (seq overrides)
       (set-weights! context overrides))
-    (search.config/weights context)))
+    (search.config/weights {:context context})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
