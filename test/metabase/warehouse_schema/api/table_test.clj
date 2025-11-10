@@ -1398,42 +1398,6 @@
                           (map :id)
                           set))))))))))
 
-;; todo stolen from elsewhere, cleanup
-(defn basic-orders
-  "Construct a basic card for dependency testing."
-  []
-  {:name                   "Test card"
-   :database_id            (mt/id)
-   :table_id               (mt/id :orders)
-   :display                :table
-   :query_type             :query
-   :type                   :question
-   :dataset_query          (mt/mbql-query orders)
-   :visualization_settings {}})
-
-(deftest substitute-with-model-test
-  (mt/with-premium-features #{:dependencies}
-    (mt/with-model-cleanup [:model/Card :model/Dependency]
-      (testing "POST /api/table/:id/substitute-model"
-        (let [table-id        (mt/id :orders)
-              table-card      (card/create-card! (basic-orders) {:id (mt/user->id :crowberto)})
-              collection-id   (:id (collection/user->personal-collection (mt/user->id :crowberto)))
-              {:keys [model]} (mt/user-http-request :crowberto :post 200
-                                                    (format "table/%d/substitute-model" table-id)
-                                                    {:collection_id collection-id})
-              updated-card    (t2/select-one :model/Card (:id table-card))]
-          (is (=? {:name "Orders" :collection_id collection-id} model))
-          (testing "created model references the table"
-            (is (some #{[:source-table table-id]} (tree-seq seqable? seq (:dataset_query model)))))
-          (testing "original card references the table")
-          (is (some #{[:source-table table-id]} (tree-seq seqable? seq (:dataset_query table-card))))
-          (testing "card updated to no longer reference the table"
-            (is (not-any? #{[:source-table table-id]} (tree-seq seqable? seq (:dataset_query updated-card))))
-            (is (some #{[:source-card (:id model)]}   (tree-seq seqable? seq (:dataset_query updated-card)))))
-          (testing "cards yield equivalent results"
-            (is (= (:rows (qp/process-query (lib.limit/limit (:dataset_query table-card) 10)))
-                   (:rows (qp/process-query (lib.limit/limit (:dataset_query updated-card) 10)))))))))))
-
 (deftest ^:parallel non-admins-cant-trigger-bulk-sync-test
   (testing "Non-admins should not be allowed to trigger sync"
     (is (= "You don't have permissions to do that."
