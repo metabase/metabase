@@ -125,9 +125,14 @@ jobs:
           MB_JETTY_PORT: 4000
           MB_HTTP_CHANNEL_HOST_STRATEGY: "allow-all"
           MB_LAST_ANALYTICS_CHECKSUM: -1
-        # FIXME: do the separate invocation for OSS
         run: |
-          clojure -M:dev:drivers:ee:run > metabase.log 2>&1 & echo $! > metabase_pid
+          if [ "${MB_EDITION}" = "ee" ]; then
+            CMD='clojure -M:dev:drivers:ee:run'
+          else
+            CMD='clojure -M:dev:drivers:run'
+          fi
+
+          $CMD > metabase.log 2>&1 & echo $! > metabase_pid
           tail -F metabase.log &
 
       - name: Wait for Metabase to be ready
