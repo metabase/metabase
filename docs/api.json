@@ -11164,9 +11164,15 @@
                     "$ref" : "#/components/schemas/metabase.analyze.query-results.ResultsMetadata"
                   },
                   "collection_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
+                    "anyOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "description" : "String must be a valid 21-character NanoID string.",
+                      "type" : "string",
+                      "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+                    } ]
                   },
                   "cache_ttl" : {
                     "description" : "value must be an integer greater than zero.",
