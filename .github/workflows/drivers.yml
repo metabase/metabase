@@ -29,7 +29,7 @@ jobs:
           # Only run this if it's a pull request and the base ref exists
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - name: Check if Driver tests should run
+      - name: Check if driver tests should run
         id: check_branch_and_files_changed
         run: |
           IS_MASTER_OR_RELEASE="${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}"
@@ -40,7 +40,7 @@ jobs:
             echo "Merging into master or a release branch. All driver tests will run."
           else
             echo "Checking for changes in relevant modules..."
-            if [[ ./bin/mage can-skip-driver-tests ${{ github.event.pull_request.base.sha }} ]]; then
+            if ./bin/mage can-skip-driver-tests ${{ github.event.pull_request.base.sha }}; then
               echo 'skip=true' >> $GITHUB_OUTPUT
             else
               echo 'skip=false' >> $GITHUB_OUTPUT
