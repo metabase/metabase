@@ -96,6 +96,9 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
+      - name: Build translations in the background
+        run: |
+          ./bin/build.sh '{:steps [:translations]}' &
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
