@@ -7,7 +7,6 @@
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
-   [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.ingestable :as source.ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.core :as serialization]
@@ -20,7 +19,8 @@
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
 (defn- all-top-level-remote-synced-collections
   "Returns a vector of primary keys for all top-level remote-synced collections."
@@ -103,7 +103,7 @@
   If the exception indicates cancellation (has :cancelled? in ex-data), logs an info message and returns nil.
   Otherwise logs the error, increments the failed imports analytics metric, and returns a map with :status :error,
   a user-friendly :message, the source :version, and error :details."
-  [e source]
+  [e snapshot]
   (if (:cancelled? (ex-data e))
     (log/info "Import from git repository was cancelled")
     (do
@@ -111,38 +111,38 @@
       (analytics/inc! :metabase-remote-sync/imports-failed)
       {:status :error
        :message (source-error-message e)
-       :version (source.p/version source)
+       :version (source.p/version snapshot)
 
        :details {:error-type (type e)}})))
 
 (defn import!
-  "Imports and reloads Metabase entities from a remote source.
+  "Imports and reloads Metabase entities from a remote snapshot.
 
-  Takes a Source instance, a RemoteSyncTask ID for progress tracking, and optional keyword arguments:
-  - :force? - forces import even when the source version matches the last imported version
+  Takes a SourceSnapshot instance, a RemoteSyncTask ID for progress tracking, and optional keyword arguments:
+  - :force? - forces import even when the snapshot version matches the last imported version
 
   Loads serialized entities, removes entities not in the import, syncs the remote-sync-object table, and
   optionally creates a remote-synced collection.
 
   Returns a map with :status (either :success or :error), :version, and :message keys. Various exceptions may be
   thrown during import and are caught and converted to error status maps."
-  [source task-id & {:keys [force?]}]
+  [^SourceSnapshot snapshot task-id & {:keys [force?]}]
   (log/info "Reloading remote entities from the remote source")
   (analytics/inc! :metabase-remote-sync/imports)
   (let [sync-timestamp (t/instant)]
-    (if source
+    (if snapshot
       (try
-        (let [source-version (source.p/version source)
+        (let [snapshot-version (source.p/version snapshot)
               last-imported-version (remote-sync.task/last-version)]
-          (if (and (not force?) (= last-imported-version source-version))
+          (if (and (not force?) (= last-imported-version snapshot-version))
             (u/prog1 {:status :success
-                      :version (source.p/version source)
-                      :message (format "Skipping import: source version %s matches last imported version" source-version)}
+                      :version (source.p/version snapshot)
+                      :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
               (log/infof (:message <>)))
-            (let [ingestable-source (->> (source.p/->ingestable source {:path-filters [#"collections/.*"]})
-                                         (source.ingestable/wrap-progress-ingestable task-id 0.7))
+            (let [ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters [#"collections/.*"]})
+                                           (source.ingestable/wrap-progress-ingestable task-id 0.7))
                   load-result (serdes/with-cache
-                                (serialization/load-metabase! ingestable-source))
+                                (serialization/load-metabase! ingestable-snapshot))
                   imported-entities-by-model (->> (:seen load-result)
                                                   (map last) ; Get the last element of each path (the entity itself)
                                                   (group-by :model)
@@ -158,29 +158,29 @@
               (remote-sync.task/update-progress! task-id 0.95)
               (remote-sync.task/set-version!
                task-id
-               (source.p/version source))
+               (source.p/version snapshot))
               (log/info "Successfully reloaded entities from git repository")
               {:status :success
-               :version (source.p/version source)
+               :version (source.p/version snapshot)
                :message "Successfully reloaded from git repository"})))
         (catch Exception e
-          (handle-import-exception e source))
+          (handle-import-exception e snapshot))
         (finally
           (analytics/observe! :metabase-remote-sync/import-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis))))
       {:status :error
        :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."})))
 
 (defn export!
-  "Exports remote-synced collections to a remote source repository. Assumes source has been fetched
+  "Exports remote-synced collections to a remote source repository.
 
-  Takes a Source instance, a RemoteSyncTask ID for progress tracking, and a commit message string. Extracts all
+  Takes a SourceSnapshot instance, a RemoteSyncTask ID for progress tracking, and a commit message string. Extracts all
   remote-synced collections, serializes their content, writes the files to the source, and updates all
   RemoteSyncObject statuses to 'synced'.
 
   Returns a map with :status (either :success or :error), :version, and optionally :message keys. Various
   exceptions may be thrown during export and are caught and converted to error status maps."
-  [source task-id message]
-  (if source
+  [^SourceSnapshot snapshot task-id message]
+  (if snapshot
     (let [sync-timestamp (t/instant)
           collections (t2/select-fn-set :entity_id :model/Collection :type "remote-synced" :location "/")]
       (if (empty? collections)
@@ -199,11 +199,11 @@
                                                  :continue-on-error false
                                                  :skip-archived true})]
               (remote-sync.task/update-progress! task-id 0.3)
-              (source/store! models source task-id message)
-              (remote-sync.task/set-version! task-id (source.p/version source))
+              (let [written-version (source/store! models snapshot task-id message)]
+                (remote-sync.task/set-version! task-id written-version))
               (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})))
           {:status :success
-           :version (source.p/version source)}
+           :version (source.p/version snapshot)}
           (catch Exception e
             (if (:cancelled? (ex-data e))
               (log/info "Export to git repository was cancelled")
@@ -211,7 +211,7 @@
                 (analytics/inc! :metabase-remote-sync/exports-failed)
                 (remote-sync.task/fail-sync-task! task-id (ex-message e))
                 {:status :error
-                 :version (source.p/version source)
+                 :version (source.p/version snapshot)
                  :message (format "Failed to export to git repository: %s" (ex-message e))})))
           (finally
             (analytics/observe! :metabase-remote-sync/export-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis))))))
@@ -279,8 +279,7 @@
       (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
                       {:status-code 400
                        :conflicts true})))
-    (git/fetch! source)
-    (run-async! "import" branch (fn [task-id] (import! source task-id (assoc import-args :force? force?))))))
+    (run-async! "import" branch (fn [task-id] (import! (source.p/snapshot source) task-id (assoc import-args :force? force?))))))
 
 (defn async-export!
   "Exports the remote-synced collections to the remote source repository asynchronously.
@@ -294,16 +293,18 @@
   [branch force? message]
   (let [source (source/source-from-settings branch)
         last-task-version (remote-sync.task/last-version)
-        _ (git/fetch! source)
-        current-source-version (source.p/version source)]
+        snapshot (source.p/snapshot source)
+        current-source-version (source.p/version snapshot)]
     (when (and (not force?) (some? last-task-version) (not= last-task-version current-source-version))
       (throw (ex-info "Cannot export changes that will overwrite new changes in the branch."
                       {:status-code 400
                        :conflicts true})))
-    (run-async! "export" branch (fn [task-id] (export! source task-id message)))))
+    (run-async! "export" branch (fn [task-id] (export! snapshot task-id message)))))
 
 (defn finish-remote-config!
   "Based on the current configuration, fill in any missing settings and finalize remote sync setup.
+
+  Will attempt, import the remote collection if no remote-collection exists locally or you are in production mode.
 
   Returns the async-task id if an async task was started, otherwise nil."
   []

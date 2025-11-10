@@ -47,19 +47,24 @@
    scalar-config))
 
 (defn generate-dox!
-  "Generates OpenAPI/Scalar documentation and writes it to a file.
+  "Generates OpenAPI/Scalar documentation and writes it to files.
 
-  With no arguments, writes to `docs/api.html`.
-  With an output-file argument, writes to the specified path."
+  With no arguments, writes to `docs/api.html` and `docs/api.json`.
+  With an output-file argument, writes to the specified path and generates
+  a corresponding JSON file with the same basename."
   ([]
    (generate-dox! "docs/api.html"))
 
   ([^String output-file]
    (printf "Generating OpenAPI+Scalar documentation in %s\n" output-file)
    (let [openapi-json (json/encode (openapi-object) {:pretty true})
+         json-file    (str/replace output-file #"\.html$" ".json")
          content      (fill-template-placeholder
-                       "openapi/index_inline.html.mustache"
-                       "{{json}}"
-                       openapi-json)]
+                       "openapi/index_external.html.mustache"
+                       "{{json_url}}"
+                       "api.json")]
+     (printf "Writing OpenAPI JSON to %s\n" json-file)
+     (cmd.common/write-doc-file! json-file openapi-json)
+     (printf "Writing HTML to %s\n" output-file)
      (cmd.common/write-doc-file! output-file content))
    (println "Done.")))

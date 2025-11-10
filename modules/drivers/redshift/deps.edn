@@ -6,4 +6,4 @@
 
  :deps
  {com.amazon.redshift/redshift-jdbc42 {:mvn/version "2.1.0.34"}
-  com.amazonaws/aws-java-sdk-core     {:mvn/version "1.12.788"}}}
+  com.amazonaws/aws-java-sdk-core     {:mvn/version "1.12.792"}}}

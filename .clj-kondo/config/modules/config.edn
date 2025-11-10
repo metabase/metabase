@@ -605,6 +605,7 @@
    :api  #{metabase.lib.binning
            metabase.lib.binning.util
            metabase.lib.card
+           metabase.lib.computed ; temporarily so that `qp.compile` can use it as lib memoization evolves
            metabase.lib.core
            metabase.lib.equality
            metabase.lib.field
@@ -1647,6 +1648,7 @@
    :uses #{api
            events
            premium-features
+           store-api
            util
            enterprise/harbormaster}}
 
@@ -1904,7 +1906,7 @@
            query-processor
            util}}
 
- enterprise/remote-sync
+  enterprise/remote-sync
   {:team "UX West"
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
@@ -1917,7 +1919,6 @@
            models
            premium-features
            settings
-           startup
            task
            task-history
            util

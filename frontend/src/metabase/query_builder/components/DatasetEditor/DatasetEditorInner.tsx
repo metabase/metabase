@@ -52,6 +52,12 @@ import {
 import { getWritableColumnProperties } from "metabase/query_builder/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
+import {
+  extractRemappings,
+  getVisualizationTransformed,
+} from "metabase/visualizations";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -66,6 +72,8 @@ import type {
   ModelIndex,
   RawSeries,
   ResultsMetadata,
+  Series,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
@@ -79,7 +87,6 @@ import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
 import { EDITOR_TAB_INDEXES } from "./constants";
-
 type MetadataDiff = Record<string, Partial<Field>>;
 
 export type DatasetEditorInnerProps = {
@@ -167,7 +174,7 @@ function getSidebar(
     focusFirstField: () => void;
     onFieldMetadataChange: (values: Partial<DatasetColumn>) => void;
     onMappedDatabaseColumnChange: (value: number) => void;
-    onUpdateModelSettings: (settings: ModelSettings) => void;
+    onUpdateModelSettings: (settings: Partial<ModelSettings>) => void;
     modelSettings: ModelSettings;
   },
 ): ReactNode {
@@ -210,14 +217,29 @@ function getSidebar(
     if (isQueryError || !props.rawSeries) {
       return null;
     }
+
     if (!focusedField) {
       // Returning a div, so the sidebar is visible while the data is loading.
       return <div />;
     }
+
+    /**
+     * If the model hasn't been saved with "list" view setting, but user has
+     * just selected this option through UI, we use temporary `modelSettings`
+     * to properly render the settings sidebar and its internal elements (list of unused columns)
+     * As soon as we detect that question has been saved, we use proper settings
+     * origin.
+     */
+    const questionSettings = question.settings();
+    const listViewSettings: ComputedVisualizationSettings =
+      "list.columns" in questionSettings
+        ? questionSettings
+        : modelSettings.visualizationSettings;
+
     return (
       <DatasetEditorSettingsSidebar
         display={modelSettings.display}
-        visualizationSettings={question.settings()}
+        visualizationSettings={listViewSettings}
         onUpdateModelSettings={onUpdateModelSettings}
       />
     );
@@ -257,6 +279,34 @@ function getColumnTabIndex(columnIndex: number, focusedFieldIndex: number) {
         ? EDITOR_TAB_INDEXES.NEXT_FIELDS
         : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS,
   );
+}
+
+function getTempRawSeries(
+  rawSeries: RawSeries,
+  display: VisualizationDisplay,
+): RawSeries {
+  if (!rawSeries || !rawSeries.length) {
+    return rawSeries;
+  }
+
+  return [
+    {
+      ...rawSeries[0],
+      card: { ...rawSeries[0].card, display },
+    },
+  ] as RawSeries;
+}
+
+function getTempVisualizationSettings(
+  series: Series | null,
+): ComputedVisualizationSettings | null {
+  if (series == null) {
+    return series;
+  }
+
+  return getComputedSettingsForSeries(
+    getVisualizationTransformed(extractRemappings(series)).series,
+  ) as ComputedVisualizationSettings;
 }
 
 const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
@@ -313,20 +363,17 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     () => {
       return {
         display: question.display(),
+        visualizationSettings:
+          getTempVisualizationSettings(rawSeries) || question.settings(),
       };
     },
   );
   const tempRawSeries = useMemo(() => {
-    if (!rawSeries || !rawSeries.length) {
+    if (!rawSeries || !rawSeries.length || !tempModelSettings.display) {
       return rawSeries;
     }
 
-    return [
-      {
-        ...rawSeries[0],
-        card: { ...rawSeries[0].card, display: tempModelSettings.display },
-      },
-    ];
+    return getTempRawSeries(rawSeries, tempModelSettings.display);
   }, [tempModelSettings, rawSeries]);
 
   const [isSettingsDirty, setSettingsDirty] = useState(false);
@@ -440,15 +487,19 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       const hasListViewSelected = display === "list" || tempDisplay === "list";
       if (hasListViewSelected) {
         if (tab !== "metadata") {
-          setTempModelSettings({
+          setTempModelSettings(() => ({
+            visualizationSettings: question.settings(),
             display: "table",
-          });
+          }));
         }
       }
       if (tab === "metadata") {
-        setTempModelSettings({
+        setTempModelSettings((prevSettings) => ({
+          visualizationSettings:
+            getTempVisualizationSettings(tempRawSeries) ||
+            prevSettings.visualizationSettings,
           display: question.display(),
-        });
+        }));
       }
       if (hasListViewSelected && isShowingListViewConfiguration) {
         dispatch(setUIControls({ isShowingListViewConfiguration: false }));
@@ -461,6 +512,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       dispatch,
       isShowingListViewConfiguration,
       tempModelSettings,
+      tempRawSeries,
     ],
   );
 
@@ -509,7 +561,10 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
     let questionWithUpdatedSettings = question;
-    if (tempModelSettings?.display !== question.display()) {
+    if (
+      !!tempModelSettings.display &&
+      tempModelSettings.display !== question.display()
+    ) {
       questionWithUpdatedSettings = question.setDisplay(
         tempModelSettings.display,
       );
@@ -660,10 +715,18 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       focusFirstField,
       onFieldMetadataChange,
       onMappedDatabaseColumnChange,
-      onUpdateModelSettings: (settings: ModelSettings) => {
+      onUpdateModelSettings: (settings) => {
         setSettingsDirty(settings.display !== question.display());
-        if (settings.display) {
-          setTempModelSettings({ display: settings.display });
+        if (settings.display !== undefined) {
+          setTempModelSettings((prevSettings) => ({
+            display: settings.display || prevSettings.display,
+            visualizationSettings:
+              settings.display === "list" && rawSeries != null
+                ? getTempVisualizationSettings(
+                    getTempRawSeries(rawSeries, settings.display),
+                  ) || prevSettings.visualizationSettings
+                : prevSettings.visualizationSettings,
+          }));
         }
       },
       modelSettings: tempModelSettings,

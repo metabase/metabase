@@ -31,8 +31,8 @@ const PAGE_SIZE = 4;
 
 type Props = Omit<StackProps, "children"> & {
   locationQuery: Query;
-  searchRequestId: string | undefined;
-  searchResults: SearchResponse | undefined;
+  searchRequestId?: string;
+  searchResults?: SearchResponse;
   searchTerm: string;
 };
 

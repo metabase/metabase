@@ -10,6 +10,8 @@ import {
   createMockDashboardCard,
   createMockHeadingDashboardCard,
   createMockParameter,
+  createMockTextDashboardCard,
+  createMockVirtualCard,
 } from "metabase-types/api/mocks";
 
 const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -1420,6 +1422,69 @@ describe("scenarios > dashboard > parameters", () => {
         .should("exist");
     });
 
+    it("should not display a parameter widget if there are no linked with it cards after a text card variable is removed (UXW-751)", () => {
+      H.createDashboard({
+        parameters: [categoryParameter, countParameter],
+      }).then(({ body: dashboard }) => {
+        const virtualCard = createMockVirtualCard({
+          display: "text",
+        });
+
+        H.updateDashboardCards({
+          dashboard_id: dashboard.id,
+          cards: [
+            createMockTextDashboardCard({
+              card: virtualCard,
+              text: "Value {{VAR1}} and {{VAR2}}",
+              size_x: 3,
+              size_y: 3,
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: virtualCard.id,
+                  target: ["text-tag", "VAR1"],
+                },
+                {
+                  parameter_id: countParameter.id,
+                  card_id: virtualCard.id,
+                  target: ["text-tag", "VAR2"],
+                },
+              ],
+            }),
+          ],
+        });
+        H.visitDashboard(dashboard.id);
+      });
+
+      H.filterWidget({ isEditing: false }).contains("Category").should("exist");
+      H.filterWidget({ isEditing: false }).contains("Category").should("exist");
+
+      H.editDashboard();
+
+      H.getDashboardCard(0).click();
+      H.getDashboardCard(0).within(() => {
+        cy.get("textarea").clear();
+        cy.get("textarea").type("Value {{}{{}VAR1}}");
+      });
+
+      H.saveDashboard();
+
+      H.filterWidget({ isEditing: false }).contains("Category").should("exist");
+      cy.findByTestId("parameter-widget").contains("Count").should("not.exist");
+
+      H.editDashboard();
+
+      H.getDashboardCard(0).click();
+      H.getDashboardCard(0).within(() => {
+        cy.get("textarea").clear();
+        cy.get("textarea").type("Value null");
+      });
+
+      H.saveDashboard();
+
+      cy.findByTestId("parameter-widget").should("not.exist");
+    });
+
     it("should work correctly in public dashboards", () => {
       H.createQuestionAndDashboard({
         questionDetails: ordersCountByCategory,
@@ -2251,6 +2316,10 @@ describe("scenarios > dashboard > parameters", () => {
       H.dashboardParameterSidebar().button("Done").click();
 
       H.findDashCardAction(H.getDashboardCard(0), "Duplicate").click();
+
+      H.getDashboardCard(1).within(() => {
+        cy.findByTestId("chart-container").should("exist");
+      });
 
       H.getDashboardCard(1).within(() => {
         H.filterWidget({ isEditing: true })

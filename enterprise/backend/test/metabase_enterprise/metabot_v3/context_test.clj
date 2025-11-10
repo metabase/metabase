@@ -3,7 +3,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.context :as context]
-   [metabase-enterprise.metabot-v3.table-utils :as table-utils]))
+   [metabase-enterprise.metabot-v3.table-utils :as table-utils]
+   [metabase.lib.core :as lib]
+   [metabase.test :as mt]))
 
 (deftest database-tables-for-context-prioritization
   (let [used [{:id 1 :name "used1"} {:id 2 :name "used2"}]
@@ -181,3 +183,39 @@
            (count (->> (context/create-context {})
                        :capabilities
                        (filter #(str/starts-with? % "backend:"))))))))
+
+(deftest annotate-transform-source-types-native-transform-test
+  (testing "Annotates draft native transform with source_type :native"
+    (let [input {:user_is_viewing [{:type "transform"
+                                    :source {:type :query
+                                             :query (lib/native-query (mt/metadata-provider) "SELECT * FROM users")}}]}
+          result (#'context/annotate-transform-source-types input)]
+      (is (= :native (get-in result [:user_is_viewing 0 :source_type]))))))
+
+(deftest annotate-transform-source-types-mbql-transform-test
+  (testing "Annotates draft MBQL transform with source_type :mbql"
+    (let [input {:user_is_viewing [{:type "transform"
+                                    :source {:type :query
+                                             :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}]}
+          result (#'context/annotate-transform-source-types input)]
+      (is (= :mbql (get-in result [:user_is_viewing 0 :source_type]))))))
+
+(deftest annotate-transform-source-types-python-transform-test
+  (testing "Annotates draft Python transform with source_type :python"
+    (let [input {:user_is_viewing [{:type "transform"
+                                    :source {:type :python
+                                             :body "import pandas as pd"
+                                             :source-database (mt/id)}}]}
+          result (#'context/annotate-transform-source-types input)]
+      (is (= :python (get-in result [:user_is_viewing 0 :source_type]))))))
+
+(deftest annotate-transform-source-types-normalization-test
+  (testing "Transform source query gets normalized before query type detection"
+    (let [input {:user_is_viewing [{:type "transform"
+                                    :source {:type "query"
+                                             :query {:lib/type "mbql/query"
+                                                     :stages [{:native "SELECT * FROM users"
+                                                               :lib/type "mbql.stage/native"}]
+                                                     :database (mt/id)}}}]}
+          result (#'context/annotate-transform-source-types input)]
+      (is (= :native (get-in result [:user_is_viewing 0 :source_type]))))))
