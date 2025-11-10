@@ -123,6 +123,9 @@ export const executeSlashCommand = createAsyncThunk<void, SlashCommand>(
           dispatch(addUndo({ message: "/metabot <name>" }));
         }
       })
+      .with({ cmd: "playground" }, () => {
+        dispatch(push("/admin/metabot/playground") as UnknownAction);
+      })
       .with({ cmd: "debug" }, () => {
         const currentDebugMode = getDebugMode(getState() as MetabotStoreState);
         const newDebugMode = !currentDebugMode;

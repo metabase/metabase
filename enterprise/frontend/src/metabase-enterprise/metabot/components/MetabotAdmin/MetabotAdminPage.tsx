@@ -38,7 +38,6 @@ import {
   FIXED_METABOT_ENTITY_IDS,
   FIXED_METABOT_IDS,
 } from "metabase-enterprise/metabot/constants";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   Collection,
@@ -107,7 +106,6 @@ export function MetabotAdminPage() {
 
 export function MetabotNavPane() {
   const { data, isLoading } = useListMetabotsQuery();
-  const { debugMode } = useMetabotAgent();
   const pathId = useMetabotIdPath();
   const dispatch = useDispatch();
 
@@ -136,15 +134,6 @@ export function MetabotNavPane() {
             path={`/admin/metabot/${metabot.id}`}
           />
         ))}
-
-        {debugMode && (
-          <AdminNavItem
-            key="playground"
-            icon="sql"
-            label={t`Playground`}
-            path={`/admin/metabot/playground`}
-          />
-        )}
       </AdminNavWrapper>
     </Flex>
   );

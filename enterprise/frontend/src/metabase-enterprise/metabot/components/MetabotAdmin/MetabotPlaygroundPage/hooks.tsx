@@ -42,8 +42,6 @@ export const usePlaygroundSupport = () => {
   };
 };
 
-// TODO: pick back up here... you were refactoring the values in the main component
-// over here so it was easier to follow along with
 export const usePlaygrounds = (bots: BotConfig[]) => {
   const [firstSubmittedInput, setFirstSubmittedInput] = useState<string>("");
 
