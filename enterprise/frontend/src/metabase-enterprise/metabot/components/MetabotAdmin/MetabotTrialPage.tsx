@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import { useCallback } from "react";
+import { P, isMatching } from "ts-pattern";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -27,7 +28,7 @@ import { MetabotSettingUpModal } from "./MetabotSettingUpModal";
 // https://redux-toolkit.js.org/rtk-query/usage/error-handling
 // https://redux-toolkit.js.org/rtk-query/usage-with-typescript#type-safe-error-handling
 const isFetchBaseQueryError = (error: unknown): error is FetchBaseQueryError =>
-  error instanceof Object && "status" in error && "data" in error;
+  isMatching({ status: P.any, data: P.any }, error);
 
 type IFieldError =
   | string
@@ -39,13 +40,14 @@ type IFieldError =
     };
 
 const isFieldError = (error: unknown): error is IFieldError =>
-  typeof error === "string" ||
-  (error instanceof Object &&
-    (("message" in error && typeof error.message === "string") ||
-      ("errors" in error &&
-        error.errors instanceof Object &&
-        "terms_of_service" in error.errors &&
-        typeof error.errors.terms_of_service === "string")));
+  isMatching(
+    P.union(
+      P.string,
+      { message: P.string },
+      { errors: P.record(P.string, P.any) },
+    ),
+    error,
+  );
 
 export const handleFieldError = (error: unknown) => {
   if (!isFieldError(error)) {
