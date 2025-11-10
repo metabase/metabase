@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useUpdateCardMutation } from "metabase/api";
@@ -9,7 +10,7 @@ import {
   PaneHeaderTabs,
   PanelHeaderTitle,
 } from "metabase/data-studio/components/PaneHeader";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES, PLUGIN_MODERATION } from "metabase/plugins";
@@ -42,7 +43,7 @@ export function MetricHeader({ card, actions }: MetricHeaderProps) {
           moderationReviews={card.moderation_reviews}
         />
       }
-      menu={<CardMoreMenu card={card} />}
+      menu={<MetricMoreMenu card={card} />}
       tabs={<MetricTabs card={card} />}
       actions={actions}
     />
@@ -76,6 +77,30 @@ function MetricNameInput({ card }: MetricNameInputProps) {
       initialValue={card.name}
       maxLength={NAME_MAX_LENGTH}
       onChange={handleChangeName}
+    />
+  );
+}
+
+type MetricMoreMenuProps = {
+  card: Card;
+};
+
+function MetricMoreMenu({ card }: MetricMoreMenuProps) {
+  const dispatch = useDispatch();
+
+  const handleArchive = () => {
+    dispatch(push(Urls.dataStudioModeling()));
+  };
+
+  const handleUnarchive = () => {
+    dispatch(push(Urls.dataStudioMetric(card.id)));
+  };
+
+  return (
+    <CardMoreMenu
+      card={card}
+      onArchive={handleArchive}
+      onUnarchive={handleUnarchive}
     />
   );
 }
