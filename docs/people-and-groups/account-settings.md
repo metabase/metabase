@@ -17,6 +17,8 @@ You can set your first and last names, change your email address, and set your l
 
 You can choose to display Metabase in light or dark mode.
 
+To quickly toggle dark mode, use the [command palette](../exploration-and-organization/exploration.md#command-palette).
+
 The theme only applies to your account. The theme doesn't apply to chart colors or embedded Metabases.
 
 ## Account password
@@ -42,4 +44,4 @@ This isn't an in-Metabase setting, but just so you know: you can disable UI anim
 
 If you subscribe or are added to dashboard subscriptions or alerts, you’ll be able to manage those notifications here (as well as on the relevant question or dashboard themselves).
 
-Metabase excludes notificatione for [comments](../documents/introduction.md#comment-notifications) from this page.
+Metabase excludes notifications for [comments](../documents/introduction.md#comment-notifications) from this page.
