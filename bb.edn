@@ -2,7 +2,8 @@
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths          ["mage/src" "mage/test" "bin/lint-migrations-file/src" "representation"]
- :deps           {org.babashka/json {:mvn/version "0.1.6"}
+ :deps           {dev.weavejester/cljfmt {:mvn/version "0.15.3"}
+                  org.babashka/json {:mvn/version "0.1.6"}
                   metosin/malli     {:mvn/version "0.17.0"}
                   table/table       {:mvn/version "0.5.0"}
                   mvxcvi/puget      {:mvn/version "1.3.4"}}

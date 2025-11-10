@@ -28,8 +28,8 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     outputs:
-      run_mode: ${{ steps.config.outputs.runMode }}
-      dev_server: ${{ steps.config.outputs.metastoreDevServer }}
+      run_mode: ${{ fromJson(steps.config.outputs.result).runMode }}
+      dev_server: ${{ fromJson(steps.config.outputs.result).metastoreDevServer }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,7 +54,7 @@ jobs:
 
             return ({
               runMode: oldTestToken ? 'prod' : 'e2e',
-              metastoreDevServer: oldTestToken ? '' : '${{ secrets.METASTORE_DEV_SERVER_URL }}'
+              metastoreDevServer: oldTestToken ? '' : '${{ vars.METASTORE_DEV_SERVER_URL }}'
             });
 
   release-artifact:

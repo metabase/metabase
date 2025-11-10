@@ -29,13 +29,15 @@ runs:
       shell: bash
       id: run-test
       # Trunk Quarantine controls the final state of the run in the CI!
-      # Even if this step fails, we let it pass and then `trunk-io/analytics-uploader` determines whether to fail or to
-      # pass the whole job, based on the quarantine list.
-      # We only want to "continue on error" (ignore failures) when the Trunk upload is active - i.e. not on drafts!
-      continue-on-error: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft == true) }}
+      # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
+      # whether to fail or to pass the whole job, based on the quarantine list.
+      continue-on-error: true
     - name: Publish Test Report (JUnit)
       uses: dorny/test-reporter@v1
-      if: ${{ steps.run-test.outcome == 'failure' }}
+      # As per the documentation: https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#steps-context
+      # test.outcome gives us access to the result before `continue-on-error` overrides it and sets it to 'success'.
+      # We want test reports even if the test step gets cancelled (e.g. times out), hence we match anything that is not a 'success'.
+      if: steps.run-test.outcome != 'success'
       with:
         path: "target/junit/**/*_test.xml"
         name: JUnit Test Report ${{ inputs.junit-name }}
@@ -44,7 +46,7 @@ runs:
         list-tests: failed
         fail-on-error: false
     - name: Upload Logs on Failure
-      if: ${{ steps.run-test.outcome == 'failure' }}
+      if: always() && steps.run-test.outcome != 'success'
       uses: actions/upload-artifact@v4
       with:
         name: test-logs-${{ github.job }}

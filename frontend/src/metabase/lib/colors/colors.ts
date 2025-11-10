@@ -6,6 +6,8 @@
 // frontend/src/metabase/styled-components/theme/css-variables.ts
 // NOTE: this file is used in the embedding SDK, so it should not contain anything else except the `colors` constant.
 
+import type { ColorSettings } from "metabase-types/api/settings";
+
 const win = typeof window !== "undefined" ? window : ({} as Window);
 const tokenFeatures = win.MetabaseBootstrap?.["token-features"] ?? {};
 const shouldWhitelabel = !!tokenFeatures["whitelabel"];
@@ -238,7 +240,7 @@ const baseColors = {
   },
 };
 
-export const colorConfig = {
+const getColorConfig = (settings: ColorSettings = {}) => ({
   "accent-gray-dark": {
     light: baseColors.orion[20],
     dark: baseColors.orion[110],
@@ -367,8 +369,8 @@ export const colorConfig = {
     dark: baseColors.brand[90],
   },
   brand: {
-    light: whitelabelColors.brand || baseColors.blue[40],
-    dark: whitelabelColors.brand || baseColors.blue[40],
+    light: settings.brand || baseColors.blue[40],
+    dark: settings.brand || baseColors.blue[40],
   },
   danger: {
     light: baseColors.lobster[50],
@@ -379,8 +381,8 @@ export const colorConfig = {
     dark: baseColors.lobster[50],
   },
   filter: {
-    light: whitelabelColors.filter || baseColors.octopus[50],
-    dark: whitelabelColors.filter || baseColors.octopus[40],
+    light: settings.filter || baseColors.octopus[50],
+    dark: settings.filter || baseColors.octopus[40],
   },
   focus: {
     light: baseColors.blue[20],
@@ -446,8 +448,8 @@ export const colorConfig = {
     dark: baseColors.palm[50],
   },
   summarize: {
-    light: whitelabelColors.summarize || baseColors.palm[50],
-    dark: whitelabelColors.summarize || baseColors.palm[40],
+    light: settings.summarize || baseColors.palm[50],
+    dark: settings.summarize || baseColors.palm[40],
   },
   "switch-off": {
     light: baseColors.orionAlpha[20],
@@ -490,6 +492,13 @@ export const colorConfig = {
     //should be text-secondary
     light: baseColors.orionAlpha[60],
     dark: baseColors.orionAlphaInverse[60],
+  },
+
+  //Used in gauge viz... there should be a better way to do this
+  "text-medium-opaque": {
+    //should be text-secondary
+    light: baseColors.orion[60],
+    dark: baseColors.orion[20],
   },
   "text-primary": {
     light: baseColors.orionAlpha[80],
@@ -643,13 +652,28 @@ export const colorConfig = {
     light: baseColors.orionAlpha[10],
     dark: baseColors.orionAlphaInverse[10],
   },
-};
+});
 
-export const colors: Record<keyof typeof colorConfig, string> = {
-  ...Object.fromEntries(
-    Object.entries(colorConfig).map(([k, v]) => [k, v.light]),
-  ),
-  ...whitelabelColors,
+export const colorConfig = getColorConfig(whitelabelColors);
+
+export const getColors = (settings?: ColorSettings) =>
+  ({
+    ...Object.fromEntries(
+      Object.entries(getColorConfig(settings)).map(([k, v]) => [k, v.light]),
+    ),
+    ...settings,
+  }) as Record<keyof typeof colorConfig, string>;
+
+export const colors = getColors(whitelabelColors);
+
+export const mutateColors = (settings: ColorSettings) => {
+  Object.assign(colorConfig, getColorConfig(settings));
+
+  // Empty the `colors` object to make sure we don't hold onto previously defined (now undefined) values
+  Object.keys(colors).forEach((key) => {
+    delete colors[key as keyof typeof colors];
+  });
+  Object.assign(colors, getColors(settings));
 };
 
 export const staticVizOverrides = {

@@ -8,7 +8,9 @@ import { trackMetabotRequestSent } from "../analytics";
 import {
   type MetabotPromptSubmissionResult,
   type MetabotUserChatMessage,
+  getActiveToolCalls,
   getAgentErrorMessages,
+  getDebugMode,
   getIsLongMetabotConversation,
   getIsProcessing,
   getMessages,
@@ -17,7 +19,6 @@ import {
   getMetabotRequestId,
   getMetabotVisible,
   getProfileOverride,
-  getToolCalls,
   resetConversation as resetConversationAction,
   retryPrompt,
   setVisible as setVisibleAction,
@@ -57,8 +58,12 @@ export const useMetabotAgent = () => {
     getMetabotRequestId as any,
   ) as ReturnType<typeof getMetabotRequestId>;
 
-  const toolCalls = useSelector(getToolCalls as any) as ReturnType<
-    typeof getToolCalls
+  const activeToolCalls = useSelector(getActiveToolCalls as any) as ReturnType<
+    typeof getActiveToolCalls
+  >;
+
+  const debugMode = useSelector(getDebugMode as any) as ReturnType<
+    typeof getDebugMode
   >;
 
   const setVisible = useCallback(
@@ -175,7 +180,8 @@ export const useMetabotAgent = () => {
     startNewConversation,
     submitInput,
     retryMessage,
-    toolCalls,
+    activeToolCalls,
+    debugMode,
     profileOverride,
     reactions,
   };

@@ -1737,7 +1737,9 @@
                          :dashcards [(assoc dc2 :series nil)
                                      (assoc dc3 :series nil)]
                          :tabs nil)}
-                (set (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
+                (into #{} (map (fn [dashboard]
+                                 (update dashboard :dashcards #(sort-by :id %))))
+                      (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
         ;; 1 per dashboard/dashcard/series/tabs
         (is (= 4 (qc)))))))
 

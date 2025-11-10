@@ -155,22 +155,8 @@ width: fixed
 "
             name entity-id collection-id entity-id (str/replace (u/lower-case-en name) #"\s+" "_") dashcards-yaml)))
 
-(defrecord MockSource [source-id base-url branch fail-mode files-atom branches-atom]
-  source.p/Source
-  (create-branch [_this branch _base]
-    (swap! branches-atom conj [branch (str branch "-ref")]))
-
-  (branches [_this]
-    (case fail-mode
-      :branches-error (throw (java.net.UnknownHostException. "Network error"))
-      :auth-error (throw (Exception. "Authentication failed"))
-      :repo-not-found (throw (Exception. "Repository not found"))
-      ;; Default success case
-      @branches-atom))
-
-  (default-branch [_this]
-    "main")
-
+(defrecord MockSourceSnapshot [source-id base-url branch fail-mode files-atom]
+  source.p/SourceSnapshot
   (list-files [_this]
     (case fail-mode
       :list-files-error (throw (Exception. "Failed to list files"))
@@ -197,10 +183,30 @@ width: fixed
       :store-error (throw (Exception. "Store failed"))
       :network-error (throw (java.net.UnknownHostException. "Remote host not found"))
       ;; Default success case - write files to atom
-      (swap! files-atom assoc branch (into {} (map (juxt :path :content) files)))))
+      (swap! files-atom assoc branch (into {} (map (juxt :path :content) files))))
+    "write-files-version")
 
   (version [_this]
     "mock-version"))
+
+(defrecord MockSource [source-id base-url branch fail-mode files-atom branches-atom]
+  source.p/Source
+  (create-branch [_this branch _base]
+    (swap! branches-atom conj [branch (str branch "-ref")]))
+
+  (branches [_this]
+    (case fail-mode
+      :branches-error (throw (java.net.UnknownHostException. "Network error"))
+      :auth-error (throw (Exception. "Authentication failed"))
+      :repo-not-found (throw (Exception. "Repository not found"))
+      ;; Default success case
+      @branches-atom))
+
+  (default-branch [_this]
+    "main")
+
+  (snapshot [_this]
+    (->MockSourceSnapshot source-id base-url branch fail-mode files-atom)))
 
 (defn create-mock-source
   "Create a mock Source for testing"

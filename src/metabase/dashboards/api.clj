@@ -622,10 +622,11 @@
      :models (if (seq cards) ["card"] [])}))
 
 (defn- check-allowed-to-change-embedding
-  "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
+  "You must be a superuser to change the value of `enable_embedding`, `embedding_type` or `embedding_params`. Embedding must be
   enabled."
   [dash-before-update dash-updates]
   (when (or (api/column-will-change? :enable_embedding dash-before-update dash-updates)
+            (api/column-will-change? :embedding_type dash-before-update dash-updates)
             (api/column-will-change? :embedding_params dash-before-update dash-updates))
     (embedding.validation/check-embedding-enabled)
     (api/check-superuser)))
@@ -930,7 +931,7 @@
            (when-let [updates (not-empty
                                (u/select-keys-when
                                 dash-updates
-                                :present #{:description :position :width :collection_id :collection_position :cache_ttl :archived_directly}
+                                :present #{:description :position :width :collection_id :collection_position :cache_ttl :archived_directly :embedding_type}
                                 :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                            :embedding_params :archived :auto_apply_filters}))]
              (when (api/column-will-change? :archived current-dash dash-updates)
@@ -1004,6 +1005,7 @@
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:enable_embedding        {:optional true} [:maybe :boolean]]
+   [:embedding_type          {:optional true} [:maybe :string]]
    [:embedding_params        {:optional true} [:maybe ms/EmbeddingParams]]
    [:parameters              {:optional true} [:maybe ::parameters.schema/parameters]]
    [:position                {:optional true} [:maybe ms/PositiveInt]]

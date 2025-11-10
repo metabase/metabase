@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.config.core :as config]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -130,6 +131,26 @@
       (assoc context :user_is_viewing enhanced-viewing))
     context))
 
+(defn- annotate-transform-source-types
+  "Annotate transforms in context with source types if not already present (e.g. for draft transforms not yet saved)"
+  [context]
+  (if-let [user-viewing (get context :user_is_viewing)]
+    (let [annotated-viewing
+          (mapv (fn [item]
+                  (try
+                    (if (and (= (:type item) "transform")
+                             (not (:source_type item)))
+                      (let [transform (transforms.util/normalize-transform item)]
+                        (assoc transform
+                               :source_type (transforms.util/transform-source-type (:source transform))))
+                      item)
+                    (catch Exception e
+                      (log/error e "Error annotating transform source type for metabot context")
+                      item)))
+                user-viewing)]
+      (assoc context :user_is_viewing annotated-viewing))
+    context))
+
 (defn- add-backend-capabilities
   "Add backend capabilities to context, merging with any existing capabilities."
   [context]
@@ -151,5 +172,6 @@
     opts    :- [:maybe [:map-of :keyword :any]]]
    (-> context
        enhance-context-with-schema
+       annotate-transform-source-types
        add-backend-capabilities
        (set-user-time opts))))

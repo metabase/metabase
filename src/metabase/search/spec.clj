@@ -139,7 +139,7 @@
 (def ^:private Specification
   [:map {:closed true}
    [:name SearchModel]
-   [:visibility [:enum :all :app-user]]
+   [:visibility [:enum :all :app-user :superuser]]
    [:model :keyword]
    [:attrs Attrs]
    [:search-terms [:or

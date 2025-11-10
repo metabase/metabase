@@ -1,6 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:refer-clojure :exclude [select-keys])
+  (:refer-clojure :exclude [select-keys not-empty])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
@@ -32,7 +32,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [select-keys]]
+   [metabase.util.performance :refer [select-keys not-empty]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)

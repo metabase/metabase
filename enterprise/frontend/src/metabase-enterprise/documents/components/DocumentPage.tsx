@@ -138,7 +138,8 @@ export const DocumentPage = ({
   const hasComments =
     !!commentsData?.comments && commentsData.comments.length > 0;
 
-  const canWrite = isNewDocument || documentData?.can_write;
+  const canWrite =
+    !documentData?.archived && (isNewDocument || documentData?.can_write);
 
   useEffect(() => {
     if (error) {

@@ -30,7 +30,7 @@
   [{:keys [verified moderated_status collection] :as result}]
   (let [model (:model result)
         verified? (or (boolean verified) (= moderated_status "verified"))
-        collection-info (select-keys collection [:name :authority_level])
+        collection-info (select-keys collection [:id :name :authority_level])
         common-fields {:id          (:id result)
                        :type        (search-model->result-type model)
                        :name        (:name result)
@@ -62,6 +62,22 @@
              {:database_id (:database_id result)
               :verified    verified?
               :collection  collection-info}))))
+
+(defn- enrich-with-collection-descriptions
+  "Fetch and merge collection descriptions for all search results that have collection IDs."
+  [results]
+  (let [collection-ids (->> results
+                            (keep #(get-in % [:collection :id]))
+                            distinct
+                            seq)]
+    (if-not collection-ids
+      results
+      (let [descriptions (t2/select-pk->fn :description :model/Collection :id [:in collection-ids])]
+        (mapv (fn [result]
+                (if-let [coll-id (get-in result [:collection :id])]
+                  (assoc-in result [:collection :description] (get descriptions coll-id))
+                  result))
+              results)))))
 
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
@@ -103,7 +119,7 @@
   "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.
   Abstracted from the API endpoint logic."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot-id search-native-query]}]
+           entity-types limit metabot-id search-native-query weights]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:term-queries term-queries
               :semantic-queries semantic-queries
@@ -113,7 +129,8 @@
               :entity-types entity-types
               :limit limit
               :metabot-id metabot-id
-              :search-native-query search-native-query})
+              :search-native-query search-native-query
+              :weights weights})
   (let [search-models (if (seq entity-types)
                         (set (distinct (keep entity-type->search-model entity-types)))
                         metabot-search-models)
@@ -126,7 +143,7 @@
         limit (or limit 50)
         search-fn (fn [query]
                     (let [search-context (search/search-context
-                                          (merge
+                                          (cond->
                                            {:search-string query
                                             :models search-models
                                             :table-db-id database-id
@@ -137,16 +154,19 @@
                                             :is-sandboxed-user? (perms/sandboxed-user?)
                                             :is-superuser? api/*is-superuser?*
                                             :current-user-perms @api/*current-user-permissions-set*
+                                            :filter-items-in-personal-collection  "exclude-others"
                                             :context :metabot
                                             :archived false
                                             :limit limit
                                             :offset 0}
                                            ;; Don't include search-native-query key if nil so that we don't
                                            ;; inadvertently filter out search models that don't support it
-                                           (when search-native-query
-                                             {:search-native-query (boolean search-native-query)})
-                                           (when use-verified-content?
-                                             {:verified true})))
+                                            search-native-query
+                                            (assoc :search-native-query (boolean search-native-query))
+                                            use-verified-content?
+                                            (assoc :verified true)
+                                            weights
+                                            (assoc :weights weights)))
                           _ (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
                                        query (:models search-context))
                           search-results (search/search search-context)
@@ -158,4 +178,6 @@
         futures (mapv #(future (search-fn %)) all-queries)
         result-lists (mapv deref futures)
         fused-results (take limit (reciprocal-rank-fusion result-lists))]
-    (map postprocess-search-result fused-results)))
+    (->> fused-results
+         (map postprocess-search-result)
+         enrich-with-collection-descriptions)))
