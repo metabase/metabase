@@ -4,12 +4,10 @@ import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import {
   useGetTableQueryMetadataQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";
@@ -26,7 +24,7 @@ import {
   TableSection,
 } from "./components";
 import { EditTableMetadata } from "./components/TableSection/EditTableMetadata";
-import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
+import { COLUMN_CONFIG } from "./constants";
 import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
 import type { RouteParams } from "./types";
 import { getTableMetadataQuery, parseRouteParams } from "./utils";
@@ -261,31 +259,6 @@ function DataModelContent({ params }: Props) {
               onPreviewTypeChange={setPreviewType}
             />
           </Box>
-        )}
-
-        {isEmptyStateShown && (
-          <Flex
-            align="center"
-            flex="4 1 0"
-            justify="center"
-            miw={rem(EMPTY_STATE_MIN_WIDTH)}
-          >
-            <Box p="xl">
-              <EmptyState
-                illustrationElement={<img src={EmptyDashboardBot} />}
-                title={
-                  table
-                    ? t`Edit the table and fields`
-                    : t`Start by selecting data to model`
-                }
-                message={
-                  table
-                    ? t`Select a field to edit its name, description, formatting, and more.`
-                    : t`Browse your databases to find the table you’d like to edit.`
-                }
-              />
-            </Box>
-          </Flex>
         )}
       </>
 
