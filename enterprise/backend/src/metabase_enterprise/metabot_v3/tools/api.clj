@@ -1045,7 +1045,8 @@
     [:created_at          {:optional true} [:maybe ms/NonBlankString]]
     [:last_edited_at      {:optional true} [:maybe ms/NonBlankString]]
     [:search_native_query {:optional true, :default false} [:maybe :boolean]]
-    [:limit               {:optional true, :default 50} [:and :int [:fn #(<= 1 % 100)]]]]
+    [:limit               {:optional true, :default 50} [:and :int [:fn #(<= 1 % 100)]]]
+    [:weights             {:optional true} [:map-of :keyword number?]]]
    [:map {:encode/tool-api-request
           #(update-keys % (comp keyword u/->kebab-case-en))}]])
 
