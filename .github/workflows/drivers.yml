@@ -770,7 +770,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-postgres:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
