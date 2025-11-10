@@ -25,7 +25,7 @@ interface EntitySearchSectionProps {
   canBrowseAll?: boolean;
   canCreateNewQuestion?: boolean;
   selectedSearchModelName?: string;
-  onTriggerCreateNew: () => void;
+  onTriggerCreateNew?: () => void;
 }
 
 export function EntitySearchSection({
@@ -44,6 +44,9 @@ export function EntitySearchSection({
   canCreateNewQuestion,
   onTriggerCreateNew,
 }: EntitySearchSectionProps) {
+  const hasNoItems = menuItems.length === 0 && searchResults.length === 0;
+  const shouldShowNoResults = query.length > 0 && hasNoItems;
+
   return (
     <>
       {selectedSearchModelName && (
@@ -63,20 +66,16 @@ export function EntitySearchSection({
         />
       ))}
 
-      {query.length > 0 &&
-      menuItems.length === 0 &&
-      searchResults.length === 0 ? (
-        <>
-          <Box p="sm" ta="center">
-            <Text size="md" c="text-medium">{t`No results found`}</Text>
-          </Box>
-          {(canCreateNewQuestion || canBrowseAll) && (
-            <Divider my="sm" mx="sm" />
-          )}
-        </>
+      {shouldShowNoResults ? (
+        <Box p="sm" ta="center">
+          <Text size="md" c="text-medium">{t`No results found`}</Text>
+        </Box>
       ) : null}
 
-      {canCreateNewQuestion && (
+      {(shouldShowNoResults || !hasNoItems) &&
+        (canCreateNewQuestion || canBrowseAll) && <Divider my="sm" mx="sm" />}
+
+      {canCreateNewQuestion && onTriggerCreateNew && (
         <CreateNewQuestionFooter
           isSelected={selectedIndex === menuItems.length}
           onClick={onTriggerCreateNew}
