@@ -9,10 +9,8 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Markdown from "metabase/common/components/Markdown";
-import { useSetting } from "metabase/common/hooks";
 import {
   Form,
   FormCheckbox,
@@ -20,6 +18,7 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
+import { getStoreUsers } from "metabase/selectors/store-users";
 import { Divider, Flex, Group, List, Stack, Text } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 
@@ -76,16 +75,7 @@ interface MetabotTrialFormFields {
 }
 
 export const MetabotTrialPage = () => {
-  const currentUser = useSelector(getCurrentUser);
-  const tokenStatus = useSetting("token-status");
-  const storeUserEmails =
-    tokenStatus?.["store-users"]?.map(({ email }) => email.toLowerCase()) ?? [];
-  const isStoreUser = storeUserEmails.includes(
-    currentUser?.email.toLowerCase(),
-  );
-  const anyStoreUserEmailAddress =
-    storeUserEmails.length > 0 ? storeUserEmails[0] : undefined;
-
+  const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
   const [purchaseCloudAddOn] = usePurchaseCloudAddOnMutation();
   const onSubmit = useCallback(
