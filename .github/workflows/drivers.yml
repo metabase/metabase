@@ -21,8 +21,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      # TODO (Cam 2025-11-10) this is really slow, it takes like a whole minute; the output suggest it fetches every
-      # branch in origin and not just a single ref like we expect. Figure out how to fix this
       - name: Fetch base branch
         if: github.event_name == 'pull_request' && github.event.pull_request.base.ref != ''
         run: |
