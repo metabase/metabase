@@ -2,13 +2,13 @@ import { dissoc } from "icepick";
 import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import ModalContent from "metabase/common/components/ModalContent";
 import {
   CopyDashboardFormConnected,
   type CopyDashboardFormProperties,
 } from "metabase/dashboard/containers/CopyDashboardForm";
 import { PLUGIN_DOCUMENTS } from "metabase/plugins";
-import { CopyQuestionForm } from "metabase/questions/components/CopyQuestionForm";
+import { CopyCardForm } from "metabase/questions/components/CopyCardForm/CopyCardForm";
+import { Modal } from "metabase/ui";
 
 interface EntityCopyModalProps {
   entityType: string;
@@ -49,8 +49,9 @@ const EntityCopyModal = ({
   };
 
   return (
-    <ModalContent
+    <Modal
       title={title || t`Duplicate "${resolvedObject.name}"`}
+      opened
       onClose={onClose}
     >
       {entityType === "dashboards" && (
@@ -63,8 +64,8 @@ const EntityCopyModal = ({
           originalDashboardId={resolvedObject.id}
         />
       )}
-      {entityType === "questions" && (
-        <CopyQuestionForm
+      {entityType === "cards" && (
+        <CopyCardForm
           onSubmit={copy}
           onCancel={onClose}
           onSaved={onSaved}
@@ -83,7 +84,7 @@ const EntityCopyModal = ({
           {...props}
         />
       )}
-    </ModalContent>
+    </Modal>
   );
 };
 

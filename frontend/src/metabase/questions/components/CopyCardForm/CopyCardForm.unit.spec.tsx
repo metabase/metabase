@@ -8,10 +8,7 @@ import {
   createMockDashboardTab,
 } from "metabase-types/api/mocks";
 
-import {
-  CopyQuestionForm,
-  type CopyQuestionProperties,
-} from "./CopyQuestionForm";
+import { CopyCardForm, type CopyCardProperties } from "./CopyCardForm";
 
 const FOO_DASH = createMockDashboard({
   id: 1,
@@ -24,7 +21,7 @@ const FOO_DASH = createMockDashboard({
 });
 
 type SetupOpts = {
-  initialValues?: Partial<CopyQuestionProperties>;
+  initialValues?: Partial<CopyCardProperties>;
   model?: CardType;
 };
 
@@ -36,7 +33,7 @@ function setup({ initialValues = {}, model = "question" }: SetupOpts = {}) {
   setupDashboardEndpoints(FOO_DASH);
 
   renderWithProviders(
-    <CopyQuestionForm
+    <CopyCardForm
       model={model}
       initialValues={initialValues}
       onSubmit={onSubmit}

@@ -225,7 +225,11 @@ export const getRoutes = (store) => {
               modal={DashboardMoveModalConnected}
               noWrap
             />
-            <ModalRoute path="copy" modal={DashboardCopyModalConnected} />
+            <ModalRoute
+              path="copy"
+              modal={DashboardCopyModalConnected}
+              noWrap
+            />
             <ModalRoute
               path="archive"
               modal={ArchiveDashboardModalConnected}
