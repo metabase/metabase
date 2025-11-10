@@ -74,6 +74,7 @@
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
   (u/prog1 (add-template-tags snippet)
+    (collection/check-allowed-content :native-query-snippet (:collection_id snippet))
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 
 (t2/define-after-insert :model/NativeQuerySnippet

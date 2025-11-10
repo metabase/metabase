@@ -83,6 +83,7 @@
   (let [defaults  {:parameters []}
         dashboard (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))]
     (u/prog1 dashboard
+      (collection/check-allowed-content :dashboard (:collection_id dashboard))
       (params/assert-valid-parameters dashboard)
       (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))))
 

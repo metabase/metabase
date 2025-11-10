@@ -71,6 +71,7 @@
                            (apply merge defaults {:collection_id collection-id}))]
     (u/prog1 notification
       (assert-valid-parameters notification)
+      (collection/check-allowed-content :pulse (:collection_id notification))
       (collection/check-collection-namespace :model/Pulse (:collection_id notification)))))
 
 (def ^:dynamic *allow-moving-dashboard-subscriptions*

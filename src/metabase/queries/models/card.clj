@@ -710,6 +710,7 @@
 
 (t2/define-before-insert :model/Card
   [card]
+  (collection/check-allowed-content (:type card) (:collection_id card))
   (-> card
       (assoc :metabase_version config/mb-version-string
              :card_schema current-schema-version)

@@ -18,7 +18,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
@@ -170,14 +170,19 @@
     (let [library-location        (str "/" (:id <>) "/")
           semantic-layer-id       (t2/insert-returning-pk! :model/Collection {:name     "Semantic Layer"
                                                                               :type     library-collection-type
-                                                                              :location library-location})
+                                                                              :location library-location
+                                                                              :allowed_content {:collection true}})
           semantic-layer-location (str library-location semantic-layer-id "/")]
       (t2/insert! :model/Collection {:name     "Models"
                                      :type     library-collection-type
-                                     :location semantic-layer-location})
+                                     :location semantic-layer-location
+                                     :allowed_content {:collection true
+                                                       :model      true}})
       (t2/insert! :model/Collection {:name     "Metrics"
                                      :type     library-collection-type
-                                     :location semantic-layer-location}))))
+                                     :location semantic-layer-location
+                                     :allowed_content {:collection true
+                                                       :metric     true}}))))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
@@ -187,7 +192,8 @@
 
 (t2/deftransforms :model/Collection
   {:namespace       mi/transform-keyword
-   :authority_level mi/transform-keyword})
+   :authority_level mi/transform-keyword
+   :allowed_content mi/transform-json})
 
 (defn maybe-localize-trash-name
   "If the collection is the Trash, translate the `name`. This is a public function because we can't rely on
@@ -372,6 +378,12 @@
                     (tru "A remote-synced Collection can only be placed in another remote-synced Collection or the root Collection.")
                     (tru "A Collection placed in a remote-synced Collection must also be remote-synced."))]
           (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
+
+(defenterprise check-allowed-content
+  "Checks contents of a collection before saving it. The OSS implementation is a no-op."
+  metabase-enterprise.library.core
+  [_model-type _collection-id]
+  true)
 
 ;; This function is defined later after children-location is available
 
@@ -1506,6 +1518,7 @@
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
   (assert-valid-remote-synced-parent collection)
+  (check-allowed-content :collection (when-let [location (:location collection)] (location-path->parent-id location)))
   (assoc collection :slug (slugify collection-name)))
 
 (defn- copy-collection-permissions!
