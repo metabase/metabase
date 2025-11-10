@@ -53,7 +53,7 @@
    [metabase.user-key-value.api]
    [metabase.users.api]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.warehouse-schema.api]
+   [metabase.warehouse-schema-rest.api]
    [metabase.warehouses-rest.api]
    [metabase.xrays.api]))
 
@@ -149,7 +149,7 @@
    "/eid-translation"      'metabase.eid-translation.api
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding.api/embedding-routes)
-   "/field"                (+auth metabase.warehouse-schema.api/field-routes)
+   "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
    "/geojson"              'metabase.geojson.api
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
@@ -174,7 +174,7 @@
    "/setting"              (+auth 'metabase.settings-rest.api)
    "/setup"                'metabase.setup.api
    "/slack"                (+auth metabase.channel.api/slack-routes)
-   "/table"                (+auth metabase.warehouse-schema.api/table-routes)
+   "/table"                (+auth metabase.warehouse-schema-rest.api/table-routes)
    "/task"                 (+auth 'metabase.task-history.api)
    "/testing"              (if metabase.testing-api.core/enable-testing-routes? 'metabase.testing-api.api pass-thru-handler)
    "/tiles"                (+auth 'metabase.tiles.api)

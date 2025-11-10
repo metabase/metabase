@@ -1436,8 +1436,7 @@
 
   warehouse-schema
   {:team "UX West"
-   :api  #{metabase.warehouse-schema.api
-           metabase.warehouse-schema.field
+   :api  #{metabase.warehouse-schema.field
            metabase.warehouse-schema.metadata-from-qp
            metabase.warehouse-schema.metadata-queries
            metabase.warehouse-schema.models.field
@@ -1445,14 +1444,11 @@
            metabase.warehouse-schema.models.field-values
            metabase.warehouse-schema.models.table
            metabase.warehouse-schema.table}
-   :uses #{analytics
-           analyze
+   :uses #{analyze
            api
            app-db
            audit-app
-           database-routing
            driver
-           events
            lib
            lib-be
            models
@@ -1460,13 +1456,29 @@
            permissions
            premium-features
            query-processor
-           request
            search
+           util
+           warehouses}}
+
+  warehouse-schema-rest
+  {:team "UX West"
+   :api  #{metabase.warehouse-schema-rest.api}
+   :uses #{analytics
+           api
+           app-db
+           database-routing
+           driver
+           events
+           lib
+           models
+           parameters
+           query-processor
+           request
            sync
            types
            upload
            util
-           warehouses
+           warehouse-schema
            warehouses-rest
            xrays}}
 

@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.warehouse-schema.api.table-test
+(ns ^:mb/driver-tests metabase.warehouse-schema-rest.api.table-test
   "Tests for /api/table endpoints."
   (:require
    [clojure.set :as set]
@@ -15,7 +15,7 @@
    [metabase.test.http-client :as client]
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
-   [metabase.warehouse-schema.api.table :as api.table]
+   [metabase.warehouse-schema-rest.api.table :as api.table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

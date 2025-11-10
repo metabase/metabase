@@ -534,10 +534,10 @@
   (let [deps        (dependencies)
         all-modules (into (sorted-set) (map :module) deps)
         module-deps (set (keys (all-module-deps-paths deps module)))]
-    (printf "Module %s depends on %d/%d (%0.1f) other modules.\n"
+    (printf "Module %s depends on %d/%d (%.1f%%) other modules.\n"
             module
             (count module-deps)
             (count all-modules)
-            (double (/ (count module-deps) (count all-modules))))
+            (double (* (/ (count module-deps) (count all-modules)) 100)))
     (flush)
     (set/difference all-modules module-deps)))

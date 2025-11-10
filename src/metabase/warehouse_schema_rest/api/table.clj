@@ -1,4 +1,4 @@
-(ns metabase.warehouse-schema.api.table
+(ns metabase.warehouse-schema-rest.api.table
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
