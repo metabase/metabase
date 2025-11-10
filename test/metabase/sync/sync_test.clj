@@ -97,7 +97,7 @@
   true)
 
 (defmethod driver/mbql->native ::sync-test
-  [_ query]
+  [_ _query]
   {:query "SQL string"})
 
 (defn- ^:dynamic *execute-response*
