@@ -14,16 +14,21 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
+   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql PreparedStatement)))
 
 (comment metabase-enterprise.transforms.api.transform-job/keep-me
          metabase-enterprise.transforms.api.transform-tag/keep-me)
@@ -265,6 +270,44 @@
       (-> (response/response {:message (deferred-tru "Transform run started")
                               :run_id run-id})
           (assoc :status 202)))))
+
+(defn- extract-columns-from-native-query
+  "Attempts to extract column names from a native SQL query without executing it.
+
+  Returns a vector of column names (as strings), or nil if extraction fails.
+
+  Uses PreparedStatement.getMetaData() to inspect the query structure. This works for most
+  modern JDBC drivers but may not be supported by all drivers or for all query types."
+  [driver database-id native-query]
+  (try
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     database-id
+     {}
+     (fn [conn]
+       (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement driver conn native-query [])]
+         (when-let [rsmeta (.getMetaData stmt)]
+           (let [columns (sql-jdbc.execute/column-metadata driver rsmeta)]
+             (seq (map :name columns)))))))
+    (catch Exception e
+      (log/debugf e "Failed to extract columns from native query: %s" (ex-message e))
+      nil)))
+
+(api.macros/defendpoint :post "/extract-columns"
+  "Extract column names from a native SQL query without executing it.
+
+  Returns a map with a :columns key containing a vector of column names (strings).
+  If extraction fails, returns nil for :columns."
+  [_route-params
+   _query-params
+   {:keys [database_id native_query]} :- [:map
+                                          [:database_id ms/PositiveInt]
+                                          [:native_query ms/NonBlankString]]]
+  (api/check-superuser)
+  (let [database (api/check-404 (t2/select-one :model/Database :id database_id))
+        driver-name (driver/the-initialized-driver (:engine database))
+        columns (extract-columns-from-native-query driver-name database_id native_query)]
+    {:columns columns}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."
