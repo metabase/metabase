@@ -1,4 +1,4 @@
-(ns metabase-enterprise.api.routes
+(ns metabase-enterprise.api-routes.routes
   "API routes that are only available when running Metabase® Enterprise Edition™. Even tho these routes are available,
   not all routes might work unless we have a valid premium features token to enable those features.
 
@@ -11,7 +11,7 @@
    [metabase-enterprise.ai-entity-analysis.api]
    [metabase-enterprise.ai-sql-fixer.api]
    [metabase-enterprise.ai-sql-generation.api]
-   [metabase-enterprise.api.routes.common :as ee.api.common]
+   [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.cloud-add-ons.api]
@@ -80,7 +80,7 @@
   (let [handler (cond-> handler
                   (simple-symbol? handler) api.macros/ns-handler)]
     (->> handler
-         (ee.api.common/+require-premium-feature required-feature (required-feature->message required-feature)))))
+         (ee.api/+require-premium-feature required-feature (required-feature->message required-feature)))))
 
 (def ^:private naughty-routes-map
   "The following routes are NAUGHTY and do not follow the naming convention (i.e., they do not start with
