@@ -174,6 +174,6 @@
         scorers))
 
 (defn no-scoring-required?
-  "Scoring is unnecessary unless we will return more than 1 result."
+  "Scoring is unnecessary when we are not returning any result, e.g. counting potential results"
   [{:keys [limit-int]}]
-  (and limit-int (<= limit-int 1)))
+  (and limit-int (zero? limit-int)))
