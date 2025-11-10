@@ -187,7 +187,7 @@ export const getRoutes = (store) => {
 
           <Route path="collection/:slug" component={CollectionLanding}>
             <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
-            <ModalRoute path="archive" modal={ArchiveCollectionModal} />
+            <ModalRoute path="archive" modal={ArchiveCollectionModal} noWrap />
             <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
             <ModalRoute
               path="move-questions-dashboard"
@@ -226,7 +226,11 @@ export const getRoutes = (store) => {
               noWrap
             />
             <ModalRoute path="copy" modal={DashboardCopyModalConnected} />
-            <ModalRoute path="archive" modal={ArchiveDashboardModalConnected} />
+            <ModalRoute
+              path="archive"
+              modal={ArchiveDashboardModalConnected}
+              noWrap
+            />
           </Route>
 
           <Route path="/question">

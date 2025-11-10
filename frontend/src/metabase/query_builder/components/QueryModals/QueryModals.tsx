@@ -228,9 +228,7 @@ export function QueryModals({
       return <MoveCardModal card={question.card()} onClose={onCloseModal} />;
     case MODAL_TYPES.ARCHIVE:
       return (
-        <Modal onClose={onCloseModal}>
-          <ArchiveQuestionModal question={question} onClose={onCloseModal} />
-        </Modal>
+        <ArchiveQuestionModal question={question} onClose={onCloseModal} />
       );
     case MODAL_TYPES.CLONE:
       return (
