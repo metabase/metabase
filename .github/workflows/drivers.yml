@@ -33,13 +33,12 @@ jobs:
         run: |
           echo "date=$(/bin/date -u "+%Y%m%d")" >> $GITHUB_OUTPUT
       - name: Restore Babashka cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache@v4
         with:
           path: |
             ~/.m2
             ~/.deps.clj
           restore-keys: |
-            mage-drivers-${{ steps.get-date.outputs.date }}
             mage-drivers-
           key: >-
             mage-drivers-${{ steps.get-date.outputs.date }}
