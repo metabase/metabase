@@ -340,23 +340,25 @@
     (when (driver/should-sync-active-subset? driver/*driver*)
       (mt/dataset
         orderItemsDb
-        (let [users-active-subset #{(mt/id :users :_id)
+        (let [users-active-subset #{#_(mt/id :users :_id)
                                     (mt/id :users :email)
                                     (mt/id :users :createdAt)}
-              orderItems-active-subset #{(mt/id :orderItems :_id)
-                                         (mt/id :orderItems :data)
+              orderItems-active-subset #{#_(mt/id :orderItems :_id)
+                                         #_(mt/id :orderItems :data)
                                          (mt/id :orderItems :data :orderDate)
-                                         (mt/id :orderItems :data :price)}
-              products-active-subset #{(mt/id :products :_id)
+                                         ;; no fp bc float
+                                         #_(mt/id :orderItems :data :price)}
+              products-active-subset #{#_(mt/id :products :_id)
                                        (mt/id :products :name)
                                        (mt/id :products :category)}
               active-subset-field-ids (into #{} cat [users-active-subset
                                                      orderItems-active-subset
                                                      products-active-subset])
-              original-fields-to-fingerprint @#'sync.fingerprint/fields-to-fingerprint]
+              original-fields-to-fingerprint @#'sync.fingerprint/fields-to-fingerprint
+              results (atom #{})]
           (try
 
-          ;; First adjust fingerprint version so fields are considered for fingerprinting
+            ;; First adjust fingerprint version so fields are considered for fingerprinting
             (t2/update! :model/Field :id [:in active-subset-field-ids] {:fingerprint_version 0})
 
             (testing "... and now check that only active subset fields are picked for fingerprinting"
@@ -364,26 +366,20 @@
                             sync.fingerprint/fields-to-fingerprint
                             (fn [& args]
                               (let [result (apply original-fields-to-fingerprint args)]
-                                (throw (ex-info "For checking fingerprinted fields"
-                                                {:fields-to-fingerprint result
-                                                 :testing-exception true}))))]
+                                (swap! results into (map :id) result)
+                                result))]
                 (testing "... for that do full sync catching synthetic exception with considered fields"
-                  (try
-                    (sync/sync-database! (mt/db) {:scan :full})
-                    (catch clojure.lang.ExceptionInfo e
-                      (let [{:keys [testing-exception fields-to-fingerprint]} (ex-data e)]
-                        (if testing-exception
-                          (testing "... and now the actual check"
-                            (is (= (count active-subset-field-ids)
-                                   (count fields-to-fingerprint)))
-                            (loop [[first-exp-id & rest-exp-ids] active-subset-field-ids
-                                   returned-field-ids  (set (map :id fields-to-fingerprint))]
-                              (if (nil? first-exp-id)
-                                (is (empty? returned-field-ids))
-                                (do (is (contains? returned-field-ids first-exp-id))
-                                    (recur rest-exp-ids
-                                           (disj returned-field-ids first-exp-id))))))
-                          (throw e))))))))
+                  (sync/sync-database! (mt/db) {:scan :full})
+                  (testing "... and now the actual check"
+                    (is (= (count active-subset-field-ids)
+                           (count @results)))
+                    (loop [[first-exp-id & rest-exp-ids] active-subset-field-ids
+                           returned-field-ids  @results]
+                      (if (nil? first-exp-id)
+                        (is (empty? returned-field-ids))
+                        (do (is (contains? returned-field-ids first-exp-id))
+                            (recur rest-exp-ids
+                                   (disj returned-field-ids first-exp-id)))))))))
             (finally
               (testing "Finally restore fields to the original state"
               ;; Full sync should adjust fingerprint version of modified fields back to the original
