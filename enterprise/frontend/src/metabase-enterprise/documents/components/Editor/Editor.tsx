@@ -54,6 +54,10 @@ const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   "codeBlock",
 ];
 
+const BUBBLE_MENU_DISALLOWED_FULLY_SELECTED_NODES: string[] = [
+  SupportingText.name,
+];
+
 const getMetabotPromptSerializer =
   (getState: () => DocumentsStoreState): PromptSerializer =>
   (node) => {
@@ -259,6 +263,9 @@ export const Editor: React.FC<EditorProps> = ({
           <EditorBubbleMenu
             editor={editor}
             disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
+            disallowedFullySelectedNodes={
+              BUBBLE_MENU_DISALLOWED_FULLY_SELECTED_NODES
+            }
           />
         )}
         <Box pos="absolute" top={0} left={0} w="100%">
