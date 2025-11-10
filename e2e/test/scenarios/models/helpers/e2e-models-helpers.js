@@ -39,8 +39,6 @@ export function saveQuestionBasedOnModel({ modelId, name }) {
     }
     cy.findByText("Save").click();
   });
-
-  modal().findByText("Not now").click();
 }
 
 export function selectDimensionOptionFromSidebar(name) {
