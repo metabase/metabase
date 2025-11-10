@@ -33,17 +33,11 @@ jobs:
         id: check_branch_and_files_changed
         run: |
           IS_MASTER_OR_RELEASE="${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}"
-          HAS_TEAM_LABEL="${{ contains(github.event.pull_request.labels.*.name, '.Team/Drivers') || contains(github.event.pull_request.labels.*.name, '.Team/Querying') || contains(github.event.pull_request.labels.*.name, '.Team/SemanticLayer') || contains(github.event.pull_request.labels.*.name, '.Team/DevEx') }}"
-
           echo "Is master or release: ${IS_MASTER_OR_RELEASE}"
-          echo "Has '.Team/Drivers' or '.Team/Querying' or '.Team/SemanticLayer' label: ${HAS_TEAM_LABEL}"
 
           if [[ "${IS_MASTER_OR_RELEASE}" == "true" ]]; then
             echo "skip=false" >> $GITHUB_OUTPUT
             echo "Merging into master or a release branch. Tier 3 driver tests will run."
-          elif [[ "${HAS_TEAM_LABEL}" == "true" ]]; then
-            echo "skip=false" >> $GITHUB_OUTPUT
-            echo "A relevant team label is present. Tier 3 driver tests will run."
           else
             echo "Checking for changes in relevant modules..."
             if [[ ./bin/mage can-skip-driver-tests ${{ github.event.pull_request.base.sha }} ]]; then
