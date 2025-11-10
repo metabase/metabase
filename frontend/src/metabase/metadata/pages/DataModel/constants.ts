@@ -1,7 +1,5 @@
 import type { Column, ColumnSizeConfig } from "./types";
 
-const PREVIEW_COLUMN_PADDING = 2 * 32;
-
 export const COLUMN_CONFIG: Record<Column, ColumnSizeConfig> = {
   nav: {
     flex: "6 1 0",
