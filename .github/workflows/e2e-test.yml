@@ -115,11 +115,18 @@ jobs:
         if: github.run_attempt != '1'
         run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
 
+      - name: Build CLJS
+        run: yarn build-release:cljs
+
       - name: Build frontend (in background)
         run: |
-          yarn build-release & yarn build-release:static-viz &
+          yarn build-release:js &
 
-      - name: Run live backend
+      - name: Build static-viz (in background)
+        run: |
+          yarn build-release:static-viz &
+
+      - name: Run live backend (in background)
         env:
           MB_DB_TYPE: h2
           MB_ENABLE_TEST_ENDPOINTS: true
