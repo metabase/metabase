@@ -229,7 +229,7 @@
              possible-location))))
      (stage-paths query stage-number))))
 
-(defn- simplify-query [query]
+(defn- maybe-merge-first-stage [query]
   ;; Note that this is a fairly narrowly-scoped change to fix #45041
   ;; Merging more stages would be plausible, but this approach is enough to fix the current bug
   ;; and I'm trying to minimize the chances of breaking anything else.
@@ -306,7 +306,7 @@
                            (lib.schema.util/distinct-mbql-clauses? (:breakout new-stage)))
                           ;; any change to something other than breakouts is always considered valid
                           true)
-          new-query (simplify-query new-query)]
+          new-query (maybe-merge-first-stage new-query)]
       (if valid-change?
         new-query
         query))))
