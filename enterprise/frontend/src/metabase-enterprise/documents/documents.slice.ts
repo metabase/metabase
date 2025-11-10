@@ -97,7 +97,6 @@ const documentsSlice = createSlice({
       state.cardEmbeds = action.payload;
     },
     setCurrentDocument: (state, action: PayloadAction<Document | null>) => {
-      // @ts-expect-error -- Type instantiation is excessively deep and possibly infinite.
       state.currentDocument = action.payload;
     },
     resetDocuments: () => {
@@ -116,7 +115,7 @@ const documentsSlice = createSlice({
         ...originalCard,
         ...modifiedData,
         id: draftId,
-      };
+      } as Card;
     },
     clearDraftCards: (state) => {
       state.draftCards = {};

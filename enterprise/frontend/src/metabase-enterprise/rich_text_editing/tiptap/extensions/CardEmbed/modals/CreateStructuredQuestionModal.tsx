@@ -76,7 +76,7 @@ export const CreateStructuredQuestionModal = ({
 
       const modifiedData = {
         name,
-        database_id: dataset_query.database,
+        database_id: dataset_query.database || undefined,
         dataset_query: dataset_query,
         display: modifiedQuestion.display(),
         visualization_settings:
