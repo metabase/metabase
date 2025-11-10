@@ -9,7 +9,6 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
-import { usePurchaseCloudAddOnMutation } from "metabase/api";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Markdown from "metabase/common/components/Markdown";
 import { useSetting } from "metabase/common/hooks";
@@ -21,6 +20,7 @@ import {
 } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { Divider, Flex, Group, List, Stack, Text } from "metabase/ui";
+import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 
 import { MetabotSettingUpModal } from "./MetabotSettingUpModal";
 
