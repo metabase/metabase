@@ -913,37 +913,40 @@
                                      :name   table-name}}]
             (test-transform-revisions :put (str "ee/transform/" transform-id) widget-req 2)))))))
 
-(deftest ^:parallel extract-columns-from-native-query-test
+(deftest ^:parallel extract-columns-from-query-test
   (testing "POST /api/ee/transform/extract-columns"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
-          (testing "Successfully extracts columns from a simple SELECT query"
-            (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
-                                                 {:database_id (mt/id)
-                                                  :native_query "SELECT id, name, category, price FROM transforms_products"})]
-              (is (= ["id" "name" "category" "price"] (:columns response)))))
+          (letfn [(make-native-query [sql]
+                    {:lib/type :mbql/query
+                     :database (mt/id)
+                     :stages [{:lib/type :mbql.stage/native
+                               :native sql}]})]
+            (testing "Successfully extracts columns from a simple SELECT query"
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
+                                                   {:query (make-native-query "SELECT id, name, category, price FROM transforms_products")})]
+                (is (= ["id" "name" "category" "price"] (:columns response)))))
 
-          (testing "Returns empty vector for invalid SQL"
-            (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
-                                                 {:database_id (mt/id)
-                                                  :native_query "SELECT * FORM invalid_table"})]
-              (is (nil? (:columns response)))))
+            (testing "Returns nil for invalid SQL"
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
+                                                   {:query (make-native-query "SELECT * FORM invalid_table")})]
+                (is (nil? (:columns response)))))
 
-          (testing "Extracts columns from query with aliases"
-            (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
-                                                 {:database_id (mt/id)
-                                                  :native_query "SELECT id AS product_id, name AS product_name FROM transforms_products"})]
-              (is (= ["product_id" "product_name"] (:columns response)))))
+            (testing "Extracts columns from query with aliases"
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
+                                                   {:query (make-native-query "SELECT id AS product_id, name AS product_name FROM transforms_products")})]
+                (is (= ["product_id" "product_name"] (:columns response)))))
 
-          (testing "Requires superuser permissions"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :post 403 "ee/transform/extract-columns"
-                                         {:database_id (mt/id)
-                                          :native_query "SELECT * FROM transforms_products"}))))
+            (testing "Requires superuser permissions"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "ee/transform/extract-columns"
+                                           {:query (make-native-query "SELECT * FROM transforms_products")}))))
 
-          (testing "Returns 404 for non-existent database"
-            (is (= "Not found."
-                   (mt/user-http-request :crowberto :post 404 "ee/transform/extract-columns"
-                                         {:database_id 999999
-                                          :native_query "SELECT * FROM transforms_products"})))))))))
+            (testing "Returns 404 for non-existent database"
+              (is (= "Not found."
+                     (mt/user-http-request :crowberto :post 404 "ee/transform/extract-columns"
+                                           {:query {:lib/type :mbql/query
+                                                    :database 999999
+                                                    :stages [{:lib/type :mbql.stage/native
+                                                              :native "SELECT * FROM transforms_products"}]}}))))))))))

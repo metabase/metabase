@@ -18,6 +18,8 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -271,42 +273,50 @@
                               :run_id run-id})
           (assoc :status 202)))))
 
-(defn- extract-columns-from-native-query
-  "Attempts to extract column names from a native SQL query without executing it.
+(defn- extract-columns-from-query
+  "Attempts to extract column names from an MBQL query without executing it.
 
   Returns a vector of column names (as strings), or nil if extraction fails.
 
-  Uses PreparedStatement.getMetaData() to inspect the query structure. This works for most
+  The query is first compiled to native SQL using [[qp.compile/compile-with-inline-parameters]],
+  which handles template tags like [[where id > {{checkpoint}}]]. Then uses
+  PreparedStatement.getMetaData() to inspect the query structure. This works for most
   modern JDBC drivers but may not be supported by all drivers or for all query types."
-  [driver database-id native-query]
+  [driver database-id query]
   (try
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     database-id
-     {}
-     (fn [conn]
-       (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement driver conn native-query [])]
-         (when-let [rsmeta (.getMetaData stmt)]
-           (let [columns (sql-jdbc.execute/column-metadata driver rsmeta)]
-             (seq (map :name columns)))))))
+    (let [compiled (qp.compile/compile-with-inline-parameters query)
+          native-sql (:query compiled)]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database-id
+       {}
+       (fn [conn]
+         (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement driver conn native-sql [])]
+           (when-let [rsmeta (.getMetaData stmt)]
+             (let [columns (sql-jdbc.execute/column-metadata driver rsmeta)]
+               (seq (map :name columns))))))))
     (catch Exception e
-      (log/debugf e "Failed to extract columns from native query: %s" (ex-message e))
+      (log/debugf e "Failed to extract columns from query: %s" (ex-message e))
       nil)))
 
 (api.macros/defendpoint :post "/extract-columns"
-  "Extract column names from a native SQL query without executing it.
+  "Extract column names from an MBQL query without executing it.
+
+  Compiles the query to native SQL using [[qp.compile/compile-with-inline-parameters]],
+  which handles parameterized queries with template tags. Then extracts column names
+  using PreparedStatement metadata.
 
   Returns a map with a :columns key containing a vector of column names (strings).
   If extraction fails, returns nil for :columns."
   [_route-params
    _query-params
-   {:keys [database_id native_query]} :- [:map
-                                          [:database_id ms/PositiveInt]
-                                          [:native_query ms/NonBlankString]]]
+   {:keys [query]} :- [:map
+                       [:query ::qp.schema/any-query]]]
   (api/check-superuser)
-  (let [database (api/check-404 (t2/select-one :model/Database :id database_id))
+  (let [database-id (:database query)
+        database (api/check-404 (t2/select-one :model/Database :id database-id))
         driver-name (driver/the-initialized-driver (:engine database))
-        columns (extract-columns-from-native-query driver-name database_id native_query)]
+        columns (extract-columns-from-query driver-name database-id query)]
     {:columns columns}))
 
 (def ^{:arglists '([request respond raise])} routes

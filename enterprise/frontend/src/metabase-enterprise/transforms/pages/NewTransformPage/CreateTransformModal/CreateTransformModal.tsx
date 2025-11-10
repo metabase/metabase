@@ -184,14 +184,13 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
               query={libQuery}
             />
           )}
-          {!isMbqlQuery && libQuery && source.type === "query" && (
+          {!isMbqlQuery && source.type === "query" && source.query && (
             <NativeQueryColumnSelect
               name="checkpointFilter"
               label={t`Source Filter Field`}
               placeholder={t`e.g., id, updated_at`}
               description={t`Column name to use in the incremental filter`}
-              databaseId={Lib.databaseID(libQuery)}
-              nativeQuery={Lib.rawNativeQuery(libQuery) ?? ""}
+              query={source.query}
             />
           )}
           {isPythonTransform && source["source-tables"] && (

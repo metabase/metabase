@@ -240,14 +240,13 @@ function UpdateIncrementalForm({
                         query={libQuery}
                       />
                     )}
-                    {!isMbqlQuery && libQuery && transform.source.type === "query" && (
+                    {!isMbqlQuery && transform.source.type === "query" && transform.source.query && (
                       <NativeQueryColumnSelect
                         name="checkpointFilter"
                         label={t`Source Filter Field`}
                         placeholder={t`e.g., id, updated_at`}
                         description={t`Column name to use in the incremental filter`}
-                        databaseId={Lib.databaseID(libQuery)}
-                        nativeQuery={Lib.rawNativeQuery(libQuery) ?? ""}
+                        query={transform.source.query}
                       />
                     )}
                     {isPythonTransform &&

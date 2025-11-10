@@ -1,18 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { FormSelect, FormTextInput } from "metabase/forms";
 import { Loader, Stack, Text } from "metabase/ui";
-import { useExtractColumnsFromNativeQueryMutation } from "metabase-enterprise/api";
-import type { DatabaseId } from "metabase-types/api";
+import { useExtractColumnsFromQueryMutation } from "metabase-enterprise/api";
+import type { DatasetQuery } from "metabase-types/api";
 
 type NativeQueryColumnSelectProps = {
   name: string;
   label: string;
   description: string;
   placeholder: string;
-  databaseId: DatabaseId;
-  nativeQuery: string;
+  query: DatasetQuery;
 };
 
 export function NativeQueryColumnSelect({
@@ -20,12 +19,13 @@ export function NativeQueryColumnSelect({
   label,
   description,
   placeholder,
-  databaseId,
-  nativeQuery,
+  query,
 }: NativeQueryColumnSelectProps) {
   const [columns, setColumns] = useState<string[] | null>(null);
-  const [extractColumns, { isLoading }] =
-    useExtractColumnsFromNativeQueryMutation();
+  const [extractColumns, { isLoading }] = useExtractColumnsFromQueryMutation();
+
+  // Create a stable serialized version of the query for dependency tracking
+  const queryKey = useMemo(() => JSON.stringify(query), [query]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -33,8 +33,7 @@ export function NativeQueryColumnSelect({
     const extract = async () => {
       try {
         const result = await extractColumns({
-          database_id: databaseId,
-          native_query: nativeQuery,
+          query,
         }).unwrap();
 
         if (!isCancelled) {
@@ -54,7 +53,7 @@ export function NativeQueryColumnSelect({
     return () => {
       isCancelled = true;
     };
-  }, [databaseId, nativeQuery, extractColumns]);
+  }, [queryKey, extractColumns]);
 
   if (isLoading) {
     return (
