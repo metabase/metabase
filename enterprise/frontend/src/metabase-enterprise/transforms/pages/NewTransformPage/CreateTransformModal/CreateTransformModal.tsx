@@ -40,6 +40,10 @@ import {
 } from "metabase-enterprise/transforms/components/KeysetColumnSelect";
 import { NativeQueryColumnSelect } from "metabase-enterprise/transforms/components/NativeQueryColumnSelect";
 import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
+import {
+  SOURCE_STRATEGY_OPTIONS,
+  TARGET_STRATEGY_OPTIONS,
+} from "metabase-enterprise/transforms/constants";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -161,12 +165,14 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
 
   return (
     <>
-      // <FormSelect
-      //   name="sourceStrategy"
-      //   label={t`Source Strategy`}
-      //   description={t`How to track which rows to process`}
-      //   data={[{ value: "checkpoint", label: t`Checkpoint` }]}
-      // />
+      {SOURCE_STRATEGY_OPTIONS.length > 1 && (
+        <FormSelect
+          name="sourceStrategy"
+          label={t`Source Strategy`}
+          description={t`How to track which rows to process`}
+          data={SOURCE_STRATEGY_OPTIONS}
+        />
+      )}
       {values.sourceStrategy === "checkpoint" && (
         <>
           {isMbqlQuery && libQuery && (
@@ -212,12 +218,14 @@ function TargetStrategyFields() {
 
   return (
     <>
-      // <FormSelect
-      //   name="targetStrategy"
-      //   label={t`Target Strategy`}
-      //   description={t`How to update the target table`}
-      //   data={[{ value: "append", label: t`Append` }]}
-      // />
+      {TARGET_STRATEGY_OPTIONS.length > 1 && (
+        <FormSelect
+          name="targetStrategy"
+          label={t`Target Strategy`}
+          description={t`How to update the target table`}
+          data={TARGET_STRATEGY_OPTIONS}
+        />
+      )}
       {/* Append strategy has no additional fields */}
       {/* Future strategies like "merge" could add fields here */}
     </>

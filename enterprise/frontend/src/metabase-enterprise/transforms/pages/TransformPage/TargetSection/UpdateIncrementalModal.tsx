@@ -29,6 +29,10 @@ import {
   PythonKeysetColumnSelect,
 } from "metabase-enterprise/transforms/components/KeysetColumnSelect";
 import { NativeQueryColumnSelect } from "metabase-enterprise/transforms/components/NativeQueryColumnSelect";
+import {
+  SOURCE_STRATEGY_OPTIONS,
+  TARGET_STRATEGY_OPTIONS,
+} from "metabase-enterprise/transforms/constants";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Transform } from "metabase-types/api";
@@ -217,12 +221,14 @@ function UpdateIncrementalForm({
             />
             {values.incremental && (
               <>
-                // <FormSelect
-                //   name="sourceStrategy"
-                //   label={t`Source Strategy`}
-                //   description={t`How to track which rows to process`}
-                //   data={[{ value: "checkpoint", label: t`Checkpoint` }]}
-                // />
+                {SOURCE_STRATEGY_OPTIONS.length > 1 && (
+                  <FormSelect
+                    name="sourceStrategy"
+                    label={t`Source Strategy`}
+                    description={t`How to track which rows to process`}
+                    data={SOURCE_STRATEGY_OPTIONS}
+                  />
+                )}
                 {values.sourceStrategy === "checkpoint" && (
                   <>
                     {isMbqlQuery && libQuery && (
@@ -257,12 +263,14 @@ function UpdateIncrementalForm({
                       )}
                   </>
                 )}
-                // <FormSelect
-                //   name="targetStrategy"
-                //   label={t`Target Strategy`}
-                //   description={t`How to update the target table`}
-                //   data={[{ value: "append", label: t`Append` }]}
-                // />
+                {TARGET_STRATEGY_OPTIONS.length > 1 && (
+                  <FormSelect
+                    name="targetStrategy"
+                    label={t`Target Strategy`}
+                    description={t`How to update the target table`}
+                    data={TARGET_STRATEGY_OPTIONS}
+                  />
+                )}
               </>
             )}
             <Group>
