@@ -406,7 +406,9 @@
                                     (mt/id :users :email)
                                     (mt/id :users :createdAt)}
               orderItems-active-subset #{(mt/id :orderItems :_id)
-                                         (mt/id :orderItems :data)
+                                         ;; This is part of active subset, but has visibility other than normal
+                                         ;; hence not part of scanned fields
+                                         #_(mt/id :orderItems :data)
                                          (mt/id :orderItems :data :orderDate)
                                          (mt/id :orderItems :data :price)}
               products-active-subset #{(mt/id :products :_id)
@@ -415,7 +417,8 @@
               active-subset-field-ids (into #{} cat [users-active-subset
                                                      orderItems-active-subset
                                                      products-active-subset])
-              original-table->fields-to-scan @#'sync.field-values/table->fields-to-scan]
+              original-table->fields-to-scan @#'sync.field-values/table->fields-to-scan
+              results (atom #{})]
           (try
 
             (testing "... and now check that only active subset fields are picked for field values scan"
@@ -423,26 +426,20 @@
                             sync.field-values/table->fields-to-scan
                             (fn [& args]
                               (let [result (apply original-table->fields-to-scan args)]
-                                (throw (ex-info "For checking field values scanned fields"
-                                                {:fields-to-scan result
-                                                 :testing-exception true}))))]
+                                (swap! results into (map :id) result)
+                                result))]
                 (testing "... for that do full sync catching synthetic exception with considered fields"
-                  (try
-                    (sync/sync-database! (mt/db) {:scan :full})
-                    (catch clojure.lang.ExceptionInfo e
-                      (let [{:keys [testing-exception fields-to-scan]} (ex-data e)]
-                        (if testing-exception
-                          (testing "... and now the actual check"
-                            (is (= (count active-subset-field-ids)
-                                   (count fields-to-scan)))
-                            (loop [[first-exp-id & rest-exp-ids] active-subset-field-ids
-                                   returned-field-ids (set (map :id fields-to-scan))]
-                              (if (nil? first-exp-id)
-                                (is (empty? returned-field-ids))
-                                (do (is (contains? returned-field-ids first-exp-id))
-                                    (recur rest-exp-ids
-                                           (disj returned-field-ids first-exp-id))))))
-                          (throw e))))))))
+                  (sync/sync-database! (mt/db) {:scan :full})
+                  (testing "... and now the actual check"
+                    (is (= (count active-subset-field-ids)
+                           (count @results)))
+                    (loop [[first-exp-id & rest-exp-ids] active-subset-field-ids
+                           returned-field-ids @results]
+                      (if (nil? first-exp-id)
+                        (is (empty? returned-field-ids))
+                        (do (is (contains? returned-field-ids first-exp-id))
+                            (recur rest-exp-ids
+                                   (disj returned-field-ids first-exp-id)))))))))
             (finally
               (testing "Finally restore fields to the original state"
               ;; Full sync should clean up active_subset of modified fields
