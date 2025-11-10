@@ -31,7 +31,7 @@ name: Cache Generator
 on:
   schedule:
     - cron: "0 3 * * 1" # Mondays at 03:00 UTC
-  workflow_dispatch: # manually update the cache
+  workflow_dispatch:    #  manually update the cache
 
 concurrency:
   group: cache-generator
@@ -94,9 +94,6 @@ jobs:
         uses: ./.github/actions/prepare-frontend
         with:
           apply-patches: "false"
-
-      - name: Generate OpenAPI TypeScript types
-        run: yarn types:generate
 
       - name: Update node_modules cache
         uses: ./.github/actions/update-cache

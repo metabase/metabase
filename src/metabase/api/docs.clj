@@ -126,4 +126,3 @@
    ;; don't generate a spec for these routes
    (fn [_prefix]
      nil)))
-
