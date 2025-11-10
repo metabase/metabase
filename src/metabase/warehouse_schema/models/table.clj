@@ -8,8 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise] :as premium-features]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -385,7 +384,7 @@
   (with-fields tables))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :published_as_model]
-  [_model k tables]
+  [_model _k tables]
   (cond
     (empty? tables)                                     tables
     (not-every? :id tables)                             tables
