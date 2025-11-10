@@ -325,6 +325,21 @@
         (update-vals (fn [fvs] (->> fvs (map (juxt :field_id :values)) (into {})))))
    :id))
 
+(methodical/defmethod t2/batched-hydrate [:model/Table :transform]
+  "Hydrate transforms that created the tables."
+  [_model k tables]
+  (mi/instances-with-hydrated-data
+   tables k
+   #(let [table-ids                (map :id tables)
+          table-id->transform-id   (t2/select-fn->fn :from_entity_id :to_entity_id :model/Dependency
+                                                     :from_entity_type "table"
+                                                     :from_entity_id [:in table-ids]
+                                                     :to_entity_type "transform")
+          transform-id->transform  (t2/select-fn->fn :id identity :model/Transform :id [:in (vals table-id->transform-id)])]
+      (update-vals table-id->transform-id transform-id->transform))
+   :id
+   {:default nil}))
+
 (methodical/defmethod t2/batched-hydrate [:model/Table :pk_field]
   [_model k tables]
   (mi/instances-with-hydrated-data
