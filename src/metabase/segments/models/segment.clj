@@ -76,13 +76,19 @@
 
 (defmethod mi/can-read? :model/Segment
   ([instance]
-   (let [table (:table (t2/hydrate instance :table))]
-     (perms/user-has-permission-for-table?
-      api/*current-user-id*
-      :perms/manage-table-metadata
-      :yes
-      (:db_id table)
-      (u/the-id table))))
+   (if-let [model-id (:model_id instance)]
+     ;; TODO(BT 2025-11-11) Should this be :model instead of :card?
+     (if-let [card (:card instance)]
+       (mi/can-read? card)
+       (mi/can-read? :model/Card model-id))
+     (let [table (or (:table instance)
+                     (:table (t2/hydrate instance :table)))]
+       (perms/user-has-permission-for-table?
+        api/*current-user-id*
+        :perms/manage-table-metadata
+        :yes
+        (:db_id table)
+        (u/the-id table)))))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
@@ -93,9 +99,13 @@
   segment)
 
 (defn- migrated-segment-definition
-  [{:keys [definition], table-id :table_id}]
-  (let [database-id (t2/select-one-fn :db_id :model/Table :id table-id)]
-    (normalize-segment-definition definition table-id database-id)))
+  [{:keys [definition table_id model_id]}]
+  (if model_id
+    ;; Model-based segment: definition is always MBQL5, just validate
+    (normalize-segment-definition definition)
+    ;; Table-based segment: may need MBQL4→MBQL5 conversion
+    (let [database-id (t2/select-one-fn :db_id :model/Table :id table_id)]
+      (normalize-segment-definition definition table_id database-id))))
 
 (t2/define-before-insert :model/Segment
   [{:keys [definition] :as segment}]
@@ -104,9 +114,16 @@
 
 (defmethod mi/perms-objects-set :model/Segment
   [segment read-or-write]
-  (let [table (or (:table segment)
-                  (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
-    (mi/perms-objects-set table read-or-write)))
+  (if-let [model-id (:model_id segment)]
+    ;; Model-based segment: delegate to card permissions
+     ;; TODO(BT 2025-11-11) Should this be :model instead of :card?
+    (let [card (or (:card segment)
+                   (t2/select-one :model/Card :id model-id))]
+      (mi/perms-objects-set card read-or-write))
+    ;; Table-based segment: delegate to table permissions (existing behavior)
+    (let [table (or (:table segment)
+                    (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
+      (mi/perms-objects-set table read-or-write))))
 
 (defn- maybe-migrated-segment-definition
   [segment]

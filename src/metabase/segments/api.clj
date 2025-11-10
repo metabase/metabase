@@ -1,6 +1,7 @@
 (ns metabase.segments.api
   "/api/segment endpoints."
   (:require
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
@@ -19,20 +20,27 @@
   "Create a new `Segment`."
   [_route-params
    _query-params
-   {:keys [name description table_id definition], :as body} :- [:map
-                                                                [:name        ms/NonBlankString]
-                                                                [:table_id    ms/PositiveInt]
-                                                                [:definition  ms/Map]
-                                                                [:description {:optional true} [:maybe :string]]]]
+   {:keys [name description table_id model_id definition], :as body}
+   :- [:and
+       [:map
+        [:name        ms/NonBlankString]
+        [:table_id {:optional true} [:maybe ms/PositiveInt]]
+        [:model_id {:optional true} [:maybe ms/PositiveInt]]
+        [:definition  ms/Map]
+        [:description {:optional true} [:maybe :string]]]
+       [:fn {:error/message "Must provide exactly one of :table_id or :model_id"}
+        (fn [{:keys [table_id model_id]}]
+          (not= (nil? table_id) (nil? model_id)))]]]
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (api/create-check :model/Segment body)
   (let [segment (api/check-500
                  (first (t2/insert-returning-instances! :model/Segment
-                                                        :table_id    table_id
-                                                        :creator_id  api/*current-user-id*
-                                                        :name        name
-                                                        :description description
-                                                        :definition  definition)))]
+                                                        (-> {:creator_id api/*current-user-id*
+                                                             :name        name
+                                                             :description description
+                                                             :definition definition}
+                                                            (m/assoc-some :table_id table_id)
+                                                            (m/assoc-some :model_id model_id)))))]
     (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
     (t2/hydrate segment :creator)))
 
