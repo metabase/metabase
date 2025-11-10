@@ -285,6 +285,7 @@
                                                              :shared-storage @shared-storage-ref
                                                              :source         source
                                                              :cancel-chan    cancel-chan
+                                                             :limit          (:limit source)
                                                              :transform-id   (:id transform)})
           _               (start-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
           {:keys [status body] :as response}
