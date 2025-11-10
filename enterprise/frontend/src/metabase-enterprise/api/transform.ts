@@ -1,6 +1,7 @@
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import type {
   CreateTransformRequest,
+  DatabaseId,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,
@@ -189,6 +190,16 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("transform"), listTag("table")]),
     }),
+    extractColumnsFromNativeQuery: builder.mutation<
+      { columns: string[] },
+      { database_id: DatabaseId; native_query: string }
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/transform/extract-columns",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -204,4 +215,5 @@ export const {
   useUpdateTransformMutation,
   useDeleteTransformMutation,
   useDeleteTransformTargetMutation,
+  useExtractColumnsFromNativeQueryMutation,
 } = transformApi;

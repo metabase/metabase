@@ -28,6 +28,7 @@ import {
   KeysetColumnSelect,
   PythonKeysetColumnSelect,
 } from "metabase-enterprise/transforms/components/KeysetColumnSelect";
+import { NativeQueryColumnSelect } from "metabase-enterprise/transforms/components/NativeQueryColumnSelect";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Transform } from "metabase-types/api";
@@ -233,13 +234,15 @@ function UpdateIncrementalForm({
                         query={libQuery}
                       />
                     )}
-                    {!isMbqlQuery && libQuery && (
-                        <FormTextInput
+                    {!isMbqlQuery && libQuery && transform.source.type === "query" && (
+                      <NativeQueryColumnSelect
                         name="checkpointFilter"
                         label={t`Source Filter Field`}
                         placeholder={t`e.g., id, updated_at`}
                         description={t`Column name to use in the incremental filter`}
-                        />
+                        databaseId={Lib.databaseID(libQuery)}
+                        nativeQuery={Lib.rawNativeQuery(libQuery) ?? ""}
+                      />
                     )}
                     {isPythonTransform &&
                       transform.source.type === "python" &&
