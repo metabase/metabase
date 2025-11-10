@@ -1,6 +1,7 @@
 import type { Middleware } from "@reduxjs/toolkit";
 import type { TagDescription } from "@reduxjs/toolkit/query";
 import React, {
+  type Component,
   type ComponentType,
   type Context,
   type Dispatch,
@@ -296,60 +297,80 @@ export type IllustrationValue = {
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
 
 // snippet sidebar
-type SnippetSidebarMenuOption = {
+export type SnippetSidebarMenuOption = {
   icon: IconName;
   name?: string;
   label?: string;
   onClick: () => void;
 };
 
-type SnippetSidebarComponentRef = {
-  state?: {
-    modalSnippetCollection?: unknown;
-    permissionsModalCollectionId?: unknown;
-  };
-  setState: (state: {
-    modalSnippetCollection?: unknown;
-    permissionsModalCollectionId?: unknown;
-  }) => void;
-  props: {
-    snippetCollection: { id: number | string | null };
-  };
+export type SnippetSidebarState = {
+  modalSnippetCollection?: Partial<Collection> | null;
+  permissionsModalCollectionId?: CollectionId | null;
 };
 
+export type SnippetSidebarProps = {
+  snippetCollection: { id: CollectionId | null };
+};
+
+export type SnippetSidebarComponent = Component<
+  SnippetSidebarProps,
+  SnippetSidebarState
+>;
+
 export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS: Array<
-  (componentRef: SnippetSidebarComponentRef) => SnippetSidebarMenuOption
+  (component: SnippetSidebarComponent) => SnippetSidebarMenuOption
 > = [];
 
 export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS = {};
 
 export const PLUGIN_SNIPPET_SIDEBAR_MODALS: Array<
-  (componentRef: SnippetSidebarComponentRef) => JSX.Element | null
+  (component: SnippetSidebarComponent) => JSX.Element | null
 > = [];
 
 export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
 
-export const PLUGIN_SNIPPET_FOLDERS = {
+export type SnippetCollectionPickerModalProps = {
+  isOpen: boolean;
+  onSelect: (collectionId: CollectionId | null) => void;
+  onClose: () => void;
+};
+
+export type SnippetFormModalProps = {
+  collection: Partial<Collection>;
+  onClose: () => void;
+  onSaved?: () => void;
+};
+
+export type SnippetCollectionMenuProps = {
+  collection: Collection;
+  onEditDetails: (collection: Collection) => void;
+  onChangePermissions: (collectionId: CollectionId) => void;
+};
+
+export type SnippetCollectionPermissionsModalProps = {
+  collectionId: CollectionId;
+  onClose: () => void;
+};
+
+export type SnippetFoldersPlugin = {
+  isEnabled: boolean;
+  CollectionPickerModal: ComponentType<SnippetCollectionPickerModalProps>;
+  CollectionFormModal: ComponentType<SnippetFormModalProps>;
+  CollectionMenu: ComponentType<SnippetCollectionMenuProps>;
+  CollectionPermissionsModal: ComponentType<SnippetCollectionPermissionsModalProps>;
+};
+
+export const PLUGIN_SNIPPET_FOLDERS: SnippetFoldersPlugin = {
   isEnabled: false,
-  CollectionPickerModal: PluginPlaceholder as ComponentType<{
-    isOpen: boolean;
-    onSelect: (collectionId: number | string | null) => void;
-    onClose: () => void;
-  }>,
-  CollectionFormModal: PluginPlaceholder as ComponentType<{
-    collection: Collection;
-    onClose?: () => void;
-    onSaved?: () => void;
-  }>,
-  CollectionMenu: PluginPlaceholder as ComponentType<{
-    collection: Collection;
-    onEditDetails: (collection: Collection) => void;
-    onChangePermissions: (collectionId: number | string) => void;
-  }>,
-  CollectionPermissionsModal: PluginPlaceholder as ComponentType<{
-    collectionId: number | string;
-    onClose: () => void;
-  }>,
+  CollectionPickerModal:
+    PluginPlaceholder as ComponentType<SnippetCollectionPickerModalProps>,
+  CollectionFormModal:
+    PluginPlaceholder as ComponentType<SnippetFormModalProps>,
+  CollectionMenu:
+    PluginPlaceholder as ComponentType<SnippetCollectionMenuProps>,
+  CollectionPermissionsModal:
+    PluginPlaceholder as ComponentType<SnippetCollectionPermissionsModalProps>,
 };
 
 interface PluginDashboardSubscriptionParametersSectionOverride {

@@ -3,19 +3,27 @@ import { c, t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { getMetadata } from "metabase/selectors/metadata";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
 
+import { ArchiveCardModal } from "../ArchiveCardModal";
+import { MoveCardModal } from "../MoveCardModal";
+
 type CardModalType = "add-to-dashboard" | "move" | "copy" | "archive";
 
 type CardMoreMenuProps = {
   card: Card;
+  onArchive?: () => void;
+  onUnarchive?: () => void;
 };
 
-export function CardMoreMenu({ card }: CardMoreMenuProps) {
+export function CardMoreMenu({
+  card,
+  onArchive,
+  onUnarchive,
+}: CardMoreMenuProps) {
   const [modalType, setModalType] = useState<CardModalType>();
   return (
     <>
@@ -24,6 +32,8 @@ export function CardMoreMenu({ card }: CardMoreMenuProps) {
         <CardModal
           card={card}
           modalType={modalType}
+          onArchive={onArchive}
+          onUnarchive={onUnarchive}
           onClose={() => setModalType(undefined)}
         />
       )}
@@ -111,13 +121,30 @@ function CardMenu({ card, onOpenModal }: CardMenuProps) {
 type CardModalProps = {
   card: Card;
   modalType: CardModalType;
+  onArchive?: () => void;
+  onUnarchive?: () => void;
   onClose: () => void;
 };
 
-function CardModal({ card, modalType, onClose }: CardModalProps) {
+function CardModal({
+  card,
+  modalType,
+  onArchive,
+  onUnarchive,
+  onClose,
+}: CardModalProps) {
   switch (modalType) {
     case "move":
       return <MoveCardModal card={card} onClose={onClose} />;
+    case "archive":
+      return (
+        <ArchiveCardModal
+          card={card}
+          onArchive={onArchive}
+          onUnarchive={onUnarchive}
+          onClose={onClose}
+        />
+      );
     default:
       return null;
   }

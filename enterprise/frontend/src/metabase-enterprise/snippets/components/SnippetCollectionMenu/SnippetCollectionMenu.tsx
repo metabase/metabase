@@ -3,18 +3,12 @@ import { t } from "ttag";
 import { useUpdateCollectionMutation } from "metabase/api";
 import { isRootCollection } from "metabase/collections/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import type { SnippetCollectionMenuProps } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Icon, Menu } from "metabase/ui";
-import type { Collection } from "metabase-types/api";
 
 import S from "./SnippetCollectionMenu.module.css";
-
-type SnippetCollectionMenuProps = {
-  collection: Collection;
-  onEditDetails: (collection: Collection) => void;
-  onChangePermissions: (collectionId: number | string) => void;
-};
 
 export function SnippetCollectionMenu({
   collection,

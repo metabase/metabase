@@ -1,26 +1,21 @@
 import { useMemo } from "react";
-import { useLocation } from "react-use";
+
+import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { getLocation } from "metabase/selectors/routing";
 
 export type TransformsNavTab = "transforms" | "jobs" | "runs";
 
 export function useTransformsCurrentTab(): TransformsNavTab {
-  const location = useLocation();
+  const { pathname } = useSelector(getLocation);
 
   return useMemo(() => {
-    const pathname = location.pathname ?? "";
-    const pathSegments = pathname.split("/").filter(Boolean);
-    const transformsIndex = pathSegments.indexOf("transforms");
-
-    if (transformsIndex === -1 || transformsIndex >= pathSegments.length - 1) {
-      return "transforms";
+    if (pathname.startsWith(Urls.transformJobList())) {
+      return "jobs";
     }
-
-    const nextSegment = pathSegments[transformsIndex + 1];
-
-    if (nextSegment === "jobs" || nextSegment === "runs") {
-      return nextSegment;
+    if (pathname.startsWith(Urls.transformRunList())) {
+      return "runs";
     }
-
     return "transforms";
-  }, [location.pathname]);
+  }, [pathname]);
 }

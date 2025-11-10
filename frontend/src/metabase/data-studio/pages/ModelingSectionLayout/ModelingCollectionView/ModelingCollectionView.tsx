@@ -9,8 +9,7 @@ import { Box, Group, Stack, Text } from "metabase/ui";
 
 import { ModelingCollectionEmptyState } from "./ModelingCollectionEmptyState";
 import S from "./ModelingCollectionView.module.css";
-import { ModelingItemsTable } from "./ModelingItemsTable";
-import type { ModelingItem } from "./types";
+import { type ModelingItem, ModelingItemsTable } from "./ModelingItemsTable";
 
 interface ModelingCollectionViewProps {
   params: {

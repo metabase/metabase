@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { type MouseEvent, useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -33,17 +33,29 @@ export function CollectionsSection({
     [dispatch],
   );
 
-  const handleCreateModelNotebook = useCallback(() => {
-    dispatch(push(Urls.newDataStudioQueryModel()));
-  }, [dispatch]);
+  const handleCreateModelNotebook = useCallback(
+    (event: MouseEvent) => {
+      event.stopPropagation();
+      dispatch(push(Urls.newDataStudioQueryModel()));
+    },
+    [dispatch],
+  );
 
-  const handleCreateModelNative = useCallback(() => {
-    dispatch(push(Urls.newDataStudioNativeModel()));
-  }, [dispatch]);
+  const handleCreateModelNative = useCallback(
+    (event: MouseEvent) => {
+      event.stopPropagation();
+      dispatch(push(Urls.newDataStudioNativeModel()));
+    },
+    [dispatch],
+  );
 
-  const handleCreateMetric = useCallback(() => {
-    dispatch(push(Urls.newDataStudioMetric()));
-  }, [dispatch]);
+  const handleCreateMetric = useCallback(
+    (event: MouseEvent) => {
+      event.stopPropagation();
+      dispatch(push(Urls.newDataStudioMetric()));
+    },
+    [dispatch],
+  );
 
   const initialExpandedIds = useMemo(() => ["root"], []);
 

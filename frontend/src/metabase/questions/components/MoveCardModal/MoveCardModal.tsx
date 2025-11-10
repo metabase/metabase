@@ -20,7 +20,7 @@ import { addUndo } from "metabase/redux/undo";
 import { Box, Icon, Radio, Title } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
-import CardMoveToast from "../CardMoveToast";
+import MoveCardToast from "./MoveCardToast";
 
 interface MoveCardModalProps {
   card: Card;
@@ -78,7 +78,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
 
         dispatch(
           addUndo({
-            message: <CardMoveToast card={card} destination={destination} />,
+            message: <MoveCardToast card={card} destination={destination} />,
             undo: false,
           }),
         );
