@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
@@ -332,6 +333,68 @@
             (testing "... should make every field part of the active subset again"
               (is (every? (comp true? :active_subset) all-db-fields)))))))))
 
+(deftest www-active-subset-fingerprint-test
+  (mt/test-drivers
+    (mt/normal-drivers)
+    (when (driver/should-sync-active-subset? driver/*driver*)
+      (mt/dataset
+        orderItemsDb
+        (let [users-active-subset #{(mt/id :users :_id)
+                                    (mt/id :users :email)
+                                    (mt/id :users :createdAt)}
+              orderItems-active-subset #{(mt/id :orderItems :_id)
+                                         (mt/id :orderItems :data)
+                                         (mt/id :orderItems :data :orderDate)
+                                         (mt/id :orderItems :data :price)}
+              products-active-subset #{(mt/id :products :_id)
+                                       (mt/id :products :name)
+                                       (mt/id :products :category)}
+              active-subset-field-ids (into #{} cat [users-active-subset
+                                                     orderItems-active-subset
+                                                     products-active-subset])
+              original-fields-to-fingerprint @#'sync.fingerprint/fields-to-fingerprint]
+          (try
+
+          ;; First adjust fingerprint version so fields are considered for fingerprinting
+            (t2/update! :model/Field :id [:in active-subset-field-ids] {:fingerprint_version 0})
+
+            (testing "... and now check that only active subset fields are picked for fingerprinting"
+              (with-redefs [driver.settings/sync-leaf-fields-limit (constantly 3)
+                            sync.fingerprint/fields-to-fingerprint
+                            (fn [& args]
+                              (let [result (apply original-fields-to-fingerprint args)]
+                                (throw (ex-info "For checking fingerprinted fields"
+                                                {:fields-to-fingerprint result
+                                                 :testing-exception true}))))]
+                (testing "... for that do full sync catching synthetic exception with considered fields"
+                  (try
+                    (sync/sync-database! (mt/db) {:scan :full})
+                    (catch clojure.lang.ExceptionInfo e
+                      (let [{:keys [testing-exception fields-to-fingerprint]} (ex-data e)]
+                        (if testing-exception
+                          (testing "... and now the actual check"
+                            (is (= (count active-subset-field-ids)
+                                   (count fields-to-fingerprint)))
+                            (loop [[first-exp-id & rest-exp-ids] active-subset-field-ids
+                                   returned-field-ids  (set (map :id fields-to-fingerprint))]
+                              (if (nil? first-exp-id)
+                                (is (empty? returned-field-ids))
+                                (do (is (contains? returned-field-ids first-exp-id))
+                                    (recur rest-exp-ids
+                                           (disj returned-field-ids first-exp-id))))))
+                          (throw e))))))))
+            (finally
+              (testing "Finally restore fields to the original state"
+              ;; Full sync should adjust fingerprint version of modified fields back to the original
+              ;; and make everything active.
+                (sync/sync-database! (mt/db) {:scan :full})
+                (let [all-db-fields (t2/select :model/Field :table_id
+                                               [:in (t2/select-fn-vec :id :model/Table :db_id (mt/id))])]
+                  (is (every? (comp true? :active) all-db-fields))
+                  (is (every? (comp true? :active_subset) all-db-fields))
+                  (is (every? (comp #{0 5} :fingerprint_version)
+                              all-db-fields)))))))))))
+
 (deftest ^:synchronized active-subset-null-on-unsupported-drivers-test
   (mt/test-drivers
     (mt/normal-drivers)
@@ -356,4 +419,3 @@
                   (is (every? (comp nil? :active_subset) all-db-fields))))
               (finally
                 (t2/update! :model/Field :id field-id {:active true})))))))))
-
