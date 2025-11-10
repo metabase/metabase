@@ -117,7 +117,8 @@
             [node-type node-id] node
             [dependency-type dependency-id] dependency]
         (if (= reason :weavejester.dependency/circular-dependency)
-          (throw (ex-info (circular-ref-error query node-type node-id dependency-type dependency-id) {:original-exception e}))
+          (throw (ex-info (circular-ref-error query node-type node-id dependency-type dependency-id) {:original-exception e
+                                                                                                      :type qp.error-type/circular-reference}))
           (throw e))))))
 
 (mu/defn resolve-referenced-card-resources :- ::lib.schema/query

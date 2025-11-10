@@ -29,6 +29,35 @@ export const StoreApi = {
   tokenStatus: GET("/api/premium-features/token/status"),
 };
 
+/**
+ * Handles API errors for query endpoints. For 4xx errors from streaming query
+ * endpoints, the error response body contains the actual error data that should
+ * be displayed (just like the old 202-with-error-in-body behavior). This function
+ * converts 4xx errors into successful responses with the error data.
+ *
+ * @param {Promise} apiPromise - The API promise to handle
+ * @returns {Promise} The result or error data
+ */
+async function handleQueryApiError(apiPromise) {
+  try {
+    return await apiPromise;
+  } catch (error) {
+    // For 4xx errors, treat the error response body as a successful response
+    // (maintaining compatibility with the old 202-with-error-in-body behavior)
+    if (
+      error &&
+      typeof error === "object" &&
+      error.status >= 400 &&
+      error.status < 500 &&
+      error.data
+    ) {
+      return error.data;
+    }
+    // For 5xx and other errors, re-throw
+    throw error;
+  }
+}
+
 // Pivot tables need extra data beyond what's described in the MBQL query itself.
 // To fetch that extra data we rely on specific APIs for pivot tables that mirrow the normal endpoints.
 // Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.
@@ -116,29 +145,33 @@ export async function runQuestionQuery(
     };
 
     return [
-      await maybeUsePivotEndpoint(
-        dashboardId ? DashboardApi.cardQuery : CardApi.query,
-        card,
-        question.metadata(),
-      )(queryParams, {
-        cancelled: cancelDeferred.promise,
-      }),
+      await handleQueryApiError(
+        maybeUsePivotEndpoint(
+          dashboardId ? DashboardApi.cardQuery : CardApi.query,
+          card,
+          question.metadata(),
+        )(queryParams, {
+          cancelled: cancelDeferred.promise,
+        }),
+      ),
     ];
   }
 
   const getDatasetQueryResult = (datasetQuery) => {
     const datasetQueryWithParameters = { ...datasetQuery, parameters };
-    return maybeUsePivotEndpoint(
-      MetabaseApi.dataset,
-      card,
-      question.metadata(),
-    )(
-      datasetQueryWithParameters,
-      cancelDeferred
-        ? {
-            cancelled: cancelDeferred.promise,
-          }
-        : {},
+    return handleQueryApiError(
+      maybeUsePivotEndpoint(
+        MetabaseApi.dataset,
+        card,
+        question.metadata(),
+      )(
+        datasetQueryWithParameters,
+        cancelDeferred
+          ? {
+              cancelled: cancelDeferred.promise,
+            }
+          : {},
+      ),
     );
   };
 
