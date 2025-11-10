@@ -47,8 +47,6 @@ jobs:
               echo 'skip=false' >> $GITHUB_OUTPUT
             fi
           fi
-
-          echo "GITHUB_OUTPUT = $GITHUB_OUTPUT"
         shell: bash
 
   be-tests-athena-ee:
@@ -91,6 +89,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-bigquery-cloud-sdk-ee:
+    needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -150,6 +149,7 @@ jobs:
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-clickhouse-ee:
+    needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -398,6 +398,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mysql-mariadb:
+    needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -773,6 +774,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-postgres:
+    needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -951,6 +953,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-redshift-ee:
+    needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
