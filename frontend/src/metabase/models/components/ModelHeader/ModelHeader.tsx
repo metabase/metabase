@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useUpdateCardMutation } from "metabase/api";
@@ -9,7 +10,7 @@ import {
   PaneHeaderTabs,
   PanelHeaderTitle,
 } from "metabase/data-studio/components/PaneHeader";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES, PLUGIN_MODERATION } from "metabase/plugins";
@@ -42,7 +43,7 @@ export function ModelHeader({ card, actions }: ModelHeaderProps) {
           moderationReviews={card.moderation_reviews}
         />
       }
-      menu={<CardMoreMenu card={card} />}
+      menu={<ModelMoreMenu card={card} />}
       tabs={<ModelTabs card={card} />}
       actions={actions}
     />
@@ -76,6 +77,30 @@ function ModelNameInput({ card }: ModelNameInputProps) {
       initialValue={card.name}
       maxLength={NAME_MAX_LENGTH}
       onChange={handleChangeName}
+    />
+  );
+}
+
+type ModelMoreMenuProps = {
+  card: Card;
+};
+
+function ModelMoreMenu({ card }: ModelMoreMenuProps) {
+  const dispatch = useDispatch();
+
+  const handleArchive = () => {
+    dispatch(push(Urls.dataStudioModeling()));
+  };
+
+  const handleUnarchive = () => {
+    dispatch(push(Urls.dataStudioModel(card.id)));
+  };
+
+  return (
+    <CardMoreMenu
+      card={card}
+      onArchive={handleArchive}
+      onUnarchive={handleUnarchive}
     />
   );
 }

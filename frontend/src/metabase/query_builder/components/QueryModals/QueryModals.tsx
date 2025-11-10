@@ -12,6 +12,7 @@ import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
+import { setArchivedQuestion } from "metabase/query_builder/actions";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
 import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
@@ -19,8 +20,8 @@ import { PreviewQueryModal } from "metabase/query_builder/components/view/Previe
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
+import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
-import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
@@ -228,7 +229,12 @@ export function QueryModals({
       return <MoveCardModal card={question.card()} onClose={onCloseModal} />;
     case MODAL_TYPES.ARCHIVE:
       return (
-        <ArchiveQuestionModal question={question} onClose={onCloseModal} />
+        <ArchiveCardModal
+          card={question.card()}
+          onArchive={() => dispatch(setArchivedQuestion(question, true))}
+          onUnarchive={() => dispatch(setArchivedQuestion(question, false))}
+          onClose={onCloseModal}
+        />
       );
     case MODAL_TYPES.CLONE:
       return (
