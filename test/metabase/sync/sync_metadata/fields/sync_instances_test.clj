@@ -281,7 +281,7 @@
       {"customerId" "user004", "productId" "prod002"}
       {"orderDate" #t "2024-07-20", "status" "delivered", "quantity" 1, "price" 29.99}]]]])
 
-(deftest ^:synchronized active-subset-test
+(deftest ^:synchronized sync-active-subset-test
   (mt/test-drivers
     (mt/normal-drivers)
     (when (driver/should-sync-active-subset? driver/*driver*)
@@ -334,7 +334,7 @@
             (testing "... should make every field part of the active subset again"
               (is (every? (comp true? :active_subset) all-db-fields)))))))))
 
-(deftest www-active-subset-fingerprint-test
+(deftest fingerprint-active-subset-test
   (mt/test-drivers
     (mt/normal-drivers)
     (when (driver/should-sync-active-subset? driver/*driver*)
@@ -452,7 +452,7 @@
                   (is (every? (comp true? :active) all-db-fields))
                   (is (every? (comp true? :active_subset) all-db-fields)))))))))))
 
-(deftest ^:synchronized active-subset-null-on-unsupported-drivers-test
+(deftest ^:synchronized null-on-unsupported-drivers-active-subset-test
   (mt/test-drivers
     (mt/normal-drivers)
     (when-not (driver/should-sync-active-subset? driver/*driver*)
