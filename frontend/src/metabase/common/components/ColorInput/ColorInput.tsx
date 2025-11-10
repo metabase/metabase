@@ -11,9 +11,9 @@ export type ColorInputAttributes = Omit<
 >;
 
 export interface ColorInputProps extends ColorInputAttributes {
-  value?: string;
+  value: string | undefined;
   fullWidth?: boolean;
-  onChange?: (value?: string) => void;
+  onChange: (value: string | undefined) => void;
 }
 
 const ColorInput = forwardRef(function ColorInput(
@@ -45,7 +45,7 @@ const ColorInput = forwardRef(function ColorInput(
     (event: ChangeEvent<HTMLInputElement>) => {
       const newText = event.target.value;
       setInputText(newText);
-      onChange?.(getColorHex(newText) ?? getColorHex(`#${newText}`));
+      onChange(getColorHex(newText) ?? getColorHex(`#${newText}`));
     },
     [onChange],
   );
