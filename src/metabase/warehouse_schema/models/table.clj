@@ -401,7 +401,10 @@
                                                :to_entity_type "table"
                                                :to_entity_id [:in table-ids]
                                                :from_entity_type "card"
-                                               {:join [[:report_card :card] [:= :dependency.from_entity_id :card.id]]
+                                               {:join [[:report_card :card]
+                                                       [:and
+                                                        [:= :dependency.from_entity_id :card.id]
+                                                        [:= :dependency.to_entity_id :card.table_id]]]
                                                 :where [:= "model" :card.type]})]
       (map #(assoc % :published_as_model (contains? published-as-model (:id %))) tables))))
 
