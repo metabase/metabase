@@ -75,7 +75,7 @@
             (is (string? body))
             (is (=? [{:_type :TEXT :content "a1a2a3"}
                      {:_type :FINISH_MESSAGE :finish_reason "stop"}]
-                    (metabot-v3.util/aisdk->messages "assistant" (str/split-lines body))))))))))
+                    (metabot-v3.util/aisdk->messages :assistant (str/split-lines body))))))))))
 
 (deftest example-generation-payload-unknown-field-types-test
   (let [mp (mt/metadata-provider)]

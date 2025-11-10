@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { Link } from "react-router";
-import { goBack } from "react-router-redux";
 import { t } from "ttag";
 
 import { useGetTaskQuery } from "metabase/api";
@@ -9,7 +8,6 @@ import { CopyButton } from "metabase/common/components/CopyButton";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/common/components/ModalContent";
 import { openSaveDialog } from "metabase/lib/dom";
-import { useDispatch } from "metabase/lib/redux";
 import { Box, Button, Flex, Icon } from "metabase/ui";
 import type { Task } from "metabase-types/api";
 
@@ -17,17 +15,13 @@ import S from "./TaskModal.module.css";
 
 interface Props {
   params: { taskId: number };
+  onClose: VoidFunction;
 }
 
-export const TaskModal = ({ params }: Props) => {
-  const dispatch = useDispatch();
+export const TaskModal = ({ params, onClose }: Props) => {
   const { data: task, error, isLoading } = useGetTaskQuery(params.taskId);
   const code = formatTaskDetails(task);
   const linesCount = useMemo(() => code.split("\n").length, [code]);
-
-  const handleClose = () => {
-    dispatch(goBack());
-  };
 
   const handleDownload = () => {
     const filename = getFilename(task);
@@ -40,7 +34,7 @@ export const TaskModal = ({ params }: Props) => {
   }
 
   return (
-    <ModalContent title={t`Task details`} onClose={handleClose}>
+    <ModalContent title={t`Task details`} onClose={onClose}>
       <Box
         className={S.codeContainer}
         p={linesCount > 1 ? 0 : "xs"}
