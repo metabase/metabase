@@ -1,4 +1,5 @@
 (ns metabase.driver.sql.references
+  (:refer-clojure :exclude [every? mapv select-keys some])
   (:require
    [macaw.ast-types :as macaw.ast-types]
    [metabase.driver :as driver]
