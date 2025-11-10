@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
+import { dependencyGraph } from "metabase/lib/urls/dependencies";
 import {
   FieldOrderPicker2,
   NameDescriptionInput,
@@ -138,7 +139,9 @@ const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
             >
               <Button
                 component={Link}
-                to={getDependencyGraphUrl(table)}
+                to={dependencyGraph({
+                  entry: { id: Number(table.id), type: "table" },
+                })}
                 p="sm"
                 leftSection={<Icon name="network" />}
                 style={{
@@ -260,10 +263,6 @@ function TransformLink({ table }: { table: Table }) {
 
 function getQueryBuilderUrl(table: Table) {
   return `/question#?db=${table.db_id}&table=${table.id}`;
-}
-
-function getDependencyGraphUrl(table: Table) {
-  return `/data-studio/dependencies?id=${table.id}&type=table`;
 }
 
 export const TableSection = memo(TableSectionBase);
