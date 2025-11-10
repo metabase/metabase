@@ -36,7 +36,5 @@ index d85c47e..eff1daa 100644
 -  -webkit-font-smoothing: var(--mantine-webkit-font-smoothing);
 -  -moz-osx-font-smoothing: var(--mantine-moz-font-smoothing);
 -}
-
- @media screen and (max-device-width: 31.25em) {
  
  body {
