@@ -9,6 +9,7 @@ import {
   type CollectionPickerValueItem,
 } from "metabase/common/components/Pickers/CollectionPicker";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
+import * as urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Box,
@@ -26,11 +27,10 @@ import {
 import type {
   Card,
   DatabaseId,
+  PublishModelsResponse,
   SchemaId,
   TableId,
-  PublishModelsResponse,
 } from "metabase-types/api";
-import * as urls from "metabase/lib/urls";
 
 interface Props {
   tables?: Set<TableId>;
@@ -173,7 +173,7 @@ function AcknowledgePublishModelsModal({
       title={t`What publishing a table does`}
       onClose={() => handleClose({ acknowledged: isAcknowledged })}
     >
-      <Text>
+      <Text pt="sm">
         {t`Publishing a table means we'll create a model based on it and save it in the collection you choose so that it’s easy for your end users to find it.`}
       </Text>
 
