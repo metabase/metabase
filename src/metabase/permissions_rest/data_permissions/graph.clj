@@ -1,4 +1,4 @@
-(ns metabase.permissions.models.data-permissions.graph
+(ns metabase.permissions-rest.data-permissions.graph
   "Code involving reading and writing the API-style data permission graph. This is the graph which we use to represent
   permissions when communicating with the frontend, which has different keys and a slightly different structure
   from the one returned by `metabase.models.data-permissions/data-permissions-graph`, which is based directly on the
@@ -10,17 +10,17 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.audit-app.core :as audit]
-   [metabase.permissions.api.permission-graph :as api.permission-graph]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.models.permissions-revision :as perms-revision]
+   [metabase.permissions-rest.schema :as permissions-rest.schema]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-;; See also: [[data-perms/Permissions]]
+;; See also: [[permissions.schema/data-permissions]]
 (def ^:private ->api-keys
   {:perms/view-data             :view-data
    :perms/create-queries        :create-queries
@@ -56,9 +56,9 @@
 (mu/defn ellide? :- :boolean
   "If a table has the least permissive value for a perm type, leave it out,
    Unless it's :data perms, in which case, leave it out only if it's no-self-service"
-  [type :- data-perms/PermissionType
-   value :- data-perms/PermissionValue]
-  (= (data-perms/least-permissive-value type) value))
+  [type  :- ::permissions.schema/data-permission-type
+   value :- ::permissions.schema/data-permission-value]
+  (= (perms/least-permissive-data-perms-value type) value))
 
 (defn- rename-or-ellide-kv
   "Renames a kv pair from the data-permissions-graph to an API-style data permissions graph (which we send to the client)."
@@ -69,7 +69,7 @@
 (mu/defn- api-table-perms
   "Helper to transform 'leaf' values with table-level schemas in the data permissions graph into an API-style data permissions value.
    Coalesces permissions at the schema level if all table-level permissions within a schema are identical."
-  [type :- data-perms/PermissionType
+  [type :- ::permissions.schema/data-permission-type
    schema->table-id->api-val]
   (let [transform-val         (fn [perm-val] ((->api-vals type) perm-val))
         coalesce-or-transform (fn [table-id->perm]
@@ -125,7 +125,7 @@
   "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it.
   For every db in the incoming graph, adds on admin permissions."
   [api-graph {:keys [db-id group-ids group-id audit?]}]
-  (let [admin-group-id (u/the-id (perms-group/admin))
+  (let [admin-group-id (u/the-id (perms/admin-group))
         db-ids         (if db-id [db-id] (t2/select-pks-vec :model/Database
                                                             {:where [:and
                                                                      (when-not audit? [:not= :id audit/audit-db-id])]}))]
@@ -151,7 +151,51 @@
          (into {}))
     m))
 
-(mu/defn api-graph :- api.permission-graph/DataPermissionsGraph
+(mr/def ::graph
+  [:map-of [:int {:title "group-id" :min 0}]
+   [:map-of [:int {:title "db-id" :min 0}]
+    [:map-of ::permissions.schema/data-permission-type
+     [:or
+      ::permissions.schema/data-permission-value
+      [:map-of [:string {:title "schema"}]
+       [:map-of
+        [:int {:title "table-id" :min 0}]
+        ::permissions.schema/data-permission-value]]]]]])
+
+(mu/defn data-permissions-graph :- ::graph
+  "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
+  and/or permission type. This is intended to power the permissions editor in the admin panel, and should not be used
+  for permission enforcement, as it will read much more data than necessary."
+  [& {:keys [group-id group-ids db-id perm-type audit?]}]
+  (let [data-perms (t2/select [:model/DataPermissions
+                               [:perm_type :type]
+                               [:group_id :group-id]
+                               [:perm_value :value]
+                               [:db_id :db-id]
+                               [:schema_name :schema]
+                               [:table_id :table-id]]
+                              {:where [:and
+                                       (when perm-type [:= :perm_type (u/qualified-name perm-type)])
+                                       (when db-id [:= :db_id db-id])
+                                       (when group-id [:= :group_id group-id])
+                                       (when group-ids [:in :group_id group-ids])
+                                       (when-not audit? [:not= :db_id audit/audit-db-id])]})]
+    (reduce
+     (fn [graph {group-id  :group-id
+                 perm-type :type
+                 value     :value
+                 db-id     :db-id
+                 schema    :schema
+                 table-id  :table-id}]
+       (let [schema (or schema "")
+             path   (if table-id
+                      [group-id db-id perm-type schema table-id]
+                      [group-id db-id perm-type])]
+         (assoc-in graph path value)))
+     {}
+     data-perms)))
+
+(mu/defn api-graph :- ::permissions-rest.schema/data-permissions-graph
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
   renames permission types and values from the names stored in the database to the ones expected by the frontend.
   - Converts DB key names to API key names
@@ -163,13 +207,13 @@
 
   ([& {:as opts}
     :- [:map
-        [:group-id {:optional true} [:maybe pos-int?]]
+        [:group-id  {:optional true} [:maybe pos-int?]]
         [:group-ids {:optional true} [:maybe [:sequential pos-int?]]]
-        [:db-id {:optional true} [:maybe pos-int?]]
-        [:audit? {:optional true} [:maybe :boolean]]
-        [:perm-type {:optional true} [:maybe data-perms/PermissionType]]]]
-   (let [graph (data-perms/data-permissions-graph opts)]
-     {:revision (perms-revision/latest-id)
+        [:db-id     {:optional true} [:maybe pos-int?]]
+        [:audit?    {:optional true} [:maybe :boolean]]
+        [:perm-type {:optional true} [:maybe ::permissions.schema/data-permission-type]]]]
+   (let [graph (data-permissions-graph opts)]
+     {:revision (perms/latest-permissions-revision-id)
       :groups (-> graph
                   rename-perms
                   remove-empty-vals
@@ -209,7 +253,7 @@
                              :all  :yes
                              :none :no)))
             (update-keys (fn [table-id] {:id table-id :db_id db-id :schema schema})))]
-    (data-perms/set-table-permissions! group-id :perms/manage-table-metadata new-table-perms)))
+    (perms/set-table-permissions! group-id :perms/manage-table-metadata new-table-perms)))
 
 (defn- update-schema-level-metadata-permissions!
   [group-id db-id schema new-schema-perms]
@@ -219,10 +263,10 @@
       (when (seq tables)
         (case new-schema-perms
           :all
-          (data-perms/set-table-permissions! group-id :perms/manage-table-metadata (zipmap tables (repeat :yes)))
+          (perms/set-table-permissions! group-id :perms/manage-table-metadata (zipmap tables (repeat :yes)))
 
           :none
-          (data-perms/set-table-permissions! group-id :perms/manage-table-metadata (zipmap tables (repeat :no))))))))
+          (perms/set-table-permissions! group-id :perms/manage-table-metadata (zipmap tables (repeat :no))))))))
 
 (defn- update-db-level-metadata-permissions!
   [group-id db-id new-db-perms]
@@ -232,10 +276,10 @@
         (update-schema-level-metadata-permissions! group-id db-id schema schema-changes))
       (case schemas
         :all
-        (data-perms/set-database-permission! group-id db-id :perms/manage-table-metadata :yes)
+        (perms/set-database-permission! group-id db-id :perms/manage-table-metadata :yes)
 
         :none
-        (data-perms/set-database-permission! group-id db-id :perms/manage-table-metadata :no)))))
+        (perms/set-database-permission! group-id db-id :perms/manage-table-metadata :no)))))
 
 (defn- update-table-level-download-permissions!
   [group-id db-id schema new-table-perms]
@@ -247,7 +291,7 @@
                              :limited :ten-thousand-rows
                              :none    :no)))
             (update-keys (fn [table-id] {:id table-id :db_id db-id :schema schema})))]
-    (data-perms/set-table-permissions! group-id :perms/download-results new-table-perms)))
+    (perms/set-table-permissions! group-id :perms/download-results new-table-perms)))
 
 (defn- update-schema-level-download-permissions!
   [group-id db-id schema new-schema-perms]
@@ -257,13 +301,13 @@
       (when (seq tables)
         (case new-schema-perms
           :full
-          (data-perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :one-million-rows)))
+          (perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :one-million-rows)))
 
           :limited
-          (data-perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :ten-thousand-rows)))
+          (perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :ten-thousand-rows)))
 
           :none
-          (data-perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :no))))))))
+          (perms/set-table-permissions! group-id :perms/download-results (zipmap tables (repeat :no))))))))
 
 (defn- update-db-level-download-permissions!
   [group-id db-id new-db-perms]
@@ -273,24 +317,24 @@
         (update-schema-level-download-permissions! group-id db-id schema schema-changes))
       (case schemas
         :full
-        (data-perms/set-database-permission! group-id db-id :perms/download-results :one-million-rows)
+        (perms/set-database-permission! group-id db-id :perms/download-results :one-million-rows)
 
         :limited
-        (data-perms/set-database-permission! group-id db-id :perms/download-results :ten-thousand-rows)
+        (perms/set-database-permission! group-id db-id :perms/download-results :ten-thousand-rows)
 
         :none
-        (data-perms/set-database-permission! group-id db-id :perms/download-results :no)))))
+        (perms/set-database-permission! group-id db-id :perms/download-results :no)))))
 
 (defn- update-details-perms!
   [group-id db-id value]
-  (data-perms/set-database-permission! group-id db-id :perms/manage-database value))
+  (perms/set-database-permission! group-id db-id :perms/manage-database value))
 
 (defn- update-table-level-create-queries-permissions!
   [group-id db-id schema new-table-perms]
   (let [new-table-perms (update-keys
                          new-table-perms
                          (fn [table-id] {:id table-id :db_id db-id :schema schema}))]
-    (data-perms/set-table-permissions! group-id :perms/create-queries new-table-perms)))
+    (perms/set-table-permissions! group-id :perms/create-queries new-table-perms)))
 
 (defn- update-schema-level-create-queries-permissions!
   [group-id db-id schema new-schema-perms]
@@ -298,7 +342,7 @@
     (update-table-level-create-queries-permissions! group-id db-id schema new-schema-perms)
     (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
       (when (seq tables)
-        (data-perms/set-table-permissions! group-id :perms/create-queries (zipmap tables (repeat new-schema-perms)))))))
+        (perms/set-table-permissions! group-id :perms/create-queries (zipmap tables (repeat new-schema-perms)))))))
 
 (defn- update-db-level-create-queries-permissions!
   [group-id db-id new-db-perms]
@@ -306,7 +350,7 @@
     (doseq [[schema new-schema-perms] new-db-perms]
       (update-schema-level-create-queries-permissions! group-id db-id schema new-schema-perms))
     (when new-db-perms
-      (data-perms/set-database-permission! group-id db-id :perms/create-queries new-db-perms))))
+      (perms/set-database-permission! group-id db-id :perms/create-queries new-db-perms))))
 
 (defn- update-table-level-view-data-permissions!
   [group-id db-id schema new-table-perms]
@@ -322,7 +366,7 @@
                                           :sandboxed              :unrestricted
                                           :legacy-no-self-service :legacy-no-self-service
                                           :blocked                :blocked))))]
-    (data-perms/set-table-permissions! group-id :perms/view-data new-table-perms)))
+    (perms/set-table-permissions! group-id :perms/view-data new-table-perms)))
 
 (defn- update-schema-level-view-data-permissions!
   [group-id db-id schema new-schema-perms]
@@ -330,7 +374,7 @@
     (update-table-level-view-data-permissions! group-id db-id schema new-schema-perms)
     (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
       (when (seq tables)
-        (data-perms/set-table-permissions! group-id :perms/view-data (zipmap tables (repeat new-schema-perms)))))))
+        (perms/set-table-permissions! group-id :perms/view-data (zipmap tables (repeat new-schema-perms)))))))
 
 (defn- update-db-level-view-data-permissions!
   [group-id db-id new-db-perms]
@@ -339,17 +383,17 @@
       (update-schema-level-view-data-permissions! group-id db-id schema new-schema-perms))
     (case new-db-perms
       (:unrestricted :impersonated)
-      (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+      (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
 
       ;; Support setting legacy-no-self-service for testing purposes, though the UI shouldn't allow it normally
       :legacy-no-self-service
-      (data-perms/set-database-permission! group-id db-id :perms/view-data :legacy-no-self-service)
+      (perms/set-database-permission! group-id db-id :perms/view-data :legacy-no-self-service)
 
       :blocked
       (do
         (when-not (premium-features/has-feature? :advanced-permissions)
           (throw (ee-permissions-exception :blocked)))
-        (data-perms/set-database-permission! group-id db-id :perms/view-data :blocked)))))
+        (perms/set-database-permission! group-id db-id :perms/view-data :blocked)))))
 
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
@@ -387,7 +431,7 @@
 (mu/defn update-data-perms-graph!
   "Takes an API-style perms graph and sets the permissions in the database accordingly. Additionally ensures
   impersonations and sandboxes are consistent if necessary."
-  ([graph-updates :- api.permission-graph/DataPermissionsGraph]
+  ([graph-updates :- ::permissions-rest.schema/data-permissions-graph]
    (when (seq graph-updates)
      (let [group-updates (:groups graph-updates)]
        (check-audit-db-permissions group-updates)
