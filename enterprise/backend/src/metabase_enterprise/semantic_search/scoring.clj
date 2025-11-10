@@ -231,6 +231,6 @@
                          {:id 4 :model "indexed-entity"}
                          {:id 7 :model "card"}])
                        vec))
-  (def weights (search.config/weights (:context search-ctx)))
+  (def weights (search.config/weights search-ctx))
   (def app-db-scorers (appdb-scorers search-ctx))
   (with-appdb-scores search-ctx (appdb-scorers search-ctx) weights search-docs))
