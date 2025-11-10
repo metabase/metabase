@@ -90,11 +90,16 @@
 
 .checkbox {
   flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .checkboxColumn {
   flex-shrink: 0;
-  width: 1.5rem;
+  width: rem(40px);
   display: flex;
   align-items: center;
   justify-content: flex-start;

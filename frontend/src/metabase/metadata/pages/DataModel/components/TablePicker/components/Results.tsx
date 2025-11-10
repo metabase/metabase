@@ -30,7 +30,7 @@ import { hasChildren } from "../utils";
 import S from "./Results.module.css";
 
 const VIRTUAL_OVERSCAN = 5;
-const ITEM_MIN_HEIGHT = 39; // items can vary in size because of text wrapping
+const ITEM_MIN_HEIGHT = 40; // items can vary in size because of text wrapping
 const INDENT_OFFSET = 18;
 
 interface Props {
@@ -177,17 +177,33 @@ function ElementCheckbox({
       checked={isSelected !== "no"}
       className={S.checkbox}
       disabled={disabled}
-      onClick={(event) => {
-        event.stopPropagation();
+      wrapperProps={{
+        onClick(event) {
+          event.preventDefault();
+          event.stopPropagation();
+
+          if (disabled) {
+            return;
+          }
+          onItemToggle?.(item);
+        },
       }}
-      onChange={(event) => {
-        event.stopPropagation();
+      onChange={() => {
         if (disabled) {
           return;
         }
         onItemToggle?.(item);
       }}
       indeterminate={indeterminate}
+      styles={{
+        root: {
+          width: "40px",
+          height: "40px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        },
+      }}
     />
   );
 }
@@ -437,7 +453,6 @@ const ResultsItem = ({
       justify="flex-start"
       gap={0}
       w="100%"
-      pl="md"
       className={cx(S.item, S[type], {
         [S.active]: isActive,
         [S.selected]: selectedIndex === index,
