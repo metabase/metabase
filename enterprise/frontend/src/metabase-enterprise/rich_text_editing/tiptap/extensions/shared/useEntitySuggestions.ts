@@ -25,7 +25,6 @@ interface UseEntitySuggestionsOptions {
     id: number | string;
     model: string;
     label?: string;
-    db_id?: number;
     href: string | null;
   }) => void;
   enabled?: boolean;
@@ -54,8 +53,7 @@ interface UseEntitySuggestionsResult {
     handleModalClose: () => void;
     openModal: () => void;
     hoverHandler: (index: number) => void;
-    onPickQuestionType: () => void;
-    onSaveNewQuestion: (id: number, name: string, db_id: number) => void;
+    onSaveNewQuestion: (id: number, name: string) => void;
   };
 }
 
@@ -279,11 +277,10 @@ export function useEntitySuggestions({
     setModal("question-picker");
   }, []);
 
-  const onSaveNewQuestion = (id: number, name: string, db_id: number) => {
+  const onSaveNewQuestion = (id: number, name: string) => {
     onSelectEntity({
       id: id,
       model: "card",
-      db_id: db_id,
       label: name,
       href: modelToUrl(entityToUrlableModel({ id, name }, "card")),
     });
