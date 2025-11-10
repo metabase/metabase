@@ -1928,8 +1928,7 @@
                  "(-89.0,-179.0)"
                  "<(1.0,1.0),50.0>"
                  "'1':4 'content':1 'row':3"
-                 ;; match on type
-                 bytes?
+                 "\\xc4ca4238a0b923820dcc509a6f75849b"
                  "[1,101)"
                  ;; match on type
                  decimal?
@@ -1937,3 +1936,27 @@
                  ;; doesnt error then it worked
                  string?]
                 (-> results :data :rows deref first)))))))
+
+(defn- hex->bytes [hex]
+  (->> (partition 2 hex)
+       (map #(apply str %))
+       (map #(Integer/parseInt % 16))
+       (map unchecked-byte)
+       byte-array))
+
+(deftest bytea-column-not-truncated-test
+  (testing "fix for #30671"
+    (mt/test-driver :postgres
+      (mt/dataset (mt/dataset-definition
+                   "bytea_dataset"
+                   [["bytea_table"
+                     [{:field-name "bytea_col", :base-type {:native "bytea"}, :effective-type :type/*}]
+                     [[(hex->bytes "900000000000810074123E9DB008AB5C")]
+                      [(hex->bytes "900000000000475000DE4EC0C0A920AB")]]]])
+        (let [mp (mt/metadata-provider)]
+          (is (= [[1 "\\x900000000000810074123e9db008ab5c"]
+                  [2 "\\x900000000000475000de4ec0c0a920ab"]]
+                 (->> (lib.metadata/table mp (mt/id :bytea_table))
+                      (lib/query mp)
+                      (qp/process-query)
+                      (mt/rows)))))))))
