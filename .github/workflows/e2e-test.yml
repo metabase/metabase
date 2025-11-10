@@ -136,10 +136,12 @@ jobs:
           MB_HTTP_CHANNEL_HOST_STRATEGY: "allow-all"
           MB_LAST_ANALYTICS_CHECKSUM: -1
         run: |
+          TZ_JVM_FLAG="-Duser.timezone=$TZ"
+
           if [ "${MB_EDITION}" = "ee" ]; then
-            CMD='clojure -M:dev:drivers:ee:run'
+            CMD="clojure -J$TZ_JVM_FLAG -M:dev:drivers:ee:run"
           else
-            CMD='clojure -M:dev:drivers:run'
+            CMD="clojure -J$TZ_JVM_FLAG -M:dev:drivers:run"
           fi
 
           $CMD > metabase.log 2>&1 & echo $! > metabase_pid
