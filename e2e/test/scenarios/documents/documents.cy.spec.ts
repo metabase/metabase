@@ -877,6 +877,186 @@ H.describeWithSnowplowEE("documents", () => {
     });
   });
 
+  describe("creating new questions", () => {
+    beforeEach(() => {
+      H.createDocument({
+        name: "New Question Test Document",
+        document: {
+          content: [],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      cy.intercept("POST", "/api/dataset").as("dataset");
+    });
+
+    it("should allow creating a new notebook question and embedding it in the document", () => {
+      H.visitDocument("@documentId");
+      H.documentContent().click();
+
+      cy.log("Trigger command menu and select Chart");
+      H.addToDocument("/", false);
+      H.commandSuggestionItem("Chart").click();
+      H.commandSuggestionItem(/New chart/).click();
+      H.commandSuggestionItem(/New Question/).click();
+
+      cy.log("Create a simple query in the notebook editor");
+      cy.findByTestId("entity-picker-modal").within(() => {
+        H.entityPickerModalTab("Tables").click();
+        H.entityPickerModalItem(2, "Orders").click();
+      });
+
+      cy.log("Save and use the new question");
+      cy.findByRole("dialog", { name: "Create new question" }).within(() => {
+        cy.findByText("Orders").should("exist");
+        cy.findByRole("button", { name: "Save and use" }).click();
+      });
+
+      cy.wait("@dataset");
+
+      cy.log("Verify the question is embedded in the document");
+      H.getDocumentCard("Orders").should("exist");
+
+      cy.get("@documentId").then((id) => {
+        H.expectUnstructuredSnowplowEvent({
+          event: "document_add_card",
+          target_id: id,
+        });
+      });
+
+      cy.log("Verify document can be saved with a new question");
+      cy.findByRole("button", { name: "Save" }).should("be.visible").click();
+      cy.findByRole("button", { name: "Save" }).should("not.exist");
+
+      H.undoToast().findByText("Document saved").should("exist");
+    });
+
+    it("should allow creating a new native SQL question and embedding it in the document", () => {
+      H.visitDocument("@documentId");
+      H.documentContent().click();
+
+      cy.log("Trigger command menu and select Chart");
+      H.addToDocument("/", false);
+      H.commandSuggestionItem("Chart").click();
+      H.commandSuggestionItem(/New chart/).click();
+      H.commandSuggestionItem(/New SQL query/).click();
+
+      cy.log("Save and use the new SQL query");
+      H.NativeEditor.type("SELECT * FROM ORDERS LIMIT 10");
+      cy.findByRole("dialog", { name: "Edit SQL Query" })
+        .findByRole("button", { name: "Save and use" })
+        .click();
+
+      cy.wait("@dataset");
+
+      cy.log("Verify the SQL query is embedded in the document");
+      H.getDocumentCard("New question").should("exist");
+      cy.findByRole("button", { name: "Save" }).should("be.visible").click();
+
+      cy.get("@documentId").then((id) => {
+        H.expectUnstructuredSnowplowEvent({
+          event: "document_add_card",
+          target_id: id,
+        });
+      });
+
+      cy.log("Change native question title");
+      H.documentContent().within(() => {
+        cy.findByText("New question").realHover();
+        cy.icon("pencil").click();
+
+        cy.realType("New native question");
+      });
+      cy.get(".node-paragraph").first().click(); // unfocus cardEmbed
+
+      H.getDocumentCard("New native question").should("be.visible");
+
+      cy.log("Verify document can be saved with a new question");
+      cy.findByRole("button", { name: "Save" }).should("be.visible").click();
+      cy.findByRole("button", { name: "Save" }).should("not.exist");
+
+      H.undoToast().findByText("Document saved").should("exist");
+    });
+
+    it("should support keyboard navigation when creating a new question", () => {
+      H.visitDocument("@documentId");
+      H.documentContent().click();
+
+      cy.log("Trigger command menu and navigate to 'Chart' item");
+      H.addToDocument("/", false);
+      cy.realPress("{downarrow}");
+      H.commandSuggestionItem("Chart").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
+      cy.realPress("{enter}");
+
+      cy.log("Click 'New chart' to open question type menu");
+      H.commandSuggestionItem(/New chart/)
+        .should("exist")
+        .should("have.attr", "aria-selected", "true");
+      H.commandSuggestionItem(/Browse all/).should("exist");
+      cy.realPress("{enter}");
+
+      cy.log("Verify notebook option is selected by default");
+      H.commandSuggestionItem(/New Question/).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
+
+      cy.log("Navigate to SQL option");
+      cy.realPress("{downarrow}");
+
+      H.commandSuggestionItem(/New SQL query/).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
+
+      cy.log("Select SQL option with Enter");
+      cy.realPress("{enter}");
+
+      cy.log("Verify native query modal opens");
+      cy.findByRole("dialog", { name: "Edit SQL Query" }).should("be.visible");
+
+      cy.log("Cancel the modal");
+      cy.findByRole("dialog", { name: "Edit SQL Query" })
+        .findByRole("button", { name: "Cancel" })
+        .click();
+
+      cy.log("Verify modal is closed");
+      cy.findByRole("dialog", { name: "Edit SQL Query" }).should("not.exist");
+    });
+
+    it("should show 'Create new question' footer when no search results are found", () => {
+      H.visitDocument("@documentId");
+      H.documentContent().click();
+
+      cy.log("Trigger command menu and select Chart");
+      H.addToDocument("/", false);
+      H.commandSuggestionItem("Chart").click();
+
+      cy.log("Search for something that doesn't exist");
+      H.addToDocument("xyznonexistentquery", false);
+
+      cy.log("Verify 'No results found' message appears");
+      H.commandSuggestionDialog().should("contain.text", "No results found");
+
+      H.commandSuggestionDialog().findByRole("separator").should("exist");
+
+      cy.log("Verify 'Create new question' footer is visible");
+      H.commandSuggestionItem(/New chart/).should("be.visible");
+
+      cy.log("Verify 'Browse all' footer is also visible");
+      H.commandSuggestionItem(/Browse all/).should("be.visible");
+    });
+  });
+
   describe("error handling", () => {
     it("should display an error toast when creating a new document fails", () => {
       // setup

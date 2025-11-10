@@ -66,12 +66,15 @@ export function EntitySearchSection({
       {query.length > 0 &&
       menuItems.length === 0 &&
       searchResults.length === 0 ? (
-        <Box p="sm" ta="center">
-          <Text size="md" c="text-medium">{t`No results found`}</Text>
-        </Box>
+        <>
+          <Box p="sm" ta="center">
+            <Text size="md" c="text-medium">{t`No results found`}</Text>
+          </Box>
+          {(canCreateNewQuestion || canBrowseAll) && (
+            <Divider my="sm" mx="sm" />
+          )}
+        </>
       ) : null}
-
-      {(canCreateNewQuestion || canBrowseAll) && <Divider my="sm" mx="sm" />}
 
       {canCreateNewQuestion && (
         <CreateNewQuestionFooter

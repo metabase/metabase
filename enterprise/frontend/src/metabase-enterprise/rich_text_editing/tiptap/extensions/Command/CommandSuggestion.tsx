@@ -207,9 +207,6 @@ export const CommandSuggestion = forwardRef<
         switchToEmbedMode: true,
       });
 
-      if (searchMenuItems.length === 0) {
-        entityHandlers.openModal();
-      }
       setViewMode("embedQuestion");
       return;
     }
@@ -471,7 +468,7 @@ export const CommandSuggestion = forwardRef<
                     isSelected={selectedIndex === currentItems.length}
                     onClick={() => {
                       // Switch to embed mode so selected questions get embedded
-                      setViewMode("embedQuestion");
+                      setViewMode("newQuestionType");
                       onTriggerCreateNewQuestion();
                     }}
                   />
