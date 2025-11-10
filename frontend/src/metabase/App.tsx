@@ -2,6 +2,7 @@ import type { Location } from "history";
 import { KBarProvider } from "kbar";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
+import { memoize } from "underscore";
 
 import { AppBanner } from "metabase/common/components/AppBanner";
 import {
@@ -36,21 +37,23 @@ import { useTokenRefresh } from "./api/utils/use-token-refresh";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
 
-const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
-  if (status === 403 || data?.error_code === "unauthorized") {
-    return <Unauthorized />;
-  }
-  if (status === 404 || data?.error_code === "not-found") {
-    return <NotFound />;
-  }
-  if (data?.error_code === "archived" && context === "dashboard") {
-    return <Archived entityName="dashboard" linkTo="/dashboards/archive" />;
-  }
-  if (data?.error_code === "archived" && context === "query-builder") {
-    return <Archived entityName="question" linkTo="/questions/archive" />;
-  }
-  return <GenericError details={data?.message} />;
-};
+const getErrorComponent = memoize(
+  ({ status, data, context }: AppErrorDescriptor) => {
+    if (status === 403 || data?.error_code === "unauthorized") {
+      return <Unauthorized />;
+    }
+    if (status === 404 || data?.error_code === "not-found") {
+      return <NotFound />;
+    }
+    if (data?.error_code === "archived" && context === "dashboard") {
+      return <Archived entityName="dashboard" linkTo="/dashboards/archive" />;
+    }
+    if (data?.error_code === "archived" && context === "query-builder") {
+      return <Archived entityName="question" linkTo="/questions/archive" />;
+    }
+    return <GenericError details={data?.message} />;
+  },
+);
 
 interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
