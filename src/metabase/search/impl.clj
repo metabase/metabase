@@ -11,7 +11,6 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
-   [metabase.search.settings :as search.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
