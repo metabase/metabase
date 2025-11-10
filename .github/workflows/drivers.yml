@@ -17,7 +17,7 @@ jobs:
   determine-driver-skips:
     runs-on: ubuntu-latest
     outputs:
-      skip: ${{ steps.check_team_and_branch.outputs.skip }}
+      skip: ${{ steps.check-branch-and-files-changed.outputs.skip }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,8 +27,24 @@ jobs:
           # Fetch the base branch to ensure its history is available for diffing
           git fetch --depth=1 origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
           # Only run this if it's a pull request and the base ref exists
+      - name: Get Date
+        id: get-date
+        shell: bash
+        run: |
+          echo "date=$(/bin/date -u "+%Y%m%d")" >> $GITHUB_OUTPUT
+      - name: Restore M2 cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.m2
+            ~/.deps.clj
+          restore-keys: |
+            mage-drivers-${{ steps.get-date.outputs.date }}
+            mage-drivers-
+          key: >-
+            mage-drivers-${{ steps.get-date.outputs.date }}
       - name: Check if driver tests should run
-        id: check_branch_and_files_changed
+        id: check-branch-and-files-changed
         run: |
           IS_MASTER_OR_RELEASE="${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}"
           echo "Is master or release: ${IS_MASTER_OR_RELEASE}"
