@@ -75,7 +75,7 @@
   (keys (dissoc (methods supported-engine?) :default)))
 
 (defn supported-engines
-  "List the search engines that are supported, in order of preference.
+  "List the search engines that are supported, in order of usage preference.
    The configured engine comes first, if it is supported."
   []
   (let [configured-engine (some->> (settings/search-engine) name (keyword "search.engine"))
@@ -83,7 +83,7 @@
     (distinct (filter supported-engine? potential-engines))))
 
 (defn active-engines
-  "A list of supported search engines, in order of preference.
+  "A list of supported search engines for which we will maintain an index, in order of usage preference.
    Excludes :search.engine/in-place, which does not use an index."
   []
   (remove #{:search.engine/in-place} (supported-engines)))
