@@ -2912,6 +2912,9 @@
               "authority_level" : {
                 "type" : "string"
               },
+              "description" : {
+                "type" : "string"
+              },
               "name" : {
                 "type" : "string"
               }
@@ -11161,9 +11164,15 @@
                     "$ref" : "#/components/schemas/metabase.analyze.query-results.ResultsMetadata"
                   },
                   "collection_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
+                    "anyOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "description" : "String must be a valid 21-character NanoID string.",
+                      "type" : "string",
+                      "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+                    } ]
                   },
                   "cache_ttl" : {
                     "description" : "value must be an integer greater than zero.",
@@ -11675,6 +11684,9 @@
                   },
                   "parameter_mappings" : {
                     "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
+                  },
+                  "embedding_type" : {
+                    "type" : "string"
                   },
                   "name" : {
                     "type" : "string",
@@ -13833,6 +13845,9 @@
                   "width" : {
                     "type" : "string",
                     "enum" : [ "fixed", "full" ]
+                  },
+                  "embedding_type" : {
+                    "type" : "string"
                   },
                   "show_in_getting_started" : {
                     "type" : "boolean"
@@ -16183,6 +16198,44 @@
         "tags" : [ "/api/ee/billing" ]
       }
     },
+    "/api/ee/cloud-add-ons/addons" : {
+      "get" : {
+        "summary" : "GET /api/ee/cloud-add-ons/addons",
+        "description" : "Get addons information from the Metabase Store API.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/cloud-add-ons" ]
+      }
+    },
+    "/api/ee/cloud-add-ons/plans" : {
+      "get" : {
+        "summary" : "GET /api/ee/cloud-add-ons/plans",
+        "description" : "Get plans information from the Metabase Store API.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/cloud-add-ons" ]
+      }
+    },
     "/api/ee/cloud-add-ons/{product-type}" : {
       "post" : {
         "summary" : "POST /api/ee/cloud-add-ons/{product-type}",
@@ -16193,7 +16246,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai" ]
+            "enum" : [ "metabase-ai", "python-execution" ]
           }
         } ],
         "responses" : {
@@ -16216,8 +16269,7 @@
                   "terms_of_service" : {
                     "type" : "boolean"
                   }
-                },
-                "required" : [ "terms_of_service" ]
+                }
               }
             }
           }
@@ -20906,6 +20958,14 @@
           "required" : true,
           "schema" : {
             "default" : false,
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "reindex",
+          "required" : true,
+          "schema" : {
+            "default" : true,
             "type" : "boolean"
           }
         } ],

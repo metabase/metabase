@@ -88,8 +88,6 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
           expect(response.statusCode).to.eq(200);
         });
 
-        cy.button("Not now").click();
-
         cy.log("saving copied question");
 
         getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then((id) => {
