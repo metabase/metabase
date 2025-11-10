@@ -214,6 +214,7 @@
    :api  #{metabase.bookmarks.api}
    :uses #{api
            app-db
+           collections
            config
            premium-features
            queries
@@ -1861,7 +1862,8 @@
            metabase-enterprise.library.core}
    :uses #{api
            app-db
-           collections}}
+           collections
+           premium-features}}
 
   enterprise/llm
   {:team "Metabot"
