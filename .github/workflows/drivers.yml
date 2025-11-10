@@ -53,7 +53,6 @@ jobs:
             echo "Merging into master or a release branch. All driver tests will run."
           else
             echo "Checking for changes in relevant modules..."
-            echo "./bin/mage can-skip-driver-tests ${{ github.event.pull_request.base.ref }}"
             if ./bin/mage can-skip-driver-tests "${{ github.event.pull_request.base.ref }}"; then
               echo 'skip=true' >> $GITHUB_OUTPUT
             else

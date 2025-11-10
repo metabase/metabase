@@ -200,7 +200,7 @@
    :task     (task! (mage.modules/cli-print-affected-modules (:arguments parsed)))}
 
   can-skip-driver-tests
-  {:doc      "Returns nonzero if we can skip driver tests based on changes related to a Git ref e.g. `master`"
+  {:doc      "Returns zero (success) if we can skip driver tests based on changes related to a Git ref e.g. `master`"
    :examples [["./bin/mage can-skip-driver-tests master"]
               ["./bin/mage can-skip-driver-tests"]]
    :requires [[mage.modules]]

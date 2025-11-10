@@ -115,7 +115,9 @@
     (flush))
   (System/exit 0))
 
-(defn- always-run-driver-tests?
+(defn- changes-important-file-for-drivers?
+  "Whether we should always run driver tests if we have changes relative to `git-ref` to something important like
+  `deps.edn`."
   [git-ref]
   (some (fn [filename]
           (when (or (str/includes? filename "deps.edn")
@@ -139,28 +141,23 @@
         files))
 
 (defn cli-can-skip-driver-tests
-  "Exits with nonzero status code if we can skip "
+  "Exits with zero status code if we can skip driver tests, nonzero if we cannot."
   [[git-ref, :as _command-line-args]]
-  (try
-    (let [deps          (dependencies)
-          git-ref       (or git-ref "master")
-          updated-files (remove-non-driver-test-namespaces (u/updated-files git-ref))
-          updated       (updated-files->updated-modules updated-files)
-          unaffected    (unaffected-modules deps updated)
-          skip-tests?   (skip-driver-tests? deps updated)]
-      ;; Not strictly necessary, but people looking at CI will appreciate having this extra info.
-      (println "These modules have changed:" (pr-str updated))
-      (println)
-      (println)
-      (println "These modules are unaffected by this change:" (pr-str unaffected))
-      (println)
-      (println)
-      (println "Driver tests" (if skip-tests? "CAN" "CAN NOT") "be skipped.")
-      (System/exit ^Long (cond
-                           (not skip-tests?)                  0
-                           (always-run-driver-tests? git-ref) 0
-                           :else                              1)))
-    ;; fail closed -- if code above barfs then still exit with status code zero (do not skip)
-    (catch Throwable e
-      (println "Error determining whether we can skip driver tests:\n" e)
-      (System/exit 0))))
+  (let [deps          (dependencies)
+        git-ref       (or git-ref "master")
+        updated-files (remove-non-driver-test-namespaces (u/updated-files git-ref))
+        updated       (updated-files->updated-modules updated-files)
+        unaffected    (unaffected-modules deps updated)
+        skip-tests?   (skip-driver-tests? deps updated)]
+    ;; Not strictly necessary, but people looking at CI will appreciate having this extra info.
+    (println "These modules have changed:" (pr-str updated))
+    (println)
+    (println)
+    (println "These modules are unaffected by this change:" (pr-str unaffected))
+    (println)
+    (println)
+    (println "Driver tests" (if skip-tests? "CAN" "CAN NOT") "be skipped.")
+    (System/exit ^Long (cond
+                         (not skip-tests?)                             1
+                         (changes-important-file-for-drivers? git-ref) 1
+                         :else                                         0))))
