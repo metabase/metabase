@@ -99,6 +99,7 @@ export const MetabotTrialPage = () => {
         .catch((error: unknown) => {
           settingUpModalHandlers.close();
           isFetchBaseQueryError(error) && handleFieldError(error.data);
+          throw error;
         });
     },
     [purchaseCloudAddOn, settingUpModalHandlers],
@@ -162,6 +163,7 @@ export const MetabotTrialPage = () => {
                       <FormSubmitButton
                         disabled={!values.terms_of_service}
                         label={t`Add Metabot AI`}
+                        failedLabel={t`Failed to add Metabot AI`}
                         variant="filled"
                         mt="xs"
                       />
