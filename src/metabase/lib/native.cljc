@@ -1,6 +1,6 @@
 (ns metabase.lib.native
   "Functions for working with native queries."
-  (:refer-clojure :exclude [some select-keys mapv every?])
+  (:refer-clojure :exclude [some select-keys mapv every? empty? not-empty])
   (:require
    [clojure.core.match :refer [match]]
    [clojure.set :as set]
@@ -24,7 +24,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? mapv select-keys some]]))
+   [metabase.util.performance :refer [every? mapv select-keys some empty? not-empty]]))
 
 ;; Template Tags: Variables
 

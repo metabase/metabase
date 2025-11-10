@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [mb.hawk.parallel]
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.test-util :as tu]
    [metabase.premium-features.token-check :as token-check]
@@ -125,7 +126,38 @@
     (testing "When connectivity is restored we get successful token checks"
       (reset! behavior :success)
       (Thread/sleep 100) ;; wait for circuit breaker to open back up
-      (is (= good-response (token-check/-check-token checker token))))))
+      (is (= good-response (token-check/-check-token checker token)))))
+  (testing "App db not setup yet does not invoke the circuit breaker (#65294)"
+    (let [token          (tu/random-token)
+          good-response  {:valid    true
+                          :status   :fake
+                          :features [:feature1 :feature2]}
+          token-response (fn [_token]
+                           good-response)
+          checker        (token-check/make-checker
+                          {:base            (reify token-check/TokenChecker
+                                              (-check-token [_ token]
+                                                (token-response token))
+                                              (-clear-cache! [_]))
+                           :circuit-breaker {:failure-threshold-ratio-in-period [4 4 1000]
+                                             :delay-ms                          5000
+                                             :success-threshold                 1}
+                           :timeout-ms      100
+                           :ttl-ms          200
+                           :grace-period    (token-check/guava-cache-grace-period 1000 TimeUnit/MILLISECONDS)})]
+      (with-redefs [mdb/db-is-set-up? (constantly false)]
+        (is (= {:valid false
+                :status "Unable to validate token"
+                :error-details "Metabase DB is not yet set up"}
+               (token-check/-check-token checker token)))
+        (dotimes [_ 50] (token-check/-check-token checker token))
+        (is (= {:valid false
+                :status "Unable to validate token"
+                :error-details "Metabase DB is not yet set up"}
+               (token-check/-check-token checker token))))
+      (testing "When the db-is-set-up? we are not blocked by the circuit breaker"
+        (with-redefs [mdb/db-is-set-up? (constantly true)]
+          (is (= good-response (token-check/-check-token checker token))))))))
 
 (deftest grace-period-test
   (testing "implementation check"

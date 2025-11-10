@@ -493,17 +493,19 @@
 
 (deftest ^:parallel get-current-user-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [conversation-id (str (random-uuid))
-          ai-token (ai-session-token)
-          response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-current-user"
-                                         {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                         {:conversation_id conversation-id})]
-      (is (=? {:structured_output {:id (mt/user->id :rasta)
-                                   :type "user"
-                                   :name "Rasta Toucan"
-                                   :email_address "rasta@metabase.com"}
-               :conversation_id conversation-id}
-              response)))))
+    (mt/with-temp [:model/Glossary _ {:term "asdf" :definition "Sales Team Performance"}]
+      (let [conversation-id (str (random-uuid))
+            ai-token (ai-session-token)
+            response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-current-user"
+                                           {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                           {:conversation_id conversation-id})]
+        (is (=? {:structured_output {:id (mt/user->id :rasta)
+                                     :type "user"
+                                     :name "Rasta Toucan"
+                                     :email_address "rasta@metabase.com"
+                                     :glossary {(keyword "asdf") "Sales Team Performance"}}
+                 :conversation_id conversation-id}
+                response))))))
 
 (deftest get-dashboard-details-test
   (mt/with-premium-features #{:metabot-v3}

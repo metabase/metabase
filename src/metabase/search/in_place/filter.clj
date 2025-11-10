@@ -304,9 +304,11 @@
                 verified
                 non-temporal-dim-ids
                 has-temporal-dim
-                display-type]} search-context
+                display-type
+                is-superuser?]} search-context
         feature->supported-models (feature->supported-models)]
     (cond-> models
+      (not   is-superuser?)        (disj "transform")
       (some? created-at)           (set/intersection (:created-at feature->supported-models))
       (some? created-by)           (set/intersection (:created-by feature->supported-models))
       (some? last-edited-at)       (set/intersection (:last-edited-at feature->supported-models))

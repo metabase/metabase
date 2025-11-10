@@ -42,7 +42,7 @@ You can think of semantic types as adding meaning and context to a field to comm
 
 - **Entity key.** Used to indicate that the field uniquely identifies each row. Could be a Product ID, serial number, etc.
 
-- **Foreign key.** Used to refer to an Entity key of another table in order to connect data from different tables that are related. For example, in a Products table, you might have a Customer ID field that points to a Customers table, where Customer ID is the Entity key. If you want to use [linked filters on dashboards](../dashboards/linked-filters.md), you must set up foreign key relationships.
+- **Foreign key.** Used to refer to an Entity key of another table to connect data from different tables that are related. For example, in a Products table, you might have a Customer ID field that points to a Customers table, where Customer ID is the Entity key. If you want to use [linked filters on dashboards](../dashboards/linked-filters.md), you must set up foreign key relationships.
 
 ### Semantic types for numeric fields
 

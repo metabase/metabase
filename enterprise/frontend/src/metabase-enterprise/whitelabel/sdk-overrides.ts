@@ -1,4 +1,5 @@
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
+import type { MetabaseGlobalPluginsConfig } from "embedding-sdk-package";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import type { State } from "metabase-types/store";
 
@@ -26,8 +27,9 @@ export const initializeSdkPlugins = () => {
   PLUGIN_SELECTORS.getNoDataIllustration = (state: State) => {
     try {
       // Check if we're in an SDK context with plugins
-      const sdkState = (state as SdkStoreState).sdk;
-      const sdkResult = sdkState?.plugins?.getNoDataIllustration?.();
+      const plugins = (state as SdkStoreState).sdk
+        ?.plugins as MetabaseGlobalPluginsConfig;
+      const sdkResult = plugins?.getNoDataIllustration?.();
       if (sdkResult !== null && sdkResult !== undefined) {
         return sdkResult;
       }
@@ -43,8 +45,9 @@ export const initializeSdkPlugins = () => {
   PLUGIN_SELECTORS.getNoObjectIllustration = (state: State) => {
     try {
       // Check if we're in an SDK context with plugins
-      const sdkState = (state as SdkStoreState).sdk;
-      const sdkResult = sdkState?.plugins?.getNoObjectIllustration?.();
+      const plugins = (state as SdkStoreState).sdk
+        ?.plugins as MetabaseGlobalPluginsConfig;
+      const sdkResult = plugins?.getNoObjectIllustration?.();
       if (sdkResult !== null && sdkResult !== undefined) {
         return sdkResult;
       }

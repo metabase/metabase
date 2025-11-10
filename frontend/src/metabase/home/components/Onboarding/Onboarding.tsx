@@ -11,6 +11,7 @@ import { jt, t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
+import { OnboardingIllustration } from "metabase/common/components/OnboardingIllustration";
 import { useSetting, useTempStorage } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { getIsXrayEnabled } from "metabase/home/selectors";
@@ -211,6 +212,7 @@ export const Onboarding = () => {
       pt="xl"
       pb={212}
     >
+      <OnboardingIllustration />
       <Box maw={592} m="0 auto">
         <Accordion
           defaultValue={lastItemOpened || DEFAULT_ITEM}

@@ -106,6 +106,33 @@
               (merge default-search-ctx
                      {:search-native-query true})))))))
 
+(deftest ^:parallel transform-superuser-visibility-test
+  (testing "Transform model visibility is restricted to superusers"
+    (testing "Superuser sees transform in applicable models"
+      (is (contains?
+           (search.filter/search-context->applicable-models
+            (merge default-search-ctx
+                   {:is-superuser? true
+                    :models (cond-> #{"dashboard" "card" "transform"}
+                              config/ee-available? (conj "transform"))}))
+           "transform")))
+
+    (testing "Non-superuser does not see transform in applicable models"
+      (is (not (contains?
+                (search.filter/search-context->applicable-models
+                 (merge default-search-ctx
+                        {:is-superuser? false
+                         :models (cond-> #{"dashboard" "card"}
+                                   config/ee-available? (conj "transform"))}))
+                "transform"))))
+
+    (testing "Non-superuser with transform in models set - transform is filtered out"
+      (is (= #{"dashboard" "card"}
+             (search.filter/search-context->applicable-models
+              (merge default-search-ctx
+                     {:is-superuser? false
+                      :models #{"dashboard" "card" "transform"}})))))))
+
 (deftest joined-with-table?-test
   #_{:clj-kondo/ignore [:equals-true]}
   (are [expected args]

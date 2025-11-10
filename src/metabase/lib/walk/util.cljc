@@ -1,5 +1,6 @@
 (ns metabase.lib.walk.util
   "Utility functions built on top of [[metabase.lib.walk]]."
+  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.set :as set]
    [metabase.lib.metadata :as lib.metadata]
@@ -9,7 +10,8 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [not-empty]]))
 
 (defn- transduce-stages
   ([rf query]

@@ -127,10 +127,6 @@ e2e_ci: &e2e_ci
 e2e_specs: &e2e_specs
   - e2e/!(test-host-app)**/*.cy.*.{js,ts}
 
-e2e_cross_version: &e2e_cross_version
-  - ".github/workflows/e2e-cross-version.yml"
-  - "e2e/test/scenarios/cross-version/**"
-
 e2e_embedding_sdk:
   - *frontend_embedding_sdk_ci
   - *sources
