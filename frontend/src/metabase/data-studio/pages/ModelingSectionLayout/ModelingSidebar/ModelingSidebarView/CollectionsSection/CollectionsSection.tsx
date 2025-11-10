@@ -98,19 +98,13 @@ export function CollectionsSection({
                   <Menu.Sub.Dropdown>
                     <Menu.Item
                       leftSection={<Icon name="notebook" />}
-                      onClick={(e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        handleCreateModelNotebook();
-                      }}
+                      onClick={handleCreateModelNotebook}
                     >
                       {t`Query builder`}
                     </Menu.Item>
                     <Menu.Item
                       leftSection={<Icon name="sql" />}
-                      onClick={(e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        handleCreateModelNative();
-                      }}
+                      onClick={handleCreateModelNative}
                     >
                       {t`SQL query`}
                     </Menu.Item>
@@ -119,20 +113,14 @@ export function CollectionsSection({
               ) : (
                 <Menu.Item
                   leftSection={<Icon name="model" />}
-                  onClick={(e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    handleCreateModelNotebook();
-                  }}
+                  onClick={handleCreateModelNotebook}
                 >
                   {t`Model`}
                 </Menu.Item>
               )}
               <Menu.Item
                 leftSection={<Icon name="metric" />}
-                onClick={(e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  handleCreateMetric();
-                }}
+                onClick={handleCreateMetric}
               >
                 {t`Metric`}
               </Menu.Item>
