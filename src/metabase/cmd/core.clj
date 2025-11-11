@@ -160,6 +160,13 @@
   (classloader/require 'metabase.cmd.config-file-gen)
   ((resolve 'metabase.cmd.config-file-gen/generate-config-file-doc!)))
 
+(defn ^:command command-documentation
+  "Generates a markdown file containing documentation for all CLI commands. This is written to a file called
+  `docs/installation-and-operation/commands.md`."
+  []
+  (classloader/require 'metabase.cmd.command-dox)
+  ((resolve 'metabase.cmd.command-dox/generate-dox!)))
+
 (defn ^:command driver-methods
   "Print a list of all multimethods available for a driver to implement, optionally with their docstrings."
   ([]
