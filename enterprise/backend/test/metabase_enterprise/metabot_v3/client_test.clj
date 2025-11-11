@@ -16,7 +16,7 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
-   (java.io ByteArrayOutputStream PipedInputStream PipedOutputStream)
+   (java.io ByteArrayOutputStream Closeable PipedInputStream PipedOutputStream)
    (metabase.server.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
@@ -41,9 +41,12 @@
             (Thread/sleep ^long delay-ms))
           (finally
             (.close pipe))))
-      {:status  200
-       :headers {"content-type" "text/event-stream"}
-       :body    ret})))
+      {:status      200
+       :headers     {"content-type" "text/event-stream"}
+       :body        ret
+       :http-client (reify Closeable
+                      (close [_this]
+                        (.close ret)))})))
 
 (defn consume-streaming-response
   "Execute a StreamingResponse and capture its output"

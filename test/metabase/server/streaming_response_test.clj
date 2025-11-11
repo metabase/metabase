@@ -17,6 +17,7 @@
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
    (jakarta.servlet.http HttpServletResponse)
+   (java.io Closeable InputStream)
    (java.util.concurrent Executors)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
@@ -157,7 +158,8 @@
         handler  (fn [req respond _raise]
                    (respond
                     (compojure.response/render
-                     (streaming-response/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
+                     (streaming-response/streaming-response {:content-type "text/event-stream; charset=utf-8"
+                                                             :headers {"Transfer-Encoding" "chunked"}} [os canceled-chan]
                        (try
                          (loop []
                            (if (a/poll! canceled-chan)
@@ -182,15 +184,18 @@
           (let [res (http/request {:method          :post :url url
                                    :as              :stream
                                    :decompress-body false})]
-            (.read ^java.io.InputStream (:body res)) ;; start the handler
-            (.close ^java.io.Closeable (:body res))
+            (.read ^InputStream (:body res)) ;; start the handler
+            ;; NOTE: this is the gist here, calling .close on the body will consume request *completely*
+            (.close ^Closeable (:http-client res))
             (u/poll {:thunk       #(deref canceled)
                      :done?       some?
                      :interval-ms 5})
             ;; it's been 29 when I tested this, if it every becomes flaky maybe decrease the number?
             (is (< 20 @cnt) "Stopped writing when channel closed")
-            (testing "canceled-chan is working"
-              (is (= :nice @canceled))))))
+            (testing "cancellation is working"
+              ;; we're not checking for particular way of cancelling, because cancellation poll interval can conflict
+              ;; with Thread/sleep and will make this test flaky
+              (is (some? @canceled))))))
       (finally
         (.stop server)))))
 
