@@ -112,6 +112,8 @@
   "Some requests come with body wrapped in ContentLengthInputStream, and that will never close the underlying stream.
   So we just close the client itself.
 
+  Please use `Connection: close` header when using this function to prevent connection being reused by HttpClient.
+
   See: https://github.com/dakrone/clj-http/issues/627
   Also: metabase-enterprise.metabot-v3.api-test/closing-connection-test (for 'chunked')"
   [response]
@@ -160,7 +162,10 @@
                                                "Content-Type"              "application/json;charset=UTF-8"
                                                "x-metabase-instance-token" (premium-features/premium-embedding-token)
                                                "x-metabase-session-token"  session-id
-                                               "x-metabase-url"            (system/site-url)}
+                                               "x-metabase-url"            (system/site-url)
+                                               ;; close conn so it's not reused so that when we use
+                                               ;; `quick-closing-body` there are no weird problems
+                                               "Connection"                "close"}
                             :body             (->json-bytes body)
                             :throw-exceptions false
                             :as :stream
@@ -181,7 +186,7 @@
                         {:request  (assoc options :body body)
                          :response response})))
       (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
-        ;; exiting with-open will close underlying request
+        ;; see `quick-closing-body` docs and see `Connection` header supporting this behavior
         (with-open [^BufferedReader response-reader (io/reader (quick-closing-body response))]
           ;; Response from the AI Service will send response parts separated by newline
           (loop [^String line (.readLine response-reader)]
