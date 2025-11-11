@@ -709,8 +709,8 @@
       upgrade-card-schema-to-latest))
 
 (t2/define-before-insert :model/Card
-  [card]
-  (collection/check-allowed-content (:type card) (:collection_id card))
+  [{:keys [type] :as card}]
+  (collection/check-allowed-content (name (if (= :model type) :dataset type)) (:collection_id card))
   (-> card
       (assoc :metabase_version config/mb-version-string
              :card_schema current-schema-version)

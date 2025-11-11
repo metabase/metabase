@@ -157,18 +157,16 @@
   (u/prog1 (t2/insert-returning-instance! :model/Collection {:name     "Semantic Layer"
                                                              :type     semantic-layer-collection-type
                                                              :location "/"
-                                                             :allowed_content {:collection true}})
+                                                             :allowed_content ["collection"]})
     (let [base-location        (str "/" (:id <>) "/")]
       (t2/insert! :model/Collection {:name            "Models"
                                      :type            semantic-layer-collection-type
                                      :location        base-location
-                                     :allowed_content {:collection true
-                                                       :model      true}})
+                                     :allowed_content ["collection" "dataset"]})
       (t2/insert! :model/Collection {:name            "Metrics"
                                      :type            semantic-layer-collection-type
                                      :location        base-location
-                                     :allowed_content {:collection true
-                                                       :metric     true}}))))
+                                     :allowed_content ["collection" "metric"]}))))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
@@ -1504,7 +1502,7 @@
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
   (assert-valid-remote-synced-parent collection)
-  (check-allowed-content :collection (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
+  (check-allowed-content "collection" (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
   (assoc collection :slug (slugify collection-name)))
 
 (defn- copy-collection-permissions!
@@ -1679,7 +1677,7 @@
       (let [merged-collection (merge collection-before-updates collection-updates)]
         (assert-valid-remote-synced-parent merged-collection)))
     ;; (3.6) Check that the parent collection allows this collection to be there
-    (check-allowed-content :collection (when-let [location (:location collection)] (location-path->parent-id location)))
+    (check-allowed-content "collection" (when-let [location (:location collection)] (location-path->parent-id location)))
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)
