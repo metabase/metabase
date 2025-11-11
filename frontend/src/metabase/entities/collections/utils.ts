@@ -42,19 +42,16 @@ export function getCollectionIcon(
   }
 
   if (PLUGIN_SEMANTIC_LAYER.isSemanticLayerCollection(collection)) {
-    const allowedTypes = collection.allowed_content ?? [];
-    const hasOnlyModels =
-      allowedTypes.includes("dataset") && !allowedTypes.includes("metric");
-    const hasOnlyMetrics =
-      allowedTypes.includes("metric") && !allowedTypes.includes("dataset");
-
-    if (hasOnlyModels) {
-      return { name: "model" };
+    const type =
+      PLUGIN_SEMANTIC_LAYER.getSemanticLayerCollectionType(collection);
+    switch (type) {
+      case "models":
+        return { name: "model" };
+      case "metrics":
+        return { name: "metric" };
+      default:
+        return { name: "repository" };
     }
-    if (hasOnlyMetrics) {
-      return { name: "metric" };
-    }
-    return { name: "repository" };
   }
 
   const type = PLUGIN_COLLECTIONS.getCollectionType(collection);

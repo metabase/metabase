@@ -28,34 +28,23 @@ export function ModelingCollectionEmptyState({
 }
 
 function getMessages(collection: Collection) {
-  const allowedTypes = collection.allowed_content ?? [];
-  const hasOnlyModels =
-    allowedTypes.includes("dataset") && !allowedTypes.includes("metric");
-  const hasOnlyMetrics =
-    allowedTypes.includes("metric") && !allowedTypes.includes("dataset");
-  const isSemanticLayer =
-    PLUGIN_SEMANTIC_LAYER.isSemanticLayerCollection(collection);
+  const type = PLUGIN_SEMANTIC_LAYER.getSemanticLayerCollectionType(collection);
 
-  if (hasOnlyModels) {
-    return {
-      title: t`No models yet`,
-      description: isSemanticLayer
-        ? t`Put models in the Semantic Layer to see them here.`
-        : t`Models in this collection will appear here.`,
-    };
+  switch (type) {
+    case "models":
+      return {
+        title: t`No models yet`,
+        description: t`Put models in the Semantic Layer to see them here.`,
+      };
+    case "metrics":
+      return {
+        title: t`No metrics yet`,
+        description: t`Put metrics in the Semantic Layer to see them here.`,
+      };
+    default:
+      return {
+        title: t`No models or metrics yet`,
+        description: t`Models and metrics in this collection will appear here.`,
+      };
   }
-
-  if (hasOnlyMetrics) {
-    return {
-      title: t`No metrics yet`,
-      description: isSemanticLayer
-        ? t`Put metrics in the Semantic Layer to see them here.`
-        : t`Metrics in this collection will appear here.`,
-    };
-  }
-
-  return {
-    title: t`No models or metrics yet`,
-    description: t`Models and metrics in this collection will appear here.`,
-  };
 }
