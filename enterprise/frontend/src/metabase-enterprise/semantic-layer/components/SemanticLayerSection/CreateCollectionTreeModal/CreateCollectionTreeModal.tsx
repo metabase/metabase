@@ -69,7 +69,7 @@ export function CreateCollectionTreeModal({
               description={t`Default to reliable sources your data team prescribes`}
             />
           </List>
-          <Group mt="xl">
+          <Group mt="xl" gap="sm">
             <Box flex={1}>
               <FormErrorMessage />
             </Box>
