@@ -2138,3 +2138,9 @@
                                              [:= :bookmark.collection_id :this.id]
                                              ;; a magical alias, or perhaps this clause can be implicit
                                              [:= :bookmark.user_id :current_user/id]]]})
+
+(defn is-semantic-layer-collection?
+  "Return true if the given collection ID corresponds to a semantic layer collection."
+  [collection-id]
+  (when collection-id
+    (pos-int? (t2/count :model/Collection :id collection-id :type semantic-layer-collection-type))))
