@@ -94,6 +94,7 @@ function NewModelPage({
               onChange={setName}
             />
           }
+          icon="model"
           actions={
             <PaneHeaderActions
               errorMessage={validationResult.errorMessage}
@@ -114,7 +115,7 @@ function NewModelPage({
       {isModalOpened && (
         <CreateModelModal
           query={query}
-          defaultValues={{ name, resultMetadata }}
+          defaultValues={{ name, result_metadata: resultMetadata }}
           onCreate={handleCreate}
           onClose={closeModal}
         />

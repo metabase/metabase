@@ -3,6 +3,7 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { useCreateCardMutation } from "metabase/api";
+import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import {
   Form,
   FormErrorMessage,
@@ -21,6 +22,7 @@ import type { NewModelValues } from "../types";
 const NEW_MODEL_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
   description: Yup.string().nullable(),
+  collection_id: Yup.number().nullable().default(null),
 });
 
 type CreateModelModalProps = {
@@ -95,6 +97,10 @@ function CreateModelForm({
             minRows={4}
             maxRows={10}
           />
+          <FormCollectionPicker
+            name="collection_id"
+            title={t`Where do you want to save this?`}
+          />
           <Group>
             <Box flex={1}>
               <FormErrorMessage />
@@ -114,20 +120,23 @@ function getInitialValues(
   return {
     name: "",
     description: null,
-    resultMetadata: null,
+    result_metadata: null,
+    collection_id: null,
     ...defaultValues,
   };
 }
 
 function getCreateRequest(
   query: Lib.Query,
-  { name, description, resultMetadata }: NewModelValues,
+  { name, description, collection_id, result_metadata }: NewModelValues,
 ): CreateCardRequest {
   return {
-    name: name,
+    name,
     description,
+    collection_id,
+    result_metadata,
+    type: "model",
     dataset_query: Lib.toJsQuery(query),
-    result_metadata: resultMetadata,
     display: "table",
     visualization_settings: {},
   };
