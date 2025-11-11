@@ -1,7 +1,18 @@
 import { t } from "ttag";
 
 import { Form, FormErrorMessage, FormProvider } from "metabase/forms";
-import { Box, Button, FocusTrap, Group, List, Modal, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Center,
+  FixedSizeIcon,
+  FocusTrap,
+  Group,
+  List,
+  Modal,
+  Text,
+  Title,
+} from "metabase/ui";
 import { useCreateSemanticLayerCollectionMutation } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
@@ -20,7 +31,18 @@ export function CreateCollectionTreeModal({
   };
 
   return (
-    <Modal title={t`Create your Semantic Layer`} opened onClose={onClose}>
+    <Modal
+      title={
+        <Group gap="sm">
+          <Center w="2rem" h="2rem" c="brand" bg="brand-light" bdrs="md">
+            <FixedSizeIcon name="repository" />
+          </Center>
+          <Title order={3}>{t`Create your Semantic Layer`}</Title>
+        </Group>
+      }
+      opened
+      onClose={onClose}
+    >
       <FormProvider initialValues={{}} onSubmit={handleSubmit}>
         <Form>
           <FocusTrap.InitialFocus />
