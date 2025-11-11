@@ -128,7 +128,8 @@
     (if-let [private-key-file (driver-api/secret-value-as-file! :snowflake details "private-key")]
       (-> details
           (driver-api/clean-secret-properties-from-details :snowflake)
-          (handle-conn-uri user account private-key-file)
+          ;; don't ship like this, just checking CI
+          #_(handle-conn-uri user account private-key-file)
           (assoc :private_key_file private-key-file))
       (driver-api/clean-secret-properties-from-details details :snowflake))))
 
