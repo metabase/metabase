@@ -1,9 +1,7 @@
-(ns metabase.actions.api
+(ns metabase.actions-rest.api
   "`/api/action/` endpoints."
   (:require
-   [metabase.actions.actions :as actions]
-   [metabase.actions.execution :as actions.execution]
-   [metabase.actions.models :as actions.models]
+   [metabase.actions.core :as actions]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
@@ -29,7 +27,7 @@
                           [:model-id {:optional true} [:maybe ::lib.schema.id/card]]]]
   (letfn [(actions-for [models]
             (if (seq models)
-              (t2/hydrate (actions.models/select-actions models
+              (t2/hydrate (actions/select-actions models
                                                          :model_id [:in (map :id models)]
                                                          :archived false)
                           :creator)
@@ -56,7 +54,7 @@
   "Fetch an Action."
   [{:keys [action-id]} :- [:map
                            [:action-id ms/PositiveInt]]]
-  (-> (actions.models/select-action :id action-id :archived false)
+  (-> (actions/select-action :id action-id :archived false)
       (t2/hydrate :creator)
       api/read-check))
 
@@ -92,17 +90,17 @@
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
       (actions/check-actions-enabled-for-database!
        (t2/select-one :model/Database :id db-id))))
-  (let [action-id (actions.models/insert! (assoc action :creator_id api/*current-user-id*))]
+  (let [action-id (actions/insert! (assoc action :creator_id api/*current-user-id*))]
     (analytics/track-event! :snowplow/action
                             {:event          :action-created
                              :type           action-type
                              :action_id      action-id
                              :num_parameters (count parameters)})
     (if action-id
-      (actions.models/select-action :id action-id)
+      (actions/select-action :id action-id)
       ;; t2/insert! does not return a value when used with h2
       ;; so we return the most recently updated http action.
-      (last (actions.models/select-actions nil :type action-type)))))
+      (last (actions/select-actions nil :type action-type)))))
 
 (api.macros/defendpoint :put "/:id"
   "Update an Action."
@@ -112,8 +110,8 @@
    action :- ::actions.schema/action.for-update]
   (actions/check-actions-enabled! id)
   (let [existing-action (api/write-check :model/Action id)]
-    (actions.models/update! (assoc action :id id) existing-action))
-  (let [{:keys [parameters type] :as action} (actions.models/select-action :id id)]
+    (actions/update! (assoc action :id id) existing-action))
+  (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
     (analytics/track-event! :snowplow/action
                             {:event          :action-updated
                              :type           type
@@ -160,9 +158,9 @@
    {:keys [parameters]} :- [:map
                             [:parameters ms/JSONString]]]
   (actions/check-actions-enabled! action-id)
-  (-> (actions.models/select-action :id action-id :archived false)
+  (-> (actions/select-action :id action-id :archived false)
       api/read-check
-      (actions.execution/fetch-values (json/decode parameters))))
+      (actions/fetch-values (json/decode parameters))))
 
 (api.macros/defendpoint :post "/:id/execute"
   "Execute the Action.
@@ -173,10 +171,10 @@
    _query-params
    {:keys [parameters], :as _body} :- [:maybe [:map
                                                [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]]
-  (let [{:keys [type] :as action} (api/check-404 (actions.models/select-action :id id :archived false))]
+  (let [{:keys [type] :as action} (api/check-404 (actions/select-action :id id :archived false))]
     (analytics/track-event! :snowplow/action
                             {:event     :action-executed
                              :source    :model_detail
                              :type      type
                              :action_id id})
-    (actions.execution/execute-action! action (update-keys parameters name))))
+    (actions/execute-action! action (update-keys parameters name))))

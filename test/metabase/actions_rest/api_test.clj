@@ -3,7 +3,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.actions.api :as api.action]
+   [metabase.actions-rest.api :as api.action]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]

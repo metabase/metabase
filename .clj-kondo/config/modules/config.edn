@@ -47,14 +47,13 @@
 {:metabase/modules
  {actions
   {:team "Gadget"
-   :api  #{metabase.actions.api
-           metabase.actions.args
+   :api  #{metabase.actions.args
            metabase.actions.core
            metabase.actions.init
+           metabase.actions.schema
            metabase.actions.types}
    :uses #{analytics
            api
-           collections
            driver
            events
            legacy-mbql
@@ -63,14 +62,25 @@
            model-persistence
            models
            parameters
-           permissions
-           public-sharing
            queries
            query-processor
            search
            settings
            util
            warehouses}}
+
+  actions-rest
+  {:team "Gadget"
+   :api  #{metabase.actions-rest.api}
+   :uses #{actions
+           analytics
+           api
+           collections
+           lib
+           permissions
+           public-sharing
+           queries
+           util}}
 
   activity-feed
   {:team "UX West"
