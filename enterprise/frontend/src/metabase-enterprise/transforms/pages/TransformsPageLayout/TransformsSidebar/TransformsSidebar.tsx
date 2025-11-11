@@ -147,7 +147,7 @@ export const TransformsSidebar = ({
           <SidebarListItem
             icon="code_block"
             href={Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })}
-            label={t`Python Library`}
+            label={t`Python library`}
             subtitle={t`Shared helper functions`}
           />
         </Box>
