@@ -9,7 +9,7 @@ import {
   type PaneHeaderTab,
   PaneHeaderTabs,
 } from "../../components/PaneHeader";
-import { SectionLayout, SectionTitle } from "../../components/SectionLayout";
+import { SectionLayout } from "../../components/SectionLayout";
 
 type TransformsSectionLayoutProps = {
   location: Location;
@@ -21,10 +21,7 @@ export function TransformsSectionLayout({
   children,
 }: TransformsSectionLayoutProps) {
   return (
-    <SectionLayout
-      title={<SectionTitle title={t`Transforms`} />}
-      tabs={<DataSectionTabs location={location} />}
-    >
+    <SectionLayout tabs={<DataSectionTabs location={location} />}>
       {children}
     </SectionLayout>
   );
@@ -49,7 +46,7 @@ function getTabs({ pathname }: Location): PaneHeaderTab[] {
 
   return [
     {
-      label: t`Definitions`,
+      label: t`Transforms`,
       to: Urls.transformList(),
       icon: "transform",
       isSelected: isTransforms && !isJobs && !isRuns,
