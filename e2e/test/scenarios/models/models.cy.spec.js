@@ -467,7 +467,12 @@ describe("scenarios > models", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 
-      cy.findByTestId("save-question-modal").within((modal) => {
+      cy.findByTestId("save-question-modal").within(() => {
+        const recentDashboardName = "Orders in a dashboard";
+        cy.findByLabelText("Where do you want to save this?").should(
+          "have.text",
+          recentDashboardName,
+        );
         cy.findByText("Save").click();
       });
 
