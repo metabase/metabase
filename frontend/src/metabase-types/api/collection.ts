@@ -217,7 +217,6 @@ export interface ListCollectionsTreeRequest {
   shallow?: boolean;
   "collection-id"?: RegularCollectionId | null;
   collection_type?: CollectionType;
-  include_editable_semantic_layer?: boolean;
 }
 
 export interface DeleteCollectionRequest {
