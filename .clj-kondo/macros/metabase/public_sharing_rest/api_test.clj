@@ -1,4 +1,4 @@
-(ns macros.metabase.public-sharing.api-test)
+(ns macros.metabase.public-sharing-rest.api-test)
 
 (defmacro with-sharing-enabled-and-temp-card-referencing!
   [table-kw field-kw [card-binding] & body]

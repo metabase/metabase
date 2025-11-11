@@ -15,7 +15,7 @@
    [metabase.embedding.api.common :as api.embed.common]
    [metabase.parameters.chain-filter-test :as chain-filer-test]
    [metabase.parameters.custom-values :as custom-values]
-   [metabase.public-sharing.api-test :as public-test]
+   [metabase.public-sharing-rest.api-test :as public-test]
    [metabase.queries.api.card-test :as api.card-test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]

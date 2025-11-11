@@ -562,7 +562,7 @@
            notification
            parameters
            premium-features
-           public-sharing
+           public-sharing-rest
            queries
            query-processor
            request
@@ -912,10 +912,16 @@
 
   public-sharing
   {:team "UX West"
-   :api  #{metabase.public-sharing.api
-           metabase.public-sharing.core
+   :api  #{metabase.public-sharing.core
            metabase.public-sharing.init
            metabase.public-sharing.validation}
+   :uses #{api
+           settings
+           util}}
+
+  public-sharing-rest
+  {:team "UX West"
+   :api  #{metabase.public-sharing-rest.api}
    :uses #{actions
            analytics
            api
@@ -925,10 +931,10 @@
            lib
            models
            parameters
+           public-sharing
            queries
            query-processor
            request
-           settings
            tiles
            util}}
 
@@ -2001,6 +2007,7 @@
            events
            premium-features
            public-sharing
+           public-sharing-rest
            query-processor
            util}}
 

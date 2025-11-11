@@ -1,4 +1,4 @@
-(ns metabase.public-sharing.api
+(ns metabase.public-sharing-rest.api
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require
    [hiccup.core :as hiccup]

@@ -32,7 +32,7 @@
    [metabase.permissions-rest.api]
    [metabase.premium-features.api]
    [metabase.product-feedback.api]
-   [metabase.public-sharing.api]
+   [metabase.public-sharing-rest.api]
    [metabase.pulse.api]
    [metabase.queries.api]
    [metabase.query-processor.api]
@@ -78,7 +78,7 @@
          metabase.native-query-snippets.api/keep-me
          metabase.permissions-rest.api/keep-me
          metabase.product-feedback.api/keep-me
-         metabase.public-sharing.api/keep-me
+         metabase.public-sharing-rest.api/keep-me
          metabase.query-processor.api/keep-me
          metabase.revisions.api/keep-me
          metabase.segments.api/keep-me
@@ -165,7 +165,7 @@
    "/premium-features"     (+auth metabase.premium-features.api/routes)
    "/preview_embed"        (+auth metabase.embedding.api/preview-embedding-routes)
    "/product-feedback"     'metabase.product-feedback.api
-   "/public"               (+public-exceptions 'metabase.public-sharing.api)
+   "/public"               (+public-exceptions 'metabase.public-sharing-rest.api)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)

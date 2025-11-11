@@ -7,7 +7,7 @@
    [metabase.events.core :as events]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.public-sharing.api-test :as public-test]
+   [metabase.public-sharing-rest.api-test :as public-test]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]

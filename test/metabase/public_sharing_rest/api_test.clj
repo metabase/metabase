@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.public-sharing.api-test
+(ns ^:mb/driver-tests metabase.public-sharing-rest.api-test
   "Tests for `api/public/` (public links) endpoints."
   (:require
    [clojure.data.csv :as csv]
@@ -14,7 +14,7 @@
    [metabase.parameters.custom-values :as custom-values]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.public-sharing.api :as api.public]
+   [metabase.public-sharing-rest.api :as api.public]
    [metabase.queries.api.card-test :as api.card-test]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
@@ -1421,7 +1421,7 @@
                (let [result (results)]
                  (is (=? {:status "completed"}
                          result))
-                      ;; [[metabase.public-sharing.api/transform-results]] should remove `row_count`
+                      ;; [[metabase.public-sharing-rest.api/transform-results]] should remove `row_count`
                  (testing "row_count isn't included in public endpoints"
                    (is (nil? (:row_count result))))
                  (is (= 6 (count (get-in result [:data :cols]))))

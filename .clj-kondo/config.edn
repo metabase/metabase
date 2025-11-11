@@ -571,10 +571,10 @@
    metabase.permissions.core/disable-perms-cache                                                                             hooks.common/do*
    metabase.premium-features.core/defenterprise                                                                              hooks.metabase.premium-features.defenterprise/defenterprise
    metabase.premium-features.defenterprise/defenterprise                                                                     hooks.metabase.premium-features.defenterprise/defenterprise
-   metabase.public-sharing.api-test/with-required-param-card!                                                                hooks.common/with-one-binding
-   metabase.public-sharing.api-test/with-temp-public-card                                                                    hooks.common/let-one-with-optional-value
-   metabase.public-sharing.api-test/with-temp-public-dashboard                                                               hooks.common/let-one-with-optional-value
-   metabase.public-sharing.api-test/with-temp-public-dashboard-and-card                                                      hooks.common/with-three-bindings
+   metabase.public-sharing-rest.api-test/with-required-param-card!                                                           hooks.common/with-one-binding
+   metabase.public-sharing-rest.api-test/with-temp-public-card                                                               hooks.common/let-one-with-optional-value
+   metabase.public-sharing-rest.api-test/with-temp-public-dashboard                                                          hooks.common/let-one-with-optional-value
+   metabase.public-sharing-rest.api-test/with-temp-public-dashboard-and-card                                                 hooks.common/with-three-bindings
    metabase.pulse.api.alert-test/with-alert-in-collection!                                                                   hooks.common/with-four-bindings
    metabase.pulse.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                           hooks.common/let-second
    metabase.pulse.models.pulse-test/with-dashboard-subscription-in-collection!                                               hooks.common/with-four-bindings
@@ -681,8 +681,8 @@
    metabase.lib.filter/deffilter                                                           macros.metabase.lib.filter/deffilter
    metabase.parameters.chain-filter-test/chain-filter                                      macros.metabase.parameters.chain-filter-test/chain-filter
    metabase.parameters.chain-filter-test/chain-filter-search                               macros.metabase.parameters.chain-filter-test/chain-filter
-   metabase.public-sharing.api-test/with-sharing-enabled-and-temp-card-referencing!        macros.metabase.public-sharing.api-test/with-sharing-enabled-and-temp-card-referencing!
-   metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing!    macros.metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing!
+   metabase.public-sharing-rest.api-test/with-sharing-enabled-and-temp-card-referencing!        macros.metabase.public-sharing-rest.api-test/with-sharing-enabled-and-temp-card-referencing!
+   metabase.public-sharing-rest.api-test/with-sharing-enabled-and-temp-dashcard-referencing!    macros.metabase.public-sharing-rest.api-test/with-sharing-enabled-and-temp-dashcard-referencing!
    metabase.queries.api.card-test/with-ordered-items                                       macros.metabase.queries.api.card-test/with-ordered-items
    metabase.query-analysis.models.query-analysis-test/with-test-setup                      macros.metabase.query-analysis.models.query-analysis-test/with-test-setup
    metabase.query-analysis.task.test-setup/with-test-setup!                                macros.metabase.query-analysis.task.test-setup/with-test-setup!
