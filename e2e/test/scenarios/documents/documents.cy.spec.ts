@@ -937,6 +937,7 @@ H.describeWithSnowplowEE("documents", () => {
     });
 
     it("should allow creating a new native SQL question and embedding it in the document", () => {
+      cy.intercept("GET", "/api/database").as("database");
       H.visitDocument("@documentId");
       H.documentContent().click();
 
@@ -947,7 +948,15 @@ H.describeWithSnowplowEE("documents", () => {
       H.commandSuggestionItem(/New SQL query/).click();
 
       cy.log("Save and use the new SQL query");
+
+      cy.wait("@database");
+      cy.wait(200); // wait for db selector to load
+
+      cy.findByTestId("selected-database").should("exist");
+
+      H.NativeEditor.focus();
       H.NativeEditor.type("SELECT * FROM ORDERS LIMIT 10");
+
       cy.findByRole("dialog", { name: "Edit SQL Query" })
         .findByRole("button", { name: "Save and use" })
         .click();
