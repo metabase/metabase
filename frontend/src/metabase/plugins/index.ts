@@ -68,7 +68,6 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
-  CollectionType,
   DashCardId,
   Dashboard,
   DashboardId,
@@ -1138,12 +1137,12 @@ export type SemanticLayerSectionProps = {
 
 export type SemanticLayerPlugin = {
   isEnabled: boolean;
-  isSemanticLayerCollectionType: (type: CollectionType | undefined) => boolean;
+  isSemanticLayerCollection: (collection: Partial<Collection>) => boolean;
   SemanticLayerSection: ComponentType<SemanticLayerSectionProps>;
 };
 
 export const PLUGIN_SEMANTIC_LAYER: SemanticLayerPlugin = {
   isEnabled: false,
-  isSemanticLayerCollectionType: () => false,
+  isSemanticLayerCollection: () => false,
   SemanticLayerSection: PluginPlaceholder,
 };

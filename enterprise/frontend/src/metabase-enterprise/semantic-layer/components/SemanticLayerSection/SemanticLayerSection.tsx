@@ -10,7 +10,7 @@ import type { SemanticLayerSectionProps } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type { Collection } from "metabase-types/api";
 
-import { isSemanticLayerCollectionType } from "../../utils";
+import { isSemanticLayerCollection } from "../../utils";
 
 import { CollectionTree } from "./CollectionTree";
 import { CreateCollectionTreeModal } from "./CreateCollectionTreeModal";
@@ -27,7 +27,7 @@ export function SemanticLayerSection({
   const dispatch = useDispatch();
 
   const collection = useMemo(
-    () => collections.find(({ type }) => isSemanticLayerCollectionType(type)),
+    () => collections.find(isSemanticLayerCollection),
     [collections],
   );
 

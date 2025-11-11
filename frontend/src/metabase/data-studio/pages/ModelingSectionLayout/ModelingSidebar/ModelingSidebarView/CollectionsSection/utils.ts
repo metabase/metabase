@@ -20,7 +20,7 @@ export function getCollectionTree(
     ...collections.filter(
       (collection) =>
         nonPersonalOrArchivedCollection(collection) &&
-        !PLUGIN_SEMANTIC_LAYER.isSemanticLayerCollectionType(collection.type),
+        !PLUGIN_SEMANTIC_LAYER.isSemanticLayerCollection(collection),
     ),
   ];
 
