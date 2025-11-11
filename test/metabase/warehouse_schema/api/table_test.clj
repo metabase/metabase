@@ -1398,7 +1398,7 @@
 (deftest ^:parallel non-admins-cant-trigger-bulk-sync-test
   (testing "Non-admins should not be allowed to trigger sync"
     (is (= "You don't have permissions to do that."
-           (mt/user-http-request :rasta :post 403 "table/sync_schema" {:database_ids [(mt/id)]})))))
+           (mt/user-http-request :rasta :post 403 "table/sync-schema" {:database_ids [(mt/id)]})))))
 
 (deftest trigger-bulk-metadata-sync-for-table-test
   ;; lot more to test here but will wait for firmer ground
@@ -1416,12 +1416,17 @@
                                          (swap! tables conj table)
                                          (.countDown latch)
                                          nil)]
-          (mt/user-http-request :crowberto :post 200 "table/sync_schema" {:database_ids [d1],
+          (mt/user-http-request :crowberto :post 200 "table/sync-schema" {:database_ids [d1],
                                                                           :schema_ids   [(format "%d:FOO" d2)]
                                                                           :table_ids    [t4]}))
         (testing "sync called?"
           (is (true? (.await latch 4 TimeUnit/SECONDS)))
           (is (= [t1 t2 t4 t5] (map :id @tables))))))))
+
+(deftest ^:parallel non-admins-cant-trigger-bulk-rescan-values-test
+  (testing "Non-admins should not be allowed to trigger rescan values"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :post 403 "table/rescan-values" {:database_ids [(mt/id)]})))))
 
 (deftest trigger-rescan-values-for-tables-test
   ;; lot more to test here but will wait for firmer ground
@@ -1439,12 +1444,17 @@
                                                             (swap! tables conj table)
                                                             (.countDown latch)
                                                             nil)]
-          (mt/user-http-request :crowberto :post 200 "table/rescan_values" {:database_ids [d1],
+          (mt/user-http-request :crowberto :post 200 "table/rescan-values" {:database_ids [d1],
                                                                             :schema_ids   [(format "%d:FOO" d2)]
                                                                             :table_ids    [t4]}))
         (testing "rescanned?"
           (is (true? (.await latch 4 TimeUnit/SECONDS)))
           (is (= [t1 t2 t4 t5] (map :id @tables))))))))
+
+(deftest ^:parallel non-admins-cant-trigger-bulk-discard-values-test
+  (testing "Non-admins should not be allowed to trigger discard values"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :post 403 "table/discard-values" {:database_ids [(mt/id)]})))))
 
 (deftest ^:parallel bulk-discard-values-test
   (testing "POST /api/table/:id/discard_values"
