@@ -1,28 +1,29 @@
+import type { ReactNode } from "react";
+
+import * as Urls from "metabase/lib/urls";
 import { Box, Flex } from "metabase/ui";
 
 import { JobsSidebar } from "../JobsSidebar";
 import { TransformsSidebar } from "../TransformsSidebar";
 import { useTransformsCurrentTab } from "../hooks";
 
-interface TransformsSidebarLayoutProps {
-  children: React.ReactNode;
-  params?: {
-    transformId?: string;
-    jobId?: string;
-  };
-}
+type TransformsSidebarLayoutParams = {
+  transformId?: string;
+  jobId?: string;
+};
+
+type TransformsSidebarLayoutProps = {
+  children: ReactNode;
+  params: TransformsSidebarLayoutParams;
+};
 
 export const TransformsSidebarLayout = ({
   children,
   params,
 }: TransformsSidebarLayoutProps) => {
   const currentTab = useTransformsCurrentTab();
-
-  const selectedTransformId = params?.transformId
-    ? parseInt(params.transformId, 10)
-    : undefined;
-
-  const selectedJobId = params?.jobId ? parseInt(params.jobId, 10) : undefined;
+  const selectedTransformId = Urls.extractEntityId(params?.transformId);
+  const selectedJobId = Urls.extractEntityId(params.jobId);
 
   return (
     <Flex direction="row" w="100%" h="100%">
