@@ -72,7 +72,7 @@ function calculateRowAggregation(
 
   if (totalWeightedScoreIndex !== -1) {
     const totalResponsesIndex = data.cols.findIndex(
-      (col) => col.name === "total_responses",
+      (col) => col.name === "unique_respondents",
     );
 
     // Sum up total_weighted_score values
