@@ -2,7 +2,11 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
+import {
+  getHasDataAccess,
+  getHasDatabaseWithJsonEngine,
+  getHasNativeWrite,
+} from "metabase/selectors/data";
 
 import type { NewQuestionMenuItem } from "./types";
 
@@ -19,6 +23,8 @@ export const useCreateQuestionsMenuItems = ({
     [databases],
   );
 
+  const hasDatabaseWithJsonEngine = getHasDatabaseWithJsonEngine(databases);
+
   const items = useMemo(() => {
     const result: NewQuestionMenuItem[] = [];
 
@@ -33,7 +39,9 @@ export const useCreateQuestionsMenuItems = ({
 
     if (hasNativeWrite) {
       result.push({
-        label: t`New SQL query`,
+        label: hasDatabaseWithJsonEngine
+          ? t`New Native query`
+          : t`New SQL query`,
         icon: "sql",
         value: "native" as const,
         action: () => onSelectItem("native"),
@@ -41,7 +49,7 @@ export const useCreateQuestionsMenuItems = ({
     }
 
     return result;
-  }, [hasDataAccess, hasNativeWrite, onSelectItem]);
+  }, [hasDataAccess, hasDatabaseWithJsonEngine, hasNativeWrite, onSelectItem]);
 
   return items;
 };

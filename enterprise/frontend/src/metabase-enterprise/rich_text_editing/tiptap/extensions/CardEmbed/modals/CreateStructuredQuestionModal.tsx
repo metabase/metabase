@@ -74,13 +74,16 @@ export const CreateStructuredQuestionModal = ({
 
       const dataset_query = modifiedQuestion.datasetQuery();
 
+      const questionWithDefaultDisplay = modifiedQuestion.setDefaultDisplay();
+
       const modifiedData = {
         name,
         database_id: dataset_query.database || undefined,
         dataset_query: dataset_query,
-        display: modifiedQuestion.display(),
+        display: questionWithDefaultDisplay.display(),
+        settings: questionWithDefaultDisplay.settings(),
         visualization_settings:
-          modifiedQuestion.card().visualization_settings ?? {},
+          questionWithDefaultDisplay.card().visualization_settings ?? {},
       };
       const newCardId = generateDraftCardId();
 
