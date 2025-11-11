@@ -244,7 +244,7 @@
                                                               {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                                               {:file ba}))]
                       (testing "We get our data items back"
-                        (is (= #{"Collection" "Dashboard" "Card" "Database"}
+                        (is (= #{"Collection" "Dashboard" "Card"}
                                (log-types (line-seq (io/reader (io/input-stream res)))))))
                       (testing "And they hit the db"
                         (is (= (:name dash) (t2/select-one-fn :name :model/Dashboard :entity_id (:entity_id dash))))
