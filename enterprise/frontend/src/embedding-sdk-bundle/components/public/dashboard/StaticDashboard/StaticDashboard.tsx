@@ -1,5 +1,8 @@
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
-import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
+import {
+  DASHBOARD_ACTION,
+  type DashboardActionValue,
+} from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { isQuestionCard } from "metabase/dashboard/utils";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
@@ -32,9 +35,14 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
     <SdkDashboard
       {...props}
       getClickActionMode={getClickActionMode}
-      dashboardActions={({ downloadsEnabled }) =>
-        downloadsEnabled.pdf ? [DASHBOARD_ACTION.DOWNLOAD_PDF] : []
-      }
+      dashboardActions={({ downloadsEnabled }) => {
+        const baseActions: DashboardActionValue[] = [
+          DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
+        ];
+        return baseActions.concat(
+          downloadsEnabled.pdf ? [DASHBOARD_ACTION.DOWNLOAD_PDF] : [],
+        );
+      }}
       navigateToNewCardFromDashboard={null}
       dashcardMenu={({ dashcard, result }) =>
         props.withDownloads &&
