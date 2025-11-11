@@ -4,6 +4,7 @@ import {
   useListCollectionsTreeQuery,
   useListDatabasesQuery,
 } from "metabase/api";
+import { PLUGIN_SEMANTIC_LAYER } from "metabase/plugins";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import type { CollectionId, NativeQuerySnippetId } from "metabase-types/api";
 
@@ -24,6 +25,9 @@ export function ModelingSidebar({
     useListDatabasesQuery();
   const { data: collections = [], isLoading: isLoadingCollections } =
     useListCollectionsTreeQuery({
+      include_editable_semantic_layer: PLUGIN_SEMANTIC_LAYER.isEnabled
+        ? true
+        : undefined,
       "exclude-other-user-collections": true,
       "exclude-archived": true,
     });
