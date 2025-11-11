@@ -101,10 +101,10 @@
           ;; Note that, ceteris paribus, the ordering in the database is currently stable - this might change!
           ;; Due to stemming, we do not distinguish between exact matches and those that differ slightly.
         (is (= [["card" 1 "orders"]
+                ["card" 4 "order"]
                 ;; We do not currently normalize the score based on the number of words in the vector / the coverage.
                 ["card" 5 "orders, invoices, other stuff"]
                 ["card" 6 "ordering"]
-                ["card" 4 "order"]
                 ;; If the match is only in a secondary field, it is less preferred.
                 ["card" 3 "classified"]]
                (search-results :text "order"))))

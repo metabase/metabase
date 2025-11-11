@@ -14,6 +14,7 @@
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
+   [metabase.search.util :as u.search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -58,6 +59,8 @@
                         :model/Card       {}            {:name "Employee Satisfaction"          :collection_id col-id#}
                         :model/Card       {}            {:name "Projected Satisfaction"         :collection_id col-id#}
                         :model/Card       {}            {:name "Organization Reference"         :collection_id col-id#}
+                        ;; this is to show off that our storage can give false positives (stemming etc)
+                        :model/Card       {}            {:name "Nobody Expects Organi"          :collection_id col-id#}
                         :model/Database   {db-id# :id}  {:name "Indexed Database"}
                         :model/Table      {}            {:name "Indexed Table", :db_id db-id#}]
            (search.engine/reindex! :search.engine/appdb {:in-place? true})
@@ -148,17 +151,22 @@
         (is (= 2 (index-hits "satisfaction -customer")))))))
 
 (deftest phrase-test
-  (with-index
-    (with-fulltext-filtering
-      ;; Less matches without an english dictionary
-      (is (= #_2 3 (index-hits "projected")))
-      (is (= 2 (index-hits "revenue")))
-      (is (= #_1 2 (index-hits "projected revenue")))
-      (testing "Simple dictionary allows searching for unstemmed words #60649"
-        (is (= 1 (index-hits "organ")))
-        (is (= 1 (index-hits "organi"))))
-      (testing "only sometimes do these occur sequentially in a phrase"
-        (is (= 1 (index-hits "\"projected revenue\"")))))))
+  (mt/with-dynamic-fn-redefs [u.search/tsv-language (constantly "english")]
+    (with-index
+      (with-fulltext-filtering
+        ;; Less matches without an english dictionary
+        (is (= #_2 3 (index-hits "projected")))
+        (is (= 2 (index-hits "revenue")))
+        (is (= #_1 2 (index-hits "projected revenue")))
+        (testing "Simple dictionary allows searching for unstemmed words #60649"
+          ;; those two results are "Organization Reference" and "Nobody Expects Organi"
+          (is (= 2 (index-hits "organ")))
+          (is (= 2 (index-hits "organi"))))
+        (testing "We get false-positive for 'Organi' here"
+          ;; those two results are "Organization Reference" and "Nobody Expects Organi"
+          (is (= 2 (index-hits "organization"))))
+        (testing "only sometimes do these occur sequentially in a phrase"
+          (is (= 1 (index-hits "\"projected revenue\""))))))))
 
 (defn ingest!
   [model where-clause]
