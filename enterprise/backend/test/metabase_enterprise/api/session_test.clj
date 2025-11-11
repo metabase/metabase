@@ -41,6 +41,7 @@
                               :sandboxes
                               :scim
                               :semantic-search
+                              :semantic-layer
                               :serialization
                               :session-timeout-config
                               :snippet-collections
@@ -86,6 +87,7 @@
             :sandboxes                      true
             :scim                           true
             :semantic_search                true
+            :semantic_layer                 true
             :serialization                  true
             :session_timeout_config         true
             :snippet_collections            true

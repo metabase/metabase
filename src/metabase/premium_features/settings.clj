@@ -307,6 +307,10 @@
   "Should we allow users to use dependency tracking?"
   :dependencies)
 
+(define-premium-feature ^{:added "0.58.0"} enable-semantic-layer?
+  "Should we allow users to use the semantic layer collection?"
+  :semantic-layer)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -344,6 +348,7 @@
    :remote_sync                    (enable-remote-sync?)
    :sandboxes                      (enable-sandboxes?)
    :scim                           (enable-scim?)
+   :semantic_layer                 (enable-semantic-layer?)
    :semantic_search                (enable-semantic-search?)
    :serialization                  (enable-serialization?)
    :session_timeout_config         (enable-session-timeout-config?)
