@@ -79,7 +79,8 @@
                                           {:database_type "point"
                                            :base_type :type/*
                                            :effective_type :type/*
-                                           :name "dummy"})})
+                                           :name "dummy"
+                                           :display_name "Dummy"})})
       (testing "No exception is thrown when type/* column is present it result_metadata"
         (is (= :not-thrown
                (try
