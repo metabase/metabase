@@ -1428,17 +1428,31 @@
 
   users
   {:team "UX West"
-   :api  #{metabase.users.api
-           metabase.users.core
+   :api  #{metabase.users.core
            metabase.users.init
            metabase.users.models.user
            metabase.users.models.user-parameter-value
-           metabase.users.schema}
+           metabase.users.schema
+           metabase.users.settings}
+   :uses #{api
+           batch-processing
+           channel
+           config
+           events
+           models
+           permissions
+           premium-features
+           settings
+           setup
+           system
+           util}}
+
+  users-rest
+  {:team "UX West"
+   :api  #{metabase.users-rest.api}
    :uses #{analytics
            api
            appearance
-           batch-processing
-           channel
            collections
            config
            events
@@ -1447,10 +1461,8 @@
            premium-features
            request
            session
-           settings
-           setup
            sso
-           system
+           users
            util
            enterprise/advanced-permissions}}
 
@@ -1720,7 +1732,7 @@
            query-processor
            settings
            sync
-           users
+           users-rest
            util
            enterprise/serialization}}
 
@@ -1773,6 +1785,7 @@
            models
            request
            users
+           users-rest
            util}}
 
   enterprise/content-translation
@@ -1981,7 +1994,7 @@
            sync
            system
            task
-           users
+           users-rest
            util
            warehouse-schema
            warehouses-rest

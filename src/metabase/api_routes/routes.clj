@@ -51,7 +51,7 @@
    [metabase.timeline.api]
    [metabase.upload.api]
    [metabase.user-key-value.api]
-   [metabase.users.api]
+   [metabase.users-rest.api]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.warehouse-schema-rest.api]
    [metabase.warehouses-rest.api]
@@ -89,7 +89,7 @@
          metabase.tiles.api/keep-me
          metabase.upload.api/keep-me
          metabase.user-key-value.api/keep-me
-         metabase.users.api/keep-me
+         metabase.users-rest.api/keep-me
          metabase.warehouses-rest.api/keep-me)
 
 (def ^:private ^{:arglists '([request respond raise])} pass-thru-handler
@@ -181,7 +181,7 @@
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)
    "/upload"               (+auth 'metabase.upload.api)
-   "/user"                 (+auth 'metabase.users.api)
+   "/user"                 (+auth 'metabase.users-rest.api)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)
    "/util"                 'metabase.api.util})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑

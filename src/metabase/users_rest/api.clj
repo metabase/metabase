@@ -1,4 +1,4 @@
-(ns metabase.users.api
+(ns metabase.users-rest.api
   "/api/user endpoints"
   (:require
    [honey.sql.helpers :as sql.helpers]
