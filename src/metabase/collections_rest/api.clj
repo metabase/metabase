@@ -1,4 +1,4 @@
-(ns metabase.collections.api
+(ns metabase.collections-rest.api
   "`/api/collection` endpoints. By default, these endpoints operate on Collections in the 'default' namespace, which is
   the namespace that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
   `:snippet` namespace, ('Snippet folders' in the UI). These namespaces are independent hierarchies. To use these

@@ -1,10 +1,10 @@
-(ns metabase.collections.api-test
+(ns metabase.collections-rest.api-test
   "Tests for /api/collection endpoints."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.collections.api :as api.collection]
+   [metabase.collections-rest.api :as api.collection]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.notification.api.notification-test :as api.notification-test]

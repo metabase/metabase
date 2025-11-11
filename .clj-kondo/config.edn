@@ -536,7 +536,7 @@
    metabase.channel.template.handlebars-test/with-temp-template!                                                             hooks.common/with-vec-first-binding
    metabase.classloader.core/require                                                                                         hooks.clojure.core.require/lint-require
    metabase.classloader.impl/require                                                                                         hooks.clojure.core.require/lint-require
-   metabase.collections.api-test/with-french-user-and-personal-collection!                                                   hooks.common/with-two-top-level-bindings
+   metabase.collections-rest.api-test/with-french-user-and-personal-collection!                                              hooks.common/with-two-top-level-bindings
    metabase.collections.models.collection-test/with-collection-hierarchy!                                                    hooks.common/let-one-with-optional-value
    metabase.collections.models.collection-test/with-personal-and-impersonal-collections                                      hooks.common/with-two-bindings
    metabase.dashboards.api-test/with-chain-filter-fixtures                                                                   hooks.common/let-one-with-optional-value
@@ -673,8 +673,8 @@
    metabase-enterprise.serialization.test-util/with-world                                  macros.metabase-enterprise.serialization.test-util/with-world
    metabase-enterprise.test/with-gtaps!                                                    macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.test/with-gtaps-for-user!                                           macros.metabase-enterprise.sandbox.test-util/with-gtaps!
-   metabase.collections.api-test/with-collection-hierarchy!                                macros.metabase.collections.api-test/with-collection-hierarchy!
-   metabase.collections.api-test/with-some-children-of-collection!                         macros.metabase.collections.api-test/with-some-children-of-collection!
+   metabase.collections-rest.api-test/with-collection-hierarchy!                           macros.metabase.collections-rest.api-test/with-collection-hierarchy!
+   metabase.collections-rest.api-test/with-some-children-of-collection!                    macros.metabase.collections-rest.api-test/with-some-children-of-collection!
    metabase.embedding.api.embed-test/with-embedding-enabled-and-temp-card-referencing!     macros.metabase.embedding.api.embed-test/with-embedding-enabled-and-temp-card-referencing!
    metabase.embedding.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing! macros.metabase.embedding.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing!
    metabase.lib.common/defop                                                               macros.metabase.lib.common/defop

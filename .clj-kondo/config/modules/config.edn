@@ -338,14 +338,28 @@
 
   collections
   {:team "UX West"
-   :api  #{metabase.collections.api
-           metabase.collections.core
+   :api  #{metabase.collections.core
            metabase.collections.models.collection
            metabase.collections.models.collection.root}
    :uses #{api
            api-keys
            app-db
            audit-app
+           config
+           events
+           models
+           permissions
+           premium-features
+           remote-sync
+           search
+           util}}
+
+  collections-rest
+  {:team "UX West"
+   :api  #{metabase.collections-rest.api}
+   :uses #{api
+           app-db
+           collections
            config
            eid-translation
            events
@@ -355,10 +369,8 @@
            permissions
            premium-features
            queries
-           remote-sync
            request
            revisions
-           search
            upload
            util}}
 
@@ -411,6 +423,7 @@
            audit-app
            channel
            collections
+           collections-rest
            config
            eid-translation
            embedding
@@ -2112,6 +2125,7 @@
    :uses #{analytics
            api
            collections
+           collections-rest
            embedding
            premium-features
            queries

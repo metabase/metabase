@@ -11,7 +11,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
    [metabase.channel.email.messages :as messages]
-   [metabase.collections.api :as api.collection]
+   [metabase.collections-rest.api :as api.collection]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
