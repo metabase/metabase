@@ -1849,7 +1849,8 @@
       (str location id "/"))))
 
 (defmethod serdes/make-spec "Collection" [_model-name _opts]
-  {:copy [:archive_operation_id
+  {:copy [:allowed_content
+          :archive_operation_id
           :archived
           :archived_directly
           :authority_level
@@ -1861,19 +1862,14 @@
           :slug
           :type]
    :skip []
-   :transform {:allowed_content    {:export (fn [allowed-content]
-                                              (if (nil? allowed-content)
-                                                ::serdes/skip
-                                                allowed-content))
-                                    :import identity}
-               :created_at         (serdes/date)
+   :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
-               :location           (serdes/as :parent_id
-                                              (serdes/compose
-                                               (serdes/fk :model/Collection)
-                                               {:export location-path->parent-id
-                                                :import parent-id->location-path}))
-               :personal_owner_id  (serdes/fk :model/User)}})
+               :location          (serdes/as :parent_id
+                                             (serdes/compose
+                                              (serdes/fk :model/Collection)
+                                              {:export location-path->parent-id
+                                               :import parent-id->location-path}))
+               :personal_owner_id (serdes/fk :model/User)}})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |
