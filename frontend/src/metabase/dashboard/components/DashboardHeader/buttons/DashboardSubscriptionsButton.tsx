@@ -5,10 +5,7 @@ import { toggleSharing } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 
-interface DashboardSubscriptionsButtonProps {}
-export const DashboardSubscriptionsButton = (
-  props: DashboardSubscriptionsButtonProps,
-) => {
+export const DashboardSubscriptionsButton = () => {
   const tooltipLabel = t`Subscriptions`;
   const dispatch = useDispatch();
   const handleClick = () => dispatch(toggleSharing());
@@ -21,7 +18,7 @@ export const DashboardSubscriptionsButton = (
 
   return (
     <Tooltip label={tooltipLabel}>
-      <ActionIcon onClick={handleClick} aria-label={tooltipLabel} {...props}>
+      <ActionIcon onClick={handleClick} aria-label={tooltipLabel}>
         <Icon name="subscription" />
       </ActionIcon>
     </Tooltip>
