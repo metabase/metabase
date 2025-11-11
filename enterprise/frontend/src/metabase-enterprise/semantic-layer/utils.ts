@@ -1,7 +1,5 @@
-import type { CollectionType } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 
-export function isSemanticLayerCollectionType(
-  type: CollectionType | undefined,
-) {
+export function isSemanticLayerCollection({ type }: Partial<Collection>) {
   return type === "semantic-layer";
 }

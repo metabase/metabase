@@ -5,14 +5,14 @@ import { listTag } from "./tags";
 
 export const semanticLayerApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    createSemanticLayerCollection: builder.mutation<Collection, void>({
+    createSemanticLayer: builder.mutation<Collection, void>({
       query: () => ({
         method: "POST",
-        url: "/api/ee/semantic-layer/collection",
+        url: "/api/ee/semantic-layer/create",
       }),
       invalidatesTags: [listTag("collection")],
     }),
   }),
 });
 
-export const { useCreateSemanticLayerCollectionMutation } = semanticLayerApi;
+export const { useCreateSemanticLayerMutation } = semanticLayerApi;

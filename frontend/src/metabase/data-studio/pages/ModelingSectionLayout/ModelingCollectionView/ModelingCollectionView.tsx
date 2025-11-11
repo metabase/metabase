@@ -11,11 +11,13 @@ import { ModelingCollectionEmptyState } from "./ModelingCollectionEmptyState";
 import S from "./ModelingCollectionView.module.css";
 import { type ModelingItem, ModelingItemsTable } from "./ModelingItemsTable";
 
-interface ModelingCollectionViewProps {
-  params: {
-    collectionId: string;
-  };
-}
+type ModelingCollectionViewParams = {
+  collectionId: string;
+};
+
+type ModelingCollectionViewProps = {
+  params: ModelingCollectionViewParams;
+};
 
 export function ModelingCollectionView({
   params,

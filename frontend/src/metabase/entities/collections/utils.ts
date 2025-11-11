@@ -5,7 +5,7 @@ import {
   isSyncedCollection,
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_SEMANTIC_LAYER } from "metabase/plugins";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { IconName, IconProps } from "metabase/ui";
 import type { Collection, CollectionContentModel } from "metabase-types/api";
@@ -41,25 +41,11 @@ export function getCollectionIcon(
     return { name: "synced_collection" };
   }
 
-  // FIXME: REMOVE, THIS IS A HACK FOR DEMO PURPOSES
-  if (collection.name === "Library") {
+  if (PLUGIN_SEMANTIC_LAYER.isSemanticLayerCollection(collection)) {
     return { name: "repository" };
   }
 
-  if (collection.name === "Semantic layer") {
-    return { name: "bolt" };
-  }
-
-  if (collection.name === "Models") {
-    return { name: "model" };
-  }
-
-  if (collection.name === "Metrics") {
-    return { name: "metric" };
-  }
-
   const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
-
   return type
     ? {
         name: type.icon as unknown as IconName,
