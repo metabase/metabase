@@ -25,10 +25,12 @@
                            (if (= icon "balloons") timeline-event/default-icon icon))))
 
 (t2/define-before-insert :model/Timeline [model]
-  (collection/check-allowed-content :timeline (:collection_id model)))
+  (collection/check-allowed-content :timeline (:collection_id model))
+  model)
 
 (t2/define-before-update :model/Timeline [model]
-  (collection/check-allowed-content :timeline (:collection_id (t2/changes model))))
+  (collection/check-allowed-content :timeline (:collection_id (t2/changes model)))
+  model)
 
 ;;;; functions
 
