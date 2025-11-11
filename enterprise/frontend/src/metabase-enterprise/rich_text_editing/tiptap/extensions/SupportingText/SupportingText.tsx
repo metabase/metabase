@@ -28,6 +28,7 @@ import {
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 
 import { CommentsButton } from "../../components/CommentsButton";
+import { cleanupFlexContainerNodes } from "../HandleEditorDrop/utils";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 
 import S from "./SupportingText.module.css";
@@ -108,7 +109,7 @@ export const SupportingText = Node.create<{
             .deleteSelection()
             .focus(match.pos)
             .run();
-          // TODO Remove FlexContainer if only one cardEmbed?
+          cleanupFlexContainerNodes(editor.view);
           return true;
         }
 
@@ -177,6 +178,7 @@ const SupportingTextComponent = ({
           if (e.key === "Backspace" || e.key === "Delete") {
             const pos = getPos();
             deleteNode();
+            cleanupFlexContainerNodes(editor.view);
             if (pos != null) {
               editor.commands.focus(pos);
             }
