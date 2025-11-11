@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search-core]
+   [metabase.search.engine :as search.engine]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -414,3 +415,26 @@
                                     (map (comp first #(str/split % #"\s") :name))))]
             (is (= ["Bookmarked" "Regular"] (query)))
             (is (= ["Regular" "Bookmarked"] (query {:bookmarked -1})))))))))
+
+(deftest join-with-or-test
+  (testing "search combines results with OR logic when join-with-or? is true"
+    (mt/with-test-user :rasta
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Dashboard  {id-1 :id}  {:name "f00b4r"}
+                       :model/Dashboard  {id-2 :id}  {:name "b4rf00"}
+                       :model/Dashboard  {id-3 :id}  {:name "quixotic"}
+                       :model/Dashboard  {id-4 :id}  {:name "ancillary"}]
+          (let [base-query   {:term-queries     ["f00b4r" "b4rf00"]
+                             ;; Not sure if semantic search is always active for this test in CI
+                             ;; TODO (Chris 2025-11-11) Make sure this works with actual semantic disjunction
+                              :semantic-queries (if (search.engine/supported-engine? :search.engine/semantic)
+                                                  ["unrealistic" "adjunct"]
+                                                  ["quixotic" "ancillary"])}
+                test-entity? (comp #{id-1 id-2 id-3 id-4} :id)
+                query        (fn [join-with-or?]
+                               (->> (search/search (assoc base-query :join-with-or? join-with-or?))
+                                    (filter test-entity?)
+                                    (map :name)))]
+            (doseq [join-with-or? [false true]]
+              (is (= #{"f00b4r" "b4rf00" "quixotic" "ancillary"}
+                     (set (query join-with-or?)))))))))))
