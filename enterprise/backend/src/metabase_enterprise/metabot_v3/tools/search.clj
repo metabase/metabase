@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.search
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.reactions]
    [metabase.api.common :as api]
@@ -115,11 +116,23 @@
           (sort-by :rrf >)
           (map :search-result)))))
 
+(defn- join-results-by-or [search-fn all-queries]
+  ;; Collect unique results from all queries
+  (search-fn (str/join " OR " all-queries)))
+
+(defn- join-results-by-rrf [search-fn all-queries limit]
+  (if (<= (count all-queries) 1)
+    (search-fn (first all-queries))
+    ;; Create futures for parallel execution
+    (let [futures      (mapv #(future (search-fn %)) all-queries)
+          result-lists (mapv deref futures)]
+      (take limit (reciprocal-rank-fusion result-lists)))))
+
 (defn search
   "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.
   Abstracted from the API endpoint logic."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot-id search-native-query weights]}]
+           entity-types limit metabot-id search-native-query weights join-with-or?]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:term-queries term-queries
               :semantic-queries semantic-queries
@@ -174,10 +187,9 @@
                           result-models (frequencies (map :model data))]
                       (log/infof "[METABOT-SEARCH] Query '%s' returned entity types: %s" query result-models)
                       data))
-        ;; Create futures for parallel execution
-        futures (mapv #(future (search-fn %)) all-queries)
-        result-lists (mapv deref futures)
-        fused-results (take limit (reciprocal-rank-fusion result-lists))]
+        fused-results (if join-with-or?
+                        (join-results-by-or search-fn all-queries)
+                        (join-results-by-rrf search-fn all-queries limit))]
     (->> fused-results
          (map postprocess-search-result)
          enrich-with-collection-descriptions)))
