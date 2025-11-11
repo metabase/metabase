@@ -243,7 +243,7 @@ export const {
   useRescanTableFieldValuesMutation,
   useRescanTablesFieldValuesMutation,
   useSyncTableSchemaMutation,
-  eseSyncTablesSchemasMutation,
+  useSyncTablesSchemasMutation,
   useDiscardTableFieldValuesMutation,
   useDiscardTablesFieldValuesMutation,
   usePublishModelsMutation,
