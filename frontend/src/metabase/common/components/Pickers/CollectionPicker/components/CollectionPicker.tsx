@@ -61,9 +61,8 @@ export const CollectionPickerInner = (
     () => ({
       models,
       namespace: options.namespace,
-      includeEditableSemanticLayer: options?.includeEditableSemanticLayer,
     }),
-    [models, options?.namespace, options?.includeEditableSemanticLayer],
+    [models, options?.namespace],
   );
 
   const defaultPath = useMemo(() => {

@@ -58,7 +58,6 @@ export type CollectionPickerOptions = EntityPickerModalOptions & {
   allowCreateNew?: boolean;
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
-  includeEditableSemanticLayer?: boolean;
 };
 
 export type CollectionItemListProps = ListProps<
