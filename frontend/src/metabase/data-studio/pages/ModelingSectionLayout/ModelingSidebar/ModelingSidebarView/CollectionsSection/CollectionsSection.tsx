@@ -7,7 +7,7 @@ import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { excludeLibrarySubtree } from "metabase/data-studio/utils/library-collection";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Button, Icon, Menu, Tooltip } from "metabase/ui";
+import { Button, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import { ModelingSidebarTreeNode } from "../../ModelingSidebarTreeNode";
@@ -86,7 +86,7 @@ export function CollectionsSection({
                   size="compact-xs"
                   variant="subtle"
                   c="text-medium"
-                  leftSection={<Icon name="add" size={16} />}
+                  leftSection={<FixedSizeIcon name="add" size={16} />}
                   onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
                   }}
@@ -97,19 +97,19 @@ export function CollectionsSection({
               {hasNativeWrite ? (
                 <Menu.Sub>
                   <Menu.Sub.Target>
-                    <Menu.Sub.Item leftSection={<Icon name="model" />}>
+                    <Menu.Sub.Item leftSection={<FixedSizeIcon name="model" />}>
                       {t`Model`}
                     </Menu.Sub.Item>
                   </Menu.Sub.Target>
                   <Menu.Sub.Dropdown>
                     <Menu.Item
-                      leftSection={<Icon name="notebook" />}
+                      leftSection={<FixedSizeIcon name="notebook" />}
                       onClick={handleCreateModelNotebook}
                     >
                       {t`Query builder`}
                     </Menu.Item>
                     <Menu.Item
-                      leftSection={<Icon name="sql" />}
+                      leftSection={<FixedSizeIcon name="sql" />}
                       onClick={handleCreateModelNative}
                     >
                       {t`SQL query`}
@@ -118,14 +118,14 @@ export function CollectionsSection({
                 </Menu.Sub>
               ) : (
                 <Menu.Item
-                  leftSection={<Icon name="model" />}
+                  leftSection={<FixedSizeIcon name="model" />}
                   onClick={handleCreateModelNotebook}
                 >
                   {t`Model`}
                 </Menu.Item>
               )}
               <Menu.Item
-                leftSection={<Icon name="metric" />}
+                leftSection={<FixedSizeIcon name="metric" />}
                 onClick={handleCreateMetric}
               >
                 {t`Metric`}

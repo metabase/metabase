@@ -7,7 +7,7 @@ import EditableText from "metabase/common/components/EditableText";
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
 import type { GroupProps, IconName } from "metabase/ui";
-import { Box, Button, Group, Icon, Stack, Tooltip } from "metabase/ui";
+import { Box, Button, FixedSizeIcon, Group, Stack, Tooltip } from "metabase/ui";
 
 import S from "./PaneHeader.module.css";
 import type { PaneHeaderTab } from "./types";
@@ -42,7 +42,7 @@ export const PaneHeader = ({
     >
       <Stack gap="sm">
         <Group align="center" gap="xs" wrap="nowrap">
-          {icon && <Icon name={icon} c="brand" size={20} />}
+          {icon && <FixedSizeIcon name={icon} c="brand" size={20} />}
           {title}
           {badge}
           {menu}

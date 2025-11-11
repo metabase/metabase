@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import type { IconName } from "metabase/ui";
-import { Box, Flex, Icon, Stack, Text } from "metabase/ui";
+import { Box, FixedSizeIcon, Flex, Stack, Text } from "metabase/ui";
 
 import S from "./ModelingSidebarSection.module.css";
 
@@ -32,7 +32,7 @@ export function ModelingSidebarSection({
 }: ModelingSidebarSectionProps) {
   const titleContent = (
     <Flex align="center" gap="sm" px="sm" py="xs">
-      <Icon name={icon} size={16} />
+      <FixedSizeIcon name={icon} size={16} />
       <Text fw="bold" className={S.titleText}>
         {title}
       </Text>

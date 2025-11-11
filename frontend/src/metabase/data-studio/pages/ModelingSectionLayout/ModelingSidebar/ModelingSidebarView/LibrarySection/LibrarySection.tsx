@@ -7,8 +7,8 @@ import { findLibraryCollection } from "metabase/data-studio/utils/library-collec
 import {
   Box,
   Button,
+  FixedSizeIcon,
   Flex,
-  Icon,
   Modal,
   Stack,
   Text,
@@ -104,7 +104,7 @@ export function LibrarySection({
               bg="var(--mb-color-brand-lighter)"
               bdrs={8}
             >
-              <Icon name="repository" size={16} c="brand" />
+              <FixedSizeIcon name="repository" size={16} c="brand" />
             </Flex>
             <Title order={3} fw="bold">{t`Create your Library`}</Title>
           </Flex>

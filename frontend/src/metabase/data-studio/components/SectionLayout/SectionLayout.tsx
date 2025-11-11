@@ -7,9 +7,9 @@ import {
   Box,
   Button,
   Divider,
+  FixedSizeIcon,
   Flex,
   Group,
-  Icon,
   type IconName,
   Stack,
   Title,
@@ -86,7 +86,7 @@ export function SectionTabs({ tabs }: SectionTabsProps) {
             c={tab.isSelected ? "brand" : undefined}
             bg={tab.isSelected ? "brand-light" : "bg-secondary"}
             bd="none"
-            leftSection={<Icon name={tab.icon} />}
+            leftSection={<FixedSizeIcon name={tab.icon} />}
           >
             {tab.label}
           </Button>

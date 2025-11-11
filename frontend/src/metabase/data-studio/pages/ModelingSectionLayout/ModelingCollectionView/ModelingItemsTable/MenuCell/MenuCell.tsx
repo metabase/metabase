@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { Cell } from "metabase/browse/components/BrowseTable.styled";
 import Questions from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
-import { Button, Icon, Menu } from "metabase/ui";
+import { Button, FixedSizeIcon, Menu } from "metabase/ui";
 
 import type { ModelingItem } from "../types";
 
@@ -50,11 +50,14 @@ export function MenuCell({ item }: MenuCellProps) {
             aria-label={deleteLabel}
             c="text-dark"
           >
-            <Icon name="ellipsis" />
+            <FixedSizeIcon name="ellipsis" />
           </Button>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Item leftSection={<Icon name="trash" />} onClick={handleDelete}>
+          <Menu.Item
+            leftSection={<FixedSizeIcon name="trash" />}
+            onClick={handleDelete}
+          >
             {t`Remove`}
           </Menu.Item>
         </Menu.Dropdown>
