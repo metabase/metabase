@@ -22,12 +22,14 @@ type CreateCollectionTreeModalProps = {
 };
 
 export function CreateCollectionTreeModal({
+  onCreate,
   onClose,
 }: CreateCollectionTreeModalProps) {
   const [createCollection] = useCreateSemanticLayerCollectionMutation();
 
   const handleSubmit = async () => {
-    await createCollection().unwrap();
+    const collection = await createCollection().unwrap();
+    onCreate(collection);
   };
 
   return (

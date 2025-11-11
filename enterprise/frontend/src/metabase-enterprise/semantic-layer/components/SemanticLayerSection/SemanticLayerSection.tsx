@@ -30,6 +30,7 @@ export function SemanticLayerSection({
   );
 
   const handleCreate = (collection: Collection) => {
+    closeModal();
     dispatch(push(Urls.dataStudioCollection(collection.id)));
   };
 
