@@ -160,7 +160,7 @@ const CardEmbedMenuDropdown = ({
       )}
       <Menu.Item
         onClick={handleAddSupportingText}
-        disabled={!handleAddSupportingText}
+        disabled={!canWrite || !handleAddSupportingText}
         leftSection={<Icon name="add_list" size={14} />}
       >
         {t`Add supporting text`}
