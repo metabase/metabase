@@ -27,15 +27,17 @@ import { Messages } from "./MetabotChatMessage";
 import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
 
-const defaultConfig: MetabotConfig = {
-  suggestionModels: [
-    "dataset",
-    "metric",
-    "card",
-    "table",
-    "database",
-    "dashboard",
-  ],
+export const defaultSuggestionModels: MetabotConfig["suggestionModels"] = [
+  "dataset",
+  "metric",
+  "card",
+  "table",
+  "database",
+  "dashboard",
+];
+
+export const defaultConfig: MetabotConfig = {
+  suggestionModels: defaultSuggestionModels,
 };
 
 export const MetabotChat = ({

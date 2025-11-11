@@ -10,6 +10,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./components/Metabot";
 import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
+import { MetabotPlaygroundAdminPage } from "./components/MetabotAdmin/MetabotPlaygroundPage";
 import { MetabotAdminAppBarButton } from "./components/MetabotAdminAppBarButton";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
@@ -37,6 +38,7 @@ if (hasPremiumFeature("metabot_v3")) {
       component={createAdminRouteGuard("metabot")}
     >
       <IndexRoute component={MetabotAdminPage} />
+      <Route path="playground" component={MetabotPlaygroundAdminPage} />
       <Route path=":metabotId" component={MetabotAdminPage} />
     </Route>
   );
