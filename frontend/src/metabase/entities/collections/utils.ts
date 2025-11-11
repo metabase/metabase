@@ -42,6 +42,18 @@ export function getCollectionIcon(
   }
 
   if (PLUGIN_SEMANTIC_LAYER.isSemanticLayerCollection(collection)) {
+    const allowedTypes = collection.allowed_content ?? [];
+    const hasOnlyModels =
+      allowedTypes.includes("dataset") && !allowedTypes.includes("metric");
+    const hasOnlyMetrics =
+      allowedTypes.includes("metric") && !allowedTypes.includes("dataset");
+
+    if (hasOnlyModels) {
+      return { name: "model" };
+    }
+    if (hasOnlyMetrics) {
+      return { name: "metric" };
+    }
     return { name: "repository" };
   }
 

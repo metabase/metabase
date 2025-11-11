@@ -5,7 +5,8 @@ import {
   useGetCollectionQuery,
   useListCollectionItemsQuery,
 } from "metabase/api/collection";
-import { Box, Group, Stack, Text } from "metabase/ui";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { Box, Center, Group, Stack, Text } from "metabase/ui";
 
 import { ModelingCollectionEmptyState } from "./ModelingCollectionEmptyState";
 import S from "./ModelingCollectionView.module.css";
@@ -22,14 +23,23 @@ type ModelingCollectionViewProps = {
 export function ModelingCollectionView({
   params,
 }: ModelingCollectionViewProps) {
-  const { data: collection } = useGetCollectionQuery({
+  const {
+    data: collection,
+    isLoading: isLoadingCollection,
+    error: collectionError,
+  } = useGetCollectionQuery({
     id: params.collectionId,
   });
-
-  const { data, isLoading } = useListCollectionItemsQuery({
+  const {
+    data,
+    isLoading: isLoadingItems,
+    error: itemsError,
+  } = useListCollectionItemsQuery({
     id: params.collectionId,
     models: ["dataset", "metric"],
   });
+  const isLoading = isLoadingCollection || isLoadingItems;
+  const error = collectionError ?? itemsError;
 
   const items = useMemo(() => {
     if (!data?.data) {
@@ -41,7 +51,15 @@ export function ModelingCollectionView({
     );
   }, [data]);
 
-  const showEmptyState = !isLoading && items.length === 0;
+  if (isLoading || error != null || collection == null) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
+  }
+
+  const showEmptyState = items.length === 0;
 
   return (
     <Box h="100%" className={S.root}>
@@ -54,7 +72,7 @@ export function ModelingCollectionView({
           </Group>
           {showEmptyState ? (
             <Box className={S.emptyState}>
-              <ModelingCollectionEmptyState />
+              <ModelingCollectionEmptyState collection={collection} />
             </Box>
           ) : (
             <ModelingItemsTable items={items} skeleton={isLoading} />
