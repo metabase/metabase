@@ -1858,10 +1858,8 @@
 
   enterprise/library
   {:team "UX West"
-   :api  #{metabase-enterprise.library.api
-           metabase-enterprise.library.core}
+   :api  #{metabase-enterprise.library.api}
    :uses #{api
-           app-db
            collections
            premium-features}}
 
