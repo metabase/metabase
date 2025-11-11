@@ -11,6 +11,7 @@ interface ModelingSidebarSectionProps {
   title: string;
   children?: ReactNode;
   to?: string;
+  onClick?: () => void;
   isActive?: boolean;
   action?: {
     icon: IconName;
@@ -25,6 +26,7 @@ export function ModelingSidebarSection({
   title,
   children,
   to,
+  onClick,
   isActive = false,
   rightSection = null,
 }: ModelingSidebarSectionProps) {
@@ -42,6 +44,14 @@ export function ModelingSidebarSection({
     <Box
       component={Link}
       to={to}
+      className={S.sectionLink}
+      data-active={isActive || undefined}
+    >
+      {titleContent}
+    </Box>
+  ) : onClick ? (
+    <Box
+      onClick={onClick}
       className={S.sectionLink}
       data-active={isActive || undefined}
     >

@@ -7,6 +7,7 @@ import { Box, Stack } from "metabase/ui";
 import { ModelingSidebarSection } from "../ModelingSidebarSection";
 
 import { CollectionsSection } from "./CollectionsSection";
+import { LibrarySection } from "./LibrarySection";
 import S from "./ModelingSidebarView.module.css";
 import { SnippetsSection } from "./SnippetsSection";
 
@@ -30,6 +31,15 @@ export function ModelingSidebarView({
   return (
     <Box w={320} h="100%" bg="bg-white" className={S.sidebar}>
       <Stack gap={0}>
+        <Box className={S.section} p="md">
+          <LibrarySection
+            collections={collections}
+            selectedCollectionId={selectedCollectionId}
+            hasDataAccess={hasDataAccess}
+            hasNativeWrite={hasNativeWrite}
+          />
+        </Box>
+
         <Box className={S.section} p="md">
           <CollectionsSection
             collections={collections}
