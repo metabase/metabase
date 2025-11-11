@@ -8,6 +8,8 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.compile :as qp.compile]
@@ -42,10 +44,41 @@
   [transform]
   (= :query (-> transform :source :type keyword)))
 
+(defn native-query-transform?
+  "Check if this is a native query transform.
+  Note: The transform should be normalized (via `normalize-transform`) before calling this function."
+  [transform]
+  (when (query-transform? transform)
+    (let [query (-> transform :source :query)]
+      (lib/native-only-query? query))))
+
 (defn python-transform?
   "Check if this is a Python transform."
   [transform]
   (= :python (-> transform :source :type keyword)))
+
+(defn normalize-transform
+  "Normalize a transform's source query, similar to how transforms are normalized when read from the database.
+  This should be called on transforms before processing them to ensure queries are in the expected format."
+  [transform]
+  (if (and (map? transform)
+           (= (:type transform) "transform")
+           (get-in transform [:source :query]))
+    (update-in transform [:source :query] lib-be/normalize-query)
+    transform))
+
+(defn transform-source-type
+  "Returns the type of a transform's source: :python, :native, or :mbql.
+  Throws if the source type cannot be detected.
+  Note: The transform should be normalized (via `normalize-transform`) before calling this function."
+  [source]
+  (case (keyword (:type source))
+    :python :python
+    :query  (if (lib/native-only-query? (:query source))
+              :native
+              :mbql)
+    (throw (ex-info (str "Unknown transform source type: " (:type source))
+                    {:source source}))))
 
 (defn check-feature-enabled
   "Checking whether we have proper feature flags for using a given transform."
@@ -227,15 +260,15 @@
    database-id :- pos-int?
    table-schema :- ::table-definition]
   (let [{:keys [columns] table-name :name} table-schema
-        column-definitions (into {} (map (fn [{:keys [name type database-type]}]
-                                           (let [db-type (if database-type
-                                                           [[:raw database-type]]
-                                                           (try
-                                                             (driver/type->database-type driver type)
-                                                             (catch IllegalArgumentException _
-                                                               (log/warnf "Couldn't determine database type for type %s, fallback to Text" type)
-                                                               (driver/type->database-type driver :type/Text))))]
-                                             [name db-type])))
+        column-definitions (mapv (fn [{:keys [name type database-type]}]
+                                   (let [db-type (if database-type
+                                                   [[:raw database-type]]
+                                                   (try
+                                                     (driver/type->database-type driver type)
+                                                     (catch IllegalArgumentException _
+                                                       (log/warnf "Couldn't determine database type for type %s, fallback to Text" type)
+                                                       (driver/type->database-type driver :type/Text))))]
+                                     [name db-type]))
                                  columns)
         primary-key-opts (select-keys table-schema [:primary-key])]
     (log/infof "Creating table %s with %d columns" table-name (count columns))

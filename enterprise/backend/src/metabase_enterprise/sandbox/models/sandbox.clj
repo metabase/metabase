@@ -7,9 +7,10 @@
   system."
   (:require
    [medley.core :as m]
+   [metabase-enterprise.sandbox.schema :as sandbox.schema]
+   [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
-   ;; legacy usage -- do not use in new code
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
@@ -35,14 +36,8 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
 
-(defn- normalize-attribute-remapping-targets [attribute-remappings]
-  (m/map-vals
-   mbql.normalize/normalize
-   attribute-remappings))
-
 (t2/deftransforms :model/Sandbox
-  {:attribute_remappings {:in  (comp mi/json-in normalize-attribute-remapping-targets)
-                          :out (comp normalize-attribute-remapping-targets mi/json-out-without-keywordization)}})
+  {:attribute_remappings sandbox.schema/attribute-remappings-transform})
 
 (defn table-field-names->cols
   "Return a mapping of field names to corresponding cols for given table."
@@ -190,8 +185,16 @@
            (t2/update! :model/Sandbox
                        id
                        (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
-         (t2/select-one :model/Sandbox :id id))
-       (first (t2/insert-returning-instances! :model/Sandbox sandbox))))))
+         (let [updated-sandbox (t2/select-one :model/Sandbox :id id)]
+           (events/publish-event! :event/sandbox-update
+                                  {:object updated-sandbox
+                                   :user-id api/*current-user-id*})
+           updated-sandbox))
+       (let [inserted-sandbox (first (t2/insert-returning-instances! :model/Sandbox sandbox))]
+         (events/publish-event! :event/sandbox-create
+                                {:object inserted-sandbox
+                                 :user-id api/*current-user-id*})
+         inserted-sandbox)))))
 
 (t2/define-before-insert :model/Sandbox
   [{:keys [table_id group_id], :as gtap}]

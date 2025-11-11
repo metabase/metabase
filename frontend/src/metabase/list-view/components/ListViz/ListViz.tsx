@@ -10,7 +10,8 @@ import {
   getIsListViewConfigurationShown,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import { Box } from "metabase/ui";
+import { Box, type IconName } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
@@ -53,6 +54,15 @@ const vizDefinition = {
     ...columnSettings({ hidden: true }),
     "list.entity_icon": {
       default: null,
+    },
+    "list.entity_icon_color": {
+      default: color("text-primary"),
+    },
+    "list.entity_icon_enabled": {
+      default: true,
+    },
+    "list.use_image_column": {
+      default: false,
     },
     "list.columns": {
       getDefault: ([
@@ -311,19 +321,38 @@ export const ListViz = ({
     left,
     right,
     entityIcon,
+    entityIconColor,
+    entityIconEnabled,
+    useImageColumn,
   }: {
-    left: string[];
-    right: string[];
-    entityIcon?: string;
+    left?: string[];
+    right?: string[];
+    entityIcon?: IconName | null;
+    entityIconColor?: string;
+    entityIconEnabled?: boolean;
+    useImageColumn?: boolean;
   }) => {
-    const newSettings = {
-      "list.columns": {
+    const settings = { ...(question?.settings() || {}) };
+    if (left && right) {
+      settings["list.columns"] = {
         left,
         right,
-      },
-      "list.entity_icon": entityIcon,
-    };
-    const nextQuestion = question?.updateSettings(newSettings);
+      };
+    }
+    if (entityIcon !== undefined) {
+      settings["list.entity_icon"] = entityIcon;
+    }
+    if (entityIconColor !== undefined) {
+      settings["list.entity_icon_color"] = entityIconColor;
+    }
+    if (entityIconEnabled !== undefined) {
+      settings["list.entity_icon_enabled"] = entityIconEnabled;
+    }
+    if (useImageColumn !== undefined) {
+      settings["list.use_image_column"] = useImageColumn;
+    }
+
+    const nextQuestion = question?.updateSettings(settings);
     if (nextQuestion) {
       dispatch(updateQuestion(nextQuestion));
     }
@@ -341,8 +370,8 @@ export const ListViz = ({
         <ListViewConfiguration
           data={data}
           settings={settings}
-          entityType={entityType}
           onChange={updateListSettings}
+          entityType={entityType}
           columnsMetadata={columnsMetadata}
         />
       ) : (

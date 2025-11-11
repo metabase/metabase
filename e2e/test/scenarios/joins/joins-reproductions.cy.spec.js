@@ -165,7 +165,7 @@ describe("issue 14793", () => {
       .findByText(/^A closer look at/)
       .should("be.visible");
 
-    H.getDashboardCards().should("have.length", 18);
+    H.getDashboardCards().should("have.length", 35);
   });
 });
 
@@ -813,8 +813,6 @@ describe("issue 23293", () => {
     cy.findByTestId("save-question-modal").button("Save").click();
 
     cy.wait("@saveQuestion").then(({ response }) => {
-      cy.button("Not now").click();
-
       const id = response.body.id;
       const questionDetails = {
         query: {

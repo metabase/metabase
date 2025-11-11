@@ -375,7 +375,6 @@ export const SdkDashboard = withPublicComponentWrapper(
     | "FullscreenButton"
     | "ExportAsPdfButton"
     | "InfoButton"
-    | "NightModeButton"
     | "RefreshPeriod"
   >;
 
@@ -387,7 +386,6 @@ SdkDashboard.ParametersList = Dashboard.ParametersList;
 SdkDashboard.FullscreenButton = Dashboard.FullscreenButton;
 SdkDashboard.ExportAsPdfButton = Dashboard.ExportAsPdfButton;
 SdkDashboard.InfoButton = Dashboard.InfoButton;
-SdkDashboard.NightModeButton = Dashboard.NightModeButton;
 SdkDashboard.RefreshPeriod = Dashboard.RefreshPeriod;
 
 type DashboardQueryBuilderProps = {

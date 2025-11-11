@@ -1,6 +1,6 @@
 import type { Location } from "history";
 
-import type { JobListParams } from "metabase-enterprise/transforms/types";
+import type * as Urls from "metabase/lib/urls";
 
 import {
   parseInteger,
@@ -9,7 +9,9 @@ import {
   parseString,
 } from "../../utils";
 
-export function getParsedParams(location: Location): JobListParams {
+export function getParsedParams(
+  location: Location,
+): Urls.TransformJobListParams {
   const { lastRunStartTime, lastRunStatuses, nextRunStartTime, tagIds } =
     location.query;
 
@@ -21,7 +23,7 @@ export function getParsedParams(location: Location): JobListParams {
   };
 }
 
-export function hasFilterParams(params: JobListParams) {
+export function hasFilterParams(params: Urls.TransformJobListParams) {
   return (
     params.lastRunStartTime != null ||
     params.lastRunStatuses != null ||

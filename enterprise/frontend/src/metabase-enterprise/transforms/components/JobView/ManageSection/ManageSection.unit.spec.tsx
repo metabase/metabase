@@ -3,10 +3,9 @@ import { Route } from "react-router";
 
 import { setupDeleteTransformJobEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import * as Urls from "metabase/lib/urls";
 import type { TransformJob } from "metabase-types/api";
 import { createMockTransformJob } from "metabase-types/api/mocks";
-
-import { getJobListUrl, getJobUrl } from "../../../urls";
 
 import { ManageSection } from "./ManageSection";
 
@@ -19,13 +18,16 @@ function setup({ job = createMockTransformJob() }: SetupOpts = {}) {
 
   renderWithProviders(
     <>
-      <Route path={getJobListUrl()} component={() => <div>Job list</div>} />
       <Route
-        path={getJobUrl(job.id)}
+        path={Urls.transformJobList()}
+        component={() => <div>Job list</div>}
+      />
+      <Route
+        path={Urls.transformJob(job.id)}
         component={() => <ManageSection job={job} />}
       />
     </>,
-    { withRouter: true, initialRoute: getJobUrl(job.id) },
+    { withRouter: true, initialRoute: Urls.transformJob(job.id) },
   );
 }
 

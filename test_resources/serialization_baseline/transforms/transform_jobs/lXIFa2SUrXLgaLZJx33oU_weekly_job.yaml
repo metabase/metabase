@@ -6,7 +6,6 @@ job_tags: []
 name: Weekly job
 schedule: 0 0 0 ? * 1 *
 ui_display_type: cron/builder
-updated_at: '2025-09-23T12:20:31.215628Z'
 serdes/meta:
 - id: lXIFa2SUrXLgaLZJx33oU
   label: weekly_job

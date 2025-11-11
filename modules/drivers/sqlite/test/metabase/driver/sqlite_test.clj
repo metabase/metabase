@@ -214,14 +214,13 @@
 (deftest ^:parallel duplicate-identifiers-test
   (testing "Make sure duplicate identifiers (even with different cases) get unique aliases"
     (mt/test-driver :sqlite
-      (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
+      (is (= '{:select   [source.CATEGORY AS CATEGORY
                           COUNT (*)         AS count]
-               :from     [{:select [products.category       AS category
-                                    products.category || ?  AS CATEGORY_2]
+               :from     [{:select [products.category || ? AS CATEGORY]
                            :from   [products]}
                           AS source]
-               :group-by [source.CATEGORY_2]
-               :order-by [source.CATEGORY_2 ASC]
+               :group-by [source.CATEGORY]
+               :order-by [source.CATEGORY ASC]
                :limit    [1]}
              (sql.qp-test-util/query->sql-map
               (mt/mbql-query products

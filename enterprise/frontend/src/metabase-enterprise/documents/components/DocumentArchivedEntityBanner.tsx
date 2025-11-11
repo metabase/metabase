@@ -4,7 +4,7 @@ import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner";
 import Bookmarks from "metabase/entities/bookmarks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import Documents from "metabase-enterprise/entities/document";
+import Documents from "metabase-enterprise/entities/documents";
 
 import { getCurrentDocument } from "../selectors";
 

@@ -154,7 +154,6 @@
      ([type schema]
       `(register! ~type ~schema))
      ([type docstring schema]
-      (assert (string? docstring))
       `(metabase.util.malli.registry/def ~type
          ~(macros/case
            :clj `(-with-doc ~schema ~docstring)

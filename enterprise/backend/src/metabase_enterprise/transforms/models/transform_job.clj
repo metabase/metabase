@@ -154,7 +154,6 @@
    :transform {:name {:export str :import identity}
                :description {:export str :import identity}
                :created_at (serdes/date)
-               :updated_at (serdes/date)
                :job_tags (serdes/nested :model/TransformJobTransformTag :job_id opts)}})
 
 (defmethod serdes/dependencies "TransformJob"

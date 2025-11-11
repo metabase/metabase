@@ -868,8 +868,8 @@
             #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Collection source-card-collection]
               (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)
-              (is (=? {:message "You do not have curate permissions for this Collection."}
-                      (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
+              (is (= "You don't have permissions to do that."
+                     (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
 
           (testing "Try to save in a different Collection for which we do not have perms"
             ;; allowing `with-temp` here since we need it to make Collections
@@ -877,8 +877,8 @@
             (mt/with-temp [:model/Collection source-card-collection {}
                            :model/Collection dest-card-collection   {}]
               (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)
-              (is (=? {:message "You do not have curate permissions for this Collection."}
-                      (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection))))))))))
+              (is (= "You don't have permissions to do that."
+                     (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection))))))))))
 
 (deftest ^:parallel infer-source-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)

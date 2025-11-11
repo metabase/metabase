@@ -127,6 +127,7 @@
   aggregations
   aggregations-metadata
   available-aggregation-operators
+  remove-all-aggregations
   selected-aggregation-operators
   count
   avg
@@ -471,8 +472,10 @@
   temporal-bucket
   with-temporal-bucket]
  [lib.util
+  canonical-stage-index
   clause?
   clause-of-type?
+  drop-summary-clauses
   fresh-uuids
   mbql-stage?
   native-stage?
@@ -493,6 +496,8 @@
   find-bad-refs]
  [metabase.lib.walk.util
   all-field-ids
+  all-implicitly-joined-field-ids
+  all-implicitly-joined-table-ids
   all-source-card-ids
   all-source-table-ids
   all-template-tag-field-ids

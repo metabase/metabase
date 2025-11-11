@@ -3,13 +3,24 @@ import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { Route } from "metabase/hoc/Title";
-import { PLUGIN_TRANSFORMS, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import {
+  PLUGIN_ENTITIES,
+  PLUGIN_TRANSFORMS,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
+import { Transforms } from "metabase-enterprise/entities/transforms";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
+import { TransformPicker } from "./components/TransformPicker";
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
 import { NewJobPage } from "./pages/NewJobPage";
-import { NewTransformPage } from "./pages/NewTransformPage";
+import {
+  NewCardTransformPage,
+  NewNativeTransformPage,
+  NewPythonTransformPage,
+  NewQueryTransformPage,
+} from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
 import { TransformListPage } from "./pages/TransformListPage";
 import { TransformPage } from "./pages/TransformPage";
@@ -17,6 +28,9 @@ import { DetailsPageLayout, ListPageLayout } from "./pages/TransformPageLayout";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
 
 if (hasPremiumFeature("transforms")) {
+  PLUGIN_ENTITIES.entities["transforms"] = Transforms;
+  PLUGIN_TRANSFORMS.TransformPicker = TransformPicker;
+
   PLUGIN_TRANSFORMS.getAdminPaths = () => [
     { key: "transforms", name: t`Transforms`, path: "/admin/transforms" },
   ];
@@ -35,8 +49,12 @@ if (hasPremiumFeature("transforms")) {
           <Route path=":transformId" component={TransformPage} />
         </Route>
         {PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes()}
-        <Route path="new/:type" component={NewTransformPage} />
-        <Route path="new/card/:cardId" component={NewTransformPage} />
+        <Route path="new/query" component={NewQueryTransformPage} />
+        <Route path="new/native" component={NewNativeTransformPage} />
+        <Route path="new/card/:cardId" component={NewCardTransformPage} />
+        {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
+          <Route path="new/python" component={NewPythonTransformPage} />
+        )}
         <Route path=":transformId/query" component={TransformQueryPage} />
       </Route>
     </Route>

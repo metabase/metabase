@@ -1,144 +1,217 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import type { Route } from "react-router";
 import { push } from "react-router-redux";
 
-import { skipToken, useGetCardQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCardQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
+import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { Center } from "metabase/ui";
 import type {
-  CardId,
-  LegacyDatasetQuery,
+  Database,
+  DraftTransformSource,
   Transform,
-  TransformSource,
 } from "metabase-types/api";
 
-import { QueryEditor } from "../../components/QueryEditor";
-import { getTransformListUrl, getTransformUrl } from "../../urls";
+import { TransformEditor } from "../../components/TransformEditor";
+import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
+import { useSourceState } from "../../hooks/use-source-state";
+import { isNotDraftSource } from "../../utils";
 
 import { CreateTransformModal } from "./CreateTransformModal";
 import {
-  getInitialPythonTransformSource,
-  getInitialQueryTransformSource,
+  getInitialCardSource,
+  getInitialNativeSource,
+  getInitialPythonSource,
+  getInitialQuerySource,
 } from "./utils";
 
-type NewTransformPageParams = {
-  type?: string;
-  cardId?: string;
-};
-
-type NewTransformPageParsedParams = {
-  type: LegacyDatasetQuery["type"] | "python";
-  cardId?: CardId;
-};
-
 type NewTransformPageProps = {
-  params: NewTransformPageParams;
+  initialSource: DraftTransformSource;
+  route: Route;
 };
 
-export function NewTransformPage({ params }: NewTransformPageProps) {
-  const { type, cardId } = getParsedParams(params);
+function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
+  const {
+    data: databases,
+    isLoading,
+    error,
+  } = useListDatabasesQuery({ include_analytics: true });
 
-  const [source, setSource] = useState<TransformSource | null>(null);
-  const [isModalOpened, { open: openModal, close: closeModal }] =
-    useDisclosure();
-  const dispatch = useDispatch();
-
-  const handleCreate = (transform: Transform) => {
-    dispatch(push(getTransformUrl(transform.id)));
-  };
-
-  const handleSave = (newSource: TransformSource) => {
-    setSource(newSource);
-    openModal();
-  };
-
-  const handleCancel = () => {
-    dispatch(push(getTransformListUrl()));
-  };
-
-  return (
-    <>
-      <NewTransformEditorBody
-        type={type}
-        cardId={cardId}
-        onSave={handleSave}
-        onCancel={handleCancel}
-      />
-      {isModalOpened && source !== null && (
-        <CreateTransformModal
-          source={source}
-          onCreate={handleCreate}
-          onClose={closeModal}
-        />
-      )}
-    </>
-  );
-}
-
-function NewTransformEditorBody(props: {
-  type: LegacyDatasetQuery["type"] | "python";
-  cardId?: CardId;
-  onSave: (source: TransformSource) => void;
-  onCancel: () => void;
-}) {
-  const { type, ...rest } = props;
-  if (type === "python") {
+  if (isLoading || error != null || databases == null) {
     return (
-      <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
-        initialSource={getInitialPythonTransformSource()}
-        isNew
-        onSave={props.onSave}
-        onCancel={props.onCancel}
-      />
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
     );
   }
 
-  return <NewQueryTransformEditorBody {...rest} type={type} />;
-}
-
-function NewQueryTransformEditorBody({
-  type,
-  cardId,
-  onSave,
-  onCancel,
-}: {
-  type: LegacyDatasetQuery["type"];
-  cardId?: CardId;
-  onSave: (source: TransformSource) => void;
-  onCancel: () => void;
-}) {
-  const {
-    data: card,
-    isLoading,
-    error,
-  } = useGetCardQuery(cardId ? { id: cardId } : skipToken);
-
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
   return (
-    <QueryEditor
-      initialSource={getInitialQueryTransformSource(card, type)}
-      isNew
-      onSave={onSave}
-      onCancel={onCancel}
+    <NewTransformPageBody
+      initialSource={initialSource}
+      databases={databases.data}
+      route={route}
     />
   );
 }
 
-function getParsedParams({
-  type,
-  cardId,
-}: NewTransformPageParams): NewTransformPageParsedParams {
-  if (type === "python") {
-    return { type: "python" };
+type NewTransformPageBodyProps = {
+  initialSource: DraftTransformSource;
+  databases: Database[];
+  route: Route;
+};
+
+function NewTransformPageBody({
+  initialSource,
+  databases,
+  route,
+}: NewTransformPageBodyProps) {
+  const {
+    source,
+    proposedSource,
+    suggestedTransform,
+    isDirty,
+    setSourceAndRejectProposed,
+    acceptProposed,
+    rejectProposed,
+  } = useSourceState({ initialSource });
+  const [uiState, setUiState] = useState(getInitialUiState);
+  const [isModalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure();
+  const dispatch = useDispatch();
+  useRegisterMetabotTransformContext(undefined, source);
+
+  const handleCreate = (transform: Transform) => {
+    dispatch(push(Urls.transform(transform.id)));
+  };
+
+  const handleCancel = () => {
+    dispatch(push(Urls.transformList()));
+  };
+
+  return (
+    <>
+      <AdminSettingsLayout fullWidth>
+        {source.type === "python" ? (
+          <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+            source={source}
+            proposedSource={
+              proposedSource?.type === "python" ? proposedSource : undefined
+            }
+            isNew={true}
+            isDirty={isDirty}
+            isSaving={false}
+            onChangeSource={setSourceAndRejectProposed}
+            onSave={openModal}
+            onCancel={handleCancel}
+            onAcceptProposed={acceptProposed}
+            onRejectProposed={rejectProposed}
+          />
+        ) : (
+          <TransformEditor
+            source={source}
+            proposedSource={
+              proposedSource?.type === "query" ? proposedSource : undefined
+            }
+            uiState={uiState}
+            databases={databases}
+            isNew={true}
+            isSaving={false}
+            isDirty={isDirty}
+            onChangeSource={setSourceAndRejectProposed}
+            onChangeUiState={setUiState}
+            onSave={openModal}
+            onCancel={handleCancel}
+            onAcceptProposed={acceptProposed}
+            onRejectProposed={rejectProposed}
+          />
+        )}
+      </AdminSettingsLayout>
+      {isModalOpened && isNotDraftSource(source) && (
+        <CreateTransformModal
+          source={source}
+          suggestedTransform={suggestedTransform}
+          onCreate={handleCreate}
+          onClose={closeModal}
+        />
+      )}
+      <LeaveRouteConfirmModal
+        route={route}
+        isEnabled={isDirty && !isModalOpened}
+        onConfirm={rejectProposed}
+      />
+    </>
+  );
+}
+
+type NewQueryTransformPageProps = {
+  route: Route;
+};
+
+export function NewQueryTransformPage({ route }: NewQueryTransformPageProps) {
+  const initialSource = useMemo(() => getInitialQuerySource(), []);
+  return <NewTransformPage initialSource={initialSource} route={route} />;
+}
+
+type NewNativeTransformPageProps = {
+  route: Route;
+};
+
+export function NewNativeTransformPage({ route }: NewNativeTransformPageProps) {
+  const initialSource = useMemo(() => getInitialNativeSource(), []);
+  return <NewTransformPage initialSource={initialSource} route={route} />;
+}
+
+type NewPythonTransformPageProps = {
+  route: Route;
+};
+
+export function NewPythonTransformPage({ route }: NewPythonTransformPageProps) {
+  const initialSource = useMemo(() => getInitialPythonSource(), []);
+  return <NewTransformPage initialSource={initialSource} route={route} />;
+}
+
+type NewCardTransformPageParams = {
+  cardId: string;
+};
+
+type NewCardTransformPageProps = {
+  params: NewCardTransformPageParams;
+  route: Route;
+};
+
+export function NewCardTransformPage({
+  params,
+  route,
+}: NewCardTransformPageProps) {
+  const cardId = Urls.extractEntityId(params.cardId);
+  const {
+    data: card,
+    isLoading,
+    error,
+  } = useGetCardQuery(cardId != null ? { id: cardId } : skipToken);
+
+  const initialSource = useMemo(
+    () => (card != null ? getInitialCardSource(card) : undefined),
+    [card],
+  );
+
+  if (isLoading || error || initialSource == null) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
   }
 
-  return {
-    type: type === "native" ? "native" : "query",
-    cardId: cardId != null ? Urls.extractEntityId(cardId) : undefined,
-  };
+  return <NewTransformPage initialSource={initialSource} route={route} />;
 }

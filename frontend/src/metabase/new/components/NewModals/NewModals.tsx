@@ -1,7 +1,8 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import type { WithRouterProps } from "react-router";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
+import { useLocation } from "react-use";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
@@ -12,12 +13,19 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import {
+  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
+  type SdkIframeEmbedSetupModalProps,
+} from "metabase/plugins";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
-import { currentOpenModal } from "metabase/selectors/ui";
+import { getCurrentOpenModalState } from "metabase/selectors/ui";
 import type { WritebackAction } from "metabase-types/api";
 
 export const NewModals = withRouter((props: WithRouterProps) => {
-  const currentNewModal = useSelector(currentOpenModal);
+  const { pathname } = useLocation();
+  const { id: currentNewModalId, props: currentNewModalProps } = useSelector(
+    getCurrentOpenModalState<SdkIframeEmbedSetupModalProps>,
+  );
   const dispatch = useDispatch();
   const collectionId = useSelector((state) =>
     Collections.selectors.getInitialCollectionId(state, props),
@@ -35,12 +43,17 @@ export const NewModals = withRouter((props: WithRouterProps) => {
     dispatch(closeModal());
   }, [dispatch]);
 
+  useEffect(() => {
+    // Hide the modals on location change
+    handleModalClose();
+  }, [handleModalClose, pathname]);
+
   useRegisterShortcut(
     [
       {
         id: "shortcuts-modal",
         perform: () => {
-          if (currentNewModal) {
+          if (currentNewModalId) {
             handleModalClose();
           } else {
             dispatch(setOpenModal("help"));
@@ -48,10 +61,10 @@ export const NewModals = withRouter((props: WithRouterProps) => {
         },
       },
     ],
-    [currentNewModal],
+    [currentNewModalId],
   );
 
-  switch (currentNewModal) {
+  switch (currentNewModalId) {
     case "collection":
       return (
         <CreateCollectionModal
@@ -77,11 +90,20 @@ export const NewModals = withRouter((props: WithRouterProps) => {
           />
         </Modal>
       );
+    case "embed": {
+      return (
+        <PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetupModal
+          opened
+          initialState={currentNewModalProps?.initialState}
+          onClose={handleModalClose}
+        />
+      );
+    }
     default:
       return (
         <PaletteShortcutsModal
           onClose={handleModalClose}
-          open={currentNewModal === "help"}
+          open={currentNewModalId === "help"}
         />
       );
   }

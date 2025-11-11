@@ -209,7 +209,6 @@
              :lib/type               :mbql/query
              :lib/metadata           lib.metadata.protocols/cached-metadata-provider?
              :stages                 [{:lib/type :mbql.stage/native
-                                       :template-tags {}
                                        :native "select * from products limit 3;"}]
              :lib.convert/converted? true
              :type                   (symbol "nil #_\"key is not present.\"")

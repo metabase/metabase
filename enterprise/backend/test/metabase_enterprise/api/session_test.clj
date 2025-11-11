@@ -1,4 +1,5 @@
 (ns metabase-enterprise.api.session-test
+  ;; TODO (Cam 10/30/25) -- Move this somewhere better
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
@@ -36,6 +37,7 @@
                               :offer-metabase-ai
                               :official-collections
                               :query-reference-validation
+                              :remote-sync
                               :sandboxes
                               :scim
                               :semantic-search
@@ -80,6 +82,7 @@
             :offer_metabase_ai              true
             :official_collections           true
             :query_reference_validation     true
+            :remote_sync                    true
             :sandboxes                      true
             :scim                           true
             :semantic_search                true

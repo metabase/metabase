@@ -1,9 +1,0 @@
-built_in_type: null
-created_at: '2025-09-18T19:48:48.655364Z'
-entity_id: UWRvb_rSOApXNSrLIH_g5
-name: custom-etl
-updated_at: '2025-09-18T19:48:48.655364Z'
-serdes/meta:
-- id: UWRvb_rSOApXNSrLIH_g5
-  label: custom_etl
-  model: TransformTag

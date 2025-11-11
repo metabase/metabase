@@ -170,7 +170,7 @@
 (deftest ^:parallel viewlog-call-test
   (testing "no viewlog event with nil card id"
     (binding [*viewlog-call-count* (atom 0)]
-      (process-userland-query {:database 2, :type :query, :query {:source-table 26}})
+      (process-userland-query (mt/mbql-query checkins))
       (is (zero? @*viewlog-call-count*)))))
 
 (deftest cancel-test

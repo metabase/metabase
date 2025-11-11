@@ -11,7 +11,6 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
-   [metabase.search.settings :as search.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
@@ -57,6 +56,14 @@
 (defmethod check-permissions-for-model :document
   [search-ctx instance]
   (and (premium-features/enable-documents?)
+       (if (:archived? search-ctx)
+         (can-write? search-ctx instance)
+         true)))
+
+(defmethod check-permissions-for-model :transform
+  [search-ctx instance]
+  (and (:is-superuser? search-ctx)
+       (premium-features/enable-transforms?)
        (if (:archived? search-ctx)
          (can-write? search-ctx instance)
          true)))
@@ -197,7 +204,9 @@
          :collection_type
          :archived_directly
          :display_name
-         :effective_parent))))
+         :effective_parent)
+        (cond-> (= model "transform")
+          (dissoc :source :target)))))
 
 (defn- bit->boolean
   "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
@@ -209,14 +218,8 @@
 (defn default-engine
   "In the absence of an explicit engine argument in a request, which engine should be used?"
   []
-  (if-let [s (search.settings/search-engine)]
-    (let [engine (keyword "search.engine" (name s))]
-      (if (search.engine/supported-engine? engine)
-        engine
-        ;; It would be good to have a warning on start up for this.
-        :search.engine/in-place))
-    (first (filter search.engine/supported-engine?
-                   search.engine/fallback-engine-priority))))
+  ;; TODO (Chris 2025-11-07) It would be good to have a warning on start up whenever this is *not* what's configured.
+  (first (search.engine/supported-engines)))
 
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)
@@ -267,7 +270,7 @@
    [:offset                              {:optional true} [:maybe ms/Int]]
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
    [:search-engine                       {:optional true} [:maybe string?]]
-   [:search-native-query                 {:optional true} [:maybe true?]]
+   [:search-native-query                 {:optional true} [:maybe boolean?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
@@ -276,7 +279,8 @@
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
    [:non-temporal-dim-ids                {:optional true} [:maybe ms/NonBlankString]]
    [:has-temporal-dim                    {:optional true} [:maybe :boolean]]
-   [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]])
+   [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]
+   [:weights                             {:optional true} [:maybe [:map-of :keyword number?]]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -307,7 +311,8 @@
            table-db-id
            verified
            non-temporal-dim-ids
-           has-temporal-dim]} :- ::search-context.input]
+           has-temporal-dim
+           weights]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
@@ -330,7 +335,8 @@
                         :models                              models
                         :model-ancestors?                    (boolean model-ancestors?)
                         :search-engine                       engine
-                        :search-string                       search-string}
+                        :search-string                       search-string
+                        :weights                             weights}
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
@@ -363,8 +369,6 @@
 
 (defn- map-collection [collection]
   (cond-> collection
-    (:archived_directly collection)
-    (assoc :location (collection/trash-path))
     :always
     (assoc :type (:collection_type collection))
     :always

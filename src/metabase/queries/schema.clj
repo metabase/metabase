@@ -6,6 +6,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [potemkin :as p]))
@@ -36,6 +37,20 @@
             [:map
              [:lib/metadata ::lib.schema.metadata/metadata-provider]]]]]])
 
+(mr/def ::card.result-metadata
+  [:and
+   [:sequential ::lib.schema.metadata/lib-or-legacy-column]
+   ;; if the metadata could not be normalized into something valid, then just set it to `nil`. Ideally we shouldn't
+   ;; have to do this -- we should try to fix flaws in metadata thru normalization if at all possible.
+   [:schema
+    {:decode/normalize (fn [xs]
+                         (if-not (mr/validate [:sequential ::lib.schema.metadata/lib-or-legacy-column] xs)
+                           (do
+                             (log/warn "Ignoring invalid Card result_metadata")
+                             nil)
+                           xs))}
+    :any]])
+
 ;;; TODO (Cam 9/29/25) -- fill this out more, `:metabase.lib.schema.metadata/card` has a lot of stuff and there's also
 ;;; stuff sprinkled thruout this module. For example [[metabase.queries.api.card/CardUpdateSchema]] should get merged
 ;;; into this
@@ -50,7 +65,7 @@
    [:parameters         {:optional true} [:maybe [:ref ::parameters.schema/parameters]]]
    [:parameter_mappings {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
    [:type               {:optional true} [:maybe ::lib.schema.metadata/card.type]]
-   [:result_metadata    {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]])
+   [:result_metadata    {:optional true} [:maybe [:ref ::card.result-metadata]]]])
 
 (mu/defn normalize-card :- [:maybe ::card]
   "Normalize a `card` so it satisfies the `::card` schema."

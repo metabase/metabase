@@ -33,8 +33,8 @@
   #_replace [:schema :string])
 
 (mbql-clause/define-catn-mbql-clause :substring :- :type/Text
-  [:str [:schema [:ref ::expression/string]]]
-  [:start [:schema [:ref ::expression/integer]]]
+  [:str    [:schema [:ref ::expression/string]]]
+  [:start  [:schema [:ref ::expression/integer]]]
   [:length [:? [:schema [:ref ::expression/integer]]]])
 
 (mbql-clause/define-tuple-mbql-clause :split-part :- :type/Text

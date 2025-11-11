@@ -30,7 +30,7 @@
   plan-alias
   quotas
   TokenStatus
-  clear-cache]
+  clear-cache!]
 
  (metabase.premium-features.settings
   active-users-count
@@ -63,6 +63,7 @@
   enable-official-collections?
   enable-preemptive-caching?
   enable-query-reference-validation?
+  enable-remote-sync?
   enable-sandboxes?
   enable-scim?
   enable-semantic-search?

@@ -152,6 +152,9 @@
                                          :join [[model :m] [:= :t.id :m.table_id]]
                                          :where [:= :m.id model-id]}))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `using_model`, `using_segment`, and
@@ -200,7 +203,8 @@
                     :can_delete
                     :can_manage_db
                     [:collection :is_personal]
-                    [:moderation_reviews :moderator_details])
+                    [:moderation_reviews :moderator_details]
+                    :is_remote_synced)
         (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
         (cond->
          (card/model? card) (t2/hydrate :persisted
@@ -414,6 +418,9 @@
                                 new-cards)
        new-cards))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id/series"
   "Fetches a list of compatible series with the card with id `card_id`.
 
@@ -496,7 +503,7 @@
    [:description            {:optional true} [:maybe ms/NonBlankString]]
    [:display                ms/NonBlankString]
    [:visualization_settings ms/Map]
-   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_id          {:optional true} [:maybe [:or ms/PositiveInt ms/NanoIdString]]]
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
    [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
@@ -507,16 +514,18 @@
   "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
   [_route-params
    _query-params
-   {card-type :type, :as card} :- CardCreateSchema]
-  (let [card  (update card :dataset_query lib-be/normalize-query)
+   {card-type :type, collection-id :collection_id, :as card} :- CardCreateSchema]
+  (let [card (-> card
+                 (update :dataset_query lib-be/normalize-query)
+                 (cond-> (some? collection-id)
+                   (update :collection_id #(eid-translation/->id-or-404 :collection %))))
         query (:dataset_query card)]
     (check-if-card-can-be-saved query card-type)
     ;; check that we have permissions to run the query that we're trying to save
     (query-perms/check-run-permissions-for-query query)
     ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
     ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
-    (collection/check-write-perms-for-collection
-     (actual-collection-id card))
+    (api/create-check :model/Card {:collection_id (actual-collection-id card)})
     (try
       (lib/check-card-overwrite ::no-id query)
       (catch clojure.lang.ExceptionInfo e
@@ -546,10 +555,11 @@
     (query-perms/check-run-permissions-for-query (:dataset_query card-updates))))
 
 (defn- check-allowed-to-change-embedding
-  "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
+  "You must be a superuser to change the value of `enable_embedding`, `embedding_type` or `embedding_params`. Embedding must be
   enabled."
   [card-before-updates card-updates]
   (when (or (api/column-will-change? :enable_embedding card-before-updates card-updates)
+            (api/column-will-change? :embedding_type card-before-updates card-updates)
             (api/column-will-change? :embedding_params card-before-updates card-updates))
     (embedding.validation/check-embedding-enabled)
     (api/check-superuser)))
@@ -582,6 +592,7 @@
    [:visualization_settings {:optional true} [:maybe ms/Map]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:enable_embedding       {:optional true} [:maybe :boolean]]
+   [:embedding_type         {:optional true} [:maybe :string]]
    [:embedding_params       {:optional true} [:maybe ms/EmbeddingParams]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
@@ -679,6 +690,9 @@
           (card.metadata/save-metadata-async! metadata-future card))
         card))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :put "/:id"
   "Update a `Card`."
   [{:keys [id]} :- [:map
@@ -688,6 +702,8 @@
    body :- CardUpdateSchema]
   (update-card! id body (boolean delete-old-dashcards?)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for a card."
   [{:keys [id]} :- [:map
@@ -775,7 +791,10 @@
                                                  (u/the-id card)))]
           (t2/update! (t2/table-name :model/Card)
                       {:id [:in (set cards-without-position)]}
-                      {:collection_id new-collection-id-or-nil})))))
+                      {:collection_id new-collection-id-or-nil}))
+        (doseq [card cards]
+          (collection/check-non-remote-synced-dependencies card)))))
+
   (when new-collection-id-or-nil
     (events/publish-event! :event/collection-touch {:collection-id new-collection-id-or-nil :user-id api/*current-user-id*})))
 
@@ -858,6 +877,8 @@
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:card-id/public_link"
   "Generate publicly-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
@@ -874,6 +895,8 @@
                              {:public_uuid       <>
                               :made_public_by_id api/*current-user-id*})))}))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :delete "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
   [{:keys [card-id]} :- [:map

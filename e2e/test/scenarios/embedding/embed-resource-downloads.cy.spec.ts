@@ -396,25 +396,14 @@ H.describeWithSnowplowEE(
           });
 
           cy.findByRole("heading", { name: QUESTION_NAME }).realHover();
-          H.downloadAndAssert(
-            {
-              isDashboard: false,
-              isEmbed: true,
-              enableFormatting: true,
-              fileType: "csv",
-              downloadUrl: "/api/embed/card/*/query/csv*",
-              downloadMethod: "GET",
-            },
-            (sheet) => {
-              expect(sheet["A2"].v).to.eq(FIRST_ROW[0]);
-              expect(sheet["B2"].v).to.eq(FIRST_ROW[1]);
-              expect(sheet["C2"].v).to.eq(FIRST_ROW[2]);
-
-              expect(sheet["A3"].v).to.eq(SECOND_ROW[0]);
-              expect(sheet["B3"].v).to.eq(SECOND_ROW[1]);
-              expect(sheet["C3"].v).to.eq(SECOND_ROW[2]);
-            },
-          );
+          H.downloadAndAssert({
+            isDashboard: false,
+            isEmbed: true,
+            enableFormatting: true,
+            fileType: "csv",
+            downloadUrl: "/api/embed/card/*/query/csv*",
+            downloadMethod: "GET",
+          });
 
           H.expectUnstructuredSnowplowEvent({
             event: "download_results_clicked",
@@ -500,21 +489,14 @@ H.describeWithSnowplowEE(
           });
 
           cy.findByRole("heading", { name: QUESTION_NAME }).realHover();
-          H.downloadAndAssert(
-            {
-              isDashboard: false,
-              isEmbed: true,
-              enableFormatting: true,
-              fileType: "csv",
-              downloadUrl: "/api/embed/card/*/query/csv*",
-              downloadMethod: "GET",
-            },
-            (sheet) => {
-              expect(sheet["A2"].v).to.eq(FIRST_ROW[0]);
-              expect(sheet["B2"].v).to.eq(FIRST_ROW[1]);
-              expect(sheet["C2"].v).to.eq(FIRST_ROW[2]);
-            },
-          );
+          H.downloadAndAssert({
+            isDashboard: false,
+            isEmbed: true,
+            enableFormatting: true,
+            fileType: "csv",
+            downloadUrl: "/api/embed/card/*/query/csv*",
+            downloadMethod: "GET",
+          });
         });
       });
     });

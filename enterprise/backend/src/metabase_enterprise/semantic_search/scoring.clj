@@ -1,6 +1,7 @@
 (ns metabase-enterprise.semantic-search.scoring
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.set :as set]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
@@ -175,11 +176,13 @@
   (into #{} (map name activity-feed/rv-models)))
 
 (def ^:private appdb-scorer-models
-  (into recent-views-models (map name search.scoring/bookmarked-models-and-sub-models)))
+  (-> recent-views-models
+      ;; Add "transform" here because it's not a recent-views model, but should still be scored
+      (conj "transform")
+      (into (map name) search.scoring/bookmarked-models-and-sub-models)))
 
 (comment
-  (require '[clojure.set :as set]
-           '[metabase.search.spec :as search.spec])
+  (require '[metabase.search.spec :as search.spec])
   ;; #{"segment" "database" "action" "indexed-entity"}
   (set/difference (set search.spec/search-models) appdb-scorer-models))
 
@@ -228,6 +231,6 @@
                          {:id 4 :model "indexed-entity"}
                          {:id 7 :model "card"}])
                        vec))
-  (def weights (search.config/weights (:context search-ctx)))
+  (def weights (search.config/weights search-ctx))
   (def app-db-scorers (appdb-scorers search-ctx))
   (with-appdb-scores search-ctx (appdb-scorers search-ctx) weights search-docs))

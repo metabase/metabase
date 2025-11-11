@@ -51,9 +51,3 @@ export type SdkIframeEmbedSetupSettings = Omit<
   "instanceUrl"
 > &
   SdkIframeEmbedSetupTemplateSettings;
-
-export type SdkIframeEmbedSetupUrlParams = {
-  authMethod?: string | null;
-  resourceType?: string | null;
-  resourceId?: string | null;
-};

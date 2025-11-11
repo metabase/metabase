@@ -239,7 +239,7 @@ export function closeStaticEmbeddingModal() {
 }
 
 /**
- * Open Static Embedding setup modal
+ * Publish a static dashboard or question
  * @param {"card" | "dashboard"} apiPath
  * @param callback
  */
@@ -256,6 +256,21 @@ export function publishChanges(apiPath, callback) {
       Object.keys(request.body).includes("embedding_params"),
     );
     callback?.(targetXhr);
+  });
+}
+
+/**
+ * Unpublish a static dashboard or question
+ * @param {"card" | "dashboard"} apiPath
+ * @param callback
+ */
+export function unpublishChanges(apiPath, callback) {
+  cy.intercept("PUT", `/api/${apiPath}/*`).as("unpublishChanges");
+
+  cy.button("Unpublish").click();
+
+  cy.wait("@unpublishChanges").then((xhr) => {
+    callback?.(xhr);
   });
 }
 
@@ -297,6 +312,10 @@ export function createPublicQuestionLink(questionId) {
 
 export function createPublicDashboardLink(dashboardId) {
   return cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
+}
+
+export function createPublicDocumentLink(documentId) {
+  return cy.request("POST", `/api/ee/document/${documentId}/public-link`, {});
 }
 
 /**

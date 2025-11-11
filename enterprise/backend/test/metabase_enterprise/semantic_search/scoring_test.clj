@@ -183,10 +183,10 @@
         [{:model "card"      :id 1 :name "view card"      :view_count 0}
          {:model "dashboard" :id 2 :name "view dashboard" :view_count 0}
          {:model "dataset"   :id 3 :name "view dataset"   :view_count 0}]
-        ;; fix some test flakes where dataset 3 exists and has some sort of recent views
-        (semantic.tu/with-weights (assoc (search.config/weights :default)
-                                         :user-recency 0
-                                         :rrf 0)
+        (semantic.tu/with-weights (search.config/weights {:context :default
+                                                          ;; fix some test flakes where dataset 3 exists and has some
+                                                          ;; sort of recent views
+                                                          :weights {:user-recency 0, :rrf 0}})
           (is (=? [{:model "dashboard", :id 2, :name "view dashboard"}
                    {:model "card",      :id 1, :name "view card"}
                    {:model "dataset",   :id 3, :name "view dataset"}]
@@ -325,3 +325,21 @@
                     ["card"    c1 "card ancient"]
                     ["dataset" c3 "card unseen"]]
                    (search-results :user-recency "card" {:current-user-id user-id})))))))))
+
+(deftest transform-user-recency-test
+  (testing "Transforms get a hard-coded intermediate user-recency score since view events are not tracked"
+    (let [user-id (mt/user->id :crowberto)
+          right-now (Instant/now)]
+      (mt/with-temp [:model/Card {c1 :id} {}
+                     :model/RecentViews _ {:model "card" :model_id c1 :user_id user-id :timestamp right-now}]
+        (with-index-contents!
+          [{:model "card" :id c1 :name "recently viewed card"}
+           {:model "transform" :id 1 :name "transform no views"}
+           {:model "card" :id 2 :name "never viewed card"}]
+          (testing "Transform ranks between recently viewed and never viewed cards"
+            (let [results (search-results :user-recency "card" {:current-user-id user-id})]
+              (def results results)
+              (is (= [["card" c1 "recently viewed card"]
+                      ["transform" 1 "transform no views"]
+                      ["card" 2 "never viewed card"]]
+                     results)))))))))

@@ -62,21 +62,6 @@
                       (binding [sync-util/*log-exceptions-and-continue?* false]
                         (mt/with-test-user :rasta (thunk)))))
 
-(deftest ^:parallel interval-test
-  (is (= ["INTERVAL '2 day'"]
-         (sql/format-expr [::postgres/interval 2 :day])))
-  (is (= ["INTERVAL '-2.5 year'"]
-         (sql/format-expr [::postgres/interval -2.5 :year])))
-  (are [amount unit msg] (thrown-with-msg?
-                          AssertionError
-                          msg
-                          (sql/format-expr [::postgres/interval amount unit]))
-    "2"  :day  #"\QAssert failed: (number? amount)\E"
-    :day 2     #"\QAssert failed: (number? amount)\E"
-    2    "day" #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"
-    2    2     #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"
-    2    :can  #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"))
-
 (deftest ^:parallel extract-test
   (is (= ["extract(month from NOW())"]
          (sql.qp/format-honeysql :postgres (#'postgres/extract :month :%now)))))
@@ -1928,7 +1913,8 @@
                     NOW() - ((i % 365) || ' days')::interval AS created_at
                FROM generate_series(1, 5000) AS i;"
             results (qp/process-query (mt/native-query {:query sql})
-                                      (temp-storage/notification-rff 500))]
+                                      (temp-storage/notification-rff
+                                       5000 {:context 'complex-types-in-notification-payload}))]
         (is (integer? (:data.rows-file-size results)))
         (is (temp-storage/streaming-temp-file? (-> results :data :rows)))
         (is (=? [1
@@ -1942,8 +1928,7 @@
                  "(-89.0,-179.0)"
                  "<(1.0,1.0),50.0>"
                  "'1':4 'content':1 'row':3"
-                 ;; match on type
-                 bytes?
+                 "\\xc4ca4238a0b923820dcc509a6f75849b"
                  "[1,101)"
                  ;; match on type
                  decimal?
@@ -1951,3 +1936,27 @@
                  ;; doesnt error then it worked
                  string?]
                 (-> results :data :rows deref first)))))))
+
+(defn- hex->bytes [hex]
+  (->> (partition 2 hex)
+       (map #(apply str %))
+       (map #(Integer/parseInt % 16))
+       (map unchecked-byte)
+       byte-array))
+
+(deftest bytea-column-not-truncated-test
+  (testing "fix for #30671"
+    (mt/test-driver :postgres
+      (mt/dataset (mt/dataset-definition
+                   "bytea_dataset"
+                   [["bytea_table"
+                     [{:field-name "bytea_col", :base-type {:native "bytea"}, :effective-type :type/*}]
+                     [[(hex->bytes "900000000000810074123E9DB008AB5C")]
+                      [(hex->bytes "900000000000475000DE4EC0C0A920AB")]]]])
+        (let [mp (mt/metadata-provider)]
+          (is (= [[1 "\\x900000000000810074123e9db008ab5c"]
+                  [2 "\\x900000000000475000de4ec0c0a920ab"]]
+                 (->> (lib.metadata/table mp (mt/id :bytea_table))
+                      (lib/query mp)
+                      (qp/process-query)
+                      (mt/rows)))))))))

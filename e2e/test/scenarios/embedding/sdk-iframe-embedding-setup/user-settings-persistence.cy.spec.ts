@@ -46,9 +46,14 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       .should("have.css", "color", "rgb(255, 0, 0)");
 
     cy.log("2. reload the page");
-    waitAndReload();
+    cy.wait("@persistSettings");
 
     cy.log("3. brand color should be persisted");
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
     H.getSimpleEmbedIframeContent()
       .findAllByTestId("cell-data")
       .first()
@@ -74,7 +79,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
 
     cy.log("2. reload the page");
-    waitAndReload();
+    cy.wait("@persistSettings");
 
     cy.log("3. auth method should persist");
     navigateToGetCodeStep({
@@ -89,11 +94,3 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
   });
 });
-
-const waitAndReload = () => {
-  cy.wait("@persistSettings");
-
-  cy.reload();
-
-  H.waitForSimpleEmbedIframesToLoad();
-};

@@ -92,15 +92,19 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
     );
   }
 
+  if (PLUGIN_COLLECTIONS.isSyncedCollection(collection)) {
+    return <Icon name="synced_collection" size={24} c="brand" />;
+  }
+
   if (isRootTrashCollection(collection)) {
-    return <Icon name="trash" size={24} />;
+    return <Icon name="trash" size={24} c="text-disabled" />;
   }
 
   if (
     collection.archived &&
     PLUGIN_COLLECTIONS.isRegularCollection(collection)
   ) {
-    return <Icon name="folder" size={24} c="text-light" />;
+    return <Icon name="folder" size={24} c="text-disabled" />;
   }
 
   return (

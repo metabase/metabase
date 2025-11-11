@@ -15,6 +15,7 @@ export interface TreeNodeProps {
   hasChildren: boolean;
   isExpanded: boolean;
   isSelected: boolean;
+  rightSection?: (item: ITreeNodeItem) => React.ReactNode;
   onSelect?: () => void;
   onToggleExpand: () => void;
 }

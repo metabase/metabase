@@ -1,11 +1,12 @@
 import { t } from "ttag";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import type {
-  Collection,
-  CollectionEssentials,
-  CollectionId,
-  CollectionItem,
+import {
+  type Collection,
+  type CollectionEssentials,
+  type CollectionId,
+  type CollectionItem,
+  isBaseEntityID,
 } from "metabase-types/api";
 
 export function nonPersonalOrArchivedCollection(
@@ -73,6 +74,10 @@ export function isInstanceAnalyticsCustomCollection(
   );
 }
 
+export function isSyncedCollection(collection: Partial<Collection>): boolean {
+  return PLUGIN_COLLECTIONS.isSyncedCollection(collection);
+}
+
 export function isExamplesCollection(collection: Collection): boolean {
   return !!collection.is_sample && collection.name === "Examples";
 }
@@ -133,6 +138,12 @@ export function isRootCollection(collection: Pick<Collection, "id">): boolean {
   return canonicalCollectionId(collection?.id) === null;
 }
 
+export function isTopLevelCollection(
+  collection: Pick<Collection, "location">,
+): boolean {
+  return collection.location === "/";
+}
+
 export function isItemPinned(item: CollectionItem) {
   return item.collection_position != null;
 }
@@ -172,7 +183,7 @@ export function canPreviewItem(item: CollectionItem, collection?: Collection) {
 
 export function canMoveItem(item: CollectionItem, collection?: Collection) {
   return (
-    collection?.can_write &&
+    (collection?.can_write || isRootTrashCollection(collection)) &&
     !isReadOnlyCollection(item) &&
     item.setCollection != null &&
     !(isItemCollection(item) && isRootPersonalCollection(item))
@@ -226,6 +237,16 @@ export function canonicalCollectionId(
   } else {
     return parseInt(collectionId, 10);
   }
+}
+
+export function canonicalCollectionIdOrEntityId(
+  collectionId: string | number | null | undefined,
+): number | string | null {
+  if (isBaseEntityID(collectionId)) {
+    return collectionId;
+  }
+
+  return canonicalCollectionId(collectionId);
 }
 
 export function isValidCollectionId(
