@@ -328,7 +328,7 @@
                                            (->> results :metadata-results :steps (map first) set)))
                           ;; this is usually 1 total tables, but some cloud dbs put multiple databases inside of a
                           ;; single catalog
-                          (is (=? {:updated-tables 0 :total-tables int?}
+                          (is (=? {:updated-tables 0 :total-tables pos-int?}
                                   (step-with-name "sync-tables"))))))))))))))))
 
 (deftest athena-region-bucket-routing-test
