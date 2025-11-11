@@ -30,7 +30,6 @@ type MetricHeaderProps = {
 export function MetricHeader({ card, actions }: MetricHeaderProps) {
   return (
     <PaneHeader
-      icon="metric"
       title={
         card.can_write ? (
           <MetricNameInput card={card} />
@@ -38,6 +37,7 @@ export function MetricHeader({ card, actions }: MetricHeaderProps) {
           <PanelHeaderTitle>{card.name}</PanelHeaderTitle>
         )
       }
+      icon="metric"
       badge={
         <PLUGIN_MODERATION.EntityModerationIcon
           moderationReviews={card.moderation_reviews}

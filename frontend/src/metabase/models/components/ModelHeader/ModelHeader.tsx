@@ -30,7 +30,6 @@ type ModelHeaderProps = {
 export function ModelHeader({ card, actions }: ModelHeaderProps) {
   return (
     <PaneHeader
-      icon="model"
       title={
         card.can_write ? (
           <ModelNameInput card={card} />
@@ -38,6 +37,7 @@ export function ModelHeader({ card, actions }: ModelHeaderProps) {
           <PanelHeaderTitle>{card.name}</PanelHeaderTitle>
         )
       }
+      icon="model"
       badge={
         <PLUGIN_MODERATION.EntityModerationIcon
           moderationReviews={card.moderation_reviews}

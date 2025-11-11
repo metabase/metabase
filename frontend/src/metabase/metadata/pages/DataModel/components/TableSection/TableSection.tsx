@@ -195,7 +195,7 @@ const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
         isOpen={isSubstituteModelModalOpen}
         onClose={() => setIsSubstituteModelModalOpen(false)}
       />
-    </Stack>
+    </Stack >
   );
 };
 

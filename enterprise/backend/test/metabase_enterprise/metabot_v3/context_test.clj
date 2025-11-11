@@ -208,3 +208,14 @@
                                              :source-database (mt/id)}}]}
           result (#'context/annotate-transform-source-types input)]
       (is (= :python (get-in result [:user_is_viewing 0 :source_type]))))))
+
+(deftest annotate-transform-source-types-normalization-test
+  (testing "Transform source query gets normalized before query type detection"
+    (let [input {:user_is_viewing [{:type "transform"
+                                    :source {:type "query"
+                                             :query {:lib/type "mbql/query"
+                                                     :stages [{:native "SELECT * FROM users"
+                                                               :lib/type "mbql.stage/native"}]
+                                                     :database (mt/id)}}}]}
+          result (#'context/annotate-transform-source-types input)]
+      (is (= :native (get-in result [:user_is_viewing 0 :source_type]))))))

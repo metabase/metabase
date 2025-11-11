@@ -5,7 +5,7 @@ import { TableBreadcrumbs } from "metabase/metadata/components";
 import { Box, Flex, Group, Icon } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 
-import SegmentActionSelect from "./SegmentActionSelect";
+import { SegmentActionSelect } from "./SegmentActionSelect";
 import S from "./SegmentItem.module.css";
 
 interface Props {

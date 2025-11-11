@@ -9,7 +9,9 @@
    [metabase-enterprise.metabot-v3.client-test :as client-test]
    [metabase-enterprise.metabot-v3.util :as metabot.u]
    [metabase.search.test-util :as search.tu]
+   [metabase.server.streaming-response :as sr]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -66,28 +68,31 @@
   (let [mock-response (client-test/make-mock-stream-response
                        (mapv #(str "msg-" % "\n") (range 30))
                        {"some-model" {:prompt 12 :completion 3}})
-        messages      (atom [])]
+        messages      (atom nil)]
     (mt/test-helpers-set-global-values!
       (search.tu/with-index-disabled
         (mt/with-premium-features #{:metabot-v3}
           (with-redefs [client/post!       (client-test/mock-post! mock-response {:delay-ms 5})
                         api/store-message! (fn [_conv-id _prof-id msgs]
-                                             (reset! messages msgs))]
+                                             (reset! messages msgs))
+                        sr/async-cancellation-poll-interval-ms 5]
             (testing "Closing body stream drops connection"
-              (let [body  (mt/user-real-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
-                                                {:request-options {:as              :stream
-                                                                   :decompress-body false}}
-                                                {:message         "Test closure"
-                                                 :context         {}
-                                                 :conversation_id (str (random-uuid))
-                                                 :history         []
-                                                 :state           {}})]
-                (.close body) ;; don't even need to read, it'll push first 3 lines immediately
-                (Thread/sleep 20) ;; no idea if this is enough to not flake, but let's see
-                (is (= "assistant" (:role (first @messages)))
+              (let [body (mt/user-real-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
+                                               {:request-options {:as              :stream
+                                                                  :decompress-body false}}
+                                               {:message         "Test closure"
+                                                :context         {}
+                                                :conversation_id (str (random-uuid))
+                                                :history         []
+                                                :state           {}})]
+                (.read ^java.io.InputStream body) ;; start the handler
+                (.close ^java.io.Closeable body)
+                (u/poll {:thunk       #(= :assistant (:role (first @messages)))
+                         :done?       true?
+                         :interval-ms 5})
+                (is (= :assistant (:role (first @messages)))
                     "store-messages! was called in the end on the lines streaming-request managed to write to OS")
-                ;; it practically is 3 here all the time, and never 3; maybe it's `:output-buffer-size`?
-                ;; if this flakes in CI, increase the number a bit
+                ;; if this flakes in CI, increase the number a bit; but it was 2 quite consistently for me
                 (is (> 10 (-> @messages first :content str/split-lines count))
                     "But we shouldn't go through all 30 of them")))))))))
 

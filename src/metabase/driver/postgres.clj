@@ -43,6 +43,7 @@
     ResultSetMetaData
     Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
+   (org.apache.commons.codec.binary Hex)
    (org.postgresql.copy CopyManager)
    (org.postgresql.jdbc PgConnection)))
 
@@ -996,6 +997,13 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/SQLXML]
   [_driver ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
   (fn [] (.getString rs i)))
+
+;; Handle bytea columns to avoid truncation (#30671)
+(defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/BINARY]
+  [_driver ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
+  (fn []
+    (when-let [bytes (.getBytes rs i)]
+      (str "\\x" (String. (Hex/encodeHex bytes))))))
 
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :postgres

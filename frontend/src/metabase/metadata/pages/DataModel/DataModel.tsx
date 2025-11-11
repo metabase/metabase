@@ -147,7 +147,7 @@ function DataModelContent({ params }: Props) {
           fieldId={fieldId}
           params={params}
         />
-      </Stack>
+      </Stack >
 
       <>
         {databaseId != null &&
@@ -262,21 +262,25 @@ function DataModelContent({ params }: Props) {
         )}
       </>
 
-      {table && (
-        <SyncOptionsModal
-          isOpen={isSyncModalOpen}
-          tableIds={[table.id]}
-          onClose={closeSyncModal}
-        />
-      )}
+      {
+        table && (
+          <SyncOptionsModal
+            isOpen={isSyncModalOpen}
+            tableIds={[table.id]}
+            onClose={closeSyncModal}
+          />
+        )
+      }
 
-      {fieldId && (
-        <FieldValuesModal
-          fieldId={fieldId}
-          isOpen={isFieldValuesModalOpen}
-          onClose={closeFieldValuesModal}
-        />
-      )}
-    </Flex>
+      {
+        fieldId && (
+          <FieldValuesModal
+            fieldId={fieldId}
+            isOpen={isFieldValuesModalOpen}
+            onClose={closeFieldValuesModal}
+          />
+        )
+      }
+    </Flex >
   );
 }

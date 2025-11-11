@@ -15,7 +15,7 @@ export function getResultMetadata(
     lastRunResult != null &&
     Lib.areLegacyQueriesEqual(currentQuery, lastRunQuery)
   ) {
-    return lastRunResult.data.results_metadata.columns;
+    return lastRunResult.data?.results_metadata?.columns ?? null;
   }
   return null;
 }

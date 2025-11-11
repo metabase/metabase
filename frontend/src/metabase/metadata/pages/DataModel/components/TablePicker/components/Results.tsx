@@ -57,6 +57,7 @@ export function TablePickerResults({
   const ref = useRef<HTMLDivElement>(null);
   const { selectedItemsCount } = useSelection();
   const lastSelectedTableIndex = useRef<number | null>(null);
+
   const virtual = useVirtualizer({
     count: items.length,
     getScrollElement: () => ref.current,

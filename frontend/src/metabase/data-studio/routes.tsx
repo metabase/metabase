@@ -3,9 +3,6 @@ import type { ComponentType } from "react";
 import { IndexRoute } from "react-router";
 import { t } from "ttag";
 
-import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
-import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
-import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
 import { Route } from "metabase/hoc/Title";
 import * as Urls from "metabase/lib/urls";
 import { getDataStudioMetadataRoutes } from "metabase/metadata/routes";
@@ -78,10 +75,6 @@ export function getDataStudioRoutes(
         )}
         {getDataStudioModelRoutes()}
         {getDataStudioMetricRoutes()}
-        <Route path="segments" component={SegmentListApp} />
-        <Route path="segments/new" component={SegmentApp} />
-        <Route path="segments/:id" component={SegmentApp} />
-        <Route path="segments/:id/revisions" component={RevisionHistoryApp} />
       </Route>
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
