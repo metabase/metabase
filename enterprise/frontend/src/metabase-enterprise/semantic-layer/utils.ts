@@ -7,17 +7,9 @@ export function isSemanticLayerCollection({ type }: Partial<Collection>) {
 
 export function getSemanticLayerCollectionType({
   type,
-  allowed_content,
 }: Partial<Collection>): SemanticLayerCollectionType | undefined {
   if (type !== "semantic-layer") {
     return undefined;
-  }
-
-  if (allowed_content?.includes("dataset")) {
-    return "models";
-  }
-  if (allowed_content?.includes("metric")) {
-    return "metrics";
   }
   return "root";
 }
