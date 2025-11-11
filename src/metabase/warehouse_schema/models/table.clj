@@ -8,7 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :refer [defenterprise] :as premium-features]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -400,17 +400,18 @@
   (with-fields tables))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :published_as_model]
-  [_model _k tables]
-  (cond
-    (empty? tables)                                     tables
-    (not-every? :id tables)                             tables
-    :else
-    (let [table-ids          (sort (set (map :id tables)))
-          published-as-model (t2/select-fn-set :published_table_id [:model/Card :published_table_id]
-                                               :published_table_id [:in table-ids]
-                                               :archived false
-                                               :archived_directly false)]
-      (map #(assoc % :published_as_model (contains? published-as-model (:id %))) tables))))
+  [_model k tables]
+  (mi/instances-with-hydrated-data
+   tables k
+   (fn []
+     (let [table-ids          (sort (set (map :id tables)))
+           published-as-model (t2/select-fn-set :published_table_id [:model/Card :published_table_id]
+                                                :published_table_id [:in table-ids]
+                                                :archived false
+                                                :archived_directly false)]
+       (u/index-by identity #(contains? published-as-model %) table-ids)))
+   :id
+   {:default nil}))
 
 ;;; ------------------------------------------------ Convenience Fns -------------------------------------------------
 

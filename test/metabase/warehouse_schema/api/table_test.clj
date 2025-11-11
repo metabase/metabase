@@ -1286,9 +1286,9 @@
               [model] models
               venues-schema              (t2/select-one-fn :schema [:model/Table :schema] (mt/id :venues))
               schema-url                 (format "database/%d/schema/%s" (mt/id) venues-schema)
-              list-tables-via-table-api  #(mt/user-http-request :crowberto :get 200 "table" :db_id (mt/id))
+              list-tables-via-table-api  (fn [] (->> (mt/user-http-request :crowberto :get 200 "table" :db-id (mt/id))
+                                                     (filter #(= (mt/id) (:db_id %)))))
               list-tables-via-schema-api #(mt/user-http-request :crowberto :get 200 schema-url)]
-
           (testing "list tables"
             (let [list-response      (list-tables-via-table-api)
                   published-as-model (u/index-by :id :published_as_model list-response)]
@@ -1301,7 +1301,7 @@
               (is (false? (published-as-model (mt/id :users))))))
           (testing "archived tables are not returned"
             (t2/update! :model/Card (:id model) {:archived true, :archived_directly false})
-            (is (not-any? :published_as_model (list-tables-via-table-api)))))))))
+            (is (not-any? :published_as_model  (list-tables-via-table-api)))))))))
 
 (deftest ^:parallel bulk-edit-visibility-sync-test
   (testing "POST /api/table/edit visibility field synchronization"
