@@ -13,6 +13,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.humanization :as humanization]
    [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata.fields.active-subset :as sync-metadata.fields.active-subset]
    [metabase.sync.sync-metadata.fields.common :as common]
    [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
    [metabase.sync.util :as sync-util]
@@ -238,25 +239,6 @@
                               metabase-field (get name->metabase-field field-name)]]
       (sync-nested-fields-of-one-field! database table field-metadata metabase-field))))
 
-(mu/defn- remove-field-from-active-subset!
-  [table          :- i/TableInstance
-   metabase-field :- common/TableMetadataFieldWithID]
-  ;; TODO: Can following poison logs?s
-  (log/debugf "Removing Field ''%s'' from active subset."
-              (common/field-metadata-name-for-logging table metabase-field))
-  (when (pos? (t2/update! :model/Field (u/the-id metabase-field) {:active_subset false}))
-    1))
-
-(defn- adjust-active-subset!
-  [table db-metadata our-metadata]
-  (sync-util/sum-for
-   [metabase-field our-metadata
-    :when          (not (common/matching-field-metadata metabase-field db-metadata))]
-   ;; TODO: Can following poison logs?
-    (sync-util/with-error-handling (format "Error removing %s from active subset"
-                                           (common/field-metadata-name-for-logging table metabase-field))
-      (remove-field-from-active-subset! table metabase-field))))
-
 (mu/defn sync-instances! :- ms/IntGreaterThanOrEqualToZero
   "Sync rows in the Field table with `db-metadata` describing the current schema of the Table currently being synced,
   creating Field objects or marking them active/inactive as needed."
@@ -283,6 +265,6 @@
      ;; TODO: to handle 5M, need to make `our-metadata` reducible.
      (+ num-updates
         (if (driver/should-sync-active-subset? (driver.u/database->driver database))
-          (adjust-active-subset! table db-metadata our-metadata)
+          (sync-metadata.fields.active-subset/adjust-active-subset! table db-metadata our-metadata)
           (retire-fields! table db-metadata our-metadata))
         (sync-nested-field-instances! database table db-metadata our-metadata)))))
