@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
+import * as Urls from "metabase/lib/urls";
 import {
   DataSourceInput,
   EntityTypeInput,
@@ -9,7 +10,7 @@ import {
   UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Icon, Stack, Text } from "metabase/ui";
+import { Box, Icon, Text } from "metabase/ui";
 import type {
   Table,
   TableDataLayer,
@@ -194,7 +195,6 @@ export function TableMetadataSettings({ table }: Props) {
         />
 
         <DataSourceInput
-          transformId={table.transform_id}
           value={table.data_source ?? "unknown"}
           onChange={handleDataSourceChange}
           styles={{
@@ -241,7 +241,7 @@ function TransformLink({ table }: { table: Table }) {
     <Box className={S.transformLink}>
       <Box
         component={Link}
-        to={`/admin/transforms?id=${transform.id}`}
+        to={Urls.transform(transform.id)}
         py="xs"
         px="sm"
         style={{
