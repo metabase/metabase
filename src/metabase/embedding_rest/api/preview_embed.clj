@@ -1,4 +1,4 @@
-(ns metabase.embedding.api.preview-embed
+(ns metabase.embedding-rest.api.preview-embed
   "Endpoints for previewing how Cards and Dashboards will look when embedding them.
    These endpoints are basically identical in functionality to the ones in `/api/embed`, but:
 
@@ -11,7 +11,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.embedding.api.common :as api.embed.common]
+   [metabase.embedding-rest.api.common :as api.embed.common]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.query-processor.pivot :as qp.pivot]

@@ -20,7 +20,7 @@
    [metabase.config.core :as config]
    [metabase.dashboards-rest.api]
    [metabase.eid-translation.api]
-   [metabase.embedding.api]
+   [metabase.embedding-rest.api]
    [metabase.geojson.api]
    [metabase.glossary.api]
    [metabase.indexed-entities.api]
@@ -148,7 +148,7 @@
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/eid-translation"      'metabase.eid-translation.api
    "/email"                metabase.channel.api/email-routes
-   "/embed"                (+message-only-exceptions metabase.embedding.api/embedding-routes)
+   "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
    "/geojson"              'metabase.geojson.api
    "/glossary"             (+auth 'metabase.glossary.api)
@@ -163,7 +163,7 @@
    "/permissions"          (+auth 'metabase.permissions-rest.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.premium-features.api/routes)
-   "/preview_embed"        (+auth metabase.embedding.api/preview-embedding-routes)
+   "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
    "/product-feedback"     'metabase.product-feedback.api
    "/public"               (+public-exceptions 'metabase.public-sharing-rest.api)
    "/pulse"                metabase.pulse.api/pulse-routes

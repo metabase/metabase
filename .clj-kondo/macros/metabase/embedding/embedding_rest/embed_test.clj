@@ -1,4 +1,4 @@
-(ns macros.metabase.embedding.api.embed-test)
+(ns macros.metabase.embedding-rest.api.embed-test)
 
 (defmacro with-embedding-enabled-and-temp-card-referencing!
   [table-kw field-kw [card-binding] & body]

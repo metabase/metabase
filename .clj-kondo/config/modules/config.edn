@@ -546,8 +546,7 @@
 
   embedding
   {:team "Embedding"
-   :api  #{metabase.embedding.api
-           metabase.embedding.init
+   :api  #{metabase.embedding.init
            metabase.embedding.jwt
            metabase.embedding.settings
            metabase.embedding.util
@@ -555,19 +554,26 @@
    :uses #{analytics
            api
            config
+           premium-features
+           server
+           settings
+           util}}
+
+  embedding-rest
+  {:team "Embedding"
+   :api  #{metabase.embedding-rest.api}
+   :uses #{api
            dashboards
            eid-translation
+           embedding
            events
            models
            notification
            parameters
-           premium-features
            public-sharing-rest
            queries
            query-processor
            request
-           server
-           settings
            tiles
            util}}
 

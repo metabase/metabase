@@ -1,4 +1,4 @@
-(ns metabase.embedding.api.common
+(ns metabase.embedding-rest.api.common
   (:require
    [clojure.set :as set]
    [clojure.string :as str]

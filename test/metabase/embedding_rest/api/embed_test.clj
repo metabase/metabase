@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.embedding.api.embed-test
+(ns ^:mb/driver-tests metabase.embedding-rest.api.embed-test
   "Tests for /api/embed endpoints."
   (:require
    [buddy.sign.jwt :as jwt]
@@ -12,7 +12,7 @@
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
-   [metabase.embedding.api.common :as api.embed.common]
+   [metabase.embedding-rest.api.common :as api.embed.common]
    [metabase.parameters.chain-filter-test :as chain-filer-test]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.public-sharing-rest.api-test :as public-test]
