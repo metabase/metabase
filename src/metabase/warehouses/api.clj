@@ -1268,9 +1268,12 @@
                                          (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
                               (f candidate-tables)
                               candidate-tables)
-                            (filter mi/can-read? candidate-tables))]
-     (if (premium-features/has-feature? :dependencies)
-       (t2/hydrate filtered-tables :published_as_model)
+                            (filter mi/can-read? candidate-tables))
+         hydration-keys   (cond-> []
+                            (premium-features/has-feature? :dependencies) (conj :published_as_model)
+                            (premium-features/has-feature? :transforms)   (conj :transform))]
+     (if (seq hydration-keys)
+       (apply t2/hydrate filtered-tables hydration-keys)
        filtered-tables))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest

@@ -3,7 +3,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
@@ -15,7 +14,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
@@ -97,7 +95,9 @@
                                          ;; let's circle back before merging bulk editing
                                          [:not= :d.from_entity_type "transform"]]]
                             :where     [:and where [:= :d.id nil]]))
-        hydrations (cond-> [:db] (premium-features/has-feature? :dependencies) (conj :published_as_model))]
+        hydrations (cond-> [:db]
+                     (premium-features/has-feature? :dependencies) (conj :published_as_model)
+                     (premium-features/has-feature? :transforms)   (conj :transform))]
     (as-> (t2/select :model/Table query) tables
       (apply t2/hydrate tables hydrations)
       (into [] (comp (filter mi/can-read?)
