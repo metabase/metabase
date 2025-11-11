@@ -18,7 +18,7 @@
    [metabase.cloud-migration.api]
    [metabase.collections-rest.api]
    [metabase.config.core :as config]
-   [metabase.dashboards.api]
+   [metabase.dashboards-rest.api]
    [metabase.eid-translation.api]
    [metabase.embedding.api]
    [metabase.geojson.api]
@@ -67,7 +67,7 @@
          metabase.cache.api/keep-me
          metabase.cloud-migration.api/keep-me
          metabase.collections-rest.api/keep-me
-         metabase.dashboards.api/keep-me
+         metabase.dashboards-rest.api/keep-me
          metabase.eid-translation.api/keep-me
          metabase.geojson.api/keep-me
          metabase.glossary.api/keep-me
@@ -142,7 +142,7 @@
    "/channel"              (+auth metabase.channel.api/channel-routes)
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections-rest.api)
-   "/dashboard"            (+auth 'metabase.dashboards.api)
+   "/dashboard"            (+auth 'metabase.dashboards-rest.api)
    "/database"             (+auth 'metabase.warehouses-rest.api)
    "/dataset"              (+auth 'metabase.query-processor.api)
    "/docs"                 (metabase.api.docs/make-routes #'routes)

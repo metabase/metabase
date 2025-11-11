@@ -9,7 +9,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.analytics.stats :as stats]
    [metabase.config.core :as config]
-   [metabase.dashboards.api-test :as api.dashboard-test]
+   [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.permissions.models.permissions :as perms]
@@ -106,7 +106,7 @@
                                                                                                 :target       [:dimension [:field (mt/id :venues :id) nil]]}])}
                                                                      kvs))))
 
-;; TODO -- we can probably use [[metabase.dashboards.api-test/with-chain-filter-fixtures]] for mocking this stuff
+;; TODO -- we can probably use [[metabase.dashboards-rest.api-test/with-chain-filter-fixtures]] for mocking this stuff
 ;; instead since it does mostly the same stuff anyway
 (defmacro with-temp-public-dashboard-and-card
   {:style/indent 1}

@@ -11,7 +11,7 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time.api :as t]
    [metabase.config.core :as config]
-   [metabase.dashboards.api-test :as api.dashboard-test]
+   [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding.api.common :as api.embed.common]
    [metabase.parameters.chain-filter-test :as chain-filer-test]
    [metabase.parameters.custom-values :as custom-values]

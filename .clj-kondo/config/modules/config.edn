@@ -408,23 +408,43 @@
 
   dashboards
   {:team "UX West"
-   :api  #{metabase.dashboards.api
-           metabase.dashboards.autoplace
+   :api  #{metabase.dashboards.autoplace
            metabase.dashboards.constants
            metabase.dashboards.init
            metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.models.dashboard-tab
-           metabase.dashboards.schema}
+           metabase.dashboards.schema
+           metabase.dashboards.settings}
+   :uses #{api
+           app-db
+           audit-app
+           collections
+           config
+           events
+           lib
+           models
+           parameters
+           permissions
+           public-sharing
+           queries
+           query-processor
+           search
+           settings
+           util
+           warehouse-schema}}
+
+  dashboards-rest
+  {:team "UX West"
+   :api  #{metabase.dashboards-rest.api}
    :uses #{actions
            analytics
            api
            app-db
-           audit-app
            channel
            collections
            collections-rest
-           config
+           dashboards
            eid-translation
            embedding
            events
@@ -440,10 +460,7 @@
            query-processor
            request
            revisions
-           search
-           settings
            util
-           warehouse-schema
            xrays}}
 
   database-routing
@@ -903,6 +920,7 @@
            analytics
            api
            dashboards
+           dashboards-rest
            events
            lib
            models

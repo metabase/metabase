@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.dashboards.api-test
+(ns ^:mb/driver-tests metabase.dashboards-rest.api-test
   "Tests for /api/dashboard endpoints."
   (:require
    [clojure.data.csv :as csv]
@@ -12,7 +12,7 @@
    [metabase.api.test-util :as api.test-util]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
-   [metabase.dashboards.api :as api.dashboard]
+   [metabase.dashboards-rest.api :as api.dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-test :as dashboard-test]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
