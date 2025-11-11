@@ -34,6 +34,7 @@ export type CollectionType =
   | "instance-analytics"
   | "trash"
   | "remote-synced"
+  | "semantic-layer"
   | null;
 
 export type LastEditInfo = Pick<

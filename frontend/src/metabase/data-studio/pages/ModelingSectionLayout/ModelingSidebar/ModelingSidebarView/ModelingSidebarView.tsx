@@ -1,20 +1,24 @@
 import { t } from "ttag";
 
-import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_SEMANTIC_LAYER } from "metabase/plugins";
 import { Box, Stack } from "metabase/ui";
+import type {
+  Collection,
+  CollectionId,
+  NativeQuerySnippetId,
+} from "metabase-types/api";
 
 import { ModelingSidebarSection } from "../ModelingSidebarSection";
 
 import { CollectionsSection } from "./CollectionsSection";
-import { LibrarySection } from "./LibrarySection";
 import S from "./ModelingSidebarView.module.css";
 import { SnippetsSection } from "./SnippetsSection";
 
 interface ModelingSidebarViewProps {
-  collections: ITreeNodeItem[];
-  selectedCollectionId: string | number | undefined;
-  selectedSnippetId?: number;
+  collections: Collection[];
+  selectedCollectionId: CollectionId | undefined;
+  selectedSnippetId?: NativeQuerySnippetId;
   isGlossaryActive: boolean;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
@@ -31,14 +35,16 @@ export function ModelingSidebarView({
   return (
     <Box w={320} h="100%" bg="bg-white" className={S.sidebar}>
       <Stack gap={0}>
-        <Box className={S.section} p="md">
-          <LibrarySection
-            collections={collections}
-            selectedCollectionId={selectedCollectionId}
-            hasDataAccess={hasDataAccess}
-            hasNativeWrite={hasNativeWrite}
-          />
-        </Box>
+        {PLUGIN_SEMANTIC_LAYER.isEnabled && (
+          <Box className={S.section} p="md">
+            <PLUGIN_SEMANTIC_LAYER.SemanticLayerSection
+              collections={collections}
+              selectedCollectionId={selectedCollectionId}
+              hasDataAccess={hasDataAccess}
+              hasNativeWrite={hasNativeWrite}
+            />
+          </Box>
+        )}
 
         <Box className={S.section} p="md">
           <CollectionsSection

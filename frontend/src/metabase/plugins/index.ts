@@ -68,6 +68,7 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  CollectionType,
   DashCardId,
   Dashboard,
   DashboardId,
@@ -1126,4 +1127,23 @@ export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   useCheckCardDependencies: useCheckDependencies,
   useCheckSnippetDependencies: useCheckDependencies,
   useCheckTransformDependencies: useCheckDependencies,
+};
+
+export type SemanticLayerSectionProps = {
+  collections: Collection[];
+  selectedCollectionId: CollectionId | undefined;
+  hasDataAccess: boolean;
+  hasNativeWrite: boolean;
+};
+
+export type SemanticLayerPlugin = {
+  isEnabled: boolean;
+  isSemanticLayerCollectionType: (type: CollectionType | undefined) => boolean;
+  SemanticLayerSection: ComponentType<SemanticLayerSectionProps>;
+};
+
+export const PLUGIN_SEMANTIC_LAYER: SemanticLayerPlugin = {
+  isEnabled: false,
+  isSemanticLayerCollectionType: () => false,
+  SemanticLayerSection: PluginPlaceholder,
 };
