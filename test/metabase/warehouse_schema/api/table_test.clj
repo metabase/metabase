@@ -1397,7 +1397,7 @@
 (deftest ^:parallel non-admins-cant-trigger-bulk-sync-test
   (testing "Non-admins should not be allowed to trigger sync"
     (is (= "You don't have permissions to do that."
-           (mt/user-http-request :rasta :post 403 "table/sync_schema" {:database_ids [(mt/id)]})))))
+           (mt/user-http-request :rasta :post 403 "table/sync-schema" {:database_ids [(mt/id)]})))))
 
 (deftest trigger-bulk-metadata-sync-for-table-test
   ;; lot more to test here but will wait for firmer ground
@@ -1415,7 +1415,7 @@
                                          (swap! tables conj table)
                                          (.countDown latch)
                                          nil)]
-          (mt/user-http-request :crowberto :post 200 "table/sync_schema" {:database_ids [d1],
+          (mt/user-http-request :crowberto :post 200 "table/sync-schema" {:database_ids [d1],
                                                                           :schema_ids   [(format "%d:FOO" d2)]
                                                                           :table_ids    [t4]}))
         (testing "sync called?"

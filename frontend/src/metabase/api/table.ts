@@ -169,7 +169,7 @@ export const tableApi = Api.injectEndpoints({
     syncTablesSchemas: builder.mutation<void, SyncTablesSchemasRequest>({
       query: (body) => ({
         method: "POST",
-        url: `/api/table/sync_schema`,
+        url: `/api/table/sync-schema`,
         body,
       }),
       invalidatesTags: (_, error) =>
