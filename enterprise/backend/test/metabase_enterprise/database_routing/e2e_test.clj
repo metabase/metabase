@@ -316,7 +316,7 @@
                                       (mt/formatted-rows [int str]))))))
                       (testing "sync task can see database"
                         (let [job-data       (reify qc/JobDataMapConversion
-                                               ;; i'm doign this at the "job-data" level so it's as close to what runs in
+                                               ;; i'm doing this at the "job-data" level so it's as close to what runs in
                                                ;; the task itself without actually hitting scheduler stuff.
                                                (from-job-data [_] {"db-id" (u/the-id router)})
                                                (to-job-data [_]))
