@@ -465,6 +465,26 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         H.getSimpleEmbedIframeContent().should("not.contain", "Orders model");
       });
     });
+
+    it("should not define color-scheme meta tag on embeds (metabase#65533)", () => {
+      H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-question question-id="new" />
+      `);
+
+      H.waitForSimpleEmbedIframesToLoad();
+
+      cy.get("iframe[data-metabase-embed]")
+        .its("0.contentDocument")
+        .within(() => {
+          cy.log("a generic meta tag should exist");
+          cy.get("meta[name='viewport']").should("exist");
+
+          cy.log("the color-scheme tag should not exist on EAJS embeds");
+          cy.get("meta[name='color-scheme']").should("not.exist");
+        });
+    });
   });
 
   describe("sync vs async vs defer script loading", () => {

@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import * as React from "react";
 import { usePrevious } from "react-use";
+import _ from "underscore";
 
 import type { BoxProps } from "metabase/ui";
 
 import { TreeNode as DefaultTreeNode } from "./TreeNode";
 import { TreeNodeList } from "./TreeNodeList";
 import type { ITreeNodeItem } from "./types";
-import { getAllExpandableIds, getInitialExpandedIds } from "./utils";
+import { getInitialExpandedIds } from "./utils";
 
 interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
   data: ITreeNodeItem<TData>[];
   selectedId?: ITreeNodeItem<TData>["id"];
   emptyState?: React.ReactNode;
-  initiallyExpanded?: boolean;
   initialExpandedIds?: ITreeNodeItem<TData>["id"][];
   role?: string;
   onSelect?: (item: ITreeNodeItem<TData>) => void;
@@ -26,7 +26,6 @@ function BaseTree<TData = unknown>({
   selectedId,
   role = "menu",
   emptyState = null,
-  initiallyExpanded = false,
   initialExpandedIds,
   onSelect,
   TreeNode = DefaultTreeNode,
@@ -34,9 +33,6 @@ function BaseTree<TData = unknown>({
   ...boxProps
 }: TreeProps<TData>) {
   const [expandedIds, setExpandedIds] = useState(() => {
-    if (initiallyExpanded) {
-      return new Set(getAllExpandableIds(data));
-    }
     if (initialExpandedIds) {
       return new Set(initialExpandedIds);
     }
@@ -48,30 +44,20 @@ function BaseTree<TData = unknown>({
   const prevData = usePrevious(data);
 
   useEffect(() => {
-    if (initiallyExpanded && data !== prevData) {
-      setExpandedIds(new Set(getAllExpandableIds(data)));
-      return;
-    }
-
     if (!selectedId) {
       return;
     }
+    const dataHasChanged = !_.isEqual(data, prevData);
     const selectedItemChanged =
       previousSelectedId !== selectedId && !expandedIds.has(selectedId);
-    if (selectedItemChanged || data !== prevData) {
+
+    if (selectedItemChanged || dataHasChanged) {
       setExpandedIds(
         (prev) =>
           new Set([...prev, ...getInitialExpandedIds(selectedId, data)]),
       );
     }
-  }, [
-    prevData,
-    data,
-    selectedId,
-    previousSelectedId,
-    expandedIds,
-    initiallyExpanded,
-  ]);
+  }, [prevData, data, selectedId, previousSelectedId, expandedIds]);
 
   const handleToggleExpand = useCallback(
     (itemId: string | number) => {
