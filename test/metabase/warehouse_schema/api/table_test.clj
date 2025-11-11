@@ -67,7 +67,8 @@
      :view_count  0
      :metrics     []
      :segments    []
-     :is_writable (or (= driver :h2) nil)})))
+     :is_writable (or (= driver :h2) nil)
+     :transform   nil})))
 
 (defn- field-defaults []
   (merge
