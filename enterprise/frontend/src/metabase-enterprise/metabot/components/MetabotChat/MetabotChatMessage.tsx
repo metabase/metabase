@@ -26,6 +26,7 @@ import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
+import { AgentToolCallMessage } from "./MetabotAgentToolCallMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
 
@@ -156,6 +157,9 @@ export const AgentMessage = ({
       )}
       {message.type === "todo_list" && (
         <AgentTodoListMessage todos={message.payload} />
+      )}
+      {message.type === "tool_call" && (
+        <AgentToolCallMessage message={message} />
       )}
       <Flex className={Styles.messageActions}>
         {!hideActions && (
