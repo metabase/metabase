@@ -5,6 +5,7 @@ import { useState } from "react";
 import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
+  setupDatabasesEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -15,6 +16,7 @@ import { Input } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import { type RecentItem, isRecentTableItem } from "metabase-types/api";
 import {
+  createMockDatabase,
   createMockRecentCollectionItem,
   createMockRecentTableItem,
   createMockSearchResult,
@@ -116,8 +118,13 @@ const setup = ({
     },
   };
 
+  const database = createMockDatabase({
+    uploads_enabled: true,
+    can_upload: true,
+  });
   setupSearchEndpoints(SEARCH_ITEMS);
   setupRecentViewsEndpoints(RECENT_ITEMS);
+  setupDatabasesEndpoints([database]);
 
   renderWithProviders(
     <TestWrapper
@@ -318,7 +325,7 @@ describe("CommandSuggestion", () => {
     });
   });
 
-  it("should auto-open the Browse all modal when clicking Chart with no recent items", async () => {
+  it("should auto-open the Browse all modal when clicking Chart with no recent items and no New Question", async () => {
     // Setup with empty recent items to reproduce the bug
     setupSearchEndpoints(SEARCH_ITEMS);
     setupRecentViewsEndpoints([]);
@@ -331,6 +338,13 @@ describe("CommandSuggestion", () => {
       collection: { id: 1 },
       collectionItems: [],
     });
+
+    setupDatabasesEndpoints([
+      createMockDatabase({
+        is_saved_questions: false,
+        native_permissions: "none",
+      }),
+    ]);
 
     const command = jest.fn();
     const editor = {
@@ -354,57 +368,6 @@ describe("CommandSuggestion", () => {
 
     // The modal should auto-open, so we should see it
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
-  });
-
-  it("should not show redundant divider when no recent items exist", async () => {
-    // Setup with empty recent items to reproduce the bug
-    setupSearchEndpoints(SEARCH_ITEMS);
-    setupRecentViewsEndpoints([]);
-    setupCollectionByIdEndpoint({ collections: [] });
-    setupCollectionItemsEndpoint({
-      collection: { id: "root" },
-      collectionItems: [],
-    });
-    setupCollectionItemsEndpoint({
-      collection: { id: 1 },
-      collectionItems: [],
-    });
-
-    const command = jest.fn();
-    const editor = {
-      commands: {
-        focus: jest.fn(),
-      },
-    };
-
-    renderWithProviders(
-      <TestWrapper
-        command={command}
-        editor={editor as unknown as Editor}
-        query=""
-        items={[]}
-        range={{ from: 0, to: 0 }}
-      />,
-      { storeInitialState: createMockState({ settings: mockSettings({}) }) },
-    );
-
-    await userEvent.click(await screen.findByRole("option", { name: "Chart" }));
-
-    // Wait for the modal to auto-open
-    const modal = await screen.findByLabelText("Choose a question or model");
-    expect(modal).toBeInTheDocument();
-
-    // Close the modal to test the menu state without auto-opening
-    const closeButton = within(modal).getByRole("button", { name: /close/i });
-    await userEvent.click(closeButton);
-
-    // Now the menu should show Browse all without a redundant divider
-    expect(await screen.findByText("Browse all")).toBeInTheDocument();
-
-    // There should be no menu items above Browse all, so no divider should be present
-    const menuContainer = screen.getByLabelText("Command Dialog");
-    const dividers = within(menuContainer).queryAllByRole("separator");
-    expect(dividers).toHaveLength(0);
   });
 
   describe("metabot", () => {
