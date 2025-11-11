@@ -9,18 +9,21 @@ import * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
 
 import { ArchiveCardModal } from "../ArchiveCardModal";
+import { CardCopyModal } from "../CardCopyModal";
 import { MoveCardModal } from "../MoveCardModal";
 
-type CardModalType = "add-to-dashboard" | "move" | "copy" | "archive";
+type CardModalType = "move" | "copy" | "archive";
 
 type CardMoreMenuProps = {
   card: Card;
+  onCopy?: (newCard: Card) => void;
   onArchive?: () => void;
   onUnarchive?: () => void;
 };
 
 export function CardMoreMenu({
   card,
+  onCopy,
   onArchive,
   onUnarchive,
 }: CardMoreMenuProps) {
@@ -32,6 +35,7 @@ export function CardMoreMenu({
         <CardModal
           card={card}
           modalType={modalType}
+          onCopy={onCopy}
           onArchive={onArchive}
           onUnarchive={onUnarchive}
           onClose={() => setModalType(undefined)}
@@ -53,18 +57,6 @@ function CardMenu({ card, onOpenModal }: CardMenuProps) {
   const metadata = useSelector(getMetadata);
   const query = Lib.fromJsQueryAndMetadata(metadata, card.dataset_query);
   const queryInfo = Lib.queryDisplayInfo(query);
-
-  if (card.type === "metric") {
-    menuItems.push(
-      <Menu.Item
-        key="add_to_dash"
-        leftSection={<Icon name="add_to_dash" />}
-        onClick={() => onOpenModal("add-to-dashboard")}
-      >
-        {t`Add to dashboard`}
-      </Menu.Item>,
-    );
-  }
 
   if (card.can_write) {
     menuItems.push(
@@ -121,6 +113,7 @@ function CardMenu({ card, onOpenModal }: CardMenuProps) {
 type CardModalProps = {
   card: Card;
   modalType: CardModalType;
+  onCopy?: (newCard: Card) => void;
   onArchive?: () => void;
   onUnarchive?: () => void;
   onClose: () => void;
@@ -129,6 +122,7 @@ type CardModalProps = {
 function CardModal({
   card,
   modalType,
+  onCopy,
   onArchive,
   onUnarchive,
   onClose,
@@ -136,6 +130,8 @@ function CardModal({
   switch (modalType) {
     case "move":
       return <MoveCardModal card={card} onClose={onClose} />;
+    case "copy":
+      return <CardCopyModal card={card} onCopy={onCopy} onClose={onClose} />;
     case "archive":
       return (
         <ArchiveCardModal

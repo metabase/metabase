@@ -26,7 +26,7 @@ import EditEventModal from "metabase/timelines/questions/containers/EditEventMod
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import { Text } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
 import type { QueryBuilderMode } from "metabase-types/store";
 
@@ -155,11 +155,12 @@ export function QueryModals({
 
   const handleCopySaved = useCallback(
     (
-      newQuestion: Question,
+      newCard: Card,
       options?: {
         dashboardTabId?: DashboardTabId | undefined;
       },
     ) => {
+      const newQuestion = new Question(newCard, question.metadata());
       const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
       const isModel = newQuestion.type() === "model";
 
@@ -179,6 +180,7 @@ export function QueryModals({
       }
     },
     [
+      question,
       navigateToDashboardQuestionDashboard,
       onCloseModal,
       setQueryBuilderMode,
@@ -238,36 +240,34 @@ export function QueryModals({
       );
     case MODAL_TYPES.CLONE:
       return (
-        <Modal onClose={onCloseModal}>
-          <EntityCopyModal
-            entityType="questions"
-            entityObject={{
-              ...question.card(),
-              collection_id: question.canWrite()
-                ? question.collectionId()
-                : initialCollectionId,
-            }}
-            copy={async (formValues) => {
-              if (!underlyingQuestion) {
-                return;
-              }
+        <EntityCopyModal
+          entityType="cards"
+          entityObject={{
+            ...question.card(),
+            collection_id: question.canWrite()
+              ? question.collectionId()
+              : initialCollectionId,
+          }}
+          copy={async (formValues) => {
+            if (!underlyingQuestion) {
+              return;
+            }
 
-              const question = underlyingQuestion
-                .setDisplayName(formValues.name)
-                .setCollectionId(formValues.collection_id)
-                .setDashboardId(formValues.dashboard_id)
-                .setDescription(formValues.description || null);
+            const question = underlyingQuestion
+              .setDisplayName(formValues.name)
+              .setCollectionId(formValues.collection_id)
+              .setDashboardId(formValues.dashboard_id)
+              .setDescription(formValues.description || null);
 
-              const object = await onCreate(question, {
-                dashboardTabId: formValues.dashboard_tab_id,
-              });
+            const object = await onCreate(question, {
+              dashboardTabId: formValues.dashboard_tab_id,
+            });
 
-              return object;
-            }}
-            onClose={onCloseModal}
-            onSaved={handleCopySaved}
-          />
-        </Modal>
+            return object.card();
+          }}
+          onClose={onCloseModal}
+          onSaved={handleCopySaved}
+        />
       );
     case MODAL_TYPES.TURN_INTO_DATASET:
       return (

@@ -9,13 +9,14 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
+import { Group } from "metabase/ui";
 
 import {
-  SectionLayout,
-  type SectionTab,
-  SectionTabs,
-  SectionTitle,
-} from "../../components/SectionLayout";
+  type PaneHeaderTab,
+  PaneHeaderTabs,
+  PaneHeaderTabsDivider,
+} from "../../components/PaneHeader";
+import { SectionLayout, SectionTitle } from "../../components/SectionLayout";
 
 type DataSectionLayoutProps = {
   location: Location;
@@ -26,23 +27,10 @@ export function DataSectionLayout({
   location,
   children,
 }: DataSectionLayoutProps) {
-  const canAccessDataModel = useSelector(
-    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
-  );
-  const canAccessTransforms = useSelector(
-    PLUGIN_TRANSFORMS.canAccessTransforms,
-  );
-  const tabs = getTabs(location, { canAccessDataModel, canAccessTransforms });
-
   return (
     <SectionLayout
-      title={
-        <SectionTitle
-          title={t`Data structure`}
-          description={t`Explore and manage your data assets`}
-        />
-      }
-      tabs={tabs.length > 0 && <SectionTabs tabs={tabs} />}
+      title={<SectionTitle title={t`Data structure`} />}
+      tabs={<DataSectionTabs location={location} />}
     >
       <DataModelContext.Provider value={{ baseUrl: Urls.dataStudioData() }}>
         {children}
@@ -51,29 +39,64 @@ export function DataSectionLayout({
   );
 }
 
-type FeatureOptions = {
-  canAccessDataModel: boolean;
-  canAccessTransforms: boolean;
+type DataSectionTabsProps = {
+  location: Location;
 };
 
-function getTabs(
-  { pathname }: Location,
-  { canAccessDataModel, canAccessTransforms }: FeatureOptions,
-): SectionTab[] {
-  if (!canAccessDataModel || !canAccessTransforms) {
-    return [];
-  }
+function DataSectionTabs({ location }: DataSectionTabsProps) {
+  const canAccessDataModel = useSelector(
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
+  );
+  const canAccessTransforms = useSelector(
+    PLUGIN_TRANSFORMS.canAccessTransforms,
+  );
 
+  return (
+    <Group>
+      {canAccessDataModel && (
+        <PaneHeaderTabs tabs={getDataTabs(location)} withBackground />
+      )}
+      {canAccessDataModel && canAccessTransforms && <PaneHeaderTabsDivider />}
+      {canAccessTransforms && (
+        <PaneHeaderTabs tabs={getTransformTabs(location)} withBackground />
+      )}
+    </Group>
+  );
+}
+
+function getDataTabs({ pathname }: Location): PaneHeaderTab[] {
   return [
     {
       label: t`Data`,
       to: Urls.dataStudio(),
       isSelected: pathname.startsWith(Urls.dataStudioData()),
     },
+  ];
+}
+
+function getTransformTabs({ pathname }: Location): PaneHeaderTab[] {
+  const isTransforms = pathname.startsWith(Urls.transformList());
+  const isJobs = pathname.startsWith(Urls.transformJobList());
+  const isRuns = pathname.startsWith(Urls.transformRunList());
+
+  return [
     {
       label: t`Transforms`,
       to: Urls.transformList(),
-      isSelected: pathname.startsWith(Urls.transformList()),
+      icon: "transform",
+      isSelected: isTransforms && !isJobs && !isRuns,
+    },
+    {
+      label: t`Jobs`,
+      to: Urls.transformJobList(),
+      icon: "clock",
+      isSelected: isJobs,
+    },
+    {
+      label: t`Runs`,
+      to: Urls.transformRunList(),
+      icon: "play",
+      isSelected: isRuns,
     },
   ];
 }

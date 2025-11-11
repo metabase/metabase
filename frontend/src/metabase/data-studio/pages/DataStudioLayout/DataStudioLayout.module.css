@@ -2,13 +2,21 @@
   border-right: 1px solid var(--mb-color-border);
 }
 
-.item {
-  color: var(--mb-color-text-primary);
+.tab {
   background-color: var(--mb-color-bg-secondary);
 
   &:hover,
   &.selected {
-    color: var(--mb-color-brand);
     background-color: var(--mb-color-brand-light);
+  }
+}
+
+.tab,
+.toggle {
+  color: var(--mb-color-text-primary);
+
+  &:hover,
+  &.selected {
+    color: var(--mb-color-brand);
   }
 }

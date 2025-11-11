@@ -18,8 +18,8 @@ import {
 import * as Errors from "metabase/lib/errors";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { Button, Stack } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 import type {
+  Card,
   CardType,
   CollectionId,
   DashboardId,
@@ -40,7 +40,7 @@ const MAYBE_DASHBOARD_QUESTION_SCHEMA = QUESTION_SCHEMA.shape({
   dashboard_tab_id: Yup.number().default(undefined),
 });
 
-export type CopyQuestionProperties = {
+export type CopyCardProperties = {
   name: string;
   description: string | null;
   collection_id: CollectionId | null;
@@ -48,24 +48,24 @@ export type CopyQuestionProperties = {
   dashboard_tab_id?: DashboardTabId | undefined;
 };
 
-type CopyQuestionFormProps = {
-  initialValues: Partial<CopyQuestionProperties>;
-  onCancel: () => void;
-  onSubmit: (vals: CopyQuestionProperties) => Promise<Question>;
+type CopyCardFormProps = {
+  initialValues: Partial<CopyCardProperties>;
+  model?: CardType;
+  onSubmit: (vals: CopyCardProperties) => Promise<Card>;
   onSaved: (
-    newQuestion: Question,
+    newCard: Card,
     options?: { dashboardTabId: DashboardTabId | undefined },
   ) => void;
-  model?: CardType;
+  onCancel: () => void;
 };
 
-export const CopyQuestionForm = ({
+export const CopyCardForm = ({
   initialValues,
   onCancel,
   onSubmit,
   onSaved,
   model,
-}: CopyQuestionFormProps) => {
+}: CopyCardFormProps) => {
   const formProviderProps = useMemo(() => {
     return model === "question"
       ? {
@@ -84,16 +84,16 @@ export const CopyQuestionForm = ({
         };
   }, [initialValues, model]);
 
-  const handleDuplicate = async (vals: CopyQuestionProperties) => {
+  const handleDuplicate = async (vals: CopyCardProperties) => {
     const dashboardTabId = _.isString(vals.dashboard_tab_id)
       ? parseInt(vals.dashboard_tab_id, 10)
       : vals.dashboard_tab_id;
 
-    const newQuestion = await onSubmit({
+    const newCard = await onSubmit({
       ...vals,
       dashboard_tab_id: dashboardTabId,
     });
-    onSaved?.(newQuestion, { dashboardTabId });
+    onSaved?.(newCard, { dashboardTabId });
   };
 
   const models: CollectionPickerModel[] =

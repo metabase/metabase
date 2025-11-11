@@ -88,6 +88,10 @@ type MetricMoreMenuProps = {
 function MetricMoreMenu({ card }: MetricMoreMenuProps) {
   const dispatch = useDispatch();
 
+  const handleCopy = (newCard: Card) => {
+    dispatch(push(Urls.dataStudioMetric(newCard.id)));
+  };
+
   const handleArchive = () => {
     dispatch(push(Urls.dataStudioModeling()));
   };
@@ -99,6 +103,7 @@ function MetricMoreMenu({ card }: MetricMoreMenuProps) {
   return (
     <CardMoreMenu
       card={card}
+      onCopy={handleCopy}
       onArchive={handleArchive}
       onUnarchive={handleUnarchive}
     />

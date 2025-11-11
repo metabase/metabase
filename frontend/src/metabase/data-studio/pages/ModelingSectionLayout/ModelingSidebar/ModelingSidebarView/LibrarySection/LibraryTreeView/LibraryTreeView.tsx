@@ -4,33 +4,28 @@ import { t } from "ttag";
 
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { excludeLibrarySubtree } from "metabase/data-studio/utils/library-collection";
+import { getLibraryInitialExpandedIds } from "metabase/data-studio/utils/library-collection";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Button, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
-import { ModelingSidebarTreeNode } from "../../ModelingSidebarTreeNode";
+import { ModelingSidebarTreeNode } from "../../../ModelingSidebarTreeNode";
 
-interface CollectionsSectionProps {
-  collections: ITreeNodeItem[];
+interface LibraryTreeViewProps {
+  libraryCollection: ITreeNodeItem;
   selectedCollectionId?: CollectionId;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
 }
 
-export function CollectionsSection({
-  collections,
+export function LibraryTreeView({
+  libraryCollection,
   selectedCollectionId,
   hasDataAccess,
   hasNativeWrite,
-}: CollectionsSectionProps) {
+}: LibraryTreeViewProps) {
   const dispatch = useDispatch();
-
-  const filteredCollections = useMemo(
-    () => excludeLibrarySubtree(collections),
-    [collections],
-  );
 
   const handleCollectionSelect = useCallback(
     (item: ITreeNodeItem) => {
@@ -63,17 +58,22 @@ export function CollectionsSection({
     [dispatch],
   );
 
-  const initialExpandedIds = useMemo(() => ["root"], []);
+  const initialExpandedIds = useMemo(
+    () => getLibraryInitialExpandedIds(libraryCollection),
+    [libraryCollection],
+  );
+
+  const libraryTree = useMemo(() => [libraryCollection], [libraryCollection]);
 
   return (
     <Tree
-      data={filteredCollections}
+      data={libraryTree}
       selectedId={selectedCollectionId}
       initialExpandedIds={initialExpandedIds}
       onSelect={handleCollectionSelect}
       TreeNode={ModelingSidebarTreeNode}
       rightSection={(item: ITreeNodeItem) => {
-        if (item.id !== "root" || !hasDataAccess) {
+        if (item.id !== libraryCollection.id || !hasDataAccess) {
           return null;
         }
         return (

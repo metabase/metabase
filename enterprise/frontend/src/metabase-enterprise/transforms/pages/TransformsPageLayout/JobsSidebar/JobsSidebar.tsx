@@ -16,7 +16,6 @@ import { SidebarContainer } from "../SidebarContainer";
 import { SidebarLoadingState } from "../SidebarLoadingState";
 import { SidebarSearchAndControls } from "../SidebarSearchAndControls";
 import { JOB_SORT_OPTIONS } from "../SidebarSortControl";
-import { TransformsInnerNav } from "../TransformsInnerNav";
 import { SidebarList } from "../TransformsSidebarLayout/SidebarList";
 import { SidebarListItem } from "../TransformsSidebarLayout/SidebarListItem/SidebarListItem";
 import { lastModifiedSorter, nameSorter } from "../utils";
@@ -73,7 +72,6 @@ export const JobsSidebar = ({ selectedJobId }: JobsSidebarProps) => {
   return (
     <SidebarContainer data-testid="jobs-sidebar">
       <Flex direction="column" gap="md" px="md" pt="md" pb="md">
-        <TransformsInnerNav />
         <SidebarSearchAndControls
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}

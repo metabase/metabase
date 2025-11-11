@@ -29,14 +29,7 @@ export function ModelingSectionLayout({
   );
 
   return (
-    <SectionLayout
-      title={
-        <SectionTitle
-          title={t`Modeling`}
-          description={t`Build your semantic layer`}
-        />
-      }
-    >
+    <SectionLayout title={<SectionTitle title={t`Modeling`} />}>
       <Flex direction="row" w="100%" h="100%">
         <ModelingSidebar
           collectionId={params?.collectionId}

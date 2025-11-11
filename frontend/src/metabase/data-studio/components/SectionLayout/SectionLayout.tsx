@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { Box, Button, Flex, Group, Stack, Tabs } from "metabase/ui";
+import { Box, Button, Flex, Group, Stack, Title } from "metabase/ui";
 
 import S from "./SectionLayout.module.css";
 
@@ -20,15 +20,16 @@ export function SectionLayout({ title, tabs, children }: SectionLayoutProps) {
         data-testid="data-studio-header"
         className={S.header}
         px="lg"
+        py="md"
         justify="space-between"
         align={tabs ? "start" : "center"}
         aria-label={t`Navigation bar`}
       >
-        <Stack gap="sm" pt="md" py={tabs ? undefined : "md"}>
+        <Stack gap="sm">
           {title}
           {tabs}
         </Stack>
-        <Group my="md">
+        <Group>
           <PLUGIN_METABOT.MetabotDataStudioButton />
           <Button component={Link} to="/">
             {t`Exit data studio`}
@@ -45,47 +46,8 @@ export function SectionLayout({ title, tabs, children }: SectionLayoutProps) {
 
 type SectionTitleProps = {
   title: string;
-  description?: string;
 };
 
-export function SectionTitle({ title, description }: SectionTitleProps) {
-  return (
-    <Group gap="md">
-      <Box fz="lg" lh="h3">
-        {title}
-      </Box>
-      {description != null && <Box c="text-secondary">{description}</Box>}
-    </Group>
-  );
-}
-
-export type SectionTab = {
-  label: string;
-  to: string;
-  isSelected: boolean;
-};
-
-type SectionTabsProps = {
-  tabs: SectionTab[];
-};
-
-export function SectionTabs({ tabs }: SectionTabsProps) {
-  const selectedTab = tabs.find((tab) => tab.isSelected);
-
-  return (
-    <Tabs value={selectedTab ? selectedTab.to : null}>
-      <Tabs.List style={{ "--tab-border-color": "transparent" }}>
-        {tabs.map((tab) => (
-          <Tabs.Tab
-            key={tab.to}
-            component={Link}
-            value={tab.to}
-            {...{ to: tab.to }}
-          >
-            {tab.label}
-          </Tabs.Tab>
-        ))}
-      </Tabs.List>
-    </Tabs>
-  );
+export function SectionTitle({ title }: SectionTitleProps) {
+  return <Title order={4}>{title}</Title>;
 }
