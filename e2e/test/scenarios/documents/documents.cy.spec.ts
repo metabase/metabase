@@ -1057,6 +1057,40 @@ H.describeWithSnowplowEE("documents", () => {
       cy.log("Verify 'Browse all' footer is also visible");
       H.commandSuggestionItem(/Browse all/).should("be.visible");
     });
+
+    it("should automatically assign appropriate visualization type for time series aggregation", () => {
+      H.visitDocument("@documentId");
+      H.documentContent().click();
+
+      cy.log("Trigger command menu and create a new question");
+      H.addToDocument("/", false);
+      H.commandSuggestionItem("Chart").click();
+      H.commandSuggestionItem(/New chart/).click();
+      H.commandSuggestionItem(/New Question/).click();
+
+      cy.log("Create a time series query with Orders table");
+      cy.findByRole("dialog", { name: "Pick your starting data" }).should(
+        "be.visible",
+      );
+      H.entityPickerModalItem(2, "Orders").click();
+
+      H.addSummaryField({ metric: "Sum of ...", field: "Total" });
+      H.addSummaryGroupingField({ field: "Created At" });
+
+      cy.findByRole("dialog", { name: "Create new question" })
+        .findByRole("button", { name: "Save and use" })
+        .click();
+
+      cy.log("Verify the question is embedded with a line chart visualization");
+      H.getDocumentCard("Orders, Sum of Total, Grouped by Created At: Month")
+        .should("exist")
+        .within(() => {
+          cy.log("Verify it has a line chart visualization (not a table)");
+          cy.findByTestId("chart-container").should("exist");
+          cy.get("svg").should("exist");
+          H.cartesianChartCircle().should("have.length.at.least", 1);
+        });
+    });
   });
 
   describe("creating new questions - limited permissions", () => {
