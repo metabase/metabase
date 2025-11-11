@@ -41,7 +41,6 @@
 ;;   }
 ;;  }
 
-;; TODO: Rename to db
 (mt/defdataset orderItemsDb
   "OrderItems dataset"
   [["users"
@@ -95,12 +94,38 @@
       {"customerId" "user004", "productId" "prod002"}
       {"orderDate" #t "2024-07-20", "status" "delivered", "quantity" 1, "price" 29.99}]]]])
 
+(defmulti sync-test-dataset-def
+  {:added "0.57.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod sync-test-dataset-def :mongo [_driver] orderItemsDb)
+(defmulti sync-test-active-subset-ids
+  {:added "0.57.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod sync-test-active-subset-ids :mongo [_driver]
+  (let [users-active-subset #{(mt/id :users :_id)
+                              (mt/id :users :email)
+                              (mt/id :users :createdAt)}
+        orderItems-active-subset #{(mt/id :orderItems :_id)
+                                   (mt/id :orderItems :data)
+                                   (mt/id :orderItems :data :orderDate)
+                                   (mt/id :orderItems :data :price)}
+        products-active-subset #{(mt/id :products :_id)
+                                 (mt/id :products :name)
+                                 (mt/id :products :category)}]
+    (into #{} cat [users-active-subset
+                   orderItems-active-subset
+                   products-active-subset])))
+
 (deftest ^:synchronized sync-active-subset-test
   (mt/test-drivers
     (mt/normal-drivers)
     (when (driver/should-sync-active-subset? driver/*driver*)
       (mt/dataset
-        orderItemsDb
+        (sync-test-dataset-def driver/*driver*)
 
         (testing "After initial sync all fields have active_subset true"
           (sync/sync-database! (mt/db))
@@ -111,19 +136,7 @@
         (testing "Syncing the db when there is more leaf fields than `driver.settings/sync-leaf-fields-limit`..."
           (with-redefs [driver.settings/sync-leaf-fields-limit (constantly 3)]
             (sync/sync-database! (mt/db))
-            (let [users-active-subset #{(mt/id :users :_id)
-                                        (mt/id :users :email)
-                                        (mt/id :users :createdAt)}
-                  orderItems-active-subset #{(mt/id :orderItems :_id)
-                                             (mt/id :orderItems :data)
-                                             (mt/id :orderItems :data :orderDate)
-                                             (mt/id :orderItems :data :price)}
-                  products-active-subset #{(mt/id :products :_id)
-                                           (mt/id :products :name)
-                                           (mt/id :products :category)}
-                  active-subset-field-ids (into #{} cat [users-active-subset
-                                                         orderItems-active-subset
-                                                         products-active-subset])
+            (let [active-subset-field-ids (sync-test-active-subset-ids driver/*driver*)
                   all-db-fields (t2/select :model/Field :table_id
                                            [:in (t2/select-fn-vec :id :model/Table :db_id (mt/id))])]
               (testing "... no fields are deactivated"
@@ -147,53 +160,81 @@
               (is (every? (comp true? :active) all-db-fields)))
             (testing "... should make every field part of the active subset again"
               (is (every? (comp true? :active_subset) all-db-fields)))))))))
+(defmulti fingerprint-test-dataset-def
+  {:added "0.57.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fingerprint-test-dataset-def :mongo [_driver] orderItemsDb)
+(defmulti fingerprint-test-active-subset-ids
+  {:added "0.57.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fingerprint-test-active-subset-ids :mongo [_driver]
+  (let [users-active-subset #{#_(mt/id :users :_id)
+                              (mt/id :users :email)
+                              (mt/id :users :createdAt)}
+        orderItems-active-subset #{;; ignored because of "primary key"
+                                   #_(mt/id :orderItems :_id)
+                                   ;; ignored because of structured type
+                                   #_(mt/id :orderItems :data)
+                                   (mt/id :orderItems :data :orderDate)
+                                   ;; ignored because of float type
+                                   #_(mt/id :orderItems :data :price)}
+        products-active-subset #{#_(mt/id :products :_id)
+                                 (mt/id :products :name)
+                                 (mt/id :products :category)}]
+    (into #{} cat [users-active-subset
+                   orderItems-active-subset
+                   products-active-subset])))
+(defmulti fingerprint-test-act-and-gather!
+  {:added "0.57.0" :arglists '([driver thunk])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fingerprint-test-act-and-gather! :mongo
+  [_driver results-atom thunk]
+  (let [original-fields-to-fingerprint @#'sync.fingerprint/fields-to-fingerprint]
+    (with-redefs [driver.settings/sync-leaf-fields-limit (constantly 3)
+                  sync.fingerprint/fields-to-fingerprint
+                  (fn [& args]
+                    (let [result (apply original-fields-to-fingerprint args)]
+                      (swap! results-atom into (map :id) result)
+                      result))]
+      (thunk))))
 
 (deftest fingerprint-active-subset-test
   (mt/test-drivers
     (mt/normal-drivers)
     (when (driver/should-sync-active-subset? driver/*driver*)
       (mt/dataset
-        orderItemsDb
-        (let [users-active-subset #{#_(mt/id :users :_id)
-                                    (mt/id :users :email)
-                                    (mt/id :users :createdAt)}
-              orderItems-active-subset #{#_(mt/id :orderItems :_id)
-                                         #_(mt/id :orderItems :data)
-                                         (mt/id :orderItems :data :orderDate)
-                                         ;; no fp bc float
-                                         #_(mt/id :orderItems :data :price)}
-              products-active-subset #{#_(mt/id :products :_id)
-                                       (mt/id :products :name)
-                                       (mt/id :products :category)}
-              active-subset-field-ids (into #{} cat [users-active-subset
-                                                     orderItems-active-subset
-                                                     products-active-subset])
-              original-fields-to-fingerprint @#'sync.fingerprint/fields-to-fingerprint
-              results (atom #{})]
+        (fingerprint-test-dataset-def driver/*driver*)
+        (let [active-subset-field-ids (fingerprint-test-active-subset-ids driver/*driver*)
+              results-atom (atom #{})]
           (try
 
             ;; First adjust fingerprint version so fields are considered for fingerprinting
             (t2/update! :model/Field :id [:in active-subset-field-ids] {:fingerprint_version 0})
 
-            (testing "... and now check that only active subset fields are picked for fingerprinting"
-              (with-redefs [driver.settings/sync-leaf-fields-limit (constantly 3)
-                            sync.fingerprint/fields-to-fingerprint
-                            (fn [& args]
-                              (let [result (apply original-fields-to-fingerprint args)]
-                                (swap! results into (map :id) result)
-                                result))]
-                (testing "... for that do full sync catching synthetic exception with considered fields"
-                  (sync/sync-database! (mt/db) {:scan :full})
-                  (testing "... and now the actual check"
-                    (is (= (count active-subset-field-ids)
-                           (count @results)))
-                    (loop [[first-exp-id & rest-exp-ids] active-subset-field-ids
-                           returned-field-ids  @results]
-                      (if (nil? first-exp-id)
-                        (is (empty? returned-field-ids))
-                        (do (is (contains? returned-field-ids first-exp-id))
-                            (recur rest-exp-ids
-                                   (disj returned-field-ids first-exp-id)))))))))
+            (testing "Check that only active subset fields are picked for fingerprinting"
+
+              (fingerprint-test-act-and-gather!
+               driver/*driver* results-atom
+               #(testing "... for that do full sync catching synthetic exception with considered fields"
+                  (sync/sync-database! (mt/db) {:scan :full})))
+
+              (testing "... and now the actual check"
+                (is (= (count active-subset-field-ids)
+                       (count @results-atom)))
+                (loop [[first-exp-id & rest-exp-ids] active-subset-field-ids
+                       returned-field-ids  @results-atom]
+                  (if (nil? first-exp-id)
+                    (is (empty? returned-field-ids))
+                    (do (is (contains? returned-field-ids first-exp-id))
+                        (recur rest-exp-ids
+                               (disj returned-field-ids first-exp-id)))))))
+
             (finally
               (testing "Finally restore fields to the original state"
               ;; Full sync should adjust fingerprint version of modified fields back to the original
@@ -206,50 +247,76 @@
                   (is (every? (comp #{0 5} :fingerprint_version)
                               all-db-fields)))))))))))
 
-(deftest field-values-active-subset-test
+(defmulti field-values-test-dataset-def
+  {:added "0.57.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod field-values-test-dataset-def :mongo [_driver] orderItemsDb)
+(defmulti field-values-test-active-subset-ids
+  {:added "0.57.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod field-values-test-active-subset-ids :mongo [_driver]
+  (let [users-active-subset #{(mt/id :users :_id)
+                              (mt/id :users :email)
+                              (mt/id :users :createdAt)}
+        orderItems-active-subset #{(mt/id :orderItems :_id)
+                                   ;; This is part of active subset, but has visibility other than normal
+                                   ;; hence not part of scanned fields
+                                   #_(mt/id :orderItems :data)
+                                   (mt/id :orderItems :data :orderDate)
+                                   (mt/id :orderItems :data :price)}
+        products-active-subset #{(mt/id :products :_id)
+                                 (mt/id :products :name)
+                                 (mt/id :products :category)}]
+    (into #{} cat [users-active-subset
+                   orderItems-active-subset
+                   products-active-subset])))
+
+(defmulti field-values-test-act-and-gather!
+  {:added "0.57.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod field-values-test-act-and-gather! :mongo
+  [_driver results-atom thunk]
+  (let [original-table->fields-to-scan @#'sync.field-values/table->fields-to-scan]
+    (with-redefs [driver.settings/sync-leaf-fields-limit (constantly 3)
+                  sync.field-values/table->fields-to-scan
+                  (fn [& args]
+                    (let [result (apply original-table->fields-to-scan args)]
+                      (swap! results-atom into (map :id) result)
+                      result))]
+      (thunk))))
+
+(deftest ewqfield-values-active-subset-test
   (mt/test-drivers
     (mt/normal-drivers)
     (when (driver/should-sync-active-subset? driver/*driver*)
       (mt/dataset
-        orderItemsDb
-        (let [users-active-subset #{(mt/id :users :_id)
-                                    (mt/id :users :email)
-                                    (mt/id :users :createdAt)}
-              orderItems-active-subset #{(mt/id :orderItems :_id)
-                                         ;; This is part of active subset, but has visibility other than normal
-                                         ;; hence not part of scanned fields
-                                         #_(mt/id :orderItems :data)
-                                         (mt/id :orderItems :data :orderDate)
-                                         (mt/id :orderItems :data :price)}
-              products-active-subset #{(mt/id :products :_id)
-                                       (mt/id :products :name)
-                                       (mt/id :products :category)}
-              active-subset-field-ids (into #{} cat [users-active-subset
-                                                     orderItems-active-subset
-                                                     products-active-subset])
-              original-table->fields-to-scan @#'sync.field-values/table->fields-to-scan
-              results (atom #{})]
+        (field-values-test-dataset-def driver/*driver*)
+        (let [active-subset-field-ids (field-values-test-active-subset-ids driver/*driver*)
+              results-atom (atom #{})]
           (try
+            (testing "Check that only active subset fields are picked for field values scan"
 
-            (testing "... and now check that only active subset fields are picked for field values scan"
-              (with-redefs [driver.settings/sync-leaf-fields-limit (constantly 3)
-                            sync.field-values/table->fields-to-scan
-                            (fn [& args]
-                              (let [result (apply original-table->fields-to-scan args)]
-                                (swap! results into (map :id) result)
-                                result))]
-                (testing "... for that do full sync catching synthetic exception with considered fields"
-                  (sync/sync-database! (mt/db) {:scan :full})
-                  (testing "... and now the actual check"
-                    (is (= (count active-subset-field-ids)
-                           (count @results)))
-                    (loop [[first-exp-id & rest-exp-ids] active-subset-field-ids
-                           returned-field-ids @results]
-                      (if (nil? first-exp-id)
-                        (is (empty? returned-field-ids))
-                        (do (is (contains? returned-field-ids first-exp-id))
-                            (recur rest-exp-ids
-                                   (disj returned-field-ids first-exp-id)))))))))
+              (field-values-test-act-and-gather!
+               driver/*driver* results-atom
+               #(testing "... for that do full sync catching synthetic exception with considered fields"
+                  (sync/sync-database! (mt/db) {:scan :full})))
+
+              (testing "... and now the actual check"
+                (is (= (count active-subset-field-ids)
+                       (count @results-atom)))
+                (loop [[first-exp-id & rest-exp-ids] active-subset-field-ids
+                       returned-field-ids @results-atom]
+                  (if (nil? first-exp-id)
+                    (is (empty? returned-field-ids))
+                    (do (is (contains? returned-field-ids first-exp-id))
+                        (recur rest-exp-ids
+                               (disj returned-field-ids first-exp-id)))))))
             (finally
               (testing "Finally restore fields to the original state"
               ;; Full sync should clean up active_subset of modified fields
