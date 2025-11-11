@@ -42,16 +42,7 @@ export function getCollectionIcon(
   }
 
   if (PLUGIN_SEMANTIC_LAYER.isSemanticLayerCollection(collection)) {
-    const type =
-      PLUGIN_SEMANTIC_LAYER.getSemanticLayerCollectionType(collection);
-    switch (type) {
-      case "root":
-        return { name: "repository" };
-      case "models":
-        return { name: "model" };
-      case "metrics":
-        return { name: "metric" };
-    }
+    return { name: "repository" };
   }
 
   const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
