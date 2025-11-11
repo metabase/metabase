@@ -3,7 +3,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
@@ -15,7 +14,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
@@ -69,7 +67,7 @@
        ;; conjunctive search terms
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
-       [:data.layer {:optional true} :string]
+       [:data-layer {:optional true} :string]
        [:data-source {:optional true} :string]
        [:owner-user-id {:optional true} [:maybe :int]]
        [:owner-email {:optional true} :string]
@@ -96,9 +94,12 @@
                                          ;; TODO: Ngoc (31/10/2025) we are not sure whether to exclude transform here
                                          ;; let's circle back before merging bulk editing
                                          [:not= :d.from_entity_type "transform"]]]
-                            :where     [:and where [:= :d.id nil]]))]
+                            :where     [:and where [:= :d.id nil]]))
+        hydrations (cond-> [:db]
+                     (premium-features/has-feature? :dependencies) (conj :published_as_model)
+                     (premium-features/has-feature? :transforms)   (conj :transform))]
     (as-> (t2/select :model/Table query) tables
-      (t2/hydrate tables :db)
+      (apply t2/hydrate tables hydrations)
       (into [] (comp (filter mi/can-read?)
                      (map schema.table/present-table))
             tables))))
@@ -263,7 +264,7 @@
   (let [schema-expr (fn [s]
                       (let [[schema-db-id schema-name] (str/split s #"\:")]
                         [:and [:= :db_id (parse-long schema-db-id)] [:= :schema schema-name]]))]
-    (cond-> [:or false] ;; honeysql
+    (cond-> [:or false]
       (seq database_ids) (conj [:in :db_id (sort database_ids)])
       (seq table_ids)    (conj [:in :id    (sort table_ids)])
       (seq schema_ids)   (conj (into [:or] (map schema-expr) (sort schema_ids))))))
@@ -279,6 +280,7 @@
         [:data_authority {:optional true} [:maybe :string]]
         [:data_source {:optional true} [:maybe :string]]
         [:data_layer {:optional true} [:maybe :string]]
+        [:entity_type {:optional true} [:maybe :string]]
         [:owner_email {:optional true} [:maybe :string]]
         [:owner_user_id {:optional true} [:maybe :int]]]]]
   (api/check-superuser)
@@ -287,7 +289,8 @@
                          :data_source
                          :data_layer
                          :owner_email
-                         :owner_user_id]
+                         :owner_user_id
+                         :entity_type]
         existing-tables (t2/query {:select [:id :visibility_type]
                                    :from   [:metabase_table]
                                    :where  where})

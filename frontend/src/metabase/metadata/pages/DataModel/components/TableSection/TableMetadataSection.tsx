@@ -1,40 +1,28 @@
-import S from "./TableMetadataSection.module.css";
+import { t } from "ttag";
 
+import { useUpdateTableMutation } from "metabase/api";
 import {
-  ActiveInput,
   DataSourceInput,
   EntityTypeInput,
-  FieldOrderPicker,
   LayerInput,
-  NameDescriptionInput,
-  SortableFieldList,
   UserInput,
 } from "metabase/metadata/components";
-
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import type {
-  FieldId,
   Table,
   TableDataSource,
-  TableFieldOrder,
   TableVisibilityType2,
   UserId,
 } from "metabase-types/api";
 
-import {
-  usePublishModelsMutation,
-  useUpdateTableFieldsOrderMutation,
-  useUpdateTableMutation,
-} from "metabase/api";
-
-import { t } from "ttag";
-
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import S from "./TableMetadataSection.module.css";
+import { TableSectionGroup } from "./TableSectionGroup";
 
 interface Props {
   table: Table;
 }
 
-export function TableMetadataSection({ table }: Props) {
+export function TableMetadataSettings({ table }: Props) {
   const [updateTable] = useUpdateTableMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
@@ -154,7 +142,7 @@ export function TableMetadataSection({ table }: Props) {
   };
 
   return (
-    <>
+    <TableSectionGroup title={t`Settings`}>
       <div className={S.container}>
         <UserInput
           email={table.owner_email}
@@ -169,7 +157,6 @@ export function TableMetadataSection({ table }: Props) {
           styles={{
             label: {
               gridColumn: 1,
-              fontWeight: "normal",
             },
             input: {
               gridColumn: 2,
@@ -184,7 +171,6 @@ export function TableMetadataSection({ table }: Props) {
           styles={{
             label: {
               gridColumn: 1,
-              fontWeight: "normal",
             },
             input: {
               gridColumn: 2,
@@ -199,7 +185,6 @@ export function TableMetadataSection({ table }: Props) {
           styles={{
             label: {
               gridColumn: 1,
-              fontWeight: "normal",
             },
             input: {
               gridColumn: 2,
@@ -215,7 +200,6 @@ export function TableMetadataSection({ table }: Props) {
           styles={{
             label: {
               gridColumn: 1,
-              fontWeight: "normal",
             },
             input: {
               gridColumn: 2,
@@ -238,6 +222,6 @@ export function TableMetadataSection({ table }: Props) {
           className={S.gridLabelInput}
         /> */}
       </div>
-    </>
+    </TableSectionGroup>
   );
 }

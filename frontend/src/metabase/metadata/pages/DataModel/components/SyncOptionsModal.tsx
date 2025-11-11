@@ -6,15 +6,29 @@ import {
   SyncTableSchemaButton,
 } from "metabase/metadata/components";
 import { Modal, Stack, Text, rem } from "metabase/ui";
-import type { TableId } from "metabase-types/api";
+import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
 interface Props {
   isOpen: boolean;
-  tableId: TableId;
+  databaseIds?: DatabaseId[];
+  schemaIds?: SchemaId[];
+  tableIds?: TableId[];
   onClose: () => void;
 }
 
-export const SyncOptionsModal = ({ isOpen, tableId, onClose }: Props) => {
+export const SyncOptionsModal = ({
+  isOpen,
+  databaseIds,
+  schemaIds,
+  tableIds,
+  onClose,
+}: Props) => {
+  const isSingleTable = // TODO use me for pluralization
+    (databaseIds == null || databaseIds.length === 0) &&
+    (schemaIds == null || schemaIds.length === 0) &&
+    tableIds != null &&
+    tableIds.length === 1;
+
   return (
     <Modal
       opened={isOpen}
@@ -29,12 +43,19 @@ export const SyncOptionsModal = ({ isOpen, tableId, onClose }: Props) => {
             <Text fw="bold">{t`Re-sync schema`}</Text>
 
             <Text c="text-secondary" size="sm">
-              {/* eslint-disable-next-line no-literal-metabase-strings -- Admin settings */}
-              {t`If you’ve made changes to this table in the underlying database that aren’t showing up in Metabase yet, re-syncing the schema can fix that.`}
+              {isSingleTable
+                ? /* eslint-disable-next-line no-literal-metabase-strings -- Admin settings */
+                  t`If you’ve made changes to this table in the underlying database that aren’t showing up in Metabase yet, re-syncing the schema can fix that.`
+                : /* eslint-disable-next-line no-literal-metabase-strings -- Admin settings */
+                  t`If you’ve made changes to thes tables in the underlying databases that aren’t showing up in Metabase yet, re-syncing the schemas can fix that.`}
             </Text>
           </Stack>
 
-          <SyncTableSchemaButton tableId={tableId} />
+          <SyncTableSchemaButton
+            databaseIds={databaseIds}
+            schemaIds={schemaIds}
+            tableIds={tableIds}
+          />
         </Stack>
 
         <Stack gap="md">
@@ -42,14 +63,25 @@ export const SyncOptionsModal = ({ isOpen, tableId, onClose }: Props) => {
             <Text fw="bold">{t`Scan field values`}</Text>
 
             <Text c="text-secondary" size="sm">
-              {/* eslint-disable-next-line no-literal-metabase-strings -- Admin settings */}
-              {t`Metabase can scan the values in this table to enable checkbox filters in dashboards and questions.`}
+              {isSingleTable
+                ? /* eslint-disable-next-line no-literal-metabase-strings -- Admin settings */
+                  t`Metabase can scan the values in this table to enable checkbox filters in dashboards and questions.`
+                : /* eslint-disable-next-line no-literal-metabase-strings -- Admin settings */
+                  t`Metabase can scan the values in these tables to enable checkbox filters in dashboards and questions.`}
             </Text>
           </Stack>
 
-          <RescanTableFieldsButton tableId={tableId} />
+          <RescanTableFieldsButton
+            databaseIds={databaseIds}
+            schemaIds={schemaIds}
+            tableIds={tableIds}
+          />
 
-          <DiscardTableFieldValuesButton tableId={tableId} />
+          <DiscardTableFieldValuesButton
+            databaseIds={databaseIds}
+            schemaIds={schemaIds}
+            tableIds={tableIds}
+          />
         </Stack>
       </Stack>
     </Modal>

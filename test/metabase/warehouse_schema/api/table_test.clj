@@ -5,16 +5,12 @@
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
-   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.lib.limit :as lib.limit]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.queries.core :as card]
-   [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
@@ -1217,14 +1213,14 @@
 
       (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "gold"})
       (is (=? [{:display_name "Products2"}]
-              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data_layer "gold")
+              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "gold")
                    (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
                    (map #(select-keys % [:display_name])))))
 
       (testing "empty filter"
         (is (=? [{:display_name "People"}
                  {:display_name "Products"}]
-                (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data_layer "")
+                (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "")
                      (filter #(= (:db_id %) (mt/id)))       ; prevent stray tables from affecting unit test results
                      (map #(select-keys % [:display_name])))))))))
 
@@ -1357,6 +1353,40 @@
               (is (= 2 (t2/count :model/Card :collection_id collection-id :type :model))))))))))
 ;: TODO (Ngoc 31/10/2025): test publish model to library mark the library as dirty
 
+;; todo many assertions missing regarding definition, but may place those on hydration
+(deftest published-as-model-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-temp [:model/Collection {collection-id :id} {}]
+      (mt/with-premium-features #{:dependencies}
+        (mt/user-http-request :crowberto :post 200 "table/publish-model"
+                              {:table_ids            [(mt/id :venues)]
+                               :target_collection_id collection-id}))
+      (testing "list tables"
+        (let [list-tables #(mt/user-http-request :crowberto :get 200 "table" :db_id (mt/id))]
+          (testing "has :dependencies feature"
+            (let [list-response      (mt/with-premium-features #{:dependencies} (list-tables))
+                  published-as-model (u/index-by :id :published_as_model list-response)]
+              (is (true? (published-as-model (mt/id :venues))))
+              (is (false? (published-as-model (mt/id :users))))))
+          (testing "no :dependencies feature"
+            (let [list-response (mt/with-premium-features #{} (list-tables))]
+              (testing "key absent"
+                (is (not-any? #(contains? % :published_as_model) list-response)))))))
+      ;; todo cleanup/move test
+      (testing "list tables via schema"
+        (let [schema (t2/select-one-fn :schema [:model/Table :schema] (mt/id :venues))
+              url (format "database/%d/schema/%s" (mt/id) schema)
+              list-tables #(mt/user-http-request :crowberto :get 200 url)]
+          (testing "has :dependencies feature"
+            (let [list-response      (mt/with-premium-features #{:dependencies} (list-tables))
+                  published-as-model (u/index-by :id :published_as_model list-response)]
+              (is (true? (published-as-model (mt/id :venues))))
+              (is (false? (published-as-model (mt/id :users))))))
+          (testing "no :dependencies feature"
+            (let [list-response (mt/with-premium-features #{} (list-tables))]
+              (testing "key absent"
+                (is (not-any? #(contains? % :published_as_model) list-response))))))))))
+
 (deftest ^:parallel bulk-edit-visibility-sync-test
   (testing "POST /api/table/edit visibility field synchronization"
     (mt/with-temp [:model/Database {db-id :id} {}
@@ -1425,7 +1455,7 @@
 
           (testing "both tables returned with orphan_only=false"
             (is (= #{table-1-id table-2-id}
-                   (->> (mt/user-http-request :crowberto :get 200 "table" :orphan_only false)
+                   (->> (mt/user-http-request :crowberto :get 200 "table" :orphan-only false)
                         (filter #(= (:db_id %) db-id))
                         (map :id)
                         set))))
@@ -1438,46 +1468,10 @@
             (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
             (testing "after creating card that depends on table-1, only table-2 is orphaned"
               (is (= #{table-2-id}
-                     (->> (mt/user-http-request :crowberto :get 200 "table" :orphan_only true)
+                     (->> (mt/user-http-request :crowberto :get 200 "table" :orphan-only true)
                           (filter #(= (:db_id %) db-id))
                           (map :id)
                           set))))))))))
-
-;; todo stolen from elsewhere, cleanup
-(defn basic-orders
-  "Construct a basic card for dependency testing."
-  []
-  {:name                   "Test card"
-   :database_id            (mt/id)
-   :table_id               (mt/id :orders)
-   :display                :table
-   :query_type             :query
-   :type                   :question
-   :dataset_query          (mt/mbql-query orders)
-   :visualization_settings {}})
-
-(deftest substitute-with-model-test
-  (mt/with-premium-features #{:dependencies}
-    (mt/with-model-cleanup [:model/Card :model/Dependency]
-      (testing "POST /api/table/:id/substitute-model"
-        (let [table-id        (mt/id :orders)
-              table-card      (card/create-card! (basic-orders) {:id (mt/user->id :crowberto)})
-              collection-id   (:id (collection/user->personal-collection (mt/user->id :crowberto)))
-              {:keys [model]} (mt/user-http-request :crowberto :post 200
-                                                    (format "table/%d/substitute-model" table-id)
-                                                    {:collection_id collection-id})
-              updated-card    (t2/select-one :model/Card (:id table-card))]
-          (is (=? {:name "Orders" :collection_id collection-id} model))
-          (testing "created model references the table"
-            (is (some #{[:source-table table-id]} (tree-seq seqable? seq (:dataset_query model)))))
-          (testing "original card references the table")
-          (is (some #{[:source-table table-id]} (tree-seq seqable? seq (:dataset_query table-card))))
-          (testing "card updated to no longer reference the table"
-            (is (not-any? #{[:source-table table-id]} (tree-seq seqable? seq (:dataset_query updated-card))))
-            (is (some #{[:source-card (:id model)]}   (tree-seq seqable? seq (:dataset_query updated-card)))))
-          (testing "cards yield equivalent results"
-            (is (= (:rows (qp/process-query (lib.limit/limit (:dataset_query table-card) 10)))
-                   (:rows (qp/process-query (lib.limit/limit (:dataset_query updated-card) 10)))))))))))
 
 (deftest ^:parallel non-admins-cant-trigger-bulk-sync-test
   (testing "Non-admins should not be allowed to trigger sync"

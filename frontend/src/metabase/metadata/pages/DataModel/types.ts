@@ -15,7 +15,7 @@ export type RouteParams = {
 
 export type ParsedRouteParams = {
   databaseId: DatabaseId | undefined;
-  fieldId: FieldId | undefined;
+  fieldId?: FieldId;
   schemaName: SchemaName | undefined;
   tableId: TableId | undefined;
 };
@@ -25,7 +25,7 @@ export type Column = "nav" | "table" | "field" | "preview";
 export interface ColumnSizeConfig {
   flex: number | string;
   min: number;
-  max: number;
+  max: number | string;
 }
 
 export type MetadataEditAnalyticsDetail =

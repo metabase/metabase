@@ -8,9 +8,29 @@ import {
   CollectionPickerModal,
   type CollectionPickerValueItem,
 } from "metabase/common/components/Pickers/CollectionPicker";
+import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
+import * as urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Flex, Icon, List, Modal, Stack, Text, rem } from "metabase/ui";
-import type { Card, DatabaseId, SchemaId, TableId } from "metabase-types/api";
+import {
+  Box,
+  Button,
+  Checkbox,
+  Flex,
+  Group,
+  Icon,
+  List,
+  Modal,
+  Stack,
+  Text,
+  rem,
+} from "metabase/ui";
+import type {
+  Card,
+  DatabaseId,
+  PublishModelsResponse,
+  SchemaId,
+  TableId,
+} from "metabase-types/api";
 
 interface Props {
   tables?: Set<TableId>;
@@ -29,27 +49,22 @@ export function PublishModelsModal({
   onClose,
   onSuccess,
 }: Props) {
-  const [publishModels, { isLoading }] = usePublishModelsMutation();
-  const { sendErrorToast } = useMetadataToasts();
-  const [isCollectionPickerOpen, setIsCollectionPickerOpen] = useState(false);
-  const [selectedCollection, setSelectedCollection] =
-    useState<CollectionPickerValueItem | null>(null);
-  const [publishedModels, setPublishedModels] = useState<Card[] | null>(null);
+  const [seenPublishModelsInfo, { ack: ackSeenPublishModelsInfo }] =
+    useUserAcknowledgement("seen-publish-models-info");
+  const [showPublishInfo, setShowPublishInfo] = useState(
+    !seenPublishModelsInfo,
+  );
+  const [publishModels] = usePublishModelsMutation();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const reset = () => {
-    setSelectedCollection(null);
-    setIsCollectionPickerOpen(false);
-    setPublishedModels(null);
-  };
-
-  const handleSubmit = async () => {
-    if (!selectedCollection) {
+  const handleSubmit = async (collection: CollectionPickerValueItem) => {
+    if (!collection) {
       sendErrorToast(t`Please select a collection`);
       return;
     }
 
     const collectionId =
-      selectedCollection.id === "root" ? null : Number(selectedCollection.id);
+      collection.id === "root" ? null : Number(collection.id);
 
     const { error, data } = await publishModels({
       table_ids: Array.from(tables),
@@ -60,93 +75,38 @@ export function PublishModelsModal({
 
     if (error) {
       sendErrorToast(t`Failed to publish models`);
-    } else {
-      setPublishedModels(data?.models ?? []);
+    } else if (data) {
+      sendSuccessToast(<ToastSuccessMessage response={data} />);
       onSuccess?.();
+      handleClose();
     }
   };
 
   const handleClose = () => {
-    onClose();
-    reset();
+    setShowPublishInfo(!seenPublishModelsInfo);
+    onClose?.();
   };
 
-  const tableCount = tables.size;
-  const schemaCount = schemas.size;
-  const databaseCount = databases.size;
-
-  const itemsDescription = (() => {
-    const parts = [];
-    if (tableCount > 0) {
-      parts.push(t`${tableCount} table${tableCount !== 1 ? "s" : ""}`);
-    }
-    if (schemaCount > 0) {
-      parts.push(t`${schemaCount} schema${schemaCount !== 1 ? "s" : ""}`);
-    }
-    if (databaseCount > 0) {
-      parts.push(t`${databaseCount} database${databaseCount !== 1 ? "s" : ""}`);
-    }
-    return parts.join(", ");
-  })();
+  if (!isOpen) {
+    return null;
+  }
+  if (showPublishInfo) {
+    return (
+      <AcknowledgePublishModelsModal
+        isOpen={true}
+        handleClose={({ acknowledged }) => {
+          if (acknowledged) {
+            ackSeenPublishModelsInfo();
+          }
+          setShowPublishInfo(false);
+        }}
+      />
+    );
+  }
 
   return (
     <>
-      <Modal
-        opened={isOpen}
-        padding="xl"
-        size={rem(512)}
-        title={publishedModels ? t`Created models` : t`Create models`}
-        onClose={handleClose}
-      >
-        {publishedModels ? (
-          <PublishedModelsList
-            publishedModels={publishedModels}
-            handleClose={handleClose}
-            collection={selectedCollection}
-          />
-        ) : (
-          <Stack gap="md" pt="sm">
-            <Text>
-              {t`This will create a model for each selected table in the chosen collection.`}
-            </Text>
-
-            <Text size="sm" c="text-medium">
-              {t`Selected items: ${itemsDescription}`}
-            </Text>
-
-            <Flex align="center" gap="sm">
-              <Text>{t`Collection to publish to: `}</Text>
-              <Button
-                size="xs"
-                leftSection={
-                  selectedCollection ? <Icon name="collection" /> : undefined
-                }
-                variant="default"
-                onClick={() => setIsCollectionPickerOpen(true)}
-                style={{ justifyContent: "flex-start" }}
-              >
-                {selectedCollection
-                  ? selectedCollection.name
-                  : t`Choose a collection...`}
-              </Button>
-            </Flex>
-
-            <Flex justify="flex-end" gap="sm">
-              <Button onClick={handleClose}>{t`Cancel`}</Button>
-
-              <Button
-                loading={isLoading}
-                disabled={!selectedCollection}
-                variant="filled"
-                onClick={handleSubmit}
-              >
-                {t`Publish`}
-              </Button>
-            </Flex>
-          </Stack>
-        )}
-      </Modal>
-      {isCollectionPickerOpen && (
+      {
         <CollectionPickerModal
           value={{
             id: "root",
@@ -157,17 +117,82 @@ export function PublishModelsModal({
             hasConfirmButtons: true,
             showRootCollection: true,
             showPersonalCollections: true,
-            confirmButtonText: t`Select for publishing`,
+            confirmButtonText: t`Publish here`,
           }}
-          title={t`Select a collection for publishing`}
-          onClose={() => setIsCollectionPickerOpen(false)}
+          title={t`Pick the collection to publish this table in`}
+          onClose={() => {
+            handleClose();
+          }}
           onChange={(collection) => {
-            setSelectedCollection(collection);
-            setIsCollectionPickerOpen(false);
+            handleSubmit(collection);
           }}
         />
-      )}
+      }
     </>
+  );
+}
+
+function ToastSuccessMessage({
+  response,
+}: {
+  response: PublishModelsResponse;
+}) {
+  return (
+    <Group gap="xl" display="inline-flex" align="center" wrap="nowrap">
+      <span>{t`Published`}</span>
+      <Button
+        component={Link}
+        to={getLink(response)}
+        variant="subtle"
+      >{t`See it`}</Button>
+    </Group>
+  );
+}
+
+function getLink(response: PublishModelsResponse) {
+  if (response.created_count === 1) {
+    return urls.model(response.models[0]); // link to model
+  }
+
+  return urls.collection(response.target_collection);
+}
+
+function AcknowledgePublishModelsModal({
+  isOpen,
+  handleClose,
+}: {
+  isOpen: boolean;
+  handleClose: ({ acknowledged }: { acknowledged: boolean }) => void;
+}) {
+  const [isAcknowledged, setIsAcknowledged] = useState(false);
+  return (
+    <Modal
+      opened={isOpen}
+      padding="xl"
+      size={rem(512)}
+      title={t`What publishing a table does`}
+      onClose={() => handleClose({ acknowledged: isAcknowledged })}
+    >
+      <Text pt="sm">
+        {t`Publishing a table means we'll create a model based on it and save it in the collection you choose so that it’s easy for your end users to find it.`}
+      </Text>
+
+      <Group pt="xl" justify="space-between">
+        <Box>
+          <Checkbox
+            label={t`Don’t show this to me again`}
+            checked={isAcknowledged}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+              setIsAcknowledged(event.target.checked)
+            }
+          />
+        </Box>
+        <Button
+          onClick={() => handleClose({ acknowledged: isAcknowledged })}
+          variant="filled"
+        >{t`Got it`}</Button>
+      </Group>
+    </Modal>
   );
 }
 

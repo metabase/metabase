@@ -2,10 +2,14 @@ import type { CollectionPickerItem } from "metabase/common/components/Pickers/Co
 import type { DataPickerItem } from "metabase/common/components/Pickers/DataPicker/types";
 import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
 import type {
+  CardDisplayType,
+  CardType,
   Database,
+  Dataset,
   DatasetQuery,
   NativeQuerySnippet,
   RecentCollectionItem,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 export type QueryEditorSidebarType =
@@ -25,18 +29,25 @@ export type QueryEditorDatabasePickerItem = Omit<
   "tables" | "schemas"
 >;
 
+export type QueryEditorModalSnippet =
+  | NativeQuerySnippet
+  | Partial<Omit<NativeQuerySnippet, "id">>;
+
 export type QueryEditorUiState = {
+  lastRunResult: Dataset | null;
   lastRunQuery: DatasetQuery | null;
   selectionRange: SelectionRange[];
-  modalSnippet:
-    | NativeQuerySnippet
-    | Partial<Omit<NativeQuerySnippet, "id">>
-    | null;
+  modalSnippet: QueryEditorModalSnippet | null;
   modalType: QueryEditorModalType | null;
   sidebarType: QueryEditorSidebarType | null;
 };
 
 export type QueryEditorUiOptions = {
+  cardType?: CardType;
+  cardDisplay?: CardDisplayType;
+  cardVizSettings?: VisualizationSettings;
+  readOnly?: boolean;
+  canConvertToNative?: boolean;
   convertToNativeTitle?: string;
   convertToNativeButtonLabel?: string;
   shouldDisableDataPickerItem?: (item: QueryEditorDataPickerItem) => boolean;

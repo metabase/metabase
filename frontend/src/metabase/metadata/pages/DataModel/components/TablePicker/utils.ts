@@ -18,8 +18,8 @@ export function hasChildren(type: ItemType): boolean {
   return type !== "field";
 }
 
-export function getUrl(value: TreePath) {
-  return getUrl_({
+export function getUrl(baseUrl: string, value: TreePath) {
+  return getUrl_(baseUrl, {
     fieldId: undefined,
     tableId: undefined,
     databaseId: undefined,
@@ -29,16 +29,14 @@ export function getUrl(value: TreePath) {
 }
 
 // Returns a new state object with all the nodes along the path expanded.
+// Note: This only expands parent containers (database, schema) but NOT tables,
+// to prevent unwanted expansion when navigating via checkbox selection.
 export function expandPath(
   state: ExpandedState,
   path: TreePath,
 ): ExpandedState {
   return {
     ...state,
-    [toKey({
-      ...path,
-      fieldId: undefined,
-    })]: true,
     [toKey({
       ...path,
       fieldId: undefined,
@@ -148,6 +146,11 @@ export function flatten(
 }
 
 export function sort(nodes: TreeNode[]): TreeNode[] {
+  if (nodes[0].type === "field") {
+    // sorting is done on BE
+    return nodes;
+  }
+
   return Array.from(nodes).sort((a, b) => {
     return a.label.localeCompare(b.label);
   });

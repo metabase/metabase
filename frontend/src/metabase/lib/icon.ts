@@ -27,6 +27,9 @@ export type ObjectWithModel = {
   moderated_status?: "verified" | string | null;
   display?: CardDisplayType | null;
   type?: Collection["type"];
+  collection_type?: Collection["type"];
+  location?: Collection["location"];
+  effective_location?: Collection["location"];
   is_personal?: boolean;
 };
 
@@ -45,7 +48,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   snippet: "unknown",
   document: "document",
   timeline: "calendar",
-  transform: "refresh_downstream",
+  transform: "transform",
   user: "person",
 };
 

@@ -1,23 +1,16 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { jt, t } from "ttag";
 
 import { useEditTablesMutation } from "metabase/api";
 import {
   DataSourceInput,
+  EntityTypeInput,
   LayerInput,
   UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import {
-  Box,
-  Button,
-  Group,
-  Icon,
-  Stack,
-  Title,
-  Tooltip,
-  rem,
-} from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Title, Tooltip } from "metabase/ui";
 import type {
   TableDataLayer,
   TableDataSource,
@@ -25,9 +18,11 @@ import type {
 } from "metabase-types/api";
 
 import { useSelection } from "../../contexts/SelectionContext";
+import { SyncOptionsModal } from "../SyncOptionsModal";
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 
 import S from "./TableMetadataSection.module.css";
+import { TableSectionGroup } from "./TableSectionGroup";
 
 export function EditTableMetadata() {
   const {
@@ -44,23 +39,29 @@ export function EditTableMetadata() {
     TableDataSource | "unknown" | null
   >(null);
   const [email, setEmail] = useState<string | null>(null);
+  const [entityType, setEntityType] = useState<string | null>(null);
   const [userId, setUserId] = useState<UserId | "unknown" | null>(null);
+  const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
+    useDisclosure();
 
   const handleSubmit = async ({
     dataLayer,
     dataSource,
     email,
+    entityType,
     userId,
   }: {
     dataLayer?: TableDataLayer | null;
     dataSource?: TableDataSource | "unknown" | null;
     email?: string | null;
+    entityType?: string | null;
     userId?: UserId | "unknown" | null;
   }) => {
     const { error } = await editTables({
       table_ids: Array.from(selectedTables),
       schema_ids: Array.from(selectedSchemas),
       database_ids: Array.from(selectedDatabases),
+      entity_type: entityType ?? undefined,
       data_layer: dataLayer ?? undefined,
       data_source: dataSource === "unknown" ? null : (dataSource ?? undefined),
       owner_email:
@@ -90,11 +91,14 @@ export function EditTableMetadata() {
     if (userId) {
       setUserId(userId);
     }
+    if (entityType) {
+      setEntityType(entityType);
+    }
   };
 
   return (
     <>
-      <Stack gap="lg">
+      <Stack gap="md">
         <Group
           align="center"
           c="text-light"
@@ -103,106 +107,139 @@ export function EditTableMetadata() {
           fs="lg"
           lh="normal"
           wrap="nowrap"
-          mt="xl"
-          px="xl"
-          pt="md"
+          px="lg"
+          pt="lg"
           justify="space-between"
         >
-          <Group>
-            <Title
-              order={4}
-              c="text-dark"
-              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-            >
-              <Icon name="table2" size={20} />
-              {jt`${selectedItemsCount} item${selectedItemsCount === 1 ? "" : "s"} selected`}
-            </Title>
-          </Group>
-          <Group>
-            <Button
-              onClick={() => setIsCreateModelsModalOpen(true)}
-              p="sm"
-              leftSection={
-                <Tooltip
-                  label={t`Create model${selectedItemsCount === 1 ? "" : "s"}`}
-                >
-                  <Icon name="model" />
-                </Tooltip>
-              }
-              style={{
-                width: 40,
-              }}
-            />
-          </Group>
+          <Title
+            order={4}
+            c="text-dark"
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+          >
+            <Icon name="collection2" size={20} />
+            {jt`${selectedItemsCount} item${selectedItemsCount === 1 ? "" : "s"} selected`}
+          </Title>
         </Group>
 
-        <Box className={S.container} px="xl">
-          <LayerInput
-            clearable
-            value={dataLayer}
-            onChange={(newDataLayer) =>
-              handleSubmit({ dataLayer: newDataLayer })
-            }
-            className={S.gridLabelInput}
-            styles={{
-              label: {
-                gridColumn: 1,
-                fontWeight: "normal",
-              },
-              input: {
-                gridColumn: 2,
-              },
-            }}
-          />
+        <Box px="lg">
+          <Group gap="sm">
+            <Box flex={1}>
+              <Button
+                leftSection={<Icon name="settings" />}
+                onClick={openSyncModal}
+                style={{
+                  width: "100%",
+                }}
+              >
+                {t`Sync settings`}
+              </Button>
+            </Box>
+            <Box flex={1}>
+              <Tooltip label={t`Create models and publish to a collection`}>
+                <Button
+                  onClick={() => setIsCreateModelsModalOpen(true)}
+                  p="sm"
+                  leftSection={<Icon name="add_folder" />}
+                  style={{
+                    width: "100%",
+                  }}
+                >{t`Publish`}</Button>
+              </Tooltip>
+            </Box>
+          </Group>
+        </Box>
 
-          <UserInput
-            clearable
-            email={email}
-            label={t`Owner`}
-            userId={userId}
-            onEmailChange={(newEmail) => {
-              handleSubmit({ email: newEmail });
-            }}
-            onUserIdChange={(newUserId) => {
-              handleSubmit({ userId: newUserId });
-            }}
-            className={S.gridLabelInput}
-            styles={{
-              label: {
-                gridColumn: 1,
-                fontWeight: "normal",
-              },
-              input: {
-                gridColumn: 2,
-              },
-            }}
-          />
+        <Box px="lg">
+          <TableSectionGroup title={t`Attributes`}>
+            <Box className={S.container}>
+              <UserInput
+                clearable
+                email={email}
+                label={t`Owner`}
+                userId={userId}
+                onEmailChange={(newEmail) => {
+                  handleSubmit({ email: newEmail });
+                }}
+                onUserIdChange={(newUserId) => {
+                  handleSubmit({ userId: newUserId });
+                }}
+                className={S.gridLabelInput}
+                styles={{
+                  label: {
+                    gridColumn: 1,
+                  },
+                  input: {
+                    gridColumn: 2,
+                  },
+                }}
+              />
 
-          <DataSourceInput
-            clearable
-            value={dataSource}
-            onChange={(newDataSource) =>
-              handleSubmit({ dataSource: newDataSource })
-            }
-            className={S.gridLabelInput}
-            styles={{
-              label: {
-                gridColumn: 1,
-                fontWeight: "normal",
-              },
-              input: {
-                gridColumn: 2,
-              },
-            }}
-          />
+              <LayerInput
+                clearable
+                value={dataLayer}
+                onChange={(newDataLayer) =>
+                  handleSubmit({ dataLayer: newDataLayer })
+                }
+                className={S.gridLabelInput}
+                styles={{
+                  label: {
+                    gridColumn: 1,
+                  },
+                  input: {
+                    gridColumn: 2,
+                  },
+                }}
+              />
+
+              <EntityTypeInput
+                value={entityType}
+                onChange={(entityType) => handleSubmit({ entityType })}
+                styles={{
+                  label: {
+                    gridColumn: 1,
+                  },
+                  input: {
+                    gridColumn: 2,
+                  },
+                }}
+                className={S.gridLabelInput}
+              />
+
+              <DataSourceInput
+                clearable
+                value={dataSource}
+                onChange={(newDataSource) =>
+                  handleSubmit({ dataSource: newDataSource })
+                }
+                className={S.gridLabelInput}
+                styles={{
+                  label: {
+                    gridColumn: 1,
+                  },
+                  input: {
+                    gridColumn: 2,
+                  },
+                }}
+              />
+            </Box>
+          </TableSectionGroup>
         </Box>
       </Stack>
+
       <PublishModelsModal
         tables={selectedTables}
         schemas={selectedSchemas}
         databases={selectedDatabases}
         isOpen={isCreateModelsModalOpen}
         onClose={() => setIsCreateModelsModalOpen(false)}
+      />
+
+      <SyncOptionsModal
+        isOpen={isSyncModalOpen}
+        databaseIds={Array.from(selectedDatabases)}
+        schemaIds={Array.from(selectedSchemas)}
+        tableIds={Array.from(selectedTables)}
+        onClose={closeSyncModal}
       />
     </>
   );

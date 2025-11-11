@@ -10,7 +10,6 @@ import {
   Group,
   Icon,
   Input,
-  Menu,
   Popover,
   Stack,
   Tooltip,
@@ -22,7 +21,6 @@ import type { RouteParams } from "../../../types";
 import type { ChangeOptions, TreePath } from "../types";
 import { getFiltersCount } from "../utils";
 
-import { EditTableMetadataModal } from "./EditTableMetadataModal";
 import { FilterPopover, type FilterState } from "./FilterPopover";
 import { PublishModelsModal } from "./PublishModelsModal";
 import { SearchNew } from "./SearchNew";
@@ -41,13 +39,8 @@ export function TablePicker({
   className,
   onChange,
 }: TablePickerProps) {
-  const {
-    selectedTables,
-    selectedSchemas,
-    selectedDatabases,
-    resetSelection,
-    hasSelectedItems,
-  } = useSelection();
+  const { selectedTables, selectedSchemas, selectedDatabases, resetSelection } =
+    useSelection();
 
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
@@ -62,18 +55,10 @@ export function TablePicker({
   const [isOpen, { toggle, close }] = useDisclosure();
   const filtersCount = getFiltersCount(filters);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
   const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
     null,
   );
-
-  function handleModalUpdate() {
-    if (onUpdateCallback) {
-      onUpdateCallback();
-    }
-    resetSelection();
-  }
 
   function handlePublishSuccess() {
     if (onUpdateCallback) {
@@ -103,7 +88,7 @@ export function TablePicker({
         <Input
           flex="1"
           leftSection={<Icon name="search" />}
-          placeholder={t`Search tables and models`}
+          placeholder={t`Search tables`}
           rightSection={
             <Tooltip
               label={
@@ -157,50 +142,6 @@ export function TablePicker({
             />
           </Popover.Dropdown>
         </Popover>
-
-        <Menu position="bottom-start">
-          <Menu.Target>
-            <Tooltip
-              label={
-                hasSelectedItems
-                  ? t`Edit or publish selected tables`
-                  : t`No tables selected`
-              }
-            >
-              <Button
-                p="sm"
-                leftSection={<Icon name="ellipsis" />}
-                disabled={!hasSelectedItems}
-                style={{
-                  width: 40,
-                }}
-              />
-            </Tooltip>
-          </Menu.Target>
-
-          <Menu.Dropdown>
-            <Menu.Item
-              leftSection={<Icon name="pencil" />}
-              onClick={() => setIsModalOpen(true)}
-            >
-              {t`Edit`}
-            </Menu.Item>
-
-            <Menu.Item
-              leftSection={<Icon name="model" />}
-              rightSection={
-                <Tooltip
-                  label={t`Create a model for each table and place them in a given collection.`}
-                >
-                  <Icon name="info_outline" />
-                </Tooltip>
-              }
-              onClick={() => setIsCreateModelsModalOpen(true)}
-            >
-              {t`Create models`}
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
       </Group>
 
       <Box style={{ overflow: "auto" }}>
@@ -219,15 +160,6 @@ export function TablePicker({
           />
         )}
       </Box>
-
-      <EditTableMetadataModal
-        tables={selectedTables}
-        schemas={selectedSchemas}
-        databases={selectedDatabases}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onUpdate={handleModalUpdate}
-      />
 
       <PublishModelsModal
         tables={selectedTables}

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect } from "react";
+import { useContext, useEffect } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -7,6 +7,7 @@ import { useListTablesQuery } from "metabase/api/table";
 import { Box, Checkbox, Flex, Icon, Loader, Stack, Text } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
+import { DataModelContext } from "../../../DataModelContext";
 import { useSelection } from "../../../contexts/SelectionContext";
 import type { RouteParams } from "../../../types";
 import { getUrl, parseRouteParams } from "../../../utils";
@@ -29,6 +30,7 @@ export function SearchNew({
 }: SearchNewProps) {
   const { selectedTables, setSelectedTables } = useSelection();
   const routeParams = parseRouteParams(params);
+  const { baseUrl } = useContext(DataModelContext);
   const {
     data: tables,
     isLoading,
@@ -108,14 +110,10 @@ export function SearchNew({
               p="sm"
               align="center"
               gap="sm"
-              to={getUrl({
+              to={getUrl(baseUrl, {
                 databaseId: table.db_id,
                 schemaName: table.schema,
                 tableId: table.id,
-                collectionId: undefined,
-                fieldId: undefined,
-                fieldName: undefined,
-                modelId: undefined,
               })}
               pos="relative"
               left={0}

@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { type ReactNode, useCallback } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
@@ -7,7 +7,7 @@ export const useMetadataToasts = () => {
   const [sendToast] = useToast();
 
   const sendSuccessToast = useCallback(
-    (message: string, undo?: () => void) => {
+    (message: string | ReactNode, undo?: () => void) => {
       sendToast({
         action: undo,
         icon: "check",

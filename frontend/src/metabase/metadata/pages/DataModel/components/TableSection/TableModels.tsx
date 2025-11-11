@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import { Box, Group, Icon, Loader, Stack, Text } from "metabase/ui";
@@ -5,6 +6,7 @@ import { useListNodeDependentsQuery } from "metabase-enterprise/api/dependencies
 import type { Table } from "metabase-types/api";
 
 import S from "./TableModels.module.css";
+import { TableSectionGroup } from "./TableSectionGroup";
 
 interface Props {
   table: Table;
@@ -43,39 +45,43 @@ export function TableModels({ table }: Props) {
   }
 
   return (
-    <Box className={S.container}>
-      <Stack gap={8}>
-        <Text fw="bold" size="sm" lh="16px">
-          {t`This table has been published as a model`}
-        </Text>
-        {models.map((model) => {
-          if (!("name" in model.data) || !("collection" in model.data)) {
-            return null;
-          }
-          return (
-            <Box key={model.id} className={S.modelItem}>
-              <Group gap={8} wrap="nowrap" align="flex-start">
-                <Icon name="model" size={16} c="brand" />
-                <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-                  <Text fw="bold" size="md" lh="md" className={S.modelName}>
-                    {model.data.name}
-                  </Text>
-                  {model.data.collection && (
-                    <Text
-                      c="text-medium"
-                      size="xs"
-                      lh="16px"
-                      className={S.collectionName}
-                    >
-                      {model.data.collection.name}
+    <Box px="lg">
+      <TableSectionGroup title={t`This table has been published as a model`}>
+        <Stack gap={8}>
+          {models.map((model) => {
+            if (!("name" in model.data) || !("collection" in model.data)) {
+              return null;
+            }
+            return (
+              <Box
+                key={model.id}
+                className={S.modelItem}
+                component={Link}
+                to={`/model/${model.id}`}
+              >
+                <Group gap={8} wrap="nowrap" align="flex-start">
+                  <Icon name="model" size={16} c="brand" />
+                  <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+                    <Text fw="bold" size="md" lh="md" className={S.modelName}>
+                      {model.data.name}
                     </Text>
-                  )}
-                </Stack>
-              </Group>
-            </Box>
-          );
-        })}
-      </Stack>
+                    {model.data.collection && (
+                      <Text
+                        c="text-medium"
+                        size="xs"
+                        lh="16px"
+                        className={S.collectionName}
+                      >
+                        {model.data.collection.name}
+                      </Text>
+                    )}
+                  </Stack>
+                </Group>
+              </Box>
+            );
+          })}
+        </Stack>
+      </TableSectionGroup>
     </Box>
   );
 }

@@ -11,7 +11,7 @@ import { createTransform } from "./api";
 import { getTableId } from "./e2e-qa-databases-helpers";
 
 export function visitTransform(transformId: TransformId) {
-  cy.visit(`/admin/transforms/${transformId}`);
+  cy.visit(`/data-studio/transforms/${transformId}`);
 }
 
 const WAIT_TIMEOUT = 10000;

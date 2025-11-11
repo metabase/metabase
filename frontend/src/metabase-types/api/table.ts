@@ -1,4 +1,5 @@
 import type { Card, CardType } from "./card";
+import type { Collection } from "./collection";
 import type { Database, DatabaseId, InitialSyncStatus } from "./database";
 import type { DatasetData } from "./dataset";
 import type { Field, FieldId } from "./field";
@@ -65,8 +66,11 @@ export type Table = {
   data_layer: TableDataLayer | null;
   owner_email: string | null;
   owner_user_id: UserId | null;
+  estimated_row_count?: number | null;
   transform_id: TransformId | null; // readonly
   data_update_frequency: string; // readonly
+  view_count: number;
+  estimated_row_count: number;
 };
 
 export type SchemaName = string;
@@ -172,6 +176,25 @@ export interface EditTablesRequest {
   data_layer?: TableDataLayer | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
+  entity_type?: string | null;
+}
+
+export interface SyncTablesSchemaRequest {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
+}
+
+export interface RescanTablesValuesRequest {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
+}
+
+export interface DiscardTablesValuesRequest {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
 }
 
 export type UploadManagementResponse = Table[];
@@ -195,6 +218,7 @@ export interface PublishModelsRequest {
 export interface PublishModelsResponse {
   created_count: number;
   models: Card[];
+  target_collection: Collection;
 }
 
 export interface SubstituteModelRequest {
