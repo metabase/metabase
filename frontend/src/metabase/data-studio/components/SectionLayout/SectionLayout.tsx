@@ -3,7 +3,17 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { Box, Button, Flex, Group, Stack, Tabs } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Divider,
+  Flex,
+  Group,
+  Icon,
+  type IconName,
+  Stack,
+  Title,
+} from "metabase/ui";
 
 import S from "./SectionLayout.module.css";
 
@@ -24,11 +34,11 @@ export function SectionLayout({ title, tabs, children }: SectionLayoutProps) {
         align={tabs ? "start" : "center"}
         aria-label={t`Navigation bar`}
       >
-        <Stack gap="sm" pt="md" py={tabs ? undefined : "md"}>
+        <Stack gap="sm" py="md">
           {title}
           {tabs}
         </Stack>
-        <Group my="md">
+        <Group py="md">
           <PLUGIN_METABOT.MetabotDataStudioButton />
           <Button component={Link} to="/">
             {t`Exit data studio`}
@@ -45,23 +55,16 @@ export function SectionLayout({ title, tabs, children }: SectionLayoutProps) {
 
 type SectionTitleProps = {
   title: string;
-  description?: string;
 };
 
-export function SectionTitle({ title, description }: SectionTitleProps) {
-  return (
-    <Group gap="md">
-      <Box fz="lg" lh="h3">
-        {title}
-      </Box>
-      {description != null && <Box c="text-secondary">{description}</Box>}
-    </Group>
-  );
+export function SectionTitle({ title }: SectionTitleProps) {
+  return <Title order={4}>{title}</Title>;
 }
 
 export type SectionTab = {
   label: string;
   to: string;
+  icon: IconName;
   isSelected: boolean;
 };
 
@@ -70,22 +73,29 @@ type SectionTabsProps = {
 };
 
 export function SectionTabs({ tabs }: SectionTabsProps) {
-  const selectedTab = tabs.find((tab) => tab.isSelected);
-
   return (
-    <Tabs value={selectedTab ? selectedTab.to : null}>
-      <Tabs.List style={{ "--tab-border-color": "transparent" }}>
-        {tabs.map((tab) => (
-          <Tabs.Tab
-            key={tab.to}
+    <Group gap="sm">
+      {tabs.map((tab, index) => {
+        return (
+          <Button
+            key={index}
             component={Link}
-            value={tab.to}
-            {...{ to: tab.to }}
+            to={tab.to}
+            size="sm"
+            radius="xl"
+            c={tab.isSelected ? "brand" : undefined}
+            bg={tab.isSelected ? "brand-light" : "bg-secondary"}
+            bd="none"
+            leftSection={<Icon name={tab.icon} />}
           >
             {tab.label}
-          </Tabs.Tab>
-        ))}
-      </Tabs.List>
-    </Tabs>
+          </Button>
+        );
+      })}
+    </Group>
   );
+}
+
+export function SectionTabDivider() {
+  return <Divider my="sm" orientation="vertical" />;
 }
