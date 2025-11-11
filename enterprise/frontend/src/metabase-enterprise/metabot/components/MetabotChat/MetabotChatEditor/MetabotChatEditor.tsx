@@ -3,6 +3,7 @@ import HardBreak from "@tiptap/extension-hard-break";
 import Paragraph from "@tiptap/extension-paragraph";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import Text from "@tiptap/extension-text";
+import { TextSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
@@ -113,8 +114,9 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
             const serialized = serializeTiptapToMetabotMessage(doc.toJSON());
             e.clipboardData?.setData("text/plain", serialized);
 
-            // Delete the selected text for cut operation
+            // Delete the selected text and position cursor at cut location
             const tr = view.state.tr.deleteRange(from, to);
+            tr.setSelection(TextSelection.create(tr.doc, from));
             view.dispatch(tr);
 
             return true;
