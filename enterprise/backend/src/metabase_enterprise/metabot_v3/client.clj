@@ -25,7 +25,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.o11y :refer [with-span]])
   (:import
-   (java.io BufferedReader)
+   (java.io BufferedReader Closeable FilterInputStream InputStream)
    (org.eclipse.jetty.io EofException)))
 
 (set! *warn-on-reflection* true)
@@ -108,6 +108,19 @@
 (defn- generate-embeddings-endpoint []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/embeddings"))
 
+(defn- quick-closing-body
+  "Some requests come with body wrapped in ContentLengthInputStream, and that will never close the underlying stream.
+  So we just close the client itself.
+
+  Please use `Connection: close` header when using this function to prevent connection being reused by HttpClient.
+
+  See: https://github.com/dakrone/clj-http/issues/627
+  Also: metabase-enterprise.metabot-v3.api-test/closing-connection-test (for 'chunked')"
+  [response]
+  (proxy [FilterInputStream] [^InputStream (:body response)]
+    (close []
+      (.close ^Closeable (:http-client response)))))
+
 (mu/defn streaming-request :- :any
   "Make a streaming V2 request to the AI Service
 
@@ -149,10 +162,16 @@
                                                "Content-Type"              "application/json;charset=UTF-8"
                                                "x-metabase-instance-token" (premium-features/premium-embedding-token)
                                                "x-metabase-session-token"  session-id
-                                               "x-metabase-url"            (system/site-url)}
+                                               "x-metabase-url"            (system/site-url)
+                                               ;; close conn so it's not reused so that when we use
+                                               ;; `quick-closing-body` there are no weird problems
+                                               "Connection"                "close"}
                             :body             (->json-bytes body)
                             :throw-exceptions false
-                            :as :stream}
+                            :as :stream
+                            ;; Don't compress streaming responses - adds latency and breaks
+                            ;; cancellation when streams are incomplete
+                            :decompress-body  false}
                      *debug* (assoc :debug true))
           response (post! url options)
           lines    (when on-complete
@@ -162,13 +181,13 @@
           canceled (atom nil)]
       (metabot-v3.context/log (:body response) :llm.log/llm->be)
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
-      (when-not (= (:status response) 200)
+      (when-not (#{200 202} (:status response))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request  (assoc options :body body)
                          :response response})))
       (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
-        ;; exiting with-open will close underlying request
-        (with-open [^BufferedReader response-reader (io/reader (:body response))]
+        ;; see `quick-closing-body` docs and see `Connection` header supporting this behavior
+        (with-open [^BufferedReader response-reader (io/reader (quick-closing-body response))]
           ;; Response from the AI Service will send response parts separated by newline
           (loop [^String line (.readLine response-reader)]
             (cond
@@ -186,8 +205,12 @@
                     (.write (.getBytes "\n"))
                     ;; Immediately flush so it feels fluid on the frontend
                     (.flush))
-                  (catch EofException _ nil))
-                (recur (.readLine response-reader))))))
+                  (catch EofException _
+                    (reset! canceled true)
+                    (log/debug "Request cancelled, through exception")))
+                (when-not @canceled
+                  ;; `recur` cannot be inside of `try`, so we have to signal stop somehow
+                  (recur (.readLine response-reader)))))))
         (when on-complete
           (on-complete @lines))))
     (catch Throwable e
