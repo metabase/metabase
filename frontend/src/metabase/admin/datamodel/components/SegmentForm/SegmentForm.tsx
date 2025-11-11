@@ -11,6 +11,7 @@ import {
 import Button from "metabase/common/components/Button/Button";
 import { FieldSet } from "metabase/common/components/FieldSet";
 import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { SegmentEditor } from "metabase/querying/segments/components/SegmentEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
@@ -147,7 +148,7 @@ const SegmentFormActions = ({
       <FormSubmitButton type="submit" primary={isValid} disabled={!isValid}>
         {t`Save changes`}
       </FormSubmitButton>
-      <Button as={Link} to="/admin/datamodel/segments">
+      <Button as={Link} to={Urls.dataStudioSegments()}>
         {t`Cancel`}
       </Button>
     </div>

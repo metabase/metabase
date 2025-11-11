@@ -24,6 +24,9 @@ export function ModelingSectionLayout({
   params,
 }: ModelingSectionLayoutProps) {
   const isGlossaryActive = location.pathname === Urls.dataStudioGlossary();
+  const isSegmentsActive = location.pathname.startsWith(
+    Urls.dataStudioSegments(),
+  );
 
   return (
     <SectionLayout title={<SectionTitle title={t`Modeling`} />}>
@@ -32,6 +35,7 @@ export function ModelingSectionLayout({
           collectionId={params?.collectionId}
           snippetId={params?.snippetId}
           isGlossaryActive={isGlossaryActive}
+          isSegmentsActive={isSegmentsActive}
         />
         <Box flex={1}>{children}</Box>
       </Flex>

@@ -77,3 +77,19 @@ export function dataStudioSnippetDependencies(snippetId: NativeQuerySnippetId) {
 export function newDataStudioSnippet() {
   return `${dataStudioModeling()}/snippets/new`;
 }
+
+export function dataStudioSegments() {
+  return `${dataStudioModeling()}/segments`;
+}
+
+export function newDataStudioSegment() {
+  return `${dataStudioModeling()}/segments/new`;
+}
+
+export function dataStudioSegment(segmentId: number) {
+  return `${dataStudioModeling()}/segments/${segmentId}`;
+}
+
+export function dataStudioSegmentRevisions(segmentId: number) {
+  return `${dataStudioSegment(segmentId)}/revisions`;
+}

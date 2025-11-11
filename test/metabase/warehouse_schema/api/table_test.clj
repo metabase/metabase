@@ -11,12 +11,14 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [metabase.warehouse-schema.api.table :as api.table]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (java.util.concurrent CountDownLatch TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -65,7 +67,8 @@
      :view_count  0
      :metrics     []
      :segments    []
-     :is_writable (or (= driver :h2) nil)})))
+     :is_writable (or (= driver :h2) nil)
+     :transform   nil})))
 
 (defn- field-defaults []
   (merge
@@ -405,9 +408,13 @@
   (testing "PUT /api/table/:id"
     (mt/with-temp [:model/Table table]
       (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
-                            {:display_name    "Userz"
-                             :visibility_type "hidden"
-                             :description     "What a nice table!"})
+                            {:display_name     "Userz"
+                             :description      "What a nice table!"
+                             ;; bulk-metadata-editing
+                             :data_source      "metabase-transform"
+                             :data_layer       "copper"
+                             :owner_email      "bob@org.com"
+                             :owner_user_id    (mt/user->id :crowberto)})
       (is (= (merge
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :updated_at)
@@ -418,7 +425,13 @@
                :schema          ""
                :visibility_type "hidden"
                :display_name    "Userz"
-               :is_writable     nil})
+               :is_writable     nil
+               ;; bulk-metadata-editing
+               :data_source      "metabase-transform"
+               :data_layer       "copper"
+               ;; exclusive later (not now)
+               :owner_email      "bob@org.com"
+               :owner_user_id    (mt/user->id :crowberto)})
              (dissoc (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table)))
                      :updated_at))))))
 
@@ -1172,3 +1185,306 @@
         (testing "sync called?"
           (is (true?
                (deref sync-called? timeout :sync-never-called)))))))
+
+;; DEMOWARE bulk-editing APIS
+(deftest ^:parallel list-table-filtering-test
+  (testing "term filtering"
+
+    (is (=? [{:display_name "Users"}]
+            (->> (mt/user-http-request :crowberto :get 200 "table" :term "Use")
+                 (filter #(= (:db_id %) (mt/id)))           ; prevent stray tables from affecting unit test results
+                 (map #(select-keys % [:display_name])))))
+
+    (testing "wildcard"
+      (is (=? [{:display_name "Users"}]
+              (->> (mt/user-http-request :crowberto :get 200 "table" :term "*S*rs")
+                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
+                   (map #(select-keys % [:display_name])))))))
+  (testing "filter composition"
+    (mt/with-temp [:model/Table {products2-id :id} {:name         "PrOdUcTs2"
+                                                    :display_name "Products2"
+                                                    :db_id        (mt/id)
+                                                    :active       true}]
+      (is (=? [{:display_name "People"}
+               {:display_name "Products"}
+               {:display_name "Products2"}]
+              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P")
+                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
+                   (map #(select-keys % [:display_name])))))
+
+      (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "gold"})
+      (is (=? [{:display_name "Products2"}]
+              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "gold")
+                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
+                   (map #(select-keys % [:display_name])))))
+
+      (testing "empty filter"
+        (is (=? [{:display_name "People"}
+                 {:display_name "Products"}]
+                (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "")
+                     (filter #(= (:db_id %) (mt/id)))       ; prevent stray tables from affecting unit test results
+                     (map #(select-keys % [:display_name])))))))))
+
+(deftest ^:parallel bulk-edit-test
+  (testing "can edit a bunch of things at once"
+    (mt/with-temp [:model/Database {clojure :id}    {}
+                   :model/Database {jvm :id}        {}
+                   :model/Table    {vars :id}       {:db_id clojure}
+                   :model/Table    {namespaces :id} {:db_id clojure}
+                   :model/Table    {beans :id}      {:db_id jvm}
+                   :model/Table    {classes :id}    {:db_id jvm}
+                   :model/Table    {gc :id}         {:db_id jvm, :schema "jre"}
+                   :model/Table    {jit :id}        {:db_id jvm, :schema "jre"}]
+
+      (is (= #{nil} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
+
+      (mt/user-http-request :crowberto :post 200 "table/edit" {:database_ids     [clojure jvm]
+                                                               :data_layer "copper"})
+
+      (is (= #{:copper} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
+
+      (mt/user-http-request :crowberto :post 200 "table/edit" {:database_ids     [clojure]
+                                                               :table_ids        [classes]
+                                                               :schema_ids       [(format "%d:jre" jvm)]
+                                                               :data_layer "silver"})
+      (is (= {vars       :silver
+              namespaces :silver
+              beans      :copper
+              classes    :silver
+              gc         :silver
+              jit        :silver}
+             (t2/select-pk->fn :data_layer :model/Table :db_id [:in [clojure jvm]]))))))
+
+(deftest publish-model-test
+  (testing "POST /api/table/publish-model"
+    (testing "creates models for selected tables"
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Collection {collection-id :id} {}]
+          (let [response (mt/user-http-request :crowberto :post 200 "table/publish-model"
+                                               {:table_ids             [(mt/id :users) (mt/id :venues)]
+                                                :target_collection_id  collection-id})]
+            (is (= 2 (:created_count response)))
+            (is (= 2 (count (:models response))))
+            (testing "models have correct attributes"
+              (doseq [model (:models response)]
+                (is (= "model" (:type model)))
+                (is (= collection-id (:collection_id model)))))
+            (testing "the query should works"
+              (is (some? (mt/process-query (-> response :models first :dataset_query)))))
+            (testing "models are persisted in database"
+              (is (= 2 (t2/count :model/Card :collection_id collection-id :type :model))))))))))
+;: TODO (Ngoc 31/10/2025): test publish model to library mark the library as dirty
+
+;; todo many assertions missing regarding definition, but may place those on hydration
+(deftest published-as-model-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-temp [:model/Collection {collection-id :id} {}]
+      (mt/with-premium-features #{:dependencies}
+        (mt/user-http-request :crowberto :post 200 "table/publish-model"
+                              {:table_ids            [(mt/id :venues)]
+                               :target_collection_id collection-id}))
+      (testing "list tables"
+        (let [list-tables #(mt/user-http-request :crowberto :get 200 "table" :db_id (mt/id))]
+          (testing "has :dependencies feature"
+            (let [list-response      (mt/with-premium-features #{:dependencies} (list-tables))
+                  published-as-model (u/index-by :id :published_as_model list-response)]
+              (is (true? (published-as-model (mt/id :venues))))
+              (is (false? (published-as-model (mt/id :users))))))
+          (testing "no :dependencies feature"
+            (let [list-response (mt/with-premium-features #{} (list-tables))]
+              (testing "key absent"
+                (is (not-any? #(contains? % :published_as_model) list-response)))))))
+      ;; todo cleanup/move test
+      (testing "list tables via schema"
+        (let [schema (t2/select-one-fn :schema [:model/Table :schema] (mt/id :venues))
+              url (format "database/%d/schema/%s" (mt/id) schema)
+              list-tables #(mt/user-http-request :crowberto :get 200 url)]
+          (testing "has :dependencies feature"
+            (let [list-response      (mt/with-premium-features #{:dependencies} (list-tables))
+                  published-as-model (u/index-by :id :published_as_model list-response)]
+              (is (true? (published-as-model (mt/id :venues))))
+              (is (false? (published-as-model (mt/id :users))))))
+          (testing "no :dependencies feature"
+            (let [list-response (mt/with-premium-features #{} (list-tables))]
+              (testing "key absent"
+                (is (not-any? #(contains? % :published_as_model) list-response))))))))))
+
+(deftest ^:parallel bulk-edit-visibility-sync-test
+  (testing "POST /api/table/edit visibility field synchronization"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-1-id :id} {:db_id db-id}
+                   :model/Table    {table-2-id :id} {:db_id db-id}
+                   :model/Table    {table-3-id :id} {:db_id db-id}]
+
+      (testing "updating visibility_type syncs to data_layer for all tables"
+        (mt/user-http-request :crowberto :post 200 "table/edit"
+                              {:table_ids       [table-1-id table-2-id table-3-id]
+                               :visibility_type "hidden"})
+        (is (= #{:copper} (t2/select-fn-set :data_layer :model/Table :id [:in [table-1-id table-2-id table-3-id]])))
+        (is (= #{:hidden} (t2/select-fn-set :visibility_type :model/Table :id [:in [table-1-id table-2-id table-3-id]]))))
+
+      (testing "updating data_layer syncs to visibility_type for all tables"
+        (mt/user-http-request :crowberto :post 200 "table/edit"
+                              {:table_ids        [table-1-id table-2-id]
+                               :data_layer "gold"})
+        (is (= :gold (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
+        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-1-id)))
+        (is (= :gold (t2/select-one-fn :data_layer :model/Table :id table-2-id)))
+        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-2-id)))
+        (is (= :copper (t2/select-one-fn :data_layer :model/Table :id table-3-id))))
+
+      (testing "cannot update both visibility_type and data_layer at once"
+        (is (= "Cannot update both visibility_type and data_layer"
+               (mt/user-http-request :crowberto :post 400 "table/edit"
+                                     {:table_ids        [table-1-id]
+                                      :visibility_type  "hidden"
+                                      :data_layer "copper"})))))))
+
+(deftest ^:parallel update-table-visibility-sync-test
+  (testing "PUT /api/table/:id visibility field synchronization"
+    (mt/with-temp [:model/Table table {}]
+      (testing "updating visibility_type syncs to data_layer"
+        (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
+                              {:visibility_type "hidden"})
+        (is (= :copper (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
+        (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
+
+      (testing "updating data_layer syncs to visibility_type"
+        (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
+                              {:data_layer "gold"})
+        (is (= :gold (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
+        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
+
+      (testing "cannot update both visibility_type and data_layer at once"
+        (is (= "Cannot update both visibility_type and data_layer"
+               (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
+                                     {:visibility_type  "hidden"
+                                      :data_layer "copper"})))))))
+
+(deftest orphan-only-filter-test
+  (mt/with-premium-features #{:dependencies}
+    (testing "GET /api/table?orphan_only=true"
+      (testing "filters tables that have no non-transform dependents"
+        (mt/with-temp [:model/Database {db-id :id} {}
+                       :model/Table {table-1-id :id} {:db_id db-id, :name "table_1", :active true}
+                       :model/Table {table-2-id :id} {:db_id db-id, :name "table_2", :active true}]
+          (testing "both tables returned without filter"
+            (is (= #{table-1-id table-2-id}
+                   (->> (mt/user-http-request :crowberto :get 200 "table")
+                        (filter #(= (:db_id %) db-id))
+                        (map :id)
+                        set))))
+
+          (testing "both tables returned with orphan_only=false"
+            (is (= #{table-1-id table-2-id}
+                   (->> (mt/user-http-request :crowberto :get 200 "table" :orphan-only false)
+                        (filter #(= (:db_id %) db-id))
+                        (map :id)
+                        set))))
+
+          (mt/with-temp [:model/Card card {:database_id   db-id
+                                           :table_id      table-1-id
+                                           :dataset_query {:database db-id
+                                                           :type     :query
+                                                           :query    {:source-table table-1-id}}}]
+            (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
+            (testing "after creating card that depends on table-1, only table-2 is orphaned"
+              (is (= #{table-2-id}
+                     (->> (mt/user-http-request :crowberto :get 200 "table" :orphan-only true)
+                          (filter #(= (:db_id %) db-id))
+                          (map :id)
+                          set))))))))))
+
+(deftest ^:parallel non-admins-cant-trigger-bulk-sync-test
+  (testing "Non-admins should not be allowed to trigger sync"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :post 403 "table/sync_schema" {:database_ids [(mt/id)]})))))
+
+(deftest trigger-bulk-metadata-sync-for-table-test
+  ;; lot more to test here but will wait for firmer ground
+  (testing "Can we trigger a metadata sync for a filtered set of tables"
+    (let [tables       (atom [])
+          latch        (CountDownLatch. 4)]
+      (mt/with-temp [:model/Database {d1 :id} {:engine "h2", :details (:details (mt/db))}
+                     :model/Database {d2 :id} {:engine "h2", :details (:details (mt/db))}
+                     :model/Table    {t1 :id} {:db_id d1, :schema "PUBLIC"}
+                     :model/Table    {t2 :id} {:db_id d1, :schema "PUBLIC"}
+                     :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
+                     :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
+                     :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
+        (with-redefs [sync/sync-table! (fn [table]
+                                         (swap! tables conj table)
+                                         (.countDown latch)
+                                         nil)]
+          (mt/user-http-request :crowberto :post 200 "table/sync_schema" {:database_ids [d1],
+                                                                          :schema_ids   [(format "%d:FOO" d2)]
+                                                                          :table_ids    [t4]}))
+        (testing "sync called?"
+          (is (true? (.await latch 4 TimeUnit/SECONDS)))
+          (is (= [t1 t2 t4 t5] (map :id @tables))))))))
+
+(deftest trigger-rescan-values-for-tables-test
+  ;; lot more to test here but will wait for firmer ground
+  (testing "Can we trigger a field values sync for a filtered set of tables"
+    (let [tables       (atom [])
+          latch        (CountDownLatch. 4)]
+      (mt/with-temp [:model/Database {d1 :id} {:engine "h2", :details (:details (mt/db))}
+                     :model/Database {d2 :id} {:engine "h2", :details (:details (mt/db))}
+                     :model/Table    {t1 :id} {:db_id d1, :schema "PUBLIC"}
+                     :model/Table    {t2 :id} {:db_id d1, :schema "PUBLIC"}
+                     :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
+                     :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
+                     :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
+        (with-redefs [sync/update-field-values-for-table! (fn [table]
+                                                            (swap! tables conj table)
+                                                            (.countDown latch)
+                                                            nil)]
+          (mt/user-http-request :crowberto :post 200 "table/rescan_values" {:database_ids [d1],
+                                                                            :schema_ids   [(format "%d:FOO" d2)]
+                                                                            :table_ids    [t4]}))
+        (testing "rescanned?"
+          (is (true? (.await latch 4 TimeUnit/SECONDS)))
+          (is (= [t1 t2 t4 t5] (map :id @tables))))))))
+
+(deftest ^:parallel bulk-discard-values-test
+  (testing "POST /api/table/:id/discard_values"
+    (mt/with-temp
+      [:model/Database    {d1 :id} {:engine "h2", :details (:details (mt/db))}
+       :model/Database    {d2 :id} {:engine "h2", :details (:details (mt/db))}
+       :model/Table       {t1 :id} {:db_id d1, :schema "PUBLIC"}
+       :model/Table       {t2 :id} {:db_id d1, :schema "PUBLIC"}
+       :model/Table       {t3 :id} {:db_id d2, :schema "PUBLIC"}
+       :model/Table       {t4 :id} {:db_id d2, :schema "PUBLIC"}
+       :model/Table       {t5 :id} {:db_id d2, :schema "FOO"}
+       :model/Field       {f1 :id} {:table_id t1}
+       :model/FieldValues {v1 :id} {:field_id f1, :values ["T1"]}
+       :model/Field       {f2 :id} {:table_id t2}
+       :model/FieldValues {v2 :id} {:field_id f2, :values ["T2"]}
+       :model/Field       {f3 :id} {:table_id t3}
+       :model/FieldValues {v3 :id} {:field_id f3, :values ["T3"]}
+       :model/Field       {f4 :id} {:table_id t4}
+       :model/FieldValues {v4 :id} {:field_id f4, :values ["T4-1"]}
+       :model/Field       {f5 :id} {:table_id t4}
+       :model/FieldValues {v5 :id} {:field_id f5, :values ["T4-2"]}
+       :model/Field       {f6 :id} {:table_id t5}
+       :model/FieldValues {v6 :id} {:field_id f6, :values ["T5-1"]}
+       :model/Field       {f7 :id} {:table_id t5}
+       :model/FieldValues {v7 :id} {:field_id f7, :values ["T5-2"]}]
+      (let [url "table/discard_values"
+            remaining-field-values-q {:select   [:fv.id]
+                                      :from     [[(t2/table-name :model/FieldValues) :fv]
+                                                 [(t2/table-name :model/Field) :f]]
+                                      :where    [:and [:= :fv.field_id :f.id]
+                                                 [:in :f.table_id [t1 t2 t3 t4 t5]]]
+                                      :order-by [[:fv.id :asc]]}
+            get-field-values         #(mapv :id (t2/query remaining-field-values-q))]
+        (testing "Non-admin toucans should not be allowed to discard values"
+          (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :post 403 url {:table_ids [t1]})))
+          (testing "FieldValues should still exist"
+            (is (= [v1 v2 v3 v4 v5 v6 v7] (get-field-values)))))
+        (testing "Admins should be able to successfully delete them"
+          (is (= {:status "ok"} (mt/user-http-request :crowberto :post 200 url {:database_ids [d1],
+                                                                                :schema_ids   [(format "%d:FOO" d2)]
+                                                                                :table_ids    [t4]})))
+          (testing "Selected FieldValues should be gone"
+            (is (= [v3] (get-field-values)))))))))

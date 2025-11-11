@@ -7,6 +7,7 @@ import ModalWithTrigger from "metabase/common/components/ModalWithTrigger";
 import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import * as Urls from "metabase/lib/urls";
 import { Icon } from "metabase/ui";
 
 import { ActionLink, TriggerIconContainer } from "./SegmentActionSelect.styled";
@@ -42,14 +43,12 @@ export default class SegmentActionSelect extends Component {
         >
           <ul className={AdminS.UserActionsSelect}>
             <li>
-              <ActionLink to={`/admin/datamodel/segment/${object.id}`}>
+              <ActionLink to={Urls.dataStudioSegment(object.id)}>
                 {t`Edit Segment`}
               </ActionLink>
             </li>
             <li>
-              <ActionLink
-                to={`/admin/datamodel/segment/${object.id}/revisions`}
-              >
+              <ActionLink to={Urls.dataStudioSegmentRevisions(object.id)}>
                 {t`Revision History`}
               </ActionLink>
             </li>

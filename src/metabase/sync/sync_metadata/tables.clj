@@ -143,7 +143,8 @@
            :name                    (:name table)
            :is_writable             (:is_writable table)}
           (when (:is_sample database)
-            {:data_authority :ingested}))))
+            {:data_authority :ingested
+             :data_source    "ingested"}))))
 
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
@@ -165,7 +166,8 @@
                                              (assoc :active true)
 
                                              (:is_sample database)
-                                             (assoc :data_authority :ingested))))
+                                             (assoc :data_authority :ingested
+                                                    :data_source    "ingested"))))
     ;; otherwise create a new Table
     (create-table! database table)))
 

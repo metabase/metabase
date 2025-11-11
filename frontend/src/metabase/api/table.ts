@@ -1,10 +1,18 @@
 import { updateMetadata } from "metabase/lib/redux/metadata";
 import { ForeignKeySchema, TableSchema } from "metabase/schema";
 import type {
+  DiscardTablesValuesRequest,
+  EditTablesRequest,
   ForeignKey,
   GetTableDataRequest,
   GetTableQueryMetadataRequest,
   GetTableRequest,
+  PublishModelsRequest,
+  PublishModelsResponse,
+  RescanTablesValuesRequest,
+  SubstituteModelRequest,
+  SubstituteModelResponse,
+  SyncTablesSchemaRequest as SyncTablesSchemasRequest,
   Table,
   TableData,
   TableId,
@@ -101,6 +109,15 @@ export const tableApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("table"), tag("database"), tag("card")]),
     }),
+    editTables: builder.mutation<Record<string, never>, EditTablesRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/table/edit",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("table"), tag("database"), tag("card")]),
+    }),
     updateTableFieldsOrder: builder.mutation<
       Table,
       UpdateTableFieldsOrderRequest
@@ -126,6 +143,15 @@ export const tableApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
+    rescanTablesFieldValues: builder.mutation<void, RescanTablesValuesRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/table/rescan_values`,
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
+    }),
     syncTableSchema: builder.mutation<void, TableId>({
       query: (id) => ({
         method: "POST",
@@ -140,6 +166,21 @@ export const tableApi = Api.injectEndpoints({
           tag("card"),
         ]),
     }),
+    syncTablesSchemas: builder.mutation<void, SyncTablesSchemasRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/table/sync_schema`,
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [
+          tag("table"),
+          listTag("field"),
+          listTag("field-values"),
+          listTag("parameter-values"),
+          tag("card"),
+        ]),
+    }),
     discardTableFieldValues: builder.mutation<void, TableId>({
       query: (id) => ({
         method: "POST",
@@ -148,13 +189,51 @@ export const tableApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
+    discardTablesFieldValues: builder.mutation<
+      void,
+      DiscardTablesValuesRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/table/discard_values`,
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
+    }),
+    publishModels: builder.mutation<
+      PublishModelsResponse,
+      PublishModelsRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/table/publish-model",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("card"), tag("collection")]),
+    }),
+    substituteModel: builder.mutation<
+      SubstituteModelResponse,
+      SubstituteModelRequest
+    >({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/table/${id}/substitute-model`,
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("card"), tag("collection")]),
+    }),
   }),
 });
 
 export const {
   useListTablesQuery,
+  useEditTablesMutation,
   useGetTableQuery,
   useGetTableQueryMetadataQuery,
+  useLazyGetTableQueryMetadataQuery,
   useGetTableDataQuery,
   useListTableForeignKeysQuery,
   useLazyListTableForeignKeysQuery,
@@ -162,6 +241,11 @@ export const {
   useUpdateTableListMutation,
   useUpdateTableFieldsOrderMutation,
   useRescanTableFieldValuesMutation,
+  useRescanTablesFieldValuesMutation,
   useSyncTableSchemaMutation,
+  useSyncTablesSchemasMutation,
   useDiscardTableFieldValuesMutation,
+  useDiscardTablesFieldValuesMutation,
+  usePublishModelsMutation,
+  useSubstituteModelMutation,
 } = tableApi;

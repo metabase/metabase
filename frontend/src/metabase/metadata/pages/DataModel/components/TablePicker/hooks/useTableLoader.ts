@@ -7,12 +7,14 @@ import {
   useLazyListDatabaseSchemasQuery,
   useLazyListDatabasesQuery,
 } from "metabase/api";
+import { useLazyGetTableQueryMetadataQuery } from "metabase/api/table";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import type { DatabaseId, SchemaName } from "metabase-types/api";
+import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
 
 import { UNNAMED_SCHEMA_NAME } from "../constants";
 import type {
   DatabaseNode,
+  FieldNode,
   SchemaNode,
   TableNode,
   TreeNode,
@@ -35,6 +37,7 @@ export function useTableLoader(path: TreePath) {
   const [fetchDatabases, databases] = useLazyListDatabasesQuery();
   const [fetchSchemas, schemas] = useLazyListDatabaseSchemasQuery();
   const [fetchTables, tables] = useLazyListDatabaseSchemaTablesQuery();
+  const [fetchTableMetadata] = useLazyGetTableQueryMetadataQuery();
   const databasesRef = useLatest(databases);
   const schemasRef = useLatest(schemas);
   const tablesRef = useLatest(tables);
@@ -148,14 +151,48 @@ export function useTableLoader(path: TreePath) {
     [fetchSchemas, getTables, schemasRef],
   );
 
+  const getFields = useCallback(
+    async (
+      databaseId: DatabaseId,
+      schemaName: SchemaName,
+      tableId: TableId,
+    ) => {
+      const response = await fetchTableMetadata(
+        {
+          id: tableId,
+          include_hidden_fields: true,
+          include_editable_data_model: true,
+        },
+        true,
+      );
+
+      const fields = response.data?.fields ?? [];
+
+      return fields.map((field) =>
+        node<FieldNode>({
+          type: "field",
+          label: field.display_name,
+          value: { databaseId, schemaName, tableId, fieldId: field.id },
+          field,
+        }),
+      );
+    },
+    [fetchTableMetadata],
+  );
+
   const load = useCallback(
     async function (path: TreePath) {
-      const { databaseId, schemaName } = path;
+      const { databaseId, schemaName, tableId } = path;
       const [databases, schemas, tables] = await Promise.all([
         getDatabases(),
         getSchemas(path.databaseId),
         getTables(path.databaseId, path.schemaName),
       ]);
+
+      let fields: FieldNode[] = [];
+      if (tableId && databaseId && schemaName) {
+        fields = await getFields(databaseId, schemaName, tableId);
+      }
 
       const newTree: TreeNode = rootNode(
         databases.map((database) => ({
@@ -168,7 +205,13 @@ export function useTableLoader(path: TreePath) {
                   children:
                     schema.value.schemaName !== schemaName
                       ? schema.children
-                      : tables,
+                      : tables.map((table) => ({
+                          ...table,
+                          children:
+                            table.value.tableId !== tableId
+                              ? table.children
+                              : fields,
+                        })),
                 })),
         })),
       );
@@ -177,7 +220,7 @@ export function useTableLoader(path: TreePath) {
         return _.isEqual(current, merged) ? current : merged;
       });
     },
-    [getDatabases, getSchemas, getTables],
+    [getDatabases, getSchemas, getTables, getFields],
   );
 
   useDeepCompareEffect(() => {

@@ -23,12 +23,14 @@ interface ModelingSidebarProps {
   collectionId?: string;
   snippetId?: string;
   isGlossaryActive: boolean;
+  isSegmentsActive: boolean;
 }
 
 export function ModelingSidebar({
   collectionId,
   snippetId,
   isGlossaryActive,
+  isSegmentsActive,
 }: ModelingSidebarProps) {
   const currentUser = useSelector(getUser);
 
@@ -98,6 +100,7 @@ export function ModelingSidebar({
       selectedCollectionId={selectedCollectionId}
       selectedSnippetId={selectedSnippetId}
       isGlossaryActive={isGlossaryActive}
+      isSegmentsActive={isSegmentsActive}
       hasDataAccess={hasDataAccess}
       hasNativeWrite={hasNativeWrite}
     />

@@ -1,9 +1,11 @@
 import { getUrl as getUrl_ } from "../../utils";
 
+import { type NodeSelection, isItemSelected } from "./bulk-selection.utils";
 import { CHILD_TYPES, UNNAMED_SCHEMA_NAME } from "./constants";
 import type {
   DatabaseNode,
   ExpandedState,
+  FilterState,
   FlatItem,
   ItemType,
   NodeKey,
@@ -13,7 +15,7 @@ import type {
 } from "./types";
 
 export function hasChildren(type: ItemType): boolean {
-  return type !== "table";
+  return type !== "field";
 }
 
 export function getUrl(baseUrl: string, value: TreePath) {
@@ -27,6 +29,8 @@ export function getUrl(baseUrl: string, value: TreePath) {
 }
 
 // Returns a new state object with all the nodes along the path expanded.
+// Note: This only expands parent containers (database, schema) but NOT tables,
+// to prevent unwanted expansion when navigating via checkbox selection.
 export function expandPath(
   state: ExpandedState,
   path: TreePath,
@@ -35,15 +39,18 @@ export function expandPath(
     ...state,
     [toKey({
       ...path,
+      fieldId: undefined,
       tableId: undefined,
     })]: true,
     [toKey({
       ...path,
+      fieldId: undefined,
       tableId: undefined,
       schemaName: undefined,
     })]: true,
     [toKey({
       ...path,
+      fieldId: undefined,
       tableId: undefined,
       schemaName: undefined,
       databaseId: undefined,
@@ -67,6 +74,7 @@ export function flatten(
     level?: number;
     parent?: NodeKey;
     canFlattenSingleSchema?: boolean;
+    selection?: NodeSelection;
   } = {},
 ): FlatItem[] {
   const {
@@ -76,6 +84,7 @@ export function flatten(
     canFlattenSingleSchema,
     level = 0,
     parent,
+    selection,
   } = opts;
   if (node.type === "root") {
     // root node doesn't render a title and is always expanded
@@ -88,6 +97,8 @@ export function flatten(
     }
     return sort(node.children).flatMap((child) => flatten(child, opts));
   }
+
+  const isSelected = selection ? isItemSelected(node, selection) : "no";
 
   if (
     node.type === "schema" &&
@@ -107,22 +118,22 @@ export function flatten(
   }
 
   if (typeof isExpanded === "function" && !isExpanded(node.key)) {
-    return [{ ...node, level, parent }];
+    return [{ ...node, level, parent, isSelected }];
   }
 
   if (addLoadingNodes && node.children.length === 0) {
     const childType = CHILD_TYPES[node.type];
     if (!childType) {
-      return [{ ...node, level, parent }];
+      return [{ ...node, level, parent, isSelected }];
     }
     return [
-      { ...node, isExpanded: true, level, parent },
+      { ...node, isExpanded: true, level, parent, isSelected },
       loadingItem(childType, level + 1, node),
     ];
   }
 
   return [
-    { ...node, isExpanded: true, level, parent },
+    { ...node, isExpanded: true, level, parent, isSelected },
     ...sort(node.children).flatMap((child) =>
       flatten(child, {
         ...opts,
@@ -135,6 +146,11 @@ export function flatten(
 }
 
 export function sort(nodes: TreeNode[]): TreeNode[] {
+  if (nodes[0].type === "field") {
+    // sorting is done on BE
+    return nodes;
+  }
+
   return Array.from(nodes).sort((a, b) => {
     return a.label.localeCompare(b.label);
   });
@@ -178,8 +194,8 @@ export function merge(
 /**
  * Create a unique key for a TreePath
  */
-export function toKey({ databaseId, schemaName, tableId }: TreePath) {
-  return JSON.stringify([databaseId, schemaName, tableId]);
+export function toKey({ databaseId, schemaName, tableId, fieldId }: TreePath) {
+  return JSON.stringify([databaseId, schemaName, tableId, fieldId]);
 }
 
 type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
@@ -215,5 +231,28 @@ export function loadingItem(
     parent: parent?.type === "root" ? undefined : parent?.key,
     isLoading: true,
     key: Math.random().toString(),
+    children: [],
   };
+}
+
+export function getFiltersCount(filters: FilterState): number {
+  let count = 0;
+
+  if (filters.dataSource != null) {
+    ++count;
+  }
+
+  if (filters.visibilityType2 != null) {
+    ++count;
+  }
+
+  if (filters.ownerEmail != null || filters.ownerUserId != null) {
+    ++count;
+  }
+
+  if (filters.orphansOnly === true) {
+    ++count;
+  }
+
+  return count;
 }

@@ -2459,6 +2459,95 @@ databaseChangeLog:
             constraintName: fk_transform_ref_creator_id
             onDelete: CASCADE
 
+  # breaking appdb/code changes can be painful, week 0/1 this will do while we work on compatibility
+  - changeSet:
+      id: v57.2025-11-03T11:57:00
+      author: wotbrew
+      comment: Add data_source column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: data_source
+                  type: varchar(254)
+                  remarks: The origin type of the data (e.g. metabase-transform)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-11-03T11:57:02
+      author: wotbrew
+      comment: Add data_layer column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: data_layer
+                  type: varchar(254)
+                  remarks: The (new) enum for visibility class
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-11-03T11:57:03
+      author: wotbrew
+      comment: Add owner_email column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: owner_email
+                  type: ${text.type}
+                  remarks: An optional email address of the 'owner' of this table, exclusive with owner_user_id.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-11-03T11:57:04
+      author: wotbrew
+      comment: Add owner_user_id column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: owner_user_id
+                  type: int
+                  remarks: An (metabase) user id of the 'owner' of this table, exclusive with owner_email.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-11-03T11:57:05
+      author: wotbrew
+      comment: Add data_update_frequency
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: data_update_frequency
+                  type: varchar(254)
+                  remarks: A frequency category (e.g. realtime, hourly) that denotes the frequency of writes to the table
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-11-04T10:00:00
+      author: qnkhuat
+      comment: Backfill data_layer from visibility_type
+      changes:
+        - sql: >-
+            UPDATE metabase_table
+            SET data_layer = CASE
+              WHEN visibility_type IN ('hidden', 'retired', 'sensitive', 'technical', 'cruft') THEN 'copper'
+              ELSE 'gold'
+            END
+      rollback: # will be deleted with the column
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
