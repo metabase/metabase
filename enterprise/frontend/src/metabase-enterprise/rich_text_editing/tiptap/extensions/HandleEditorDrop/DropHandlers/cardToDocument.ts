@@ -19,7 +19,7 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
   const tr = view.state.tr;
 
   /**
-   * Works like `tr.replaceWith` excepts keeps track of how much is added/deleted so previously calculated positions can be adjusted
+   * Works like `tr.replaceWith` except keeps track of how much is added/deleted so previously calculated positions can be adjusted
    */
   const replaceWith = (
     from: number,

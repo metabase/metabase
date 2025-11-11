@@ -35,6 +35,7 @@ import { navigateToCardFromDocument } from "metabase-enterprise/documents/action
 import { trackDocumentReplaceCard } from "metabase-enterprise/documents/analytics";
 import { getUnresolvedComments } from "metabase-enterprise/documents/components/Editor/CommentsMenu";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase-enterprise/documents/components/Editor/constants";
+import { MAX_GROUP_SIZE } from "metabase-enterprise/documents/constants";
 import {
   loadMetadataForDocumentCard,
   openVizSettingsSidebar,
@@ -398,8 +399,6 @@ export const CardEmbedComponent = memo(
     const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
     const [menuView, setMenuView] = useState<string | null>(null);
 
-    /* TODO: Replace `3`s with constant */
-    /* TODO: Memoize? This component is currently re-rendering a lot (maybe because of a mouseover event?) */
     const shouldAllowAddingSupportingText = () => {
       const pos = getPos();
       if (!pos) {
@@ -413,7 +412,7 @@ export const CardEmbedComponent = memo(
       if (!match) {
         return true;
       }
-      if (match.node.content.childCount >= 3) {
+      if (match.node.content.childCount >= MAX_GROUP_SIZE) {
         return false;
       }
       const hasSupportingText = match?.node.content.content.some(
@@ -451,7 +450,12 @@ export const CardEmbedComponent = memo(
           }
           const flexContainer =
             editor.view.state.schema.nodes.flexContainer.create(
-              { columnWidths: [100 / 3, 200 / 3] },
+              {
+                columnWidths: [
+                  (1 / MAX_GROUP_SIZE) * 100,
+                  ((MAX_GROUP_SIZE - 1) / MAX_GROUP_SIZE) * 100,
+                ],
+              },
               [supportingText, node],
             );
           const endPos = match.start + match.node.nodeSize;
