@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useContext, useLayoutEffect } from "react";
 
+import { DataStudioContext } from "metabase/data-studio/contexts/DataStudioContext";
 import * as Urls from "metabase/lib/urls";
 import { Box, Flex } from "metabase/ui";
 
@@ -24,13 +25,31 @@ export const TransformsSidebarLayout = ({
   const currentTab = useTransformsCurrentTab();
   const selectedTransformId = Urls.extractEntityId(params?.transformId);
   const selectedJobId = Urls.extractEntityId(params.jobId);
+  const { isSidebarOpened, setIsSidebarOpened, setIsSidebarAvailable } =
+    useContext(DataStudioContext);
+
+  useLayoutEffect(() => {
+    const hasSidebar = currentTab === "transforms" || currentTab === "jobs";
+    setIsSidebarOpened(hasSidebar);
+    setIsSidebarAvailable(hasSidebar);
+    return () => {
+      setIsSidebarOpened(false);
+      setIsSidebarAvailable(false);
+    };
+  }, [currentTab, setIsSidebarOpened, setIsSidebarAvailable]);
 
   return (
     <Flex direction="row" w="100%" h="100%">
-      {currentTab === "transforms" && (
-        <TransformsSidebar selectedTransformId={selectedTransformId} />
+      {isSidebarOpened && (
+        <>
+          {currentTab === "transforms" && (
+            <TransformsSidebar selectedTransformId={selectedTransformId} />
+          )}
+          {currentTab === "jobs" && (
+            <JobsSidebar selectedJobId={selectedJobId} />
+          )}
+        </>
       )}
-      {currentTab === "jobs" && <JobsSidebar selectedJobId={selectedJobId} />}
       <Box data-testid="transforms-content" flex={1}>
         {children}
       </Box>

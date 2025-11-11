@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, useContext, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -31,11 +31,25 @@ type DataStudioLayoutProps = {
 
 export function DataStudioLayout({ children }: DataStudioLayoutProps) {
   const [isSidebarOpened, setIsSidebarOpened] = useState(false);
+  const [isSidebarAvailable, setIsSidebarAvailable] = useState(false);
+  const contextValue = useMemo(
+    () => ({
+      isSidebarOpened,
+      isSidebarAvailable,
+      setIsSidebarOpened,
+      setIsSidebarAvailable,
+    }),
+    [isSidebarOpened, isSidebarAvailable],
+  );
 
   return (
-    <DataStudioContext.Provider value={{ isSidebarOpened, setIsSidebarOpened }}>
+    <DataStudioContext.Provider value={contextValue}>
       <Flex h="100%">
-        <DataStudioNav />
+        <DataStudioNav
+          isSidebarOpened={isSidebarOpened}
+          isSidebarAvailable={isSidebarAvailable}
+          onSidebarToggle={setIsSidebarOpened}
+        />
         <Box h="100%" flex={1}>
           {children}
         </Box>
@@ -44,7 +58,17 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
   );
 }
 
-function DataStudioNav() {
+type DataStudioNavProps = {
+  isSidebarOpened: boolean;
+  isSidebarAvailable: boolean;
+  onSidebarToggle: (isOpened: boolean) => void;
+};
+
+function DataStudioNav({
+  isSidebarOpened,
+  isSidebarAvailable,
+  onSidebarToggle,
+}: DataStudioNavProps) {
   const { pathname } = useSelector(getLocation);
   const canAccessDataModel = useSelector(
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
@@ -54,9 +78,9 @@ function DataStudioNav() {
   );
   const canAccessDataStructure = canAccessDataModel || canAccessTransforms;
   const isDataTab = pathname.startsWith(Urls.dataStudioData());
-  const isTransformTab = pathname.startsWith(Urls.transformList());
+  const isTransformsTab = pathname.startsWith(Urls.transformList());
   const isModelingTab = pathname.startsWith(Urls.dataStudioModeling());
-  const isDependencyTab = pathname.startsWith(Urls.dependencyGraph());
+  const isDependenciesTab = pathname.startsWith(Urls.dependencyGraph());
 
   return (
     <Stack className={S.nav} h="100%" p="0.75rem" justify="space-between">
@@ -68,7 +92,7 @@ function DataStudioNav() {
             to={
               canAccessDataModel ? Urls.dataStudioData() : Urls.transformList()
             }
-            isSelected={isDataTab || isTransformTab}
+            isSelected={isDataTab || isTransformsTab}
           />
         )}
         <DataStudioTab
@@ -82,11 +106,16 @@ function DataStudioNav() {
             label={t`Dependency graph`}
             icon="schema"
             to={Urls.dependencyGraph()}
-            isSelected={isDependencyTab}
+            isSelected={isDependenciesTab}
           />
         )}
       </Stack>
-      {isTransformTab && <DataStudioSidebarToggle />}
+      {isSidebarAvailable && (
+        <DataStudioSidebarToggle
+          isSidebarOpened={isSidebarOpened}
+          onSidebarToggle={onSidebarToggle}
+        />
+      )}
     </Stack>
   );
 }
@@ -117,9 +146,15 @@ function DataStudioTab({ label, icon, to, isSelected }: DataStudioTabProps) {
   );
 }
 
-function DataStudioSidebarToggle() {
-  const { isSidebarOpened, setIsSidebarOpened } = useContext(DataStudioContext);
+type DataStudioSidebarToggleProps = {
+  isSidebarOpened: boolean;
+  onSidebarToggle: (isOpened: boolean) => void;
+};
 
+function DataStudioSidebarToggle({
+  isSidebarOpened,
+  onSidebarToggle,
+}: DataStudioSidebarToggleProps) {
   return (
     <Tooltip
       label={isSidebarOpened ? t`Close sidebar` : t`Open sidebar`}
@@ -129,7 +164,7 @@ function DataStudioSidebarToggle() {
         className={S.toggle}
         p="0.75rem"
         bdrs="md"
-        onClick={() => setIsSidebarOpened(!isSidebarOpened)}
+        onClick={() => onSidebarToggle(!isSidebarOpened)}
       >
         <FixedSizeIcon
           name={isSidebarOpened ? "sidebar_closed" : "sidebar_open"}

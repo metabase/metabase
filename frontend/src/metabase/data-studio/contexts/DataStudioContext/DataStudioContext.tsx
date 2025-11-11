@@ -2,10 +2,14 @@ import { createContext } from "react";
 
 type DataStudioContextType = {
   isSidebarOpened: boolean;
-  setIsSidebarOpened: (isExpanded: boolean) => void;
+  isSidebarAvailable: boolean;
+  setIsSidebarOpened: (isOpened: boolean) => void;
+  setIsSidebarAvailable: (isAvailable: boolean) => void;
 };
 
 export const DataStudioContext = createContext<DataStudioContextType>({
-  isSidebarOpened: true,
+  isSidebarOpened: false,
+  isSidebarAvailable: false,
   setIsSidebarOpened: () => undefined,
+  setIsSidebarAvailable: () => undefined,
 });
