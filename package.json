@@ -166,7 +166,7 @@
     "@cypress/skip-test": "^2.6.1",
     "@emotion/babel-plugin": "^11.11.0",
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
-    "@hey-api/openapi-ts": "0.85.2",
+    "@hey-api/openapi-ts": "0.87.1",
     "@inquirer/prompts": "^5.3.8",
     "@lezer/generator": "^1.7.2",
     "@loki/create-async-callback": "^0.35.0",
