@@ -57,13 +57,21 @@ export const CollectionPickerInner = (
   }: CollectionPickerProps,
   ref: Ref<unknown>,
 ) => {
+  const pathOptions = useMemo(
+    () => ({
+      models,
+      namespace: options.namespace,
+      includeEditableSemanticLayer: options?.includeEditableSemanticLayer,
+    }),
+    [models, options?.namespace, options?.includeEditableSemanticLayer],
+  );
+
   const defaultPath = useMemo(() => {
     return getStateFromIdPath({
       idPath: ["root"],
-      namespace: options.namespace,
-      models,
+      ...pathOptions,
     });
-  }, [options.namespace, models]);
+  }, [pathOptions]);
   const path = pathProp ?? defaultPath;
   const {
     currentCollection,
@@ -78,19 +86,12 @@ export const CollectionPickerInner = (
     ({ folder }: { folder: CollectionPickerItem }) => {
       const newPath = getStateFromIdPath({
         idPath: getCollectionIdPath(folder, userPersonalCollectionId),
-        namespace: options.namespace,
-        models,
+        ...pathOptions,
       });
       onItemSelect(folder);
       onPathChange(newPath);
     },
-    [
-      onItemSelect,
-      onPathChange,
-      options.namespace,
-      userPersonalCollectionId,
-      models,
-    ],
+    [onItemSelect, onPathChange, userPersonalCollectionId, pathOptions],
   );
 
   const handleItemSelect = useCallback(
@@ -191,8 +192,7 @@ export const CollectionPickerInner = (
             },
             userPersonalCollectionId,
           ),
-          namespace: options.namespace,
-          models,
+          ...pathOptions,
         });
 
         const newSelectedItem = {
@@ -226,8 +226,7 @@ export const CollectionPickerInner = (
             },
             userPersonalCollectionId,
           ),
-          namespace: options.namespace,
-          models,
+          ...pathOptions,
         });
         onPathChange(newPath);
 
@@ -242,8 +241,8 @@ export const CollectionPickerInner = (
     },
     [
       pathProp,
+      pathOptions,
       currentCollection,
-      options.namespace,
       userPersonalCollectionId,
       onPathChange,
     ],

@@ -57,10 +57,12 @@ export const getStateFromIdPath = ({
   idPath,
   namespace,
   models,
+  includeEditableSemanticLayer,
 }: {
   idPath: CollectionId[];
   namespace?: "snippets";
   models: CollectionItemModel[];
+  includeEditableSemanticLayer?: boolean;
 }): CollectionPickerStatePath => {
   const statePath: PickerState<
     CollectionPickerItem,
@@ -89,6 +91,7 @@ export const getStateFromIdPath = ({
         id: entityId,
         models: ["collection", ...models],
         namespace,
+        include_editable_semantic_layer: includeEditableSemanticLayer,
       },
       entity: entityModel,
       selectedItem: nextLevelId
