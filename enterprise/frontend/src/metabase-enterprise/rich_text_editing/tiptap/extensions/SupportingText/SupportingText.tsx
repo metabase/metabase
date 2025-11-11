@@ -11,7 +11,24 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import cx from "classnames";
+import { useMemo } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
+
+import { isWithinIframe } from "metabase/lib/dom";
+import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
+import { Box } from "metabase/ui";
+import { useListCommentsQuery } from "metabase-enterprise/api/comment";
+import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
+import { getUnresolvedComments } from "metabase-enterprise/documents/components/Editor/CommentsMenu";
+import {
+  getChildTargetId,
+  getCurrentDocument,
+} from "metabase-enterprise/documents/selectors";
+import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
+
+import { CommentsButton } from "../../components/CommentsButton";
+import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 
 import S from "./SupportingText.module.css";
 
@@ -23,6 +40,12 @@ export const SupportingText = Node.create<{
   content: "(paragraph|heading|bulletList|orderedList|blockquote|codeBlock)+",
   draggable: true,
   isolating: true,
+
+  addAttributes() {
+    return {
+      ...createIdAttribute(),
+    };
+  },
 
   addOptions() {
     return {
@@ -85,12 +108,17 @@ export const SupportingText = Node.create<{
             .deleteSelection()
             .focus(match.pos)
             .run();
+          // TODO Remove FlexContainer if only one cardEmbed?
           return true;
         }
 
         return false;
       },
     };
+  },
+
+  addProseMirrorPlugins() {
+    return [createProseMirrorPlugin(this.name)];
   },
 });
 
@@ -106,6 +134,27 @@ const SupportingTextComponent = ({
   node,
   selected,
 }: NodeViewProps) => {
+  const childTargetId = useSelector(getChildTargetId);
+  const document = useSelector(getCurrentDocument);
+  const { data: commentsData } = useListCommentsQuery(
+    getListCommentsQuery(document),
+  );
+  const comments = commentsData?.comments;
+  const { _id } = node.attrs;
+  const isOpen = childTargetId === _id;
+  const threads = useMemo(
+    () => getTargetChildCommentThreads(comments, _id),
+    [comments, _id],
+  );
+  const unresolvedCommentsCount = useMemo(
+    () => getUnresolvedComments(threads).length,
+    [threads],
+  );
+  const commentsPath = document
+    ? `/document/${document.id}/comments/${_id}`
+    : "";
+  const dispatch = useDispatch();
+
   return (
     <NodeViewWrapper className={cx(S.wrapper, { [S.selected]: selected })}>
       <div className={S.scrollContainer}>
@@ -134,6 +183,33 @@ const SupportingTextComponent = ({
           }
         }}
       />
+      {document && !isWithinIframe() && (
+        <Box
+          pos="absolute"
+          top="0.25rem"
+          right="0.25rem"
+          className={cx({
+            [S.showOnHover]: !isOpen && !unresolvedCommentsCount,
+          })}
+        >
+          <CommentsButton
+            className={S.commentsButton}
+            disabled={!commentsPath}
+            variant={isOpen ? "filled" : "default"}
+            unresolvedCommentsCount={unresolvedCommentsCount}
+            onClick={(e) => {
+              e.preventDefault();
+              dispatch(
+                push(
+                  unresolvedCommentsCount > 0
+                    ? commentsPath
+                    : `${commentsPath}?new=true`,
+                ),
+              );
+            }}
+          />
+        </Box>
+      )}
     </NodeViewWrapper>
   );
 };
