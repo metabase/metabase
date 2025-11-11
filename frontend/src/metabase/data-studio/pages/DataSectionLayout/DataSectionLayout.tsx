@@ -12,12 +12,11 @@ import {
 import { Group } from "metabase/ui";
 
 import {
-  SectionLayout,
-  type SectionTab,
-  SectionTabDivider,
-  SectionTabs,
-  SectionTitle,
-} from "../../components/SectionLayout";
+  type PaneHeaderTab,
+  PaneHeaderTabs,
+  PaneHeaderTabsDivider,
+} from "../../components/PaneHeader";
+import { SectionLayout, SectionTitle } from "../../components/SectionLayout";
 
 type DataSectionLayoutProps = {
   location: Location;
@@ -54,25 +53,26 @@ function DataSectionTabs({ location }: DataSectionTabsProps) {
 
   return (
     <Group>
-      {canAccessDataModel && <SectionTabs tabs={getDataTabs(location)} />}
-      {canAccessDataModel && canAccessTransforms && <SectionTabDivider />}
-      {canAccessTransforms && <SectionTabs tabs={getTransformTabs(location)} />}
+      {canAccessDataModel && <PaneHeaderTabs tabs={getDataTabs(location)} />}
+      {canAccessDataModel && canAccessTransforms && <PaneHeaderTabsDivider />}
+      {canAccessTransforms && (
+        <PaneHeaderTabs tabs={getTransformTabs(location)} withBackground />
+      )}
     </Group>
   );
 }
 
-function getDataTabs({ pathname }: Location): SectionTab[] {
+function getDataTabs({ pathname }: Location): PaneHeaderTab[] {
   return [
     {
       label: t`Data`,
       to: Urls.dataStudio(),
-      icon: "table",
       isSelected: pathname.startsWith(Urls.dataStudioData()),
     },
   ];
 }
 
-function getTransformTabs({ pathname }: Location): SectionTab[] {
+function getTransformTabs({ pathname }: Location): PaneHeaderTab[] {
   const isTransforms = pathname.startsWith(Urls.transformList());
   const isJobs = pathname.startsWith(Urls.transformJobList());
   const isRuns = pathname.startsWith(Urls.transformRunList());

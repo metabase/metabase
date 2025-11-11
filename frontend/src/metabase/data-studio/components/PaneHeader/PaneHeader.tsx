@@ -7,7 +7,15 @@ import EditableText from "metabase/common/components/EditableText";
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
 import type { GroupProps, IconName } from "metabase/ui";
-import { Box, Button, FixedSizeIcon, Group, Stack, Tooltip } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Divider,
+  FixedSizeIcon,
+  Group,
+  Stack,
+  Tooltip,
+} from "metabase/ui";
 
 import S from "./PaneHeader.module.css";
 import type { PaneHeaderTab } from "./types";
@@ -34,7 +42,8 @@ export const PaneHeader = ({
   return (
     <Group
       className={cx(S.header, className)}
-      p="md"
+      px="lg"
+      py="md"
       justify="space-between"
       gap="sm"
       wrap="nowrap"
@@ -93,16 +102,16 @@ export function PaneHeaderInput({
 
 type PaneHeaderTabsProps = {
   tabs: PaneHeaderTab[];
+  withBackground?: boolean;
 };
 
-export function PaneHeaderTabs({ tabs }: PaneHeaderTabsProps) {
-  const location = useSelector(getLocation);
+export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
+  const { pathname } = useSelector(getLocation);
+  const backgroundColor = withBackground ? "bg-secondary" : "transparent";
 
   return (
     <Group gap="sm">
-      {tabs.map(({ label, to }) => {
-        const isSelected = to === location.pathname;
-
+      {tabs.map(({ label, to, icon, isSelected = to === pathname }) => {
         return (
           <Button
             key={label}
@@ -111,8 +120,9 @@ export function PaneHeaderTabs({ tabs }: PaneHeaderTabsProps) {
             size="sm"
             radius="xl"
             c={isSelected ? "brand" : undefined}
-            bg={isSelected ? "brand-light" : "transparent"}
+            bg={isSelected ? "brand-light" : backgroundColor}
             bd="none"
+            leftSection={icon != null ? <FixedSizeIcon name={icon} /> : null}
           >
             {label}
           </Button>
@@ -120,6 +130,10 @@ export function PaneHeaderTabs({ tabs }: PaneHeaderTabsProps) {
       })}
     </Group>
   );
+}
+
+export function PaneHeaderTabsDivider() {
+  return <Divider my="sm" orientation="vertical" />;
 }
 
 type PaneHeaderActionsProps = {
