@@ -13,7 +13,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { useCreateSemanticLayerCollectionMutation } from "metabase-enterprise/api";
+import { useCreateSemanticLayerMutation } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
 type CreateCollectionTreeModalProps = {
@@ -25,7 +25,7 @@ export function CreateCollectionTreeModal({
   onCreate,
   onClose,
 }: CreateCollectionTreeModalProps) {
-  const [createCollection] = useCreateSemanticLayerCollectionMutation();
+  const [createCollection] = useCreateSemanticLayerMutation();
 
   const handleSubmit = async () => {
     const collection = await createCollection().unwrap();
