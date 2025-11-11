@@ -7,15 +7,7 @@ import EditableText from "metabase/common/components/EditableText";
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
 import type { GroupProps, IconName } from "metabase/ui";
-import {
-  Box,
-  Button,
-  Divider,
-  FixedSizeIcon,
-  Group,
-  Stack,
-  Tooltip,
-} from "metabase/ui";
+import { Box, Button, FixedSizeIcon, Group, Stack, Tooltip } from "metabase/ui";
 
 import S from "./PaneHeader.module.css";
 import type { PaneHeaderTab } from "./types";
@@ -130,10 +122,6 @@ export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
       })}
     </Group>
   );
-}
-
-export function PaneHeaderTabsDivider() {
-  return <Divider my="sm" orientation="vertical" />;
 }
 
 type PaneHeaderActionsProps = {

@@ -80,7 +80,7 @@ function SnippetTabs({ snippet }: SnippetTabsProps) {
 function getTabs(snippetId: number): PaneHeaderTab[] {
   const tabs: PaneHeaderTab[] = [
     {
-      label: t`Query`,
+      label: t`Definition`,
       to: Urls.dataStudioSnippet(snippetId),
     },
   ];

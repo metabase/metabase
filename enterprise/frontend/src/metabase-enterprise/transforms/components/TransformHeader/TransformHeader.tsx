@@ -81,7 +81,7 @@ function TransformTabs({ transform }: TransformTabsProps) {
 function getTabs(id: TransformId): PaneHeaderTab[] {
   const tabs: PaneHeaderTab[] = [
     {
-      label: t`Query`,
+      label: t`Definition`,
       to: Urls.transform(id),
     },
     {
