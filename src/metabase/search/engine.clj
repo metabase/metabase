@@ -28,6 +28,14 @@
   {:arglists '([search-context])}
   :search-engine)
 
+(defmulti disjunction
+  "Given multiple terms to search for, reduce this to a search expression that matches any of them in a single search.
+   If this is not possible, return a list of terms to be searched for separately."
+  {:arglists '([search-engine terms])}
+  (fn [search-engine _terms] search-engine))
+
+(defmethod disjunction :default [_ terms] terms)
+
 (defmulti score "For legacy search: perform the in-memory ranking"
   {:arglists '([search-context result])}
   (fn [{engine :search-engine} _]

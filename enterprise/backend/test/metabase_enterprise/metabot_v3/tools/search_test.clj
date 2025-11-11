@@ -438,3 +438,39 @@
             (doseq [join-with-or? [false true]]
               (is (= #{"f00b4r" "b4rf00" "quixotic" "ancillary"}
                      (set (query join-with-or?)))))))))))
+
+(deftest non-semantic-keywords-test
+  (testing "search returns only exact matches for keyword terms when non-semantic-keywords? is true"
+    (mt/with-test-user :rasta
+      (search.tu/with-temp-index-table
+       ;; Not sure if semantic search is active for this test in CI
+       ;; TODO (Chris 2025-11-11) Make sure this works with actual semantic matching
+        (let [semantic-support? (search.engine/supported-engine? :search.engine/semantic)]
+          (mt/with-temp [:model/Dashboard {id-1 :id} {:name "belligerent"}
+                         :model/Dashboard {id-2 :id} {:name "bellicose"}
+                         :model/Dashboard {id-3 :id} {:name "quixotic"}
+                         :model/Dashboard {id-4 :id} {:name "ancillary"}]
+            (let [base-query   {:term-queries     (if semantic-support?
+                                                    ["combative" "quarrelsome"]
+                                                    ["belligerent" "bellicose"])
+                               ;; Not sure if semantic search is always active for this test in CI
+                               ;; TODO (Chris 2025-11-11) Make sure this works with actual semantic disjunction
+                                :semantic-queries (if semantic-support?
+                                                    ["unrealistic" "adjunct"]
+                                                    ["quixotic" "ancillary"])}
+                  test-entity? (comp #{id-1 id-2 id-3 id-4} :id)
+                  query        (fn [join-with-or?]
+                                 (->> (search/search (assoc base-query
+                                                            :join-with-or? join-with-or?
+                                                            :non-semantic-keywords? true))
+                                      (filter test-entity?)
+                                      (map :name)))]
+              (doseq [join-with-or? [false true]]
+                (testing (str "join-with-or? = " join-with-or? "\n")
+                  (testing (if semantic-support?
+                             "Semantic results are not returned for keyword terms"
+                             "Exact matches are returned for both keyword and semantic terms")
+                    (is (= (if semantic-support?
+                             #{"quixotic" "ancillary"}
+                             #{"belligerent" "bellicose" "quixotic" "ancillary"})
+                           (set (query join-with-or?))))))))))))))
