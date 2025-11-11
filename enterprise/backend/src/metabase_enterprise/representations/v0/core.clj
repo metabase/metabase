@@ -4,6 +4,7 @@
    [metabase-enterprise.representations.v0.card :as v0-card]
    [metabase-enterprise.representations.v0.collection :as v0-coll]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.v0.dashboard :as v0-dashboard]
    [metabase-enterprise.representations.v0.database :as v0-database]
    [metabase-enterprise.representations.v0.document :as v0-document]
    [metabase-enterprise.representations.v0.metric :as v0-metric]
@@ -17,6 +18,7 @@
   [representation-type]
   (case representation-type
     :collection v0-coll/toucan-model
+    :dashboard v0-dashboard/toucan-model
     :database v0-database/toucan-model
     :document v0-document/toucan-model
     :metric v0-metric/toucan-model
@@ -32,6 +34,7 @@
   [t2-entity]
   (case (v0-common/representation-type t2-entity)
     :collection (v0-coll/export-collection t2-entity)
+    :dashboard (v0-dashboard/export-dashboard t2-entity)
     :database (v0-database/export-database t2-entity)
     :document (v0-document/export-document t2-entity)
     :metric (v0-metric/export-metric t2-entity)
@@ -45,6 +48,7 @@
   [representation ref-index]
   (case (:type representation)
     :collection (v0-coll/yaml->toucan representation ref-index)
+    :dashboard (v0-dashboard/yaml->toucan representation ref-index)
     :database (v0-database/yaml->toucan representation ref-index)
     :document (v0-document/yaml->toucan representation ref-index)
     :metric (v0-metric/yaml->toucan representation ref-index)
@@ -58,6 +62,7 @@
   [representation ref-index]
   (case (:type representation)
     :collection (v0-coll/persist! representation ref-index)
+    :dashboard (v0-dashboard/persist! representation ref-index)
     :database (v0-database/persist! representation ref-index)
     :document (v0-document/persist! representation ref-index)
     :metric (v0-metric/persist! representation ref-index)
@@ -71,6 +76,7 @@
   [representation ref-index]
   (case (:type representation)
     :transform (v0-transform/insert! representation ref-index)
+    :dashboard (v0-dashboard/insert! representation ref-index)
     ;; default
     (let [model (toucan-model (:type representation))
           toucan (->> (yaml->toucan representation ref-index)
@@ -82,6 +88,7 @@
   [representation id ref-index]
   (case (:type representation)
     :transform (v0-transform/update! representation id ref-index)
+    :dashboard (v0-dashboard/update! representation id ref-index)
     ;; default
     (let [model (toucan-model (:type representation))
           toucan (yaml->toucan representation ref-index)]
