@@ -299,11 +299,7 @@
                                                       :continue_on_error true)
                             log (slurp (io/input-stream res))]
                         (testing "3 header lines, then card+database+coll, error, then dashboard+coll"
-<<<<<<< HEAD
-                          (is (= #{"Dashboard" "Card" "Database" "Collection"}
-=======
-                          (is (= #{"Dashboard" "Card" "Collection" "TransformTag" "TransformJob"}
->>>>>>> af0b621eeb3 ([serdes] do not say "Loading ..." if entity is not being loaded (#64461))
+                          (is (= #{"Dashboard" "Card" "Collection"}
                                  (log-types (str/split-lines log))))
                           (is (re-find #"Failed to read file \{:path \"Collection DoesNotExist\"}" log)))
                         (testing "Snowplow event about error was sent"
