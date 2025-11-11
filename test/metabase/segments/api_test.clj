@@ -118,7 +118,7 @@
 (deftest update-permissions-test
   (testing "PUT /api/segment/:id"
     (testing "test security. requires superuser perms"
-      (mt/with-temp [:model/Segment segment {:definition (mbql4-segment-definition 2 "cans")}]
+      (mt/with-temp [:model/Segment segment {}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (str "segment/" (:id segment))
                                      {:name             "abc"

@@ -1067,6 +1067,7 @@
            config
            dashboards
            events
+           lib
            models
            queries
            query-permissions

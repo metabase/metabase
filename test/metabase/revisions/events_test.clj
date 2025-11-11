@@ -271,7 +271,7 @@
     (mt/with-temp [:model/Database {database-id :id} {}
                    :model/Table    {:keys [id]}      {:db_id database-id}
                    :model/Segment  segment           {:table_id   id
-                                                      :definition {:a "b"}}]
+                                                      :definition {:filter [:= [:field 2 nil] "value"]}}]
       (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :rasta)})
       (let [revision (-> (t2/select-one :model/Revision :model "Segment", :model_id (:id segment))
                          (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
@@ -285,7 +285,7 @@
                                :entity_id               (:entity_id segment)
                                :archived                false
                                :creator_id              (mt/user->id :rasta)
-                               :definition              {:a "b"}}
+                               :definition              {:filter [:= [:field 2 nil] "value"]}}
                 :is_reversion false
                 :is_creation  true
                 :message      nil}
@@ -296,7 +296,7 @@
     (mt/with-temp [:model/Database {database-id :id} {}
                    :model/Table    {:keys [id]}      {:db_id database-id}
                    :model/Segment  segment           {:table_id   id
-                                                      :definition {:a "b"}}]
+                                                      :definition {:filter [:= [:field 2 nil] "value"]}}]
       (events/publish-event! :event/segment-update
                              (assoc {:object segment}
                                     :revision-message "updated"
@@ -311,7 +311,7 @@
                              :entity_id               (:entity_id segment)
                              :archived                false
                              :creator_id              (mt/user->id :rasta)
-                             :definition              {:a "b"}}
+                             :definition              {:filter [:= [:field 2 nil] "value"]}}
               :is_reversion false
               :is_creation  false
               :message      "updated"}
@@ -325,7 +325,7 @@
     (mt/with-temp [:model/Database {database-id :id} {}
                    :model/Table    {:keys [id]}      {:db_id database-id}
                    :model/Segment  segment           {:table_id   id
-                                                      :definition {:a "b"}
+                                                      :definition {:filter [:= [:field 2 nil] "value"]}
                                                       :archived   true}]
       (events/publish-event! :event/segment-delete {:object segment :user-id (mt/user->id :rasta)})
       (is (= {:model        "Segment"
@@ -338,7 +338,7 @@
                              :entity_id               (:entity_id segment)
                              :archived                true
                              :creator_id              (mt/user->id :rasta)
-                             :definition              {:a "b"}}
+                             :definition              {:filter [:= [:field 2 nil] "value"]}}
               :is_reversion false
               :is_creation  false
               :message      nil}

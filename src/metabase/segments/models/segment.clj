@@ -39,9 +39,10 @@
 (defn- normalize-segment-definition
   "Normalize segment definition.
   Accepts both MBQL 4 fragments (for backward compat during migration) and MBQL 5 full queries.
-  MBQL 4 fragments are converted to MBQL 5 full queries."
+  MBQL 4 fragments are converted to MBQL 5 full queries.
+  Empty seqs are normalized to `{}`."
   [definition table-id database-id]
-  (when (seq definition)
+  (if (seq definition)
     (u/prog1 (-> (if (mbql5-query? definition)
                    definition
                    (let [definition
@@ -55,7 +56,8 @@
                       :type :query
                       :query (merge {:source-table table-id} definition)}))
                  lib-be/normalize-query)
-      (validate-mbql5-definition <>))))
+      (validate-mbql5-definition <>))
+    {}))
 
 (def ^:private transform-segment-definition
   "Transform for segment definitions. Only handles JSON serialization/deserialization.
@@ -107,7 +109,7 @@
                   (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
-(defn- migrated-segment-definition-or-null
+(defn- maybe-migrated-segment-definition
   [segment]
   (try
     (migrated-segment-definition segment)
@@ -118,7 +120,7 @@
 (t2/define-after-select :model/Segment
   [{:keys [definition] :as segment}]
   (cond-> segment
-    (some? definition) (assoc :definition (migrated-segment-definition-or-null segment))))
+    (some? definition) (assoc :definition (maybe-migrated-segment-definition segment))))
 
 (mu/defn- definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Segment's definition."
