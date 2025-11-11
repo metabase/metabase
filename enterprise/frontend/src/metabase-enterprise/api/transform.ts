@@ -201,6 +201,16 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         body,
       }),
     }),
+    checkQueryComplexity: builder.mutation<
+      { is_simple: boolean, reason: string },
+      { query: string; }
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/transform/is-simple-query",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -217,4 +227,5 @@ export const {
   useDeleteTransformMutation,
   useDeleteTransformTargetMutation,
   useExtractColumnsFromQueryMutation,
+  useCheckQueryComplexityMutation,
 } = transformApi;

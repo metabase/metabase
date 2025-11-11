@@ -1,5 +1,5 @@
 import { useFormikContext } from "formik";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -32,7 +32,10 @@ import {
   Modal,
   Stack,
 } from "metabase/ui";
-import { useCreateTransformMutation } from "metabase-enterprise/api";
+import {
+  useCheckQueryComplexityMutation,
+  useCreateTransformMutation,
+} from "metabase-enterprise/api";
 import { trackTransformCreated } from "metabase-enterprise/transforms/analytics";
 import {
   KeysetColumnSelect,
@@ -48,17 +51,13 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
   CreateTransformRequest,
+  DatasetQuery,
   SuggestedTransform,
   Transform,
   TransformSource,
 } from "metabase-types/api";
 
-function getValidationSchema(source: TransformSource) {
-  const isPythonTransform =
-    source.type === "python" &&
-    source["source-tables"] &&
-    Object.keys(source["source-tables"]).length === 1;
-
+function getValidationSchema() {
   return Yup.object({
     name: Yup.string().required(Errors.required),
     description: Yup.string().nullable(),
@@ -113,52 +112,16 @@ type CreateTransformFormProps = {
 
 type SourceStrategyFieldsProps = {
   source: TransformSource;
+  query: Lib.Query | DatasetQuery | null;
+  type: "query" | "native" | "python";
 };
 
-function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
+function SourceStrategyFields({
+  source,
+  query,
+  type,
+}: SourceStrategyFieldsProps) {
   const { values } = useFormikContext<NewTransformValues>();
-  const metadata = useSelector(getMetadata);
-
-  // Convert DatasetQuery to Lib.Query via Question
-  const libQuery = useMemo(() => {
-    if (source.type !== "query") {
-      return null;
-    }
-
-    try {
-      const question = Question.create({
-        dataset_query: source.query,
-        metadata,
-      });
-      return question.query();
-    } catch (error) {
-      console.error("SourceStrategyFields: Error creating question", error);
-      return null;
-    }
-  }, [source, metadata]);
-
-  // Check if this is an MBQL query (not native SQL or Python)
-  const isMbqlQuery = useMemo(() => {
-    if (!libQuery) {
-      return false;
-    }
-
-    try {
-      const queryDisplayInfo = Lib.queryDisplayInfo(libQuery);
-      return !queryDisplayInfo.isNative;
-    } catch (error) {
-      console.error("SourceStrategyFields: Error checking query type", error);
-      return false;
-    }
-  }, [libQuery]);
-
-  // Check if this is a Python transform with exactly one source table
-  // Incremental transforms are only supported for single-table Python transforms
-  const isPythonTransform =
-    source.type === "python" &&
-    source["source-tables"] &&
-    Object.keys(source["source-tables"]).length === 1;
-
   if (!values.incremental) {
     return null;
   }
@@ -175,25 +138,25 @@ function SourceStrategyFields({ source }: SourceStrategyFieldsProps) {
       )}
       {values.sourceStrategy === "checkpoint" && (
         <>
-          {isMbqlQuery && libQuery && (
+          {type === "query" && query && (
             <KeysetColumnSelect
               name="checkpointFilterUniqueKey"
               label={t`Source Filter Field`}
               placeholder={t`Select a field to filter on`}
               description={t`Which field from the source to use in the incremental filter`}
-              query={libQuery}
+              query={query}
             />
           )}
-          {!isMbqlQuery && source.type === "query" && source.query && (
+          {type === "native" && query && (
             <NativeQueryColumnSelect
               name="checkpointFilter"
               label={t`Source Filter Field`}
               placeholder={t`e.g., id, updated_at`}
               description={t`Column name to use in the incremental filter`}
-              query={source.query}
+              query={query}
             />
           )}
-          {isPythonTransform && source["source-tables"] && (
+          {type === "python" && "source-tables" in source && (
             <PythonKeysetColumnSelect
               name="checkpointFilterUniqueKey"
               label={t`Source Filter Field`}
@@ -265,7 +228,73 @@ function CreateTransformForm({
     [schemas, suggestedTransform],
   );
 
-  const validationSchema = useMemo(() => getValidationSchema(source), [source]);
+  const validationSchema = useMemo(() => getValidationSchema(), []);
+
+  /**
+   * Strategy Fields logic.
+   */
+  const metadata = useSelector(getMetadata);
+
+  // Convert DatasetQuery to Lib.Query via Question
+  const libQuery = useMemo(() => {
+    if (source.type !== "query") {
+      return null;
+    }
+
+    try {
+      const question = Question.create({
+        dataset_query: source.query,
+        metadata,
+      });
+      return question.query();
+    } catch (error) {
+      console.error("SourceStrategyFields: Error creating question", error);
+      return null;
+    }
+  }, [source, metadata]);
+
+  // Check if this is an MBQL query (not native SQL or Python)
+  const isMbqlQuery = useMemo(() => {
+    if (!libQuery) {
+      return false;
+    }
+
+    try {
+      const queryDisplayInfo = Lib.queryDisplayInfo(libQuery);
+      return !queryDisplayInfo.isNative;
+    } catch (error) {
+      console.error("SourceStrategyFields: Error checking query type", error);
+      return false;
+    }
+  }, [libQuery]);
+
+  // Check if this is a Python transform with exactly one source table
+  // Incremental transforms are only supported for single-table Python transforms
+  const isPythonTransform =
+    source.type === "python" &&
+    source["source-tables"] &&
+    Object.keys(source["source-tables"]).length === 1;
+
+  const [checkQueryComplexity, { data: complexity }] =
+    useCheckQueryComplexityMutation();
+  const [showComplexityWarning, setShowComplexityWarning] = useState(false);
+  useEffect(() => {
+    return () => {
+      setShowComplexityWarning(false);
+    };
+  }, []);
+
+  const transformType = useMemo(() => {
+    if (isMbqlQuery) {
+      return "query";
+    }
+    if (isPythonTransform) {
+      return "python";
+    }
+    return "native";
+  }, [isMbqlQuery, isPythonTransform]);
+
+  const query = "query" in source ? source.query : libQuery;
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -315,8 +344,34 @@ function CreateTransformForm({
             label={t`Table name`}
             placeholder={t`descriptive_name`}
           />
-          <FormSwitch name="incremental" label={t`Incremental?`} />
-          <SourceStrategyFields source={source} />
+          <FormSwitch
+            name="incremental"
+            label={t`Incremental?`}
+            onChange={async (e) => {
+              if (transformType === "native" && libQuery && e.target.checked) {
+                const complexity = await checkQueryComplexity({
+                  query: Lib.rawNativeQuery(libQuery),
+                }).unwrap();
+                setShowComplexityWarning(complexity?.is_simple === false);
+              }
+            }}
+          />
+          {showComplexityWarning && (
+            <Alert variant="info" icon="info">
+              <Stack gap="xs">
+                <span>{t`This query is too complex to allow automatic checkpoint column selection.`}</span>
+                <span>
+                  {t`Reason: `}
+                  <strong>{complexity?.reason}</strong>
+                </span>
+              </Stack>
+            </Alert>
+          )}
+          <SourceStrategyFields
+            source={source}
+            query={query}
+            type={transformType}
+          />
           <TargetStrategyFields />
           <Group>
             <Box flex={1}>
@@ -373,8 +428,8 @@ function getCreateRequest(
     const strategyFields = checkpointFilter
       ? { "checkpoint-filter": checkpointFilter }
       : checkpointFilterUniqueKey
-      ? { "checkpoint-filter-unique-key": checkpointFilterUniqueKey }
-      : {};
+        ? { "checkpoint-filter-unique-key": checkpointFilterUniqueKey }
+        : {};
 
     transformSource = {
       ...source,

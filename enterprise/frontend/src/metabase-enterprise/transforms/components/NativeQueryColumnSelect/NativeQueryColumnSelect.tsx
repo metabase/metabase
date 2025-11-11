@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
+import { useLatest } from "react-use";
 
 import { FormSelect, FormTextInput } from "metabase/forms";
 import { Loader, Stack, Text } from "metabase/ui";
@@ -26,6 +26,7 @@ export function NativeQueryColumnSelect({
 
   // Create a stable serialized version of the query for dependency tracking
   const queryKey = useMemo(() => JSON.stringify(query), [query]);
+  const queryRef = useLatest(query);
 
   useEffect(() => {
     let isCancelled = false;
@@ -33,7 +34,7 @@ export function NativeQueryColumnSelect({
     const extract = async () => {
       try {
         const result = await extractColumns({
-          query,
+          query: queryRef.current,
         }).unwrap();
 
         if (!isCancelled) {
@@ -53,11 +54,11 @@ export function NativeQueryColumnSelect({
     return () => {
       isCancelled = true;
     };
-  }, [queryKey, extractColumns]);
+  }, [queryKey, extractColumns, queryRef]);
 
   if (isLoading) {
     return (
-      <Stack spacing="xs">
+      <Stack gap="xs">
         <Text fw="bold" size="sm">
           {label}
         </Text>
@@ -74,7 +75,7 @@ export function NativeQueryColumnSelect({
         label={label}
         description={description}
         placeholder={placeholder}
-        data={columns.map(col => ({ value: col, label: col }))}
+        data={columns.map((col) => ({ value: col, label: col }))}
       />
     );
   }
