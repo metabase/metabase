@@ -17,6 +17,7 @@ import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { requestSessionTokenFromEmbedJs } from "metabase-enterprise/embedding_iframe_sdk/utils";
@@ -51,17 +52,19 @@ export const initAuth = createAsyncThunk(
       // Use existing user session. Do nothing.
     } else if (isValidInstanceUrl) {
       // SSO setup
-      api.onBeforeRequest = async () => {
-        const session = await dispatch(
-          getOrRefreshSession({
-            metabaseInstanceUrl,
-            preferredAuthMethod,
-          }),
-        ).unwrap();
-        if (session?.id) {
-          api.sessionToken = session.id;
-        }
-      };
+      PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler =
+        async () => {
+          const session = await dispatch(
+            getOrRefreshSession({
+              metabaseInstanceUrl,
+              preferredAuthMethod,
+            }),
+          ).unwrap();
+          if (session?.id) {
+            api.sessionToken = session.id;
+          }
+        };
+
       try {
         // verify that the session is actually valid before proceeding
         await dispatch(
