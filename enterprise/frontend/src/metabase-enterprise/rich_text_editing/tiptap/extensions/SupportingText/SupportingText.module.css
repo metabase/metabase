@@ -48,7 +48,7 @@
 }
 
 .handle {
-  cursor: grab;
+  cursor: pointer;
   height: 1rem;
   position: absolute;
   top: 0;
@@ -56,10 +56,6 @@
 
   &:focus-visible {
     outline: none !important;
-  }
-
-  &:active {
-    cursor: grabbing;
   }
 }
 
