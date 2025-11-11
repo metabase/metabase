@@ -118,11 +118,10 @@
 (defn search
   "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.
   Abstracted from the API endpoint logic."
-  [{:keys [term-queries semantic-queries database-id created-at last-edited-at
+  [{:keys [search-queries database-id created-at last-edited-at
            entity-types limit metabot-id search-native-query weights]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
-             {:term-queries term-queries
-              :semantic-queries semantic-queries
+             {:search-queries search-queries
               :database-id database-id
               :created-at created-at
               :last-edited-at last-edited-at
@@ -135,7 +134,7 @@
                         (set (distinct (keep entity-type->search-model entity-types)))
                         metabot-search-models)
         _ (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
-        all-queries   (distinct (concat (or term-queries []) (or semantic-queries [])))
+        all-queries   (distinct (or search-queries []))
         metabot (t2/select-one :model/Metabot :entity_id (get-in metabot-v3.config/metabot-config [metabot-id :entity-id] metabot-id))
         use-verified-content? (if metabot-id
                                 (:use_verified_content metabot)
@@ -145,6 +144,7 @@
                     (let [search-context (search/search-context
                                           (cond->
                                            {:search-string query
+                                            :search-engine "appdb"
                                             :models search-models
                                             :table-db-id database-id
                                             :created-at created-at

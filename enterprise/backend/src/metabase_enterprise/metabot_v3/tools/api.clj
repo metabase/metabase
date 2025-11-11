@@ -1038,8 +1038,7 @@
 (mr/def ::search-arguments
   [:and
    [:map
-    [:term_queries        {:optional true} [:maybe [:sequential :string]]]
-    [:semantic_queries    {:optional true} [:maybe [:sequential :string]]]
+    [:search_queries      {:optional true} [:maybe [:sequential :string]]]
     [:entity_types        {:optional true} [:maybe [:sequential [:enum "table" "model" "question" "dashboard" "metric" "database" "transform"]]]]
     [:database_id         {:optional true} [:maybe :int]]
     [:created_at          {:optional true} [:maybe ms/NonBlankString]]
