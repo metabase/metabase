@@ -31,6 +31,7 @@ import {
   Group,
   Modal,
   Stack,
+  Tooltip,
 } from "metabase/ui";
 import {
   useCheckQueryComplexityMutation,
@@ -270,10 +271,11 @@ function CreateTransformForm({
 
   // Check if this is a Python transform with exactly one source table
   // Incremental transforms are only supported for single-table Python transforms
-  const isPythonTransform =
-    source.type === "python" &&
-    source["source-tables"] &&
-    Object.keys(source["source-tables"]).length === 1;
+  const isPythonTransform = source.type === "python";
+  const isMultiTablePythonTransform =
+    isPythonTransform &&
+    "source-tables" in source &&
+    Object.keys(source["source-tables"]).length > 1;
 
   const [checkQueryComplexity, { data: complexity }] =
     useCheckQueryComplexityMutation();
@@ -311,6 +313,7 @@ function CreateTransformForm({
 
     onCreate(transform);
   };
+  console.log({ isMultiTablePythonTransform });
 
   return (
     <FormProvider
@@ -345,8 +348,13 @@ function CreateTransformForm({
             placeholder={t`descriptive_name`}
           />
           <FormSwitch
+            disabled={isMultiTablePythonTransform}
             name="incremental"
-            label={t`Incremental?`}
+            label={
+              isMultiTablePythonTransform
+                ? t`Incremental transforms are only supported for single data source transforms.`
+                : t`Incremental?`
+            }
             onChange={async (e) => {
               if (transformType === "native" && libQuery && e.target.checked) {
                 const complexity = await checkQueryComplexity({
