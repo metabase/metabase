@@ -56,7 +56,6 @@
    :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :content-translation        (deferred-tru "Content translation")
-   :data-studio                (deferred-tru "Data studio")
    :dependencies               (deferred-tru "Dependency Tracking")
    :documents                  (deferred-tru "Documents")
    :embedding                  (deferred-tru "Embedding")

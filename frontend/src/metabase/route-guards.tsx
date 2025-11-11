@@ -101,16 +101,6 @@ const UserCanAccessTransforms = connectedReduxRedirect<Props, State>({
   context: MetabaseReduxContext,
 });
 
-const UserCanAccessDataStudio = connectedReduxRedirect<Props, State>({
-  wrapperDisplayName: "UserCanAccessDataStudio",
-  redirectPath: "/",
-  allowRedirectBack: false,
-  authenticatedSelector: (state) =>
-    state.settings.values["token-features"].data_studio,
-  redirectAction: routerActions.replace,
-  context: MetabaseReduxContext,
-});
-
 export const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
@@ -135,9 +125,5 @@ export const CanAccessDataModel = UserCanAccessDataModel(
 );
 
 export const CanAccessTransforms = UserCanAccessTransforms(
-  ({ children }) => children,
-);
-
-export const CanAccessDataStudio = UserCanAccessDataStudio(
   ({ children }) => children,
 );

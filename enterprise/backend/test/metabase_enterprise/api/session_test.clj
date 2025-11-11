@@ -16,7 +16,6 @@
                               :config-text-file
                               :content-translation
                               :content-verification
-                              :data-studio
                               :dashboard-subscription-filters
                               :disable-password-login
                               :database-auth-providers
@@ -64,7 +63,6 @@
             :config_text_file               true
             :content_translation            true
             :content_verification           true
-            :data_studio                    true
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true
