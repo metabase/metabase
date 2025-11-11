@@ -8,4 +8,4 @@
 (defn generate-openapi-spec!
   "Command to generate openapi spec for api routes."
   []
-  (api.docs/generate-openapi-spec! routes/routes))
+  (api.docs/write-openapi-spec-to-file! routes/routes))
