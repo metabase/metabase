@@ -2,6 +2,7 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.tools.namespace.file :as ns.file]
    [clojure.tools.namespace.find :as ns.find]
@@ -299,7 +300,7 @@
    (into (sorted-set) (map :depends-on-namespace) (external-usages deps module-symb))))
 
 (defn module-dependencies
-  "Build a graph of module => set of modules it refers to."
+  "Build a graph of module => set of modules it directly depends on."
   ([deps]
    (letfn [(reduce-module-deps [module-deps module deps]
              (reduce
@@ -432,12 +433,106 @@
        ddiff/minimize)))
 
 (defn print-kondo-config-diff
-  "Print the diff between how the config would look if regenerated with [[generate-config]] versus how it looks in
+    "Print the diff between how the config would look if regenerated with [[generate-config]] versus how it looks in
   reality ([[kondo-config]]). Use this to suggest updates to make to the config file."
-  []
-  (ddiff/pretty-print (kondo-config-diff)))
+    []
+    (ddiff/pretty-print (kondo-config-diff)))
 
 (comment
+  (external-usages 'core)
+
   (module-dependencies (dependencies) 'lib)
 
   (module-usages-of-other-module 'lib 'models))
+
+(defn all-module-deps-paths
+  "Build a map of
+
+    dep => path-to-dep
+
+  for each dependency (direct or indirect) of a module, e.g.
+
+    (all-module-deps-paths 'settings)
+    ;; =>
+    {api      []                         ; settings depends on api directly
+     api-keys [permissions collections]} ; settings depends on permissions which depends on collections which depends on api-keys"
+  ([module]
+   (all-module-deps-paths (dependencies) module))
+  ([deps module]
+   (all-module-deps-paths deps module (sorted-map) (atom #{}) []))
+  ([deps module acc already-seen path]
+   (let [module-deps  (module-dependencies deps module)
+         new-deps     (remove @already-seen module-deps)
+         acc          (into acc
+                            (map (fn [dep]
+                                   [dep path]))
+                            new-deps)]
+     (swap! already-seen into new-deps)
+     (reduce
+      (fn [acc new-dep]
+        (all-module-deps-paths deps new-dep acc already-seen (conj path new-dep)))
+      acc
+      new-deps))))
+
+(defn module-dependencies-by-namespace
+  "Return a map of external dependency of `module` => set of namespaces in `module` that use it:
+
+    (module-dependencies-by-namespace 'permissions)
+    ;; =>
+    {api #{metabase.permissions.api
+           metabase.permissions.models.collection.graph
+           ...}
+     app-db #{metabase.permissions.api
+              metabase.permissions.models.permissions-group
+              ...}
+     ...}"
+  ([module]
+   (module-dependencies-by-namespace (dependencies) module))
+
+  ([deps module]
+   (into (sorted-map)
+         (map (fn [dep]
+                [dep (into (sorted-set) (keys (module-usages-of-other-module deps module dep)))]))
+         (module-dependencies deps module))))
+
+(defn dependencies-eliminated-by-removing-namespaces
+  "Return the set of `module` dependencies that we could eliminate if we were to split namespace(s) off into a separate
+  module.
+
+    ;; if we move `metabase.permissions.api` into a separate module then `permissions` no longer has a dependency on
+    ;; `request`
+    (dependencies-eliminated-by-removing-namespaces 'permissions 'metabase.permissions.api)
+    ;; =>
+    #{request}"
+  [module namespace-symb-or-set]
+  (let [deps            (dependencies)
+        namespace-symbs (if (symbol? namespace-symb-or-set)
+                          #{namespace-symb-or-set}
+                          namespace-symb-or-set)
+        dep->namespaces (module-dependencies-by-namespace deps module)]
+    (into (sorted-set)
+          (keep (fn [[dep namespaces]]
+                  (when (empty? (set/difference namespaces namespace-symbs))
+                    dep)))
+          dep->namespaces)))
+
+(defn leaf-modules
+  "Modules that are leaf nodes in the module dependency tree -- nothing else depends on them."
+  []
+  (let [deps (dependencies)]
+    (into (sorted-set)
+          (comp (map :module)
+                (keep (fn [module]
+                        (when (zero? (count (external-usages deps module)))
+                          module))))
+          deps)))
+
+(defn non-dependencies
+  "Modules that `module` does not depend on, either directly or indirectly -- changes to any of these modules should not
+  affect `module`."
+  [module]
+  (let [deps        (dependencies)
+        all-modules (into (sorted-set) (map :module) deps)]
+    (set/difference
+     all-modules
+     (set (keys (all-module-deps-paths deps module))))))

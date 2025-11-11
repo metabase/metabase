@@ -1,8 +1,11 @@
+import { match } from "ts-pattern";
+
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import type { UrlableModel } from "metabase/lib/urls/modelToUrl";
 import type { MenuItem } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
+import type { MetabaseProtocolEntityModel } from "metabase-enterprise/metabot/utils/links";
 import type {
   Database,
   MentionableUser,
@@ -129,4 +132,18 @@ export function entityToUrlableModel<
 
 export function isMentionableUser(value: unknown): value is MentionableUser {
   return isObject(value) && typeof value.common_name === "string";
+}
+
+export function mbProtocolModelToSuggestionModel(inputModel: string): string {
+  // dom nodes record strings and it's better to not to error the input with invalid
+  // data. casting here still afford some amount of internal type awareness as these
+  // two types might diverge in the future.
+  const model: SuggestionModel = match(
+    inputModel as MetabaseProtocolEntityModel,
+  )
+    .with("model", () => "dataset" as const)
+    .with("question", () => "card" as const)
+    .otherwise((x) => x);
+
+  return model;
 }
