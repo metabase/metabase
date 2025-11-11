@@ -41,6 +41,7 @@ export const SupportingText = Node.create<{
   content: "(paragraph|heading|bulletList|orderedList|blockquote|codeBlock)+",
   draggable: true,
   isolating: true,
+  disableDropCursor: true,
 
   addAttributes() {
     return {

@@ -40,6 +40,10 @@
   transform: translateZ(0);
 }
 
+.flexContent :global(.node-supportingText) {
+  padding-right: 0.5rem;
+}
+
 .flexContent :global(.node-cardEmbed):first-child {
   padding-left: 0;
 }
