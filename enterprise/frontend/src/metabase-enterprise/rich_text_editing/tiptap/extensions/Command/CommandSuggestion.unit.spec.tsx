@@ -114,6 +114,7 @@ const setup = ({
     commands: {
       focus: jest.fn(),
     },
+    schema: { nodes: {} },
   };
 
   setupSearchEndpoints(SEARCH_ITEMS);
@@ -337,6 +338,7 @@ describe("CommandSuggestion", () => {
       commands: {
         focus: jest.fn(),
       },
+      schema: { nodes: {} },
     };
 
     renderWithProviders(
@@ -375,6 +377,7 @@ describe("CommandSuggestion", () => {
       commands: {
         focus: jest.fn(),
       },
+      schema: { nodes: {} },
     };
 
     renderWithProviders(
