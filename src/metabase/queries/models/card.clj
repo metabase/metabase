@@ -710,6 +710,7 @@
 
 (t2/define-before-insert :model/Card
   [card]
+  (collection/check-allowed-content (:type card) (:collection_id card))
   (-> card
       (assoc :metabase_version config/mb-version-string
              :card_schema current-schema-version)
@@ -753,6 +754,7 @@
   [{:keys [verified-result-metadata?] :as card}]
   (let [changes (some-> card t2/changes queries.schema/normalize-card)
         card    (queries.schema/normalize-card card)]
+    (collection/check-allowed-content (:type card) (:collection_id changes))
     (-> card
         (dissoc :verified-result-metadata?)
         (assoc :card_schema current-schema-version)

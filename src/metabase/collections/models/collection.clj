@@ -18,7 +18,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
@@ -68,9 +68,9 @@
   "The value of the `:type` field for remote-synced collections."
   "remote-synced")
 
-(def ^:constant library-entity-id
-  "The remote-synced collection's entity ID"
-  "librarylibrarylibrary")
+(def ^:constant semantic-layer-collection-type
+  "The value of the `:type` field for semantic layer collections."
+  "semantic-layer")
 
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
@@ -144,6 +144,32 @@
   (binding [*clearing-remote-sync* true]
     (t2/update! :model/Collection :type remote-synced-collection-type {:type nil})))
 
+(defn semantic-layer-collection
+  "Get the semantic layer collection, if it exists."
+  []
+  (t2/select-one :model/Collection :type semantic-layer-collection-type :location "/"))
+
+(defn create-semantic-layer-collection!
+  "Create the semantic layer collection. Returns root semantic layer collection"
+  []
+  (when-not (nil? (semantic-layer-collection))
+    (throw (ex-info "Semantic Layer already exists" {})))
+  (u/prog1 (t2/insert-returning-instance! :model/Collection {:name     "Semantic Layer"
+                                                             :type     semantic-layer-collection-type
+                                                             :location "/"
+                                                             :allowed_content {:collection true}})
+    (let [base-location        (str "/" (:id <>) "/")]
+      (t2/insert! :model/Collection {:name            "Models"
+                                     :type            semantic-layer-collection-type
+                                     :location        base-location
+                                     :allowed_content {:collection true
+                                                       :model      true}})
+      (t2/insert! :model/Collection {:name            "Metrics"
+                                     :type            semantic-layer-collection-type
+                                     :location        base-location
+                                     :allowed_content {:collection true
+                                                       :metric     true}}))))
+
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
 (methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :collection]
@@ -152,7 +178,8 @@
 
 (t2/deftransforms :model/Collection
   {:namespace       mi/transform-keyword
-   :authority_level mi/transform-keyword})
+   :authority_level mi/transform-keyword
+   :allowed_content mi/transform-json})
 
 (defn maybe-localize-trash-name
   "If the collection is the Trash, translate the `name`. This is a public function because we can't rely on
@@ -337,6 +364,12 @@
                     (tru "A remote-synced Collection can only be placed in another remote-synced Collection or the root Collection.")
                     (tru "A Collection placed in a remote-synced Collection must also be remote-synced."))]
           (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
+
+(defenterprise check-allowed-content
+  "Checks contents of a collection before saving it. The OSS implementation is a no-op."
+  metabase-enterprise.semantic-layer.validation
+  [_model-type _collection-id]
+  true)
 
 ;; This function is defined later after children-location is available
 
@@ -1471,6 +1504,7 @@
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
   (assert-valid-remote-synced-parent collection)
+  (check-allowed-content :collection (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
   (assoc collection :slug (slugify collection-name)))
 
 (defn- copy-collection-permissions!
@@ -1644,6 +1678,8 @@
     (when-not *clearing-remote-sync*
       (let [merged-collection (merge collection-before-updates collection-updates)]
         (assert-valid-remote-synced-parent merged-collection)))
+    ;; (3.6) Check that the parent collection allows this collection to be there
+    (check-allowed-content :collection (when-let [location (:location collection)] (location-path->parent-id location)))
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)
@@ -1827,14 +1863,19 @@
           :slug
           :type]
    :skip []
-   :transform {:created_at        (serdes/date)
+   :transform {:allowed_content    {:export (fn [allowed-content]
+                                              (if (nil? allowed-content)
+                                                ::serdes/skip
+                                                allowed-content))
+                                    :import identity}
+               :created_at         (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
-               :location          (serdes/as :parent_id
-                                             (serdes/compose
-                                              (serdes/fk :model/Collection)
-                                              {:export location-path->parent-id
-                                               :import parent-id->location-path}))
-               :personal_owner_id (serdes/fk :model/User)}})
+               :location           (serdes/as :parent_id
+                                              (serdes/compose
+                                               (serdes/fk :model/Collection)
+                                               {:export location-path->parent-id
+                                                :import parent-id->location-path}))
+               :personal_owner_id  (serdes/fk :model/User)}})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |

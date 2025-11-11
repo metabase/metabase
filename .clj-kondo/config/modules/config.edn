@@ -214,6 +214,7 @@
    :api  #{metabase.bookmarks.api}
    :uses #{api
            app-db
+           collections
            config
            premium-features
            queries
@@ -1854,6 +1855,13 @@
    :api  #{}
    :uses #{premium-features
            settings}}
+
+  enterprise/semantic-layer
+  {:team "UX West"
+   :api  #{metabase-enterprise.semantic-layer.api}
+   :uses #{api
+           collections
+           premium-features}}
 
   enterprise/llm
   {:team "Metabot"
