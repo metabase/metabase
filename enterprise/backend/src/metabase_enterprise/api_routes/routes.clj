@@ -63,7 +63,6 @@
    :remote-sync                (deferred-tru "Remote Sync")
    :etl-connections            (deferred-tru "ETL Connections")
    :etl-connections-pg         (deferred-tru "ETL Connections PG replication")
-   :semantic-layer             (deferred-tru "Semantic Layer")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
    :scim                       (deferred-tru "SCIM configuration")
