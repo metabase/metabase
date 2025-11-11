@@ -1856,9 +1856,9 @@
    :uses #{premium-features
            settings}}
 
-  enterprise/library
+  enterprise/semantic-layer
   {:team "UX West"
-   :api  #{metabase-enterprise.library.api}
+   :api  #{metabase-enterprise.semantic-layer.api}
    :uses #{api
            collections
            premium-features}}

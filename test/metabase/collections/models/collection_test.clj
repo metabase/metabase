@@ -3309,13 +3309,12 @@
 
 (deftest create-library
   (mt/with-discard-model-updates! [:model/Collection]
-    (testing "Can create a library if none exist"
-      (t2/update! :model/Collection :type collection/library-collection-type {:type nil})
-      (let [library (collection/create-library-collection!)]
-        (is (= "Library" (:name library)))
-        (is (= ["Semantic Layer"] (map :name (collection/descendants library))))
-        (is (= ["Metrics" "Models"] (sort (map :name (collection/descendants (first (collection/descendants library)))))))))
-    (testing "Creating a library when one already exists throws an exception"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Library collection already exists" (collection/create-library-collection!))))
+    (testing "Can create a semantic layer if none exist"
+      (t2/update! :model/Collection :type collection/semantic-layer-collection-type {:type nil})
+      (let [base (collection/create-semantic-layer-collection!)]
+        (is (= "Semantic Layer" (:name base)))
+        (is (= ["Metrics" "Models"] (sort (map :name (collection/descendants (first (collection/descendants base)))))))))
+    (testing "Creating a Layer when one already exists throws an exception"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Semantic Layer already exists" (collection/create-semantic-layer-collection!))))
     ;;cleanup created libraries
-    (t2/delete! :model/Collection :type collection/library-collection-type)))
+    (t2/delete! :model/Collection :type collection/semantic-layer-collection-type)))

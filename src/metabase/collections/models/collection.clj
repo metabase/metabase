@@ -68,9 +68,9 @@
   "The value of the `:type` field for remote-synced collections."
   "remote-synced")
 
-(def ^:constant library-collection-type
-  "The value of the `:type` field for library collections."
-  "library")
+(def ^:constant semantic-layer-collection-type
+  "The value of the `:type` field for semantic layer collections."
+  "semantic-layer")
 
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
@@ -144,43 +144,29 @@
   (binding [*clearing-remote-sync* true]
     (t2/update! :model/Collection :type remote-synced-collection-type {:type nil})))
 
-(defn library-collection?
-  "Is this a library collection?"
-  [collection-or-id]
-  (let [type (:type collection-or-id ::not-found)]
-    (if (identical? type ::not-found)
-      ;; If no :type field, it's probably an ID - fetch from DB
-      (some->> collection-or-id u/the-id (t2/select-one-fn :type :model/Collection :id) (= remote-synced-collection-type))
-      ;; If :type field exists, compare directly
-      (= type library-collection-type))))
-
-(defn library-collection
-  "Get the library collection, if it exists."
+(defn semantic-layer-collection
+  "Get the semantic layer collection, if it exists."
   []
-  (t2/select-one :model/Collection :type library-collection-type :location "/"))
+  (t2/select-one :model/Collection :type semantic-layer-collection-type :location "/"))
 
-(defn create-library-collection!
-  "Create the library collection. Returns root library collection"
+(defn create-semantic-layer-collection!
+  "Create the semantic layer collection. Returns root semantic layer collection"
   []
-  (when-not (nil? (library-collection))
-    (throw (ex-info "Library collection already exists" {})))
-  (u/prog1 (t2/insert-returning-instance! :model/Collection {:name     "Library"
-                                                             :type     library-collection-type
-                                                             :location "/"})
-    (let [library-location        (str "/" (:id <>) "/")
-          semantic-layer-id       (t2/insert-returning-pk! :model/Collection {:name     "Semantic Layer"
-                                                                              :type     library-collection-type
-                                                                              :location library-location
-                                                                              :allowed_content {:collection true}})
-          semantic-layer-location (str library-location semantic-layer-id "/")]
-      (t2/insert! :model/Collection {:name     "Models"
-                                     :type     library-collection-type
-                                     :location semantic-layer-location
+  (when-not (nil? (semantic-layer-collection))
+    (throw (ex-info "Semantic Layer already exists" {})))
+  (u/prog1 (t2/insert-returning-instance! :model/Collection {:name     "Semantic Layer"
+                                                             :type     semantic-layer-collection-type
+                                                             :location "/"
+                                                             :allowed_content {:collection true}})
+    (let [base-location        (str "/" (:id <>) "/")]
+      (t2/insert! :model/Collection {:name            "Models"
+                                     :type            semantic-layer-collection-type
+                                     :location        base-location
                                      :allowed_content {:collection true
                                                        :model      true}})
-      (t2/insert! :model/Collection {:name     "Metrics"
-                                     :type     library-collection-type
-                                     :location semantic-layer-location
+      (t2/insert! :model/Collection {:name            "Metrics"
+                                     :type            semantic-layer-collection-type
+                                     :location        base-location
                                      :allowed_content {:collection true
                                                        :metric     true}}))))
 
@@ -381,7 +367,7 @@
 
 (defenterprise check-allowed-content
   "Checks contents of a collection before saving it. The OSS implementation is a no-op."
-  metabase-enterprise.library.validation
+  metabase-enterprise.semantic-layer.validation
   [_model-type _collection-id]
   true)
 
