@@ -40,15 +40,24 @@
   transform: translateZ(0);
 }
 
-.flexContent :global(.node-supportingText) {
-  padding-right: 0.5rem;
-}
-
 .flexContent :global(.node-cardEmbed):first-child {
   padding-left: 0;
 }
 
 .flexContent :global(.node-cardEmbed):last-child {
+  padding-right: 0;
+}
+
+.flexContent :global(.node-supportingText) {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.flexContent :global(.node-supportingText):first-child {
+  padding-left: 0;
+}
+
+.flexContent :global(.node-supportingText):last-child {
   padding-right: 0;
 }
 

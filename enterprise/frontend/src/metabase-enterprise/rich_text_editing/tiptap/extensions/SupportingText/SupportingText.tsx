@@ -158,7 +158,10 @@ const SupportingTextComponent = ({
   const dispatch = useDispatch();
 
   return (
-    <NodeViewWrapper className={cx(S.wrapper, { [S.selected]: selected })}>
+    <NodeViewWrapper
+      className={cx(S.wrapper, { [S.selected]: selected })}
+      data-testid="document-card-supporting-text"
+    >
       <div className={S.scrollContainer}>
         {isNodeEmpty(node) && (
           <div contentEditable={false} className={S.placeholder}>
