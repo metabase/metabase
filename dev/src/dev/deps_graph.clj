@@ -461,12 +461,12 @@
   ([deps module]
    (all-module-deps-paths deps module (sorted-map) (atom #{}) []))
   ([deps module acc already-seen path]
-   (let [module-deps  (module-dependencies deps module)
-         new-deps     (remove @already-seen module-deps)
-         acc          (into acc
-                            (map (fn [dep]
-                                   [dep path]))
-                            new-deps)]
+   (let [module-deps (module-dependencies deps module)
+         new-deps    (remove @already-seen module-deps)
+         acc         (into acc
+                           (map (fn [dep]
+                                  [dep path]))
+                           new-deps)]
      (swap! already-seen into new-deps)
      (reduce
       (fn [acc new-dep]
@@ -541,3 +541,44 @@
             (double (* (/ (count module-deps) (count all-modules)) 100)))
     (flush)
     (set/difference all-modules module-deps)))
+
+(defn- simulate-rename
+  "Create a new version of `deps` as they would appear if you renamed namespace(s)."
+  ([deps old-namespace new-namespace]
+   (for [dep deps]
+     (-> dep
+         (cond-> (= (:namespace dep) old-namespace)
+           (assoc :namespace new-namespace))
+         (update :deps (fn [deps]
+                         (for [dep deps]
+                           (if (= (:namespace dep) old-namespace)
+                             {:namespace new-namespace, :module (module new-namespace)}
+                             dep)))))))
+
+  ([deps old-namespace->new-namespace]
+   (reduce
+    (fn [deps [old-namespace new-namespace]]
+      (simulate-rename deps old-namespace new-namespace))
+    deps
+    old-namespace->new-namespace)))
+
+(defn dependencies-eliminated-by-renaming-namespaces
+  "Calculate the set of dependencies of `module` (both explicit and transient) that would be eliminated by renaming
+  `old-namespaces->new-namespaces`."
+  [module old-namespace->new-namespace]
+  (let [deps            (dependencies)
+        old-module-deps (into (sorted-set) (keys (all-module-deps-paths deps module)))
+        new-deps        (simulate-rename deps old-namespace->new-namespace)
+        new-module-deps (into (sorted-set) (keys (all-module-deps-paths new-deps module)))]
+    (set/difference old-module-deps new-module-deps)))
+
+(defn api-namespace-renames
+  "Build a map of a namespace renames for use with [[dependencies-eliminated-by-renaming-namespaces]] that would
+  simulate splitting moving every `.api` namespace into a `-rest` module."
+  []
+  (into (sorted-map)
+        (comp (map :namespace)
+              (keep (fn [a-namespace]
+                      (when-let [[_match prefix suffix] (re-find #"(^metabase(?:-enterprise)?\.[^.]+)(?<!-rest)(\.api.*$)" (name a-namespace))]
+                        [a-namespace (symbol (str prefix "-rest" suffix))]))))
+        (dependencies)))
