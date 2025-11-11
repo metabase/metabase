@@ -407,9 +407,25 @@
      (let [table-ids          (sort (set (map :id tables)))
            published-as-model (t2/select-fn-set :published_table_id [:model/Card :published_table_id]
                                                 :published_table_id [:in table-ids]
-                                                :archived false
-                                                :archived_directly false)]
+                                                :type               :model
+                                                :archived           false
+                                                :archived_directly  false)]
        (u/index-by identity #(contains? published-as-model %) table-ids)))
+   :id
+   {:default nil}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Table :published_models]
+  [_model k tables]
+  (mi/instances-with-hydrated-data
+   tables k
+   (fn []
+     (let [table-ids (sort (set (map :id tables)))
+           models    (t2/select :model/Card
+                                :published_table_id [:in table-ids]
+                                :type               :model
+                                :archived           false
+                                :archived_directly  false)]
+       (group-by :published_table_id models)))
    :id
    {:default nil}))
 
