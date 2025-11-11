@@ -53,7 +53,9 @@ function DataSectionTabs({ location }: DataSectionTabsProps) {
 
   return (
     <Group>
-      {canAccessDataModel && <PaneHeaderTabs tabs={getDataTabs(location)} />}
+      {canAccessDataModel && (
+        <PaneHeaderTabs tabs={getDataTabs(location)} withBackground />
+      )}
       {canAccessDataModel && canAccessTransforms && <PaneHeaderTabsDivider />}
       {canAccessTransforms && (
         <PaneHeaderTabs tabs={getTransformTabs(location)} withBackground />
