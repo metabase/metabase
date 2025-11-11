@@ -1135,14 +1135,20 @@ export type SemanticLayerSectionProps = {
   hasNativeWrite: boolean;
 };
 
+export type SemanticLayerCollectionType = "models" | "metrics";
+
 export type SemanticLayerPlugin = {
   isEnabled: boolean;
   isSemanticLayerCollection: (collection: Partial<Collection>) => boolean;
+  getSemanticLayerCollectionType: (
+    collection: Partial<Collection>,
+  ) => SemanticLayerCollectionType | undefined;
   SemanticLayerSection: ComponentType<SemanticLayerSectionProps>;
 };
 
 export const PLUGIN_SEMANTIC_LAYER: SemanticLayerPlugin = {
   isEnabled: false,
   isSemanticLayerCollection: () => false,
+  getSemanticLayerCollectionType: () => undefined,
   SemanticLayerSection: PluginPlaceholder,
 };
