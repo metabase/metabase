@@ -11,7 +11,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest required-features-test
-  ;; checked in metabase-enterprise.api.routes/ee-routes-map
+  ;; checked in [[metabase-enterprise.api-routes.routes/ee-routes-map]]
   (let [required-features [[:attached-dwh "Attached DWH"]
                            [:etl-connections "ETL Connections"]
                            [:etl-connections-pg "ETL Connections PG replication"]]]
