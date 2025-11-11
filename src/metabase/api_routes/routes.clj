@@ -41,7 +41,7 @@
    [metabase.segments.api]
    [metabase.session.api]
    [metabase.settings-rest.api]
-   [metabase.setup.api]
+   [metabase.setup-rest.api]
    [metabase.sso.api]
    [metabase.sync.api]
    [metabase.task-history.api]
@@ -83,7 +83,7 @@
          metabase.revisions.api/keep-me
          metabase.segments.api/keep-me
          metabase.settings-rest.api/keep-me
-         metabase.setup.api/keep-me
+         metabase.setup-rest.api/keep-me
          metabase.task-history.api/keep-me
          metabase.testing-api.api/keep-me
          metabase.tiles.api/keep-me
@@ -172,7 +172,7 @@
    "/segment"              (+auth 'metabase.segments.api)
    "/session"              metabase.session.api/routes
    "/setting"              (+auth 'metabase.settings-rest.api)
-   "/setup"                'metabase.setup.api
+   "/setup"                'metabase.setup-rest.api
    "/slack"                (+auth metabase.channel.api/slack-routes)
    "/table"                (+auth metabase.warehouse-schema-rest.api/table-routes)
    "/task"                 (+auth 'metabase.task-history.api)

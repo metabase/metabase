@@ -1,4 +1,4 @@
-(ns metabase.setup.api
+(ns metabase.setup-rest.api
   (:require
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]

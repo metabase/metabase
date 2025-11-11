@@ -1,4 +1,4 @@
-(ns metabase.setup.api-test
+(ns metabase.setup-rest.api-test
   "Tests for /api/setup endpoints."
   (:require
    [clojure.spec.alpha :as s]
@@ -11,7 +11,7 @@
    [metabase.events.core :as events]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting.cache-test :as setting.cache-test]
-   [metabase.setup.api :as api.setup]
+   [metabase.setup-rest.api :as api.setup]
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
    [metabase.test :as mt]

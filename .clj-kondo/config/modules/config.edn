@@ -1258,18 +1258,25 @@
 
   setup
   {:team "UX West"
-   :api  #{metabase.setup.api
-           metabase.setup.core
+   :api  #{metabase.setup.core
            metabase.setup.init}
+   :uses #{app-db
+           config
+           settings
+           util}}
+
+  setup-rest
+  {:team "UX West"
+   :api  #{metabase.setup-rest.api}
    :uses #{analytics
            api
-           app-db
            appearance
            config
            events
            request
            session
            settings
+           setup
            system
            users
            util}}
