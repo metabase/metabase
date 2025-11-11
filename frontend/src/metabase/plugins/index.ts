@@ -1,6 +1,7 @@
 import type { Middleware } from "@reduxjs/toolkit";
 import type { TagDescription } from "@reduxjs/toolkit/query";
 import React, {
+  type Component,
   type ComponentType,
   type Context,
   type Dispatch,
@@ -60,6 +61,7 @@ import type {
   Bookmark,
   CacheableDashboard,
   CacheableModel,
+  Card,
   CheckDependenciesResponse,
   Collection,
   CollectionAuthorityLevelConfig,
@@ -295,10 +297,81 @@ export type IllustrationValue = {
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
 
 // snippet sidebar
-export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS = [];
+export type SnippetSidebarMenuOption = {
+  icon: IconName;
+  name?: string;
+  label?: string;
+  onClick: () => void;
+};
+
+export type SnippetSidebarState = {
+  modalSnippetCollection?: Partial<Collection> | null;
+  permissionsModalCollectionId?: CollectionId | null;
+};
+
+export type SnippetSidebarProps = {
+  snippetCollection: { id: CollectionId | null };
+};
+
+export type SnippetSidebarComponent = Component<
+  SnippetSidebarProps,
+  SnippetSidebarState
+>;
+
+export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS: Array<
+  (component: SnippetSidebarComponent) => SnippetSidebarMenuOption
+> = [];
+
 export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS = {};
-export const PLUGIN_SNIPPET_SIDEBAR_MODALS = [];
+
+export const PLUGIN_SNIPPET_SIDEBAR_MODALS: Array<
+  (component: SnippetSidebarComponent) => JSX.Element | null
+> = [];
+
 export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
+
+export type SnippetCollectionPickerModalProps = {
+  isOpen: boolean;
+  onSelect: (collectionId: CollectionId | null) => void;
+  onClose: () => void;
+};
+
+export type SnippetFormModalProps = {
+  collection: Partial<Collection>;
+  onClose: () => void;
+  onSaved?: () => void;
+};
+
+export type SnippetCollectionMenuProps = {
+  collection: Collection;
+  onEditDetails: (collection: Collection) => void;
+  onChangePermissions: (collectionId: CollectionId) => void;
+};
+
+export type SnippetCollectionPermissionsModalProps = {
+  collectionId: CollectionId;
+  onClose: () => void;
+};
+
+export type SnippetFoldersPlugin = {
+  isEnabled: boolean;
+  CollectionPickerModal: ComponentType<SnippetCollectionPickerModalProps>;
+  CollectionFormModal: ComponentType<SnippetFormModalProps>;
+  CollectionMenu: ComponentType<SnippetCollectionMenuProps>;
+  CollectionPermissionsModal: ComponentType<SnippetCollectionPermissionsModalProps>;
+};
+
+export const PLUGIN_SNIPPET_FOLDERS: SnippetFoldersPlugin = {
+  isEnabled: false,
+  CollectionPickerModal:
+    PluginPlaceholder as ComponentType<SnippetCollectionPickerModalProps>,
+  CollectionFormModal:
+    PluginPlaceholder as ComponentType<SnippetFormModalProps>,
+  CollectionMenu:
+    PluginPlaceholder as ComponentType<SnippetCollectionMenuProps>,
+  CollectionPermissionsModal:
+    PluginPlaceholder as ComponentType<SnippetCollectionPermissionsModalProps>,
+};
 
 interface PluginDashboardSubscriptionParametersSectionOverride {
   Component?: ComponentType<{
@@ -422,7 +495,7 @@ export const PLUGIN_MODERATION = {
   getModerationTimelineEvents: (_reviews: any, _currentUser: BaseUser | null) =>
     [] as RevisionOrModerationEvent[],
   useDashboardMenuItems: (_model?: Dashboard, _reload?: () => void) => [],
-  useQuestionMenuItems: (_model?: Question, _reload?: () => void) => [],
+  useCardMenuItems: (_model?: Card, _reload?: () => void) => [],
 };
 
 export type InvalidateNowButtonProps = {
@@ -909,14 +982,16 @@ export type TransformPickerProps = {
 };
 
 export type TransformsPlugin = {
+  isEnabled: boolean;
   canAccessTransforms: (state: State) => boolean;
-  getTransformRoutes(): ReactNode;
+  getDataStudioTransformRoutes(): ReactNode;
   TransformPicker: ComponentType<TransformPickerProps>;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  isEnabled: false,
   canAccessTransforms: () => false,
-  getTransformRoutes: () => null,
+  getDataStudioTransformRoutes: () => null,
   TransformPicker: PluginPlaceholder,
 };
 
@@ -947,23 +1022,25 @@ export const PLUGIN_REMOTE_SYNC: {
 };
 
 export type PythonTransformEditorProps = {
-  id?: TransformId;
-  name: string;
   source: PythonTransformSourceDraft;
   proposedSource?: PythonTransformSourceDraft;
   isDirty: boolean;
-  isSaving: boolean;
-  onChangeName?: (name: string) => void;
   onChangeSource: (source: PythonTransformSourceDraft) => void;
-  onSave: () => void;
-  onCancel: () => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
+};
+
+export type PythonTransformSourceValidationResult = {
+  isValid: boolean;
+  errorMessage?: string;
 };
 
 export type PythonTransformsPlugin = {
   isEnabled: boolean;
   getPythonLibraryRoutes: () => ReactNode;
+  getPythonSourceValidationResult: (
+    source: PythonTransformSourceDraft,
+  ) => PythonTransformSourceValidationResult;
   TransformEditor: ComponentType<PythonTransformEditorProps>;
   PythonRunnerSettingsPage: ComponentType;
 };
@@ -971,13 +1048,14 @@ export type PythonTransformsPlugin = {
 export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
   isEnabled: false,
   getPythonLibraryRoutes: () => null,
+  getPythonSourceValidationResult: () => ({ isValid: true }),
   TransformEditor: PluginPlaceholder,
   PythonRunnerSettingsPage: NotFoundPlaceholder,
 };
 
 type DependenciesPlugin = {
   isEnabled: boolean;
-  getDependencyGraphRoutes: () => ReactNode;
+  getDataStudioDependencyRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
@@ -1039,7 +1117,7 @@ function useCheckDependencies<TChange>({
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   isEnabled: false,
-  getDependencyGraphRoutes: () => null,
+  getDataStudioDependencyRoutes: () => null,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,

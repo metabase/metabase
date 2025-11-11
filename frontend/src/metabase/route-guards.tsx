@@ -2,9 +2,12 @@ import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
-import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import { MetabaseReduxContext } from "metabase/lib/redux";
+import {
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_TRANSFORMS,
+} from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 
@@ -78,11 +81,32 @@ const UserCanAccessOnboarding = connectedReduxRedirect<Props, State>({
   context: MetabaseReduxContext,
 });
 
-const UserCanAccessDataStudio = connectedReduxRedirect<Props, State>({
-  wrapperDisplayName: "UserCanAccessDataStudio",
+const UserCanAccessDataModel = connectedReduxRedirect<Props, State>({
+  wrapperDisplayName: "UserCanAccessDataModel",
   redirectPath: "/unauthorized",
   allowRedirectBack: false,
-  authenticatedSelector: (state) => canAccessDataStudio(state),
+  authenticatedSelector: (state) =>
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state),
+  redirectAction: routerActions.replace,
+  context: MetabaseReduxContext,
+});
+
+const UserCanAccessTransforms = connectedReduxRedirect<Props, State>({
+  wrapperDisplayName: "UserCanAccessTransforms",
+  redirectPath: "/unauthorized",
+  allowRedirectBack: false,
+  authenticatedSelector: (state) =>
+    PLUGIN_TRANSFORMS.canAccessTransforms(state),
+  redirectAction: routerActions.replace,
+  context: MetabaseReduxContext,
+});
+
+const UserCanAccessDataStudio = connectedReduxRedirect<Props, State>({
+  wrapperDisplayName: "UserCanAccessDataStudio",
+  redirectPath: "/",
+  allowRedirectBack: false,
+  authenticatedSelector: (state) =>
+    state.settings.values["token-features"].data_studio,
   redirectAction: routerActions.replace,
   context: MetabaseReduxContext,
 });
@@ -103,6 +127,14 @@ export const CanAccessSettings = MetabaseIsSetup(
 );
 
 export const CanAccessOnboarding = UserCanAccessOnboarding(
+  ({ children }) => children,
+);
+
+export const CanAccessDataModel = UserCanAccessDataModel(
+  ({ children }) => children,
+);
+
+export const CanAccessTransforms = UserCanAccessTransforms(
   ({ children }) => children,
 );
 

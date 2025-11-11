@@ -25,8 +25,8 @@ import SegmentApp from "./SegmentApp";
 
 const TestHome = () => <div />;
 
-const SEGMENTS_URL = "/data-studio/data/segments";
-const FORM_URL = "/data-studio/data/segment/create";
+const SEGMENTS_URL = "/admin/datamodel/segments";
+const FORM_URL = "/admin/datamodel/segment/create";
 
 interface SetupOpts {
   initialRoute?: string;

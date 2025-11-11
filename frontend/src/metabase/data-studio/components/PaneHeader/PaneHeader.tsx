@@ -1,44 +1,59 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import EditableText from "metabase/common/components/EditableText";
+import { useSelector } from "metabase/lib/redux";
+import { getLocation } from "metabase/selectors/routing";
+import type { GroupProps, IconName } from "metabase/ui";
 import {
+  Box,
   Button,
+  Divider,
   FixedSizeIcon,
   Group,
-  type IconName,
   Stack,
+  Tooltip,
 } from "metabase/ui";
 
 import S from "./PaneHeader.module.css";
+import type { PaneHeaderTab } from "./types";
 
-interface PaneHeaderProps {
+interface PaneHeaderProps extends Omit<GroupProps, "title"> {
   title: ReactNode;
+  icon?: IconName;
+  badge?: ReactNode;
   menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
-  "data-testid"?: string;
 }
 
 export const PaneHeader = ({
+  className,
   title,
+  icon,
+  badge,
   menu,
   tabs,
   actions,
-  "data-testid": dataTestId,
+  ...rest
 }: PaneHeaderProps) => {
   return (
     <Group
-      className={S.header}
-      p="md"
+      className={cx(S.header, className)}
+      px="lg"
+      py="md"
       justify="space-between"
       gap="sm"
-      data-testid={dataTestId}
+      wrap="nowrap"
+      {...rest}
     >
       <Stack gap="sm">
-        <Group align="center" gap="xs">
+        <Group align="center" gap="xs" wrap="nowrap">
+          {icon && <FixedSizeIcon name={icon} c="brand" size={20} />}
           {title}
+          {badge}
           {menu}
         </Group>
         {tabs}
@@ -47,6 +62,18 @@ export const PaneHeader = ({
     </Group>
   );
 };
+
+type PaneHeaderTitleProps = {
+  children?: ReactNode;
+};
+
+export function PanelHeaderTitle({ children }: PaneHeaderTitleProps) {
+  return (
+    <Box fw="bold" fz="h3" lh="h3">
+      {children}
+    </Box>
+  );
+}
 
 type PaneHeaderInputProps = {
   initialValue?: string;
@@ -73,37 +100,73 @@ export function PaneHeaderInput({
   );
 }
 
-export type PaneHeaderTab = {
-  label: string;
-  to: string;
-  icon: IconName;
-  isSelected: boolean;
-};
-
 type PaneHeaderTabsProps = {
   tabs: PaneHeaderTab[];
+  withBackground?: boolean;
 };
 
-export function PaneHeaderTabs({ tabs }: PaneHeaderTabsProps) {
+export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
+  const { pathname } = useSelector(getLocation);
+  const backgroundColor = withBackground ? "bg-secondary" : "transparent";
+
   return (
     <Group gap="sm">
-      {tabs.map(({ label, to, icon, isSelected }) => (
-        <Button
-          key={label}
-          component={Link}
-          to={to}
-          size="sm"
-          radius="xl"
-          c={isSelected ? "brand" : undefined}
-          bg={isSelected ? "brand-light" : undefined}
-          bd="none"
-          leftSection={
-            <FixedSizeIcon name={icon} opacity={isSelected ? 1 : 0.6} />
-          }
-        >
-          {label}
+      {tabs.map(({ label, to, icon, isSelected = to === pathname }) => {
+        return (
+          <Button
+            key={label}
+            component={Link}
+            to={to}
+            size="sm"
+            radius="xl"
+            c={isSelected ? "brand" : undefined}
+            bg={isSelected ? "brand-light" : backgroundColor}
+            bd="none"
+            leftSection={icon != null ? <FixedSizeIcon name={icon} /> : null}
+          >
+            {label}
+          </Button>
+        );
+      })}
+    </Group>
+  );
+}
+
+export function PaneHeaderTabsDivider() {
+  return <Divider my="sm" orientation="vertical" />;
+}
+
+type PaneHeaderActionsProps = {
+  errorMessage?: string;
+  isValid?: boolean;
+  isDirty?: boolean;
+  isSaving?: boolean;
+  onSave: () => void;
+  onCancel: () => void;
+};
+
+export function PaneHeaderActions({
+  errorMessage,
+  isValid = true,
+  isDirty = false,
+  isSaving = false,
+  onSave,
+  onCancel,
+}: PaneHeaderActionsProps) {
+  const canSave = isDirty && !isSaving && isValid;
+
+  if (!isDirty && !isSaving) {
+    return null;
+  }
+
+  return (
+    <Group>
+      <Button onClick={onCancel}>{t`Cancel`}</Button>
+      <Tooltip label={errorMessage} disabled={errorMessage == null}>
+        <Button variant="filled" disabled={!canSave} onClick={onSave}>
+          {t`Save`}
         </Button>
-      ))}
+      </Tooltip>
     </Group>
   );
 }

@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useContext, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -11,7 +11,6 @@ import * as Urls from "metabase/lib/urls";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
-  SortableFieldList,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -28,10 +27,12 @@ import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
+import { DataModelContext } from "../.../../../DataModelContext";
 import { ResponsiveButton } from "../ResponsiveButton";
 
-import { FieldList } from "./FieldList";
+import { TableFieldList } from "./TableFieldList";
 import S from "./TableSection.module.css";
+import { TableSortableFieldList } from "./TableSortableFieldList";
 import { useResponsiveButtons } from "./hooks";
 
 interface Props {
@@ -61,6 +62,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     isSorting,
     isUpdatingSorting,
   });
+  const { baseUrl } = useContext(DataModelContext);
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateTable({
@@ -248,18 +250,20 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           {!hasFields && <EmptyState message={t`This table has no fields`} />}
 
           {isSorting && hasFields && (
-            <SortableFieldList
-              activeFieldId={fieldId}
+            <TableSortableFieldList
               table={table}
+              activeFieldId={fieldId}
               onChange={handleCustomFieldOrderChange}
             />
           )}
 
           {!isSorting && hasFields && (
-            <FieldList
-              activeFieldId={fieldId}
-              getFieldHref={(fieldId) => getUrl({ ...parsedParams, fieldId })}
+            <TableFieldList
               table={table}
+              activeFieldId={fieldId}
+              getFieldHref={(fieldId) =>
+                getUrl(baseUrl, { ...parsedParams, fieldId })
+              }
             />
           )}
         </Stack>

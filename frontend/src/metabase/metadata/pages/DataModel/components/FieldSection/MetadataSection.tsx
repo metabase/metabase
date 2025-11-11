@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useContext, useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -6,13 +6,14 @@ import {
   useUpdateFieldMutation,
 } from "metabase/api";
 import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
+import { TitledSection } from "metabase/metadata/components/TitledSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DatabaseId, Field, Table } from "metabase-types/api";
 
+import { DataModelContext } from "../../DataModelContext";
 import { trackMetadataChange } from "../../analytics";
-import { TitledSection } from "../TitledSection";
 
 import { getSemanticTypeError } from "./utils";
 
@@ -33,9 +34,10 @@ const MetadataSectionBase = ({ databaseId, field, table }: Props) => {
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   });
   const [updateField] = useUpdateFieldMutation();
+  const { baseUrl } = useContext(DataModelContext);
   const semanticTypeError = useMemo(() => {
-    return getSemanticTypeError(table, field);
-  }, [table, field]);
+    return getSemanticTypeError(table, field, baseUrl);
+  }, [table, field, baseUrl]);
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 

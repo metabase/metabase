@@ -4,6 +4,7 @@ import CollectionPermissionsModal from "metabase/admin/permissions/components/Co
 import { canonicalCollectionId } from "metabase/collections/utils";
 import Modal from "metabase/common/components/Modal";
 import {
+  PLUGIN_SNIPPET_FOLDERS,
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
   PLUGIN_SNIPPET_SIDEBAR_MODALS,
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
@@ -14,8 +15,17 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import CollectionOptionsButton from "./components/CollectionOptionsButton";
 import CollectionRow from "./components/CollectionRow";
 import SnippetCollectionFormModal from "./components/SnippetCollectionFormModal";
+import { SnippetCollectionMenu } from "./components/SnippetCollectionMenu";
+import { SnippetCollectionPermissionsModal } from "./components/SnippetCollectionPermissionsModal";
+import { SnippetCollectionPickerModal } from "./components/SnippetCollectionPickerModal";
 
 if (hasPremiumFeature("snippet_collections")) {
+  PLUGIN_SNIPPET_FOLDERS.isEnabled = true;
+  PLUGIN_SNIPPET_FOLDERS.CollectionPickerModal = SnippetCollectionPickerModal;
+  PLUGIN_SNIPPET_FOLDERS.CollectionFormModal = SnippetCollectionFormModal;
+  PLUGIN_SNIPPET_FOLDERS.CollectionMenu = SnippetCollectionMenu;
+  PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal =
+    SnippetCollectionPermissionsModal;
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push((snippetSidebar) => ({
     icon: "folder",
     name: t`New folder`,
@@ -32,21 +42,15 @@ if (hasPremiumFeature("snippet_collections")) {
   PLUGIN_SNIPPET_SIDEBAR_MODALS.push(
     (snippetSidebar) =>
       snippetSidebar.state.modalSnippetCollection && (
-        <Modal
+        <SnippetCollectionFormModal
+          collection={snippetSidebar.state.modalSnippetCollection}
           onClose={() =>
             snippetSidebar.setState({ modalSnippetCollection: null })
           }
-        >
-          <SnippetCollectionFormModal
-            collection={snippetSidebar.state.modalSnippetCollection}
-            onClose={() =>
-              snippetSidebar.setState({ modalSnippetCollection: null })
-            }
-            onSaved={() => {
-              snippetSidebar.setState({ modalSnippetCollection: null });
-            }}
-          />
-        </Modal>
+          onSaved={() => {
+            snippetSidebar.setState({ modalSnippetCollection: null });
+          }}
+        />
       ),
     (snippetSidebar) =>
       snippetSidebar.state.permissionsModalCollectionId != null && (

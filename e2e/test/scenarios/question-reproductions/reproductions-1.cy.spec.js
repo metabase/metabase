@@ -1015,10 +1015,13 @@ describe("issue 19742", () => {
 
     H.openNavigationSidebar();
     cy.icon("gear").click();
-    selectFromDropdown("Data studio");
+    selectFromDropdown("Admin settings");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Table Metadata").click();
     H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
-    H.DataStudio.exitButton().click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Exit admin").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();

@@ -8,7 +8,6 @@ import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/complex";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import Search from "metabase/entities/search";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
@@ -52,7 +51,6 @@ export const useCommandPalette = ({
 
   const isAdmin = useSelector(getUserIsAdmin);
   const canUserAccessSettings = useSelector(canAccessSettings);
-  const hasDataStudioAccess = useSelector(canAccessDataStudio);
 
   const isSearchTypeaheadEnabled = useSetting("search-typeahead-enabled");
 
@@ -325,29 +323,11 @@ export const useCommandPalette = ({
       }));
   }, [disabled, canUserAccessSettings, isAdmin, settingValues]);
 
-  const dataStudioActions = useMemo<PaletteAction[]>(() => {
-    if (disabled || !hasDataStudioAccess) {
-      return [];
-    }
-
-    return [
-      {
-        id: "data-studio-table-metadata",
-        name: t`Table Metadata`,
-        icon: "table",
-        perform: () => {},
-        section: "data-studio",
-        extra: {
-          href: Urls.dataModel(),
-        },
-      },
-    ];
-  }, [disabled, hasDataStudioAccess]);
-
-  useRegisterActions(
-    hasQuery ? [...adminActions, ...settingsActions, ...dataStudioActions] : [],
-    [adminActions, settingsActions, dataStudioActions, hasQuery],
-  );
+  useRegisterActions(hasQuery ? [...adminActions, ...settingsActions] : [], [
+    adminActions,
+    settingsActions,
+    hasQuery,
+  ]);
 
   return {
     searchRequestId,

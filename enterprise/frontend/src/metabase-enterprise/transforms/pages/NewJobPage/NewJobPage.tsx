@@ -5,6 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { PaneHeaderActions } from "metabase/data-studio/components/PaneHeader";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -15,8 +16,6 @@ import {
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { JobEditor, type TransformJobInfo } from "../../components/JobEditor";
-
-import { JobActions } from "./JobActions";
 
 type NewJobPageProps = {
   route: Route;
@@ -33,19 +32,6 @@ export function NewJobPage({ route }: NewJobPageProps) {
   const dispatch = useDispatch();
   const isSaving = isCreating || isFetching;
 
-  const handleSave = async () => {
-    const { data: newJob, error } = await createJob(job);
-
-    if (error) {
-      sendErrorToast(t`Failed to create a job`);
-    } else if (newJob != null) {
-      // prefetch the job to avoid the loader on the job details page
-      await fetchJob(newJob.id);
-      sendSuccessToast(t`New job created`);
-      dispatch(push(Urls.transformJob(newJob.id)));
-    }
-  };
-
   const handleNameChange = (name: string) => {
     setJob({ ...job, name });
   };
@@ -61,11 +47,35 @@ export function NewJobPage({ route }: NewJobPageProps) {
     setJob({ ...job, tag_ids: tagIds });
   };
 
+  const handleSave = async () => {
+    const { data: newJob, error } = await createJob(job);
+
+    if (error) {
+      sendErrorToast(t`Failed to create a job`);
+    } else if (newJob != null) {
+      // prefetch the job to avoid the loader on the job details page
+      await fetchJob(newJob.id);
+      sendSuccessToast(t`New job created`);
+      dispatch(push(Urls.transformJob(newJob.id)));
+    }
+  };
+
+  const handleCancel = () => {
+    dispatch(push(Urls.transformJobList()));
+  };
+
   return (
     <>
       <JobEditor
         job={job}
-        actions={<JobActions isSaving={isSaving} onSave={handleSave} />}
+        actions={
+          <PaneHeaderActions
+            isDirty
+            isSaving={isSaving}
+            onSave={handleSave}
+            onCancel={handleCancel}
+          />
+        }
         onNameChange={handleNameChange}
         onScheduleChange={handleScheduleChange}
         onTagListChange={handleTagListChange}

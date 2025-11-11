@@ -67,9 +67,11 @@ import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import {
+  CanAccessDataModel,
   CanAccessDataStudio,
   CanAccessOnboarding,
   CanAccessSettings,
+  CanAccessTransforms,
   IsAdmin,
   IsAuthenticated,
   IsNotAuthenticated,
@@ -185,7 +187,7 @@ export const getRoutes = (store) => {
 
           <Route path="collection/:slug" component={CollectionLanding}>
             <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
-            <ModalRoute path="archive" modal={ArchiveCollectionModal} />
+            <ModalRoute path="archive" modal={ArchiveCollectionModal} noWrap />
             <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
             <ModalRoute
               path="move-questions-dashboard"
@@ -223,8 +225,16 @@ export const getRoutes = (store) => {
               modal={DashboardMoveModalConnected}
               noWrap
             />
-            <ModalRoute path="copy" modal={DashboardCopyModalConnected} />
-            <ModalRoute path="archive" modal={ArchiveDashboardModalConnected} />
+            <ModalRoute
+              path="copy"
+              modal={DashboardCopyModalConnected}
+              noWrap
+            />
+            <ModalRoute
+              path="archive"
+              modal={ArchiveDashboardModalConnected}
+              noWrap
+            />
           </Route>
 
           <Route path="/question">
@@ -368,7 +378,11 @@ export const getRoutes = (store) => {
 
           {/* DATA STUDIO */}
           <Route path="data-studio" component={CanAccessDataStudio}>
-            {getDataStudioRoutes()}
+            {getDataStudioRoutes(
+              store,
+              CanAccessDataModel,
+              CanAccessTransforms,
+            )}
           </Route>
         </Route>
       </Route>

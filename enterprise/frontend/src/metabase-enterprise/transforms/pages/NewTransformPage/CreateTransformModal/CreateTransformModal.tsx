@@ -15,7 +15,6 @@ import {
   FormProvider,
   FormSubmitButton,
   FormTextInput,
-  FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
@@ -33,7 +32,6 @@ import { SchemaFormSelect } from "./../../../components/SchemaFormSelect";
 
 const NEW_TRANSFORM_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
-  description: Yup.string().nullable(),
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable(),
 });
@@ -134,13 +132,6 @@ function CreateTransformForm({
             label={t`Name`}
             placeholder={t`My Great Transform`}
           />
-          <FormTextarea
-            name="description"
-            label={t`Description`}
-            placeholder={t`This is optional, but helpful`}
-            minRows={4}
-            maxRows={10}
-          />
           {supportsSchemas && (
             <SchemaFormSelect
               name="targetSchema"
@@ -172,7 +163,6 @@ function getInitialValues(
 ): NewTransformValues {
   return {
     name: "",
-    description: null,
     targetName: "",
     targetSchema: schemas?.[0] || null,
     ...defaultValues,
@@ -181,12 +171,11 @@ function getInitialValues(
 
 function getCreateRequest(
   source: TransformSource,
-  { name, description, targetName, targetSchema }: NewTransformValues,
+  { name, targetName, targetSchema }: NewTransformValues,
   databaseId: number,
 ): CreateTransformRequest {
   return {
     name: name,
-    description,
     source,
     target: {
       type: "table",

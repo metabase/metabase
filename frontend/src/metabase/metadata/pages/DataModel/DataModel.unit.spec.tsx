@@ -179,10 +179,12 @@ const OtherComponent = () => {
   return (
     <>
       <span>Another route</span>
-      <Link to="data-studio/data">Link to Data Model</Link>
+      <Link to="admin/datamodel">Link to Data Model</Link>
     </>
   );
 };
+
+const BASE_URL = "/admin/datamodel";
 
 async function setup({
   databases = [SAMPLE_DB],
@@ -211,7 +213,7 @@ async function setup({
   const { history } = renderWithProviders(
     <>
       <Route path="notAdmin" component={OtherComponent} />
-      <Route path="data-studio/data">
+      <Route path="admin/datamodel">
         <IndexRedirect to="database" />
         <Route path="database" component={DataModel} />
         <Route path="database/:databaseId" component={DataModel} />
@@ -231,7 +233,7 @@ async function setup({
     </>,
     {
       withRouter: true,
-      initialRoute: initialRoute ?? getUrl(params),
+      initialRoute: initialRoute ?? getUrl(BASE_URL, params),
     },
   );
 

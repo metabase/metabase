@@ -41,6 +41,23 @@ export function getCollectionIcon(
     return { name: "synced_collection" };
   }
 
+  // FIXME: REMOVE, THIS IS A HACK FOR DEMO PURPOSES
+  if (collection.name === "Library") {
+    return { name: "repository" };
+  }
+
+  if (collection.name === "Semantic layer") {
+    return { name: "bolt" };
+  }
+
+  if (collection.name === "Models") {
+    return { name: "model" };
+  }
+
+  if (collection.name === "Metrics") {
+    return { name: "metric" };
+  }
+
   const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
 
   return type

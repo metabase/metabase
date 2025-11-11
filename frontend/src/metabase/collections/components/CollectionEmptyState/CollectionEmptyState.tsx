@@ -86,7 +86,7 @@ export const CollectionEmptyIcon = (): JSX.Element => {
   );
 };
 
-const EmptyStateTitle = ({ children }: PropsWithChildren) => {
+export const EmptyStateTitle = ({ children }: PropsWithChildren) => {
   const theme = useMantineTheme();
   return (
     <Box
@@ -102,7 +102,7 @@ const EmptyStateTitle = ({ children }: PropsWithChildren) => {
   );
 };
 
-const EmptyStateSubtitle = ({ children }: PropsWithChildren) => {
+export const EmptyStateSubtitle = ({ children }: PropsWithChildren) => {
   const theme = useMantineTheme();
   return (
     <Text
@@ -117,9 +117,16 @@ const EmptyStateSubtitle = ({ children }: PropsWithChildren) => {
   );
 };
 
-const EmptyStateWrapper = ({ children }: PropsWithChildren) => {
+export const EmptyStateWrapper = ({
+  children,
+  ...props
+}: PropsWithChildren<{ "data-testid"?: string }>) => {
   return (
-    <Stack data-testid="collection-empty-state" align="center" gap={0}>
+    <Stack
+      data-testid={props["data-testid"] || "collection-empty-state"}
+      align="center"
+      gap={0}
+    >
       {children}
     </Stack>
   );

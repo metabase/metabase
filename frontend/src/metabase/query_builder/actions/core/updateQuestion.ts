@@ -1,14 +1,11 @@
 import _ from "underscore";
 
-import { getTrashUndoMessage } from "metabase/archive/utils";
-import Questions from "metabase/entities/questions";
 import { createThunkAction } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
-import { addUndo } from "metabase/redux/undo";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { Card, Series } from "metabase-types/api";
+import type { Series } from "metabase-types/api";
 import type {
   Dispatch,
   GetState,
@@ -181,14 +178,10 @@ export const updateQuestion = (
 export const SET_ARCHIVED_QUESTION = "metabase/question/SET_ARCHIVED_QUESTION";
 export const setArchivedQuestion = createThunkAction(
   SET_ARCHIVED_QUESTION,
-  function (question, archived = true, undoing = false) {
+  function (question, archived = true) {
     return async function (dispatch) {
-      const result = (await dispatch(
-        Questions.actions.update({ id: question.card().id }, { archived }),
-      )) as { payload: { object: Card } };
-
       await dispatch(
-        updateQuestion(question.setCard(result.payload.object), {
+        updateQuestion(question.setArchived(archived), {
           shouldUpdateUrl: false,
           shouldStartAdHocQuestion: false,
           // results can change after entering/leaving the trash
@@ -199,16 +192,6 @@ export const setArchivedQuestion = createThunkAction(
 
       if (archived) {
         dispatch(setUIControls({ isNativeEditorOpen: false }));
-      }
-
-      if (!undoing) {
-        dispatch(
-          addUndo({
-            message: getTrashUndoMessage(question.card().name, archived),
-            action: () =>
-              dispatch(setArchivedQuestion(question, !archived, true)),
-          }),
-        );
       }
     };
   },

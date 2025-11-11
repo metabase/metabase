@@ -58,6 +58,8 @@ import bolt_component from "./bolt.svg?component";
 import bolt_source from "./bolt.svg?source";
 import bolt_filled_component from "./bolt_filled.svg?component";
 import bolt_filled_source from "./bolt_filled.svg?source";
+import book_open_component from "./book_open.svg?component";
+import book_open_source from "./book_open.svg?source";
 import bookmark_component from "./bookmark.svg?component";
 import bookmark_source from "./bookmark.svg?source";
 import bookmark_filled_component from "./bookmark_filled.svg?component";
@@ -618,6 +620,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     bookmark_filled: {
       component: bookmark_filled_component,
       source: bookmark_filled_source,
+    },
+    book_open: {
+      component: book_open_component,
+      source: book_open_source,
     },
     bolt: {
       component: bolt_component,
@@ -1560,6 +1566,7 @@ export type IconName =
   | "bar"
   | "bell"
   | "birthday"
+  | "book_open"
   | "bookmark"
   | "bookmark_filled"
   | "bolt"

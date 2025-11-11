@@ -60,7 +60,6 @@ export function getDefaultValues(
 
   return {
     name,
-    description: suggestedTransform.description,
     targetName: suggestedTransform.target.name,
     targetSchema: suggestedTransform.target.schema,
   };

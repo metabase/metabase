@@ -29,6 +29,11 @@ export const getAdminPaths: () => AdminPath[] = () => {
     },
     ...PLUGIN_METABOT.getAdminPaths(),
     {
+      name: t`Table Metadata`,
+      path: "/admin/datamodel",
+      key: "data-model",
+    },
+    {
       name: t`People`,
       path: "/admin/people",
       key: "people",

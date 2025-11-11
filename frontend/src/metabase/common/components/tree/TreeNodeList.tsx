@@ -6,19 +6,20 @@ import { Box } from "metabase/ui";
 
 import type { ITreeNodeItem, TreeNodeComponent } from "./types";
 
-interface TreeNodeListProps extends Omit<BoxProps, "children"> {
-  items: ITreeNodeItem[];
-  expandedIds: Set<ITreeNodeItem["id"]>;
-  selectedId?: ITreeNodeItem["id"];
+interface TreeNodeListProps<TData = unknown>
+  extends Omit<BoxProps, "children"> {
+  items: ITreeNodeItem<TData>[];
+  expandedIds: Set<ITreeNodeItem<TData>["id"]>;
+  selectedId?: ITreeNodeItem<TData>["id"];
   depth: number;
   role?: string;
-  onToggleExpand: (id: ITreeNodeItem["id"]) => void;
-  onSelect?: (item: ITreeNodeItem) => void;
-  TreeNode: TreeNodeComponent;
-  rightSection?: (item: ITreeNodeItem) => React.ReactNode;
+  onToggleExpand: (id: ITreeNodeItem<TData>["id"]) => void;
+  onSelect?: (item: ITreeNodeItem<TData>) => void;
+  TreeNode: TreeNodeComponent<TData>;
+  rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
 }
 
-function BaseTreeNodeList({
+function BaseTreeNodeList<TData = unknown>({
   items,
   expandedIds,
   selectedId,
@@ -29,7 +30,7 @@ function BaseTreeNodeList({
   rightSection,
   role,
   ...boxProps
-}: TreeNodeListProps) {
+}: TreeNodeListProps<TData>) {
   const selectedRef = useScrollOnMount();
 
   return (

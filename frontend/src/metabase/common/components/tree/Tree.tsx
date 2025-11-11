@@ -9,31 +9,36 @@ import { TreeNodeList } from "./TreeNodeList";
 import type { ITreeNodeItem } from "./types";
 import { getAllExpandableIds, getInitialExpandedIds } from "./utils";
 
-interface TreeProps extends Omit<BoxProps, "children"> {
-  data: ITreeNodeItem[];
-  selectedId?: ITreeNodeItem["id"];
+interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
+  data: ITreeNodeItem<TData>[];
+  selectedId?: ITreeNodeItem<TData>["id"];
   emptyState?: React.ReactNode;
   initiallyExpanded?: boolean;
+  initialExpandedIds?: ITreeNodeItem<TData>["id"][];
   role?: string;
-  onSelect?: (item: ITreeNodeItem) => void;
-  rightSection?: (item: ITreeNodeItem) => React.ReactNode;
+  onSelect?: (item: ITreeNodeItem<TData>) => void;
+  rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
   TreeNode?: any;
 }
 
-function BaseTree({
+function BaseTree<TData = unknown>({
   data,
   selectedId,
   role = "menu",
   emptyState = null,
   initiallyExpanded = false,
+  initialExpandedIds,
   onSelect,
   TreeNode = DefaultTreeNode,
   rightSection,
   ...boxProps
-}: TreeProps) {
+}: TreeProps<TData>) {
   const [expandedIds, setExpandedIds] = useState(() => {
     if (initiallyExpanded) {
       return new Set(getAllExpandableIds(data));
+    }
+    if (initialExpandedIds) {
+      return new Set(initialExpandedIds);
     }
     return new Set(
       selectedId != null ? getInitialExpandedIds(selectedId, data) : [],

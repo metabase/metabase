@@ -10,9 +10,8 @@ import { trackErrorDiagnosticModalOpened } from "metabase/common/components/Erro
 import { ForwardRefLink } from "metabase/common/components/Link";
 import LogoIcon from "metabase/common/components/LogoIcon";
 import Modal from "metabase/common/components/Modal";
-import { useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
@@ -37,7 +36,6 @@ import { useHelpLink } from "./useHelpLink";
 const mapStateToProps = (state: State) => ({
   adminItems: getAdminPaths(state),
   canAccessOnboardingPage: getCanAccessOnboardingPage(state),
-  canAccessDataStudio: canAccessDataStudio(state),
   isNewInstance: getIsNewInstance(state),
 });
 
@@ -49,7 +47,6 @@ const mapDispatchToProps = {
 interface ProfileLinkProps {
   adminItems: AdminPath[];
   canAccessOnboardingPage: boolean;
-  canAccessDataStudio: boolean;
   isNewInstance: boolean;
   onOpenDiagnostics: () => void;
   onLogout: () => void;
@@ -67,7 +64,6 @@ interface MenuItem {
 function ProfileLinkInner({
   adminItems,
   canAccessOnboardingPage,
-  canAccessDataStudio,
   isNewInstance,
   onLogout,
   onOpenDiagnostics,
@@ -78,6 +74,7 @@ function ProfileLinkInner({
   const { tag, date, ...versionExtra } = version;
   const helpLink = useHelpLink();
   const dispatch = useDispatch();
+  const hasDataStudio = useHasTokenFeature("data_studio");
 
   const openModal = (modalName: string) => {
     setModalOpen(modalName);
@@ -108,7 +105,7 @@ function ProfileLinkInner({
             },
           ]
         : []),
-      ...(canAccessDataStudio
+      ...(hasDataStudio
         ? [
             {
               title: t`Data studio`,

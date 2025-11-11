@@ -1,11 +1,9 @@
-import { Box, Flex } from "metabase/ui";
+import type { ReactNode } from "react";
 
-import { TransformsInnerNav } from "../TransformsInnerNav";
-
-import S from "./TransformsTopNavLayout.module.css";
+import { Flex } from "metabase/ui";
 
 interface TransformsTopNavLayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export const TransformsTopNavLayout = ({
@@ -13,12 +11,7 @@ export const TransformsTopNavLayout = ({
 }: TransformsTopNavLayoutProps) => {
   return (
     <Flex direction="column" w="100%" h="100%">
-      <Box className={S.header}>
-        <Box w={360} p="md">
-          <TransformsInnerNav />
-        </Box>
-      </Box>
-      <Box flex={1}>{children}</Box>
+      {children}
     </Flex>
   );
 };

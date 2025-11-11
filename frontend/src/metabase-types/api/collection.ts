@@ -14,7 +14,7 @@ import type { CardId, CardType } from "./card";
 import type { DatabaseId } from "./database";
 import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
-import type { UserId } from "./user";
+import type { UserId, UserInfo } from "./user";
 
 // Collection ID can be either a numeric or entity id
 export type RegularCollectionId = number | string;
@@ -36,11 +36,10 @@ export type CollectionType =
   | "remote-synced"
   | null;
 
-export type LastEditInfo = {
-  email: string;
-  first_name: string;
-  last_name: string;
-  id: UserId;
+export type LastEditInfo = Pick<
+  UserInfo,
+  "id" | "email" | "first_name" | "last_name"
+> & {
   timestamp: string;
 };
 

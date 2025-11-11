@@ -1,13 +1,13 @@
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useListDatabasesQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
+import { PaneHeaderActions } from "metabase/data-studio/components/PaneHeader";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
@@ -15,16 +15,20 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Stack } from "metabase/ui";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
+import * as Lib from "metabase-lib";
 import type { Database, Transform } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
+import { TransformHeader } from "../../components/TransformHeader";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
-import { isNotDraftSource } from "../../utils";
+import { getValidationResult, isNotDraftSource } from "../../utils";
 
 type TransformQueryPageParams = {
   transformId: string;
@@ -73,7 +77,7 @@ type TransformQueryPageBodyProps = {
   route: Route;
 };
 
-export function TransformQueryPageBody({
+function TransformQueryPageBody({
   transform,
   databases,
   route,
@@ -91,20 +95,17 @@ export function TransformQueryPageBody({
     initialSource: transform.source,
   });
   const [uiState, setUiState] = useState(getInitialUiState);
+  const metadata = useSelector(getMetadata);
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
-  const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   useRegisterMetabotTransformContext(transform, source);
 
-  const resetRef = useLatest(() => {
-    setSource(transform.source);
-    setUiState(getInitialUiState());
-  });
-
-  useLayoutEffect(() => {
-    resetRef.current();
-  }, [transform.id, resetRef]);
+  const validationResult = useMemo(() => {
+    return source.type === "query"
+      ? getValidationResult(Lib.fromJsQueryAndMetadata(metadata, source.query))
+      : PLUGIN_TRANSFORMS_PYTHON.getPythonSourceValidationResult(source);
+  }, [source, metadata]);
 
   const {
     checkData,
@@ -120,7 +121,6 @@ export function TransformQueryPageBody({
         sendErrorToast(t`Failed to update transform query`);
       } else {
         sendSuccessToast(t`Transform query updated`);
-        dispatch(push(Urls.transform(transform.id)));
       }
     },
   });
@@ -138,44 +138,65 @@ export function TransformQueryPageBody({
     setSourceAndRejectProposed(transform.source);
   };
 
+  const handleResetRef = useLatest(() => {
+    setSource(transform.source);
+    setUiState(getInitialUiState());
+  });
+
+  useLayoutEffect(() => {
+    handleResetRef.current();
+  }, [transform.id, handleResetRef]);
+
   return (
     <>
-      {source.type === "python" ? (
-        <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
-          id={transform.id}
-          name={transform.name}
-          source={source}
-          proposedSource={
-            proposedSource?.type === "python" ? proposedSource : undefined
+      <Stack
+        pos="relative"
+        w="100%"
+        h="100%"
+        bg="bg-white"
+        data-testid="transform-query-editor"
+        gap={0}
+      >
+        <TransformHeader
+          transform={transform}
+          actions={
+            <PaneHeaderActions
+              errorMessage={validationResult.errorMessage}
+              isValid={validationResult.isValid}
+              isDirty={isDirty}
+              isSaving={isSaving || isCheckingDependencies}
+              onSave={handleSave}
+              onCancel={handleCancel}
+            />
           }
-          isDirty={isDirty}
-          isSaving={isSaving || isCheckingDependencies}
-          onChangeSource={setSourceAndRejectProposed}
-          onSave={handleSave}
-          onCancel={handleCancel}
-          onAcceptProposed={acceptProposed}
-          onRejectProposed={rejectProposed}
+          hasMenu={!isDirty}
         />
-      ) : (
-        <TransformEditor
-          id={transform.id}
-          name={transform.name}
-          source={source}
-          proposedSource={
-            proposedSource?.type === "query" ? proposedSource : undefined
-          }
-          uiState={uiState}
-          databases={databases}
-          isDirty={isDirty}
-          isSaving={isSaving || isCheckingDependencies}
-          onChangeSource={setSourceAndRejectProposed}
-          onChangeUiState={setUiState}
-          onSave={handleSave}
-          onCancel={handleCancel}
-          onAcceptProposed={acceptProposed}
-          onRejectProposed={rejectProposed}
-        />
-      )}
+        {source.type === "python" ? (
+          <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+            source={source}
+            proposedSource={
+              proposedSource?.type === "python" ? proposedSource : undefined
+            }
+            isDirty={isDirty}
+            onChangeSource={setSourceAndRejectProposed}
+            onAcceptProposed={acceptProposed}
+            onRejectProposed={rejectProposed}
+          />
+        ) : (
+          <TransformEditor
+            source={source}
+            proposedSource={
+              proposedSource?.type === "query" ? proposedSource : undefined
+            }
+            uiState={uiState}
+            databases={databases}
+            onChangeSource={setSourceAndRejectProposed}
+            onChangeUiState={setUiState}
+            onAcceptProposed={acceptProposed}
+            onRejectProposed={rejectProposed}
+          />
+        )}
+      </Stack>
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
           checkData={checkData}

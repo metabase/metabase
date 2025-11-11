@@ -6,17 +6,17 @@ export interface ITreeNodeItem<TData = unknown> {
   id: string | number;
   name: string;
   icon: IconName | IconProps;
-  children?: ITreeNodeItem[];
+  children?: ITreeNodeItem<TData>[];
   data?: TData;
 }
 
-export interface TreeNodeProps {
-  item: ITreeNodeItem;
+export interface TreeNodeProps<TData = unknown> {
+  item: ITreeNodeItem<TData>;
   depth: number;
   hasChildren: boolean;
   isExpanded: boolean;
   isSelected: boolean;
-  rightSection?: (item: ITreeNodeItem) => React.ReactNode;
+  rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
   onSelect?: () => void;
   onToggleExpand: () => void;
   className?: string;
@@ -27,6 +27,8 @@ export interface TreeNodeProps {
   };
 }
 
-export type TreeNodeComponent = React.ComponentType<
-  React.PropsWithChildren<TreeNodeProps & React.RefAttributes<HTMLLIElement>>
+export type TreeNodeComponent<TData = unknown> = React.ComponentType<
+  React.PropsWithChildren<
+    TreeNodeProps<TData> & React.RefAttributes<HTMLLIElement>
+  >
 >;

@@ -1,14 +1,13 @@
 import type { ReactNode } from "react";
 
-import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
-
 import {
   PaneHeader,
   PaneHeaderInput,
-} from "../../../../../../../frontend/src/metabase/data-studio/components/PaneHeader";
+} from "metabase/data-studio/components/PaneHeader";
+import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
+
 import { NAME_MAX_LENGTH } from "../../constants";
 import { ColumnLayout, ColumnLayoutBody } from "../ColumnLayout";
-import { JobMoreMenuWithModal } from "../JobMoreMenu";
 
 import { DependenciesSection } from "./DependenciesSection";
 import { ScheduleSection } from "./ScheduleSection";
@@ -17,6 +16,7 @@ import type { TransformJobInfo } from "./types";
 
 type JobEditorProps = {
   job: TransformJobInfo;
+  menu?: ReactNode;
   actions?: ReactNode;
   onNameChange: (name: string) => void;
   onScheduleChange: (
@@ -28,6 +28,7 @@ type JobEditorProps = {
 
 export function JobEditor({
   job,
+  menu,
   actions,
   onNameChange,
   onScheduleChange,
@@ -43,7 +44,7 @@ export function JobEditor({
             onChange={onNameChange}
           />
         }
-        menu={job.id != null && <JobMoreMenuWithModal jobId={job.id} />}
+        menu={menu}
         actions={actions}
         data-testid="jobs-header"
       />

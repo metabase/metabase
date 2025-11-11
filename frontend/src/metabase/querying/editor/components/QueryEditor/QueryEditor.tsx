@@ -65,6 +65,7 @@ export function QueryEditor({
   } = useQueryEditor({
     query,
     uiState,
+    uiOptions,
     proposedQuery,
     onChangeQuery,
     onChangeUiState,
@@ -80,13 +81,14 @@ export function QueryEditor({
 
   return (
     <>
-      <Flex flex={1} h="100%">
+      <Flex flex={1} h="100%" mih={0}>
         <Flex flex="2 1 0" direction="column" pos="relative">
           <QuerySection
             question={question}
             proposedQuestion={proposedQuestion}
             modalSnippet={uiState.modalSnippet}
             nativeEditorSelectedText={selectedText}
+            readOnly={uiOptions?.readOnly}
             isNative={isNative}
             isRunnable={isRunnable}
             isRunning={isRunning}
@@ -118,7 +120,7 @@ export function QueryEditor({
             onRunQuery={runQuery}
             onCancelQuery={cancelQuery}
           />
-          {!isNative && (
+          {!isNative && uiOptions?.canConvertToNative && (
             <NativeQueryPreviewSidebarToggle
               isNativeQueryPreviewSidebarOpen={
                 uiState.sidebarType === "native-query"

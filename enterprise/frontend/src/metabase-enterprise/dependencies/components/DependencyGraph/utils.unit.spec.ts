@@ -118,7 +118,7 @@ describe("getNodeLink", () => {
       }),
       expectedLink: {
         label: "View metadata",
-        url: "/data-studio/data/database/2/schema/2:not%20public/table/1",
+        url: "/admin/datamodel/database/2/schema/2:not%20public/table/1",
       },
     },
   ])("should get the node link", ({ node, expectedLink }) => {
