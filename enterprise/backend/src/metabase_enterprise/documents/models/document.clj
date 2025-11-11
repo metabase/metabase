@@ -231,7 +231,8 @@
                {[(model->serdes-model model) link-id] {"Document" id}}))))))
 
 (t2/define-before-insert :model/Document [model]
-  (collection/check-allowed-content :document (:collection_id model)))
+  (collection/check-allowed-content :document (:collection_id model))
+  model)
 
 (t2/define-before-update :model/Document [model]
   (collection/check-allowed-content :document (:collection_id (t2/changes model)))
