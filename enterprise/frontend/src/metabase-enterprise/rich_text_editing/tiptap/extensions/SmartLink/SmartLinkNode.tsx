@@ -6,6 +6,7 @@ import {
 } from "@tiptap/react";
 import { memo, useEffect } from "react";
 import { t } from "ttag";
+import { isObject } from "underscore";
 
 import {
   useGetActionQuery,
@@ -119,6 +120,7 @@ export function parseEntityUrl(
     }[] = [
       { pattern: /^\/question\/(\d+)/, model: "card" },
       { pattern: /^\/model\/(\d+)/, model: "dataset" },
+      { pattern: /^\/metric\/(\d+)/, model: "metric" },
       { pattern: /^\/dashboard\/(\d+)/, model: "dashboard" },
       { pattern: /^\/collection\/(\d+)/, model: "collection" },
       {
@@ -271,20 +273,19 @@ export const useEntityData = (
   entityId: number | null,
   model: SuggestionModel | null,
 ) => {
+  const isCard = model && ["card", "dataset", "metric"].includes(model);
   const cardQuery = useGetCardQuery(
-    { id: entityId! },
-    {
-      skip: !entityId || (model !== "card" && model !== "dataset"),
-    },
+    { id: entityId!, ignore_error: true },
+    { skip: !entityId || !isCard },
   );
 
   const dashboardQuery = useGetDashboardQuery(
-    { id: entityId! },
+    { id: entityId!, ignore_error: true },
     { skip: !entityId || model !== "dashboard" },
   );
 
   const collectionQuery = useGetCollectionQuery(
-    { id: entityId! },
+    { id: entityId!, ignore_error: true },
     { skip: !entityId || model !== "collection" },
   );
 
@@ -440,8 +441,17 @@ export const SmartLinkComponent = memo(
         <NodeViewWrapper as="span">
           <span className={styles.smartLink}>
             <span className={styles.smartLinkInner}>
-              <Icon name="warning" className={styles.icon} />
-              {error ? t`Failed to load` : t`Unknown`} {model}
+              {isObject(error) && error.status === 403 ? (
+                <>
+                  <Icon name="eye_crossed_out" className={styles.icon} />
+                  {t`No access`}
+                </>
+              ) : (
+                <>
+                  <Icon name="warning" className={styles.icon} />
+                  {error ? t`Failed to load` : t`Unknown`} {model}
+                </>
+              )}
             </span>
           </span>
         </NodeViewWrapper>
