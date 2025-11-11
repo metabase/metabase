@@ -212,8 +212,9 @@
         fused-results   (if (and non-semantic-keywords? semantic-engine)
                           ;; Perform semantic and non-semantic search respectively, then fuse results.
                           (reciprocal-rank-fusion
-                           (map #(search-fn* %1 %2) {semantic-engine semantic-queries
-                                                     fallback-engine term-queries}))
+                           (map (fn [[engine queries]] (search-fn* engine queries))
+                                {semantic-engine semantic-queries
+                                 fallback-engine term-queries}))
                           ;; Search for all the terms on equal footing, using the default engine.
                           (search-fn* nil (distinct (concat term-queries semantic-queries))))]
     (->> fused-results
