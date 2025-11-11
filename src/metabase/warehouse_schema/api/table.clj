@@ -560,29 +560,27 @@
       (sync-schema-async! table api/*current-user-id*))
     {:status :ok}))
 
-(api.macros/defendpoint :post "/rescan_values"
+(api.macros/defendpoint :post "/rescan-values"
   "Batch version of /table/:id/rescan_values. Takes an abstract table selection as /table/edit does."
   [_
    _
    body :- ::table-selectors]
+  (api/check-superuser)
   (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})]
-    (doseq [table tables]
-      (api/write-check table))
-    (doseq [table tables]
-      (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*}))
     ;; same permission skip as the single-table api, see comment in /:id/rescan_values
-    (request/as-admin
-      (doseq [table tables]
+    (doseq [table tables]
+      (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
+      (request/as-admin
         (quick-task/submit-task! #(sync/update-field-values-for-table! table))))
     {:status :ok}))
 
-(api.macros/defendpoint :post "/discard_values"
+(api.macros/defendpoint :post "/discard-values"
   "Batch version of /table/:id/discard_values. Takes an abstract table selection as /table/edit does."
   [_
    _
    body :- ::table-selectors]
+  (api/check-superuser)
   (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})]
-    (run! api/write-check tables)
     (let [field-ids-to-delete-q {:select [:id]
                                  :from   [(t2/table-name :model/Field)]
                                  :where  [:in :table_id (map :id tables)]}]

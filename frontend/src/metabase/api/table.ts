@@ -146,7 +146,7 @@ export const tableApi = Api.injectEndpoints({
     rescanTablesFieldValues: builder.mutation<void, RescanTablesValuesRequest>({
       query: (body) => ({
         method: "POST",
-        url: `/api/table/rescan_values`,
+        url: `/api/table/rescan-values`,
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -195,7 +195,7 @@ export const tableApi = Api.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: `/api/table/discard_values`,
+        url: `/api/table/discard-values`,
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -243,7 +243,7 @@ export const {
   useRescanTableFieldValuesMutation,
   useRescanTablesFieldValuesMutation,
   useSyncTableSchemaMutation,
-  useSyncTablesSchemasMutation,
+  eseSyncTablesSchemasMutation,
   useDiscardTableFieldValuesMutation,
   useDiscardTablesFieldValuesMutation,
   usePublishModelsMutation,
