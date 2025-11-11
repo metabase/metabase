@@ -174,12 +174,6 @@
   mb-version-and-process-identifier
   (format "%s [%s]" mb-app-id-string local-process-uuid))
 
-(defn mb-user-defaults
-  "Default user details provided as a JSON string at launch time for first-user setup flow."
-  []
-  (when-let [user-json (env/env :mb-user-defaults)]
-    (json/parse-string user-json true)))
-
 (def ^:const internal-mb-user-id
   "The user-id of the internal metabase user.
    This is needed in the OSS edition to filter out users for setup/has-user-setup."
