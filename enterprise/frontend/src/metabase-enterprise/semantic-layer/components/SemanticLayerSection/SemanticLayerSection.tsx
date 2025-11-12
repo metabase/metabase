@@ -3,14 +3,13 @@ import { useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { isSemanticLayerCollection } from "metabase/collections/utils";
 import { ModelingSidebarSection } from "metabase/data-studio/pages/ModelingSectionLayout/ModelingSidebar/ModelingSidebarSection";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { SemanticLayerSectionProps } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type { Collection } from "metabase-types/api";
-
-import { getSemanticLayerCollectionType } from "../../utils";
 
 import { CreateSemanticLayerModal } from "./CreateSemanticLayerModal";
 import { SemanticLayerCollectionTree } from "./SemanticLayerCollectionTree";
@@ -27,11 +26,7 @@ export function SemanticLayerSection({
   const dispatch = useDispatch();
 
   const rootCollection = useMemo(
-    () =>
-      collections.find(
-        (collection) =>
-          getSemanticLayerCollectionType(collection) === "semantic-layer",
-      ),
+    () => collections.find(isSemanticLayerCollection),
     [collections],
   );
 

@@ -1,9 +1,8 @@
+import { getSemanticLayerCollectionType } from "metabase/collections/utils";
 import type {
   Collection,
   SemanticLayerCollectionType,
 } from "metabase-types/api";
-
-import { getSemanticLayerCollectionType } from "../../../utils";
 
 export function getWritableSemanticCollection(
   rootCollection: Collection,

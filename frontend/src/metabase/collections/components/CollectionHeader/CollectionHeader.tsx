@@ -1,6 +1,7 @@
 import { withRouter } from "react-router";
 
 import {
+  getSemanticLayerCollectionType,
   isInstanceAnalyticsCollection,
   isTrashedCollection,
 } from "metabase/collections/utils";
@@ -41,10 +42,20 @@ const CollectionHeader = ({
   uploadsEnabled,
 }: CollectionHeaderProps): JSX.Element => {
   const isTrash = isTrashedCollection(collection);
-  const showUploadButton =
-    collection.can_write && (canUpload || !uploadsEnabled);
   const isInstanceAnalytics = isInstanceAnalyticsCollection(collection);
+  const semanticType = getSemanticLayerCollectionType(collection);
+  const isSemanticLayer = semanticType != null;
   const hasCuratePermissions = !!collection?.can_write;
+
+  const showNewButton =
+    hasCuratePermissions && !isInstanceAnalytics && !isSemanticLayer;
+  const showUploadButton =
+    collection.can_write &&
+    (canUpload || !uploadsEnabled) &&
+    (semanticType == null || semanticType === "semantic-layer-models");
+  const showTimelinesButton = !isInstanceAnalytics && !isSemanticLayer;
+  const showPermissionsButton = isInstanceAnalytics;
+  const showInfoSidebar = !isSemanticLayer;
 
   return (
     <HeaderRoot>
@@ -54,9 +65,7 @@ const CollectionHeader = ({
       />
       {!isTrash && (
         <HeaderActions data-testid="collection-menu">
-          {!isInstanceAnalytics && hasCuratePermissions && (
-            <CollectionNewButton />
-          )}
+          {showNewButton && <CollectionNewButton />}
           {showUploadButton && (
             <CollectionUpload
               collection={collection}
@@ -65,10 +74,10 @@ const CollectionHeader = ({
               saveFile={saveFile}
             />
           )}
-          {!isInstanceAnalytics && (
+          {showTimelinesButton && (
             <CollectionTimeline collection={collection} />
           )}
-          {isInstanceAnalytics && (
+          {showPermissionsButton && (
             <CollectionPermissions collection={collection} />
           )}
           <CollectionBookmark
@@ -77,11 +86,13 @@ const CollectionHeader = ({
             onCreateBookmark={onCreateBookmark}
             onDeleteBookmark={onDeleteBookmark}
           />
-          <CollectionInfoSidebarToggle
-            collection={collection}
-            onUpdateCollection={onUpdateCollection}
-          />
-          {!isInstanceAnalytics && (
+          {showInfoSidebar && (
+            <CollectionInfoSidebarToggle
+              collection={collection}
+              onUpdateCollection={onUpdateCollection}
+            />
+          )}
+          {isInstanceAnalytics && (
             <CollectionMenu
               collection={collection}
               isAdmin={isAdmin}
