@@ -1,4 +1,5 @@
 import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
+import type { FormikErrors } from "formik";
 import { P, isMatching } from "ts-pattern";
 
 import { useSelector } from "metabase/lib/redux";
@@ -17,16 +18,16 @@ export const isFetchBaseQueryError = (
 ): error is FetchBaseQueryError =>
   isMatching({ status: P.any, data: P.any }, error);
 
-type IFieldError =
+type IFieldError<Values> =
   | string
   | {
       message: string;
     }
   | {
-      errors: { [key: string]: any };
+      errors: FormikErrors<Values>;
     };
 
-const isFieldError = (error: unknown): error is IFieldError =>
+const isFieldError = <Values>(error: unknown): error is IFieldError<Values> =>
   isMatching(
     P.union(
       P.string,
@@ -36,17 +37,23 @@ const isFieldError = (error: unknown): error is IFieldError =>
     error,
   );
 
-export const handleFieldError = (error: unknown) => {
-  if (!isFieldError(error)) {
+// If `error` is a form field error, throw a structured exception with the shape
+// `{data: {errors: FormikErrors}}` that will be caught as a validation error by
+// [[FormProvider]] in `frontend/src/metabase/forms/components/FormProvider/`.
+export const handleFieldError = <Values>(
+  error: unknown,
+  defaultField: keyof Values,
+) => {
+  if (!isFieldError<Values>(error)) {
     return;
   }
 
   if (typeof error === "string") {
-    throw { data: { errors: { terms_of_service: error } } };
+    throw { data: { errors: { [defaultField]: error } } };
   }
 
   if ("message" in error) {
-    throw { data: { errors: { terms_of_service: error.message } } };
+    throw { data: { errors: { [defaultField]: error.message } } };
   }
 
   if ("errors" in error) {
