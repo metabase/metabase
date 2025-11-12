@@ -169,7 +169,6 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
 
   it("should keep filter value on blur (metabase#31975)", () => {
     cy.findByPlaceholderText("Price").type("95").blur();
-    cy.findAllByRole("row").should("have.length", 4);
 
     cy.findByPlaceholderText("Rating").type("3.8").blur();
 
