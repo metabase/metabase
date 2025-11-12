@@ -700,6 +700,20 @@ describe("documents card embed node custom logic", () => {
       H.documentContent()
         .findByTestId("document-card-supporting-text")
         .should("exist");
+
+      // Type some content
+      const testText = "# Hdg{enter}Lorem ipsum";
+      cy.realType(testText);
+
+      // Verify the text was added
+      H.documentContent()
+        .findByTestId("document-card-supporting-text")
+        .contains("h1", "Hdg")
+        .should("exist");
+      H.documentContent()
+        .findByTestId("document-card-supporting-text")
+        .contains("p", "Lorem ipsum")
+        .should("exist");
     });
 
     it("should disable 'Add supporting text' when supporting text already exists in flexContainer", () => {
@@ -718,13 +732,6 @@ describe("documents card embed node custom logic", () => {
         .should("be.visible")
         .findByTestId("table-root")
         .should("exist");
-      H.getDocumentCard("Orders, Count")
-        .should("be.visible")
-        .findByTestId("table-root")
-        .should("exist");
-
-      // Create a flexContainer
-      H.dragAndDropCardOnAnotherCard("Orders", "Orders, Count");
 
       // Add supporting text to the first card
       H.openDocumentCardMenu("Orders");
@@ -735,8 +742,8 @@ describe("documents card embed node custom logic", () => {
         .findByTestId("document-card-supporting-text")
         .should("exist");
 
-      // Try to add supporting text to the second card in the same flexContainer
-      H.openDocumentCardMenu("Orders, Count");
+      // Try to add another supporting text to the same flexContainer
+      H.openDocumentCardMenu("Orders");
 
       // Verify the "Add supporting text" option is disabled
       H.popover()
@@ -903,26 +910,23 @@ describe("documents card embed node custom logic", () => {
             const newCardWidth = $card.width() as number;
             cy.wrap(newCardWidth).as("newCardWidth");
 
-            cy.get("@initialSupportingTextWidth").then((initialWidth) => {
-              // Supporting text should be wider
-              expect(newSupportingTextWidth).to.be.greaterThan(
-                initialWidth as number,
-              );
-              // The change should be close to the drag distance
-              expect(newSupportingTextWidth).to.be.closeTo(
-                (initialWidth as number) + 150,
-                10,
-              );
-            });
+            cy.get<number>("@initialSupportingTextWidth").then(
+              (initialWidth) => {
+                // Supporting text should be wider
+                expect(newSupportingTextWidth).to.be.greaterThan(initialWidth);
+                // The change should be close to the drag distance
+                expect(newSupportingTextWidth).to.be.closeTo(
+                  initialWidth + 150,
+                  10,
+                );
+              },
+            );
 
-            cy.get("@initialCardWidth").then((initialWidth) => {
+            cy.get<number>("@initialCardWidth").then((initialWidth) => {
               // Card should be narrower
-              expect(newCardWidth).to.be.lessThan(initialWidth as number);
+              expect(newCardWidth).to.be.lessThan(initialWidth);
               // The change should be close to the drag distance
-              expect(newCardWidth).to.be.closeTo(
-                (initialWidth as number) - 150,
-                10,
-              );
+              expect(newCardWidth).to.be.closeTo(initialWidth - 150, 10);
             });
           });
         });
@@ -933,7 +937,7 @@ describe("documents card embed node custom logic", () => {
         .within(() => cy.get(".node-paragraph").click());
 
       // Type some content
-      const testText = "This is supporting text for the Orders chart";
+      const testText = "Supporting text for Orders chart";
       cy.realType(testText);
       cy.realPress("Tab");
 
@@ -974,17 +978,14 @@ describe("documents card embed node custom logic", () => {
           H.getDocumentCard("Orders").then(($card) => {
             const reloadedCardWidth = $card.width() as number;
 
-            cy.get("@newSupportingTextWidth").then((savedWidth) => {
+            cy.get<number>("@newSupportingTextWidth").then((savedWidth) => {
               // Supporting text width should be preserved
-              expect(reloadedSupportingTextWidth).to.be.closeTo(
-                savedWidth as number,
-                10,
-              );
+              expect(reloadedSupportingTextWidth).to.be.closeTo(savedWidth, 10);
             });
 
-            cy.get("@newCardWidth").then((savedWidth) => {
+            cy.get<number>("@newCardWidth").then((savedWidth) => {
               // Card width should be preserved
-              expect(reloadedCardWidth).to.be.closeTo(savedWidth as number, 10);
+              expect(reloadedCardWidth).to.be.closeTo(savedWidth, 10);
             });
           });
         });
