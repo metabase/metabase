@@ -133,10 +133,10 @@
   ;; it's much more significant with nested queries, complex expressions and multiple joins.
   (compile-time mp-small  trivial-query computed-cache-off)
   (compile-time mp-small  trivial-query computed-cache-on)
-  (compile-time mp-medium trivial-query computed-cache-off)
-  (compile-time mp-medium trivial-query computed-cache-on)
-  (compile-time mp-large  trivial-query computed-cache-off)
-  (compile-time mp-large  trivial-query computed-cache-on)
+  (compile-time mp-medium trivial-query computed-cache-off) ; 13.15ms - down 6ms with post-`lib.computed` fixes
+  (compile-time mp-medium trivial-query computed-cache-on)  ; 13.02ms - likewise
+  (compile-time mp-large  trivial-query computed-cache-off) ; 128.2ms - down 120ms
+  (compile-time mp-large  trivial-query computed-cache-on)  ; 135.1ms - likewise
 
   ;; WARN: Don't run this one unless you're going to lunch, it's really slow to run that many times even with the
   ;; lib.computed caching on.
@@ -144,6 +144,7 @@
 
   ;; Instead, here's a single run with mp-huge:
   ;; Takes 11114ms with caching off, and 8825ms with it on for me.
+  ;; Now with the quadratic behavior in add-alias-info fixed, it takes 1440ms!
   (crit/time-body
    (mu/disable-enforcement
      (binding [lib.computed/*computed-cache* (computed-cache-off)]
@@ -152,6 +153,8 @@
 
   ;; Using the "huge query" MetadataProvider, the big user query that came with QUE-2686.
   ;; Starting point: 205ms
+  ;; Removed repeated MBQL 5 -> 4 -> 5 -> 4 conversions in `driver.sql.qp/preprocess`: down to 142ms
+  ;; Fixing add-alias-info quadratic lookups: down to 115ms
   (compile-time (constantly nil)
                 (fn [_mp] (lib.tu.huge/huge-query))
                 computed-cache-off)
