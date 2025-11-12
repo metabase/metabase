@@ -51,3 +51,13 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics to the 'Metrics' collection"
                               (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id allow-metrics)}))))))))
 
+(deftest cannot-update-semantic-layer-collections
+  (mt/with-premium-features #{:semantic-layer}
+    (mt/with-temp [:model/Collection semantic-layer {:name "Test Semantic Layer" :type collection/semantic-layer-collection-type}
+                   :model/Collection models {:name "Test Semantic Model Layer" :type collection/semantic-layer-models-collection-type}
+                   :model/Collection metrics {:name "Test Semantic Metrics Layer" :type collection/semantic-layer-metrics-collection-type}]
+      (doseq [col [semantic-layer models metrics]]
+        (testing (str "Checking type " (:type col))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                #"Cannot update properties on a Library collection"
+                                (t2/update! :model/Collection (:id col) {:name "New Name"}))))))))

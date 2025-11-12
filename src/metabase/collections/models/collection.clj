@@ -377,6 +377,12 @@
   [_model-type _collection-id]
   true)
 
+(defenterprise check-semantic-layer-update
+  "Checks that a collection of type `:semantic-layer` only contains allowed content."
+  metabase-enterprise.semantic-layer.validation
+  [collection-id]
+  true)
+
 ;; This function is defined later after children-location is available
 
 (def ^:private CollectionWithLocationOrRoot
@@ -1686,6 +1692,8 @@
         (assert-valid-remote-synced-parent merged-collection)))
     ;; (3.6) Check that the parent collection allows this collection to be there
     (check-allowed-content (:type collection) (when-let [location (:location collection)] (location-path->parent-id location)))
+    ;; (3.7) Check if it's a semantic-library collection that can't be updated
+    (check-semantic-layer-update collection)
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)

@@ -874,6 +874,9 @@
    {:name      :remote-sync
     :available (premium-features/enable-remote-sync?)
     :enabled   (premium-features/enable-remote-sync?)}
+   {:name      :semantic-layer
+    :available (premium-features/enable-semantic-layer?)
+    :enabled   (premium-features/enable-semantic-layer?)}
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}
