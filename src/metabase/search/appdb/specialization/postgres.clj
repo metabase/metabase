@@ -79,7 +79,10 @@
 ;; 32 divides the rank by itself + 1
 (def ^:private ts-rank-normalization 0)
 
-;; The order here is {D, C, B, A} - but just see the link to docs up there ^
+;; The order here is {D, C, B, A} - but see the link to the docs up there ^
+;; A is the entity title
+;; B is all searchable text
+;; D is backup text with 'simple' stemmer, so it's not used in scoring, but mostly for completion
 (def ^:private ts-rank-weights "{0, 0.2, 0.4, 1.0}")
 
 (defmethod specialization/text-score :postgres
