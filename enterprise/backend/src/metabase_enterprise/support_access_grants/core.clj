@@ -2,7 +2,6 @@
   "Core business logic for support access grant management."
   (:require
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
@@ -19,13 +18,14 @@
 
   Parameters:
   - user-id: ID of the user creating the grant
-  - ticket-number: The support ticket number (string)
   - grant-duration-minutes: Duration in minutes (max 10080 = 7 days)
+  - ticket-number: The support ticket number (string)
+  - notes: Additional information (string)
 
   Returns the created grant record.
 
   Throws if an active grant already exists."
-  [user-id ticket-number grant-duration-minutes]
+  [user-id grant-duration-minutes ticket-number notes]
   (when (active-grant-exists?)
     (throw (ex-info (tru "Cannot create grant: an active grant already exists")
                     {:status-code 409})))
@@ -33,9 +33,11 @@
         grant-end (t/plus now (t/minutes grant-duration-minutes))
         grant-record {:user_id user-id
                       :ticket_number ticket-number
+                      :notes notes
                       :grant_start_timestamp now
                       :grant_end_timestamp grant-end}]
-    (t2/insert-returning-instance! :model/SupportAccessGrantLog grant-record)))
+    (-> (t2/insert-returning-instance! :model/SupportAccessGrantLog grant-record)
+        (t2/hydrate :user_name))))
 
 (defn revoke-grant!
   "Revoke an existing support access grant.
@@ -61,7 +63,8 @@
       (t2/update! :model/SupportAccessGrantLog grant-id
                   {:revoked_at now
                    :revoked_by_user_id user-id})
-      (t2/select-one :model/SupportAccessGrantLog :id grant-id))))
+      (-> (t2/select-one :model/SupportAccessGrantLog :id grant-id)
+          (t2/hydrate :user_name)))))
 
 (defn list-grants
   "List support access grants with optional filtering and pagination.
@@ -107,10 +110,11 @@
                             {:limit limit
                              :offset offset
                              :order-by [[:created_at :desc]]}))
+        grants-with-user-name (t2/hydrate grants :user_name)
         total (if where-clause
                 (t2/count :model/SupportAccessGrantLog {:where where-clause})
                 (t2/count :model/SupportAccessGrantLog))]
-    {:data grants
+    {:data grants-with-user-name
      :total total
      :limit limit
      :offset offset}))
@@ -120,8 +124,9 @@
 
   Returns the active grant record or nil if no active grant exists."
   []
-  (t2/select-one :model/SupportAccessGrantLog
-                 {:where [:and [:= :revoked_at nil]
-                          [:> :grant_end_timestamp :%now]]
-                  :order-by [[:created_at :desc]
-                             [:id :desc]]}))
+  (some-> (t2/select-one :model/SupportAccessGrantLog
+                         {:where [:and [:= :revoked_at nil]
+                                  [:> :grant_end_timestamp :%now]]
+                          :order-by [[:created_at :desc]
+                                     [:id :desc]]})
+          (t2/hydrate :user_name)))

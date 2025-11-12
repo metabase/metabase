@@ -19,8 +19,9 @@
    body :- ::grants.schema/create-grant-request]
   (api/check-superuser)
   (grants/create-grant! api/*current-user-id*
+                        (:grant_duration_minutes body)
                         (:ticket_number body)
-                        (:grant_duration_minutes body)))
+                        (:notes body)))
 
 (api.macros/defendpoint :put "/:id/revoke"
   :- ::grants.schema/grant-response

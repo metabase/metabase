@@ -19,8 +19,9 @@
 (mr/def ::create-grant-request
   "Schema for POST /api/ee/support-access-grants request body."
   [:map
-   [:ticket_number [:string {:min 1 :max 100}]]
-   [:grant_duration_minutes [:int {:min 1 :max max-grant-duration-minutes}]]])
+   [:grant_duration_minutes [:int {:min 1 :max max-grant-duration-minutes}]]
+   [:ticket_number {:optional true} [:maybe [:string {:min 1 :max 100}]]]
+   [:notes {:optional true} [:maybe [:string {:min 1 :max 255}]]]])
 
 ;;; ------------------------------------------- Response Schemas -------------------------------------------
 
@@ -29,7 +30,9 @@
   [:map
    [:id ms/PositiveInt]
    [:user_id ms/PositiveInt]
-   [:ticket_number :string]
+   [:user_name [:maybe :string]]
+   [:ticket_number [:maybe :string]]
+   [:notes [:maybe :string]]
    [:grant_start_timestamp ::timestamp]
    [:grant_end_timestamp ::timestamp]
    [:revoked_at [:maybe ::timestamp]]

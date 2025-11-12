@@ -55,6 +55,7 @@ export const AccessGrantList = (props: AccessGrantListProps) => {
           <tr>
             <th style={{ paddingLeft: 0 }}>{t`Date`}</th>
             <th>{t`Ticket`}</th>
+            <th>{t`Notes`}</th>
             <th>{t`Request creator`}</th>
             <th>{t`Expired`}</th>
           </tr>
@@ -69,8 +70,9 @@ export const AccessGrantList = (props: AccessGrantListProps) => {
             return (
               <tr key={grant.id}>
                 <td style={{ paddingLeft: 0 }}>{startDate.format("lll")}</td>
-                <td>{grant.ticket_number}</td>
-                <td>{grant.user_id}</td>
+                <td>{grant.ticket_number || "-"}</td>
+                <td>{grant.notes || "-"}</td>
+                <td>{grant.user_name || grant.user_id}</td>
                 <td>
                   {effectiveEndDate.isBefore(now) ? (
                     effectiveEndDate.format("lll")
@@ -84,13 +86,6 @@ export const AccessGrantList = (props: AccessGrantListProps) => {
                         {c("{0} is the time until expiration")
                           .t`${getTimeLeft(effectiveEndDate)} left`}
                       </Badge>
-                      {/*<Button*/}
-                      {/*  loading={isRevoking}*/}
-                      {/*  onClick={() => handleRevokeAccessGrant(grant.id)}*/}
-                      {/*  size="xs"*/}
-                      {/*>*/}
-                      {/*  {t`Revoke`}*/}
-                      {/*</Button>*/}
                       <ActionIcon
                         aria-label={t`Revoke access grant`}
                         loading={isRevoking}

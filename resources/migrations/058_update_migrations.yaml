@@ -155,7 +155,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-11-06T15:00:43
-      author: support-access-grants
+      author: edpaget
       comment: Create support_access_grant_log table for tracking support access grants
       changes:
         - createTable:
@@ -181,7 +181,13 @@ databaseChangeLog:
                   type: varchar(100)
                   remarks: Support ticket number associated with this grant
                   constraints:
-                    nullable: false
+                    nullable: true
+              - column:
+                  name: notes
+                  type: varchar(255)
+                  remarks: Additional notes associated with this grant
+                  constraints:
+                    nullable: true
               - column:
                   name: grant_start_timestamp
                   type: ${timestamp_type}

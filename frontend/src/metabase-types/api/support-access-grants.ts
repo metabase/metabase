@@ -1,7 +1,9 @@
 export interface SupportAccessGrant {
   id: number;
   user_id: number;
-  ticket_number: string;
+  user_name?: string;
+  ticket_number: string | null;
+  notes: string | null;
   grant_start_timestamp: string;
   grant_end_timestamp: string;
   revoked_at: string | null;
@@ -11,8 +13,9 @@ export interface SupportAccessGrant {
 }
 
 export interface CreateSupportAccessGrantRequest {
-  ticket_number: string;
   grant_duration_minutes: number;
+  notes: string | null;
+  ticket_number: string | null;
 }
 
 export interface ListSupportAccessGrantsRequest {

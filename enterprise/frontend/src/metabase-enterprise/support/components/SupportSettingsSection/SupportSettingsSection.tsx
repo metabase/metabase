@@ -59,7 +59,7 @@ export function SupportSettingsSection() {
                   ? t`You already have an active access grant`
                   : undefined
               }
-              mt="sm"
+              mt="md"
               mb="sm"
             >
               {t`Request a helping hand`}
@@ -68,7 +68,7 @@ export function SupportSettingsSection() {
               {t`You can only have one active request at a time`}
             </Text>
 
-            {accessGrants.length > 1 && (
+            {accessGrants.length > 0 && (
               <Box pos="relative">
                 <LoadingOverlay
                   visible={isFetchingAccessGrants}

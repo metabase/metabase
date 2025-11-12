@@ -8,6 +8,7 @@ import {
   FormSelect,
   FormSubmitButton,
   FormTextInput,
+  FormTextarea,
 } from "metabase/forms";
 import { Box, Flex, Modal, Stack, Text } from "metabase/ui";
 import { useCreateSupportAccessGrantMutation } from "metabase-enterprise/api";
@@ -19,6 +20,7 @@ interface GrantAccessModal {
 type AccessGrantFormValues = {
   grant_duration_minutes?: string;
   ticket_number?: string;
+  notes?: string;
 };
 
 export const GrantAccessModal = ({ onClose }: GrantAccessModal) => {
@@ -37,7 +39,8 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModal) => {
     try {
       await createSupportAccessGrant({
         grant_duration_minutes: Number(values.grant_duration_minutes),
-        ticket_number: values.ticket_number || "",
+        notes: values.notes || null,
+        ticket_number: values.ticket_number || null,
       }).unwrap();
       sendToast({
         message: t`Access grant created successfully`,
@@ -88,7 +91,11 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModal) => {
                   label={t`Ticket`}
                   name="ticket_number"
                   placeholder={t`TICKET-1234`}
-                  required
+                />
+                <FormTextarea
+                  label={t`Notes`}
+                  name="notes"
+                  placeholder={t`Add any important information we should know to help you better.`}
                 />
                 <Flex justify="end" mt="md" gap="md">
                   <FormErrorMessage />
@@ -111,4 +118,5 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModal) => {
 const initialValues: AccessGrantFormValues = {
   grant_duration_minutes: String(96 * 60),
   ticket_number: "",
+  notes: "",
 };
