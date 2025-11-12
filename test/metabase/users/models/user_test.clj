@@ -105,7 +105,15 @@
             (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
                     "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
                    (-> (invite-user-accept-and-check-inboxes! :invitor (assoc inactive-admin :is_active false))
-                       (select-keys ["<New User>" "crowberto@metabase.com" (:email inactive-admin)]))))))))
+                       (select-keys ["<New User>" "crowberto@metabase.com" (:email inactive-admin)])))))
+          
+          (testing "...or if admin-email setting is set to an inactive admin's email"
+            (mt/with-temp [:model/User inactive-admin {:is_superuser true, :is_active false, :email "inactive-admin@metabase.com"}]
+              (mt/with-temporary-setting-values [admin-email "inactive-admin@metabase.com"]
+                (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
+                        "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
+                       (-> (invite-user-accept-and-check-inboxes! :invitor default-invitor)
+                           (select-keys ["<New User>" "crowberto@metabase.com" "inactive-admin@metabase.com"])))))))))
 
     (testing "for google auth, all admins should get an email..."
       (mt/with-temp [:model/User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
@@ -128,6 +136,15 @@
             (is (= {"crowberto@metabase.com" ["<New User> created a Metabase account"]}
                    (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
                        (select-keys ["crowberto@metabase.com" (:email user)])))))
+          
+          (testing "...or if admin-email setting is set to an inactive admin's email"
+            (mt/with-temp [:model/User inactive-admin {:is_superuser true, :is_active false, :email "inactive-admin@metabase.com"}]
+              (mt/with-temporary-setting-values [admin-email "inactive-admin@metabase.com"]
+                (mt/with-temp [:model/User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+                  (is (= {"crowberto@metabase.com"        ["<New User> created a Metabase account"]
+                          "some_other_admin@metabase.com" ["<New User> created a Metabase account"]}
+                         (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                             (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com" "inactive-admin@metabase.com"]))))))))
 
           (testing "...or if setting is disabled"
             (mt/with-premium-features #{:sso-ldap}
