@@ -7,7 +7,7 @@ set -euo pipefail
 # Generate the current OpenAPI spec from Malli schemas using write-openapi-spec-to-file!
 # This creates resources/openapi/openapi.json directly
 # Using the generate-openapi-spec command from metabase.cmd.core
-clojure -M:run:ee generate-openapi-spec
+yarn generate-openapi
 ret=$?
 
 if [[ $ret -ne 0 ]]; then
