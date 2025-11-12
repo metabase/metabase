@@ -154,7 +154,7 @@
   []
   (when-not (nil? (semantic-layer-collection))
     (throw (ex-info "Semantic Layer already exists" {})))
-  (u/prog1 (t2/insert-returning-instance! :model/Collection {:name     "Semantic Layer"
+  (u/prog1 (t2/insert-returning-instance! :model/Collection {:name     "Library"
                                                              :type     semantic-layer-collection-type
                                                              :location "/"
                                                              :allowed_content ["collection"]})

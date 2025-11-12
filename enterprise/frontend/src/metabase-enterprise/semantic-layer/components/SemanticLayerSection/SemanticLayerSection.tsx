@@ -12,8 +12,8 @@ import type { Collection } from "metabase-types/api";
 
 import { isSemanticLayerCollection } from "../../utils";
 
-import { CollectionTree } from "./CollectionTree";
-import { CreateCollectionTreeModal } from "./CreateCollectionTreeModal";
+import { CreateSemanticLayerModal } from "./CreateSemanticLayerModal";
+import { SemanticLayerCollectionTree } from "./SemanticLayerCollectionTree";
 
 export function SemanticLayerSection({
   collections,
@@ -38,7 +38,7 @@ export function SemanticLayerSection({
 
   if (collection != null) {
     return (
-      <CollectionTree
+      <SemanticLayerCollectionTree
         collection={collection}
         selectedCollectionId={selectedCollectionId}
         hasDataAccess={hasDataAccess}
@@ -51,12 +51,12 @@ export function SemanticLayerSection({
     return (
       <>
         <ModelingSidebarSection
-          title={t`Semantic layer`}
+          title={t`Library`}
           icon="repository"
           onClick={openModal}
         />
         {isModalOpened && (
-          <CreateCollectionTreeModal
+          <CreateSemanticLayerModal
             onCreate={handleCreate}
             onClose={closeModal}
           />

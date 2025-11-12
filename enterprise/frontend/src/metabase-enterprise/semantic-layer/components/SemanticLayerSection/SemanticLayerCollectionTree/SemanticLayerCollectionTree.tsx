@@ -12,19 +12,19 @@ import * as Urls from "metabase/lib/urls";
 import { Button, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
 
-type CollectionTreeProps = {
+type SemanticLayerCollectionTreeProps = {
   collection: Collection;
   selectedCollectionId: CollectionId | undefined;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
 };
 
-export function CollectionTree({
+export function SemanticLayerCollectionTree({
   collection,
   selectedCollectionId,
   hasDataAccess,
   hasNativeWrite,
-}: CollectionTreeProps) {
+}: SemanticLayerCollectionTreeProps) {
   const collectionTree = useMemo(
     () => buildCollectionTree([collection]),
     [collection],
