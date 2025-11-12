@@ -4,6 +4,7 @@ import * as Yup from "yup";
 
 import { useCreateCardMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -15,7 +16,7 @@ import {
 import * as Errors from "metabase/lib/errors";
 import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { Card, CreateCardRequest } from "metabase-types/api";
+import type { Card, CollectionId, CreateCardRequest } from "metabase-types/api";
 
 import type { NewMetricValues } from "../types";
 
@@ -65,10 +66,11 @@ function CreateMetricForm({
   onClose,
 }: CreateMetricFormProps) {
   const [createCard] = useCreateCardMutation();
+  const defaultCollectionId = useGetDefaultCollectionId();
 
   const initialValues: NewMetricValues = useMemo(
-    () => getInitialValues(defaultValues),
-    [defaultValues],
+    () => getInitialValues(defaultValues, defaultCollectionId),
+    [defaultValues, defaultCollectionId],
   );
 
   const handleSubmit = async (values: NewMetricValues) => {
@@ -116,11 +118,12 @@ function CreateMetricForm({
 
 function getInitialValues(
   defaultValues: Partial<NewMetricValues>,
+  defaultCollectionId: CollectionId | null,
 ): NewMetricValues {
   return {
     name: "",
     description: null,
-    collection_id: null,
+    collection_id: defaultCollectionId,
     result_metadata: null,
     ...defaultValues,
   };
