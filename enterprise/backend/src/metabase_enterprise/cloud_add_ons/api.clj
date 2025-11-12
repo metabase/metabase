@@ -91,15 +91,15 @@
   [{:keys [product-type]} :- [:map
                               [:product-type [:enum "metabase-ai" "python-execution"]]]
    _query-params
-   {:keys [terms_of_service]} :- [:map
-                                  [:terms_of_service {:optional true} [:maybe :boolean]]]]
+   {terms-of-service :terms_of_service} :- [:map
+                                            [:terms_of_service {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (cond
     (not (premium-features/is-hosted?))
     response-not-hosted
 
     (and (= product-type "metabase-ai")
-         (not terms_of_service))
+         (not terms-of-service))
     response-terms-not-accepted
 
     (and (= product-type "metabase-ai")
