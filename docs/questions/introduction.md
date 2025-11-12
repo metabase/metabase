@@ -62,7 +62,7 @@ When a question, model, or metric is saved, Metabase will try to detect whether 
 
 ![Check dependencies](./images/check-dependencies.png)
 
-Currently, Metabase will look for broken column references. This means that if you change the column name, Metabase will likely detect that it breaks downstream entities. But if you change the column type, or how the column is calculated in a way that affects downstream entities, Metabase will not be able to detect that.
+Currently, Metabase will look for broken column references. If you rename or remove a column, Metabase will likely flag the change as breaking downstream entities. But Metabase can't detect other types of changes like changing the column type or computation logic as breaking changes.
 
 ## Moving questions from collections to dashboards (and vice versa)
 
