@@ -7,12 +7,13 @@ import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/Admi
 import { Route } from "metabase/hoc/Title";
 import type { PaletteAction } from "metabase/palette/types";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
-import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { trackMetabotChatOpened } from "./analytics";
 import { Metabot } from "./components/Metabot";
 import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
+import { MetabotPurchasePage } from "./components/MetabotAdmin/MetabotPurchasePage";
+import { MetabotTrialPage } from "./components/MetabotAdmin/MetabotTrialPage";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { MetabotSearchButton } from "./components/MetabotSearchButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
@@ -77,7 +78,7 @@ if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.SearchButton = MetabotSearchButton;
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
-} else if (hasPremiumFeature("offer_metabase_ai")) {
+} else if (hasPremiumFeature("offer_metabase_ai_tiered")) {
   PLUGIN_METABOT.getAdminPaths = () => [
     {
       name: t`AI`,
@@ -89,6 +90,21 @@ if (hasPremiumFeature("metabot_v3")) {
     <Route path="metabot" component={createAdminRouteGuard("metabot")}>
       <Route component={AdminSettingsLayout}>
         <IndexRoute component={MetabotPurchasePage} />
+      </Route>
+    </Route>
+  );
+} else if (hasPremiumFeature("offer_metabase_ai")) {
+  PLUGIN_METABOT.getAdminPaths = () => [
+    {
+      name: t`AI`,
+      path: "/admin/metabot",
+      key: "metabot",
+    },
+  ];
+  PLUGIN_METABOT.getAdminRoutes = () => (
+    <Route path="metabot" component={createAdminRouteGuard("metabot")}>
+      <Route component={AdminSettingsLayout}>
+        <IndexRoute component={MetabotTrialPage} />
       </Route>
     </Route>
   );
