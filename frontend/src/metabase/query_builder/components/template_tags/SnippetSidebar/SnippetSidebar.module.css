@@ -1,7 +1,7 @@
 .SidebarFooter {
   font-size: 0.875em;
   cursor: pointer;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 
   &:hover {
     color: var(--mb-color-brand);
@@ -9,7 +9,7 @@
 }
 
 .HeaderButton {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   width: 36px;
   height: 36px;
   padding: 0;

@@ -33,7 +33,7 @@ export const StatusTitle = styled.div`
 
 export const StatusToggle = styled(IconButtonWrapper)`
   flex: 0 0 auto;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
 `;
 
 export const StatusBody = styled.div`
@@ -65,7 +65,7 @@ export const StatusCardIcon = styled.div`
 `;
 
 export const StatusCardTitle = styled.div`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: 0.875rem;
   font-weight: bold;
   line-height: 1rem;
@@ -99,7 +99,7 @@ export const StatusCardIconContainer = styled.div<StatusCardIconContainerProps>`
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 1rem;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   background-color: ${(props) =>
     props.isError ? color("error") : color("success")};
 `;

@@ -1,5 +1,5 @@
 .root {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .title {
@@ -23,7 +23,7 @@
 }
 
 .ModalCloseButton {
-  color: var(--mb-color-text-tertiary) !important;
+  color: var(--mb-color-text-disabled) !important;
   padding: 0;
   width: rem(18px);
   height: rem(18px);

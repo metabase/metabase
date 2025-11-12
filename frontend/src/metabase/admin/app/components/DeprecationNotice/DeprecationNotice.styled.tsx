@@ -14,7 +14,7 @@ export const NoticeRoot = styled.div`
 export const NoticeContent = styled.div`
   flex: 1 1 auto;
   margin: 0 0.75rem;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 `;
 
 export const NoticeWarningIcon = styled(Icon)`

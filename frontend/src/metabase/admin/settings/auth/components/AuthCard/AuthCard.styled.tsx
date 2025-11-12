@@ -17,13 +17,13 @@ export const CardHeader = styled.div`
 `;
 
 export const CardTitle = styled.div`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: 1.5rem;
   font-weight: bold;
 `;
 
 export const CardDescription = styled.div`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: 0.875rem;
   line-height: 1.5rem;
   margin-bottom: 1rem;

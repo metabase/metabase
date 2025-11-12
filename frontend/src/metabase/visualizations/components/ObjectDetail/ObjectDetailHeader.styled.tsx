@@ -9,7 +9,7 @@ export const ObjectDetailHeaderWrapper = styled.div`
 `;
 
 export const ObjectIdLabel = styled.span`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   margin-left: 0.5rem;
 `;
 

@@ -11,7 +11,7 @@ const Container = styled.div`
 `;
 
 const Title = styled.div`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-weight: bold;
   text-transform: uppercase;
   margin-bottom: 0.5rem;
@@ -21,7 +21,7 @@ export const StillNeedHelp = () => {
   return (
     <Container>
       <Title>{t`Still need help?`}</Title>
-      <Text color="text-medium">
+      <Text color="text-secondary">
         {t`You can ask for billing help at `}
         {/* eslint-disable-next-line i18next/no-literal-string */}
         <Anchor href="mailto:billing@metabase.com">billing@metabase.com</Anchor>

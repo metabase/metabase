@@ -20,7 +20,7 @@
   padding: 1.5rem 0 2rem 0;
   min-height: 100%;
   outline: none;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: 1rem;
   line-height: 1.5;
 }
@@ -32,7 +32,7 @@
     :global(.editor-style-boundary) *
   ) {
   font-weight: 700;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .editorContent
@@ -130,7 +130,7 @@
   border-radius: var(--mantine-radius-xs);
   font-family: var(--mb-default-monospace-font-family, monospace);
   font-size: 0.875rem;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   border: 1px solid var(--mb-color-border);
 }
 
@@ -138,7 +138,7 @@
   :global(.ProseMirror)
   :global(pre):not(:global(.editor-style-boundary) *) {
   background-color: var(--mb-color-bg-light);
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   padding: 1rem;
   border-radius: var(--mantine-radius-sm);
   overflow-x: auto;
@@ -162,7 +162,7 @@
   :global(blockquote):not(:global(.editor-style-boundary) *) {
   border-left: 3px solid var(--mb-color-border);
   margin: 0 0 1rem 0;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-style: italic;
   background-color: var(--mb-color-bg-light);
   padding: 1rem;
@@ -184,7 +184,7 @@
 
 .editorContent :global(.is-empty:first-child:before),
 .editorContent :global(.node-paragraph.is-empty:first-child:before) {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
   content: attr(data-placeholder);
   float: left;
   height: 0;

@@ -467,10 +467,6 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.brand[50],
     dark: baseColors.brand[40],
   },
-  "text-dark": {
-    light: baseColors.orionAlpha[80] /* @deprecated, use text-primary */,
-    dark: baseColors.orionAlphaInverse[80],
-  },
   "text-disabled": {
     light: baseColors.orionAlpha[40],
     dark: baseColors.orionAlphaInverse[40],
@@ -483,20 +479,9 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.brand[60],
     dark: baseColors.brand[30], //CHANGED DOWN TO HERE
   },
-  "text-light": {
-    //should be text-disabled
-    light: baseColors.orionAlpha[40],
-    dark: baseColors.orionAlphaInverse[40],
-  },
-  "text-medium": {
-    //should be text-secondary
-    light: baseColors.orionAlpha[60],
-    dark: baseColors.orionAlphaInverse[60],
-  },
 
   //Used in gauge viz... there should be a better way to do this
-  "text-medium-opaque": {
-    //should be text-secondary
+  "text-secondary-opaque": {
     light: baseColors.orion[60],
     dark: baseColors.orion[20],
   },
@@ -519,21 +504,6 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
   "text-selected": {
     light: baseColors.white,
     dark: baseColors.white,
-  },
-  "text-tertiary": {
-    //should be text-disabled
-    light: baseColors.orionAlpha[40],
-    dark: baseColors.orionAlphaInverse[40],
-  },
-  "text-white-alpha-85": {
-    //should be text-primary-inverse
-    light: baseColors.orionAlphaInverse[80],
-    dark: baseColors.orionAlpha[80],
-  },
-  "text-white": {
-    //should be text-primary-inverse
-    light: baseColors.orionAlphaInverse[80],
-    dark: baseColors.orionAlpha[80],
   },
   "tooltip-background-focused": {
     light: `color-mix(in srgb, ${baseColors.orion[80]} 50%, #000)`,
@@ -633,11 +603,6 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.orionAlpha[60],
     dark: "hsla(207, 100%, 4.3%, 0.8)", // FIXME: should be part of palette
   },
-  "text-inverse": {
-    //should be text-primary-inverse
-    light: baseColors.orionAlphaInverse[80],
-    dark: baseColors.orionAlpha[80],
-  },
   "border-primary": {
     //should be border-strong
     light: baseColors.orionAlpha[50],
@@ -677,7 +642,7 @@ export const mutateColors = (settings: ColorSettings) => {
 };
 
 export const staticVizOverrides = {
-  "text-dark": baseColors.orion[80],
-  "text-medium": baseColors.orion[60],
-  "text-light": baseColors.orion[40],
+  "text-primary": baseColors.orion[80],
+  "text-secondary": baseColors.orion[60],
+  "text-disabled": baseColors.orion[40],
 };

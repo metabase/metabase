@@ -22,17 +22,17 @@ export const getStaticChartTheme = (
       },
     },
     goal: {
-      lineStroke: getColor("text-medium"),
+      lineStroke: getColor("text-secondary"),
       label: {
         size: 14,
         weight: 700,
-        color: getColor("text-medium"),
+        color: getColor("text-secondary"),
         family: fontFamily,
       },
     },
     dataLabels: {
       weight: 700,
-      color: getColor("text-dark"),
+      color: getColor("text-primary"),
       size: 12,
       family: fontFamily,
     },

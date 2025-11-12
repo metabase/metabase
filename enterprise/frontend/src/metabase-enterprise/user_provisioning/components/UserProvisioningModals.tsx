@@ -34,7 +34,7 @@ export const UserProvisioningFirstEnabledModal = ({
       title={t`Here's what you'll need to set SCIM up`}
     >
       <Stack gap="lg">
-        <Text c="text-medium">
+        <Text c="text-secondary">
           {t`To set up SCIM-based provisioning, you'll need to share this endpoint URL and token with your identity provider.`}
         </Text>
         <CopyScimInput label={t`SCIM endpoint URL`} value={scimBaseUrl} />

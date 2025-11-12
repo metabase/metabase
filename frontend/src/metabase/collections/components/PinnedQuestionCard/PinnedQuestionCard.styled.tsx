@@ -12,7 +12,7 @@ export const CardActionMenuContainer = styled.div`
   top: 0.3125rem;
   right: 0.3125rem;
   z-index: 3;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   visibility: hidden;
 `;
 

@@ -13,7 +13,7 @@
   padding: var(--mantine-spacing-sm);
 
   &[data-disabled="true"] {
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-disabled);
     opacity: 1;
   }
 
@@ -28,13 +28,13 @@
   }
 
   &[data-position="right"] {
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-disabled);
     margin-left: var(--mantine-spacing-md);
   }
 }
 
 .label {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height);
   padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);

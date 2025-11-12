@@ -58,7 +58,7 @@ export const GetCodeStep = () => {
             {t`Authentication`}
           </Text>
 
-          <Text size="sm" c="text-medium">
+          <Text size="sm" c="text-secondary">
             {t`Choose the authentication method for embedding:`}
           </Text>
 
@@ -82,7 +82,7 @@ export const GetCodeStep = () => {
                         <Icon
                           name="info"
                           size={14}
-                          c="text-medium"
+                          c="text-secondary"
                           cursor="pointer"
                         />
                       </HoverCard.Target>
@@ -106,7 +106,7 @@ export const GetCodeStep = () => {
           </Radio.Group>
 
           {authType === "sso" && (
-            <Text size="sm" c="text-medium">
+            <Text size="sm" c="text-secondary">
               {t`Select this option if you have already set up SSO. This option relies on SSO to sign in your application users into the embedded iframe, and groups and permissions to enforce limits on what users can access. `}
             </Text>
           )}

@@ -1,6 +1,6 @@
 .QueryErrorTitle {
   flex: 1 1 auto;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: bold;

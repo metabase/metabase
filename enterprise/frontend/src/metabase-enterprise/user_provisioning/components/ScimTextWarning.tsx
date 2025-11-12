@@ -5,7 +5,7 @@ export const ScimTextWarning = ({
 }: {
   children: React.ReactNode;
 }) => (
-  <Flex my=".25rem" gap="sm" align="start" c="text-medium">
+  <Flex my=".25rem" gap="sm" align="start" c="text-secondary">
     <Box mt=".25rem">
       <FixedSizeIcon name="info" />
     </Box>

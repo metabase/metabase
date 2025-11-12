@@ -13,7 +13,7 @@
   text-transform: uppercase;
   font-size: 10px;
   font-weight: 700;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .QueryFilters {
@@ -87,15 +87,15 @@
 }
 
 .SelectionItem:hover :global(.Icon) {
-  color: var(--mb-color-text-white) !important;
+  color: var(--mb-color-text-primary-inverse) !important;
 }
 
 .SelectionItem:hover .SelectionModuleDisplay {
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
 }
 
 .SelectionItem:hover .SelectionModuleDescription {
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
 }
 
 .SelectionItem.SelectionItemSelected :global(.Icon-check) {
@@ -108,7 +108,7 @@
 }
 
 .SelectionModuleDescription {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-size: 0.8rem;
 }
 
@@ -300,7 +300,7 @@
 }
 
 .QuestionTooltipTarget {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
   border: 2px solid currentColor;
   border-radius: 99px;
   width: 20px;

@@ -54,7 +54,7 @@ export const ColumnItem = ({
   <Flex
     w="100%"
     bg="bg-white"
-    c="text-medium"
+    c="text-secondary"
     className={cx(
       CS.overflowHidden,
       CS.bordered,

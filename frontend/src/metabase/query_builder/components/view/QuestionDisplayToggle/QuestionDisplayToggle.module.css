@@ -31,10 +31,10 @@
 }
 
 .InnerLabel {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   transition: 300ms;
 
   &.activeLabel {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
   }
 }

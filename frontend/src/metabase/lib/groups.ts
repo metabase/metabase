@@ -30,7 +30,7 @@ export function getGroupColor(group: Pick<Group, "name">) {
   if (isAdminGroup(group)) {
     return color("filter");
   } else if (isDefaultGroup(group)) {
-    return color("text-medium");
+    return color("text-secondary");
   } else {
     return color("brand");
   }

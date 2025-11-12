@@ -35,9 +35,9 @@ const ARROW_STROKE_THICKNESS = 1.25;
 
 // colors
 const getBackgroundArcColor = () => color("bg-medium");
-const getSegmentLabelColor = () => color("text-dark");
-const getCenterLabelColor = () => color("text-dark");
-const getArrowFillColor = () => color("text-medium-opaque");
+const getSegmentLabelColor = () => color("text-primary");
+const getCenterLabelColor = () => color("text-primary");
+const getArrowFillColor = () => color("text-secondary-opaque");
 const getArrowStrokeColor = () => color("bg-white");
 
 // in ems, but within the scaled 100px SVG element
@@ -435,7 +435,7 @@ const GaugeSegmentLabel = ({ position: [x, y], style = {}, children }) => (
     x={x}
     y={y}
     style={{
-      fill: "var(--mb-color-text-medium)",
+      fill: "var(--mb-color-text-secondary)",
       fontSize: `${FONT_SIZE_SEGMENT_LABEL}em`,
       textAnchor: Math.abs(x) < 5 ? "middle" : x > 0 ? "start" : "end",
       // shift text in the lower half down a bit

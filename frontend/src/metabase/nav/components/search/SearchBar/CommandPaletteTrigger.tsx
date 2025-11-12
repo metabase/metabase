@@ -29,7 +29,7 @@ export const CommandPaletteTrigger = ({
           root: {
             "&:active": { transform: "none" },
             "&:hover": {
-              color: color("text-dark"),
+              color: color("text-primary"),
             },
           },
         }}

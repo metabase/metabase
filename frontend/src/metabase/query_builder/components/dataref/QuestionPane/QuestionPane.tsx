@@ -101,7 +101,7 @@ export const QuestionPane = ({
           )}
         </Box>
         <Flex
-          color="var(--mb-color-text-medium)"
+          color="var(--mb-color-text-secondary)"
           align="center"
           p="0.25rem 0.5rem"
           fw={700}
@@ -117,7 +117,7 @@ export const QuestionPane = ({
           </a>
         </Flex>
         <Flex
-          color="var(--mb-color-text-medium)"
+          color="var(--mb-color-text-secondary)"
           align="center"
           p="0.25rem 0.5rem"
           fw={700}
@@ -130,7 +130,7 @@ export const QuestionPane = ({
           >{t`ID #${question.id()}`}</Box>
         </Flex>
         <Flex
-          color="var(--mb-color-text-medium)"
+          color="var(--mb-color-text-secondary)"
           align="center"
           p="0.25rem 0.5rem"
           fw={700}
@@ -142,7 +142,7 @@ export const QuestionPane = ({
         </Flex>
         {question.lastEditInfo() && (
           <Flex
-            color="var(--mb-color-text-medium)"
+            color="var(--mb-color-text-secondary)"
             align="center"
             p="0.25rem 0.5rem"
             fw={700}

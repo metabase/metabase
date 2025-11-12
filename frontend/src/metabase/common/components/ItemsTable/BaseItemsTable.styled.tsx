@@ -74,7 +74,7 @@ export const ColumnHeader = styled.th<ResponsiveProps>`
   }
 
   font-weight: bold;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   ${hideResponsively}
 `;
 
@@ -140,7 +140,7 @@ export const SortingIcon = styled(
 `;
 
 export const DescriptionIcon = styled(FixedSizeIcon)`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;
 
 export const SortingControlContainer = styled.div<{
@@ -149,7 +149,7 @@ export const SortingControlContainer = styled.div<{
 }>`
   display: flex;
   align-items: center;
-  color: ${({ isActive }) => isActive && "var(--mb-color-text-dark)"};
+  color: ${({ isActive }) => isActive && "var(--mb-color-text-primary)"};
 
   ${({ isSortable = true }) =>
     isSortable ? `cursor: pointer; user-select: none;` : ""}
@@ -159,7 +159,7 @@ export const SortingControlContainer = styled.div<{
   }
 
   &:hover {
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
 
     .Icon {
       visibility: visible;

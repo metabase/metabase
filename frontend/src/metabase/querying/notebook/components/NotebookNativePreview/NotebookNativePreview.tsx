@@ -82,7 +82,7 @@ export const NotebookNativePreview = ({
     >
       <Box
         component="header"
-        c="text-dark"
+        c="text-primary"
         fz={rem(20)}
         lh={rem(24)}
         fw="bold"

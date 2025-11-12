@@ -79,7 +79,7 @@ export const TrashSidebarSection = styled(SidebarSection)`
 ` as unknown as typeof Box;
 
 export const SidebarHeading = styled.h4`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-weight: 700;
   font-size: 11px;
   text-transform: uppercase;

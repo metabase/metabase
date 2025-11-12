@@ -53,7 +53,7 @@ export const ArchivedEntityBanner = ({
             >
               <Icon className={Styles.iconStyle} name="trash_filled" />
             </Box>
-            <Text color="text-white" size="md" lh="1rem">
+            <Text color="text-primary-inverse" size="md" lh="1rem">
               {c(
                 "{0} is the entity in the trash, e.g. collection, dashboard, etc.",
               ).t`This ${entityType} is in the trash.`}

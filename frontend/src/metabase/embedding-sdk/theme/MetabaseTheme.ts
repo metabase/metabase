@@ -50,7 +50,7 @@ export interface MetabaseColors {
   "text-secondary"?: string;
 
   /** Text color on light elements. Should be a darker color for readability. */
-  "text-tertiary"?: string;
+  "text-disabled"?: string;
 
   /** Default background color. */
   background?: string;
@@ -92,7 +92,7 @@ export interface MetabaseColors {
   focus?: string;
 
   /** Color used for white text */
-  "text-white"?: string;
+  "text-primary-inverse"?: string;
 
   /** Color used for error icons and borders. Defaults to red. */
   error?: string;

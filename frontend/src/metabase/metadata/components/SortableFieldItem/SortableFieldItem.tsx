@@ -40,7 +40,7 @@ export const SortableFieldItem = ({
       <Card
         aria-label={label}
         bg={active ? "brand-light" : "bg-white"}
-        c="text-medium"
+        c="text-secondary"
         className={cx(S.card, {
           [S.active]: active,
           [S.draggable]: draggable,

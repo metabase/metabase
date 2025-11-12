@@ -161,7 +161,7 @@ export default function Gauge({
               },
             )}
             <GaugeLabel
-              fill={getColor("text-dark")}
+              fill={getColor("text-primary")}
               stroke={outlineColor}
               fontSize={dynamicValueFontSize}
               position={[0, -GAUGE_INNER_RADIUS * 0.4]}

@@ -33,7 +33,7 @@ export const TableHeaderRow = styled.div`
 
 export const TableHeaderCell = styled.div`
   ${cellStyles};
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-size: 0.6rem;
   letter-spacing: 1px;
   line-height: 0.625rem;
@@ -64,13 +64,13 @@ interface TableBodyCellProps {
 
 export const TableBodyCell = styled.div<TableBodyCellProps>`
   ${cellStyles};
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   padding-top: 1rem;
   padding-bottom: 1rem;
   font-weight: ${(props) => props.fontWeight};
 `;
 
 export const TableBodyCellLabel = styled.span`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
   margin-left: 0.25rem;
 `;

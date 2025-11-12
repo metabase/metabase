@@ -21,7 +21,7 @@ function ConnectedTables({ table, onConnectedTableClick }: Props) {
 
   return fkTables.length ? (
     <Container>
-      <LabelContainer color="text-dark">
+      <LabelContainer color="text-primary">
         <Label>{t`Connected to these tables`}</Label>
       </LabelContainer>
       {fkTables.slice(0, 8).map((fkTable) => {

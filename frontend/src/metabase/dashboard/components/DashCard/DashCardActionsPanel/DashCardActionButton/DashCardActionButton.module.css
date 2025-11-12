@@ -5,6 +5,6 @@
   padding: 4px;
 
   &:hover {
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
   }
 }

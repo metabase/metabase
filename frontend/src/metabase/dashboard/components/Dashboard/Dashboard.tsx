@@ -55,7 +55,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
     return (
       <Stack justify="center" align="center" gap="sm" mt="xl">
         <Loader size="lg" />
-        <Text c="text-light" size="xl">{t`Loading…`}</Text>
+        <Text c="text-disabled" size="xl">{t`Loading…`}</Text>
       </Stack>
     );
   }

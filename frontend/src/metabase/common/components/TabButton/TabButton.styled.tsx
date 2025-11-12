@@ -107,7 +107,7 @@ export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
     ${(props) =>
       props.disabled
         ? css`
-            color: var(--mb-color-text-dark);
+            color: var(--mb-color-text-primary);
           `
         : css`
             color: var(--mb-color-brand);
@@ -124,7 +124,7 @@ export const MenuItem = styled.li`
   width: 100%;
   padding: 0.85em 1.45em;
   border-radius: 0.5em;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-weight: 700;
   text-align: start;
   text-decoration: none;

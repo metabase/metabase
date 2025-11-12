@@ -20,7 +20,7 @@
 
   &.active {
     background-color: var(--view-button-color);
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
 
     &:hover {
       background-color: color-mix(

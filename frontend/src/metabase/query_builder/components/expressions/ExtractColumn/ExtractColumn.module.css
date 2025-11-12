@@ -19,7 +19,7 @@
 
       .content,
       .example {
-        color: var(--mb-color-text-white);
+        color: var(--mb-color-text-primary-inverse);
       }
     }
 

@@ -66,7 +66,7 @@ export const ChartSettingGoalInput = ({
       withArrow
     >
       <Menu.Target>
-        <ActionIcon c="text-medium" size="sm" radius="xl" p={0}>
+        <ActionIcon c="text-secondary" size="sm" radius="xl" p={0}>
           <Icon name="chevrondown" />
         </ActionIcon>
       </Menu.Target>

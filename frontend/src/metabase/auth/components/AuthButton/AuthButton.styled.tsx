@@ -5,7 +5,7 @@ import Link from "metabase/common/components/Link";
 
 export const TextLink = styled(Link)`
   cursor: pointer;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   &:hover {
     color: var(--mb-color-brand);

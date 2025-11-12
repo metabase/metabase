@@ -18,11 +18,11 @@
 }
 
 .light {
-  --mb-color-text-primary: var(--mb-color-text-medium);
+  --mb-color-text-primary: var(--mb-color-text-secondary);
 }
 
 .dark {
-  --mb-color-border: var(--mb-color-text-medium);
+  --mb-color-border: var(--mb-color-text-secondary);
   --mb-color-background: #2f353a;
   /* SVG logo */
   --mb-color-logo-text: var(--mb-color-text-primary);

@@ -195,10 +195,10 @@ const Header = ({
 
     {selectedSchema?.name && schemas.length > 1 && (
       <>
-        <Box component="span" mx="sm" c="text-medium">
+        <Box component="span" mx="sm" c="text-secondary">
           /
         </Box>
-        <Box component="span" data-testid="source-schema" c="text-medium">
+        <Box component="span" data-testid="source-schema" c="text-secondary">
           {selectedSchema.displayName()}
         </Box>
       </>

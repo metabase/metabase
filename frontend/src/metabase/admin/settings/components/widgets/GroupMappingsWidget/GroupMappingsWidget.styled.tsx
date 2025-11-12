@@ -37,7 +37,7 @@ export const GroupMappingsWidgetToggleRoot = styled.div`
   display: flex;
 
   > * {
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
     padding-right: var(--mantine-spacing-sm);
     padding-top: 0;
   }
@@ -45,7 +45,7 @@ export const GroupMappingsWidgetToggleRoot = styled.div`
 
 export const GroupMappingsWidgetAbout = styled.div`
   align-items: center;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   display: flex;
   flex-direction: row;
 

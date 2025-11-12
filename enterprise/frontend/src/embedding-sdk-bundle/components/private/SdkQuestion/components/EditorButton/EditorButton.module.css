@@ -7,7 +7,7 @@
   }
 
   &[data-active="true"] {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background: var(--mb-color-brand);
 
     &:hover {

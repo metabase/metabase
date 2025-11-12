@@ -141,7 +141,7 @@ function GoogleSheetsConnectModal({
         fullWidth
         autoContrast
         color="brand"
-        c="var(--mb-color-text-white)"
+        c="var(--mb-color-text-primary-inverse)"
         value={linkType}
         onChange={setLinkType}
         data={
@@ -240,7 +240,7 @@ function GoogleSheetsDisconnectModal({
     <ModalWrapper onClose={onClose} title={title}>
       <Stack gap="md">
         <DriveConnectionDisplay />
-        <Text c="text-medium" pb="md">
+        <Text c="text-secondary" pb="md">
           {bodyCopy}
         </Text>
         <Flex w="100%" gap="sm" justify="space-between">
@@ -313,7 +313,7 @@ export const DriveConnectionDisplay = () => {
         <Box>
           <Text fw="bold">{t`Google Drive connected`}</Text>
           {!!userName && (
-            <Text c="text-medium" fz="sm" lh="140%">
+            <Text c="text-secondary" fz="sm" lh="140%">
               {t`Connected by ${userName} ${relativeConnectionTime}`}
             </Text>
           )}

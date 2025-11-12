@@ -34,7 +34,7 @@ export const ChartTypeSettings = ({
 
     <Text
       fw="bold"
-      color="text-medium"
+      color="text-secondary"
       tt="uppercase"
       fz="sm"
     >{t`Other charts`}</Text>

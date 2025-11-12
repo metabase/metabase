@@ -34,9 +34,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   collectionBrowser: {
     breadcrumbs: {
       expandButton: {
-        textColor: "var(--mb-color-text-medium)",
+        textColor: "var(--mb-color-text-secondary)",
         backgroundColor: "var(--mb-color-bg-light)",
-        hoverTextColor: "var(--mb-color-text-white)",
+        hoverTextColor: "var(--mb-color-text-primary-inverse)",
         hoverBackgroundColor: "var(--mb-color-brand)",
       },
     },
@@ -77,8 +77,8 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
       fontSize: FONT_SIZES.pivotTableCell.px,
     },
     rowToggle: {
-      textColor: "text-white",
-      backgroundColor: "text-light", // TODO: should it be "bg-dark" ?
+      textColor: "text-primary-inverse",
+      backgroundColor: "text-disabled", // TODO: should it be "bg-dark" ?
     },
   },
   cartesian: {
@@ -126,7 +126,7 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
     breadcrumbs: {
       expandButton: {
         backgroundColor: "transparent",
-        hoverTextColor: "var(--mb-color-text-white)",
+        hoverTextColor: "var(--mb-color-text-primary-inverse)",
         hoverBackgroundColor: "var(--mb-color-brand)",
       },
     },

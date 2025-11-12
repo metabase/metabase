@@ -103,7 +103,7 @@ export const HintIcon = styled(
     );
   }),
 )`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
   margin-left: 0.375rem;
   cursor: pointer;
 `;

@@ -19,14 +19,14 @@ export const Container = styled.div`
 export const LeftHeader = styled.div`
   display: flex;
   align-items: center;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   gap: var(--mantine-spacing-md);
 `;
 
 export const EditableText = styled(EditableTextBase)`
   font-weight: bold;
   font-size: 1.3em;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;
 
 export const CompactSelect = styled(Select)`
@@ -34,7 +34,7 @@ export const CompactSelect = styled(Select)`
     border: none;
     border-radius: 6px;
     min-width: 80px;
-    color: var(--mb-color-text-medium);
+    color: var(--mb-color-text-secondary);
   }
   ${SelectButton.Content} {
     margin-right: 6px;

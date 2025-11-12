@@ -22,7 +22,7 @@ import { useSaveQuestionContext } from "./context";
 const labelStyles = {
   fontWeight: 900,
   fontSize: "0.77rem",
-  color: "var(--mb-color-text-medium)",
+  color: "var(--mb-color-text-secondary)",
   marginBottom: rem("7px"),
 };
 
@@ -70,7 +70,7 @@ export const SaveQuestionForm = ({
             label: {
               fontWeight: 900,
               fontSize: "0.77rem",
-              color: "var(--mb-color-text-medium)",
+              color: "var(--mb-color-text-secondary)",
               marginBottom: rem("7px"),
             },
           }}

@@ -81,7 +81,7 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
     isEmpty &&
     css`
       border: 1px solid var(--mb-color-brand);
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-disabled);
     `}
 
   ${({ isSingleRow, isPreviewing, isEmpty, isMobile, isFixedWidth }) => {
@@ -300,7 +300,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
   }
 
   .text-card-markdown blockquote {
-    color: var(--mb-color-text-medium);
+    color: var(--mb-color-text-secondary);
     border-left: 5px solid var(--mb-color-border);
     padding: 0 1.5em 0 17px;
     margin: 0.5em 0 0.5em 1em;

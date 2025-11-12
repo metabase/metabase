@@ -20,7 +20,8 @@ export const ObjectRelationContent = styled.div<ObjectRelationshipContentProps>`
   margin: 1rem 0;
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--mb-color-border);
-  color: ${(props) => color(props.isClickable ? "text-dark" : "text-medium")};
+  color: ${(props) =>
+    color(props.isClickable ? "text-primary" : "text-secondary")};
   cursor: ${(props) => props.isClickable && "pointer"};
 
   &:hover {

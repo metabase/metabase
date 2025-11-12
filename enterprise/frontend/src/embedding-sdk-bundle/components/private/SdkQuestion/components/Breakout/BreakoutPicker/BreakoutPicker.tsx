@@ -32,7 +32,7 @@ export const BreakoutPickerInner = ({
       <Button
         p="md"
         fz="lg"
-        color="text-medium"
+        color="text-secondary"
         variant="subtle"
         leftSection={<Icon name="chevronleft" />}
         onClick={() => onClose?.()}

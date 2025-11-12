@@ -32,7 +32,7 @@ export const Value = ({ children, column, field, value }: Props) => {
   const json = useMemo(() => getJson(column, value), [column, value]);
 
   if (isEmptyValue) {
-    return <Text c="text-light">{t`empty`}</Text>;
+    return <Text c="text-disabled">{t`empty`}</Text>;
   }
 
   if (json) {

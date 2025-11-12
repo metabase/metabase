@@ -75,8 +75,8 @@ export function getGoalLineSeriesOption(
         },
         style: {
           lineWidth: 2,
-          stroke: renderingContext.getColor("text-medium"),
-          color: renderingContext.getColor("text-medium"),
+          stroke: renderingContext.getColor("text-secondary"),
+          color: renderingContext.getColor("text-secondary"),
           lineDash: GOAL_LINE_DASH,
         },
       };
@@ -101,7 +101,7 @@ export function getGoalLineSeriesOption(
           fontFamily: renderingContext.fontFamily,
           fontSize,
           fontWeight: CHART_STYLE.goalLine.label.weight,
-          fill: renderingContext.getColor("text-medium"),
+          fill: renderingContext.getColor("text-secondary"),
         },
       };
 

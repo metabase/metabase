@@ -86,7 +86,7 @@ export const MigrationInProgress = ({
             )}
 
             <Box mt="lg" mb="md">
-              <Text size="md" c="text-medium">
+              <Text size="md" c="text-secondary">
                 {progressMessage[migration.state]}
               </Text>
               <Progress value={migration.progress} mt=".25rem" />

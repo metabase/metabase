@@ -47,7 +47,7 @@ export const QuestionSources = () => {
             <Link to={href} variant="brand">
               <Flex gap="sm" lh="1.25rem" maw="20rem">
                 {iconProps ? (
-                  <Icon mt={2} c="text-dark" {...iconProps} />
+                  <Icon mt={2} c="text-primary" {...iconProps} />
                 ) : null}
                 {name}
               </Flex>

@@ -11,7 +11,7 @@ function getColorForIconWrapper(
   type: SearchModel,
 ) {
   if (!active || archived) {
-    return color("text-medium");
+    return color("text-secondary");
   }
   if (type === "collection") {
     return lighten("brand", 0.35);

@@ -89,7 +89,7 @@ const getCellHoverBackground = (
 
 const getColor = ({ theme }: PivotTableCellProps & { theme: MantineTheme }) => {
   if (theme.other.colorScheme === "dark") {
-    return color("text-white");
+    return color("text-primary-inverse");
   }
 
   return color(theme.other.table.cell.textColor);
@@ -192,7 +192,7 @@ export const PivotTableRoot = styled.div<PivotTableRootProps>`
 
 export const PivotTableSettingLabel = styled.span`
   font-weight: 700;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 `;
 
 export const ResizeHandle = styled.div`

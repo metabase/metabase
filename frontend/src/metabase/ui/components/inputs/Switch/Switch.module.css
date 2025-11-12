@@ -41,12 +41,12 @@
 
   &[data-disabled] {
     .label {
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-disabled);
       cursor: default;
     }
 
     .description {
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-disabled);
     }
   }
 }
@@ -94,7 +94,7 @@
 }
 
 .thumb {
-  background-color: var(--mb-color-text-white);
+  background-color: var(--mb-color-text-primary-inverse);
   border: none;
   border-radius: 1.375rem;
 

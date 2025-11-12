@@ -25,7 +25,7 @@
 
 .FieldTypeIcon {
   background-color: var(--mb-color-brand);
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   border-radius: 0.3em;
   padding: 0.2em;
   margin-right: 8px;
@@ -79,12 +79,12 @@
   transition: all 0.25s;
 
   &.isSelected {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: var(--mb-color-brand);
   }
 
   &:hover {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: var(--mb-color-brand);
 
     .FieldTypeIcon {

@@ -20,10 +20,10 @@ export type MappableSdkColor = Exclude<MetabaseColor, "charts">;
 export type SemanticColorKey =
   | "text-primary"
   | "text-secondary"
-  | "text-tertiary"
+  | "text-disabled"
   | "text-selected"
   | "text-brand"
-  | "text-white"
+  | "text-primary-inverse"
   | "background"
   | "background-hover"
   | "background-selected"
@@ -50,9 +50,9 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   border: ["border"],
   filter: ["filter"],
   summarize: ["summarize"],
-  "text-primary": ["text-dark", "text-primary"],
-  "text-secondary": ["text-medium", "text-secondary"],
-  "text-tertiary": ["text-light", "text-tertiary"],
+  "text-primary": ["text-primary", "text-primary"],
+  "text-secondary": ["text-secondary", "text-secondary"],
+  "text-disabled": ["text-disabled", "text-disabled"],
   background: ["bg-white", "bg-primary", "background"],
   "background-hover": ["bg-light", "background-hover"],
   "background-secondary": ["bg-medium", "bg-secondary"],
@@ -61,7 +61,7 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   shadow: ["shadow"],
   positive: ["success"],
   negative: ["danger"],
-  "text-white": ["text-white", "white"],
+  "text-primary-inverse": ["text-primary-inverse", "white"],
   error: ["error"],
   "background-error": ["bg-error"],
   "text-hover": ["text-hover"],

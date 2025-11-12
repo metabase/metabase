@@ -37,7 +37,7 @@
   left: 0.5rem;
   padding: 0 0.5rem;
   transform: translateY(-50%);
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   background-color: var(--mb-color-bg-white);
   text-transform: uppercase;
 }

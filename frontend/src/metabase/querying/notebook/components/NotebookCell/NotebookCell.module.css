@@ -16,7 +16,7 @@
   border-radius: 6px;
   border: 2px solid transparent;
   cursor: default;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   align-items: stretch;
   transition: border 300ms linear;
 

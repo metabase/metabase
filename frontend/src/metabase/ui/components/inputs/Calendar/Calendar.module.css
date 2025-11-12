@@ -43,7 +43,7 @@
   }
 
   &[data-selected] {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: var(--mb-color-brand);
 
     &:hover {
@@ -55,7 +55,7 @@
 .weekday {
   width: 2.5rem;
   height: 2rem;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-lg);
   text-align: center;
@@ -81,7 +81,7 @@
   }
 
   &:where([data-weekend]) {
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
   }
 
   &[data-outside] {

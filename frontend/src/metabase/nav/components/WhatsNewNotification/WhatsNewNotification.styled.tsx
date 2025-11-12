@@ -7,6 +7,6 @@ export const DismissIconButtonWrapper = styled(IconButtonWrapper)`
   color: var(--mb-color-bg-dark);
 
   &:hover {
-    color: var(--mb-color-text-medium);
+    color: var(--mb-color-text-secondary);
   }
 `;

@@ -57,7 +57,7 @@ export const CardIcon = styled(Icon)`
 
 export const CardMessage = styled.div`
   display: block;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   line-height: 1.25rem;
 
   p {

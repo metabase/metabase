@@ -6,7 +6,7 @@
 
 .StyledLastEditInfoLabel {
   /* LastEditInfoLabel uses emotion with higher specificity */
-  color: var(--mb-color-text-light) !important;
+  color: var(--mb-color-text-disabled) !important;
 
   @media screen and (max-width: 40em) {
     margin-left: 0;

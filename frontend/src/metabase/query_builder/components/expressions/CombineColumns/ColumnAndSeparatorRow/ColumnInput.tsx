@@ -100,7 +100,7 @@ export function ColumnInput({
         label: {
           marginBottom: theme.spacing?.xs,
           fontSize: theme.fontSizes?.md,
-          color: color("text-medium"),
+          color: color("text-secondary"),
         },
       }}
     >

@@ -8,7 +8,7 @@
 }
 
 .SelectWrapper {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   &[data-disabled] {
     opacity: 1;
@@ -42,15 +42,15 @@
 
   &[data-disabled] {
     opacity: 1;
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-disabled);
   }
 
   &::placeholder {
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-disabled);
   }
 
   [data-position="right"] {
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-disabled);
   }
 
   /*
@@ -79,11 +79,11 @@
 
   [data-disabled] & {
     opacity: 1;
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-disabled);
     background-color: var(--mb-color-bg-medium);
 
     &::placeholder {
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-disabled);
     }
   }
 }
@@ -108,7 +108,7 @@
 
   &[data-combobox-disabled] {
     cursor: default;
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-disabled);
     pointer-events: none;
     opacity: 0.75;
   }
@@ -137,7 +137,7 @@
 }
 
 .SelectItemsNothingFound {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
   padding: var(--mantine-spacing-sm);
   font-size: var(--select-item-font-size);
   line-height: var(--select-item-line-height);
@@ -164,5 +164,5 @@
 }
 
 .SelectClearButton {
-  color: var(--mb-color-text-dark) !important;
+  color: var(--mb-color-text-primary) !important;
 }

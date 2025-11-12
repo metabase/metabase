@@ -46,7 +46,7 @@ const ToolCallDetailsModal = ({
       title={
         <Flex align="center">
           {t`Tool Call: ${message.name}`}
-          <Badge ml="sm" color="text-dark">
+          <Badge ml="sm" color="text-primary">
             {message.id}
           </Badge>
         </Flex>

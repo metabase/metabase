@@ -1,5 +1,5 @@
 .SettingLabel {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .SettingLabelError {
@@ -7,7 +7,7 @@
 }
 
 .SettingValueWidget {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   padding: 0.75rem 0.75rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;

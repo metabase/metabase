@@ -61,7 +61,7 @@
   background-color: var(--mb-color-bg-medium);
   padding: 0 0.5rem;
   border-radius: 1rem;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   &:hover {
     background-color: var(--mb-color-background-hover);

@@ -114,7 +114,7 @@ export const ChartSettingFieldPicker = ({
                   noMargin
                   {...dragHandleListeners}
                   onClick={(e) => e.stopPropagation()}
-                  c="text-medium"
+                  c="text-secondary"
                   className={CS.pointerEventsAll}
                   data-testid="drag-handle"
                 />
@@ -138,7 +138,7 @@ export const ChartSettingFieldPicker = ({
         rightSection={
           <>
             {!disabled && (
-              <ActionIcon c="text-medium" size="sm" radius="xl" p={0}>
+              <ActionIcon c="text-secondary" size="sm" radius="xl" p={0}>
                 <Icon name="chevrondown" />
               </ActionIcon>
             )}

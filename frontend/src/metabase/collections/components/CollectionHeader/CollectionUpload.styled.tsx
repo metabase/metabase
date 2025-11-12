@@ -7,7 +7,7 @@ export const InfoModalTitle = styled.h2`
 `;
 
 export const InfoModalBody = styled.div`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;
 
 export const NewBadge = styled.div`

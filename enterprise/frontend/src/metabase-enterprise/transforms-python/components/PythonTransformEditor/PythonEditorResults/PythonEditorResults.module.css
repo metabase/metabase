@@ -36,7 +36,7 @@
 }
 
 .info {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   border: 1px solid var(--mb-color-bg-medium);
   background-color: var(--mb-color-bg-light);
 }

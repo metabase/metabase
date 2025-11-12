@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 
 export const ContextText = styled("p")`
   line-height: 1.4em;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   margin-top: 0;
 `;
 

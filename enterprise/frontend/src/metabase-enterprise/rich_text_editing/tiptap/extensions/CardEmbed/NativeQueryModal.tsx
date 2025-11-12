@@ -97,13 +97,13 @@ const QueryExecutionEmptyState = ({
         <Box maw="3rem" mb="0.75rem">
           <img src={EmptyCodeResult} alt="Code prompt icon" />
         </Box>
-        <Text c="text-medium">
+        <Text c="text-secondary">
           {c("{0} refers to the keyboard shortcut")
             .jt`To run your code, click on the Run button or type ${(
             <b key="shortcut">({keyboardShortcut})</b>
           )}`}
         </Text>
-        <Text c="text-medium">{t`Here's where your results will appear`}</Text>
+        <Text c="text-secondary">{t`Here's where your results will appear`}</Text>
       </Stack>
     </Flex>
   );

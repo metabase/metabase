@@ -1,6 +1,6 @@
 .table {
   position: relative;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   width: 100%;
   height: 100%;
   font-size: 12.5px;

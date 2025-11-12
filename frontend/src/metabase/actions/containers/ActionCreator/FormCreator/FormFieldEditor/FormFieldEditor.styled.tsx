@@ -44,12 +44,12 @@ export const Header = styled.div`
 `;
 
 export const Title = styled.div`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-weight: 700;
 `;
 
 export const Subtitle = styled.div`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-size: 0.85rem;
   font-weight: 700;
   margin-top: 1.2rem;
@@ -65,7 +65,7 @@ export const PreviewContainer = styled(ContentContainer)`
   }
 
   ${FormField.Label} {
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
   }
 `;
 

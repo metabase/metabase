@@ -5,7 +5,7 @@
 }
 
 .Dashboard.DashboardFullscreen .fullscreenNormalText {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   transition: var(--transition-theme-change);
 }
 
@@ -41,7 +41,7 @@
 
 .PinMapUpdateButtonDisabled {
   pointer-events: none;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
 }
 
 /* .react-draggable*, .react-resizable* are 3rd party library classes */
@@ -144,7 +144,7 @@
   :global(.dc-chart .axis .tick text),
   :global(.dc-chart .x-axis-label),
   :global(.dc-chart .y-axis-label) {
-    fill: var(--mb-color-text-dark);
+    fill: var(--mb-color-text-primary);
   }
 }
 

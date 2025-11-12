@@ -12,11 +12,11 @@ import { color } from "metabase/ui/utils/colors";
 import { ADMIN_NAVBAR_HEIGHT } from "../../constants";
 
 export const AdminNavbarRoot = styled.nav`
-  --mb-color-text-white: var(--mantine-color-white);
+  --mb-color-text-primary-inverse: var(--mantine-color-white);
 
   padding: 0.5rem 1rem;
   background: ${() => color("admin-navbar")};
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   font-size: 0.85rem;
   height: ${ADMIN_NAVBAR_HEIGHT};
   display: flex;
@@ -84,7 +84,7 @@ export const AdminActionButton = styled.button`
   font-weight: 700;
   font-size: 13px;
   transition: all 200ms;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   white-space: nowrap;
   text-align: center;
 
@@ -93,7 +93,7 @@ export const AdminActionButton = styled.button`
   }
 
   &:hover {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: ${() => darken("admin-navbar")};
     border-color: ${() => darken("admin-navbar")};
 
@@ -110,12 +110,12 @@ export const AdminExitLink = styled(Link)`
   font-weight: 700;
   font-size: 13px;
   transition: all 200ms;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   white-space: nowrap;
   text-align: center;
 
   &:hover {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: ${() => darken("admin-navbar")};
     border-color: ${() => darken("admin-navbar")};
   }

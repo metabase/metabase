@@ -95,7 +95,7 @@ const SuggestionSectionHeading = ({ children }: PropsWithChildren) => (
     style={{
       fontWeight: 900,
       textTransform: "uppercase",
-      color: color("text-medium"),
+      color: color("text-secondary"),
     }}
     className={CS.mb1}
   >

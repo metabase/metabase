@@ -99,7 +99,7 @@ export function Header({
             leftSection={
               <Icon
                 name="undo"
-                color={canUndo ? "unset" : "var(--mb-color-text-light)"}
+                color={canUndo ? "unset" : "var(--mb-color-text-disabled)"}
               />
             }
           />
@@ -113,7 +113,7 @@ export function Header({
             leftSection={
               <Icon
                 name="redo"
-                color={canRedo ? "unset" : "var(--mb-color-text-light)"}
+                color={canRedo ? "unset" : "var(--mb-color-text-disabled)"}
               />
             }
           />

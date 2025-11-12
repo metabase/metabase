@@ -61,7 +61,7 @@ export function getVisualizationTheme({
     },
     pie: {
       borderColor: isStaticViz
-        ? Color(color("text-white")).hex()
+        ? Color(color("text-primary-inverse")).hex()
         : getPieBorderColor(
             dashboard.card.backgroundColor,
             question.backgroundColor,

@@ -21,7 +21,7 @@ export const VerifiedToggle = ({
         role="switch"
         variant="viewHeader"
         onClick={() => handleVerifiedFilterChange(!verified)}
-        c={verified ? "brand" : "text-dark"}
+        c={verified ? "brand" : "text-primary"}
       >
         <Icon name="verified" />
       </ActionIcon>

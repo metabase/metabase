@@ -68,7 +68,8 @@ Object.assign(
         props: { title: t`Total color` },
         widget: "color",
         // Unfortunately, to get static viz to look right, we need to avoid using alpha colors here
-        getDefault: () => Color(color("text-dark", staticVizOverrides)).hex(),
+        getDefault: () =>
+          Color(color("text-primary", staticVizOverrides)).hex(),
         getHidden: (_series: any, vizSettings: ComputedVisualizationSettings) =>
           vizSettings["waterfall.show_total"] !== true,
         readDependencies: ["waterfall.show_total"],

@@ -6,7 +6,7 @@ import InputBlurChange from "metabase/common/components/InputBlurChange";
 import { Icon } from "metabase/ui";
 
 export const OptionsIcon = styled(Icon)`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   cursor: pointer;
 
   &:hover {
