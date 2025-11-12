@@ -4,13 +4,10 @@ import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
 import { dependencyGraph } from "metabase/lib/urls/dependencies";
-import {
-  FieldOrderPicker2,
-  NameDescriptionInput,
-} from "metabase/metadata/components";
+import { NameDescriptionInput } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Button, Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
-import type { Table, TableFieldOrder } from "metabase-types/api";
+import { Box, Button, Group, Icon, Stack, Tooltip } from "metabase/ui";
+import type { Table } from "metabase-types/api";
 
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 import { SubstituteModelModal } from "../TablePicker/components/SubstituteModelModal";
@@ -28,7 +25,6 @@ interface Props {
 
 const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
   const [updateTable] = useUpdateTableMutation();
-  const [updateTableSorting] = useUpdateTableMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
   const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
@@ -64,25 +60,6 @@ const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
         const { error } = await updateTable({
           id: table.id,
           description: table.description ?? "",
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
-  const handleFieldOrderTypeChange = async (fieldOrder: TableFieldOrder) => {
-    const { error } = await updateTableSorting({
-      id: table.id,
-      field_order: fieldOrder,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update field order`);
-    } else {
-      sendSuccessToast(t`Field order updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          field_order: table.field_order,
         });
         sendUndoToast(error);
       });
@@ -156,33 +133,16 @@ const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
       </Box>
 
       <Box px="lg">
+        <TableMetadataSettings table={table} />
+      </Box>
+
+      <Box px="lg">
         <TableSectionGroup title={t`Metadata`}>
           <TableMetadataInfo table={table} />
         </TableSectionGroup>
       </Box>
 
-      <Box px="lg">
-        <TableMetadataSettings table={table} />
-      </Box>
-
       <TableModels table={table} />
-
-      <Box
-        bd="1px solid var(--mb-color-border)"
-        bg="bg-white"
-        bdrs="md"
-        p="md"
-        mx="lg"
-      >
-        <Text c="text-secondary" fw="bold" lh="16px" mb="md" size="sm">
-          {t`Field sort order`}
-        </Text>
-
-        <FieldOrderPicker2
-          value={table.field_order}
-          onChange={handleFieldOrderTypeChange}
-        />
-      </Box>
 
       <PublishModelsModal
         tables={new Set([table.id])}
@@ -195,7 +155,7 @@ const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
         isOpen={isSubstituteModelModalOpen}
         onClose={() => setIsSubstituteModelModalOpen(false)}
       />
-    </Stack >
+    </Stack>
   );
 };
 
