@@ -82,7 +82,7 @@ export function BrowseMetrics() {
             justify="space-between"
             align="center"
           >
-            <Title order={2} c="text-dark" id={titleId}>
+            <Title order={2} c="text-primary" id={titleId}>
               <Group gap="sm">
                 <Icon
                   size={24}

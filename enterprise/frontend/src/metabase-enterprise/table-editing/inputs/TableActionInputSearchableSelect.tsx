@@ -101,7 +101,10 @@ export const TableActionInputSearchableSelect = ({
 
     if (!value && inputProps?.placeholder) {
       return (
-        <Input.Placeholder c="text-light" className={classNames?.selectLabel}>
+        <Input.Placeholder
+          c="text-disabled"
+          className={classNames?.selectLabel}
+        >
           {inputProps.placeholder}
         </Input.Placeholder>
       );
@@ -109,7 +112,10 @@ export const TableActionInputSearchableSelect = ({
 
     if (isLoading) {
       return (
-        <Input.Placeholder c="text-light" className={classNames?.selectLabel}>
+        <Input.Placeholder
+          c="text-disabled"
+          className={classNames?.selectLabel}
+        >
           {t`Loading...`}
         </Input.Placeholder>
       );
@@ -161,7 +167,7 @@ export const TableActionInputSearchableSelect = ({
             shouldDisplayClearButton && (
               <Icon
                 name="close"
-                color="var(--mb-color-text-light)"
+                color="var(--mb-color-text-disabled)"
                 onClick={() => handleOptionSubmit(null)}
                 onMouseDown={(event) => event.stopPropagation()}
               />

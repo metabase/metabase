@@ -16,7 +16,7 @@ export function SidebarHeader() {
       align="center"
       className={S.sidebarHeader}
     >
-      <Text fz="sm" c="var(--mb-color-text-tertiary)">
+      <Text fz="sm" c="var(--mb-color-text-disabled)">
         {t`AI isn't perfect. Double-check results.`}
       </Text>
 
@@ -28,7 +28,7 @@ export function SidebarHeader() {
           <Icon
             name="edit_document_outlined"
             size="1rem"
-            c="var(--mb-color-text-tertiary)"
+            c="var(--mb-color-text-disabled)"
           />
         </UnstyledButton>
       </Tooltip>

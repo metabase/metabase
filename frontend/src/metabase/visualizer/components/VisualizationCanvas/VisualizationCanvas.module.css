@@ -15,7 +15,7 @@
   pointer-events: none;
   position: absolute;
   inset: 0;
-  background-color: var(--mb-color-text-white-alpha-85);
+  background-color: var(--mb-color-text-primary-inverse);
   opacity: 0;
   transition: opacity 0.2s ease-in-out;
 
@@ -29,8 +29,8 @@
     margin: auto;
     width: 64px;
     height: 64px;
-    background-color: var(--mb-color-background-inverse);
+    background-color: var(--mb-color-background-primary-inverse);
     border-radius: 8px;
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
   }
 }

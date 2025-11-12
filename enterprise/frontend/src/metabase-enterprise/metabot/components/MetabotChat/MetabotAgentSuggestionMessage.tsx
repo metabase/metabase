@@ -175,12 +175,24 @@ export const AgentSuggestionMessage = ({
       >
         {match({ isLoading, error })
           .with({ error: P.not(P.nullish) }, () => (
-            <Flex p="md" bg="bg-light" justify="center" align="center" gap="sm">
+            <Flex
+              p="md"
+              bg="background-secondary"
+              justify="center"
+              align="center"
+              gap="sm"
+            >
               <Text mb="1px" c="danger">{t`Failed to load preview`}</Text>
             </Flex>
           ))
           .with({ isLoading: true }, () => (
-            <Flex p="md" bg="bg-light" justify="center" align="center" gap="sm">
+            <Flex
+              p="md"
+              bg="background-secondary"
+              justify="center"
+              align="center"
+              gap="sm"
+            >
               <Loader size="xs" color="text-secondary" type="dots" />
               <Text mb="1px" c="text-secondary">{t`Loading preview`}</Text>
             </Flex>
@@ -211,7 +223,7 @@ export const AgentSuggestionMessage = ({
               variant="subtle"
               fw="normal"
               fz="sm"
-              c={canApply ? "success" : "text-light"}
+              c={canApply ? "success" : "text-disabled"}
               disabled={!canApply}
               onClick={handleApply}
             >

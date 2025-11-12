@@ -78,7 +78,7 @@ export const NodeRoot = styled(TreeNode.Root)<NodeRootProps>`
 `;
 
 const collectionDragAndDropHoverStyle = css`
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   background-color: var(--mb-color-brand);
 `;
 

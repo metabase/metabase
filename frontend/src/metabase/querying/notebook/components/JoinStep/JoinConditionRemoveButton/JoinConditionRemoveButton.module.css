@@ -6,11 +6,11 @@
   cursor: pointer;
   border-radius: 0 8px 8px 0;
   border-left: 1px solid
-    color-mix(in srgb, var(var(--mb-color-bg-white)), transparent 25%);
+    color-mix(in srgb, var(var(--mb-color-background-primary)), transparent 25%);
   color: var(--mb-color-text-brand);
 
   &.isConditionComplete {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
 
     &:hover,
     &:focus {

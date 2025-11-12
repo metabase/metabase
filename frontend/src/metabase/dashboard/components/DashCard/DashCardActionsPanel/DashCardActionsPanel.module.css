@@ -1,7 +1,7 @@
 .DashCardActionButtonsContainer {
   display: flex;
   align-items: center;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   line-height: 1px;
   gap: 0.5rem;
 }

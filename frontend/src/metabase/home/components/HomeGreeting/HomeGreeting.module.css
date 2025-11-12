@@ -30,7 +30,7 @@
 }
 
 .greetingMessage {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-weight: bold;
   line-height: 1.5rem;
 

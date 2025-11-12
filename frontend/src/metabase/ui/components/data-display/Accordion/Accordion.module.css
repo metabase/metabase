@@ -31,11 +31,11 @@
 
 .content {
   border-top: 1px solid var(--mb-color-border);
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .chevron {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   border: 1px solid var(--mb-color-border);
   border-radius: 100%;
   margin-left: 1rem;

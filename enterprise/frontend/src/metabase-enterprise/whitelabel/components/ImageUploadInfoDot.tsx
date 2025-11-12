@@ -34,7 +34,7 @@ export const ImageUploadInfoDot = ({ type }: CustomFileUploadInfoDot) => {
   return (
     <HoverCard position="top-start">
       <HoverCard.Target>
-        <Icon name="info" color={theme.fn.themeColor("text-light")} />
+        <Icon name="info" color={theme.fn.themeColor("text-disabled")} />
       </HoverCard.Target>
       <HoverCard.Dropdown>
         <Stack p="md" gap="sm" maw={DESCRIPTIONS_WIDTHS[type]}>

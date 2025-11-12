@@ -20,7 +20,7 @@ export interface SdkUsageProblemBannerProps {
 
 // Prevent the usage problem banner from inheriting the theme colors,
 // so they remain legible even when the theme is changed.
-const unthemedTextDark = originalColors["text-dark"];
+const unthemedTextDark = originalColors["text-primary"];
 
 export const SdkUsageProblemBanner = ({
   problem,

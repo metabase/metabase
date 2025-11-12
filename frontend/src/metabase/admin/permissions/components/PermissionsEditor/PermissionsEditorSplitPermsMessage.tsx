@@ -31,7 +31,7 @@ export const PermissionsEditorSplitPermsMessage = () => {
       }}
     >
       <Alert
-        icon={<Icon name="info" size={16} c="text-dark" />}
+        icon={<Icon name="info" size={16} c="text-primary" />}
         variant="light"
         p="1rem"
         styles={{
@@ -39,7 +39,7 @@ export const PermissionsEditorSplitPermsMessage = () => {
             backgroundColor: "var(--mb-color-brand-lighter)",
           },
           closeButton: {
-            color: "var(--mb-color-text-dark)",
+            color: "var(--mb-color-text-primary)",
           },
         }}
         withCloseButton

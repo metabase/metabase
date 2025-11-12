@@ -29,7 +29,7 @@ export const ToastCard = styled(Card)<{
   padding: 10px var(--mantine-spacing-md);
   margin-top: var(--mantine-spacing-sm);
   max-width: calc(100vw - 2 * ${LIST_H_MARGINS});
-  background-color: var(--mb-color-background-inverse);
+  background-color: var(--mb-color-background-primary-inverse);
   color: var(--mb-color-text-secondary-inverse);
   ${({ noBorder }) =>
     noBorder &&
@@ -66,14 +66,14 @@ export const DefaultText = styled.span`
 
 export const UndoButton = styled(Link)`
   font-weight: bold;
-  background-color: ${() => alpha("bg-white", 0.1)};
+  background-color: ${() => alpha("background-primary", 0.1)};
   padding: 4px 12px;
   margin-left: var(--mantine-spacing-sm);
   border-radius: 8px;
   white-space: nowrap; /* Prevents button from truncating message */
 
   :hover {
-    background-color: ${() => alpha("bg-white", 0.3)};
+    background-color: ${() => alpha("background-primary", 0.3)};
   }
 `;
 

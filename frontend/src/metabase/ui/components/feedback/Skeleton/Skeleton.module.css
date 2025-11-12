@@ -5,7 +5,7 @@
     background: linear-gradient(
       100deg,
       transparent,
-      var(--mb-color-bg-medium),
+      var(--mb-color-background-tertiary),
       transparent
     );
     animation: shimmer 1.4s linear infinite;

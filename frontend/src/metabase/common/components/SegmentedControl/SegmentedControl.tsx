@@ -44,7 +44,7 @@ export function SegmentedControl<Value extends SegmentedControlValue = number>({
   options,
   onChange,
   fullWidth = false,
-  inactiveColor = "text-dark",
+  inactiveColor = "text-primary",
   variant = "fill-background",
   ...props
 }: SegmentedControlProps<Value>) {

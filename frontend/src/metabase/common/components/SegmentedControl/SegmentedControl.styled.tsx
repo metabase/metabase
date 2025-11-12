@@ -32,7 +32,7 @@ const COLORS = {
       isSelected ? color(selectedColor) : "transparent",
     border: ({ selectedColor }: ColorProps) => color(selectedColor),
     text: ({ isSelected, inactiveColor }: ColorProps) =>
-      color(isSelected ? "text-white" : inactiveColor),
+      color(isSelected ? "text-primary-inverse" : inactiveColor),
   },
   "fill-all": {
     background: ({ isSelected, selectedColor }: ColorProps) =>

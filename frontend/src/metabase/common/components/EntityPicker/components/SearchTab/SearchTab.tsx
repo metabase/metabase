@@ -47,7 +47,7 @@ export const SearchTab = <
   onSearchScopeChange,
 }: Props<Id, Model, Item>) => {
   return (
-    <Stack bg="bg-light" h="100%" gap={0}>
+    <Stack bg="background-secondary" h="100%" gap={0}>
       {folder && (
         <Flex align="center" justify="space-between" p="xl">
           <Flex align="center">

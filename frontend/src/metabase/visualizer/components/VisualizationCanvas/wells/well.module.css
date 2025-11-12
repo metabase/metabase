@@ -1,6 +1,6 @@
 .Well {
   flex-wrap: nowrap;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   padding: var(--mantine-spacing-sm);
   gap: var(--mantine-spacing-sm);
   border-radius: var(--border-radius-xl);

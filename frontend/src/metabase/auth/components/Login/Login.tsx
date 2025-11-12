@@ -40,7 +40,7 @@ export const Login = ({ params, location }: LoginProps): JSX.Element => {
     <AuthLayout>
       <Box
         role="heading"
-        c="text-dark"
+        c="text-primary"
         fz="1.25rem"
         fw="bold"
         lh="1.5rem"

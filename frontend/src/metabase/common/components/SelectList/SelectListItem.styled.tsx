@@ -13,7 +13,7 @@ export const ItemTitle = styled(Text)<TextProps>`
 ` as unknown as typeof Text;
 
 export const ItemIcon = styled(Icon)<{ color?: ColorName | string | null }>`
-  color: ${(props) => maybeColor(props.color ?? "text-light")};
+  color: ${(props) => maybeColor(props.color ?? "text-disabled")};
   justify-self: end;
 `;
 
@@ -22,7 +22,7 @@ const activeItemCss = css`
 
   ${ItemIcon},
   ${ItemTitle} {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
   }
 `;
 

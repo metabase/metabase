@@ -85,13 +85,13 @@ export function TableSelector({
           <Stack gap={0} align="start" justify="center">
             {table ? (
               <>
-                <Box fz="sm" c="text-medium" fw="normal">
+                <Box fz="sm" c="text-secondary" fw="normal">
                   {table?.db?.name} / {table?.schema}
                 </Box>
-                <Box c="text-dark">{table?.display_name}</Box>
+                <Box c="text-primary">{table?.display_name}</Box>
               </>
             ) : (
-              <Box c="text-dark">{t`Select a table…`}</Box>
+              <Box c="text-primary">{t`Select a table…`}</Box>
             )}
           </Stack>
         </Button>
@@ -102,7 +102,7 @@ export function TableSelector({
             pr="sm"
             aria-label={t`Remove this table`}
           >
-            <Icon name="close" c="text-dark" />
+            <Icon name="close" c="text-primary" />
           </ActionIcon>
         </Tooltip>
       </Group>

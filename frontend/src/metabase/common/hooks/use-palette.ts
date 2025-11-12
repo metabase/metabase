@@ -15,12 +15,11 @@ export function usePalette(): ColorPalette {
     return {
       white: theme.fn.themeColor("white"),
       border: theme.fn.themeColor("border"),
-      "text-dark": theme.fn.themeColor("text-dark"),
-      "text-medium": theme.fn.themeColor("text-medium"),
-      "text-light": theme.fn.themeColor("text-light"),
-      "text-white": theme.fn.themeColor("text-white"),
       "text-primary": theme.fn.themeColor("text-primary"),
-      "bg-white": theme.fn.themeColor("bg-white"),
+      "text-secondary": theme.fn.themeColor("text-secondary"),
+      "text-disabled": theme.fn.themeColor("text-disabled"),
+      "text-primary-inverse": theme.fn.themeColor("text-primary-inverse"),
+      "background-primary": theme.fn.themeColor("background-primary"),
     };
   }, [theme]);
 }

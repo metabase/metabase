@@ -17,7 +17,7 @@ const DefaultErrorMessage = ({ message, theme }: Props) => {
         alignItems: "center",
         padding: "1.25rem 1rem",
         background: theme?.colors?.background ?? colors["bg-error"],
-        color: theme?.colors?.["text-primary"] ?? colors["text-dark"],
+        color: theme?.colors?.["text-primary"] ?? colors["text-primary"],
         border: `1px solid ${theme?.colors?.error ?? colors.error}`,
         borderRadius: "0.5rem",
         textAlign: "center",

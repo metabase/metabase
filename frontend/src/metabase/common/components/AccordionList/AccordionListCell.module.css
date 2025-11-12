@@ -19,7 +19,7 @@
 }
 
 .action {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   &:hover {
     color: inherit;
@@ -30,5 +30,5 @@
   position: sticky;
   z-index: 10;
   top: 0;
-  background: var(--mb-color-bg-white);
+  background: var(--mb-color-background-primary);
 }

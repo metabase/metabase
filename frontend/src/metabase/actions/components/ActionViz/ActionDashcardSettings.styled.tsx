@@ -23,7 +23,7 @@ const fade = (side: "top" | "bottom") => `
   pointer-events   : none;
   background-image : linear-gradient( to ${side},
                     transparent,
-                    var(--mb-color-background) 90%);
+                    var(--mb-color-background-primary) 90%);
   height   : 2rem;
 `;
 

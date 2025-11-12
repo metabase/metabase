@@ -24,7 +24,7 @@ export const LegaleseStep = ({
   };
 
   return (
-    <Center bg="bg-white" px="18rem" pt="6.25rem" pb="11.75rem">
+    <Center bg="background-primary" px="18rem" pt="6.25rem" pb="11.75rem">
       <Stack align="center" gap="3rem">
         <Title order={3} fz="1.25rem">{t`First, some legalese`}</Title>
 

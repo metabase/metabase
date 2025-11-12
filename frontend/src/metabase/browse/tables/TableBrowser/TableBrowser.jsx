@@ -169,7 +169,7 @@ const TableBrowserItemButtons = ({
             onClick={handleEditTableClicked}
             size="sm"
             tooltip={t`Edit this table`}
-            color="text-medium"
+            color="text-secondary"
             aria-label={t`Edit this table`}
             data-testid="edit-table-icon"
           >
@@ -181,7 +181,7 @@ const TableBrowserItemButtons = ({
           to={`/reference/databases/${dbId}/tables/${tableId}`}
           size="sm"
           tooltip={t`Learn about this table`}
-          color="text-medium"
+          color="text-secondary"
           aria-label={t`Learn about this table`}
         >
           <Icon name="reference" />

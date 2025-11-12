@@ -18,7 +18,7 @@ const _AddBadgeListItem = (
     classNames={{
       label: CS.cursorPointer,
     }}
-    bg="var(--mb-color-bg-light)"
+    bg="var(--mb-color-background-secondary)"
     tt="capitalize"
     size="lg"
     variant="transparent"

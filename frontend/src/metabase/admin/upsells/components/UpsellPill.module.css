@@ -17,7 +17,7 @@
 
   &:hover {
     background-color: var(--mb-color-upsell-primary);
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     border: 1px solid var(--mb-color-upsell-primary);
   }
 }

@@ -27,7 +27,7 @@ export const Banner = ({
     <Flex
       data-testid="app-banner"
       align="center"
-      bg={bg || "bg-medium"}
+      bg={bg || "background-tertiary"}
       py="sm"
       justify="space-between"
       pl="1.325rem"

@@ -91,7 +91,7 @@ export function ColumnValue({
         c="text-primary"
         variant="outline"
         style={{
-          background: "var(--mb-color-bg-white)",
+          background: "var(--mb-color-background-primary)",
           textTransform: "capitalize",
         }}
         leftSection={
@@ -134,7 +134,7 @@ export function ColumnValue({
           size="lg"
           variant="outline"
           style={{
-            background: "var(--mb-color-bg-white)",
+            background: "var(--mb-color-background-primary)",
             color: "var(--mb-color-text-primary)",
           }}
           leftSection={
@@ -160,7 +160,7 @@ export function ColumnValue({
           size="lg"
           variant="outline"
           style={{
-            background: "var(--mb-color-bg-white)",
+            background: "var(--mb-color-background-primary)",
           }}
         >
           {value}
@@ -222,14 +222,14 @@ export function ColumnValue({
           className={styles.badge}
           variant="outline"
           style={{
-            background: "var(--mb-color-bg-white)",
+            background: "var(--mb-color-background-primary)",
           }}
         >
           <Text fw="bold">
             {String(value).slice(0, -1)}
             <span
               style={{
-                color: "var(--mb-color-text-tertiary)",
+                color: "var(--mb-color-text-disabled)",
                 paddingLeft: "0.25rem",
               }}
             >
@@ -254,7 +254,7 @@ export function ColumnValue({
           <Text fw="bold">
             <span
               style={{
-                color: "var(--mb-color-text-tertiary)",
+                color: "var(--mb-color-text-disabled)",
                 fontWeight: "normal",
                 paddingRight: "0.25rem",
               }}
@@ -278,7 +278,7 @@ export function ColumnValue({
           style={{
             objectFit: "cover",
             borderRadius: "0.5rem",
-            border: "1px solid var(--mb-color-border-secondary)",
+            border: "1px solid var(--mb-color-border)",
           }}
         />
       );

@@ -82,10 +82,10 @@ export const GoogleAuthForm = (): JSX.Element => {
             <Form disabled={!dirty}>
               <Stack gap="md">
                 <Title order={2}>{t`Sign in with Google`}</Title>
-                <Text c="text-medium">
+                <Text c="text-secondary">
                   {t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}
                 </Text>
-                <Text c="text-medium">
+                <Text c="text-secondary">
                   {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
                     <ExternalLink key="link" href={docsUrl}>
                       {t`here`}

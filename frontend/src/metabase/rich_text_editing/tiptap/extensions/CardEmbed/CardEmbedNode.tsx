@@ -433,7 +433,7 @@ export const CardEmbedComponent = memo(
             <Box className={styles.questionHeader}>
               <Flex align="center" justify="space-between" gap="0.5rem">
                 <Box className={styles.titleContainer}>
-                  <Text size="md" color="text-dark" fw={700}>
+                  <Text size="md" color="text-primary" fw={700}>
                     {t`Loading question...`}
                   </Text>
                 </Box>
@@ -534,7 +534,8 @@ export const CardEmbedComponent = memo(
                           backgroundColor: "transparent",
                           "&:focus": {
                             border: "1px solid var(--mb-color-border)",
-                            backgroundColor: "var(--mb-color-bg-white)",
+                            backgroundColor:
+                              "var(--mb-color-background-primary)",
                             padding: "0 0.25rem",
                           },
                         },
@@ -547,7 +548,7 @@ export const CardEmbedComponent = memo(
                           className={styles.titleText}
                           data-testid="card-embed-title"
                           size="md"
-                          color="text-dark"
+                          color="text-primary"
                           fw={700}
                           c={isPublicDocument ? undefined : "pointer"}
                           truncate="end"
@@ -562,7 +563,7 @@ export const CardEmbedComponent = memo(
                         <Icon
                           name="pencil"
                           size={14}
-                          color="var(--mb-color-text-medium)"
+                          color="var(--mb-color-text-secondary)"
                           className={styles.titleEditIcon}
                           c="pointer"
                           onClick={(e: React.MouseEvent) => {
@@ -614,7 +615,7 @@ export const CardEmbedComponent = memo(
                             <Icon
                               name="ellipsis"
                               size={16}
-                              color="var(--mb-color-text-medium)"
+                              color="var(--mb-color-text-secondary)"
                             />
                           </Flex>
                         </Menu.Target>

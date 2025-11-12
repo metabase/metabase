@@ -65,7 +65,7 @@ function DefaultParametersSection({ className, parameters }) {
             className={cx(CS.pt1, CS.flex, CS.alignCenter, CS.flexWrap)}
             key={index}
           >
-            <Badge inactiveColor="text-dark" isSingleLine={true}>
+            <Badge inactiveColor="text-primary" isSingleLine={true}>
               {param.name}: {param.value}
             </Badge>
           </div>

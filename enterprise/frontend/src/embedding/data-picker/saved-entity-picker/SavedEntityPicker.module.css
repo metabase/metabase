@@ -15,7 +15,7 @@
   display: flex;
   flex-direction: column;
   min-width: 310px;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   overflow: auto;
 
   @media screen and (max-width: 40em) {
@@ -29,7 +29,7 @@
   font-size: 16px;
   display: flex;
   align-items: center;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   border-bottom: 1px solid var(--mb-color-border);
   padding: 1rem;
 

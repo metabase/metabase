@@ -47,7 +47,10 @@ export const StrategyFormLauncherPanel = ({
   });
 
   return (
-    <Panel role="group" style={{ backgroundColor: "var(--mb-color-bg-light)" }}>
+    <Panel
+      role="group"
+      style={{ backgroundColor: "var(--mb-color-background-secondary)" }}
+    >
       <StrategyFormLauncherPanelBox>
         <StrategyFormLauncher
           forId={rootId}

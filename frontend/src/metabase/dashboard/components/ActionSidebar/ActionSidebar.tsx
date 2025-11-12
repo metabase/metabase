@@ -47,7 +47,7 @@ export function ActionSidebar() {
   return (
     <Sidebar>
       <Box px="xl" py="md">
-        <Title order={4} c="text-dark" fz="lg">{t`Button properties`}</Title>
+        <Title order={4} c="text-primary" fz="lg">{t`Button properties`}</Title>
       </Box>
       <Divider />
       <Stack px="xl" py="md" flex={1} className={CS.overflowYAuto}>

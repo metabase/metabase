@@ -97,7 +97,7 @@ export function FunctionBrowser({
               size="sm"
               p="md"
               pb="sm"
-              c="var(--mb-color-text-medium)"
+              c="var(--mb-color-text-secondary)"
               fw="bold"
             >
               {group.displayName}
@@ -147,7 +147,7 @@ function FunctionBrowserItem({
         </Text>
       </dt>
       <dd className={S.description}>
-        <Text size="sm" c="var(--mb-color-text-medium)">
+        <Text size="sm" c="var(--mb-color-text-secondary)">
           <Markdown components={components}>{clause.description}</Markdown>
         </Text>
       </dd>

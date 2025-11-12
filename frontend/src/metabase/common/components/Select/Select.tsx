@@ -208,7 +208,7 @@ class BaseSelect<
         <Icon
           name={icon}
           size={(item as any).iconSize || 16}
-          c={(item as any).iconColor || "text-dark"}
+          c={(item as any).iconColor || "text-primary"}
           style={{ minWidth: MIN_ICON_WIDTH }}
         />
       );
@@ -216,7 +216,11 @@ class BaseSelect<
 
     if (this.itemIsSelected(item)) {
       return (
-        <Icon name="check" c="text-dark" style={{ minWidth: MIN_ICON_WIDTH }} />
+        <Icon
+          name="check"
+          c="text-primary"
+          style={{ minWidth: MIN_ICON_WIDTH }}
+        />
       );
     }
 

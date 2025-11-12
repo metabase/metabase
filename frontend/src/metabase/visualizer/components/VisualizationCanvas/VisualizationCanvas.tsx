@@ -73,7 +73,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           <Title size="h3" c="text">{t`Start by selecting a dataset`}</Title>
           <Title
             size="h5"
-            c="text-light"
+            c="text-disabled"
           >{t`Find something to visualize in the column on the left.`}</Title>
         </Flex>
       </Center>

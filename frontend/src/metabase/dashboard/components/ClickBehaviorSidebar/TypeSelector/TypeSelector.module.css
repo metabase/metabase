@@ -2,14 +2,14 @@
   border-color: var(--mb-color-border);
 
   .Icon {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
   }
 
   &.isSelected {
     border-color: transparent;
 
     .Icon {
-      color: var(--mb-color-text-white);
+      color: var(--mb-color-text-primary-inverse);
     }
   }
 }

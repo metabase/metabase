@@ -24,7 +24,7 @@
   flex: 0 0 auto;
   padding-inline: 0.5rem;
   height: 100%;
-  background: var(--mb-color-bg-white);
+  background: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-xl);
   cursor: pointer;

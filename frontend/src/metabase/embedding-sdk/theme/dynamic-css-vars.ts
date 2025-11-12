@@ -42,7 +42,7 @@ export function applyColorOperation(
  */
 export function getIsDarkThemeFromPalette(theme: MantineThemeOverride) {
   const backgroundColor = theme.fn?.themeColor?.("background");
-  const foregroundColor = theme.fn?.themeColor?.("text-dark");
+  const foregroundColor = theme.fn?.themeColor?.("text-primary");
 
   // Dark background color indicates a dark theme.
   if (isColorDefined(backgroundColor)) {

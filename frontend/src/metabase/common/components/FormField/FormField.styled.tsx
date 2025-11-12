@@ -31,13 +31,14 @@ interface FieldLabelProps {
 
 export const FieldLabel = styled.label<FieldLabelProps>`
   display: block;
-  color: ${(props) => (props.hasError ? color("error") : color("text-medium"))};
+  color: ${(props) =>
+    props.hasError ? color("error") : color("text-secondary")};
   font-size: 0.77rem;
   font-weight: 900;
 `;
 
 export const OptionalTag = styled.span`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-size: 0.77rem;
   font-weight: 900;
   margin-left: 0.25rem;
@@ -60,12 +61,12 @@ export const FieldLabelError = styled.span`
 `;
 
 export const FieldDescription = styled.div`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   margin-bottom: 0.5rem;
 `;
 
 export const FieldInfoIcon = styled(Icon)`
-  color: var(--mb-color-bg-dark);
+  color: var(--mb-color-background-tertiary-inverse);
   margin-left: 0.5rem;
   width: 0.75rem;
   height: 0.75rem;
@@ -76,7 +77,7 @@ export const FieldInfoIcon = styled(Icon)`
 `;
 
 export const FieldInfoLabel = styled.div`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-size: 0.75rem;
   margin-left: auto;
   cursor: default;
@@ -97,7 +98,7 @@ export const FieldRoot = styled.div<FieldRootProps>`
 
   &:focus-within {
     ${FieldLabel} {
-      color: var(--mb-color-text-medium);
+      color: var(--mb-color-text-secondary);
     }
 
     ${FieldLabelError} {
@@ -110,5 +111,5 @@ export const FieldTitleActions = styled.div`
   margin-left: auto;
   font-size: 0.77rem;
   font-weight: 900;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;

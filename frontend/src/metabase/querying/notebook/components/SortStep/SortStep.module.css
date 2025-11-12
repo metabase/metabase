@@ -2,7 +2,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   font-weight: 700;
 
   &:not(:disabled) {

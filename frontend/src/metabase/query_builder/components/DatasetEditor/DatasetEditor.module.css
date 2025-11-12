@@ -25,7 +25,7 @@
 
 .FieldTypeIcon {
   background-color: var(--mb-color-brand);
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   border-radius: 0.3em;
   padding: 0.2em;
   margin-right: 8px;
@@ -33,7 +33,7 @@
   flex-shrink: 0;
 
   &.isSelected {
-    background-color: var(--mb-color-bg-white);
+    background-color: var(--mb-color-background-primary);
     color: var(--mb-color-brand);
   }
 }
@@ -52,7 +52,7 @@
   display: flex;
   flex: 1 0 auto;
   position: relative;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   height: calc(100vh - var(--edit-bar-height));
 }
 
@@ -79,16 +79,16 @@
   transition: all 0.25s;
 
   &.isSelected {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: var(--mb-color-brand);
   }
 
   &:hover {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: var(--mb-color-brand);
 
     .FieldTypeIcon {
-      background-color: var(--mb-color-bg-white);
+      background-color: var(--mb-color-background-primary);
       color: var(--mb-color-brand);
     }
   }
