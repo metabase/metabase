@@ -35,7 +35,7 @@ See docs for specific components:
 
 ### `mapQuestionClickActions`
 
-The plugin `mapQuestionClickActions` allows you to customize what happens when people click on a data point on a dashboard or chart. `mapQuestionClickActions` can be used globally, or on component level.
+The plugin `mapQuestionClickActions` lets you to customize what happens when people click on a data point on a dashboard or chart. `mapQuestionClickActions` can be used globally, or on component level.
 
 See [`mapQuestionClickActions` plugin](./questions.md#mapquestionclickactions) for more information and examples.
 
