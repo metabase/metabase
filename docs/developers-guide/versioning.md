@@ -16,13 +16,13 @@ With Metabase releases, we prefix the version with a `0` or `1`, depending on th
 License.Major.Point.Hotfix
 ```
 
-E.g.,
+For example:
 
 ```
-v0.46.3.1
+v0.57.3.1
 ```
 
-`v0.46.3.1` would be for a hotfix (`1`) for the third (`3`) point release of Metabase `46`, the open-source edition (`0`).
+`v0.57.3.1` would be for a hotfix (`1`) for the third (`3`) point release of Metabase `57`, the open-source edition (`0`).
 
 ### License
 
@@ -31,7 +31,7 @@ v0.46.3.1
 
 ### Major
 
-We release major version when we introduce new features or breaking changes.
+We release major versions when we introduce new features or breaking changes. Check out our [release announcements](https://www.metabase.com/releases).
 
 ### Point
 
@@ -45,19 +45,14 @@ Sometimes called a patch release, we issue these hotfix releases to fix security
 
 ### The Gold Release
 
-The gold release is the first release of a new major version of Metabase. So for Metabase version 46, the gold releases would be:
+The gold release is the first release of a new major version of Metabase. So for Metabase version 57, the gold releases would be:
 
-- `v0.46.0` (the OSS version)
-- `v1.46.0` (the EE version)
+- `v0.57.1` (the OSS version)
+- `v1.57.1` (the EE version)
 
-### Release Candidates
+### Cloud builds
 
-We usually publish release candidates to kick the tires on new features before releasing a new major version (a gold release). To distinguish these release candidates, we append an `-RC#` at the end.
-
-E.g.,
-
-- `v1.46.0-RC1` (the first release candidate for the EE version)
-- `v0.46.0-RC3` (the third release candidate for the OSS version)
+If you see a version followed by an `X`, like `v1.56.2-X01`, these are version numbers related to builds for customers on [Metabase Cloud](https://www.metabase.com/cloud/), which may bundle additional drivers.
 
 ## Further reading
 
