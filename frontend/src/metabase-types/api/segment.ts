@@ -1,4 +1,4 @@
-import type { StructuredQuery } from "./query";
+import type { DatasetQuery, StructuredQuery } from "./query";
 import type { Table, TableId } from "./table";
 
 export type SegmentId = number;
@@ -10,7 +10,8 @@ export interface Segment {
   table_id: TableId;
   table?: Table;
   archived: boolean;
-  definition: StructuredQuery;
+  // Definition can be either MBQL4 (StructuredQuery) or MBQL5 (full DatasetQuery)
+  definition: StructuredQuery | DatasetQuery;
   definition_description: string;
   revision_message?: string;
 }
@@ -18,14 +19,14 @@ export interface Segment {
 export interface CreateSegmentRequest {
   name: string;
   table_id: TableId;
-  definition: StructuredQuery;
+  definition: StructuredQuery | DatasetQuery;
   description?: string;
 }
 
 export interface UpdateSegmentRequest {
   id: SegmentId;
   name?: string;
-  definition?: StructuredQuery;
+  definition?: StructuredQuery | DatasetQuery;
   revision_message: string;
   archived?: boolean;
   caveats?: string;
