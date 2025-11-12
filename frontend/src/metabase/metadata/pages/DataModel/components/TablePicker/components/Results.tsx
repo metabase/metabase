@@ -143,10 +143,7 @@ export function TablePickerResults({
       const start = Math.min(lastSelectedTableIndex.current, itemIndex);
       const end = Math.max(lastSelectedTableIndex.current, itemIndex);
       const rangeItems = items.slice(start, end + 1).filter((rangeItem) => {
-        return (
-          !rangeItem.disabled &&
-          !rangeItem.isLoading
-        );
+        return !rangeItem.disabled && !rangeItem.isLoading;
       });
 
       if (rangeItems.length > 0) {
@@ -241,9 +238,15 @@ function ElementCheckbox({
           event.preventDefault();
           event.stopPropagation();
 
+          if ((event.target as HTMLElement).tagName.toLowerCase() === "input") {
+            // it's already handled in onChange
+            return;
+          }
+
           if (disabled) {
             return;
           }
+
           onCheckboxToggle?.(item, index, {
             isShiftPressed: event.shiftKey,
           });
@@ -592,9 +595,9 @@ const ResultsItem = ({
               className={S.label}
               c={
                 type === "table" &&
-                  item.table &&
-                  item.table.visibility_type != null &&
-                  !isActive
+                item.table &&
+                item.table.visibility_type != null &&
+                !isActive
                   ? "text-secondary"
                   : undefined
               }
