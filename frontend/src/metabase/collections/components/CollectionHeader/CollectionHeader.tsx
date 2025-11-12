@@ -46,13 +46,10 @@ const CollectionHeader = ({
   const isSemanticLayer = isSemanticLayerCollection(collection);
   const hasCuratePermissions = !!collection?.can_write;
 
-  const showNewButton =
-    hasCuratePermissions && !isInstanceAnalytics && !isSemanticLayer;
+  const showNewButton = hasCuratePermissions && !isInstanceAnalytics;
   const showUploadButton =
-    collection.can_write && (canUpload || !uploadsEnabled) && !isSemanticLayer;
-  const showTimelinesButton = !isInstanceAnalytics && !isSemanticLayer;
-  const showPermissionsButton = isInstanceAnalytics;
-  const showInfoSidebar = !isSemanticLayer;
+    collection.can_write && (canUpload || !uploadsEnabled);
+  const showTimelinesButton = !isInstanceAnalytics;
 
   return (
     <HeaderRoot>
@@ -60,7 +57,7 @@ const CollectionHeader = ({
         collection={collection}
         onUpdateCollection={onUpdateCollection}
       />
-      {!isTrash && (
+      {!isTrash && !isSemanticLayer && (
         <HeaderActions data-testid="collection-menu">
           {showNewButton && <CollectionNewButton />}
           {showUploadButton && (
@@ -74,7 +71,7 @@ const CollectionHeader = ({
           {showTimelinesButton && (
             <CollectionTimeline collection={collection} />
           )}
-          {showPermissionsButton && (
+          {isInstanceAnalytics && (
             <CollectionPermissions collection={collection} />
           )}
           <CollectionBookmark
@@ -83,12 +80,10 @@ const CollectionHeader = ({
             onCreateBookmark={onCreateBookmark}
             onDeleteBookmark={onDeleteBookmark}
           />
-          {showInfoSidebar && (
-            <CollectionInfoSidebarToggle
-              collection={collection}
-              onUpdateCollection={onUpdateCollection}
-            />
-          )}
+          <CollectionInfoSidebarToggle
+            collection={collection}
+            onUpdateCollection={onUpdateCollection}
+          />
           {isInstanceAnalytics && (
             <CollectionMenu
               collection={collection}

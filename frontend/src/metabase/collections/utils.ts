@@ -52,7 +52,8 @@ export function isEditableCollection(collection: Collection) {
     collection.can_write &&
     !isRootCollection(collection) &&
     !isRootPersonalCollection(collection) &&
-    !isTrashedCollection(collection)
+    !isTrashedCollection(collection) &&
+    !isSemanticLayerCollection(collection)
   );
 }
 
