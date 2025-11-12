@@ -46,7 +46,7 @@ export type NewDataStudioNativeModelParams = {
 };
 
 export function newDataStudioNativeModel(
-  params: NewDataStudioNativeModelParams,
+  params: NewDataStudioNativeModelParams = {},
 ) {
   return `${dataStudioModeling()}/models/new/native${getQueryString(params)}`;
 }
