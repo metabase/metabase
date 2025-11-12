@@ -18,7 +18,7 @@
 
       (str/starts-with? schema "array<")
       (recur (str/replace-first schema #"array<" "")
-             (conj closes [:array "]"])
+             (conj closes "]")
              (str result "["))
 
       (str/starts-with? schema "map<string,string>")
@@ -33,7 +33,7 @@
 
       (str/starts-with? schema "struct<")
       (recur (str/replace-first schema #"struct<" "")
-             (conj closes [:struct "}"])
+             (conj closes "}")
              (str result "{"))
 
       (str/starts-with? schema ":")
@@ -42,19 +42,20 @@
              (str result ":"))
 
       (str/starts-with? schema ",")
-      (let [current-context (first (peek closes))]
-        (if (= current-context :map-key)
+      (let [top (peek closes)]
+        (if (and (vector? top) (= :map-key (first top)))
           (recur (str/replace-first schema #",\s*" "")
-                 (conj (pop closes) [:map-value (second (peek closes))])
+                 (conj (pop closes) [:map-value (second top)])
                  (str result ",\"value\":"))
           (recur (str/replace-first schema #",\s*" "")
                  closes
                  (str result ","))))
 
       (str/starts-with? schema ">")
-      (recur (str/replace-first schema #">" "")
-             (pop closes)
-             (str result (second (peek closes))))
+      (let [top (peek closes)]
+        (recur (str/replace-first schema #">" "")
+               (pop closes)
+               (str result (if (vector? top) (second top) top))))
 
       :else (let [name-or-type (re-find #"\w+" schema)]
               (if (= name-or-type nil)
