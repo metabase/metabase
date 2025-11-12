@@ -9,29 +9,39 @@
 (defn- column->base-type [column-type]
   (sql-jdbc.sync/database-type->base-type :athena (keyword (re-find #"\w+" column-type))))
 
-(defn- create-nested-fields [schema database-position]
-  (set (map (fn [[k v]]
-              (let [root {:name              (name k)
-                          :base-type         (cond (map? v)        :type/Dictionary
-                                                   (sequential? v) :type/Array
-                                                   :else           (column->base-type v))
-                          :database-type     (cond (map? v)        "map"
-                                                   (sequential? v) "array"
-                                                   :else           v)
-                          :database-position database-position}]
-                (cond
-                  (map? v) (assoc root :nested-fields (create-nested-fields v database-position))
-                  :else    root)))
-            schema)))
+(defn- flatten-nested-fields
+  "Recursively flatten nested struct fields into a flat list with nfc_path.
+   Returns a sequence of field maps with :nfc-path set for nested fields.
+   Nested field names use arrow notation (→) to show the full path."
+  [schema parent-path database-position]
+  (mapcat (fn [[k v]]
+            (let [field-name (name k)
+                  current-path (conj parent-path field-name)
+                  ;; Use arrow separator for nested field names to ensure uniqueness
+                  display-name (str/join " → " current-path)]
+              (if (map? v)
+                ;; For struct types, recursively flatten children but don't include the struct itself
+                ;; Only leaf fields get nfc-path, intermediate structs are excluded
+                (flatten-nested-fields v current-path database-position)
+                ;; For non-struct types (leaf fields), include this field with nfc-path
+                [{:name              display-name
+                  :database-type     (if (sequential? v) "array" v)
+                  :base-type         (if (sequential? v) :type/Array (column->base-type v))
+                  :database-position database-position
+                  :nfc-path          current-path}])))
+          schema))
 
 (defn- parse-struct-type-field [field-info database-position]
   (let [root-field-name (:name field-info)
         schema          (athena.hive-parser/hive-schema->map (:type field-info))]
-    {:name              root-field-name
-     :base-type         :type/Dictionary
-     :database-type     "struct"
-     :database-position database-position
-     :nested-fields     (create-nested-fields schema database-position)}))
+    ;; Return a set containing the root struct field (without nfc-path) and all leaf nested fields (with nfc-path)
+    ;; This matches Postgres behavior: the parent JSONB column exists in metadata but only leaf fields are selectable
+    (into #{}
+          (cons {:name              root-field-name
+                 :base-type         :type/Dictionary
+                 :database-type     "struct"
+                 :database-position database-position}
+                (flatten-nested-fields schema [root-field-name] database-position)))))
 
 (defn- parse-array-type-field [field-info database-position]
   {:name (:name field-info) :base-type :type/Array :database-type "array" :database-position database-position})
