@@ -11,8 +11,8 @@
   [content-type collection-id]
   (when collection-id
     (when-let [collection-type #p (t2/select-one-fn :type [:model/Collection :type] :id collection-id)]
-      (when (and (= collection-type collection/semantic-layer-collection-type) (not (contains? #{:semantic-layer-model :semantic-layer-metric} content-type)))
-        (throw (ex-info "Cannot add anything to the Semantic Layer collection" {})))
+      #_(when (and (= collection-type collection/semantic-layer-collection-type) (not (contains? #{:semantic-layer-model :semantic-layer-metric} content-type)))
+          (throw (ex-info "Cannot add anything to the Semantic Layer collection" {})))
       (when (and (= collection-type collection/semantic-layer-models-collection-type) (not (= :model content-type)))
         (throw (ex-info "Can only add models to the 'Models' collection" {})))
       (when (and (= collection-type collection/semantic-layer-metrics-collection-type) (not (= :metric content-type)))
