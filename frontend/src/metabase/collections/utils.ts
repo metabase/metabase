@@ -94,6 +94,10 @@ export function getSemanticLayerCollectionType({
   }
 }
 
+export function isSemanticLayerCollection(collection: Partial<Collection>) {
+  return getSemanticLayerCollectionType(collection) != null;
+}
+
 // Replace the name for the current user's collection
 // @Question - should we just update the API to do this?
 function preparePersonalCollection(c: Collection): Collection {

@@ -1,6 +1,6 @@
 import {
   currentUserPersonalCollections,
-  getSemanticLayerCollectionType,
+  isSemanticLayerCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
@@ -20,7 +20,7 @@ export function getCollectionTree(
     ...collections.filter(
       (collection) =>
         nonPersonalOrArchivedCollection(collection) &&
-        getSemanticLayerCollectionType(collection) == null,
+        !isSemanticLayerCollection(collection),
     ),
   ];
 
