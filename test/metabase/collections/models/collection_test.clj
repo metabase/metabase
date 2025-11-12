@@ -3321,7 +3321,11 @@
 
 (deftest is-semantic-layer-collection?
   (mt/with-temp [:model/Collection {semantic-layer-id :id} {:name "Test Semantic Layer" :type collection/semantic-layer-collection-type}
+                 :model/Collection {models-id :id} {:name "Test Semantic Model Layer" :type collection/semantic-layer-models-collection-type}
+                 :model/Collection {metrics-id :id} {:name "Test Semantic Metrics Layer" :type collection/semantic-layer-metrics-collection-type}
                  :model/Collection {regular-collection-id :id} {:name "Regular Collection" :type nil}]
     (testing "Correctly identifies semantic layer collections"
       (is (true? (collection/is-semantic-layer-collection? semantic-layer-id)))
+      (is (true? (collection/is-semantic-layer-collection? models-id)))
+      (is (true? (collection/is-semantic-layer-collection? metrics-id)))
       (is (false? (collection/is-semantic-layer-collection? regular-collection-id))))))
