@@ -236,7 +236,10 @@ const config = {
       // with ie11 point to the minified version
       icepick: __dirname + "/node_modules/icepick/icepick.min",
       // conditionally load either the EE plugins file or a empty file in the CE code tree
-      "ee-plugins": resolveEnterprisePathOrNoop("/plugins"),
+      "ee-plugins":
+        process.env.MB_EDITION === "ee"
+          ? ENTERPRISE_SRC_PATH + "/plugins"
+          : SRC_PATH + "/plugins/noop",
       "ee-overrides": resolveEnterprisePathOrNoop("/overrides"),
       embedding: EMBEDDING_SRC_PATH,
       "embedding-sdk-package": SDK_PACKAGE_SRC_PATH,
@@ -245,9 +248,10 @@ const config = {
       "sdk-iframe-embedding-ee-plugins": resolveEnterprisePathOrNoop(
         "/sdk-iframe-embedding-plugins",
       ),
-      "sdk-ee-plugins": process.env.MB_EDITION === "ee"
-        ? ENTERPRISE_SRC_PATH + "/sdk-plugins"
-        : SRC_PATH + "/lib/sdk-plugins-noop",
+      "sdk-ee-plugins":
+        process.env.MB_EDITION === "ee"
+          ? ENTERPRISE_SRC_PATH + "/sdk-plugins"
+          : SRC_PATH + "/plugins/noop",
       "sdk-specific-imports": SRC_PATH + "/lib/noop",
     },
     fallback: {

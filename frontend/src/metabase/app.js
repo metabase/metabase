@@ -61,7 +61,7 @@ const browserHistory = useRouterHistory(createHistory)({
   basename: BASENAME,
 });
 
-initializePlugins?.();
+initializePlugins();
 function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
   const routes = getRoutes(store);

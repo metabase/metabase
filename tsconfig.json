@@ -14,7 +14,7 @@
       "build-configs/*": ["./frontend/build/*"],
       "cljs/*": ["./target/cljs_dev/*"],
       "docs/*": ["./docs/*"],
-      "sdk-ee-plugins": ["./frontend/src/metabase/lib/sdk-plugins-noop"]
+      "sdk-ee-plugins": ["./frontend/src/metabase/plugins/noop"]
     },
     "plugins": [
       {
