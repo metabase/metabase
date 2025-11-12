@@ -19,6 +19,7 @@
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
+   [metabase-enterprise.metabot-v3.tools.query-analysis :as metabot-v3.tools.query-analysis]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-v3.tools.search]
    [metabase-enterprise.metabot-v3.tools.snippets :as metabot-v3.tools.snippets]
    [metabase-enterprise.metabot-v3.tools.transforms :as metabot-v3.tools.transforms]
@@ -1183,6 +1184,33 @@
                          [:bad_questions [:sequential ::broken-question]]]]]
    [:map [:output :string]]])
 
+(mr/def ::analyze-query-arguments
+  [:and
+   [:map
+    [:query :map]]
+   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
+(mr/def ::basic-table
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]
+   [:type [:enum :table :model]]])
+
+(mr/def ::basic-card
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]
+   [:type [:enum :question :model :metric]]])
+
+(mr/def ::analyze-query-result
+  [:or
+   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map
+                         [:source_tables [:sequential ::basic-table]]
+                         [:source_cards [:sequential ::basic-card]]
+                         [:implicitly_joined_tables [:sequential ::basic-table]]]]]
+   [:map [:output :string]]])
+
 (api.macros/defendpoint :post "/check-transform-dependencies" :- [:merge ::check-transform-dependencies-result ::tool-request]
   "Check a proposed edit to a transform and return details of cards or transforms that would be broken by the change."
   [_route-params
@@ -1194,6 +1222,21 @@
   (let [arguments (mc/encode ::check-transform-dependencies-arguments arguments (mtx/transformer {:name :tool-api-request}))]
     (doto (-> (mc/decode ::check-transform-dependencies-result
                          (metabot-v3.tools.dependencies/check-transform-dependencies arguments)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
+
+(api.macros/defendpoint :post "/analyze-query" :- [:merge ::analyze-query-result ::tool-request]
+  "Analyze an MBQL query and return metadata about referenced tables and cards."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::analyze-query-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :analyze-query) :llm.log/llm->be)
+  (let [arguments (mc/encode ::analyze-query-arguments arguments (mtx/transformer {:name :tool-api-request}))]
+    (doto (-> (mc/decode ::analyze-query-result
+                         (metabot-v3.tools.query-analysis/analyze-query arguments)
                          (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
