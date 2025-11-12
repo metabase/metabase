@@ -60,6 +60,14 @@ jobs:
           clojure -M:ee:doc api-documentation
         continue-on-error: false
 
+      - name: Generate command documentation
+        id: generate_command_docs
+        run: |
+          set -e  # Exit on any error
+          echo "Generating API documentation..."
+          clojure -M:ee:doc command-documentation
+        continue-on-error: false
+
       - name: Check for changes
         id: check_changes
         run: |
