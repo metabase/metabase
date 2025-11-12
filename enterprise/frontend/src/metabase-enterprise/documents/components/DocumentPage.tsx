@@ -354,7 +354,7 @@ export const DocumentPage = ({
   );
 
   const focusEditorBody = useCallback(() => {
-    editorInstance?.commands.focus("end");
+    editorInstance?.commands.focus("start");
   }, [editorInstance]);
 
   const handleUpdate = async (payload: {
