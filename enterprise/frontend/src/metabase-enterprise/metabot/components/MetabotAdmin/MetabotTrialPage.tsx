@@ -66,10 +66,6 @@ export const handleFieldError = (error: unknown) => {
   }
 };
 
-const validationSchema = Yup.object({
-  terms_of_service: Yup.boolean(),
-});
-
 interface MetabotTrialFormFields {
   terms_of_service: boolean;
 }
@@ -94,6 +90,12 @@ export const MetabotTrialPage = () => {
     },
     [purchaseCloudAddOn, settingUpModalHandlers],
   );
+
+  const validationSchema = Yup.object({
+    terms_of_service: Yup.boolean()
+      .required()
+      .isTrue(t`Terms of Service must be accepted`),
+  });
 
   return (
     <SettingsPageWrapper title={t`Metabot AI`}>
