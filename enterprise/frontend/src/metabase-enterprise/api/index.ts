@@ -2,6 +2,7 @@ export * from "./ai-entity-analysis";
 export * from "./api";
 export * from "./audit-info";
 export * from "./billing-info";
+export * from "./cloud-add-ons";
 export * from "./comment";
 export * from "./content-translation";
 export * from "./db-routing";

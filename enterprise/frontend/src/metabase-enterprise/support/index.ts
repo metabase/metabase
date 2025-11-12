@@ -3,7 +3,9 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { SupportSettingsSection } from "./components/SupportSettingsSection";
 
-if (hasPremiumFeature("support-users")) {
-  PLUGIN_SUPPORT.isEnabled = true;
-  PLUGIN_SUPPORT.SupportSettings = SupportSettingsSection;
+export function initializePlugin() {
+  if (hasPremiumFeature("support-users")) {
+    PLUGIN_SUPPORT.isEnabled = true;
+    PLUGIN_SUPPORT.SupportSettings = SupportSettingsSection;
+  }
 }

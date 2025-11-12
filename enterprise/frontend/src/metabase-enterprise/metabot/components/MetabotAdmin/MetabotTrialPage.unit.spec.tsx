@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { match } from "ts-pattern";
 
 import {
   findRequests,
@@ -14,7 +15,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
-import { MetabotPurchasePage } from "./MetabotPurchasePage";
+import { MetabotTrialPage } from "./MetabotTrialPage";
 
 const setupRefreshableProperties = ({
   current_user_matches_store_user,
@@ -40,8 +41,10 @@ const setupRefreshableProperties = ({
 
 const setup = async ({
   current_user_matches_store_user,
+  simulate_http_post_error,
 }: {
   current_user_matches_store_user: boolean;
+  simulate_http_post_error: false | "error-no-quantity" | "error-no-connection";
 }) => {
   const settings = setupRefreshableProperties({
     current_user_matches_store_user,
@@ -50,9 +53,23 @@ const setup = async ({
   const user = createMockUser({ email: "user@example.com" });
   setupCurrentUserEndpoint(user);
 
-  fetchMock.post("path:/api/ee/cloud-add-ons/metabase-ai", 200);
+  fetchMock.post(
+    "path:/api/ee/cloud-add-ons/metabase-ai",
+    match(simulate_http_post_error)
+      .with("error-no-quantity", () => ({
+        body: { errors: { quantity: "Purchase of add-on requires quantity." } },
+        status: 403,
+      }))
+      .with("error-no-connection", () => ({
+        body: "Could not establish a connection to Metabase Cloud.",
+        status: 404,
+      }))
+      .otherwise(() => ({
+        status: 200,
+      })),
+  );
 
-  renderWithProviders(<MetabotPurchasePage />, {
+  renderWithProviders(<MetabotTrialPage />, {
     // Calling `setupPropertiesEndpoints` above is not enough; we also need to set `storeInitialState`:
     storeInitialState: {
       settings: createMockSettingsState(settings),
@@ -63,9 +80,12 @@ const setup = async ({
   await screen.findByText(/Get a free month of Metabot/);
 };
 
-describe("MetabotPurchasePage", () => {
+describe("MetabotTrialPage", () => {
   it("shows empty state alternate text when current user is not a store user", async () => {
-    await setup({ current_user_matches_store_user: false });
+    await setup({
+      current_user_matches_store_user: false,
+      simulate_http_post_error: false,
+    });
     expect(screen.getByText(/Get a free month of Metabot/)).toBeInTheDocument();
     expect(
       screen.getByText(/Please ask a Metabase Store Admin/),
@@ -75,6 +95,7 @@ describe("MetabotPurchasePage", () => {
   it("requires Terms of Service to be accepted", async () => {
     await setup({
       current_user_matches_store_user: true,
+      simulate_http_post_error: false,
     });
     expect(
       screen.queryByText(/Please ask a Metabase Store Admin/),
@@ -99,6 +120,7 @@ describe("MetabotPurchasePage", () => {
   it("submits a HTTP request", async () => {
     await setup({
       current_user_matches_store_user: true,
+      simulate_http_post_error: false,
     });
     await userEvent.click(
       screen.getByRole("checkbox", { name: /Terms of Service/ }),
@@ -112,7 +134,9 @@ describe("MetabotPurchasePage", () => {
     expect(
       await screen.findByText(/Setting up Metabot AI, please wait/),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Done/ })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: /Done/ }),
+    ).not.toBeInTheDocument();
 
     const postRequests = await findRequests("POST");
     const cloudAddOnsRequest = postRequests.find(({ url }) =>
@@ -128,5 +152,51 @@ describe("MetabotPurchasePage", () => {
     });
     expect(await screen.findByText(/Metabot AI is ready/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Done/ })).toBeEnabled();
+  });
+
+  it("reports validation errors", async () => {
+    await setup({
+      current_user_matches_store_user: true,
+      simulate_http_post_error: "error-no-quantity",
+    });
+    expect(
+      await screen.findByText(/Metabot helps you move faster/),
+    ).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /Terms of Service/ }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /Add Metabot AI/ }),
+    );
+    expect(await screen.findByText(/Failed to add Metabot AI/)).toBeVisible();
+
+    const postRequests = await findRequests("POST");
+    const cloudAddOnsRequest = postRequests.find(({ url }) =>
+      /\/api\/ee\/cloud-add-ons\/metabase-ai$/.test(url),
+    );
+    expect(cloudAddOnsRequest).toBeTruthy();
+  });
+
+  it("reports other errors", async () => {
+    await setup({
+      current_user_matches_store_user: true,
+      simulate_http_post_error: "error-no-connection",
+    });
+    expect(
+      await screen.findByText(/Metabot helps you move faster/),
+    ).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /Terms of Service/ }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /Add Metabot AI/ }),
+    );
+    expect(await screen.findByText(/Failed to add Metabot AI/)).toBeVisible();
+
+    const postRequests = await findRequests("POST");
+    const cloudAddOnsRequest = postRequests.find(({ url }) =>
+      /\/api\/ee\/cloud-add-ons\/metabase-ai$/.test(url),
+    );
+    expect(cloudAddOnsRequest).toBeTruthy();
   });
 });

@@ -54,14 +54,20 @@
 
 (defmethod specialization/extra-entry-fields :postgres [entity]
   {:search_vector
-   [:||
-    (search.util/weighted-tsvector "A" (or (:name entity) ""))
-    (search.util/weighted-tsvector "B" (or (:searchable_text entity) ""))]
+   (cond-> [:||
+            (search.util/weighted-tsvector "A" (or (:name entity) ""))
+            (search.util/weighted-tsvector "B" (or (:searchable_text entity) ""))]
+     ;; if stemming is not in a 'simple' mode, let's include non-stemmed words so that when your partially typed word
+     ;; is not matching any stem you still have something to match; see tests for #60649
+     (not= (search.util/tsv-language) "simple")
+     (conj (search.util/weighted-tsvector "D" (or (:searchable_text entity) "") "simple")))
 
    :with_native_query_vector
-   [:||
-    (search.util/weighted-tsvector "A" (or (:name entity) ""))
-    (search.util/weighted-tsvector "B" (str/join " " (keep entity [:searchable_text :native_query])))]})
+   (cond-> [:||
+            (search.util/weighted-tsvector "A" (or (:name entity) ""))
+            (search.util/weighted-tsvector "B" (str/join " " (keep entity [:searchable_text :native_query])))]
+     (not= (search.util/tsv-language) "simple")
+     (conj (search.util/weighted-tsvector "D" (or (:searchable_text entity) "") "simple")))})
 
 ;; See https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING
 ;;  0 (the default) ignores the document length
@@ -73,9 +79,15 @@
 ;; 32 divides the rank by itself + 1
 (def ^:private ts-rank-normalization 0)
 
+;; The order here is {D, C, B, A} - but see the link to the docs up there ^
+;; A is the entity title
+;; B is all searchable text
+;; D is backup text with 'simple' stemmer, so it's not used in scoring, but mostly for completion
+(def ^:private ts-rank-weights "{0, 0.2, 0.4, 1.0}")
+
 (defmethod specialization/text-score :postgres
   []
-  [:ts_rank :search_vector :query [:inline ts-rank-normalization]])
+  [:ts_rank [:inline ts-rank-weights] :search_vector :query [:inline ts-rank-normalization]])
 
 (defmethod specialization/view-count-percentile-query :postgres
   [index-table p-value]
