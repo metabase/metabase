@@ -1,30 +1,18 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import {
-  Alert,
-  Box,
-  Button,
-  Flex,
-  Group,
-  Icon,
-  LoadingOverlay,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Box, Button, Flex, LoadingOverlay, Text, Title } from "metabase/ui";
 import { useGetCurrentSupportAccessGrantQuery } from "metabase-enterprise/api";
 
-import { AccessGrantList } from "./components/AccessGrantList";
-import { GrantAccessModal } from "./components/GrantAccessModal";
-import { useAccessGrantsQuery } from "./hooks/useAccessGrantsQuery";
+import { useAccessGrantsQuery } from "../../hooks/useAccessGrantsQuery";
 
-export function SupportSettingsPage() {
+import { AccessGrantList } from "./AccessGrantList";
+import { GrantAccessModal } from "./GrantAccessModal";
+
+export function SupportSettingsSection() {
   const { data: currentAccessGrant } = useGetCurrentSupportAccessGrantQuery();
   const {
     accessGrants,
@@ -39,43 +27,56 @@ export function SupportSettingsPage() {
   } = useAccessGrantsQuery();
   const [showCreateGrantModal, { toggle: toggleCreateGrantModal }] =
     useDisclosure(false);
-  const showHistory =
-    accessGrants.length > 1 ||
-    (accessGrants.length === 1 && !currentAccessGrant);
 
   return (
-    <SettingsPageWrapper title={t`Support`}>
-      <SettingsSection>
+    <>
+      <SettingsSection
+        title={t`Helping hand`}
+        description={
+          <>
+            <Text c="text-medium" mt="sm">
+              {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}
+              {t`Let a Metabase support agent log in to your instance with a troubleshooting account to help resolve problems for you.`}
+            </Text>
+            <Text c="text-medium">
+              {t`Access always auto expires after the period you select.`}
+            </Text>
+          </>
+        }
+        stackProps={{ gap: 0 }}
+      >
         <LoadingAndErrorWrapper
           error={accessGrantsError}
           loading={isLoadingAccessGrants}
         >
           <Box pb="lg">
-            <Group justify="space-between" mb="md">
-              <Title order={4} lh="2.5rem">{t`Current Access Grant`}</Title>
-              {!currentAccessGrant && (
-                <Button variant="filled" onClick={toggleCreateGrantModal}>
-                  {t`New access grant`}
-                </Button>
-              )}
-            </Group>
-            {currentAccessGrant ? (
-              <AccessGrantList accessGrants={[currentAccessGrant]} active />
-            ) : (
-              <Alert icon={<Icon name="info" />} variant="light" color="info">
-                <Text>{t`No active access grants.`}</Text>
-              </Alert>
-            )}
+            <Button
+              disabled={!!currentAccessGrant}
+              onClick={toggleCreateGrantModal}
+              variant="filled"
+              title={
+                currentAccessGrant
+                  ? t`You already have an active access grant`
+                  : undefined
+              }
+              mt="sm"
+              mb="sm"
+            >
+              {t`Request a helping hand`}
+            </Button>
+            <Text size="sm" c="text-secondary">
+              {t`You can only have one active request at a time`}
+            </Text>
 
-            {showHistory && (
+            {accessGrants.length > 1 && (
               <Box pos="relative">
                 <LoadingOverlay
                   visible={isFetchingAccessGrants}
                   zIndex={1000}
                   overlayProps={{ radius: "sm", blur: 0.25 }}
                 />
-                <Title lh="2.5rem" mb="md" mt="lg" order={4} pt="lg">
-                  {t`Access Grant History`}
+                <Title lh="2.5rem" order={4} pt="lg">
+                  {t`History`}
                 </Title>
                 <AccessGrantList accessGrants={accessGrants} />
                 <Flex justify="flex-end" mt="sm">
@@ -97,6 +98,6 @@ export function SupportSettingsPage() {
       {showCreateGrantModal && (
         <GrantAccessModal onClose={toggleCreateGrantModal} />
       )}
-    </SettingsPageWrapper>
+    </>
   );
 }

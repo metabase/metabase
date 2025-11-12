@@ -943,9 +943,11 @@ export const PLUGIN_REMOTE_SYNC: {
   }),
 };
 
-export const PLUGIN_PREMIUM_SUPPORT: {
+export const PLUGIN_SUPPORT: {
+  isEnabled: boolean;
   SupportSettings: ComponentType;
 } = {
+  isEnabled: false,
   SupportSettings: NotFoundPlaceholder,
 };
 

@@ -25,7 +25,6 @@ export function SettingsNav() {
   const hasJwt = useHasTokenFeature("sso_jwt");
   const hasScim = useHasTokenFeature("scim");
   const hasPythonTransforms = useHasTokenFeature("transforms-python");
-  const hasSupportEnabled = useHasTokenFeature("support-users");
   const isHosted = useSetting("is-hosted?");
 
   return (
@@ -117,9 +116,6 @@ export function SettingsNav() {
         }
         icon="cloud"
       />
-      {hasSupportEnabled && isHosted && (
-        <SettingsNavItem path="support" label={t`Support`} icon="info" />
-      )}
     </AdminNavWrapper>
   );
 }

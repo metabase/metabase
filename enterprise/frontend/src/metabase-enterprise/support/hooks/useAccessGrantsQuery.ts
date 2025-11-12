@@ -4,10 +4,11 @@ import {
   useListSupportAccessGrantsQuery,
 } from "metabase-enterprise/api";
 
+const PAGE_SIZE = 10;
+
 export const useAccessGrantsQuery = () => {
   const { page, handlePreviousPage, handleNextPage } = usePagination();
-  const pageSize = 5;
-  const offset = pageSize * page;
+  const offset = PAGE_SIZE * page;
 
   const {
     data: listResponse,
@@ -17,7 +18,7 @@ export const useAccessGrantsQuery = () => {
   } = useListSupportAccessGrantsQuery({
     "include-revoked": true,
     offset,
-    limit: pageSize,
+    limit: PAGE_SIZE,
   });
   const { data: currentAccessGrant } = useGetCurrentSupportAccessGrantQuery();
   const { data: accessGrants = [], total } = listResponse || {};
@@ -29,7 +30,7 @@ export const useAccessGrantsQuery = () => {
     isLoadingAccessGrants: isLoading,
     isFetchingAccessGrants: isFetching,
     total,
-    pageSize,
+    pageSize: PAGE_SIZE,
     handlePreviousPage,
     handleNextPage,
     page,

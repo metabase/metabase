@@ -1,8 +1,9 @@
-import { PLUGIN_PREMIUM_SUPPORT } from "metabase/plugins";
+import { PLUGIN_SUPPORT } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { SupportSettingsPage } from "./SupportSettingsPage";
+import { SupportSettingsSection } from "./components/SupportSettingsSection";
 
 if (hasPremiumFeature("support-users")) {
-  PLUGIN_PREMIUM_SUPPORT.SupportSettings = SupportSettingsPage;
+  PLUGIN_SUPPORT.isEnabled = true;
+  PLUGIN_SUPPORT.SupportSettings = SupportSettingsSection;
 }

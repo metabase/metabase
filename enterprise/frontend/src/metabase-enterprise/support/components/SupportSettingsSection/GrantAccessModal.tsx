@@ -109,6 +109,6 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModal) => {
 };
 
 const initialValues: AccessGrantFormValues = {
-  grant_duration_minutes: String(24 * 60),
+  grant_duration_minutes: String(96 * 60),
   ticket_number: "",
 };

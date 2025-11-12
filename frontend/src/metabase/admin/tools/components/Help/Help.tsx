@@ -15,6 +15,7 @@ import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_SUPPORT } from "metabase/plugins";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { UtilApi } from "metabase/services";
 import { Box, Group } from "metabase/ui";
@@ -122,6 +123,8 @@ export const Help = () => {
       </Group>
 
       <UpsellBetterSupport location="settings-troubleshooting" />
+
+      {PLUGIN_SUPPORT.isEnabled && <PLUGIN_SUPPORT.SupportSettings />}
 
       <SettingsSection
         title={t`Diagnostic info`}
