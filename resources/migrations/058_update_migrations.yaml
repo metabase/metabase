@@ -140,7 +140,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v57.2025-11-13T10:00:00
+      id: v58.2025-11-13T10:00:00
       author: qnkhuat
       comment: Backfill data_layer from visibility_type
       changes:
