@@ -13,21 +13,21 @@ import { Button, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 type SemanticLayerCollectionTreeProps = {
-  collection: Collection;
+  rootCollection: Collection;
   selectedCollectionId: CollectionId | undefined;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
 };
 
 export function SemanticLayerCollectionTree({
-  collection,
+  rootCollection,
   selectedCollectionId,
   hasDataAccess,
   hasNativeWrite,
 }: SemanticLayerCollectionTreeProps) {
   const collectionTree = useMemo(
-    () => buildCollectionTree([collection]),
-    [collection],
+    () => buildCollectionTree([rootCollection]),
+    [rootCollection],
   );
 
   const initialExpandedIds = useMemo(
@@ -76,7 +76,7 @@ export function SemanticLayerCollectionTree({
       onSelect={handleCollectionSelect}
       TreeNode={ModelingSidebarTreeNode}
       rightSection={(item: ITreeNodeItem) => {
-        if (item.id !== collection.id || !hasDataAccess) {
+        if (item.id !== rootCollection.id || !hasDataAccess) {
           return null;
         }
         return (

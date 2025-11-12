@@ -10,7 +10,7 @@ import type { SemanticLayerSectionProps } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type { Collection } from "metabase-types/api";
 
-import { isSemanticLayerCollection } from "../../utils";
+import { getSemanticLayerCollectionType } from "../../utils";
 
 import { CreateSemanticLayerModal } from "./CreateSemanticLayerModal";
 import { SemanticLayerCollectionTree } from "./SemanticLayerCollectionTree";
@@ -26,8 +26,12 @@ export function SemanticLayerSection({
     useDisclosure();
   const dispatch = useDispatch();
 
-  const collection = useMemo(
-    () => collections.find(isSemanticLayerCollection),
+  const rootCollection = useMemo(
+    () =>
+      collections.find(
+        (collection) =>
+          getSemanticLayerCollectionType(collection) === "semantic-layer",
+      ),
     [collections],
   );
 
@@ -36,10 +40,10 @@ export function SemanticLayerSection({
     dispatch(push(Urls.dataStudioCollection(collection.id)));
   };
 
-  if (collection != null) {
+  if (rootCollection != null) {
     return (
       <SemanticLayerCollectionTree
-        collection={collection}
+        rootCollection={rootCollection}
         selectedCollectionId={selectedCollectionId}
         hasDataAccess={hasDataAccess}
         hasNativeWrite={hasNativeWrite}
