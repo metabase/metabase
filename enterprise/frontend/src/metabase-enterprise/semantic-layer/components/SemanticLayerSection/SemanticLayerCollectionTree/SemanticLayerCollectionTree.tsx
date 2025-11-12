@@ -11,7 +11,7 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { Collection, CollectionId } from "metabase-types/api";
 
-import { getWritableSemanticCollections } from "./utils";
+import { getSemanticCollections } from "./utils";
 
 type SemanticLayerCollectionTreeProps = {
   rootCollection: Collection;
@@ -32,7 +32,7 @@ export function SemanticLayerCollectionTree({
   );
 
   const { modelCollection, metricCollection } = useMemo(
-    () => getWritableSemanticCollections(rootCollection),
+    () => getSemanticCollections(rootCollection),
     [rootCollection],
   );
 

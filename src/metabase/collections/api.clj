@@ -196,14 +196,13 @@
   some point in the future."
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections
-           namespace shallow collection-id include_editable_semantic_layer]} :- [:map
-                                                                                 [:exclude-archived               {:default false} [:maybe :boolean]]
-                                                                                 [:exclude-other-user-collections {:default false} [:maybe :boolean]]
-                                                                                 [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
-                                                                                 [:shallow                        {:default false} [:maybe :boolean]]
-                                                                                 [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]
-                                                                                 [:include_editable_semantic_layer {:default false} [:maybe :boolean]]]]
-  (let [archived    #p (if exclude-archived false nil)
+           namespace shallow collection-id]} :- [:map
+                                                 [:exclude-archived               {:default false} [:maybe :boolean]]
+                                                 [:exclude-other-user-collections {:default false} [:maybe :boolean]]
+                                                 [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
+                                                 [:shallow                        {:default false} [:maybe :boolean]]
+                                                 [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
+  (let [archived    (if exclude-archived false nil)
         collections (select-collections {:archived                       archived
                                          :exclude-other-user-collections exclude-other-user-collections
                                          :namespace                      namespace
@@ -215,7 +214,7 @@
                                           (update acc (case (keyword card-type)
                                                         :model :dataset
                                                         :metric :metric
-                                                        :card) conj #p collection-id))
+                                                        :card) conj collection-id))
                                         {:dataset #{}
                                          :metric  #{}
                                          :card    #{}}
