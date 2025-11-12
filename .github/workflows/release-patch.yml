@@ -65,6 +65,10 @@ jobs:
                 majorVersion: Number(majorVersion),
               });
 
+              console.log(
+                { nextPatch, releaseCommit, hasBeenReleased }
+              );
+
               if (nextPatch && releaseCommit && !hasBeenReleased) {
                 await github.rest.actions.createWorkflowDispatch({
                   owner: context.repo.owner,
@@ -76,11 +80,8 @@ jobs:
                     version: nextPatch,
                     auto: true,
                   }
-                });
+                }).catch(console.error);
               } else {
-                console.log(
-                  { nextPatch, releaseCommit, hasBeenReleased }
-                );
                 console.error(`No new patch version or no green commit found for v${majorVersion}`);
               }
             }
@@ -103,5 +104,5 @@ jobs:
 
               await releasePatchFor(inputVersion, isValidOverride ? overrideSha : undefined);
             } else { // scheduled release of AUTO_RELEASE_VERSIONS
-              await Promise.all(AUTO_RELEASE_VERSIONS.map(releasePatchFor));
+              await Promise.all(AUTO_RELEASE_VERSIONS.map(version => releasePatchFor(version)));
             }
