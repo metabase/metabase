@@ -1,19 +1,16 @@
-import type { Collection } from "metabase-types/api";
+import type {
+  Collection,
+  SemanticLayerCollectionType,
+} from "metabase-types/api";
 
 import { getSemanticLayerCollectionType } from "../../../utils";
 
-export function getSemanticCollections(rootCollection: Collection) {
-  const modelCollection = rootCollection.children?.find(
-    (collection) =>
-      getSemanticLayerCollectionType(collection) === "semantic-layer-models",
+export function getWritableSemanticCollection(
+  rootCollection: Collection,
+  type: SemanticLayerCollectionType,
+) {
+  const collection = rootCollection.children?.find(
+    (collection) => getSemanticLayerCollectionType(collection) === type,
   );
-  const metricCollection = rootCollection.children?.find(
-    (collection) =>
-      getSemanticLayerCollectionType(collection) === "semantic-layer-metrics",
-  );
-
-  return {
-    modelCollection,
-    metricCollection,
-  };
+  return collection?.can_write ? collection : undefined;
 }
