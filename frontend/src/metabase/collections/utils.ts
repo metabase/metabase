@@ -84,18 +84,20 @@ export function isExamplesCollection(collection: Collection): boolean {
   return !!collection.is_sample && collection.name === "Examples";
 }
 
-export function getSemanticLayerCollectionType({
-  type,
-}: Partial<Collection>): SemanticLayerCollectionType | undefined {
-  switch (type) {
+export function getSemanticLayerCollectionType(
+  collection: Pick<Collection, "type"> | Pick<CollectionItem, "type">,
+): SemanticLayerCollectionType | undefined {
+  switch (collection.type) {
     case "semantic-layer":
     case "semantic-layer-models":
     case "semantic-layer-metrics":
-      return type;
+      return collection.type;
   }
 }
 
-export function isSemanticLayerCollection(collection: Partial<Collection>) {
+export function isSemanticLayerCollection(
+  collection: Pick<Collection, "type"> | Pick<CollectionItem, "type">,
+) {
   return getSemanticLayerCollectionType(collection) != null;
 }
 
@@ -169,6 +171,10 @@ export function isReadOnlyCollection(collection: CollectionItem) {
   return isItemCollection(collection) && !collection.can_write;
 }
 
+export function canBookmarkItem(item: CollectionItem) {
+  return !isSemanticLayerCollection(item) && !item.archived;
+}
+
 export function canPinItem(item: CollectionItem, collection?: Collection) {
   return collection?.can_write && item.setPinned != null && !item.archived;
 }
@@ -187,7 +193,8 @@ export function canMoveItem(item: CollectionItem, collection?: Collection) {
     (collection?.can_write || isRootTrashCollection(collection)) &&
     !isReadOnlyCollection(item) &&
     item.setCollection != null &&
-    !(isItemCollection(item) && isRootPersonalCollection(item))
+    !(isItemCollection(item) && isRootPersonalCollection(item)) &&
+    !isSemanticLayerCollection(item)
   );
 }
 
@@ -196,6 +203,7 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
     collection?.can_write &&
     !isReadOnlyCollection(item) &&
     !(isItemCollection(item) && isRootPersonalCollection(item)) &&
+    !isSemanticLayerCollection(item) &&
     !item.archived
   );
 }
