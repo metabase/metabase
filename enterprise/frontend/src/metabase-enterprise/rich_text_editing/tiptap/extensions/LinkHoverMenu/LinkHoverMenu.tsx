@@ -13,7 +13,7 @@ import { ActionIcon, Box, Card, FixedSizeIcon, Flex } from "metabase/ui";
 
 import S from "../PlainLink/PlainLink.module.css";
 
-const HOVER_TIMEOUT_MS = 150;
+const HOVER_TIMEOUT_MS = 200;
 const MAX_W = 480;
 
 interface LinkHoverMenuProps {

@@ -48,7 +48,7 @@ export const LinkEditor = ({
   };
 
   return (
-    <Flex align="center" gap={4}>
+    <Flex align="center" gap="xs">
       <Box style={{ flexGrow: 1 }}>
         <TextInput
           ref={inputRef}
@@ -68,7 +68,7 @@ export const LinkEditor = ({
           autoFocus
         />
       </Box>
-      <Box c="var(--mb-color-text-secondary)">
+      <Box c="text-secondary">
         <Tooltip label={t`Save`}>
           <ActionIcon c="inherit" onClick={handleSubmit}>
             <FixedSizeIcon name="check" />
