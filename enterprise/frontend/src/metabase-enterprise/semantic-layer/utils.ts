@@ -13,3 +13,7 @@ export function getSemanticLayerCollectionType({
       return type;
   }
 }
+
+export function isSemanticLayerCollection({ type }: Partial<Collection>) {
+  return type === "semantic-layer";
+}
