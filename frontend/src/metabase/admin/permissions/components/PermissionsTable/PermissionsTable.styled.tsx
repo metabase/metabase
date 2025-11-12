@@ -17,7 +17,7 @@ const getTableBorder = (theme: Theme) =>
 const getHeaderBackground = (theme: Theme) =>
   `linear-gradient(
     to top,
-    color-mix(in srgb, ${theme.fn.themeColor("border")} 50%, ${theme.fn.themeColor("bg-white")} 50%) 1px,
+    color-mix(in srgb, ${theme.fn.themeColor("border")} 50%, ${theme.fn.themeColor("background-primary")} 50%) 1px,
     var(--mb-color-bg-white) 1px,
     var(--mb-color-bg-white) 100%
   )`;
@@ -99,7 +99,7 @@ export const HintIcon = styled(
     );
   }),
 )`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
   margin-left: 0.375rem;
   cursor: pointer;
 `;

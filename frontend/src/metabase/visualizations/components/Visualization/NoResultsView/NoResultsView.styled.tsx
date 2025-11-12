@@ -11,7 +11,7 @@ export const Root = styled.div`
   padding-left: 0.5rem;
   padding-right: 0.5rem;
   padding-bottom: 0.5rem;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 `;
 
 export const ShortMessage = styled.span`

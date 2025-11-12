@@ -203,7 +203,7 @@ export const DatabaseReplicationForm = ({
 
               <Card
                 radius="md"
-                bg="var(--mb-color-bg-light)"
+                bg="var(--mb-color-background-secondary)"
                 p={0}
                 shadow="none"
               >
@@ -272,16 +272,16 @@ export const DatabaseReplicationForm = ({
                             <Text fz="md">
                               <Text
                                 span
-                                c="text-dark"
+                                c="text-primary"
                                 display="inline"
                                 fw="500"
                               >
                                 {table.tableSchema}
                               </Text>
-                              <Text span c="text-medium" display="inline">
+                              <Text span c="text-secondary" display="inline">
                                 .{table.tableName}
                               </Text>{" "}
-                              <Text span c="text-light" display="inline">
+                              <Text span c="text-disabled" display="inline">
                                 {noSyncReason(table)}
                               </Text>
                             </Text>
@@ -295,7 +295,7 @@ export const DatabaseReplicationForm = ({
 
               <Card
                 radius="md"
-                bg="var(--mb-color-bg-light)"
+                bg="var(--mb-color-background-secondary)"
                 p={0}
                 shadow="none"
               >
@@ -367,13 +367,13 @@ export const DatabaseReplicationForm = ({
                             <Text fz="md">
                               <Text
                                 span
-                                c="text-dark"
+                                c="text-primary"
                                 display="inline"
                                 fw="500"
                               >
                                 {table.tableSchema}
                               </Text>
-                              <Text span c="text-medium" display="inline">
+                              <Text span c="text-secondary" display="inline">
                                 .{table.tableName}
                               </Text>
                             </Text>
@@ -387,7 +387,7 @@ export const DatabaseReplicationForm = ({
 
               <Card
                 radius="md"
-                bg="var(--mb-color-bg-light)"
+                bg="var(--mb-color-background-secondary)"
                 p="md"
                 my="sm"
                 shadow="none"
@@ -395,7 +395,7 @@ export const DatabaseReplicationForm = ({
                 <Stack>
                   <Group justify="space-between">
                     <Box ta="left">
-                      <Text c="text-light">{database.name}</Text>
+                      <Text c="text-disabled">{database.name}</Text>
                       {!previewResponseLoading &&
                       typeof previewResponse?.totalEstimatedRowCount ===
                         "number" ? (
@@ -410,7 +410,7 @@ export const DatabaseReplicationForm = ({
                     {previewResponseLoading && <Loader />}
 
                     <Box ta="right">
-                      <Text c="text-light">{t`Available Cloud Storage`}</Text>
+                      <Text c="text-disabled">{t`Available Cloud Storage`}</Text>
                       {!previewResponseLoading &&
                       typeof previewResponse?.freeQuota === "number" ? (
                         <Text fw="bold" w="100%">

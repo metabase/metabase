@@ -481,7 +481,7 @@ export const CommandSuggestion = forwardRef<
           ) : (
             <>
               <Box p="sm" ta="center">
-                <Text size="md" c="text-medium">{t`No results found`}</Text>
+                <Text size="md" c="text-secondary">{t`No results found`}</Text>
               </Box>
               {query && (
                 <>

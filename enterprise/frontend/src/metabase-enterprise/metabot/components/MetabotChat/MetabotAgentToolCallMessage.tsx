@@ -46,7 +46,7 @@ const ToolCallDetailsModal = ({
       title={
         <Flex align="center">
           {t`Tool Call: ${message.name}`}
-          <Badge ml="sm" color="text-dark">
+          <Badge ml="sm" color="text-primary">
             {message.id}
           </Badge>
         </Flex>
@@ -107,7 +107,7 @@ export const AgentToolCallMessage = ({
       <Flex
         p="sm"
         pl="md"
-        bg="bg-light"
+        bg="background-secondary"
         bd="1px solid var(--mb-color-border)"
         bdrs="sm"
         direction="row"
