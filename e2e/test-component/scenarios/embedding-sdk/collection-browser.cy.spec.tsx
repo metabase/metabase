@@ -71,7 +71,7 @@ describe("scenarios > embedding-sdk > collection browser", () => {
       getSdkRoot().findByText("Our analytics").should("exist");
     });
 
-    it("should be able to delete resources (EMB-892)", () => {
+    it("should be able to move resources to trash (EMB-892)", () => {
       mountSdkContent(<CollectionBrowser collectionId="root" />);
 
       const dashboardName = "Orders in a dashboard";
