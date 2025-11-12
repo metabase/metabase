@@ -80,7 +80,7 @@
               (mt/run-mbql-query attempts
                 {:aggregation [[:count]]})))))))
 
-(deftest ^:parallel describe-fields-test
+(deftest describe-fields-test
   (mt/test-driver
     :snowflake
     (is (=? [{:name "id"
@@ -249,7 +249,7 @@
        (fn [^java.sql.Connection conn]
          (is (sql-jdbc.sync/have-select-privilege? :snowflake conn "PUBLIC" "venues")))))))
 
-(deftest ^:parallel can-set-schema-in-additional-options
+(deftest can-set-schema-in-additional-options
   (mt/test-driver :snowflake
     (qp.store/with-metadata-provider (mt/id)
       (let [schema "INFORMATION_SCHEMA"
