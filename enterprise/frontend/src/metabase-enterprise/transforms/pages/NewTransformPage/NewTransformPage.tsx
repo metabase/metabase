@@ -98,11 +98,6 @@ function NewTransformPageBody({
     dispatch(push(Urls.transformList()));
   };
 
-  const handleModalClose = () => {
-    // If modal is closed without saving, reset the incremental checkbox
-    closeModal();
-  };
-
   return (
     <>
       <AdminSettingsLayout fullWidth>
@@ -146,7 +141,7 @@ function NewTransformPageBody({
           source={source}
           suggestedTransform={suggestedTransform}
           onCreate={handleCreate}
-          onClose={handleModalClose}
+          onClose={closeModal}
         />
       )}
       <LeaveRouteConfirmModal

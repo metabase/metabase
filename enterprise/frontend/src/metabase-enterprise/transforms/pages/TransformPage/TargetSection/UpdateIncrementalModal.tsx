@@ -73,12 +73,7 @@ type IncrementalValues = {
   targetStrategy: "append";
 };
 
-function getValidationSchema(transform: Transform) {
-  const isPythonTransform =
-    transform.source.type === "python" &&
-    transform.source["source-tables"] &&
-    Object.keys(transform.source["source-tables"]).length === 1;
-
+function getValidationSchema() {
   return Yup.object({
     incremental: Yup.boolean().required(),
     sourceStrategy: Yup.string().oneOf(["checkpoint"]).required(),
@@ -104,10 +99,7 @@ function UpdateIncrementalForm({
   const [updateTransform] = useUpdateTransformMutation();
   const metadata = useSelector(getMetadata);
   const initialValues = useMemo(() => getInitialValues(transform), [transform]);
-  const validationSchema = useMemo(
-    () => getValidationSchema(transform),
-    [transform],
-  );
+  const validationSchema = useMemo(() => getValidationSchema(), []);
 
   // Convert DatasetQuery to Lib.Query via Question
   const libQuery = useMemo(() => {

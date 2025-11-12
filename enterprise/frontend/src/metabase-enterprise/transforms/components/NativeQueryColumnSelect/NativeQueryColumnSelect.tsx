@@ -56,22 +56,13 @@ export function NativeQueryColumnSelect({
     };
   }, [queryKey, extractColumns, queryRef]);
 
-  if (isLoading) {
-    return (
-      <Stack gap="xs">
-        <Text fw="bold" size="sm">
-          {label}
-        </Text>
-        <Loader size="sm" />
-      </Stack>
-    );
-  }
-
   // If we successfully extracted columns, show a selector
   if (columns && columns.length > 0) {
     return (
       <FormSelect
         name={name}
+        rightSection={isLoading ? <Loader size="sm" /> : null}
+        disabled={isLoading}
         label={label}
         description={description}
         placeholder={placeholder}

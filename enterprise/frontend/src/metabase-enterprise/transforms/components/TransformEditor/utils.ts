@@ -16,11 +16,11 @@ export function getQuery(source: QueryTransformSource, metadata: Metadata) {
 
 const ALLOWED_TRANSFORM_VARIABLES = ["checkpoint"];
 
-export function getValidationResult(query: Lib.Query): QueryValidationResult {
+export function getValidationResult(query: Lib.Query): ValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {
     const tags = Object.values(Lib.templateTags(query));
-    // Allow snippets, cards, and the special transform variables (watermark)
+    // Allow snippets, cards, and the special transform variables ({checkpoint})
     const hasInvalidTags = tags.some(
       (t) =>
         t.type !== "card" &&

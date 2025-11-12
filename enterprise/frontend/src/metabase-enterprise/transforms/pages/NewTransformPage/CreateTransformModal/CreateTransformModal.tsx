@@ -145,7 +145,7 @@ function SourceStrategyFields({
               label={t`Source Filter Field`}
               placeholder={t`Select a field to filter on`}
               description={t`Which field from the source to use in the incremental filter`}
-              query={query}
+              query={query as Lib.Query}
             />
           )}
           {type === "native" && query && (
@@ -154,7 +154,7 @@ function SourceStrategyFields({
               label={t`Source Filter Field`}
               placeholder={t`e.g., id, updated_at`}
               description={t`Column name to use in the incremental filter`}
-              query={query}
+              query={query as DatasetQuery}
             />
           )}
           {type === "python" && "source-tables" in source && (
@@ -235,7 +235,6 @@ function CreateTransformForm({
    * Strategy Fields logic.
    */
   const metadata = useSelector(getMetadata);
-
   // Convert DatasetQuery to Lib.Query via Question
   const libQuery = useMemo(() => {
     if (source.type !== "query") {
@@ -313,7 +312,6 @@ function CreateTransformForm({
 
     onCreate(transform);
   };
-  console.log({ isMultiTablePythonTransform });
 
   return (
     <FormProvider
