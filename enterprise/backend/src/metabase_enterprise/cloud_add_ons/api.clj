@@ -122,7 +122,7 @@
       (premium-features/clear-cache!)
       response-success-empty
       (catch Exception e
-        (log/warnf e "Error adding purchasing add-on '%s'" product-type)
+        (log/warnf e "Error purchasing add-on '%s'" product-type)
         (handle-store-api-error e {400 error-cannot-purchase})))))
 
 (def ^{:arglists '([request respond raise])} routes
