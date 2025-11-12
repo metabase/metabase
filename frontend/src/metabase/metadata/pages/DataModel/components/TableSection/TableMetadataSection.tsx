@@ -6,7 +6,6 @@ import * as Urls from "metabase/lib/urls";
 import {
   DataSourceInput,
   EntityTypeInput,
-  FieldOrderPicker2,
   LayerInput,
   UserInput,
 } from "metabase/metadata/components";
@@ -16,7 +15,6 @@ import type {
   Table,
   TableDataLayer,
   TableDataSource,
-  TableFieldOrder,
   UserId,
 } from "metabase-types/api";
 
@@ -31,7 +29,6 @@ export function TableMetadataSettings({ table }: Props) {
   const [updateTable] = useUpdateTableMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
-  const [updateTableSorting] = useUpdateTableMutation();
   const handleOwnerEmailChange = async (email: string | null) => {
     const { error } = await updateTable({
       id: table.id,
@@ -145,25 +142,6 @@ export function TableMetadataSettings({ table }: Props) {
     }
   };
 
-  const handleFieldOrderTypeChange = async (fieldOrder: TableFieldOrder) => {
-    const { error } = await updateTableSorting({
-      id: table.id,
-      field_order: fieldOrder,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update field order`);
-    } else {
-      sendSuccessToast(t`Field order updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          field_order: table.field_order,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
   return (
     <TableSectionGroup title={t`Attributes`}>
       <div className={S.container}>
@@ -231,31 +209,6 @@ export function TableMetadataSettings({ table }: Props) {
         />
 
         <TransformLink table={table} />
-
-        <Box
-          component="label"
-          fw="bold"
-          size="sm"
-          htmlFor="field-sort-order"
-          style={{
-            display: "grid",
-            gridColumn: 1,
-            gridTemplateColumns: "subgrid",
-          }}
-        >
-          {t`Field sort order`}
-        </Box>
-        <Box
-          style={{
-            gridColumn: 1 / 3,
-          }}
-        >
-          <FieldOrderPicker2
-            id="field-sort-order"
-            value={table.field_order}
-            onChange={handleFieldOrderTypeChange}
-          />
-        </Box>
       </div>
     </TableSectionGroup>
   );

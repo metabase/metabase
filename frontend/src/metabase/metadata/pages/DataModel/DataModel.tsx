@@ -121,12 +121,11 @@ function DataModelContent({ params }: Props) {
     !isEmptyStateShown && field && table && isPreviewOpen;
 
   const showBulkTableEdit =
-    hasSelectedItems && !hasOnlyOneTableSelected && !showFieldPreview;
+    hasSelectedItems && !hasOnlyOneTableSelected;
   const showFieldDetails = field && !showBulkTableEdit && !isEmptyStateShown;
   const showTableDetailsSection =
     metadataTableId &&
     !hasSelectedMoreThanOneTable &&
-    !showFieldPreview &&
     !showBulkTableEdit;
 
   return (
