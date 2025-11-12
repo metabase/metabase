@@ -196,6 +196,18 @@
            task-history
            util}}
 
+  auth-identity
+  {:team "UX West"
+   :api #{metabase.auth-identity.core
+          metabase.auth-identity.init}
+   :uses #{channel
+           events
+           login-history
+           models
+           premium-features
+           request
+           util}}
+
   auth-provider
   {:team "UX West"
    :api  #{metabase.auth-provider.core}
@@ -316,14 +328,13 @@
    :uses #{api
            api-routes
            app-db
+           auth-identity
            classloader
            config
-
            models
            query-processor
            search
            settings
-           users
            util}}
 
   collections
@@ -756,6 +767,7 @@
    :uses #{analytics
            api
            appearance
+           auth-identity
            channel
            config
            dashboards
@@ -1166,20 +1178,18 @@
    :api  #{metabase.session.api
            metabase.session.core
            metabase.session.init
-           metabase.session.models.session ; TODO -- shouldn't be exposed as an API namespace
            metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
            app-db
+           auth-identity
            channel
            config
            events
-           login-history
            request
            settings
            sso
            system
            task
-           users
            util}}
 
   settings
@@ -1212,13 +1222,12 @@
            api
            app-db
            appearance
+           auth-identity
            config
            events
            request
-           session
            settings
            system
-           users
            util}}
 
   sso
@@ -1227,11 +1236,11 @@
            metabase.sso.core
            metabase.sso.init}
    :uses #{api
+           auth-identity
            config
            permissions
            premium-features
            settings
-           users
            util}}
 
   startup
@@ -1376,7 +1385,6 @@
   users
   {:team "UX West"
    :api  #{metabase.users.api
-           metabase.users.core
            metabase.users.init
            metabase.users.models.user
            metabase.users.models.user-parameter-value
@@ -1384,6 +1392,7 @@
    :uses #{analytics
            api
            appearance
+           auth-identity
            batch-processing
            channel
            collections
@@ -1393,7 +1402,6 @@
            permissions
            premium-features
            request
-           session
            settings
            setup
            sso
@@ -1640,6 +1648,11 @@
            users
            util
            enterprise/serialization}}
+
+  enterprise/auth-identity
+  {:team "UX West"
+   :api #{}
+   :uses #{premium-features}}
 
   enterprise/auth-provider
   {:team "UX West"
@@ -2052,6 +2065,7 @@
            metabase-enterprise.sso.settings}
    :uses #{api
            appearance
+           auth-identity
            channel
            embedding
            events
