@@ -15,7 +15,6 @@ import type { PaneHeaderTab } from "./types";
 interface PaneHeaderProps extends Omit<GroupProps, "title"> {
   title: ReactNode;
   icon?: IconName;
-  badge?: ReactNode;
   menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
@@ -25,7 +24,6 @@ export const PaneHeader = ({
   className,
   title,
   icon,
-  badge,
   menu,
   tabs,
   actions,
@@ -45,7 +43,6 @@ export const PaneHeader = ({
         <Group align="center" gap="xs" wrap="nowrap">
           {icon && <FixedSizeIcon name={icon} c="brand" size={20} />}
           {title}
-          {badge}
           {menu}
         </Group>
         {tabs}
