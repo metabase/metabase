@@ -87,7 +87,6 @@ import type {
   PythonTransformSourceDraft,
   Revision,
   SearchModel,
-  SemanticLayerCollectionType,
   Series,
   TableId,
   Timeline,
@@ -1138,14 +1137,10 @@ export type SemanticLayerSectionProps = {
 
 export type SemanticLayerPlugin = {
   isEnabled: boolean;
-  getSemanticLayerCollectionType(
-    collection: Pick<Collection, "type">,
-  ): SemanticLayerCollectionType | undefined;
   SemanticLayerSection: ComponentType<SemanticLayerSectionProps>;
 };
 
 export const PLUGIN_SEMANTIC_LAYER: SemanticLayerPlugin = {
   isEnabled: false,
-  getSemanticLayerCollectionType: () => undefined,
   SemanticLayerSection: PluginPlaceholder,
 };

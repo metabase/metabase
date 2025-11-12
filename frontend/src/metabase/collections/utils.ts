@@ -6,6 +6,7 @@ import {
   type CollectionEssentials,
   type CollectionId,
   type CollectionItem,
+  type SemanticLayerCollectionType,
   isBaseEntityID,
 } from "metabase-types/api";
 
@@ -80,6 +81,17 @@ export function isSyncedCollection(collection: Partial<Collection>): boolean {
 
 export function isExamplesCollection(collection: Collection): boolean {
   return !!collection.is_sample && collection.name === "Examples";
+}
+
+export function getSemanticLayerCollectionType({
+  type,
+}: Partial<Collection>): SemanticLayerCollectionType | undefined {
+  switch (type) {
+    case "semantic-layer":
+    case "semantic-layer-models":
+    case "semantic-layer-metrics":
+      return type;
+  }
 }
 
 // Replace the name for the current user's collection

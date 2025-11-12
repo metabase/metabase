@@ -1,5 +1,6 @@
 import {
   currentUserPersonalCollections,
+  getSemanticLayerCollectionType,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
@@ -8,7 +9,6 @@ import {
   buildCollectionTree,
   getCollectionIcon,
 } from "metabase/entities/collections";
-import { PLUGIN_SEMANTIC_LAYER } from "metabase/plugins";
 import type { Collection, User } from "metabase-types/api";
 
 export function getCollectionTree(
@@ -20,8 +20,7 @@ export function getCollectionTree(
     ...collections.filter(
       (collection) =>
         nonPersonalOrArchivedCollection(collection) &&
-        PLUGIN_SEMANTIC_LAYER.getSemanticLayerCollectionType(collection) ==
-          null,
+        getSemanticLayerCollectionType(collection) == null,
     ),
   ];
 

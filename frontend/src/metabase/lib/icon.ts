@@ -1,5 +1,6 @@
+import { getSemanticLayerCollectionType } from "metabase/collections/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
-import { PLUGIN_COLLECTIONS, PLUGIN_SEMANTIC_LAYER } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/visualizations";
 import type {
@@ -71,7 +72,7 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
     return { name: "person" };
   }
 
-  switch (PLUGIN_SEMANTIC_LAYER.getSemanticLayerCollectionType(item)) {
+  switch (getSemanticLayerCollectionType(item)) {
     case "semantic-layer":
       return { name: "repository" };
     case "semantic-layer-models":
