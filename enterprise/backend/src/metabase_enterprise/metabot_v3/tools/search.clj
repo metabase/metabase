@@ -120,7 +120,10 @@
   ;; Collect unique results from all queries
   (search-fn (str/join " OR " all-queries)))
 
-(defn- join-results-by-rrf [search-fn all-queries limit]
+(defn- join-results-by-rrf
+  "Execute multiple search queries in parallel and combine results using Reciprocal Rank Fusion.
+   Items appearing in multiple result lists are boosted in the final ranking."
+  [search-fn all-queries limit]
   (if (<= (count all-queries) 1)
     (search-fn (first all-queries))
     ;; Create futures for parallel execution
