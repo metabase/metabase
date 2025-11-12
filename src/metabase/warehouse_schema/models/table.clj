@@ -173,6 +173,19 @@
       (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
                       {:status-code 400})))
 
+    ;; Prevent changing data_source to/from metabase-transform
+    (when (contains? changes :data_source)
+      (let [original-data-source (:data_source original-table)
+            new-data-source      (:data_source changes)]
+        (when (and (= original-data-source "metabase-transform")
+                   (not= new-data-source "metabase-transform"))
+          (throw (ex-info "Cannot change data_source from metabase-transform"
+                          {:status-code 400})))
+        (when (and (not= original-data-source "metabase-transform")
+                   (= new-data-source "metabase-transform"))
+          (throw (ex-info "Cannot set data_source to metabase-transform"
+                          {:status-code 400})))))
+
     ;; Sync visibility_type and data_layer fields
     (let [changes (sync-visibility-fields changes original-table)]
       (cond
