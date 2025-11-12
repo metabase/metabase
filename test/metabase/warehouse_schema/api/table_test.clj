@@ -1498,3 +1498,87 @@
                                                                                 :table_ids    [t4]})))
           (testing "Selected FieldValues should be gone"
             (is (= [v3] (get-field-values)))))))))
+
+(deftest ^:parallel update-table-skip-sync-reason-test
+  (testing "PUT /api/table/:id with skip_sync_reason"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table {:db_id (u/the-id db) :name "test_table"}]
+      (testing "User can set skip_sync_reason to 'disabled'"
+        (is (partial= {:skip_sync_reason "disabled"}
+                      (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
+                                            {:skip_sync_reason "disabled"})))
+        (is (= :disabled (:skip_sync_reason (t2/select-one :model/Table :id (:id table))))))
+
+      (testing "User can clear skip_sync_reason by setting to nil"
+        (is (partial= {:skip_sync_reason nil}
+                      (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
+                                            {:skip_sync_reason nil})))
+        (is (nil? (:skip_sync_reason (t2/select-one :model/Table :id (:id table)))))))))
+
+(deftest ^:parallel update-table-skip-sync-reason-table-missing-blocked-test
+  (testing "PUT /api/table/:id cannot set skip_sync_reason to 'table_missing'"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table {:db_id (u/the-id db) :name "test_table"}]
+      (testing "User cannot manually set skip_sync_reason to 'table_missing'"
+        (is (= "Cannot manually set skip_sync_reason to table_missing"
+               (mt/user-http-request :crowberto :put 400 (format "table/%d" (:id table))
+                                     {:skip_sync_reason "table_missing"})))
+        (is (nil? (:skip_sync_reason (t2/select-one :model/Table :id (:id table)))))))))
+
+(deftest ^:parallel bulk-update-skip-sync-reason-test
+  (testing "PUT /api/table/ bulk update with skip_sync_reason"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table-1 {:db_id (u/the-id db) :name "table_1"}
+                   :model/Table table-2 {:db_id (u/the-id db) :name "table_2"}]
+      (testing "User can bulk update skip_sync_reason to 'disabled'"
+        (mt/user-http-request :crowberto :put 200 "table/"
+                              {:ids [(:id table-1) (:id table-2)]
+                               :skip_sync_reason "disabled"})
+        (is (= :disabled (:skip_sync_reason (t2/select-one :model/Table :id (:id table-1)))))
+        (is (= :disabled (:skip_sync_reason (t2/select-one :model/Table :id (:id table-2))))))
+
+      (testing "User can bulk clear skip_sync_reason"
+        (mt/user-http-request :crowberto :put 200 "table/"
+                              {:ids [(:id table-1) (:id table-2)]
+                               :skip_sync_reason nil})
+        (is (nil? (:skip_sync_reason (t2/select-one :model/Table :id (:id table-1)))))
+        (is (nil? (:skip_sync_reason (t2/select-one :model/Table :id (:id table-2)))))))))
+
+(deftest ^:parallel bulk-edit-skip-sync-reason-test
+  (testing "POST /api/table/edit with skip_sync_reason"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table-1 {:db_id (u/the-id db) :name "table_1"}
+                   :model/Table table-2 {:db_id (u/the-id db) :name "table_2"}]
+      (testing "Admin can bulk edit skip_sync_reason"
+        (is (= {}
+               (mt/user-http-request :crowberto :post 200 "table/edit"
+                                     {:table_ids [(:id table-1) (:id table-2)]
+                                      :skip_sync_reason "disabled"})))
+        (is (= :disabled (:skip_sync_reason (t2/select-one :model/Table :id (:id table-1)))))
+        (is (= :disabled (:skip_sync_reason (t2/select-one :model/Table :id (:id table-2))))))
+
+      (testing "Admin can bulk clear skip_sync_reason"
+        (is (= {}
+               (mt/user-http-request :crowberto :post 200 "table/edit"
+                                     {:table_ids [(:id table-1) (:id table-2)]
+                                      :skip_sync_reason nil})))
+        (is (nil? (:skip_sync_reason (t2/select-one :model/Table :id (:id table-1)))))
+        (is (nil? (:skip_sync_reason (t2/select-one :model/Table :id (:id table-2))))))))
+
+  (testing "Non-admins cannot bulk edit"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table {:db_id (u/the-id db) :name "table_1"}]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "table/edit"
+                                   {:table_ids [(:id table)]
+                                    :skip_sync_reason "disabled"}))))))
+
+(deftest model-validation-prevents-table-missing-test
+  (testing "Model validation prevents setting skip_sync_reason to :table_missing"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table {:db_id (u/the-id db) :name "test_table"}]
+      (testing "Direct t2/update! with :table_missing is blocked"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cannot manually set skip_sync_reason to table_missing"
+             (t2/update! :model/Table (:id table) {:skip_sync_reason :table_missing})))))))

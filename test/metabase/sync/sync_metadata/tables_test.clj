@@ -297,3 +297,84 @@
             (let [updated-table (t2/select-one :model/Table (:id existing-table))]
               (is (= :ingested (:data_authority updated-table)))
               (is (:active updated-table)))))))))
+
+(deftest retire-tables-sets-skip-sync-reason-test
+  (testing "retire-tables! should set skip_sync_reason to :table_missing when deactivating tables"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table {:name "test_table" :db_id (u/the-id db) :active true}]
+      (is (nil? (:skip_sync_reason (t2/select-one :model/Table (:id table)))))
+      (#'sync-tables/retire-tables! db #{{:name "test_table" :schema (:schema table)}})
+      (let [retired-table (t2/select-one :model/Table (:id table))]
+        (is (false? (:active retired-table)))
+        (is (= :table_missing (:skip_sync_reason retired-table)))))))
+
+(deftest reactivate-table-clears-table-missing-skip-sync-reason-test
+  (testing "create-or-reactivate-table! should clear skip_sync_reason when it's :table_missing"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table existing-table {:db_id (:id db)
+                                                :name "test_table"
+                                                :active false
+                                                :skip_sync_reason :table_missing}]
+      (is (= :table_missing (:skip_sync_reason (t2/select-one :model/Table (:id existing-table)))))
+      (sync-tables/create-or-reactivate-table! db {:name "test_table" :schema (:schema existing-table)})
+      (let [reactivated-table (t2/select-one :model/Table (:id existing-table))]
+        (is (true? (:active reactivated-table)))
+        (is (nil? (:skip_sync_reason reactivated-table)))))))
+
+(deftest reactivate-table-preserves-disabled-skip-sync-reason-test
+  (testing "create-or-reactivate-table! should preserve skip_sync_reason when it's :disabled"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table existing-table {:db_id (:id db)
+                                                :name "test_table"
+                                                :active false
+                                                :skip_sync_reason :disabled}]
+      (is (= :disabled (:skip_sync_reason (t2/select-one :model/Table (:id existing-table)))))
+      (sync-tables/create-or-reactivate-table! db {:name "test_table" :schema (:schema existing-table)})
+      (let [reactivated-table (t2/select-one :model/Table (:id existing-table))]
+        (is (true? (:active reactivated-table)))
+        ;; :disabled should be preserved - user explicitly disabled sync
+        (is (= :disabled (:skip_sync_reason reactivated-table)))))))
+
+(deftest skip-sync-reason-filters-sync-tables-test
+  (testing "Tables with skip_sync_reason should not be included in sync"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table _normal-table {:db_id (:id db)
+                                               :name "normal_table"
+                                               :active true
+                                               :skip_sync_reason nil}
+                   :model/Table _disabled-table {:db_id (:id db)
+                                                 :name "disabled_table"
+                                                 :active true
+                                                 :skip_sync_reason :disabled}
+                   :model/Table _missing-table {:db_id (:id db)
+                                                :name "missing_table"
+                                                :active false
+                                                :skip_sync_reason :table_missing}]
+      (let [sync-tables (t2/select :model/Table
+                                   :db_id (:id db)
+                                   :active true
+                                   :skip_sync_reason nil)
+            sync-table-names (set (map :name sync-tables))]
+        ;; Only the normal table should be synced
+        (is (= #{"normal_table"} sync-table-names))
+        ;; Disabled and missing tables should not be synced
+        (is (not (contains? sync-table-names "disabled_table")))
+        (is (not (contains? sync-table-names "missing_table")))))))
+
+(deftest cruft-tables-with-nil-skip-sync-reason-are-synced-test
+  (testing "Cruft tables with nil skip_sync_reason should still be synced"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table cruft-table {:db_id (:id db)
+                                             :name "south_migrationhistory"
+                                             :active true
+                                             :visibility_type :cruft
+                                             :skip_sync_reason nil}]
+      (let [sync-tables (t2/select :model/Table
+                                   :db_id (:id db)
+                                   :active true
+                                   :skip_sync_reason nil)
+            sync-table-names (set (map :name sync-tables))]
+        ;; Cruft table with nil skip_sync_reason should be synced
+        (is (contains? sync-table-names "south_migrationhistory"))
+        ;; Verify it's still marked as cruft for UI
+        (is (= :cruft (:visibility_type cruft-table)))))))

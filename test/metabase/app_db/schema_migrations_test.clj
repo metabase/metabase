@@ -2761,3 +2761,103 @@
         (t2/update! (t2/table-name :model/User) user-id {:locale "zh"})
         (migrate!)
         (is (= "zh_CN" (t2/select-one-fn :locale (t2/table-name :model/User) :id user-id)))))))
+
+;;;
+;;; 58+ tests should go below this line please <3
+;;;
+
+(deftest skip-sync-reason-column-migration-test
+  (testing "Migration v58.2025-11-12T07:53:00: skip_sync_reason column is added to metabase_table"
+    (impl/test-migrations "v58.2025-11-12T07:53:00" [migrate!]
+      (let [db-id (t2/insert-returning-pk! (t2/table-name :model/Database)
+                                           {:details   "{}"
+                                            :engine    "h2"
+                                            :is_sample false
+                                            :name      "test-db"
+                                            :created_at :%now
+                                            :updated_at :%now})
+            table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                              {:db_id      db-id
+                                               :name       "test-table"
+                                               :active     true
+                                               :created_at :%now
+                                               :updated_at :%now})]
+        (is (nil? (t2/select-one-fn :skip_sync_reason (t2/table-name :model/Table) :id table-id)))
+        (migrate!)
+        ;; After migration, column should exist and be NULL for active tables
+        (is (nil? (t2/select-one-fn :skip_sync_reason (t2/table-name :model/Table) :id table-id)))))))
+
+(deftest skip-sync-reason-migrate-inactive-tables-test
+  (testing "Migration v58.2025-11-12T07:53:01: inactive tables get skip_sync_reason='table_missing'"
+    (impl/test-migrations ["v58.2025-11-12T07:53:00" "v58.2025-11-12T07:53:01"] [migrate!]
+      (let [db-id (t2/insert-returning-pk! (t2/table-name :model/Database)
+                                           {:details   "{}"
+                                            :engine    "h2"
+                                            :is_sample false
+                                            :name      "test-db"
+                                            :created_at :%now
+                                            :updated_at :%now})
+            active-table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                     {:db_id      db-id
+                                                      :name       "active-table"
+                                                      :active     true
+                                                      :created_at :%now
+                                                      :updated_at :%now})
+            inactive-table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                       {:db_id      db-id
+                                                        :name       "inactive-table"
+                                                        :active     false
+                                                        :created_at :%now
+                                                        :updated_at :%now})]
+        (migrate!)
+        ;; Active table should still have NULL skip_sync_reason
+        (is (nil? (t2/select-one-fn :skip_sync_reason (t2/table-name :model/Table) :id active-table-id)))
+        ;; Inactive table should have 'table_missing'
+        (is (= "table_missing" (t2/select-one-fn :skip_sync_reason (t2/table-name :model/Table) :id inactive-table-id)))))))
+
+(deftest skip-sync-reason-migrate-hidden-tables-test
+  (testing "Migration v58.2025-11-12T07:53:02: user-hidden tables get skip_sync_reason='disabled'"
+    (impl/test-migrations ["v58.2025-11-12T07:53:00" "v58.2025-11-12T07:53:01" "v58.2025-11-12T07:53:02"] [migrate!]
+      (let [db-id (t2/insert-returning-pk! (t2/table-name :model/Database)
+                                           {:details   "{}"
+                                            :engine    "h2"
+                                            :is_sample false
+                                            :name      "test-db"
+                                            :created_at :%now
+                                            :updated_at :%now})
+            visible-table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                      {:db_id           db-id
+                                                       :name            "visible-table"
+                                                       :active          true
+                                                       :visibility_type nil
+                                                       :created_at      :%now
+                                                       :updated_at      :%now})
+            hidden-table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                     {:db_id           db-id
+                                                      :name            "hidden-table"
+                                                      :active          true
+                                                      :visibility_type "hidden"
+                                                      :created_at      :%now
+                                                      :updated_at      :%now})
+            technical-table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                        {:db_id           db-id
+                                                         :name            "technical-table"
+                                                         :active          true
+                                                         :visibility_type "technical"
+                                                         :created_at      :%now
+                                                         :updated_at      :%now})
+            cruft-table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                    {:db_id           db-id
+                                                     :name            "cruft-table"
+                                                     :active          true
+                                                     :visibility_type "cruft"
+                                                     :created_at      :%now
+                                                     :updated_at      :%now})]
+        (migrate!)
+        ;; Visible table should have NULL skip_sync_reason
+        (is (nil? (t2/select-one-fn :skip_sync_reason (t2/table-name :model/Table) :id visible-table-id)))
+        ;; Hidden and technical tables should have 'disabled'
+        (is (= "disabled" (t2/select-one-fn :skip_sync_reason (t2/table-name :model/Table) :id hidden-table-id)))
+        (is (= "disabled" (t2/select-one-fn :skip_sync_reason (t2/table-name :model/Table) :id technical-table-id)))
+        ;; Cruft tables should keep NULL (they should still sync)
+        (is (nil? (t2/select-one-fn :skip_sync_reason (t2/table-name :model/Table) :id cruft-table-id)))))))
