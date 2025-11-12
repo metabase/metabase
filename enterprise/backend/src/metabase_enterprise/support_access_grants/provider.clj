@@ -1,6 +1,6 @@
 (ns metabase-enterprise.support-access-grants.provider
   "Auth provider for support access grants with time-limited passwords.
-  
+
   This provider extends the emailed-secret provider to support time-limited passwords for customer support access.
   When a support access grant is active, password reset tokens created for support access will track the grant's
   end time and automatically set the user's password to expire when the grant expires."
@@ -21,16 +21,16 @@
 
 (mu/defn create-support-access-reset-token-credentials
   "Creates a credentials map for a support access password reset token with grant end time tracking.
-  
+
   Similar to [[emailed-secret/create-reset-token-credentials]], but adds a `:grant_ends_at` timestamp that
   tracks when the support access grant expires. The token itself expires in 48 hours (or as specified), but
   the grant end time is used to set the password expiration when the user logs in.
-  
+
   Parameters:
   - `token`: The plaintext reset token that will be hashed using bcrypt
   - `grant-ends-at`: The instant when the support access grant expires
   - `expires-in-ms`: Optional token TTL in milliseconds (defaults to 48 hours)
-  
+
   Returns a map containing:
   - `:token_hash` - The bcrypt hash of the token
   - `:expires_at` - When the token itself expires
@@ -47,19 +47,19 @@
 
 (mu/defn create-support-access-reset!
   "Creates or updates a support access password reset token for a user and returns the plaintext token.
-  
+
   Generates a new reset token for the user identified by `user-id` and stores it in an [[AuthIdentity]] record with
   provider `support-access-grant`. The token includes the support access grant's end time, which will be used to set
   the user's password expiration when they log in.
-  
+
   Parameters:
   - `user-id`: The ID of the user to create a password reset token for
   - `grant`: The support access grant map containing at minimum `:grant_end_timestamp`
-  
+
   Throws an exception if:
   - The grant is nil
   - The grant has expired
-  
+
   Returns the plaintext token string that should be sent to the user via email."
   [user-id :- ms/PositiveInt
    grant :- [:maybe [:map [:grant_end_timestamp ::schema/timestamp]]]]
@@ -91,12 +91,12 @@
 
 (methodical/defmethod provider/login! :after :provider/support-access-grant
   "Completes the support access password reset process after successful authentication.
-  
+
   After a successful support access authentication, this method:
   - Marks the reset token as consumed in the [[AuthIdentity]]
   - Updates the user's password
   - Sets the user's password_expires_at based on the grant's end time
-  
+
   All operations are performed within a transaction to ensure consistency."
   [_provider {:keys [user password auth-identity] :as result}]
   (when (:success? result)
