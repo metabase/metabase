@@ -4,6 +4,7 @@ import { color } from "metabase/ui/utils/colors";
 import type { RowValue } from "metabase-types/api";
 
 import type { Segment } from "../components/settings/ChartSettingSegmentsEditor";
+import { Box } from "metabase/ui";
 
 export const COMPACT_MAX_WIDTH = 250;
 export const COMPACT_WIDTH_PER_DIGIT = 25;
@@ -56,6 +57,32 @@ export function getColor(_value: RowValue, segments?: Segment[]) {
   if (!segment || !segment.color) {
     return DEFAULT_COLOR;
   }
-
   return segment.color;
+}
+
+export function getTooltipContent(segments?: Segment[]) {
+  if (!segments) {
+    return null;
+  }
+
+  return (
+    <table>
+      <tbody>
+        {segments.map(({ color, min, max, label }: Segment, index) => (
+          <tr key={index}>
+            <td>
+              <Box
+                bg={color}
+                w="0.5rem"
+                h="0.5rem"
+                style={{ borderRadius: "50%", verticalAlign: "middle" }}
+              ></Box>
+            </td>
+            <td>{`${min} - ${max}`}</td>
+            <td>{label}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }

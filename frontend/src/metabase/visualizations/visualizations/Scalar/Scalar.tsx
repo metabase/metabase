@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
+import { Box, Tooltip } from "metabase/ui";
 import {
   ScalarValue,
   ScalarWrapper,
@@ -12,6 +13,7 @@ import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/s
 import {
   compactifyValue,
   getColor,
+  getTooltipContent,
 } from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
@@ -195,6 +197,7 @@ export class Scalar extends Component<
     const segments = settings["scalar.segments"];
 
     const color = getColor(value, segments);
+    const tooltipContent = getTooltipContent(segments);
 
     const { displayValue, fullScalarValue } = compactifyValue(
       value,
@@ -234,17 +237,22 @@ export class Scalar extends Component<
           alwaysShowTooltip={fullScalarValue !== displayValue}
           isClickable={isClickable}
         >
-          <span onClick={handleClick} ref={(scalar) => (this._scalar = scalar)}>
-            <ScalarValue
-              color={color}
-              fontFamily={fontFamily}
-              gridSize={gridSize}
-              height={Math.max(height - PADDING * 2, 0)}
-              totalNumGridCols={totalNumGridCols}
-              value={displayValue as string}
-              width={Math.max(width - PADDING, 0)}
-            />
-          </span>
+          <Tooltip label={tooltipContent} position="bottom" opened>
+            <Box
+              onClick={handleClick}
+              ref={(scalar) => (this._scalar = scalar)}
+            >
+              <ScalarValue
+                color={color}
+                fontFamily={fontFamily}
+                gridSize={gridSize}
+                height={Math.max(height - PADDING * 2, 0)}
+                totalNumGridCols={totalNumGridCols}
+                value={displayValue as string}
+                width={Math.max(width - PADDING, 0)}
+              />
+            </Box>
+          </Tooltip>
         </ScalarValueContainer>
       </ScalarWrapper>
     );
