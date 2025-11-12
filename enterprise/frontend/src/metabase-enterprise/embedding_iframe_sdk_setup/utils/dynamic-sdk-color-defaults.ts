@@ -18,15 +18,11 @@ export const EMBED_FLOW_DERIVED_COLORS_CONFIG: EmbedFlowDerivedDefaultColorConfi
       light: { source: "background", darken: 0.05 },
       dark: { source: "background", darken: 0.2 },
     },
-    "background-light": {
-      light: { source: "background", darken: 0.02 },
-      dark: { source: "background", lighten: 0.6 },
-    },
     "text-secondary": {
       light: { source: "text-primary", lighten: 0.3 },
       dark: { source: "text-primary", darken: 0.3 },
     },
-    "text-tertiary": {
+    "text-disabled": {
       light: { source: "text-primary", lighten: 0.6 },
       dark: { source: "text-primary", darken: 0.6 },
     },

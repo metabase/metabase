@@ -4,7 +4,7 @@
   border-radius: 0.5rem;
   overflow: hidden;
   border: 1px solid var(--mb-color-upsell-secondary);
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
 
   &.Large {
     .MainStack {

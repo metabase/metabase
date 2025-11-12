@@ -82,7 +82,7 @@ export function AddMemberRow({ members, onCancel, onDone }: AddMemberRowProps) {
                   <Pill
                     key={user.id}
                     size="xl"
-                    bg="bg-medium"
+                    bg="background-tertiary"
                     c="text-primary"
                     ms={index > 0 ? "sm" : ""}
                     withRemoveButton

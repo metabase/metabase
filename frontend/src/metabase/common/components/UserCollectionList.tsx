@@ -66,7 +66,7 @@ export const UserCollectionList = () => {
                           <Icon
                             name="person"
                             className={CS.mr1}
-                            c="text-medium"
+                            c="text-secondary"
                             size={18}
                           />
                           <h3>{user.common_name}</h3>

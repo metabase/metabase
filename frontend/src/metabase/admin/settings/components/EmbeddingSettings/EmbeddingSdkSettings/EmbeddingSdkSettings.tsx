@@ -194,7 +194,7 @@ export function EmbeddingSdkSettings() {
           title={t`Cross-Origin Resource Sharing (CORS)`}
           description={
             <Group align="center" gap="sm">
-              <Text c="text-medium" fz="md">
+              <Text c="text-secondary" fz="md">
                 {isEmbeddingAvailable
                   ? t`Enter the origins for the websites or apps where you want to allow SDK embedding.`
                   : jt`Try out the SDK on localhost. To enable other sites, ${(<UpsellSdkLink key="upsell-sdk-link" />)} and enter the origins for the websites or apps where you want to allow SDK and Embedded Analytics JS.`}
@@ -203,12 +203,12 @@ export function EmbeddingSdkSettings() {
               {isEmbeddingAvailable && (
                 <HoverCard position="bottom">
                   <HoverCard.Target>
-                    <Icon name="info" c="text-medium" cursor="pointer" />
+                    <Icon name="info" c="text-secondary" cursor="pointer" />
                   </HoverCard.Target>
 
                   <HoverCard.Dropdown>
                     <Box p="md" w={270} bg="white">
-                      <Text lh="lg" c="text-medium">
+                      <Text lh="lg" c="text-secondary">
                         {corsHintText}
                       </Text>
                     </Box>

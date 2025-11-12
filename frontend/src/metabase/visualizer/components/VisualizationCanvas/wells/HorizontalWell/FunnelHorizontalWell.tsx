@@ -147,7 +147,7 @@ function FunnelWellItem({
   const box = (
     <WellItem
       {...props}
-      bg={isDraggable ? "var(--mb-color-bg-white)" : "transparent"}
+      bg={isDraggable ? "var(--mb-color-background-primary)" : "transparent"}
       style={{
         cursor: isDraggable ? "grab" : "default",
       }}

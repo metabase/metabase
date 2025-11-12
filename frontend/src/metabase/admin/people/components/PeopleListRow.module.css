@@ -1,5 +1,5 @@
 .refreshLink {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
   cursor: pointer;
   padding: 0.5rem;
 

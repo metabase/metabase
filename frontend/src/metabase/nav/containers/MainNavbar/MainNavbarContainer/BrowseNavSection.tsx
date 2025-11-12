@@ -61,7 +61,7 @@ export const BrowseNavSection = ({
           gap="sm"
           onClick={handleToggle}
           component={UnstyledButton}
-          c="text-medium"
+          c="text-secondary"
           className={CS.cursorPointer}
         >
           <SidebarHeading>
@@ -73,7 +73,7 @@ export const BrowseNavSection = ({
           <Tooltip label={t`Add data`}>
             <ActionIcon
               aria-label={t`Add data`}
-              color="var(--mb-color-text-medium)"
+              color="var(--mb-color-text-secondary)"
               onClick={() => {
                 trackAddDataModalOpened("left-nav");
                 onAddDataModalOpen();

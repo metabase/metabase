@@ -169,7 +169,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
                 component={Link}
                 to={Urls.queryBuilderTable(table.id, table.db_id)}
                 variant="subtle"
-                color="text-light"
+                color="text-disabled"
                 size="sm"
                 mr="sm"
                 aria-label={t`Go to this table`}

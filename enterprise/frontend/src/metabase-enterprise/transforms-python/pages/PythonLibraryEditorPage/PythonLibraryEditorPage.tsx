@@ -81,7 +81,13 @@ export function PythonLibraryEditorPage({
   }
 
   return (
-    <Flex h="100%" w="100%" bg="bg-light" gap={0} direction="column">
+    <Flex
+      h="100%"
+      w="100%"
+      bg="background-secondary"
+      gap={0}
+      direction="column"
+    >
       <LibraryEditorHeader
         onSave={handleSave}
         onRevert={handleRevert}

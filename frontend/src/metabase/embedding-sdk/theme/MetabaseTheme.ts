@@ -9,7 +9,7 @@ import type { MetabaseFontFamily } from "./fonts";
 /**
  * Theme configuration for embedded Metabase components.
  */
-export interface MetabaseTheme {
+export interface MetabaseThemeV1 {
   /**
    * Base font size.
    * Supported units are px, em and rem.
@@ -31,7 +31,13 @@ export interface MetabaseTheme {
 
   /** Component theme options */
   components?: DeepPartial<MetabaseComponentTheme>;
+
+  /** Legacy theme does not have the `version` property */
+  version?: never;
 }
+
+// TODO: add MetabaseThemeV2 support as a union type
+export type MetabaseTheme = MetabaseThemeV1;
 
 export interface MetabaseColors {
   /** Primary brand color used for buttons and links */
@@ -50,7 +56,7 @@ export interface MetabaseColors {
   "text-secondary"?: string;
 
   /** Text color on light elements. Should be a darker color for readability. */
-  "text-tertiary"?: string;
+  "text-disabled"?: string;
 
   /** Default background color. */
   background?: string;
@@ -63,9 +69,6 @@ export interface MetabaseColors {
 
   /** Muted background color used for disabled elements, such as disabled buttons and inputs. */
   "background-disabled"?: string;
-
-  /** Light background color used for some controls like a radiogroup. */
-  "background-light"?: string;
 
   /** Color used for borders */
   border?: string;
@@ -92,7 +95,7 @@ export interface MetabaseColors {
   focus?: string;
 
   /** Color used for white text */
-  "text-white"?: string;
+  "text-primary-inverse"?: string;
 
   /** Color used for error icons and borders. Defaults to red. */
   error?: string;

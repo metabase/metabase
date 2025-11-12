@@ -4,6 +4,7 @@ export type { ButtonProps } from "metabase/ui";
 export type {
   ChartColor,
   MetabaseTheme,
+  MetabaseThemeV1,
   MetabaseColors,
   MetabaseComponentTheme,
 } from "metabase/embedding-sdk/theme";

@@ -243,7 +243,11 @@ export const PeopleList = ({
           >
             <Box my="lg">
               <Icon name="search" mb="sm" size={32} />
-              <Text c="text-light" fz="lg" fw={700}>{t`No results found`}</Text>
+              <Text
+                c="text-disabled"
+                fz="lg"
+                fw={700}
+              >{t`No results found`}</Text>
             </Box>
           </Flex>
         )}

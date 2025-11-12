@@ -66,7 +66,7 @@ function _PulsesListSidebar({
             <Button
               leftSection={<Icon name="close" size={16} />}
               variant="subtle"
-              color="text-medium"
+              color="text-secondary"
               mr="-1rem"
               onClick={onCancel}
             />

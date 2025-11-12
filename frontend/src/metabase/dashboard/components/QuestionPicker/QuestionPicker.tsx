@@ -122,7 +122,7 @@ function QuestionPickerInner({
                 const iconColor = PLUGIN_COLLECTIONS.isRegularCollection(
                   collection,
                 )
-                  ? "text-light"
+                  ? "text-disabled"
                   : icon.color;
                 return (
                   <SelectList.Item

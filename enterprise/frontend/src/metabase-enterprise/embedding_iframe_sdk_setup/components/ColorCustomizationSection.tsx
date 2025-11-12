@@ -67,7 +67,8 @@ export const ColorCustomizationSection = ({
           // Use the default from appearance settings. If not set, use the default Metabase color.
           const originalColor =
             applicationColors?.[originalColorKey] ??
-            defaultMetabaseColorsWithoutAlpha[originalColorKey];
+            defaultMetabaseColorsWithoutAlpha[originalColorKey] ??
+            "";
 
           const previewValue = colorPreviewValues[key] ?? theme?.colors?.[key];
 

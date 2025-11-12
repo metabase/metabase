@@ -2,20 +2,20 @@
   cursor: pointer;
   overflow: hidden;
 
-  --external-link-icon-color: var(--mb-color-text-light);
+  --external-link-icon-color: var(--mb-color-text-disabled);
 
   &:hover {
     border-color: var(--mb-color-brand);
-    background-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-background-secondary);
 
     --external-link-icon-color: var(--mb-color-brand);
   }
 }
 
 .Disabled.Container:not([data-css-specificity-hack="🤷"]) {
-  --mb-color-text-primary: var(--mb-color-text-tertiary);
+  --mb-color-text-primary: var(--mb-color-text-disabled);
 
   cursor: not-allowed;
   border-color: var(--mb-color-border);
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
 }

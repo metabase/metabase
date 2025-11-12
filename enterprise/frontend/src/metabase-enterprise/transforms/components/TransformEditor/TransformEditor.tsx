@@ -64,7 +64,7 @@ export function TransformEditor({
       pos="relative"
       w="100%"
       h="100%"
-      bg="bg-white"
+      bg="background-primary"
       data-testid="transform-query-editor"
       gap={0}
     >

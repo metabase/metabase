@@ -3,7 +3,7 @@ import type {
   MetabaseColors,
   MetabaseComponentTheme,
 } from "metabase/embedding-sdk/theme";
-import { colorConfig, colors } from "metabase/lib/colors";
+import { colors } from "metabase/lib/colors";
 import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
 
 import { getEmbeddingChartColors } from "./get-embedding-chart-colors";
@@ -20,16 +20,16 @@ export type MappableSdkColor = Exclude<MetabaseColor, "charts">;
 export type SemanticColorKey =
   | "text-primary"
   | "text-secondary"
-  | "text-tertiary"
+  | "text-disabled"
   | "text-selected"
   | "text-brand"
-  | "text-white"
-  | "background"
+  | "text-primary-inverse"
+  | "background-primary"
   | "background-hover"
   | "background-selected"
   | "background-disabled"
-  | "background-inverse"
-  | "background-light"
+  | "background-primary-inverse"
+  | "background-secondary"
   | "background-brand"
   | "brand-light"
   | "brand-lighter";
@@ -50,20 +50,19 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   border: ["border"],
   filter: ["filter"],
   summarize: ["summarize"],
-  "text-primary": ["text-dark", "text-primary"],
-  "text-secondary": ["text-medium", "text-secondary"],
-  "text-tertiary": ["text-light", "text-tertiary"],
-  background: ["bg-white", "bg-primary", "background"],
-  "background-hover": ["bg-light", "background-hover"],
-  "background-secondary": ["bg-medium", "bg-secondary"],
+  "text-primary": ["text-primary", "text-primary"],
+  "text-secondary": ["text-secondary", "text-secondary"],
+  "text-disabled": ["text-disabled", "text-disabled"],
+  background: ["background-primary", "background-primary"],
+  "background-hover": ["background-secondary", "background-hover"],
+  "background-secondary": ["background-tertiary", "background-secondary"],
   "background-disabled": ["background-disabled"],
-  "background-light": ["background-light"],
   shadow: ["shadow"],
   positive: ["success"],
   negative: ["danger"],
-  "text-white": ["text-white", "white"],
+  "text-primary-inverse": ["text-primary-inverse", "white"],
   error: ["error"],
-  "background-error": ["bg-error"],
+  "background-error": ["background-error"],
   "text-hover": ["text-hover"],
   focus: ["focus"],
 };
@@ -145,12 +144,6 @@ export function setGlobalEmbeddingColors(
 
   Object.entries(combinedThemeColors).forEach(([key, value]) => {
     colors[key as ColorName] = value;
-  });
-
-  // Also set overrides on the color config, this way when we
-  // set up the mantine theme colors, we will grab apropriate app palette colors as well 🥺
-  Object.entries(combinedThemeColors).forEach(([key, value]) => {
-    colorConfig[key as ColorName] = { light: value, dark: value };
   });
 
   /**

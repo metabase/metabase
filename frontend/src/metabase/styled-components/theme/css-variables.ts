@@ -9,28 +9,26 @@ import {
   SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
   SDK_UNCHANGEABLE_COLORS,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import { colorConfig } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { MantineTheme } from "metabase/ui";
 
-const createColorVars = (colorScheme: "light" | "dark"): string =>
-  Object.entries(colorConfig)
-    .map(([name, value]) => `--mb-color-${name}: ${value[colorScheme]};`)
+const createColorVars = (theme: MantineTheme): string => {
+  return Object.entries(theme.colors)
+    .map(([name, colorTuple]) => `--mb-color-${name}: ${colorTuple[0]};`)
     .join("\n");
+};
 
 /**
  * Defines the CSS variables used across Metabase.
  */
 export function getMetabaseCssVariables(theme: MantineTheme) {
-  const colorScheme = theme.other?.colorScheme || "light";
-
   return css`
     :root {
       --mb-default-font-family: "${theme.fontFamily}";
       --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
 
       /* Semantic colors */
-      ${createColorVars(colorScheme)}
+      ${createColorVars(theme)}
       ${getThemeSpecificCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
     }
@@ -41,7 +39,7 @@ export function getMetabaseSdkCssVariables(theme: MantineTheme, font: string) {
   return css`
     :root {
       --mb-default-font-family: ${font};
-      ${createColorVars("light")}
+      ${createColorVars(theme)}
       ${getSdkDesignSystemCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}

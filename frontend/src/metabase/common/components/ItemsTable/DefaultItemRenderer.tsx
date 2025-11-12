@@ -44,7 +44,7 @@ export const DefaultItemRenderer = ({
 
   const icon = item.getIcon();
   if (item.model === "card" || item.archived) {
-    icon.color = color("text-light");
+    icon.color = color("text-disabled");
   }
 
   const handleSelectionToggled = useCallback(() => {

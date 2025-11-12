@@ -165,7 +165,7 @@ export const BranchPicker = ({
             <>
               {filteredBranches.length === 0 && !showCreateOption ? (
                 <Box p="md">
-                  <Text size="sm" c="text-light" ta="center">
+                  <Text size="sm" c="text-disabled" ta="center">
                     {searchValue
                       ? t`No branches found`
                       : t`No branches available`}
@@ -179,7 +179,7 @@ export const BranchPicker = ({
                         <Box px="sm" py="sm">
                           <Text
                             size="xs"
-                            c="text-light"
+                            c="text-disabled"
                             tt="uppercase"
                             fw="bold"
                           >
@@ -216,7 +216,7 @@ export const BranchPicker = ({
                           <Icon name="add" size={16} />
                           <Box>
                             <Text lh="md">{t`Create branch "${searchValue}"`}</Text>
-                            <Text size="xs" c="text-light">
+                            <Text size="xs" c="text-disabled">
                               {t`from ${baseBranch || value}`}
                             </Text>
                           </Box>

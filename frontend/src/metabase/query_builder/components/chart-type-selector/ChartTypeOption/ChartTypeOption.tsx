@@ -65,9 +65,9 @@ export const ChartTypeOption = ({
             top="-0.5rem"
             right="-0.6rem"
             radius="xl"
-            color="text-light"
+            color="text-disabled"
             variant="viewHeader"
-            bg="bg-white"
+            bg="background-primary"
             className={cx(
               ChartTypeOptionS.BorderedButton,
               ChartTypeOptionS.SettingsButton,
@@ -83,7 +83,7 @@ export const ChartTypeOption = ({
           ta="center"
           fw="bold"
           fz="sm"
-          color={isSelected ? "brand" : "text-medium"}
+          color={isSelected ? "brand" : "text-secondary"}
           data-testid="chart-type-option-label"
         >
           {visualization.getUiName()}

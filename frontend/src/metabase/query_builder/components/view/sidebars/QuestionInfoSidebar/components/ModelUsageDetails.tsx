@@ -44,7 +44,7 @@ export function ModelUsageDetails({ model }: ModelUsageDetailsProps) {
     return (
       <Text
         lh={1}
-        color="text-medium"
+        color="text-secondary"
       >{t`This model is not used by any questions yet.`}</Text>
     );
   }
@@ -60,7 +60,7 @@ export function ModelUsageDetails({ model }: ModelUsageDetailsProps) {
             key={card.id}
           >
             <Group gap="sm">
-              <Icon c="text-dark" name={getIcon(card).name as IconName} />
+              <Icon c="text-primary" name={getIcon(card).name as IconName} />
               <Text lh="1.25rem" color="inherit">
                 {card.name}
               </Text>
