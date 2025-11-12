@@ -86,6 +86,10 @@
         (log/warn e "Error fetching addons information")
         (handle-store-api-error e)))))
 
+(def ^:private default-add-on-prepaid-units
+  {"metabase-ai"        1000
+   "metabase-ai-tiered" 1000})
+
 (api.macros/defendpoint :post "/:product-type"
   "Purchase an add-on."
   [{:keys [product-type]} :- [:map
@@ -116,7 +120,7 @@
 
     :else
     (try
-      (let [add-on {:product-type product-type}]
+      (let [add-on {:product-type product-type :prepaid-units (get default-add-on-prepaid-units product-type)}]
         (events/publish-event! :event/cloud-add-on-purchase {:details {:add-on add-on}, :user-id api/*current-user-id*})
         (hm.client/call :change-add-ons :upsert-add-ons [add-on]))
       (premium-features/clear-cache!)
