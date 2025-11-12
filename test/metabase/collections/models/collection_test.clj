@@ -3318,3 +3318,10 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Semantic Layer already exists" (collection/create-semantic-layer-collection!))))
     ;;cleanup created libraries
     (t2/delete! :model/Collection :type collection/semantic-layer-collection-type)))
+
+(deftest is-semantic-layer-collection?
+  (mt/with-temp [:model/Collection {semantic-layer-id :id} {:name "Test Semantic Layer" :type collection/semantic-layer-collection-type}
+                 :model/Collection {regular-collection-id :id} {:name "Regular Collection" :type nil}]
+    (testing "Correctly identifies semantic layer collections"
+      (is (true? (collection/is-semantic-layer-collection? semantic-layer-id)))
+      (is (false? (collection/is-semantic-layer-collection? regular-collection-id))))))

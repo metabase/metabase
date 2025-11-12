@@ -709,18 +709,22 @@
       upgrade-card-schema-to-latest))
 
 (t2/define-before-insert :model/Card
-  [{:keys [type] :as card}]
-  (collection/check-allowed-content (name (if (= :model type) :dataset type)) (:collection_id card))
-  (-> card
-      (assoc :metabase_version config/mb-version-string
-             :card_schema current-schema-version)
-      queries.schema/normalize-card
+  [card]
+  (u/prog1
+    (-> card
+        (assoc :metabase_version config/mb-version-string
+               :card_schema current-schema-version)
+        queries.schema/normalize-card
       ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
       ;; since we're removing `:ident`s; we can probably remove this now.
-      (u/assoc-default :entity_id (u/generate-nano-id))
-      card.metadata/populate-result-metadata
-      pre-insert
-      populate-query-fields))
+        (u/assoc-default :entity_id (u/generate-nano-id))
+        card.metadata/populate-result-metadata
+        pre-insert
+        populate-query-fields)
+    (collection/check-allowed-content (name (cond
+                                              (nil? (:type <>)) :question
+                                              (= :model (:type <>)) :dataset
+                                              :else (:type <>))) (:collection_id <>))))
 
 (t2/define-after-insert :model/Card
   [card]
