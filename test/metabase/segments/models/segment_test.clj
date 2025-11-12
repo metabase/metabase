@@ -91,11 +91,7 @@
 (deftest definition-description-missing-definition-test
   (testing "Do not hydrate definition description if definition is nil"
     (mt/with-temp [:model/Segment {id :id} {:name "Segment"
-                                            :table_id (mt/id :users)
-                                            :definition {:filter 1000}}]
-      (t2/query-one {:update :segment
-                     :set {:definition "{}"}
-                     :where [:= :id id]})
+                                            :table_id (mt/id :users)}]
       (is (nil? (-> (t2/select-one :model/Segment id)
                     (t2/hydrate :definition_description)
                     :definition_description))))))
