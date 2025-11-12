@@ -59,4 +59,7 @@
 ;; Import emailed-secret provider functions
 (p/import-vars
  [emailed-secret
-  create-password-reset!])
+  create-password-reset!
+  create-reset-token-metadata
+  generate-reset-token
+  mark-token-consumed])

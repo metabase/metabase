@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.support-access-grants.core :as grants]
+   [metabase-enterprise.support-access-grants.settings :as sag.settings]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -234,3 +235,45 @@
         (is (some? current))
         (is (= "SUPPORT-77349" (:ticket_number current))
             "Returns most recent grant when multiple active grants exist")))))
+
+(deftest create-grant-creates-token-for-support-user-test
+  (testing "create-grant! creates a token when support user exists"
+    (let [support-email "support@example.com"]
+      (mt/with-temp [:model/User {creator-id :id} {}
+                     :model/User {support-user-id :id} {:email support-email}]
+        (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity]
+          (mt/with-temp-env-var-value! [mb-support-access-grant-email support-email]
+            (with-redefs [sag.settings/support-access-grant-email (constantly support-email)]
+              (let [grant (grants/create-grant! creator-id 240 "SUPPORT-TOKEN-1" "test notes")]
+                (is (some? (:token grant)) "Token should be created")
+                (is (string? (:token grant)) "Token should be a string")
+                (is (re-matches (re-pattern (str support-user-id "_.+")) (:token grant))
+                    "Token should start with support user ID")
+                (let [auth-identity (t2/select-one :model/AuthIdentity
+                                                   :user_id support-user-id
+                                                   :provider "support-access-grant")]
+                  (is (some? auth-identity) "AuthIdentity should be created for support user")
+                  (is (= "support-access-grant" (:provider auth-identity))))))))))))
+
+(deftest create-grant-creates-support-user-if-not-exists-test
+  (testing "create-grant! creates a support user if one doesn't exist"
+    (let [support-email "new-support@example.com"
+          support-first-name "Support"
+          support-last-name "User"]
+      (mt/with-temp [:model/User {creator-id :id} {}]
+        (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
+          (with-redefs [sag.settings/support-access-grant-email (constantly support-email)
+                        sag.settings/support-access-grant-first-name (constantly support-first-name)
+                        sag.settings/support-access-grant-last-name (constantly support-last-name)]
+            (let [grant (grants/create-grant! creator-id 240 "SUPPORT-CREATE-USER" "test notes")
+                  created-user (t2/select-one :model/User :email support-email)]
+              (is (some? created-user) "Support user should be created")
+              (is (= support-email (:email created-user)))
+              (is (= support-first-name (:first_name created-user)))
+              (is (= support-last-name (:last_name created-user)))
+              (is (some? (:token grant)) "Token should be created for the new support user")
+              (is (string? (:token grant)))
+              (let [auth-identity (t2/select-one :model/AuthIdentity
+                                                 :user_id (:id created-user)
+                                                 :provider "support-access-grant")]
+                (is (some? auth-identity) "AuthIdentity should be created for new support user")))))))))

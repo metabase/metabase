@@ -2,6 +2,8 @@
   "Core business logic for support access grant management."
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.support-access-grants.provider :as sag.provider]
+   [metabase-enterprise.support-access-grants.settings :as sag.settings]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
@@ -22,7 +24,7 @@
   - ticket-number: The support ticket number (string)
   - notes: Additional information (string)
 
-  Returns the created grant record.
+  Returns the created grant record with an optional :token field if a support user was found or created.
 
   Throws if an active grant already exists."
   [user-id grant-duration-minutes ticket-number notes]
@@ -35,9 +37,19 @@
                       :ticket_number ticket-number
                       :notes notes
                       :grant_start_timestamp now
-                      :grant_end_timestamp grant-end}]
-    (-> (t2/insert-returning-instance! :model/SupportAccessGrantLog grant-record)
-        (t2/hydrate :user_name))))
+                      :grant_end_timestamp grant-end}
+        grant (-> (t2/insert-returning-instance! :model/SupportAccessGrantLog grant-record)
+                  (t2/hydrate :user_name))
+        support-email (sag.settings/support-access-grant-email)
+        support-user (or (t2/select-one :model/User :email support-email)
+                         (t2/insert-returning-instance! :model/User
+                                                        {:email support-email
+                                                         :first_name (sag.settings/support-access-grant-first-name)
+                                                         :last_name (sag.settings/support-access-grant-last-name)
+                                                         :password (str (random-uuid))}))
+        token (sag.provider/create-support-access-reset! (:id support-user) grant)]
+    (cond-> grant
+      token (assoc :token token))))
 
 (defn revoke-grant!
   "Revoke an existing support access grant.
