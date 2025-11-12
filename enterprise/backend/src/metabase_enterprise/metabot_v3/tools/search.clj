@@ -118,7 +118,8 @@
 
 (defn- join-results-by-or [search-fn all-queries]
   ;; Collect unique results from all queries
-  (search-fn (str/join " OR " all-queries)))
+  (when (seq all-queries)
+    (search-fn (str/join " OR " all-queries))))
 
 (defn- join-results-by-rrf [search-fn all-queries limit]
   (if (<= (count all-queries) 1)
