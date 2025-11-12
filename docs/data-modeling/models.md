@@ -121,16 +121,19 @@ You can edit a model's query by clicking on the down arrow next to the model's n
 
 ### Checking for breaking changes
 
-> {% include plans-blockquote.html feature="Checking for breaking changes" %}
+{% include plans-blockquote.html feature="Checking for breaking changes" %}
 
-When you save changes to a model, Metabase will try to detect whether your changes would break any other entities that depend on that model. For example, if you remove a column from the model, but other questions based on that model rely on that column, Metabase will warn you that those downstream questions will break. 
+When you save changes to a model, Metabase will try to detect whether your changes would break any other entities that depend on that model. For example, if you remove a column from the model, but other questions based on that model rely on that column, Metabase will warn you that those downstream questions will break.
+
+![Check dependencies](./images/check-dependencies.png)
+
+Currently, Metabase will look for broken column references. This means that if you change the column name, Metabase will likely detect that it breaks downstream entities. But if you change the column _type_, or how the column is calculated in a way that affects downstream entities, Metabase will not be able to detect that.
 
 ## Model list view
 
 ![Viewing a model as a list](./images/model-list.png)
 
 List view helps you explore records one by one instead of sorting through big tables. You can customize the layout to highlight the most important fields.
-
 
 To view a model as a list:
 
