@@ -15,11 +15,12 @@ import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { MetabaseReduxProvider, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { MetabotProvider } from "metabase-enterprise/metabot/context";
+import { initializePlugins } from "sdk-ee-plugins";
 
 import { SCOPED_CSS_RESET } from "../../private/PublicComponentStylesWrapper";
 import { SdkFontsGlobalStyles } from "../../private/SdkGlobalFontsStyles";
@@ -30,6 +31,24 @@ type ComponentProviderInternalProps = ComponentProviderProps & {
   reduxStore: SdkStore;
   isLocalHost?: boolean;
 };
+
+let hasInitializedPlugins = false;
+
+function useInitPlugins() {
+  const tokenFeatures = useSelector(
+    (state) => state.settings.values["token-features"],
+  );
+
+  useEffect(() => {
+    if (hasInitializedPlugins || !tokenFeatures) {
+      return;
+    }
+
+    hasInitializedPlugins = true;
+
+    initializePlugins();
+  }, [tokenFeatures]);
+}
 
 export const ComponentProviderInternal = ({
   children,
@@ -51,6 +70,8 @@ export const ComponentProviderInternal = ({
   // - Storybook stories, where we don't have the MetabaseProvider
   // - Unit tests
   useInitDataInternal({ reduxStore, authConfig, isLocalHost });
+
+  useInitPlugins();
 
   useEffect(() => {
     if (fontFamily) {
