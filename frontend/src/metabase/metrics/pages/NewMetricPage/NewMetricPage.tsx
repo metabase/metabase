@@ -1,9 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { Location } from "history";
 import { useMemo, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import {
   PaneHeader,
@@ -26,11 +28,16 @@ import { getValidationResult } from "../../utils";
 import { CreateMetricModal } from "./CreateMetricModal";
 import { getInitialQuery, getQuery } from "./utils";
 
+type NewMetricPageQuery = {
+  collectionId?: string;
+};
+
 type NewMetricPageProps = {
+  location: Location<NewMetricPageQuery>;
   route: Route;
 };
 
-export function NewMetricPage({ route }: NewMetricPageProps) {
+export function NewMetricPage({ location, route }: NewMetricPageProps) {
   const metadata = useSelector(getMetadata);
   const [name, setName] = useState(t`New metric`);
   const [datasetQuery, setDatasetQuery] = useState(() =>
@@ -39,6 +46,10 @@ export function NewMetricPage({ route }: NewMetricPageProps) {
   const [uiState, setUiState] = useState(getInitialUiState);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
+  const initialCollectionId = Urls.extractCollectionId(
+    location.query.collectionId,
+  );
+  const defaultCollectionId = useGetDefaultCollectionId();
   const dispatch = useDispatch();
 
   const query = useMemo(
@@ -55,6 +66,15 @@ export function NewMetricPage({ route }: NewMetricPageProps) {
   }, [datasetQuery, uiState.lastRunResult, uiState.lastRunQuery]);
 
   const validationResult = useMemo(() => getValidationResult(query), [query]);
+
+  const defaultValues = useMemo(
+    () => ({
+      name,
+      result_metadata: resultMetadata,
+      collection_id: initialCollectionId ?? defaultCollectionId,
+    }),
+    [name, resultMetadata, initialCollectionId, defaultCollectionId],
+  );
 
   const handleCreate = (card: Card) => {
     dispatch(push(Urls.dataStudioMetric(card.id)));
@@ -107,7 +127,7 @@ export function NewMetricPage({ route }: NewMetricPageProps) {
       {isModalOpened && (
         <CreateMetricModal
           query={query}
-          defaultValues={{ name, result_metadata: resultMetadata }}
+          defaultValues={defaultValues}
           onCreate={handleCreate}
           onClose={closeModal}
         />
