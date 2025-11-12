@@ -51,6 +51,11 @@
   "Schema for a valid table field ordering."
   (into [:enum] (map name table/field-orderings)))
 
+(def ^:private SkipSyncReason
+  "Schema for a valid skip_sync_reason value that can be set via API.
+   Only 'disabled' can be set by users; 'table_missing' is system-managed only."
+  [:enum "disabled"])
+
 (mr/def ::data-authority-write
   "Schema for writing a valid table data authority."
   (into [:enum] (map name table/writable-data-authority-types)))

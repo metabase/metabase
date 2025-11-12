@@ -74,6 +74,13 @@
   `:unknown`       - fallback for an unexpected value from the database, e.g. from a newer version we rolled back from."
   (conj writable-data-authority-types :unknown))
 
+(def skip-sync-reason-types
+  "Valid values for `Table.skip_sync_reason`.
+  nil              - sync normally;
+  :table_missing   - table not found in source database;
+  :disabled        - user explicitly disabled sync."
+  #{:table_missing :disabled})
+
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Table [_model] :metabase_table)
@@ -105,12 +112,13 @@
           (some-> value name))})
 
 (t2/deftransforms :model/Table
-  {:entity_type    mi/transform-keyword
-   :visibility_type mi/transform-keyword
-   :data_layer     mi/transform-keyword
-   :field_order    mi/transform-keyword
+  {:entity_type      mi/transform-keyword
+   :visibility_type  mi/transform-keyword
+   :data_layer       mi/transform-keyword
+   :field_order      mi/transform-keyword
+   :skip_sync_reason mi/transform-keyword
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
-   :data_authority transform-data-authority})
+   :data_authority   transform-data-authority})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :table]
   [_original-model _k]
@@ -171,6 +179,12 @@
     (when (and (not= (keyword (:data_authority original-table :unconfigured)) :unconfigured)
                (= (keyword (:data_authority changes)) :unconfigured))
       (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
+                      {:status-code 400})))
+
+    ;; Prevent API users from setting skip_sync_reason to table_missing
+    (when (and (contains? changes :skip_sync_reason)
+               (= (keyword (:skip_sync_reason changes)) :table_missing))
+      (throw (ex-info "Cannot manually set skip_sync_reason to table_missing"
                       {:status-code 400})))
 
     ;; Sync visibility_type and data_layer fields
@@ -459,7 +473,8 @@
                :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
                :data_source :data_update_frequency
                :owner_email :owner_user_id
-               :data_layer]
+               :data_layer
+               :skip_sync_reason]
    :skip      [:estimated_row_count :view_count]
    :transform {:created_at (serdes/date)
                :archived_at (serdes/date)

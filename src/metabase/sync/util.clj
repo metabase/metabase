@@ -332,8 +332,8 @@
     (t2/update! :model/Table (u/the-id table) {:initial_sync_status "complete"})))
 
 (def ^:private sync-tables-kv-args
-  {:active          true
-   :visibility_type nil})
+  {:active           true
+   :skip_sync_reason nil})
 
 (def ^:dynamic *batch-size*
   "Size of table update partition."

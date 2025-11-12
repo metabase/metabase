@@ -165,6 +165,10 @@
                                              true
                                              (assoc :active true)
 
+                                             ;; Clear table_missing, preserve user's disabled choice
+                                             (= (:skip_sync_reason table) :table_missing)
+                                             (assoc :skip_sync_reason nil)
+
                                              (:is_sample database)
                                              (assoc :data_authority :ingested
                                                     :data_source    "ingested"))))
@@ -197,7 +201,8 @@
                               :schema schema
                               :name   table-name
                               :active true}
-                {:active false})))
+                {:active           false
+                 :skip_sync_reason :table_missing})))
 
 (def ^:private keys-to-update
   [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable])
@@ -263,7 +268,7 @@
   (set (apply
         t2/select
         [:model/Table :id :name :schema :description :database_require_filter :estimated_row_count
-         :visibility_type :initial_sync_status]
+         :visibility_type :initial_sync_status :skip_sync_reason]
         :db_id (u/the-id database)
         filters)))
 

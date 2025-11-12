@@ -38,6 +38,47 @@ databaseChangeLog:
             tableName: report_card
             columnName: embedding_type
 
+  - changeSet:
+      id: v58.2025-11-12T07:53:00
+      author: qnkhuat
+      comment: Add skip_sync_reason column to metabase_table to separate sync control from visibility
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: skip_sync_reason
+                  type: varchar(20)
+                  remarks: Controls whether table should be synced. NULL=sync normally, table_missing=not found in source, disabled=user disabled sync
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: skip_sync_reason
+
+  - changeSet:
+      id: v58.2025-11-12T07:53:01
+      author: qnkhuat
+      comment: Migrate inactive tables to use skip_sync_reason=table_missing
+      changes:
+        - sql:
+            sql: UPDATE metabase_table SET skip_sync_reason = 'table_missing' WHERE active = false
+      rollback:
+        - sql:
+            sql: UPDATE metabase_table SET skip_sync_reason = NULL WHERE skip_sync_reason = 'table_missing'
+
+  - changeSet:
+      id: v58.2025-11-12T07:53:02
+      author: qnkhuat
+      comment: Migrate user-hidden tables to use skip_sync_reason=disabled
+      changes:
+        - sql:
+            sql: UPDATE metabase_table SET skip_sync_reason = 'disabled' WHERE visibility_type IN ('hidden', 'technical') AND active = true
+      rollback:
+        - sql:
+            sql: UPDATE metabase_table SET skip_sync_reason = NULL WHERE skip_sync_reason = 'disabled'
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
