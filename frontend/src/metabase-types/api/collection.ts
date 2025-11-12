@@ -169,6 +169,7 @@ export interface CollectionListQuery {
 export type getCollectionRequest = {
   id: CollectionId;
   namespace?: "snippets";
+  ignore_error?: boolean;
 };
 
 export type ListCollectionItemsSortColumn =

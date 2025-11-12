@@ -50,7 +50,7 @@ export function ArchiveButton({ item }: ArchiveButtonProps) {
           onClick={handleArchive}
           className={S.archiveMenuItem}
         >
-          {t`Delete`}
+          {t`Move to trash`}
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>

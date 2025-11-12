@@ -24,7 +24,6 @@ import "metabase/plugins/builtin";
 
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
-import "ee-plugins";
 
 // Set nonce for mantine v6 deps
 import "metabase/lib/csp";
@@ -35,6 +34,7 @@ import { createRoot } from "react-dom/client";
 import { Router, useRouterHistory } from "react-router";
 import { syncHistoryWithStore } from "react-router-redux";
 
+import { initializePlugins } from "ee-plugins";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import { createTracker } from "metabase/lib/analytics";
 import api from "metabase/lib/api";
@@ -61,6 +61,7 @@ const browserHistory = useRouterHistory(createHistory)({
   basename: BASENAME,
 });
 
+initializePlugins();
 function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
   const routes = getRoutes(store);
