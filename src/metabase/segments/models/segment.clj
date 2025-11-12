@@ -24,11 +24,6 @@
 (methodical/defmethod t2/table-name :model/Segment [_model] :segment)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
 
-(defn- mbql5-query?
-  "Check if definition is MBQL 5 full query."
-  [definition]
-  (= :mbql-version/mbql5 (lib/normalized-mbql-version definition)))
-
 (defn- validate-mbql5-definition
   "Validate that an MBQL 5 segment definition has the correct structure."
   [definition]
@@ -38,13 +33,17 @@
 
 (defn- normalize-segment-definition
   "Normalize segment definition.
-  Accepts both MBQL 4 fragments (for backward compat during migration) and MBQL 5 full queries.
-  MBQL 4 fragments are converted to MBQL 5 full queries.
+  Accepts:
+  - MBQL 5 full queries (passed through)
+  - MBQL 4 full queries (from serialization - converted to MBQL 5)
+  - MBQL 4 fragments (for backward compat during migration - wrapped then converted)
   Empty seqs are normalized to `{}`."
   [definition table-id database-id]
   (if (seq definition)
-    (u/prog1 (-> (if (mbql5-query? definition)
+    (u/prog1 (-> (case (lib/normalized-mbql-version definition)
+                   (:mbql-version/mbql5 :mbql-version/legacy)
                    definition
+                   ;; default MBQL4 fragment
                    (let [definition
                          (if (:aggregation definition)
                            (do
@@ -145,7 +144,7 @@
 
 (defmethod serdes/dependencies "Segment" [{:keys [definition table_id]}]
   (set/union #{(serdes/table->path table_id)}
-             (-> definition serdes/export-mbql serdes/mbql-deps)))
+             (serdes/mbql-deps definition)))
 
 (defmethod serdes/storage-path "Segment" [segment _ctx]
   (let [{:keys [id label]} (-> segment serdes/path last)]
@@ -171,7 +170,7 @@
            :collection-id false
            :creator-id false
            :database-id :table.db_id
-                  ;; should probably change this, but will break legacy search tests
+           ;; should probably change this, but will break legacy search tests
            :created-at false
            :updated-at true}
    :search-terms [:name :description]
