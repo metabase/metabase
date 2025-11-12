@@ -20,7 +20,7 @@ interface EntitySearchSectionProps {
   onFooterClick: () => void;
   query: string;
   searchResults: SearchResult[];
-  modal: "question-picker" | "new-question-type" | null;
+  modal: "question-picker" | null;
   onModalSelect: (item: QuestionPickerValueItem) => void;
   onModalClose: () => void;
   onItemHover: (index: number) => void;

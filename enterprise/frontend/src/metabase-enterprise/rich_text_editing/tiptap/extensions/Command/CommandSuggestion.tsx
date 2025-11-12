@@ -31,6 +31,7 @@ import {
   SuggestionPaper,
 } from "metabase-enterprise/documents/components/Editor/shared/SuggestionPaper";
 import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
+import { getBrowseAllItemIndex } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 import type { SearchResult } from "metabase-types/api";
 
 import { EntitySearchSection } from "../shared/EntitySearchSection";
@@ -141,7 +142,7 @@ export const CommandSuggestion = forwardRef<
   });
 
   const canCreateNewQuestion =
-    createQuestionsMenuItems.length > 0 && viewMode === "embedQuestion";
+    createQuestionsMenuItems.length > 0 && viewMode !== "linkTo";
 
   const onSelectLinkEntity = useCallback(
     (item: { id: number | string; model: string }) => {
@@ -464,16 +465,34 @@ export const CommandSuggestion = forwardRef<
               {query && (
                 <>
                   <Divider my="sm" mx="sm" />
-                  <CreateNewQuestionFooter
-                    isSelected={selectedIndex === currentItems.length}
-                    onClick={() => {
-                      // Switch to embed mode so selected questions get embedded
-                      setViewMode("newQuestionType");
-                      onTriggerCreateNewQuestion();
-                    }}
-                  />
+                  {canCreateNewQuestion && (
+                    <CreateNewQuestionFooter
+                      isSelected={selectedIndex === 0}
+                      onMouseEnter={() => setSelectedIndex(0)}
+                      onClick={() => {
+                        // Switch to embed mode so selected questions get embedded
+                        setViewMode("newQuestionType");
+                        onTriggerCreateNewQuestion();
+                      }}
+                    />
+                  )}
+
                   <SearchResultsFooter
-                    isSelected={selectedIndex === currentItems.length + 1}
+                    isSelected={
+                      selectedIndex ===
+                      getBrowseAllItemIndex(
+                        searchMenuItems.length,
+                        canCreateNewQuestion,
+                      )
+                    }
+                    onMouseEnter={() =>
+                      setSelectedIndex(
+                        getBrowseAllItemIndex(
+                          searchMenuItems.length,
+                          canCreateNewQuestion,
+                        ),
+                      )
+                    }
                     onClick={() => {
                       // Switch to embed mode so selected questions get embedded
                       setViewMode("embedQuestion");
