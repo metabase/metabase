@@ -13,6 +13,10 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Generate version.properties
