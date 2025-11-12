@@ -7,7 +7,10 @@ import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { isMac } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
-import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import {
+  DataReference,
+  type DataReferenceStackItem,
+} from "metabase/query_builder/components/dataref/DataReference";
 import { createRawSeries } from "metabase/query_builder/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Loader, Modal, Stack, Text } from "metabase/ui";
@@ -23,11 +26,6 @@ import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { Card, DatabaseId, Dataset, RawSeries } from "metabase-types/api";
 
 import S from "./NativeQueryModal.module.css";
-
-type DataReferenceStackItem = {
-  type: string;
-  item: unknown;
-};
 
 interface NativeQueryModalProps {
   card: Card;
