@@ -45,4 +45,7 @@
     "/application/monitoring/"
 
     :subscription
-    "/application/subscription/"))
+    "/application/subscription/"
+
+    :public-link
+    "/application/public_link/"))

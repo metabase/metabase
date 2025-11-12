@@ -30,6 +30,15 @@ export const canAccessSettings = createSelector(
   (isAdmin, canAccessSettings) => isAdmin || canAccessSettings,
 );
 
+export const canCreatePublicLink = createSelector(
+  [
+    getUserIsAdmin,
+    (state) =>
+      PLUGIN_APPLICATION_PERMISSIONS.selectors.canCreatePublicLink(state),
+  ],
+  (isAdmin, canCreatePublicLink) => isAdmin || canCreatePublicLink,
+);
+
 export const getUserAttributes = createSelector(
   [getUser],
   (user) => user?.login_attributes || {},

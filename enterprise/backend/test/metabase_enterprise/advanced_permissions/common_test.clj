@@ -32,7 +32,8 @@
                   :can_access_monitoring   true
                   :can_access_data_model   true
                   :is_group_manager        false
-                  :can_access_db_details   true}
+                  :can_access_db_details   true
+                  :can_create_public_link  true}
                  (user-permissions :crowberto))))
 
         (testing "non-admin users should only have subscriptions enabled by default"
@@ -41,7 +42,8 @@
                   :can_access_monitoring   false
                   :can_access_data_model   false
                   :is_group_manager        false
-                  :can_access_db_details   false}
+                  :can_access_db_details   false
+                  :can_create_public_link  false}
                  (user-permissions :rasta))))
 
         (testing "can_access_data_model is true if a user has any data model perms"

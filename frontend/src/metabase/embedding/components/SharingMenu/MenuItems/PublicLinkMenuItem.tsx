@@ -4,7 +4,7 @@ import Link from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { canCreatePublicLink as selectCanCreatePublicLink } from "metabase/selectors/user";
 import { Button, Icon, Menu } from "metabase/ui";
 
 export function PublicLinkMenuItem({
@@ -15,9 +15,9 @@ export function PublicLinkMenuItem({
   onClick: () => void;
 }) {
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
-  const isAdmin = useSelector(getUserIsAdmin);
+  const canCreatePublicLink = useSelector(selectCanCreatePublicLink);
 
-  if (isAdmin) {
+  if (canCreatePublicLink) {
     return (
       <Menu.Item
         data-testid="embed-menu-public-link-item"
