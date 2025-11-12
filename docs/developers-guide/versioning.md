@@ -4,9 +4,7 @@ title: Metabase release versioning
 
 # Metabase release versioning
 
-We follow our own flavor of the [semantic versioning guidelines](https://semver.org/) in order to distinguish the [open-source version](https://www.metabase.com/product/starter) of Metabase from the paid, source-available version of Metabase (available in the [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans).
-
-Semantic versioning typically follows the format: `Major.Minor.Point.Patch`. For example, version `3.15.2` or `3.15.2.1`.
+We follow our own flavor of the [semantic versioning guidelines](https://semver.org/). Standard semantic versioning uses `Major.Minor.Patch` format, but we've adapted it to distinguish the [open-source version](https://www.metabase.com/product/starter) of Metabase from the paid, source-available version of Metabase (available in the [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans).
 
 With Metabase releases, we prefix the version with a `0` or `1`, depending on the license.
 
@@ -39,7 +37,11 @@ Sometimes called a minor release, we issue point releases when we add bug fixes 
 
 ### Hotfix
 
-Sometimes called a patch release, we issue these hotfix releases to fix security issues in a timely manner, or to undo a horrific regression.
+Sometimes called a patch release, we issue these hotfix releases to fix security issues as soon as we can.
+
+You'll see releases ending as `.x` in [releases on GitHub](https://github.com/metabase/metabase/releases). These are placeholder links. The actual link will go to the latest hotfix. For example:
+
+- `metabase/metabase:v0.57.2.x` will automatically pull the latest patch version in for the latest minor version (like `v0.57.2.1`, `v0.57.2.2`, etc.).
 
 ## Other release terms
 
