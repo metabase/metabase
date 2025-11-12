@@ -189,6 +189,7 @@
                       (log/infof "[METABOT-SEARCH] Query '%s' returned entity types: %s" query result-models)
                       data))
         fused-results (if join-with-or?
+                        ;; TODO oh crap, only appdb supports this format - will need to make this a multimethod
                         (join-results-by-or search-fn all-queries)
                         (join-results-by-rrf search-fn all-queries limit))]
     (->> fused-results
