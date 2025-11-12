@@ -10,9 +10,8 @@ import {
 } from "metabase/forms";
 import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
+import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
 import type { Transform } from "metabase-types/api";
-
-import { IncrementalTransformSettings } from "../../NewTransformPage/CreateTransformModal/IncrementalTransformSettings";
 
 type UpdateIncrementalModalProps = {
   transform: Transform;

@@ -21,6 +21,7 @@ import * as Errors from "metabase/lib/errors";
 import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { trackTransformCreated } from "metabase-enterprise/transforms/analytics";
+import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
 import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
 import type {
   CreateTransformRequest,
@@ -28,8 +29,6 @@ import type {
   Transform,
   TransformSource,
 } from "metabase-types/api";
-
-import { IncrementalTransformSettings } from "./IncrementalTransformSettings";
 
 function getValidationSchema() {
   return Yup.object({

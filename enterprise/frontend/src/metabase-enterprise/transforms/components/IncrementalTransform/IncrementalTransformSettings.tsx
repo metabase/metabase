@@ -10,17 +10,16 @@ import { useCheckQueryComplexityMutation } from "metabase-enterprise/api";
 import {
   KeysetColumnSelect,
   PythonKeysetColumnSelect,
-} from "metabase-enterprise/transforms/components/KeysetColumnSelect";
-import { NativeQueryColumnSelect } from "metabase-enterprise/transforms/components/NativeQueryColumnSelect";
+} from "metabase-enterprise/transforms/components/IncrementalTransform/KeysetColumnSelect";
+import { NativeQueryColumnSelect } from "metabase-enterprise/transforms/components/IncrementalTransform/NativeQueryColumnSelect";
 import {
   SOURCE_STRATEGY_OPTIONS,
   TARGET_STRATEGY_OPTIONS,
 } from "metabase-enterprise/transforms/constants";
+import type { NewTransformValues } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, TransformSource } from "metabase-types/api";
-
-import type { NewTransformValues } from "./CreateTransformModal";
 
 export const IncrementalTransformSettings = ({
   source,
