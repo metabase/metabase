@@ -72,7 +72,7 @@ export function CreateCardMenu({
             </Menu.Sub.Dropdown>
           </Menu.Sub>
         )}
-        {canCreateModel && (
+        {canCreateModel && !canCreateNativeQuery && (
           <Menu.Item
             component={ForwardRefLink}
             to={Urls.newDataStudioQueryModel({
