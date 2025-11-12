@@ -1,10 +1,10 @@
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
+import { Box, Text } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import type { RowValue } from "metabase-types/api";
 
 import type { Segment } from "../components/settings/ChartSettingSegmentsEditor";
-import { Box } from "metabase/ui";
 
 export const COMPACT_MAX_WIDTH = 250;
 export const COMPACT_WIDTH_PER_DIGIT = 25;
@@ -66,7 +66,7 @@ export function getTooltipContent(segments?: Segment[]) {
   }
 
   return (
-    <table>
+    <table style={{ borderSpacing: "0.75rem 0.25rem" }}>
       <tbody>
         {segments.map(({ color, min, max, label }: Segment, index) => (
           <tr key={index}>
@@ -78,8 +78,14 @@ export function getTooltipContent(segments?: Segment[]) {
                 style={{ borderRadius: "50%", verticalAlign: "middle" }}
               ></Box>
             </td>
-            <td>{`${min} - ${max}`}</td>
-            <td>{label}</td>
+            <td>
+              <Text c="inherit" lh="md">{`${min} - ${max}`}</Text>
+            </td>
+            <td>
+              <Text c="inherit" lh="md">
+                {label}
+              </Text>
+            </td>
           </tr>
         ))}
       </tbody>

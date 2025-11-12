@@ -237,7 +237,12 @@ export class Scalar extends Component<
           alwaysShowTooltip={fullScalarValue !== displayValue}
           isClickable={isClickable}
         >
-          <Tooltip label={tooltipContent} position="bottom" opened>
+          <Tooltip
+            label={tooltipContent}
+            position="bottom"
+            px="0.375rem"
+            py="xs"
+          >
             <Box
               onClick={handleClick}
               ref={(scalar) => (this._scalar = scalar)}
