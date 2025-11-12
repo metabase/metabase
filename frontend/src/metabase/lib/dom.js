@@ -460,6 +460,10 @@ export function getUrlTarget(url) {
 }
 
 export function removeAllChildren(element) {
+  if (!element) {
+    return;
+  }
+
   while (element.firstChild) {
     element.removeChild(element.firstChild);
   }
