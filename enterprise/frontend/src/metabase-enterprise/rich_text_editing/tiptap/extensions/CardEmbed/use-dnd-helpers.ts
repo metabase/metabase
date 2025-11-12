@@ -30,7 +30,8 @@ export const useDndHelpers = ({
       const draggingNode = editor.view.draggingNode;
       if (
         draggingNode &&
-        draggingNode.type.name === "cardEmbed" &&
+        (draggingNode.type.name === "cardEmbed" ||
+          draggingNode.type.name === "supportingText") &&
         cardEmbedRef.current
       ) {
         // Check if this cardEmbed is in a flexContainer that already has 3 children

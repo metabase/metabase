@@ -188,6 +188,21 @@ const SupportingTextComponent = ({
             }
           }
         }}
+        draggable
+        onDragStart={(e) => {
+          const pos = getPos();
+          pos && editor.commands.setNodeSelection(pos);
+          const slice = editor.view.state.selection.content();
+          const customImage =
+            e.currentTarget instanceof Element &&
+            e.currentTarget.closest(`.${S.wrapper}`);
+          if (customImage) {
+            // FIXME: Calculate x, y offset
+            e.dataTransfer.setDragImage(customImage, 0, 0);
+          }
+          editor.view.dragging = { slice, move: true };
+          editor.view.draggingNode = node;
+        }}
       />
       {document && !isWithinIframe() && (
         <Box

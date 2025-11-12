@@ -3,12 +3,15 @@ import type { EditorView } from "@tiptap/pm/view";
 
 // Helper function to extract cardEmbed from resizeNode wrapper
 export const extractCardEmbed = (node: Node): Node | null => {
-  if (node.type.name === "cardEmbed") {
+  if (node.type.name === "cardEmbed" || node.type.name === "supportingText") {
     return node;
   }
   if (node.type.name === "resizeNode" && node.content.childCount === 1) {
     const child = node.content.child(0);
-    if (child.type.name === "cardEmbed") {
+    if (
+      child.type.name === "cardEmbed" ||
+      child.type.name === "supportingText"
+    ) {
       return child;
     }
   }
