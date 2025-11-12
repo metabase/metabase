@@ -10,8 +10,8 @@ export interface Segment {
   table_id: TableId;
   table?: Table;
   archived: boolean;
-  // Definition can be either MBQL4 (StructuredQuery) or MBQL5 (full DatasetQuery)
-  definition: StructuredQuery | DatasetQuery;
+  // Backend always returns MBQL5 format
+  definition: DatasetQuery;
   definition_description: string;
   revision_message?: string;
 }
