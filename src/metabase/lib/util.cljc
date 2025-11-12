@@ -541,8 +541,8 @@
   ([query stage-number]
    (let [stage (query-stage query stage-number)
          stage-cols (-> stage :lib/stage-metadata :columns)
-         new-stage-cols (vec (remove (comp #{:source/breakouts :source/aggregations} :lib/source)
-                                     stage-cols))]
+         new-stage-cols (into [] (remove (comp #{:source/breakouts :source/aggregations} :lib/source))
+                                     stage-cols)]
      (-> query
          (update-query-stage stage-number dissoc :aggregation :breakout)
          (update-query-stage stage-number u/assoc-dissoc
