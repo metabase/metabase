@@ -1,12 +1,10 @@
 import type {
   DatabaseId,
-  Field,
-  FieldId,
   SchemaName,
   Table,
-  TableId,
   TableDataSource,
-  TableVisibilityType2,
+  TableId,
+  TableVisibilityType,
   UserId,
 } from "metabase-types/api";
 
@@ -16,10 +14,9 @@ export type TreePath = {
   databaseId?: DatabaseId;
   schemaName?: SchemaName;
   tableId?: TableId;
-  fieldId?: FieldId;
 };
 
-export type TreeNode = RootNode | DatabaseNode | SchemaNode | TableNode | FieldNode;
+export type TreeNode = RootNode | DatabaseNode | SchemaNode | TableNode;
 
 export type RootNode = {
   type: "root";
@@ -50,27 +47,16 @@ export type TableNode = {
   label: string;
   key: string;
   value: { databaseId: DatabaseId; schemaName: SchemaName; tableId: TableId };
-  children: FieldNode[];
-  table?: Table;
-  disabled?: boolean;
-};
-
-export type FieldNode = {
-  type: "field";
-  label: string;
-  key: string;
-  value: { databaseId: DatabaseId; schemaName: SchemaName; tableId: TableId; fieldId: FieldId };
   children: [];
-  field?: Field;
+  table?: Table;
   disabled?: boolean;
 };
 
 export type DatabaseItem = Omit<DatabaseNode, "children">;
 export type SchemaItem = Omit<SchemaNode, "children">;
 export type TableItem = Omit<TableNode, "children">;
-export type FieldItem = Omit<FieldNode, "children">;
 
-export type Item = DatabaseItem | SchemaItem | TableItem | FieldItem;
+export type Item = DatabaseItem | SchemaItem | TableItem;
 
 export type ItemType = Item["type"];
 
@@ -96,7 +82,6 @@ type LoadingItem = {
   label?: string;
   parent?: NodeKey;
   table?: undefined;
-  field?: undefined;
   disabled?: never;
   children: [];
 };
@@ -110,7 +95,7 @@ export interface ChangeOptions {
 }
 
 export interface FilterState {
-  visibilityType2: TableVisibilityType2 | null;
+  visibilityType2: TableVisibilityType | null;
   dataSource: TableDataSource | "unknown" | null;
   ownerEmail: string | null;
   ownerUserId: UserId | "unknown" | null;

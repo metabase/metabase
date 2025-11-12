@@ -127,7 +127,7 @@ function DataModelContent({ params }: Props) {
     metadataTableId &&
     !hasSelectedMoreThanOneTable &&
     !showFieldPreview &&
-    !showFieldDetails;
+    !showBulkTableEdit;
 
   return (
     <Flex bg="accent-gray-light" data-testid="data-model" h="100%">
@@ -144,10 +144,9 @@ function DataModelContent({ params }: Props) {
           databaseId={databaseId}
           schemaName={schemaName}
           tableId={navigationTableId}
-          fieldId={fieldId}
           params={params}
         />
-      </Stack >
+      </Stack>
 
       <>
         {databaseId != null &&
@@ -194,6 +193,7 @@ function DataModelContent({ params }: Props) {
                    */
                   key={table.id}
                   table={table}
+                  activeFieldId={fieldId}
                   onSyncOptionsClick={openSyncModal}
                 />
               )}
@@ -262,25 +262,21 @@ function DataModelContent({ params }: Props) {
         )}
       </>
 
-      {
-        table && (
-          <SyncOptionsModal
-            isOpen={isSyncModalOpen}
-            tableIds={[table.id]}
-            onClose={closeSyncModal}
-          />
-        )
-      }
+      {table && (
+        <SyncOptionsModal
+          isOpen={isSyncModalOpen}
+          tableIds={[table.id]}
+          onClose={closeSyncModal}
+        />
+      )}
 
-      {
-        fieldId && (
-          <FieldValuesModal
-            fieldId={fieldId}
-            isOpen={isFieldValuesModalOpen}
-            onClose={closeFieldValuesModal}
-          />
-        )
-      }
-    </Flex >
+      {fieldId && (
+        <FieldValuesModal
+          fieldId={fieldId}
+          isOpen={isFieldValuesModalOpen}
+          onClose={closeFieldValuesModal}
+        />
+      )}
+    </Flex>
   );
 }

@@ -15,10 +15,8 @@ import {
   type NumberFormatter,
   useNumberFormatter,
 } from "metabase/common/hooks/use-number-formatter";
-import { getColumnIcon } from "metabase/common/utils/columns";
 import { Box, Checkbox, Flex, Icon, Skeleton, rem } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type { Field, UserId } from "metabase-types/api";
+import type { UserId } from "metabase-types/api";
 
 import { DataModelContext } from "../../../DataModelContext";
 import { useSelection } from "../../../contexts/SelectionContext";
@@ -219,11 +217,6 @@ function ElementCheckbox({
     return null;
   }
 
-  // fields don't have checkboxes, only active state
-  if (item.type === "field") {
-    return null;
-  }
-
   const indeterminate = !item.isLoading && item.isSelected === "some";
 
   const isSelected = !item.isLoading ? item.isSelected : undefined;
@@ -281,11 +274,6 @@ function Loading() {
   );
 }
 
-function getIconForField(field: Field) {
-  const typeInfo = Lib.legacyColumnTypeInfo(field);
-  return getColumnIcon(typeInfo);
-}
-
 interface ResultsItemProps {
   item: FlatItem;
   path: TreePath;
@@ -315,7 +303,6 @@ function isDatabaseActive(
     item.type === "database" &&
     item.value?.databaseId === path.databaseId &&
     path.tableId == null &&
-    path.fieldId == null &&
     (path.schemaName == null || item.children.length === 1)
   );
 }
@@ -330,8 +317,7 @@ function isSchemaActive(
     item.type === "schema" &&
     item.value?.databaseId === path.databaseId &&
     item.value?.schemaName === path.schemaName &&
-    path.tableId == null &&
-    path.fieldId == null
+    path.tableId == null
   );
 }
 
@@ -343,21 +329,7 @@ function isTableActive(
   return (
     selectedItemsCount === 0 &&
     item.type === "table" &&
-    item.value?.tableId === path.tableId &&
-    path.fieldId == null
-  );
-}
-
-function isFieldActive(
-  item: FlatItem,
-  path: TreePath,
-  selectedItemsCount: number,
-): boolean {
-  return (
-    selectedItemsCount === 0 &&
-    item.type === "field" &&
-    item.value?.tableId === path.tableId &&
-    item.value?.fieldId === path.fieldId
+    item.value?.tableId === path.tableId
   );
 }
 
@@ -369,8 +341,7 @@ function isItemActive(
   return (
     isDatabaseActive(item, path, selectedItemsCount) ||
     isSchemaActive(item, path, selectedItemsCount) ||
-    isTableActive(item, path, selectedItemsCount) ||
-    isFieldActive(item, path, selectedItemsCount)
+    isTableActive(item, path, selectedItemsCount)
   );
 }
 
@@ -479,7 +450,7 @@ const ResultsItem = ({
       event.preventDefault();
     }
     if (event.code === "ArrowLeft") {
-      if (isExpanded && type !== "field") {
+      if (isExpanded) {
         // when expanded, close the item
         toggle?.(key, false);
       } else {
@@ -491,9 +462,7 @@ const ResultsItem = ({
     if (event.code === "ArrowRight") {
       if (!isExpanded) {
         // expand the item
-        if (type !== "field") {
-          handleItemSelect(true);
-        }
+        handleItemSelect(true);
       } else {
         // go to first child
         itemByIndex(index + 1)?.focus();
@@ -531,12 +500,8 @@ const ResultsItem = ({
       to={getUrl(baseUrl, {
         databaseId: value?.databaseId,
         schemaName:
-          type === "schema" || type === "table" || type === "field"
-            ? value?.schemaName
-            : undefined,
-        tableId:
-          type === "table" || type === "field" ? value?.tableId : undefined,
-        fieldId: type === "field" ? value?.fieldId : undefined,
+          type === "schema" || type === "table" ? value?.schemaName : undefined,
+        tableId: type === "table" ? value?.tableId : undefined,
       })}
       data-testid="tree-item"
       data-type={type}
@@ -578,14 +543,7 @@ const ResultsItem = ({
               )}
             </Box>
 
-            <Icon
-              name={
-                type === "field" && item.field
-                  ? getIconForField(item.field)
-                  : TYPE_ICONS[type]
-              }
-              className={S.icon}
-            />
+            <Icon name={TYPE_ICONS[type]} className={S.icon} />
           </Flex>
 
           {isLoading ? (

@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useContext, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -7,11 +7,14 @@ import { dependencyGraph } from "metabase/lib/urls/dependencies";
 import { NameDescriptionInput } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Group, Icon, Stack, Tooltip } from "metabase/ui";
-import type { Table } from "metabase-types/api";
+import type { FieldId, Table } from "metabase-types/api";
 
+import { DataModelContext } from "../../DataModelContext";
+import { getUrl } from "../../utils";
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 import { SubstituteModelModal } from "../TablePicker/components/SubstituteModelModal";
 
+import { TableFieldList } from "./TableFieldList";
 import { TableMetadataInfo } from "./TableMetadataInfo";
 import { TableMetadataSettings } from "./TableMetadataSection";
 import { TableModels } from "./TableModels";
@@ -20,16 +23,31 @@ import { TableSectionGroup } from "./TableSectionGroup";
 
 interface Props {
   table: Table;
+  activeFieldId?: FieldId;
   onSyncOptionsClick: () => void;
 }
 
-const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
+const TableSectionBase = ({
+  table,
+  activeFieldId,
+  onSyncOptionsClick,
+}: Props) => {
   const [updateTable] = useUpdateTableMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
+  const { baseUrl } = useContext(DataModelContext);
   const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
   const [isSubstituteModelModalOpen, setIsSubstituteModelModalOpen] =
     useState(false);
+
+  const getFieldHref = (fieldId: FieldId) => {
+    return getUrl(baseUrl, {
+      databaseId: table.db_id,
+      schemaName: table.schema,
+      tableId: table.id,
+      fieldId,
+    });
+  };
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateTable({
@@ -139,6 +157,16 @@ const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
       <Box px="lg">
         <TableSectionGroup title={t`Metadata`}>
           <TableMetadataInfo table={table} />
+        </TableSectionGroup>
+      </Box>
+
+      <Box px="lg">
+        <TableSectionGroup title={t`Fields`}>
+          <TableFieldList
+            table={table}
+            activeFieldId={activeFieldId}
+            getFieldHref={getFieldHref}
+          />
         </TableSectionGroup>
       </Box>
 
