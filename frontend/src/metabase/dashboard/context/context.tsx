@@ -246,13 +246,39 @@ const DashboardContextProviderInner = forwardRef(
       try {
         if (hasDashboardLoaded) {
           fetchDashboardCardData({ reload: false, clearCache: true });
-        } else if (hasTabChanged || hasParameterValueChanged) {
+        } else if (hasTabChanged) {
+          // Tab changed → reload all cards
           fetchDashboardCardData();
+        } else if (hasParameterValueChanged && dashboard) {
+          // Only reload cards that have parameter mappings for changed parameters
+          // This prevents unnecessary reloads of cards that don't use the changed parameters
+          const changedParameterIds = Object.keys(parameterValues || {}).filter(
+            (paramId) =>
+              !isEqual(
+                parameterValues?.[paramId],
+                previousParameterValues?.[paramId],
+              ),
+          );
+
+          // Check if any dashcard has mappings for the changed parameters
+          const hasRelevantMappings = dashboard.dashcards.some((dashcard) =>
+            dashcard.parameter_mappings?.some((mapping) =>
+              changedParameterIds.includes(mapping.parameter_id),
+            ),
+          );
+
+          // If there are relevant mappings, reload all cards
+          // (The backend will handle filtering which cards actually need data)
+          // If no relevant mappings exist, skip the reload entirely
+          if (hasRelevantMappings) {
+            fetchDashboardCardData();
+          }
         }
       } catch (e) {
         handleError?.(e);
       }
     }, [
+      dashboard,
       fetchDashboardCardData,
       handleError,
       parameterValues,
