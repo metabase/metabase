@@ -54,7 +54,7 @@ The gold release is the first release of a new major version of Metabase. So for
 
 ### Cloud builds
 
-If you see a version followed by an `X`, like `v1.56.2-X01`, these are version numbers related to builds for customers on [Metabase Cloud](https://www.metabase.com/cloud/), which may bundle additional drivers.
+If you see a version followed by an `-X`, like `v1.56.2-X01`, these are version numbers related to builds for customers on [Metabase Cloud](https://www.metabase.com/cloud/), which may bundle additional drivers.
 
 ## Further reading
 
