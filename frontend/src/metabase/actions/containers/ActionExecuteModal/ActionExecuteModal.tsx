@@ -40,7 +40,9 @@ export const ActionExecuteModal = ({
     error: errorAction,
     isLoading: isLoadingAction,
     data: action,
-  } = useGetActionQuery(actionId != null ? { id: actionId } : skipToken);
+  } = useGetActionQuery(
+    actionId != null && opened ? { id: actionId } : skipToken,
+  );
 
   const {
     error: errorInitialValues,
