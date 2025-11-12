@@ -4,14 +4,19 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { Button, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
+import type { CollectionId } from "metabase-types/api";
 
 type CreateCardMenuProps = {
+  modelCollectionId?: CollectionId;
+  metricCollectionId?: CollectionId;
   canCreateModel: boolean;
   canCreateMetric: boolean;
   canCreateNativeQuery: boolean;
 };
 
 export function CreateCardMenu({
+  modelCollectionId,
+  metricCollectionId,
   canCreateModel,
   canCreateMetric,
   canCreateNativeQuery,
@@ -46,7 +51,9 @@ export function CreateCardMenu({
             <Menu.Sub.Dropdown>
               <Menu.Item
                 component={ForwardRefLink}
-                to={Urls.newDataStudioQueryModel()}
+                to={Urls.newDataStudioQueryModel({
+                  collectionId: modelCollectionId,
+                })}
                 leftSection={<FixedSizeIcon name="notebook" />}
                 onClick={handleClick}
               >
@@ -54,7 +61,9 @@ export function CreateCardMenu({
               </Menu.Item>
               <Menu.Item
                 component={ForwardRefLink}
-                to={Urls.newDataStudioNativeModel()}
+                to={Urls.newDataStudioNativeModel({
+                  collectionId: modelCollectionId,
+                })}
                 leftSection={<FixedSizeIcon name="sql" />}
                 onClick={handleClick}
               >
@@ -66,7 +75,9 @@ export function CreateCardMenu({
         {canCreateModel && (
           <Menu.Item
             component={ForwardRefLink}
-            to={Urls.newDataStudioQueryModel()}
+            to={Urls.newDataStudioQueryModel({
+              collectionId: modelCollectionId,
+            })}
             leftSection={<FixedSizeIcon name="model" />}
             onClick={handleClick}
           >
@@ -76,7 +87,7 @@ export function CreateCardMenu({
         {canCreateMetric && (
           <Menu.Item
             component={ForwardRefLink}
-            to={Urls.newDataStudioMetric()}
+            to={Urls.newDataStudioMetric({ collectionId: metricCollectionId })}
             leftSection={<FixedSizeIcon name="metric" />}
             onClick={handleClick}
           >

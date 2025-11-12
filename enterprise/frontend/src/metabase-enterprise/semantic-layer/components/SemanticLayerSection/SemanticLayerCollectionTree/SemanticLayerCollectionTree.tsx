@@ -31,7 +31,7 @@ export function SemanticLayerCollectionTree({
     [rootCollection],
   );
 
-  const { modelsCollection, metricsCollection } = useMemo(
+  const { modelCollection, metricCollection } = useMemo(
     () => getWritableSemanticCollections(rootCollection),
     [rootCollection],
   );
@@ -61,14 +61,16 @@ export function SemanticLayerCollectionTree({
           return null;
         }
 
-        const canCreateModel = hasDataAccess && modelsCollection != null;
-        const canCreateMetric = hasDataAccess && metricsCollection != null;
+        const canCreateModel = hasDataAccess && modelCollection != null;
+        const canCreateMetric = hasDataAccess && metricCollection != null;
         if (!canCreateModel && !canCreateMetric) {
           return null;
         }
 
         return (
           <CreateCardMenu
+            modelCollectionId={modelCollection?.id}
+            metricCollectionId={metricCollection?.id}
             canCreateModel={canCreateModel}
             canCreateMetric={canCreateMetric}
             canCreateNativeQuery={hasNativeWrite}
