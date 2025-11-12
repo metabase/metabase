@@ -287,14 +287,12 @@ describe("scenarios > admin > tools > tasks", () => {
 
     cy.log("copy button");
     cy.window().then((window) => {
-      window.clipboardData = {
-        setData: cy.stub(),
-      };
+      cy.stub(window.navigator.clipboard, "writeText").resolves();
     });
     cy.icon("copy").click();
     cy.window()
-      .its("clipboardData.setData")
-      .should("be.calledWith", "text", formattedTaskJson);
+      .its("navigator.clipboard.writeText")
+      .should("be.calledWith", formattedTaskJson);
     cy.findByRole("tooltip").should("have.text", "Copied!");
 
     cy.log("download button");
