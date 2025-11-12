@@ -309,7 +309,6 @@ export const PersistedModelsApi = {
 
 export const SetupApi = {
   create: POST("/api/setup"),
-  user_defaults: GET("/api/setup/user_defaults"),
 };
 
 export const UserApi = {
