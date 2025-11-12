@@ -7,11 +7,12 @@ summary: How to upgrade your Metabase and Embedded analytics SDK versions, test 
 
 Here's a basic overview of the steps you'll want to take when upgrading your SDK.
 
+The main SDK bundle is served directly from your Metabase, ensuring automatic compatibility between the SDK and your Metabase version.
+
 ## 1. Read the release post and changelog for Metabase and the Embedded analytics SDK
 
 - [Release posts](https://www.metabase.com/releases) give a good overview of what's in each release, and call out breaking changes (which are rare).
 - [Metabase changelog](https://www.metabase.com/changelog) lists all Metabase and Embedded analytics SDK changes.
-- [Embedded analytics SDK changelog](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk-package/CHANGELOG.md) lists changes specific to the SDK's `@metabase/embedding-sdk-react` package.
 
 Check for any relevant changes, especially deprecations or breaking changes that require you to update your application's code. If there are deprecation changes, we'll have docs that'll walk you through what changes you'll need to make and why.
 

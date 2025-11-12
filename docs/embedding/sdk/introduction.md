@@ -42,16 +42,18 @@ To use the SDK, you'll need to enable the SDK in Metabase, and install the SDK i
 
 ### Install the SDK in your React application
 
-You can install the Embedded analytics SDK for React via npm. Make sure to use the dist-tag that corresponds to your Metabase version, example: 56-stable for Metabase 56:
+You can install the Embedded analytics SDK for React via npm. Make sure to use the dist-tag that corresponds to your Metabase version. For example:
+
+- For Metabase 57: use `@metabase/embedding-sdk-react@57-stable` (or `57-stable` when available)
 
 ```bash
-npm install @metabase/embedding-sdk-react@56-stable
+npm install @metabase/embedding-sdk-react@57-stable
 ```
 
 or with Yarn:
 
 ```bash
-yarn add @metabase/embedding-sdk-react@56-stable
+yarn add @metabase/embedding-sdk-react@57-stable
 ```
 
 ### Resolving `@types/react` version mismatches
@@ -108,8 +110,7 @@ You can find the [Embedded analytics SDK source code in the Metabase repo](https
 
 ## Changelog
 
-View the SDK's changelog:
-
+- [57-stable and above](https://www.metabase.com/changelog/57) - Starting with v57, SDK changes are documented in the main Metabase changelog under the "Embedding" category.
 - [56-stable](https://github.com/metabase/metabase/blob/release-x.56.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md)
 - [55-stable](https://github.com/metabase/metabase/blob/release-x.55.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md)
 - [54-stable](https://github.com/metabase/metabase/blob/release-x.54.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
