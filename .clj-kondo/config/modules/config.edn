@@ -148,8 +148,7 @@
   api-keys
   {:team "UX West"
    :api  #{metabase.api-keys.api
-           metabase.api-keys.core
-           metabase.api-keys.schema}
+           metabase.api-keys.core}
    :uses #{api
            app-db
            auth-identity
@@ -1168,10 +1167,8 @@
            embedding
            initialization-status
            lib-be
-           premium-features
            query-processor
            request
-           session
            settings
            system
            util
@@ -1189,6 +1186,8 @@
            channel
            config
            events
+           initialization-status
+           premium-features
            request
            settings
            sso

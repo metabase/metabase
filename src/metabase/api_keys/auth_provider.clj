@@ -73,8 +73,8 @@
         ;; 99% sure the error message is not going to include the API key but just to be extra super safe let's not log
         ;; it if the error message includes the key itself.
         (if (str/includes? error api-key)
-          (log/error "Ignoring invalid API Key")
-          (log/errorf "Ignoring invalid API Key: %s" error))
+          (log/debug "Ignoring invalid API Key")
+          (log/debugf "Ignoring invalid API Key: %s" error))
         nil)
       (let [user-info (-> (t2/query-one (cons (user-data-for-api-key-prefix-query
                                                (premium-features/enable-advanced-permissions?))
@@ -86,9 +86,8 @@
 
 (methodical/defmethod auth-identity/authenticate :provider/api-key
   "Authenticate a user with an API key"
-  [_provider {:keys [api-key]}]
-  (if-let [{:keys [metabase-user-id] :as user-info} (current-user-info-for-api-key api-key)]
+  [_provider {:strs [x-api-key]}]
+  (when-let [{:keys [metabase-user-id] :as user-info} (current-user-info-for-api-key x-api-key)]
     {:success? true
      :user-id metabase-user-id
-     :user-data user-info}
-    {:success? false}))
+     :user-data user-info}))

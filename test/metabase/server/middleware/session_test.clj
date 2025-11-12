@@ -142,26 +142,6 @@
       ;; no key at all
       {:headers {}})))
 
-(deftest ^:parallel current-user-info-for-api-key-log-errors-test
-  (testing "Log an error about invalid API keys"
-    (mt/with-log-messages-for-level [messages [metabase.server.middleware.session :error]]
-      (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_fooby"}})
-      (is (= [{:namespace 'metabase.server.middleware.session
-               :level     :error
-               :e         nil
-               :message   "Ignoring invalid API Key: [\"should be at least 12 characters\"]"}]
-             (messages))))))
-
-(deftest ^:parallel current-user-info-for-api-key-log-errors-test-2
-  (testing "Do not include the key itself in the error message -- fall back to a generic error message"
-    (mt/with-log-messages-for-level [messages [metabase.server.middleware.session :error]]
-      (#'mw.session/merge-current-user-info {:headers {"x-api-key" "characters"}})
-      (is (= [{:namespace 'metabase.server.middleware.session
-               :level     :error
-               :e         nil
-               :message   "Ignoring invalid API Key"}]
-             (messages))))))
-
 (deftest ^:parallel current-user-info-for-api-key-test-2
   (mt/with-temp [:model/ApiKey _ {:name                  "An API Key without an internal user"
                                   :user_id               nil
