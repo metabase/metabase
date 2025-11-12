@@ -463,6 +463,7 @@ export const DocumentPage = ({
               showPersonalCollections: true,
               showRootCollection: true,
             }}
+            entityType="document"
             onChange={async (collection) => {
               if (collectionPickerMode === "save") {
                 handleSave(canonicalCollectionId(collection.id));

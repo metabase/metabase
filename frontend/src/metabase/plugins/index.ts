@@ -1138,9 +1138,14 @@ export type SemanticLayerSectionProps = {
 export type SemanticLayerPlugin = {
   isEnabled: boolean;
   SemanticLayerSection: ComponentType<SemanticLayerSectionProps>;
+  canPlaceEntityInCollection(
+    entityType: string,
+    collectionType: Collection["type"],
+  ): boolean;
 };
 
 export const PLUGIN_SEMANTIC_LAYER: SemanticLayerPlugin = {
   isEnabled: false,
   SemanticLayerSection: PluginPlaceholder,
+  canPlaceEntityInCollection: () => true,
 };

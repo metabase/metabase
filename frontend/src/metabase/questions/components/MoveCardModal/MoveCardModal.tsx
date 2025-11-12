@@ -7,7 +7,10 @@ import { getDashboard, useUpdateCardMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { QuestionMoveConfirmModal } from "metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal";
 import type { MoveDestination } from "metabase/collections/types";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import {
+  canonicalCollectionId,
+  getEntityTypeFromCardType,
+} from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { MoveModal } from "metabase/common/components/MoveModal";
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
@@ -264,6 +267,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
       onClose={onClose}
       onMove={handleChooseMoveLocation}
       canMoveToDashboard={card.type === "question"}
+      entityType={getEntityTypeFromCardType(card.type)}
       recentAndSearchFilter={recentAndSearchFilter}
     />
   );

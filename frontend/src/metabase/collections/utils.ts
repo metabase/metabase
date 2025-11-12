@@ -1,14 +1,29 @@
 import { t } from "ttag";
 
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_SEMANTIC_LAYER } from "metabase/plugins";
 import {
+  type CardType,
   type Collection,
   type CollectionEssentials,
   type CollectionId,
   type CollectionItem,
+  type CollectionItemModel,
   type SemanticLayerCollectionType,
   isBaseEntityID,
 } from "metabase-types/api";
+
+export type EntityType = CollectionItemModel;
+
+export function getEntityTypeFromCardType(cardType: CardType): EntityType {
+  switch (cardType) {
+    case "question":
+      return "card";
+    case "model":
+      return "dataset";
+    case "metric":
+      return "metric";
+  }
+}
 
 export function nonPersonalOrArchivedCollection(
   collection: Collection,
@@ -80,6 +95,22 @@ export function isSyncedCollection(collection: Partial<Collection>): boolean {
   return PLUGIN_COLLECTIONS.isSyncedCollection(collection);
 }
 
+export function isSemanticLayerCollectionType(
+  collectionType: Collection["type"],
+): boolean {
+  return (
+    collectionType === "semantic-layer" ||
+    collectionType === "semantic-layer-models" ||
+    collectionType === "semantic-layer-metrics"
+  );
+}
+
+export function isSemanticLayerCollection(
+  collection: Pick<Collection, "type">,
+): boolean {
+  return isSemanticLayerCollectionType(collection.type);
+}
+
 export function isExamplesCollection(collection: Collection): boolean {
   return !!collection.is_sample && collection.name === "Examples";
 }
@@ -93,12 +124,6 @@ export function getSemanticLayerCollectionType(
     case "semantic-layer-metrics":
       return collection.type;
   }
-}
-
-export function isSemanticLayerCollection(
-  collection: Pick<Collection, "type"> | Pick<CollectionItem, "type">,
-) {
-  return getSemanticLayerCollectionType(collection) != null;
 }
 
 // Replace the name for the current user's collection
@@ -172,7 +197,10 @@ export function isReadOnlyCollection(collection: CollectionItem) {
 }
 
 export function canBookmarkItem(item: CollectionItem) {
-  return !isSemanticLayerCollection(item) && !item.archived;
+  return (
+    !isSemanticLayerCollection(item as Pick<Collection, "type">) &&
+    !item.archived
+  );
 }
 
 export function canPinItem(item: CollectionItem, collection?: Collection) {
@@ -194,7 +222,7 @@ export function canMoveItem(item: CollectionItem, collection?: Collection) {
     !isReadOnlyCollection(item) &&
     item.setCollection != null &&
     !(isItemCollection(item) && isRootPersonalCollection(item)) &&
-    !isSemanticLayerCollection(item)
+    !isSemanticLayerCollection(item as Pick<Collection, "type">)
   );
 }
 
@@ -203,13 +231,23 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
     collection?.can_write &&
     !isReadOnlyCollection(item) &&
     !(isItemCollection(item) && isRootPersonalCollection(item)) &&
-    !isSemanticLayerCollection(item) &&
+    !isSemanticLayerCollection(item as Pick<Collection, "type">) &&
     !item.archived
   );
 }
 
 export function canCopyItem(item: CollectionItem) {
   return item.copy && !item.archived;
+}
+
+export function canPlaceEntityInCollection(
+  entityType: EntityType,
+  collectionType: Collection["type"],
+): boolean {
+  return PLUGIN_SEMANTIC_LAYER.canPlaceEntityInCollection(
+    entityType,
+    collectionType,
+  );
 }
 
 export function isPreviewShown(item: CollectionItem) {

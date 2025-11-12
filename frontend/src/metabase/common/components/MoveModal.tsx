@@ -7,12 +7,17 @@ import type {
   MoveDestination,
   OnMoveWithOneItem,
 } from "metabase/collections/types";
-import { isItemCollection } from "metabase/collections/utils";
+import {
+  type EntityType,
+  canPlaceEntityInCollection,
+  isItemCollection,
+} from "metabase/collections/utils";
 import {
   type CollectionPickerItem,
   CollectionPickerModal,
   type CollectionPickerModel,
   type CollectionPickerValueItem,
+  getCollectionType,
 } from "metabase/common/components/Pickers/CollectionPicker";
 import type {
   CollectionId,
@@ -26,6 +31,7 @@ interface BaseMoveModalProps {
   onClose: () => void;
   initialCollectionId: CollectionId;
   movingCollectionId?: CollectionId;
+  entityType?: EntityType;
   recentAndSearchFilter?: (item: CollectionPickerItem) => boolean;
 }
 
@@ -67,19 +73,28 @@ export const MoveModal = ({
   onMove,
   initialCollectionId,
   movingCollectionId,
+  entityType,
   canMoveToDashboard,
   recentAndSearchFilter,
 }: MoveModalProps) => {
-  // if we are moving a collection, we can't move it into itself or any of its children
-  const shouldDisableItem = movingCollectionId
-    ? (item: CollectionPickerItem) =>
-        Boolean(
-          item.id === movingCollectionId ||
-            (item.effective_location ?? item?.location)
-              ?.split("/")
-              .includes(String(movingCollectionId)),
-        )
-    : undefined;
+  const shouldDisableItem = (item: CollectionPickerItem): boolean => {
+    if (movingCollectionId) {
+      if (
+        item.id === movingCollectionId ||
+        (item.effective_location ?? item?.location)
+          ?.split("/")
+          .includes(String(movingCollectionId))
+      ) {
+        return true;
+      }
+    }
+
+    if (entityType && item.model === "collection") {
+      return !canPlaceEntityInCollection(entityType, getCollectionType(item));
+    }
+
+    return false;
+  };
 
   const searchResultFilter = makeSearchResultFilter([
     shouldDisableItem,
@@ -172,18 +187,35 @@ export const BulkMoveModal = ({
     .filter((item: CollectionItem) => isItemCollection(item))
     .map((item: CollectionItem) => String(item.id));
 
-  const shouldDisableItem = movingCollectionIds.length
-    ? (item: CollectionPickerItem) => {
-        const collectionItemFullPath =
-          (item?.effective_location ?? item?.location)
-            ?.split("/")
-            .map(String)
-            .concat(String(item.id)) ?? [];
-        return (
-          _.intersection(collectionItemFullPath, movingCollectionIds).length > 0
-        );
+  const shouldDisableItem = (item: CollectionPickerItem): boolean => {
+    if (movingCollectionIds.length > 0) {
+      const collectionItemFullPath =
+        (item?.effective_location ?? item?.location)
+          ?.split("/")
+          .map(String)
+          .concat(String(item.id)) ?? [];
+      if (
+        _.intersection(collectionItemFullPath, movingCollectionIds).length > 0
+      ) {
+        return true;
       }
-    : undefined;
+    }
+
+    if (item.model === "collection") {
+      const hasInvalidItem = selectedItems.some(
+        (selectedItem) =>
+          !canPlaceEntityInCollection(
+            selectedItem.model,
+            getCollectionType(item),
+          ),
+      );
+      if (hasInvalidItem) {
+        return true;
+      }
+    }
+
+    return false;
+  };
 
   const searchResultFilter = makeSearchResultFilter([
     shouldDisableItem,

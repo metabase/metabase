@@ -100,6 +100,7 @@ function CreateModelForm({
           <FormCollectionPicker
             name="collection_id"
             title={t`Where do you want to save this?`}
+            entityType="dataset"
           />
           <Group>
             <Box flex={1}>

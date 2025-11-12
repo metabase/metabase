@@ -100,6 +100,7 @@ function CreateMetricForm({
           <FormCollectionPicker
             name="collection_id"
             title={t`Where do you want to save this?`}
+            entityType="metric"
           />
           <Group>
             <Box flex={1}>
