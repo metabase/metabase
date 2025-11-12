@@ -41,11 +41,12 @@ export const MetabotTrialPage = () => {
         .unwrap()
         .catch((error: unknown) => {
           settingUpModalHandlers.close();
-          isFetchBaseQueryError(error) &&
+          if (isFetchBaseQueryError(error)) {
             handleFieldError<MetabotTrialFormFields>(
               error.data,
               "terms_of_service",
             );
+          }
           throw error;
         });
     },
