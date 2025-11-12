@@ -11,6 +11,8 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { Collection, CollectionId } from "metabase-types/api";
 
+import { getWritableSemanticCollections } from "./utils";
+
 type SemanticLayerCollectionTreeProps = {
   rootCollection: Collection;
   selectedCollectionId: CollectionId | undefined;
@@ -26,6 +28,11 @@ export function SemanticLayerCollectionTree({
 }: SemanticLayerCollectionTreeProps) {
   const collectionTree = useMemo(
     () => buildCollectionTree([rootCollection]),
+    [rootCollection],
+  );
+
+  const { modelsCollection, metricsCollection } = useMemo(
+    () => getWritableSemanticCollections(rootCollection),
     [rootCollection],
   );
 
@@ -48,22 +55,28 @@ export function SemanticLayerCollectionTree({
       data={collectionTree}
       selectedId={selectedCollectionId}
       initialExpandedIds={initialExpandedIds}
-      onSelect={handleCollectionSelect}
       TreeNode={ModelingSidebarTreeNode}
       rightSection={(item: ITreeNodeItem) => {
-        if (item.id !== rootCollection.id || !hasDataAccess) {
+        if (item.id !== rootCollection.id) {
+          return null;
+        }
+
+        const canCreateModel = hasDataAccess && modelsCollection != null;
+        const canCreateMetric = hasDataAccess && metricsCollection != null;
+        if (!canCreateModel && !canCreateMetric) {
           return null;
         }
 
         return (
           <CreateCardMenu
-            canCreateQueryModel={hasDataAccess}
-            canCreateNativeModel={hasDataAccess && hasNativeWrite}
-            canCreateMetric={hasDataAccess}
+            canCreateModel={canCreateModel}
+            canCreateMetric={canCreateMetric}
+            canCreateNativeQuery={hasNativeWrite}
           />
         );
       }}
       role="tree"
+      onSelect={handleCollectionSelect}
     />
   );
 }

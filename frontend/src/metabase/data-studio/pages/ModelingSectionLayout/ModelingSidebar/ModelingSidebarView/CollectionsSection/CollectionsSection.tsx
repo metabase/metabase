@@ -43,23 +43,23 @@ export function CollectionsSection({
 
   return (
     <Tree
-      role="tree"
       data={collectionTree}
       selectedId={selectedCollectionId}
       initialExpandedIds={initialExpandedIds}
+      TreeNode={ModelingSidebarTreeNode}
       rightSection={(item: ITreeNodeItem) => {
         if (item.id !== "root" || !hasDataAccess) {
           return null;
         }
         return (
           <CreateCardMenu
-            canCreateQueryModel={hasDataAccess}
-            canCreateNativeModel={hasDataAccess && hasNativeWrite}
+            canCreateModel={hasDataAccess}
             canCreateMetric={hasDataAccess}
+            canCreateNativeQuery={hasNativeWrite}
           />
         );
       }}
-      TreeNode={ModelingSidebarTreeNode}
+      role="tree"
       onSelect={handleCollectionSelect}
     />
   );

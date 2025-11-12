@@ -6,15 +6,15 @@ import * as Urls from "metabase/lib/urls";
 import { Button, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
 
 type CreateCardMenuProps = {
-  canCreateQueryModel: boolean;
-  canCreateNativeModel: boolean;
+  canCreateModel: boolean;
   canCreateMetric: boolean;
+  canCreateNativeQuery: boolean;
 };
 
 export function CreateCardMenu({
-  canCreateQueryModel,
-  canCreateNativeModel,
+  canCreateModel,
   canCreateMetric,
+  canCreateNativeQuery,
 }: CreateCardMenuProps) {
   const handleClick = (event: MouseEvent) => {
     event.stopPropagation();
@@ -36,7 +36,7 @@ export function CreateCardMenu({
         </Menu.Target>
       </Tooltip>
       <Menu.Dropdown>
-        {canCreateQueryModel && canCreateNativeModel && (
+        {canCreateModel && canCreateNativeQuery && (
           <Menu.Sub>
             <Menu.Sub.Target>
               <Menu.Sub.Item leftSection={<FixedSizeIcon name="model" />}>
@@ -63,14 +63,10 @@ export function CreateCardMenu({
             </Menu.Sub.Dropdown>
           </Menu.Sub>
         )}
-        {canCreateQueryModel !== canCreateNativeModel && (
+        {canCreateModel && (
           <Menu.Item
             component={ForwardRefLink}
-            to={
-              canCreateQueryModel
-                ? Urls.newDataStudioQueryModel()
-                : Urls.newDataStudioNativeModel()
-            }
+            to={Urls.newDataStudioQueryModel()}
             leftSection={<FixedSizeIcon name="model" />}
             onClick={handleClick}
           >
