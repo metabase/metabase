@@ -36,6 +36,7 @@ import { initializePlugin as initializePublicSharing } from "./public-sharing";
 import { initializePlugin as initializeRemoteSync } from "./remote_sync";
 import { initializePlugin as initializeResourceDownloads } from "./resource_downloads";
 import { initializePlugin as initializeSandboxes } from "./sandboxes";
+import { initializePlugin as initializeSemanticLayer } from "./semantic-layer";
 import { initializePlugin as initializeSemanticSearch } from "./semantic_search";
 import { initializePlugin as initializeSharing } from "./sharing";
 import { initializePlugin as initializeSmtpOverride } from "./smtp-override";
@@ -88,6 +89,7 @@ export function initializePlugins() {
   initializeDependencies?.();
   initializeDocuments?.();
   initializeSemanticSearch?.();
+  initializeSemanticLayer?.();
   initializeTransforms?.();
   initializeTransformsPython?.();
   initializePublicSharing?.();
