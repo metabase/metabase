@@ -439,7 +439,7 @@
                #_{:clj-kondo/ignore [:deprecated-var]}
                (is (= #{} (driver/describe-table-fks :snowflake (mt/db) dynamic-table)))))))))))
 
-(deftest ^:parallel describe-table-test
+(deftest describe-table-test
   (mt/test-driver :snowflake
     (testing "make sure describe-table uses the NAME FROM DETAILS too"
       (is (= {:name   "categories"

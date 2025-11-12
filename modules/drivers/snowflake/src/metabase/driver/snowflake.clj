@@ -109,6 +109,8 @@
                               (format "jdbc:snowflake://%s.snowflakecomputing.com" account))
         opts-str (sql-jdbc.common/additional-opts->string :url
                                                           {:user (codec/url-encode user)
+                                                           ;; db is already quoted so just url-encode
+                                                           :db (codec/url-encode (:db details))
                                                            :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))})
         new-conn-uri (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
     (-> details
@@ -129,7 +131,7 @@
       (-> details
           (driver-api/clean-secret-properties-from-details :snowflake)
           ;; don't ship like this, just checking CI
-          #_(handle-conn-uri user account private-key-file)
+          (handle-conn-uri user account private-key-file)
           (assoc :private_key_file private-key-file))
       (driver-api/clean-secret-properties-from-details details :snowflake))))
 
