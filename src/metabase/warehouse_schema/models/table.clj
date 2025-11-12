@@ -334,7 +334,7 @@
                                                      :from_entity_type "table"
                                                      :from_entity_id [:in table-ids]
                                                      :to_entity_type "transform")
-          transform-id->transform  (when-let [transform-ids (vals table-id->transform-id)]
+          transform-id->transform  (when-let [transform-ids (seq (vals table-id->transform-id))]
                                      (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))]
       (update-vals table-id->transform-id transform-id->transform))
    :id
