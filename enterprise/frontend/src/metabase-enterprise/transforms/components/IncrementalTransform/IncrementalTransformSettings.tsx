@@ -6,7 +6,7 @@ import { FormSelect, FormSwitch } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Alert, Stack } from "metabase/ui";
-import { useCheckQueryComplexityMutation } from "metabase-enterprise/api";
+import { useLazyCheckQueryComplexityQuery } from "metabase-enterprise/api";
 import {
   KeysetColumnSelect,
   PythonKeysetColumnSelect,
@@ -72,7 +72,7 @@ export const IncrementalTransformSettings = ({
     Object.keys(source["source-tables"]).length > 1;
 
   const [checkQueryComplexity, { data: complexity }] =
-    useCheckQueryComplexityMutation();
+    useLazyCheckQueryComplexityQuery();
   const [showComplexityWarning, setShowComplexityWarning] = useState(false);
   useEffect(() => {
     return () => {
@@ -98,9 +98,9 @@ export const IncrementalTransformSettings = ({
         libQuery &&
         values.incremental
       ) {
-        const { is_simple } = await checkQueryComplexity({
-          query: Lib.rawNativeQuery(libQuery),
-        }).unwrap();
+        const { is_simple } = await checkQueryComplexity(
+          Lib.rawNativeQuery(libQuery),
+        ).unwrap();
         setShowComplexityWarning(!is_simple);
       }
     }
@@ -125,9 +125,9 @@ export const IncrementalTransformSettings = ({
         }
         onChange={async (e) => {
           if (transformType === "native" && libQuery && e.target.checked) {
-            const complexity = await checkQueryComplexity({
-              query: Lib.rawNativeQuery(libQuery),
-            }).unwrap();
+            const complexity = await checkQueryComplexity(
+              Lib.rawNativeQuery(libQuery),
+            ).unwrap();
             setShowComplexityWarning(complexity?.is_simple === false);
           }
         }}
