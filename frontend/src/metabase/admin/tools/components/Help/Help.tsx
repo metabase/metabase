@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useState } from "react";
+import { type PropsWithChildren, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -90,7 +90,7 @@ const InfoBlock = ({ children }: InfoBlockProps) => (
   </Box>
 );
 
-export const Help = () => {
+export const Help = ({ children }: PropsWithChildren) => {
   const [details, setDetails] = useState({ "browser-info": navigatorInfo() });
   const { tag } = useSetting("version");
   const isPaidPlan = useSelector(getIsPaidPlan);
@@ -142,6 +142,8 @@ export const Help = () => {
           link={UtilApi.get_connection_pool_details_url()}
         />
       </SettingsSection>
+      {/* render 'children' so that the child modal routes can show up */}
+      {children}
     </SettingsPageWrapper>
   );
 };

@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import ModalContent from "metabase/common/components/ModalContent";
 import { useToast } from "metabase/common/hooks";
 import {
   Form,
@@ -10,10 +11,10 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Box, Flex, Modal, Stack, Text } from "metabase/ui";
+import { Box, Flex, Stack, Text } from "metabase/ui";
 import { useCreateSupportAccessGrantMutation } from "metabase-enterprise/api";
 
-interface GrantAccessModal {
+interface GrantAccessModalProps {
   onClose: VoidFunction;
 }
 
@@ -23,7 +24,7 @@ type AccessGrantFormValues = {
   notes?: string;
 };
 
-export const GrantAccessModal = ({ onClose }: GrantAccessModal) => {
+export const GrantAccessModal = ({ onClose }: GrantAccessModalProps) => {
   const [createSupportAccessGrant] = useCreateSupportAccessGrantMutation();
   const [sendToast] = useToast();
 
@@ -57,20 +58,20 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModal) => {
   };
 
   return (
-    <Modal
-      onClose={onClose}
-      opened
-      size="md"
-      title={t`Grant Access`}
+    <ModalContent
       data-testid="grant-access-modal"
+      onClose={onClose}
+      title={t`Grant Access`}
     >
       <Stack>
         <Box mt="sm">
-          <Text>
+          <Text display="inline">
             {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}
-            {t`You are about to allow a Metabase team member to access your instance.`}
+            {t`You are about to allow a Metabase team member to access your instance.`}{" "}
           </Text>
-          <Text>{t`Please select the duration of the access grant below.`}</Text>
+          <Text fw="bold" display="inline">
+            {t`The support agent will have full admin access until the grant expires or is revoked.`}
+          </Text>
         </Box>
         <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
           {({ values }) => (
@@ -111,7 +112,7 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModal) => {
           )}
         </FormProvider>
       </Stack>
-    </Modal>
+    </ModalContent>
   );
 };
 
