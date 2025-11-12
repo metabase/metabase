@@ -95,7 +95,6 @@ export interface Collection {
   below?: CollectionContentModel[];
 
   git_sync_enabled?: boolean;
-  allowed_content?: CollectionItemModel[] | null;
 
   // Assigned on FE
   originalName?: string;
