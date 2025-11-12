@@ -7,6 +7,7 @@ import { CheckDependenciesTitle } from "./components/CheckDependenciesTitle";
 import { useCheckCardDependencies } from "./hooks/use-check-card-dependencies";
 import { useCheckSnippetDependencies } from "./hooks/use-check-snippet-dependencies";
 import { useCheckTransformDependencies } from "./hooks/use-check-transform-dependencies";
+import { useGetDependenciesCount } from "./hooks/use-get-dependencies-count";
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
 import { getDataStudioDependencyRoutes } from "./routes";
 
@@ -22,4 +23,5 @@ if (hasPremiumFeature("dependencies")) {
   PLUGIN_DEPENDENCIES.useCheckSnippetDependencies = useCheckSnippetDependencies;
   PLUGIN_DEPENDENCIES.useCheckTransformDependencies =
     useCheckTransformDependencies;
+  PLUGIN_DEPENDENCIES.useGetDependenciesCount = useGetDependenciesCount;
 }

@@ -1,5 +1,10 @@
 import type { Middleware } from "@reduxjs/toolkit";
-import type { TagDescription } from "@reduxjs/toolkit/query";
+import type { QueryDefinition, TagDescription } from "@reduxjs/toolkit/query";
+import {
+  type QueryReturnValue,
+  QueryArgFrom,
+  SkipToken,
+} from "@reduxjs/toolkit/query/react";
 import React, {
   type Component,
   type ComponentType,
@@ -77,7 +82,9 @@ import type {
   Database as DatabaseType,
   Dataset,
   DependencyEntry,
+  DependencyGraph,
   Document,
+  GetDependencyGraphRequest,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -1071,6 +1078,10 @@ type DependenciesPlugin = {
   useCheckTransformDependencies: (
     props: UseCheckDependenciesProps<UpdateTransformRequest>,
   ) => UseCheckDependenciesResult<UpdateTransformRequest>;
+  useGetDependenciesCount: (args: GetDependencyGraphRequest) => {
+    dependenciesCount: number;
+    dependentsCount: number;
+  };
 };
 
 export type DependencyGraphPageContextType = {
@@ -1127,6 +1138,10 @@ export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   useCheckCardDependencies: useCheckDependencies,
   useCheckSnippetDependencies: useCheckDependencies,
   useCheckTransformDependencies: useCheckDependencies,
+  useGetDependenciesCount: () => ({
+    dependenciesCount: 0,
+    dependentsCount: 0,
+  }),
 };
 
 export type SemanticLayerSectionProps = {
