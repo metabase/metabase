@@ -1,9 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
+import { useAsyncFn } from "react-use";
 import { c, t } from "ttag";
 
 import { useGetCollectionQuery } from "metabase/api";
 import { canArchiveItem } from "metabase/collections/utils";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Icon, Loader, Menu } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 
 import S from "./ArchiveButton.module.css";
@@ -18,10 +19,10 @@ export function ArchiveButton({ item }: ArchiveButtonProps) {
   const canArchive = collection ? canArchiveItem(item, collection) : false;
   const [dropdownOpened, dropdownActions] = useDisclosure();
 
-  const handleArchive = () => {
-    item.setArchived?.(true);
+  const [{ loading: isArchiving }, handleArchive] = useAsyncFn(() => {
     dropdownActions.close();
-  };
+    return item.setArchived?.(true) || Promise.resolve();
+  });
 
   if (!canArchive) {
     return null;
@@ -45,13 +46,23 @@ export function ArchiveButton({ item }: ArchiveButtonProps) {
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Item
-          leftSection={<Icon name="trash" aria-hidden />}
-          onClick={handleArchive}
-          className={S.archiveMenuItem}
-        >
-          {t`Move to trash`}
-        </Menu.Item>
+        {isArchiving ? (
+          <Menu.Item
+            disabled
+            leftSection={<Loader size="xs" color="var(--mb-color-danger)" />}
+            className={S.archiveMenuItem}
+          >
+            {t`Moving to trash`}
+          </Menu.Item>
+        ) : (
+          <Menu.Item
+            leftSection={<Icon name="trash" aria-hidden />}
+            onClick={handleArchive}
+            className={S.archiveMenuItem}
+          >
+            {t`Move to trash`}
+          </Menu.Item>
+        )}
       </Menu.Dropdown>
     </Menu>
   );
