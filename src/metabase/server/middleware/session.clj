@@ -14,14 +14,10 @@
   The second main path to authentication is an API key. For this, we look at the `X-Api-Key` header. If that matches
   an ApiKey in our database, you'll be authenticated as that ApiKey's associated User."
   (:require
-   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [malli.error :as me]
-   [medley.core :as m]
-   [metabase.api-keys.core :as api-key]
-   [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
    [metabase.premium-features.core :as premium-features]
@@ -32,8 +28,6 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.password :as u.password]
    [metabase.util.string :as string]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]))
@@ -132,32 +126,6 @@
                                                  [:= :pgm.user_id :user.id]
                                                  [:is :pgm.is_group_manager true]]))))))))
 
-;; See above: because this query runs on every single API request (with an API Key) it's worth it to optimize it a bit
-;; and only compile it to SQL once rather than every time
-(def ^:private ^{:arglists '([enable-advanced-permissions?])} user-data-for-api-key-prefix-query
-  (memoize
-   (fn [enable-advanced-permissions?]
-     (first
-      (t2.pipeline/compile*
-       (cond-> {:select    [[:api_key.user_id :metabase-user-id]
-                            [:api_key.key :api-key]
-                            [:user.is_superuser :is-superuser?]
-                            [:user.locale :user-locale]]
-                :from      :api_key
-                :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
-                :where     [:and
-                            [:= :user.is_active true]
-                            [:= :api_key.key_prefix [:raw "?"]]]
-                :limit     [:inline 1]}
-         enable-advanced-permissions?
-         (->
-          (sql.helpers/select
-           [:pgm.is_group_manager :is-group-manager?])
-          (sql.helpers/left-join
-           [:permissions_group_membership :pgm] [:and
-                                                 [:= :pgm.user_id :user.id]
-                                                 [:is :pgm.is_group_manager true]]))))))))
-
 (defn- valid-session-key?
   "Validates that the given session-key looks like it could be a session id. Returns a 403 if it does not.
 
@@ -182,52 +150,14 @@
               ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
               (update :is-group-manager? boolean)))))
 
-(def ^:private api-key-that-should-never-match (str (random-uuid)))
-(def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
-
-(defn do-useless-hash
-  "Password check that will always fail, used to avoid exposing any info about existing users or API keys via timing
-  attacks."
-  []
-  (u.password/verify-password api-key-that-should-never-match "" hash-that-should-never-match))
-
-(defn- matching-api-key? [{:keys [api-key] :as _user-data} passed-api-key]
-  ;; if we get an API key, check the hash against the passed value. If not, don't reveal info via a timing attack - do
-  ;; a useless hash, *then* return `false`.
-  (if api-key
-    (u.password/verify-password passed-api-key "" api-key)
-    (do-useless-hash)))
-
-(mu/defn- current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]
-  "Return User ID and superuser status for an API Key with `api-key-id"
-  [api-key :- [:maybe :string]]
-  (when (and api-key
-             (init-status/complete?))
-    ;; make sure the API key is valid before we entertain the idea of allowing it.
-    (if-let [error (some-> (mr/explain ::api-keys.schema/key.raw api-key)
-                           me/humanize
-                           pr-str)]
-      (do
-        ;; 99% sure the error message is not going to include the API key but just to be extra super safe let's not log
-        ;; it if the error message includes the key itself.
-        (if (str/includes? error api-key)
-          (log/error "Ignoring invalid API Key")
-          (log/errorf "Ignoring invalid API Key: %s" error))
-        nil)
-      (let [user-info (-> (t2/query-one (cons (user-data-for-api-key-prefix-query
-                                               (premium-features/enable-advanced-permissions?))
-                                              [(api-key/prefix api-key)]))
-                          (m/update-existing :is-group-manager? boolean))]
-        (when (matching-api-key? user-info api-key)
-          (-> user-info
-              (dissoc :api-key)))))))
-
 (defn- merge-current-user-info
   [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
   (merge
    request
    (or (current-user-info-for-session metabase-session-key anti-csrf-token)
-       (current-user-info-for-api-key x-api-key))
+       (let [{:keys [success? user-data]} (auth-identity/authenticate :provider/api-key {:api-key x-api-key})]
+         (when success?
+           user-data)))
    (when x-metabase-locale
      (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
      {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))

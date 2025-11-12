@@ -152,9 +152,13 @@
            metabase.api-keys.schema}
    :uses #{api
            app-db
+           auth-identity
            events
+           initialization-status
            models
            permissions
+           premium-features
+           request
            users
            util}}
 
@@ -1156,9 +1160,9 @@
            metabase.server.streaming-response} ; TODO -- too many API namespaces
    :uses #{analytics
            api
-           api-keys
            app-db
            appearance
+           auth-identity
            config
            driver
            embedding
