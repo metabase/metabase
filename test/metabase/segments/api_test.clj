@@ -298,21 +298,21 @@
   (testing "GET /api/segment/"
     (mt/with-temp [:model/Segment {id-1 :id} {:name     "Segment 1"
                                               :table_id (mt/id :users)
-                                              :definition (mbql4-segment-definition 2 "cans")}
+                                              :definition (mbql4-segment-definition (mt/id :users :name) "cans")}
                    :model/Segment {id-2 :id} {:name       "Segment 2"
                                               :definition (:query (mt/mbql-query venues
                                                                     {:filter
                                                                      [:and
                                                                       [:= $price 4]
                                                                       [:= $category_id->categories.name "BBQ"]]}))}
-                             ;; inactive segments shouldn't show up
+                   ;; inactive segments shouldn't show up
                    :model/Segment {id-3 :id} {:archived true
                                               :definition (mbql4-segment-definition 2 "cans")}]
       (mt/with-full-data-perms-for-all-users!
         (is (=? [{:id                     id-1
                   :name                   "Segment 1"
                   :creator                {}
-                  :definition_description "Filtered by Date is on cans"}
+                  :definition_description "Filtered by Name is cans"}
                  {:id                     id-2
                   :name                   "Segment 2"
                   :definition             {}
