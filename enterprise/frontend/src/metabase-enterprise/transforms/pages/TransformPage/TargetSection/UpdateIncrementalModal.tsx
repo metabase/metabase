@@ -6,26 +6,13 @@ import {
   Form,
   FormErrorMessage,
   FormProvider,
-  FormSelect,
   FormSubmitButton,
-  FormSwitch,
 } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
-import {
-  KeysetColumnSelect,
-  PythonKeysetColumnSelect,
-} from "metabase-enterprise/transforms/components/KeysetColumnSelect";
-import { NativeQueryColumnSelect } from "metabase-enterprise/transforms/components/NativeQueryColumnSelect";
-import {
-  SOURCE_STRATEGY_OPTIONS,
-  TARGET_STRATEGY_OPTIONS,
-} from "metabase-enterprise/transforms/constants";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type { Transform } from "metabase-types/api";
+
+import { IncrementalTransformSettings } from "../../NewTransformPage/CreateTransformModal/IncrementalTransformSettings";
 
 type UpdateIncrementalModalProps = {
   transform: Transform;
@@ -87,52 +74,8 @@ function UpdateIncrementalForm({
   onClose,
 }: UpdateIncrementalFormProps) {
   const [updateTransform] = useUpdateTransformMutation();
-  const metadata = useSelector(getMetadata);
   const initialValues = useMemo(() => getInitialValues(transform), [transform]);
   const validationSchema = useMemo(() => getValidationSchema(), []);
-
-  // Convert DatasetQuery to Lib.Query via Question
-  const libQuery = useMemo(() => {
-    if (transform.source.type !== "query") {
-      return null;
-    }
-
-    try {
-      const question = Question.create({
-        dataset_query: transform.source.query,
-        metadata,
-      });
-      return question.query();
-    } catch (error) {
-      console.error("UpdateIncrementalForm: Error creating question", error);
-      return null;
-    }
-  }, [transform.source, metadata]);
-
-  // Check if this is an MBQL query (not native SQL or Python)
-  const isMbqlQuery = useMemo(() => {
-    if (!libQuery) {
-      return false;
-    }
-
-    try {
-      const queryDisplayInfo = Lib.queryDisplayInfo(libQuery);
-      return !queryDisplayInfo.isNative;
-    } catch (error) {
-      console.error("UpdateIncrementalForm: Error checking query type", error);
-      return false;
-    }
-  }, [libQuery]);
-
-  // Check if this is a Python transform with exactly one source table
-  // Incremental transforms are only supported for single-table Python transforms
-  const isPythonTransform = useMemo(() => {
-    return (
-      transform.source.type === "python" &&
-      transform.source["source-tables"] &&
-      Object.keys(transform.source["source-tables"]).length === 1
-    );
-  }, [transform.source]);
 
   const handleSubmit = async (values: IncrementalValues) => {
     // Build the source with incremental strategy if enabled
@@ -143,8 +86,8 @@ function UpdateIncrementalForm({
       const strategyFields = values.checkpointFilter
         ? { "checkpoint-filter": values.checkpointFilter }
         : values.checkpointFilterUniqueKey
-        ? { "checkpoint-filter-unique-key": values.checkpointFilterUniqueKey }
-        : {};
+          ? { "checkpoint-filter-unique-key": values.checkpointFilterUniqueKey }
+          : {};
 
       source = {
         ...transform.source,
@@ -182,7 +125,7 @@ function UpdateIncrementalForm({
       id: transform.id,
       source,
       target,
-    }).unwrap();
+    });
 
     onUpdate();
   };
@@ -193,77 +136,21 @@ function UpdateIncrementalForm({
       validationSchema={validationSchema}
       onSubmit={handleSubmit}
     >
-      {({ values }) => (
-        <Form>
-          <Stack gap="lg">
-            <FormSwitch
-              name="incremental"
-              label={t`Make this transform incremental`}
-              description={t`Incremental transforms only process new or changed data`}
-            />
-            {values.incremental && (
-              <>
-                {SOURCE_STRATEGY_OPTIONS.length > 1 && (
-                  <FormSelect
-                    name="sourceStrategy"
-                    label={t`Source Strategy`}
-                    description={t`How to track which rows to process`}
-                    data={SOURCE_STRATEGY_OPTIONS}
-                  />
-                )}
-                {values.sourceStrategy === "checkpoint" && (
-                  <>
-                    {isMbqlQuery && libQuery && (
-                      <KeysetColumnSelect
-                        name="checkpointFilterUniqueKey"
-                        label={t`Source Filter Field`}
-                        placeholder={t`Select a field to filter on`}
-                        description={t`Which field from the source to use in the incremental filter`}
-                        query={libQuery}
-                      />
-                    )}
-                    {!isMbqlQuery && transform.source.type === "query" && transform.source.query && (
-                      <NativeQueryColumnSelect
-                        name="checkpointFilter"
-                        label={t`Source Filter Field`}
-                        placeholder={t`e.g., id, updated_at`}
-                        description={t`Column name to use in the incremental filter`}
-                        query={transform.source.query}
-                      />
-                    )}
-                    {isPythonTransform &&
-                      transform.source.type === "python" &&
-                      transform.source["source-tables"] && (
-                        <PythonKeysetColumnSelect
-                          name="checkpointFilterUniqueKey"
-                          label={t`Source Filter Field`}
-                          placeholder={t`Select a field to filter on`}
-                          description={t`Which field from the source to use in the incremental filter`}
-                          sourceTables={transform.source["source-tables"]}
-                        />
-                      )}
-                  </>
-                )}
-                {TARGET_STRATEGY_OPTIONS.length > 1 && (
-                  <FormSelect
-                    name="targetStrategy"
-                    label={t`Target Strategy`}
-                    description={t`How to update the target table`}
-                    data={TARGET_STRATEGY_OPTIONS}
-                  />
-                )}
-              </>
-            )}
-            <Group>
-              <Box flex={1}>
-                <FormErrorMessage />
-              </Box>
-              <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
-              <FormSubmitButton label={t`Save`} variant="filled" />
-            </Group>
-          </Stack>
-        </Form>
-      )}
+      <Form>
+        <Stack gap="lg" mt="sm">
+          <IncrementalTransformSettings
+            source={transform.source}
+            checkOnMount
+          />
+          <Group>
+            <Box flex={1}>
+              <FormErrorMessage />
+            </Box>
+            <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
+            <FormSubmitButton label={t`Save`} variant="filled" />
+          </Group>
+        </Stack>
+      </Form>
     </FormProvider>
   );
 }
@@ -275,12 +162,12 @@ function getInitialValues(transform: Transform): IncrementalValues {
   // Read both fields from the strategy, whichever is present
   const checkpointFilter =
     strategy?.type === "checkpoint"
-      ? strategy["checkpoint-filter"] ?? null
+      ? (strategy["checkpoint-filter"] ?? null)
       : null;
 
   const checkpointFilterUniqueKey =
     strategy?.type === "checkpoint"
-      ? strategy["checkpoint-filter-unique-key"] ?? null
+      ? (strategy["checkpoint-filter-unique-key"] ?? null)
       : null;
 
   return {
