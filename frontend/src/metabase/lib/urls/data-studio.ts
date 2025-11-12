@@ -6,6 +6,19 @@ import type {
 
 const ROOT_URL = "/data-studio";
 
+type OptionalParams = {
+  collectionId?: CollectionId;
+};
+
+function getQueryString({ collectionId }: OptionalParams) {
+  const searchParams = new URLSearchParams();
+  if (collectionId != null) {
+    searchParams.set("collectionId", String(collectionId));
+  }
+  const queryString = searchParams.toString();
+  return queryString.length > 0 ? `?${queryString}` : "";
+}
+
 export function dataStudio() {
   return ROOT_URL;
 }
@@ -18,12 +31,24 @@ export function dataStudioModeling() {
   return `${ROOT_URL}/modeling`;
 }
 
-export function newDataStudioQueryModel() {
-  return `${dataStudioModeling()}/models/new/query`;
+export type NewDataStudioQueryModelParams = {
+  collectionId?: CollectionId;
+};
+
+export function newDataStudioQueryModel(
+  params: NewDataStudioQueryModelParams = {},
+) {
+  return `${dataStudioModeling()}/models/new/query${getQueryString(params)}`;
 }
 
-export function newDataStudioNativeModel() {
-  return `${dataStudioModeling()}/models/new/native`;
+export type NewDataStudioNativeModelParams = {
+  collectionId?: CollectionId;
+};
+
+export function newDataStudioNativeModel(
+  params: NewDataStudioNativeModelParams = {},
+) {
+  return `${dataStudioModeling()}/models/new/native${getQueryString(params)}`;
 }
 
 export function dataStudioModel(cardId: CardId) {
@@ -42,8 +67,12 @@ export function dataStudioModelDependencies(cardId: CardId) {
   return `${dataStudioModel(cardId)}/dependencies`;
 }
 
-export function newDataStudioMetric() {
-  return `${dataStudioModeling()}/metrics/new`;
+export type NewDataStudioMetricProps = {
+  collectionId?: CollectionId;
+};
+
+export function newDataStudioMetric(params: NewDataStudioMetricProps = {}) {
+  return `${dataStudioModeling()}/metrics/new${getQueryString(params)}`;
 }
 
 export function dataStudioMetric(cardId: CardId) {

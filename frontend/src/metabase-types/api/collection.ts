@@ -35,7 +35,14 @@ export type CollectionType =
   | "trash"
   | "remote-synced"
   | "semantic-layer"
+  | "semantic-layer-models"
+  | "semantic-layer-metrics"
   | null;
+
+export type SemanticLayerCollectionType = Extract<
+  CollectionType,
+  "semantic-layer" | "semantic-layer-models" | "semantic-layer-metrics"
+>;
 
 export type LastEditInfo = Pick<
   UserInfo,
@@ -88,7 +95,6 @@ export interface Collection {
   below?: CollectionContentModel[];
 
   git_sync_enabled?: boolean;
-  allowed_content?: CollectionItemModel[] | null;
 
   // Assigned on FE
   originalName?: string;

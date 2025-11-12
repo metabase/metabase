@@ -16,19 +16,19 @@ import {
 import { useCreateSemanticLayerMutation } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
-type CreateCollectionTreeModalProps = {
+type CreateSemanticLayerModalProps = {
   onCreate: (collection: Collection) => void;
   onClose: () => void;
 };
 
-export function CreateCollectionTreeModal({
+export function CreateSemanticLayerModal({
   onCreate,
   onClose,
-}: CreateCollectionTreeModalProps) {
-  const [createCollection] = useCreateSemanticLayerMutation();
+}: CreateSemanticLayerModalProps) {
+  const [createSemanticLayer] = useCreateSemanticLayerMutation();
 
   const handleSubmit = async () => {
-    const collection = await createCollection().unwrap();
+    const collection = await createSemanticLayer().unwrap();
     onCreate(collection);
   };
 
@@ -39,7 +39,7 @@ export function CreateCollectionTreeModal({
           <Center w="2rem" h="2rem" c="brand" bg="brand-light" bdrs="md">
             <FixedSizeIcon name="repository" />
           </Center>
-          <Title order={3}>{t`Create your Semantic Layer`}</Title>
+          <Title order={3}>{t`Create your Library`}</Title>
         </Group>
       }
       opened
@@ -49,7 +49,7 @@ export function CreateCollectionTreeModal({
         <Form>
           <FocusTrap.InitialFocus />
           <Text>
-            {t`The Semantic Layer helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
+            {t`The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
           </Text>
           <List mt="sm" spacing="sm">
             <ListItem
@@ -75,7 +75,7 @@ export function CreateCollectionTreeModal({
             </Box>
             <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
             <Button variant="filled" type="submit">
-              {t`Create my Semantic Layer`}
+              {t`Create my Library`}
             </Button>
           </Group>
         </Form>

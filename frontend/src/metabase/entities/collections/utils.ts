@@ -41,17 +41,13 @@ export function getCollectionIcon(
     return { name: "synced_collection" };
   }
 
-  if (PLUGIN_SEMANTIC_LAYER.isSemanticLayerCollection(collection)) {
-    const type =
-      PLUGIN_SEMANTIC_LAYER.getSemanticLayerCollectionType(collection);
-    switch (type) {
-      case "models":
-        return { name: "model" };
-      case "metrics":
-        return { name: "metric" };
-      default:
-        return { name: "repository" };
-    }
+  switch (PLUGIN_SEMANTIC_LAYER.getSemanticLayerCollectionType(collection)) {
+    case "semantic-layer":
+      return { name: "repository" };
+    case "semantic-layer-models":
+      return { name: "model" };
+    case "semantic-layer-metrics":
+      return { name: "metric" };
   }
 
   const type = PLUGIN_COLLECTIONS.getCollectionType(collection);

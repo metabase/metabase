@@ -28,18 +28,16 @@ export function ModelingCollectionEmptyState({
 }
 
 function getMessages(collection: Collection) {
-  const type = PLUGIN_SEMANTIC_LAYER.getSemanticLayerCollectionType(collection);
-
-  switch (type) {
-    case "models":
+  switch (PLUGIN_SEMANTIC_LAYER.getSemanticLayerCollectionType(collection)) {
+    case "semantic-layer-models":
       return {
         title: t`No models yet`,
-        description: t`Put models in the Semantic Layer to see them here.`,
+        description: t`Put models in the Library to see them here.`,
       };
-    case "metrics":
+    case "semantic-layer-metrics":
       return {
         title: t`No metrics yet`,
-        description: t`Put metrics in the Semantic Layer to see them here.`,
+        description: t`Put metrics in the Library to see them here.`,
       };
     default:
       return {
