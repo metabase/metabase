@@ -38,6 +38,20 @@ databaseChangeLog:
             tableName: report_card
             columnName: embedding_type
 
+  - changeSet:
+      id: v58.2025-11-06T21:49:38
+      author: nvoxland
+      comment: Some collections only allow certain types of content.
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: allowed_content
+                  type: varchar(500)
+                  remarks: JSON map of the types of items that can be added to this card
+
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

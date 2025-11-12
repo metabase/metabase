@@ -132,7 +132,7 @@ function getTabs(card: Card, metadata: Metadata): PaneHeaderTab[] {
   const queryInfo = Lib.queryDisplayInfo(query);
   if (queryInfo.isEditable) {
     tabs.push({
-      label: t`Query`,
+      label: t`Definition`,
       to: Urls.dataStudioMetricQuery(card.id),
     });
   }

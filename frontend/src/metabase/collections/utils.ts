@@ -124,24 +124,8 @@ export function isPersonalCollectionChild(
   return Boolean(parentCollection && !!parentCollection.personal_owner_id);
 }
 
-export function isPersonalCollectionOrChild(
-  collection: Collection,
-  collectionList: Collection[],
-): boolean {
-  return (
-    isRootPersonalCollection(collection) ||
-    isPersonalCollectionChild(collection, collectionList)
-  );
-}
-
 export function isRootCollection(collection: Pick<Collection, "id">): boolean {
   return canonicalCollectionId(collection?.id) === null;
-}
-
-export function isTopLevelCollection(
-  collection: Pick<Collection, "location">,
-): boolean {
-  return collection.location === "/";
 }
 
 export function isItemPinned(item: CollectionItem) {

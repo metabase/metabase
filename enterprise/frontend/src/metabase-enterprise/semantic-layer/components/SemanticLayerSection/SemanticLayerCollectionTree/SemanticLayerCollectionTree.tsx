@@ -4,27 +4,37 @@ import { t } from "ttag";
 
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { getLibraryInitialExpandedIds } from "metabase/data-studio/utils/library-collection";
+import { getAllExpandableIds } from "metabase/common/components/tree/utils";
+import { ModelingSidebarTreeNode } from "metabase/data-studio/pages/ModelingSectionLayout/ModelingSidebar/ModelingSidebarTreeNode";
+import { buildCollectionTree } from "metabase/entities/collections";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Button, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 
-import { ModelingSidebarTreeNode } from "../../../ModelingSidebarTreeNode";
-
-interface LibraryTreeViewProps {
-  libraryCollection: ITreeNodeItem;
-  selectedCollectionId?: CollectionId;
+type SemanticLayerCollectionTreeProps = {
+  collection: Collection;
+  selectedCollectionId: CollectionId | undefined;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
-}
+};
 
-export function LibraryTreeView({
-  libraryCollection,
+export function SemanticLayerCollectionTree({
+  collection,
   selectedCollectionId,
   hasDataAccess,
   hasNativeWrite,
-}: LibraryTreeViewProps) {
+}: SemanticLayerCollectionTreeProps) {
+  const collectionTree = useMemo(
+    () => buildCollectionTree([collection]),
+    [collection],
+  );
+
+  const initialExpandedIds = useMemo(
+    () => getAllExpandableIds(collectionTree),
+    [collectionTree],
+  );
+
   const dispatch = useDispatch();
 
   const handleCollectionSelect = useCallback(
@@ -58,22 +68,15 @@ export function LibraryTreeView({
     [dispatch],
   );
 
-  const initialExpandedIds = useMemo(
-    () => getLibraryInitialExpandedIds(libraryCollection),
-    [libraryCollection],
-  );
-
-  const libraryTree = useMemo(() => [libraryCollection], [libraryCollection]);
-
   return (
     <Tree
-      data={libraryTree}
+      data={collectionTree}
       selectedId={selectedCollectionId}
       initialExpandedIds={initialExpandedIds}
       onSelect={handleCollectionSelect}
       TreeNode={ModelingSidebarTreeNode}
       rightSection={(item: ITreeNodeItem) => {
-        if (item.id !== libraryCollection.id || !hasDataAccess) {
+        if (item.id !== collection.id || !hasDataAccess) {
           return null;
         }
         return (
@@ -87,8 +90,8 @@ export function LibraryTreeView({
                   variant="subtle"
                   c="text-medium"
                   leftSection={<FixedSizeIcon name="add" size={16} />}
-                  onClick={(e: React.MouseEvent) => {
-                    e.stopPropagation();
+                  onClick={(event: MouseEvent) => {
+                    event.stopPropagation();
                   }}
                 />
               </Menu.Target>

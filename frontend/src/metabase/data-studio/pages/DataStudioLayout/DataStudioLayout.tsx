@@ -76,7 +76,6 @@ function DataStudioNav({
   const canAccessTransforms = useSelector(
     PLUGIN_TRANSFORMS.canAccessTransforms,
   );
-  const canAccessDataStructure = canAccessDataModel || canAccessTransforms;
   const isDataTab = pathname.startsWith(Urls.dataStudioData());
   const isTransformsTab = pathname.startsWith(Urls.transformList());
   const isModelingTab = pathname.startsWith(Urls.dataStudioModeling());
@@ -85,14 +84,20 @@ function DataStudioNav({
   return (
     <Stack className={S.nav} h="100%" p="0.75rem" justify="space-between">
       <Stack gap="0.75rem">
-        {canAccessDataStructure && (
+        {canAccessDataModel && (
           <DataStudioTab
-            label={t`Data structure`}
+            label={t`Data`}
             icon="database"
-            to={
-              canAccessDataModel ? Urls.dataStudioData() : Urls.transformList()
-            }
-            isSelected={isDataTab || isTransformsTab}
+            to={Urls.dataStudioData()}
+            isSelected={isDataTab}
+          />
+        )}
+        {canAccessTransforms && (
+          <DataStudioTab
+            label={t`Transforms`}
+            icon="transform"
+            to={Urls.transformList()}
+            isSelected={isTransformsTab}
           />
         )}
         <DataStudioTab

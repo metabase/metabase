@@ -1476,7 +1476,20 @@
                      (->> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
                           mt/boolean-ids-and-timestamps
                           :moderation_reviews
-                          (map clean)))))))))))
+                          (map clean)))))))
+        (testing "A card in a semantic layer is only marked as can_write when include_editable_semantic_layer is true"
+          (mt/with-temp [:model/Collection semantic-collection {:type collection/semantic-layer-collection-type}
+                         :model/Card semantic-card {:collection_id (u/the-id semantic-collection)}]
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) semantic-collection)
+            (testing "without include_editable_semantic_layer"
+              (is (= false
+                     (:can_write
+                      (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id semantic-card)))))))
+            (testing "with include_editable_semantic_layer"
+              (is (:can_write
+                   (mt/user-http-request :rasta :get 200
+                                         (str "card/" (u/the-id semantic-card)
+                                              "?include_editable_semantic_layer=true")))))))))))
 
 (deftest fetch-card-entity-id-test
   (testing "GET /api/card/:id with entity ID"

@@ -10,7 +10,7 @@ import { trackErrorDiagnosticModalOpened } from "metabase/common/components/Erro
 import { ForwardRefLink } from "metabase/common/components/Link";
 import LogoIcon from "metabase/common/components/LogoIcon";
 import Modal from "metabase/common/components/Modal";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import {
   getCanAccessOnboardingPage,
@@ -74,7 +74,6 @@ function ProfileLinkInner({
   const { tag, date, ...versionExtra } = version;
   const helpLink = useHelpLink();
   const dispatch = useDispatch();
-  const hasDataStudio = useHasTokenFeature("data_studio");
 
   const openModal = (modalName: string) => {
     setModalOpen(modalName);
@@ -105,15 +104,11 @@ function ProfileLinkInner({
             },
           ]
         : []),
-      ...(hasDataStudio
-        ? [
-            {
-              title: t`Data studio`,
-              icon: null,
-              link: Urls.dataStudio(),
-            },
-          ]
-        : []),
+      {
+        title: t`Data studio`,
+        icon: null,
+        link: Urls.dataStudio(),
+      },
       {
         separator: true,
       },

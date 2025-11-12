@@ -27,6 +27,7 @@ import {
   NewSnippetPage,
   SnippetDependenciesPage,
 } from "./pages/ModelingSectionLayout/SnippetEditorPage";
+import { TransformsSectionLayout } from "./pages/TransformsSectionLayout";
 
 export function getDataStudioRoutes(
   store: Store<State>,
@@ -47,7 +48,7 @@ export function getDataStudioRoutes(
       </Route>
       {PLUGIN_TRANSFORMS.isEnabled && (
         <Route path="transforms" component={CanAccessTransforms}>
-          <Route title={t`Transforms`} component={DataSectionLayout}>
+          <Route title={t`Transforms`} component={TransformsSectionLayout}>
             {PLUGIN_TRANSFORMS.getDataStudioTransformRoutes()}
           </Route>
         </Route>

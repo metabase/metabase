@@ -87,6 +87,7 @@ import type {
   PythonTransformSourceDraft,
   Revision,
   SearchModel,
+  SemanticLayerCollectionType,
   Series,
   TableId,
   Timeline,
@@ -1126,4 +1127,25 @@ export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   useCheckCardDependencies: useCheckDependencies,
   useCheckSnippetDependencies: useCheckDependencies,
   useCheckTransformDependencies: useCheckDependencies,
+};
+
+export type SemanticLayerSectionProps = {
+  collections: Collection[];
+  selectedCollectionId: CollectionId | undefined;
+  hasDataAccess: boolean;
+  hasNativeWrite: boolean;
+};
+
+export type SemanticLayerPlugin = {
+  isEnabled: boolean;
+  getSemanticLayerCollectionType(
+    collection: Pick<Collection, "type">,
+  ): SemanticLayerCollectionType | undefined;
+  SemanticLayerSection: ComponentType<SemanticLayerSectionProps>;
+};
+
+export const PLUGIN_SEMANTIC_LAYER: SemanticLayerPlugin = {
+  isEnabled: false,
+  getSemanticLayerCollectionType: () => undefined,
+  SemanticLayerSection: PluginPlaceholder,
 };

@@ -4,16 +4,18 @@ import { t } from "ttag";
 
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { excludeLibrarySubtree } from "metabase/data-studio/utils/library-collection";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { getUser } from "metabase/selectors/user";
 import { Button, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 import { ModelingSidebarTreeNode } from "../../ModelingSidebarTreeNode";
 
+import { getCollectionTree } from "./utils";
+
 interface CollectionsSectionProps {
-  collections: ITreeNodeItem[];
+  collections: Collection[];
   selectedCollectionId?: CollectionId;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
@@ -25,12 +27,12 @@ export function CollectionsSection({
   hasDataAccess,
   hasNativeWrite,
 }: CollectionsSectionProps) {
-  const dispatch = useDispatch();
-
-  const filteredCollections = useMemo(
-    () => excludeLibrarySubtree(collections),
-    [collections],
+  const currentUser = useSelector(getUser);
+  const collectionTree = useMemo(
+    () => (currentUser ? getCollectionTree(collections, currentUser) : []),
+    [collections, currentUser],
   );
+  const dispatch = useDispatch();
 
   const handleCollectionSelect = useCallback(
     (item: ITreeNodeItem) => {
@@ -67,7 +69,7 @@ export function CollectionsSection({
 
   return (
     <Tree
-      data={filteredCollections}
+      data={collectionTree}
       selectedId={selectedCollectionId}
       initialExpandedIds={initialExpandedIds}
       onSelect={handleCollectionSelect}

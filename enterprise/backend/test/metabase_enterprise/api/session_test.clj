@@ -16,7 +16,6 @@
                               :config-text-file
                               :content-translation
                               :content-verification
-                              :data-studio
                               :dashboard-subscription-filters
                               :disable-password-login
                               :database-auth-providers
@@ -42,6 +41,7 @@
                               :sandboxes
                               :scim
                               :semantic-search
+                              :semantic-layer
                               :serialization
                               :session-timeout-config
                               :snippet-collections
@@ -64,7 +64,6 @@
             :config_text_file               true
             :content_translation            true
             :content_verification           true
-            :data_studio                    true
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true
@@ -88,6 +87,7 @@
             :sandboxes                      true
             :scim                           true
             :semantic_search                true
+            :semantic_layer                 true
             :serialization                  true
             :session_timeout_config         true
             :snippet_collections            true

@@ -328,7 +328,7 @@ export const tokenFeatures = [
   "semantic_search",
   "transforms",
   "transforms-python",
-  "data_studio",
+  "semantic_layer",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];

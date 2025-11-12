@@ -307,9 +307,9 @@
   "Should we allow users to use dependency tracking?"
   :dependencies)
 
-(define-premium-feature ^{:added "0.58.0"} enable-data-studio?
-  "Should we allow users to use the data studio?"
-  :data-studio)
+(define-premium-feature ^{:added "0.58.0"} enable-semantic-layer?
+  "Should we allow users to use the semantic layer collection?"
+  :semantic-layer)
 
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
@@ -325,7 +325,6 @@
    :config_text_file               (enable-config-text-file?)
    :content_translation            (enable-content-translation?)
    :content_verification           (enable-content-verification?)
-   :data_studio                    (enable-data-studio?)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)
@@ -349,6 +348,7 @@
    :remote_sync                    (enable-remote-sync?)
    :sandboxes                      (enable-sandboxes?)
    :scim                           (enable-scim?)
+   :semantic_layer                 (enable-semantic-layer?)
    :semantic_search                (enable-semantic-search?)
    :serialization                  (enable-serialization?)
    :session_timeout_config         (enable-session-timeout-config?)

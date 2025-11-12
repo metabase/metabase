@@ -12,6 +12,7 @@ export * from "./remote-sync";
 export * from "./metabot";
 export * from "./saml";
 export * from "./scim";
+export * from "./semantic-layer";
 export * from "./tags";
 export * from "./transform";
 export * from "./transform-job";

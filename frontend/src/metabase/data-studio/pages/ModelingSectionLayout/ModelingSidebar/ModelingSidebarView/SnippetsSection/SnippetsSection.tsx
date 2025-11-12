@@ -15,12 +15,13 @@ import type { Collection, CollectionId } from "metabase-types/api";
 
 import { ModelingSidebarSection } from "../../ModelingSidebarSection";
 import { ModelingSidebarTreeNode } from "../../ModelingSidebarTreeNode";
+
 import {
   type TreeItem,
   buildSnippetTree,
   isCollectionTreeItem,
   isSnippetTreeItem,
-} from "../utils";
+} from "./utils";
 
 type SnippetsSectionProps = {
   selectedSnippetId?: number;
