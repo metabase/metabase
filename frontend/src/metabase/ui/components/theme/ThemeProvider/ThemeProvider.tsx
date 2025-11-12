@@ -11,7 +11,10 @@ import {
   useState,
 } from "react";
 
-import { isPublicEmbed, isStaticEmbedding } from "metabase/embedding/config";
+import {
+  isPublicEmbedding,
+  isStaticEmbedding,
+} from "metabase/embedding/config";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { parseHashOptions } from "metabase/lib/browser";
 import { mutateColors } from "metabase/lib/colors/colors";
@@ -154,7 +157,7 @@ const useColorSchemeFromHash = ({
 
 export const ThemeProvider = (props: ThemeProviderProps) => {
   const schemeFromHash = useColorSchemeFromHash({
-    enabled: isStaticEmbedding() || isPublicEmbed(),
+    enabled: isStaticEmbedding() || isPublicEmbedding(),
   });
   const forceColorScheme = props.displayTheme
     ? getColorSchemeFromDisplayTheme(props.displayTheme)

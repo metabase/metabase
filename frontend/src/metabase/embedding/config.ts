@@ -1,23 +1,23 @@
 type InternalEmbeddingConfig = {
-  isPublicEmbed: boolean;
+  isPublicEmbedding: boolean;
   isStaticEmbedding: boolean;
 };
 
 const EMBEDDING_CONFIG: InternalEmbeddingConfig = {
-  isPublicEmbed: false,
+  isPublicEmbedding: false,
   isStaticEmbedding: false,
 };
 
-export function setIsPublicEmbed() {
-  EMBEDDING_CONFIG.isPublicEmbed = true;
+export function setIsPublicEmbedding() {
+  EMBEDDING_CONFIG.isPublicEmbedding = true;
 }
 
 export function setIsStaticEmbedding() {
   EMBEDDING_CONFIG.isStaticEmbedding = true;
 }
 
-export function isPublicEmbed() {
-  return EMBEDDING_CONFIG.isPublicEmbed;
+export function isPublicEmbedding() {
+  return EMBEDDING_CONFIG.isPublicEmbedding;
 }
 
 export function isStaticEmbedding() {
