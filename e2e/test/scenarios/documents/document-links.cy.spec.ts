@@ -1,3 +1,5 @@
+import { times } from "underscore";
+
 import { PRODUCTS_AVERAGE_BY_CATEGORY } from "e2e/support/test-visualizer-data";
 
 const { H } = cy;
@@ -7,6 +9,63 @@ describe("Links in documents", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+  });
+
+  describe("plain links", () => {
+    it("should support adding, editing, and removing links via floating menu", () => {
+      cy.visit("/document/new");
+      H.documentContent().click();
+
+      cy.log("Add text and make a link");
+      H.addToDocument("Click here", false);
+      times("here".length, () => cy.realPress(["Shift", "{leftarrow}"]));
+      H.documentFormattingMenu().findByRole("button", { name: /link/ }).click();
+      cy.realType("test.com{enter}");
+
+      cy.log("Assert link exists with correct href");
+      H.documentContent()
+        .findByRole("link", { name: "here" })
+        .invoke("attr", "href")
+        .then((href) => expect(href).to.equal("https://test.com"));
+
+      cy.log("Edit link url");
+      H.documentContent().findByRole("link", { name: "here" }).realHover();
+      cy.icon("pencil").click();
+      cy.findByTestId("document-formatting-menu")
+        .get("input")
+        .should("be.focused");
+      cy.realType("url.com/a/1?k=v");
+      cy.icon("check").click();
+
+      cy.log("Assert link still exists, has updated href");
+      H.documentContent()
+        .findByRole("link", { name: "here" })
+        .invoke("attr", "href")
+        .then((href) => expect(href).to.equal("https://url.com/a/1?k=v"));
+
+      cy.log("Remove link");
+      H.documentContent().findByRole("link", { name: "here" }).realHover();
+      cy.icon("pencil").click();
+      cy.findByTestId("document-formatting-menu").icon("trash").click();
+
+      cy.log("Assert link is unlinked");
+      H.documentContent()
+        .findByRole("paragraph")
+        .should("contain.text", "Click here")
+        .findByRole("link", { name: "here" })
+        .should("not.exist");
+    });
+
+    it("should convert markdown links to real links", () => {
+      cy.visit("/document/new");
+      H.documentContent().click();
+      H.addToDocument("Click [here](url.com).", false);
+      H.documentContent()
+        .findByRole("paragraph")
+        .should("contain.text", "Click here.")
+        .findByRole("link", { name: "here" })
+        .should("exist");
+    });
   });
 
   describe("smart links", () => {

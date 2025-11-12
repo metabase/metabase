@@ -156,6 +156,27 @@ H.describeWithSnowplowEE("documents", () => {
       .should("have.attr", "contenteditable", "false");
   });
 
+  it("should focus the start of the document body when pressing Enter on the title input", () => {
+    cy.visit("/document/new");
+
+    cy.log("Type a title");
+    cy.findByRole("textbox", { name: "Document Title" })
+      .should("be.focused")
+      .type("Doc Title{enter}");
+
+    cy.log("Add some content to the document body");
+    H.addToDocument("One{enter}Two");
+
+    cy.log("Click back on the title to focus it and hit Enter");
+    cy.findByRole("textbox", { name: "Document Title" })
+      .click()
+      .type("{enter}");
+
+    cy.log("Focus should be placed at the beginning of the document body");
+    cy.realType("NEW: ");
+    H.documentContent().should("have.text", "NEW: OneTwo");
+  });
+
   it("should handle navigating from /new to /new gracefully", () => {
     cy.visit("/");
     H.newButton("Document").click();
