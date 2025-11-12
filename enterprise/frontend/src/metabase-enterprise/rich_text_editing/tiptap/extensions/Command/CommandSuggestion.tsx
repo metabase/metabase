@@ -271,11 +271,23 @@ export const CommandSuggestion = forwardRef<
             executeCommand(commandOptions[commandIndex].command);
           }
         }
-      } else if (currentItems.length === 0 && query && index === 0) {
+      } else if (
+        currentItems.length === 0 &&
+        query &&
+        index ===
+          getBrowseAllItemIndex(currentItems.length, canCreateNewQuestion)
+      ) {
         // Handle browse all when no results
         // Switch to embed mode so selected questions get embedded
         setViewMode("embedQuestion");
         entityHandlers.openModal();
+      } else if (
+        currentItems.length === 0 &&
+        query &&
+        index === 0 &&
+        canCreateNewQuestion
+      ) {
+        onTriggerCreateNewQuestion();
       } else {
         if (index < commandOptions.length) {
           executeCommand(commandOptions[index].command);
@@ -469,11 +481,7 @@ export const CommandSuggestion = forwardRef<
                     <CreateNewQuestionFooter
                       isSelected={selectedIndex === 0}
                       onMouseEnter={() => setSelectedIndex(0)}
-                      onClick={() => {
-                        // Switch to embed mode so selected questions get embedded
-                        setViewMode("newQuestionType");
-                        onTriggerCreateNewQuestion();
-                      }}
+                      onClick={onTriggerCreateNewQuestion}
                     />
                   )}
 

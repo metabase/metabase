@@ -1100,6 +1100,28 @@ H.describeWithSnowplowEE("documents", () => {
           H.cartesianChartCircle().should("have.length.at.least", 1);
         });
     });
+
+    it("should trigger new question type suggestion menu when typing non-matching search and hitting Enter", () => {
+      H.visitDocument("@documentId");
+      H.documentContent().click();
+
+      cy.log("Type a non-matching search term");
+      H.addToDocument("/asdfsdaf", false);
+
+      H.commandSuggestionDialog().should("be.visible");
+      H.commandSuggestionDialog().should("contain.text", "No results found");
+      H.commandSuggestionItem(/New chart/)
+        .should("exist")
+        .should("have.attr", "aria-selected", "true");
+      cy.realPress("Enter");
+
+      cy.log("Verify that the new question type suggestion menu appears");
+      H.commandSuggestionDialog().should("be.visible");
+      H.commandSuggestionItem(/New Question/).should("be.visible");
+      H.commandSuggestionDialog()
+        .findByText(/Browse all/)
+        .should("not.exist");
+    });
   });
 
   describe("creating new questions - limited permissions", () => {
