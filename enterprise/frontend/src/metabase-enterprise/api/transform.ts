@@ -2,7 +2,6 @@ import { isResourceNotFoundError } from "metabase/lib/errors";
 import type {
   CreateTransformRequest,
   DatasetQuery,
-  DatabaseId,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,

@@ -9,20 +9,10 @@ import {
   FormSelect,
   FormSubmitButton,
   FormSwitch,
-  FormTextInput,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  Alert,
-  Box,
-  Button,
-  FocusTrap,
-  Group,
-  Modal,
-  Stack,
-} from "metabase/ui";
+import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import {
   KeysetColumnSelect,

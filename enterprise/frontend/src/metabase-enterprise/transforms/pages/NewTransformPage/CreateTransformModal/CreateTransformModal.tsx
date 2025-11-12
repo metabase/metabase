@@ -31,7 +31,6 @@ import {
   Group,
   Modal,
   Stack,
-  Tooltip,
 } from "metabase/ui";
 import {
   useCheckQueryComplexityMutation,

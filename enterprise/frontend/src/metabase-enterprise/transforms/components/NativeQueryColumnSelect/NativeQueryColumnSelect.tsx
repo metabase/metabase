@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 
 import { FormSelect, FormTextInput } from "metabase/forms";
-import { Loader, Stack, Text } from "metabase/ui";
+import { Loader } from "metabase/ui";
 import { useExtractColumnsFromQueryMutation } from "metabase-enterprise/api";
 import type { DatasetQuery } from "metabase-types/api";
 

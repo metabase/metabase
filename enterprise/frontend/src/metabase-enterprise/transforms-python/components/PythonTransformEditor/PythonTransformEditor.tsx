@@ -86,9 +86,9 @@ export function PythonTransformEditor({
       gap={0}
     >
       <EditorHeader
-        isNew
         name={name}
         validationResult={validationResult}
+        isNew={isNew}
         isDirty={isDirty}
         isSaving={isSaving}
         onSave={onSave}

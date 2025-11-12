@@ -56,7 +56,7 @@ export function TransformEditor({
   const validationResult = useMemo(() => getValidationResult(query), [query]);
 
   const handleQueryChange = (query: Lib.Query) => {
-    var newSource: QueryTransformSource = {
+    const newSource: QueryTransformSource = {
       type: "query",
       query: Lib.toJsQuery(query),
     };
