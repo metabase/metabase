@@ -158,20 +158,24 @@
   (t2/select-one :model/Collection :type semantic-layer-collection-type))
 
 (defn create-semantic-layer-collection!
-  "Create the semantic layer collection. Returns root semantic layer collection"
+  "Create the Library collection. Returns Created collection. Throws if it already exists."
   []
   (when-not (nil? (semantic-layer-collection))
-    (throw (ex-info "Semantic Layer already exists" {})))
-  (u/prog1 (t2/insert-returning-instance! :model/Collection {:name     "Library"
-                                                             :type     semantic-layer-collection-type
-                                                             :location "/"})
-    (let [base-location        (str "/" (:id <>) "/")]
-      (t2/insert! :model/Collection {:name            "Models"
-                                     :type            semantic-layer-models-collection-type
-                                     :location        base-location})
-      (t2/insert! :model/Collection {:name            "Metrics"
-                                     :type            semantic-layer-metrics-collection-type
-                                     :location        base-location}))))
+    (throw (ex-info "Library already exists" {})))
+  (let [library       (t2/insert-returning-instance! :model/Collection {:name     "Library"
+                                                                        :type     semantic-layer-collection-type
+                                                                        :location "/"})
+        base-location (str "/" (:id library) "/")
+        models        (t2/insert-returning-instance! :model/Collection {:name     "Models"
+                                                                        :type     semantic-layer-models-collection-type
+                                                                        :location base-location})
+        metrics       (t2/insert-returning-instance! :model/Collection {:name     "Metrics"
+                                                                        :type     semantic-layer-metrics-collection-type
+                                                                        :location base-location})]
+    (doseq [col [library models metrics]]
+      (t2/delete! :model/Permissions :collection_id (:id col))
+      (perms/grant-collection-read-permissions! (perms/all-users-group) col))
+    library))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
