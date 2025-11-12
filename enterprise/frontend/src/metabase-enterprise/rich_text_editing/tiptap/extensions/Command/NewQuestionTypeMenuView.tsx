@@ -1,9 +1,9 @@
 import { useCallback, useLayoutEffect } from "react";
 
 import { MenuItemComponent } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
-import { CreateNativeQuestionModal } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/modals/CreateNativeQuestionModal";
-import { CreateStructuredQuestionModal } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/modals/CreateStructuredQuestionModal";
 
+import { CreateNativeQuestionModal } from "./CreateNativeQuestionModal";
+import { CreateStructuredQuestionModal } from "./CreateStructuredQuestionModal";
 import type { NewQuestionMenuItem } from "./types";
 
 interface Props {

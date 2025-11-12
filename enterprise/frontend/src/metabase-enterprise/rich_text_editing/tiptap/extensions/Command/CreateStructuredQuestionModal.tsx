@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -15,7 +15,7 @@ import {
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 
-import S from "./ModifyQuestionModal.module.css";
+import S from "./CreateStructuredQuestionModal.module.css";
 
 interface CreateQuestionModalProps {
   onSave: (id: number, name: string) => void;
@@ -35,6 +35,11 @@ export const CreateStructuredQuestionModal = ({
 
   const reportTimezone = useSelector((state) =>
     getSetting(state, "report-timezone-long"),
+  );
+
+  const canSave = useMemo(
+    () => Lib.canSave(modifiedQuestion.query(), modifiedQuestion.type()),
+    [modifiedQuestion],
   );
 
   const handleUpdateQuestion = async (newQuestion: Question) => {
@@ -125,7 +130,11 @@ export const CreateStructuredQuestionModal = ({
         <Button variant="subtle" onClick={onClose}>
           {t`Cancel`}
         </Button>
-        <Button variant="filled" onClick={handleSaveStructuredQuestion}>
+        <Button
+          variant="filled"
+          disabled={!canSave}
+          onClick={handleSaveStructuredQuestion}
+        >
           {t`Save and use`}
         </Button>
       </Flex>
