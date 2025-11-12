@@ -94,7 +94,7 @@
                                             :table_id (mt/id :users)
                                             :definition {:filter 1000}}]
       (t2/query-one {:update :segment
-                     :set {:definition {}}
+                     :set {:definition "{}"}
                      :where [:= :id id]})
       (is (nil? (-> (t2/select-one :model/Segment id)
                     (t2/hydrate :definition_description)
