@@ -10,7 +10,7 @@ import {
   UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Button, Group, Icon, Stack, Title, Tooltip } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
 import type {
   TableDataLayer,
   TableDataSource,
