@@ -2,9 +2,9 @@ import type {
   DatabaseId,
   SchemaName,
   Table,
+  TableDataLayer,
   TableDataSource,
   TableId,
-  TableVisibilityType,
   UserId,
 } from "metabase-types/api";
 
@@ -95,7 +95,7 @@ export interface ChangeOptions {
 }
 
 export interface FilterState {
-  visibilityType2: TableVisibilityType | null;
+  dataLayer: TableDataLayer | null;
   dataSource: TableDataSource | "unknown" | null;
   ownerEmail: string | null;
   ownerUserId: UserId | "unknown" | null;

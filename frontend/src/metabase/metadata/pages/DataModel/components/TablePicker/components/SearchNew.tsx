@@ -37,8 +37,7 @@ export function SearchNew({
     refetch,
   } = useListTablesQuery({
     term: query,
-    // TODO: Please rename visibilityType2 to dataLayer
-    "data-layer": filters.visibilityType2 ?? undefined,
+    "data-layer": filters.dataLayer ?? undefined,
     "data-source":
       filters.dataSource === "unknown"
         ? null

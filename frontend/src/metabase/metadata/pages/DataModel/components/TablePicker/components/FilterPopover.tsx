@@ -7,19 +7,8 @@ import {
   UserInput,
 } from "metabase/metadata/components";
 import { Button, Checkbox, Group, Stack } from "metabase/ui";
-import type {
-  TableDataLayer,
-  TableDataSource,
-  UserId,
-} from "metabase-types/api";
 
-export interface FilterState {
-  visibilityType2: TableDataLayer | null;
-  dataSource: TableDataSource | "unknown" | null;
-  ownerEmail: string | null;
-  ownerUserId: UserId | "unknown" | null;
-  orphansOnly: boolean | null;
-}
+import type { FilterState } from "../types";
 
 interface Props {
   filters: FilterState;
@@ -31,10 +20,10 @@ export function FilterPopover({ filters, onSubmit }: Props) {
 
   const handleReset = () => {
     onSubmit({
+      dataLayer: null,
       dataSource: null,
       ownerEmail: null,
       ownerUserId: null,
-      visibilityType2: null,
       orphansOnly: null,
     });
   };
@@ -49,9 +38,9 @@ export function FilterPopover({ filters, onSubmit }: Props) {
       <Stack gap="xl" p="lg">
         <LayerInput
           clearable
-          value={form.visibilityType2}
-          onChange={(visibilityType2) => {
-            setForm((form) => ({ ...form, visibilityType2 }));
+          value={form.dataLayer}
+          onChange={(dataLayer) => {
+            setForm((form) => ({ ...form, dataLayer }));
           }}
         />
 
