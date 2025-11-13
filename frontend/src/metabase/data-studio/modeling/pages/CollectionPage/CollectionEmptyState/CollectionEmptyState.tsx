@@ -6,13 +6,13 @@ import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { Center } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
-type ModelingCollectionEmptyStateProps = {
+type CollectionEmptyStateProps = {
   collection: Collection;
 };
 
-export function ModelingCollectionEmptyState({
+export function CollectionEmptyState({
   collection,
-}: ModelingCollectionEmptyStateProps) {
+}: CollectionEmptyStateProps) {
   const { title, message } = getMessages(collection);
 
   return (

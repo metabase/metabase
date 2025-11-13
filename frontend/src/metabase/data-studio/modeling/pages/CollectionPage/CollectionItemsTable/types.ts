@@ -7,11 +7,6 @@ export type ModelingItem = CollectionItem & {
 
 export type SortColumn = "name" | "description";
 
-export interface ModelingItemsTableProps {
-  items: ModelingItem[];
-  skeleton?: boolean;
-}
-
 export interface ItemIcon {
   name: IconName;
   color?: string;

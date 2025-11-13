@@ -10,23 +10,24 @@ import { Box, Center, Flex } from "metabase/ui";
 import {
   PaneHeader,
   PanelHeaderTitle,
-} from "../../../../common/components/PaneHeader";
+} from "../../../common/components/PaneHeader";
 
-import { ModelingCollectionEmptyState } from "./ModelingCollectionEmptyState";
-import S from "./ModelingCollectionView.module.css";
-import { type ModelingItem, ModelingItemsTable } from "./ModelingItemsTable";
+import { CollectionEmptyState } from "./CollectionEmptyState";
+import {
+  CollectionItemsTable,
+  type ModelingItem,
+} from "./CollectionItemsTable";
+import S from "./CollectionPage.module.css";
 
-type ModelingCollectionViewParams = {
+type CollectionPageParams = {
   collectionId: string;
 };
 
-type ModelingCollectionViewProps = {
-  params: ModelingCollectionViewParams;
+type CollectionPageProps = {
+  params: CollectionPageParams;
 };
 
-export function ModelingCollectionView({
-  params,
-}: ModelingCollectionViewProps) {
+export function CollectionPage({ params }: CollectionPageProps) {
   const {
     data: collection,
     isLoading: isLoadingCollection,
@@ -72,9 +73,9 @@ export function ModelingCollectionView({
       />
       <Box className={S.body} flex={1} p="lg" mih={0} bg="bg-light">
         {showEmptyState ? (
-          <ModelingCollectionEmptyState collection={collection} />
+          <CollectionEmptyState collection={collection} />
         ) : (
-          <ModelingItemsTable items={items} />
+          <CollectionItemsTable items={items} />
         )}
       </Box>
     </Flex>

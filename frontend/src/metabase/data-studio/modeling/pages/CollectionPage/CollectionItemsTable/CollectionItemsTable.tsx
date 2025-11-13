@@ -13,7 +13,7 @@ import {
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
 
 import { ItemRow } from "./ItemRow";
-import type { ModelingItemsTableProps } from "./types";
+import type { ModelingItem } from "./types";
 import { DEFAULT_SORTING_OPTIONS, sortItems } from "./utils";
 
 const CONTAINER_NAME = "ItemsTableContainer";
@@ -31,7 +31,12 @@ const menuProps = {
   ...sharedProps,
 };
 
-export function ModelingItemsTable({ items }: ModelingItemsTableProps) {
+interface CollectionItemsTableProps {
+  items: ModelingItem[];
+  skeleton?: boolean;
+}
+
+export function CollectionItemsTable({ items }: CollectionItemsTableProps) {
   const [sortingOptions, setSortingOptions] = useState(DEFAULT_SORTING_OPTIONS);
 
   const sortedItems = useMemo(

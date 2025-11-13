@@ -17,8 +17,6 @@ import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
 import { ModelingSectionLayout } from "./app/pages/ModelingSectionLayout";
-import { ModelingCollectionView } from "./app/pages/ModelingSectionLayout/ModelingCollectionView";
-import { ModelingEmptyPage } from "./app/pages/ModelingSectionLayout/ModelingEmptyPage";
 import {
   EditSnippetPage,
   NewSnippetPage,
@@ -27,6 +25,8 @@ import {
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
+import { ModelingEmptyPage } from "./modeling/pages/ModelingEmptyPage";
+import { getDataStudioModelingRoutes } from "./modeling/routes";
 import { getDataStudioModelRoutes } from "./models/routes";
 
 export function getDataStudioRoutes(
@@ -59,10 +59,6 @@ export function getDataStudioRoutes(
         component={ModelingSectionLayout}
       >
         <IndexRoute component={ModelingEmptyPage} />
-        <Route
-          path="collections/:collectionId"
-          component={ModelingCollectionView}
-        />
         <Route path="snippets/new" component={NewSnippetPage} />
         <Route path="snippets/:snippetId" component={EditSnippetPage} />
         {PLUGIN_DEPENDENCIES.isEnabled && (
@@ -73,6 +69,7 @@ export function getDataStudioRoutes(
             <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
           </Route>
         )}
+        {getDataStudioModelingRoutes()}
         {getDataStudioModelRoutes()}
         {getDataStudioMetricRoutes()}
         {getDataStudioGlossaryRoutes()}
