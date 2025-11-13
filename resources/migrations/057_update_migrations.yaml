@@ -2459,6 +2459,28 @@ databaseChangeLog:
             constraintName: fk_transform_ref_creator_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: v57.2025-11-13T22:27:19
+      author: nvoxland
+      comment: Update old remote-sync settings
+      changes:
+        - update:
+            tableName: setting
+            columns:
+              - column:
+                  name: value
+                  value: 'read-write'
+            where: key='remote-sync-type' and value='development'
+        - update:
+            tableName: setting
+            columns:
+              - column:
+                  name: value
+                  value: 'read-only'
+            where: key='remote-sync-type' and value='production'
+
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
