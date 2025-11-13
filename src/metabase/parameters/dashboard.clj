@@ -97,7 +97,7 @@
                        (pos-int? card-id))
               (let [mp (lib-be/application-database-metadata-provider database-id)
                     card (lib.metadata/card mp card-id)]
-                (when (some? card)
+                (when (not-empty (:dataset-query card))
                   (let [query (lib/card->underlying-query mp card)]
                     (when (and (not-empty query)
                                (m/find-first (partial lib/filters query)
