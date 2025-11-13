@@ -1,6 +1,5 @@
 import { Link } from "react-router";
 
-import * as Urls from "metabase/lib/urls";
 import { TableBreadcrumbs } from "metabase/metadata/components";
 import { Box, Flex, Group, Icon } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
@@ -17,7 +16,7 @@ export const SegmentItem = ({ segment, onRetire }: Props) => {
   return (
     <tr>
       <Box component="td" className={S.cell} p="sm">
-        <Link to={Urls.dataStudioSegment(segment.id)}>
+        <Link to={`/admin/datamodel/segment/${segment.id}`}>
           <Group display="inline-flex" gap="sm" wrap="nowrap">
             <Box
               color="text-medium"

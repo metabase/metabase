@@ -8,7 +8,6 @@ import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { assignUserColors } from "metabase/lib/formatting";
-import * as Urls from "metabase/lib/urls";
 
 import Revision from "./Revision";
 
@@ -41,7 +40,7 @@ export default class RevisionHistory extends Component {
               crumbs={[
                 [
                   t`Segments`,
-                  `${Urls.dataStudioSegments()}?table=${segment.table_id}`,
+                  `/admin/datamodel/segments?table=${segment.table_id}`,
                 ],
                 [t`Segment History`],
               ]}
