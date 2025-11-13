@@ -6,6 +6,7 @@ import {
   EmptyStateTitle,
   EmptyStateWrapper,
 } from "metabase/collections/components/CollectionEmptyState";
+import { Center } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
 type ModelingCollectionEmptyStateProps = {
@@ -18,11 +19,13 @@ export function ModelingCollectionEmptyState({
   const { title, description } = getMessages(collection);
 
   return (
-    <EmptyStateWrapper data-testid="modeling-collection-empty-state">
-      <CollectionEmptyIcon />
-      <EmptyStateTitle>{title}</EmptyStateTitle>
-      <EmptyStateSubtitle>{description}</EmptyStateSubtitle>
-    </EmptyStateWrapper>
+    <Center h="100%">
+      <EmptyStateWrapper data-testid="modeling-collection-empty-state">
+        <CollectionEmptyIcon />
+        <EmptyStateTitle>{title}</EmptyStateTitle>
+        <EmptyStateSubtitle>{description}</EmptyStateSubtitle>
+      </EmptyStateWrapper>
+    </Center>
   );
 }
 

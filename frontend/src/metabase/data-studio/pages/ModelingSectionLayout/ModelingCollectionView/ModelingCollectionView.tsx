@@ -1,12 +1,13 @@
 import { useMemo } from "react";
-import { t } from "ttag";
 
 import {
   useGetCollectionQuery,
   useListCollectionItemsQuery,
 } from "metabase/api/collection";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Box, Center, Group, Stack, Text } from "metabase/ui";
+import { Box, Center, Flex } from "metabase/ui";
+
+import { PaneHeader, PanelHeaderTitle } from "../../../components/PaneHeader";
 
 import { ModelingCollectionEmptyState } from "./ModelingCollectionEmptyState";
 import S from "./ModelingCollectionView.module.css";
@@ -62,23 +63,17 @@ export function ModelingCollectionView({
   const showEmptyState = items.length === 0;
 
   return (
-    <Box h="100%" className={S.root}>
-      <Box className={S.content}>
-        <Stack gap="md">
-          <Group align="center" wrap="nowrap" justify="space-between">
-            <Text fw="bold" fz="1.5rem">
-              {collection?.name || t`Collection`}
-            </Text>
-          </Group>
-          {showEmptyState ? (
-            <Box className={S.emptyState}>
-              <ModelingCollectionEmptyState collection={collection} />
-            </Box>
-          ) : (
-            <ModelingItemsTable items={items} skeleton={isLoading} />
-          )}
-        </Stack>
+    <Flex direction="column" h="100%">
+      <PaneHeader
+        title={<PanelHeaderTitle>{collection.name}</PanelHeaderTitle>}
+      />
+      <Box className={S.body} flex={1} p="lg" mih={0} bg="bg-light">
+        {showEmptyState ? (
+          <ModelingCollectionEmptyState collection={collection} />
+        ) : (
+          <ModelingItemsTable items={items} />
+        )}
       </Box>
-    </Box>
+    </Flex>
   );
 }
