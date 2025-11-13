@@ -9,9 +9,9 @@ import {
 import { GlossaryTable } from "metabase/reference/glossary/GlossaryTable";
 import { Box, Card, Group, Stack, Text } from "metabase/ui";
 
-import S from "./ModelingGlossary.module.css";
+import S from "./GlossaryPage.module.css";
 
-export function ModelingGlossary() {
+export function GlossaryPage() {
   const { data: glossary = [] } = useListGlossaryQuery();
   const [createGlossary] = useCreateGlossaryMutation();
   const [updateGlossary] = useUpdateGlossaryMutation();
