@@ -269,7 +269,7 @@
 
 (mr/def ::data-layers (into [:enum {:decode/string keyword}] table/data-layers))
 
-(defn- maybe-sync-undhidden-tables!
+(defn- maybe-sync-unhidden-tables!
   [existing-tables {:keys [data_layer] :as body}]
   ;; sync any tables that are changed from copper to something else
   (sync-unhidden-tables (when (and (contains? body :data_layer) (not= :copper data_layer))
@@ -298,11 +298,11 @@
                          :owner_user_id
                          :entity_type]
         existing-tables (t2/select :model/Table {:where where})
-        table-ids        (set (map :id existing-tables))
-        set-map          (select-keys body set-ks)]
+        table-ids       (set (map :id existing-tables))
+        set-map         (select-keys body set-ks)]
     (when (seq set-map)
       (t2/update! :model/Table [:in table-ids] set-map)
-      (maybe-sync-undhidden-tables! existing-tables set-map))
+      (maybe-sync-unhidden-tables! existing-tables set-map))
     {}))
 
 (defn- table->published-model
