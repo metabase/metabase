@@ -44,7 +44,8 @@ function getData(showMetabaseTransform?: boolean) {
     { value: "unknown" as const, label: t`Unknown` },
     { value: "ingested" as const, label: t`Ingested` },
     showMetabaseTransform
-      ? { value: "metabase-transform" as const, label: t`Metabase transform` }
+      ? // eslint-disable-next-line no-literal-metabase-strings -- shown in Data Studio only
+        { value: "metabase-transform" as const, label: t`Metabase transform` }
       : undefined,
     { value: "transform" as const, label: t`Transform` },
     { value: "source-data" as const, label: t`Source data` },

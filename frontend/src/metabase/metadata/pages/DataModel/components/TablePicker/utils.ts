@@ -233,7 +233,7 @@ export function getFiltersCount(filters: FilterState): number {
     ++count;
   }
 
-  if (filters.visibilityType2 != null) {
+  if (filters.dataLayer != null) {
     ++count;
   }
 

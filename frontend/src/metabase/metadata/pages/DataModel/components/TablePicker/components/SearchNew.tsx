@@ -11,8 +11,8 @@ import { DataModelContext } from "../../../DataModelContext";
 import { useSelection } from "../../../contexts/SelectionContext";
 import type { RouteParams } from "../../../types";
 import { getUrl, parseRouteParams } from "../../../utils";
+import type { FilterState } from "../types";
 
-import type { FilterState } from "./FilterPopover";
 import S from "./Results.module.css";
 
 interface SearchNewProps {
@@ -37,8 +37,7 @@ export function SearchNew({
     refetch,
   } = useListTablesQuery({
     term: query,
-    // TODO: Please rename visibilityType2 to dataLayer
-    "data-layer": filters.visibilityType2 ?? undefined,
+    "data-layer": filters.dataLayer ?? undefined,
     "data-source":
       filters.dataSource === "unknown"
         ? null

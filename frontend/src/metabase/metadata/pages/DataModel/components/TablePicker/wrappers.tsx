@@ -11,7 +11,11 @@ import { TablePicker } from "./components";
 import type { ChangeOptions, TreePath } from "./types";
 import { getUrl } from "./utils";
 
-export function RouterTablePicker(props: TreePath & { params: RouteParams }) {
+type Props = TreePath & {
+  params: RouteParams;
+};
+
+export function RouterTablePicker({ params, ...props }: Props) {
   const dispatch = useDispatch();
   const [value, setValue] = useState(props);
   const location = useSelector(getLocation);
@@ -44,7 +48,7 @@ export function RouterTablePicker(props: TreePath & { params: RouteParams }) {
     setValue(props);
   }, [props]);
 
-  return <TablePicker path={value} onChange={onChange} params={props} />;
+  return <TablePicker path={value} onChange={onChange} params={params} />;
 }
 
 export function UncontrolledTablePicker({

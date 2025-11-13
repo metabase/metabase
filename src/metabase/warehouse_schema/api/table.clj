@@ -95,8 +95,7 @@
                                          ;; let's circle back before merging bulk editing
                                          [:not= :d.from_entity_type "transform"]]]
                             :where     [:and where [:= :d.id nil]]))
-        hydrations (cond-> [:db]
-                     (premium-features/has-feature? :dependencies) (conj :published_as_model)
+        hydrations (cond-> [:db :published_as_model]
                      (premium-features/has-feature? :transforms)   (conj :transform))]
     (as-> (t2/select :model/Table query) tables
       (apply t2/hydrate tables hydrations)
@@ -295,7 +294,7 @@
       (t2/query stmt))
     {}))
 
-(defn- table->model
+(defn- table->published-model
   [{:keys [id name db_id] :as _table} creator-id collection-id]
   {:name                   (format "Model based on %s" name)
    :description            (format "Base model for table %s " name)
@@ -305,7 +304,8 @@
    :display                :table
    :visualization_settings {}
    :creator_id             creator-id
-   :collection_id          collection-id})
+   :collection_id          collection-id
+   :published_table_id     id})
 
 (api.macros/defendpoint :post "/publish-model"
   "Create a model for each of selected tables"
@@ -333,7 +333,7 @@
                                              ;; and it's gonna be expensive if we're doing this for lots of tables.
                                              ;; maybe we should an option to skip it
                                              (mapv (fn [table]
-                                                     (queries/create-card! (table->model table api/*current-user-id* (:id target-collection)) @api/*current-user*))
+                                                     (queries/create-card! (table->published-model table api/*current-user-id* (:id target-collection)) @api/*current-user*))
                                                    batch))))
                                   (t2/reducible-select :model/Table :active true {:where where})))]
     {:created_count     (count created-models)

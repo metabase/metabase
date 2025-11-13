@@ -75,11 +75,11 @@ export const UserInput = ({
           <Avatar color="initials" name="emails">
             <Icon name="mail" />
           </Avatar>
-        ) : (
+        ) : userId === "unknown" ? (
           <Avatar name={t`?`} />
-        )
+        ) : null
       }
-      placeholder={t`Select user or type an email`}
+      placeholder={t`Pick someone, or type an email`}
       nothingFoundMessage={t`Didn't find any results`}
       searchable
       searchValue={search}

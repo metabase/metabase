@@ -121,6 +121,7 @@ function getInitialValues(
     name: "",
     description: null,
     result_metadata: null,
+    resultMetadata: null,
     collection_id: null,
     ...defaultValues,
   };

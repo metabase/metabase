@@ -4,7 +4,6 @@ export * from "./CurrencyPicker";
 export * from "./DiscardFieldValuesButton";
 export * from "./DiscardTableFieldValuesButton";
 export * from "./FieldOrderPicker";
-export * from "./FieldOrderPicker2";
 export * from "./FieldValuesTypePicker";
 export * from "./FieldVisibilityPicker";
 export * from "./FkTargetPicker";

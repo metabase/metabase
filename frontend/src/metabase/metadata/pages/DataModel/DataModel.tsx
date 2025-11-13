@@ -120,14 +120,10 @@ function DataModelContent({ params }: Props) {
   const showFieldPreview =
     !isEmptyStateShown && field && table && isPreviewOpen;
 
-  const showBulkTableEdit =
-    hasSelectedItems && !hasOnlyOneTableSelected && !showFieldPreview;
+  const showBulkTableEdit = hasSelectedItems && !hasOnlyOneTableSelected;
   const showFieldDetails = field && !showBulkTableEdit && !isEmptyStateShown;
   const showTableDetailsSection =
-    metadataTableId &&
-    !hasSelectedMoreThanOneTable &&
-    !showFieldPreview &&
-    !showBulkTableEdit;
+    metadataTableId && !hasSelectedMoreThanOneTable && !showBulkTableEdit;
 
   return (
     <Flex bg="accent-gray-light" data-testid="data-model" h="100%">
@@ -213,7 +209,7 @@ function DataModelContent({ params }: Props) {
             miw={COLUMN_CONFIG.field.min}
           >
             <LoadingAndErrorWrapper error={error} loading={isLoading}>
-              {field && table && (
+              {field && table && databaseId != null && (
                 <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
                   <FieldSection
                     databaseId={databaseId}
@@ -238,7 +234,7 @@ function DataModelContent({ params }: Props) {
           </Stack>
         )}
 
-        {showFieldPreview && (
+        {showFieldPreview && databaseId != null && fieldId != null && (
           <Box
             bg="accent-gray-light"
             flex={COLUMN_CONFIG.preview.flex}

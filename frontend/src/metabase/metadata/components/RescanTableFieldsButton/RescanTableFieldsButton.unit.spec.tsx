@@ -21,7 +21,7 @@ function setup() {
 
   renderWithProviders(
     <>
-      <RescanTableFieldsButton tableId={table.id} />
+      <RescanTableFieldsButton tableIds={[table.id]} />
       <UndoListing />
     </>,
   );

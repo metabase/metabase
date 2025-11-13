@@ -1703,6 +1703,7 @@ export type IconName =
   | "lock_filled"
   | "mail"
   | "mail_filled"
+  | "medallion"
   | "message_circle"
   | "metabot"
   | "metabot_sad"

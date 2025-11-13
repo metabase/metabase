@@ -18,10 +18,10 @@ import {
 
 import { useSelection } from "../../../contexts/SelectionContext";
 import type { RouteParams } from "../../../types";
-import type { ChangeOptions, TreePath } from "../types";
+import type { ChangeOptions, FilterState, TreePath } from "../types";
 import { getFiltersCount } from "../utils";
 
-import { FilterPopover, type FilterState } from "./FilterPopover";
+import { FilterPopover } from "./FilterPopover";
 import { PublishModelsModal } from "./PublishModelsModal";
 import { SearchNew } from "./SearchNew";
 import { Tree } from "./Tree";
@@ -46,7 +46,7 @@ export function TablePicker({
   const deferredQuery = useDeferredValue(query);
   const previousDeferredQuery = usePrevious(deferredQuery);
   const [filters, setFilters] = useState<FilterState>({
-    visibilityType2: null,
+    dataLayer: null,
     dataSource: null,
     ownerEmail: null,
     ownerUserId: null,
@@ -106,7 +106,7 @@ export function TablePicker({
           onChange={(event) => setQuery(event.target.value)}
         />
 
-        <Popover width={rem(300)} position="bottom-start" opened={isOpen}>
+        <Popover width={rem(340)} position="bottom-start" opened={isOpen}>
           <Popover.Target>
             <Tooltip label={t`Filter`}>
               <Button
@@ -134,7 +134,6 @@ export function TablePicker({
           <Popover.Dropdown>
             <FilterPopover
               filters={filters}
-              onClose={close}
               onSubmit={(newFilters) => {
                 setFilters(newFilters);
                 close();
