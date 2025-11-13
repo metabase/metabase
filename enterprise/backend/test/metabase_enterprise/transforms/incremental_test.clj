@@ -21,7 +21,7 @@
 (defn- make-incremental-source-query
   "Create a native query with optional watermark template tag."
   [schema]
-  (let [timestamp-sql (first (sql/format [(sql.qp/current-datetime-honeysql-form driver/*driver*)]))
+  (let [timestamp-sql (first (sql/format (sql.qp/current-datetime-honeysql-form driver/*driver*)))
         query (format "SELECT *, %s AS load_timestamp FROM %s [[WHERE id > {{checkpoint}}]] LIMIT 10"
                       timestamp-sql
                       (if schema
