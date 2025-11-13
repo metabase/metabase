@@ -52,25 +52,6 @@ const CypressBackend = {
         MB_IS_CYPRESS: "true", // custom flag so we can detect we're running in Cypress, used in tests.
       };
 
-      /**
-       * This ENV is used for Cloud instances only, and is subject to change.
-       * As such, it is not documented anywhere in the code base!
-       *
-       * WARNING:
-       * Changing values here will break the related E2E test.
-       */
-      const userDefaults = {
-        MB_USER_DEFAULTS: JSON.stringify({
-          token: "123456",
-          user: {
-            first_name: "Testy",
-            last_name: "McTestface",
-            email: "testy@metabase.test",
-            site_name: "Epic Team",
-          },
-        }),
-      };
-
       this.server.process = spawn(
         "java",
         [...javaFlags, "-jar", "target/uberjar/metabase.jar"],
@@ -78,7 +59,6 @@ const CypressBackend = {
           env: {
             ...process.env,
             ...metabaseConfig,
-            ...userDefaults,
           },
           stdio:
             process.env["DISABLE_LOGGING"] ||

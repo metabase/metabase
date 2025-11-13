@@ -12,18 +12,17 @@ import {
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_METABOT } from "metabase/plugins";
 import {
   Box,
   Divider,
   Group,
   Icon,
-  type IconName,
   Stack,
   Text,
   UnstyledButton,
 } from "metabase/ui";
 import {
+  CreateNewQuestionFooter,
   MenuItemComponent,
   SearchResultsFooter,
 } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
@@ -32,6 +31,7 @@ import {
   SuggestionPaper,
 } from "metabase-enterprise/documents/components/Editor/shared/SuggestionPaper";
 import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
+import { getBrowseAllItemIndex } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 import type { SearchResult } from "metabase-types/api";
 
 import { EntitySearchSection } from "../shared/EntitySearchSection";
@@ -40,6 +40,10 @@ import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 
 import type { CommandProps } from "./CommandExtension";
 import CommandS from "./CommandSuggestion.module.css";
+import { NewQuestionTypeMenuView } from "./NewQuestionTypeMenuView";
+import type { CommandOption, CommandSection } from "./types";
+import { useCreateQuestionsMenuItems } from "./use-create-questions-menu-items";
+import { getAllCommandSections } from "./utils";
 
 export interface CommandSuggestionProps {
   items: SearchResult[];
@@ -51,18 +55,6 @@ export interface CommandSuggestionProps {
 
 interface SuggestionRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
-}
-
-interface CommandOption {
-  icon?: IconName;
-  text?: string;
-  label: string;
-  command: string;
-}
-
-interface CommandSection {
-  title?: string;
-  items: CommandOption[];
 }
 
 const CommandMenuItem = forwardRef<
@@ -109,78 +101,18 @@ export const CommandSuggestion = forwardRef<
 >(function CommandSuggestionComponent({ command, editor, query }, ref) {
   const document = useSelector(getCurrentDocument);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [showLinkSearch, setShowLinkSearch] = useState(false);
-  const [showEmbedSearch, setShowEmbedSearch] = useState(false);
+
+  const [viewMode, setViewMode] = useState<
+    "linkTo" | "embedQuestion" | "newQuestionType" | null
+  >(null);
+  const [newQuestionType, setNewQuestionType] = useState<
+    "notebook" | "native" | null
+  >(null);
+
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const allCommandSections: CommandSection[] = useMemo(
-    () => [
-      {
-        items: [
-          ...(PLUGIN_METABOT.isEnabled()
-            ? [
-                {
-                  icon: "metabot" as const,
-                  label: t`Ask Metabot`,
-                  command: "metabot",
-                  nodeName: "metabot",
-                },
-              ]
-            : []),
-          {
-            icon: "lineandbar" as const,
-            label: t`Chart`,
-            command: "embedQuestion",
-            nodeName: "cardEmbed",
-          },
-          {
-            icon: "link" as const,
-            label: t`Link`,
-            command: "linkTo",
-          },
-        ],
-      },
-      {
-        title: t`Formatting`,
-        items: [
-          {
-            text: "H1",
-            label: t`Heading 1`,
-            command: "heading1",
-          },
-          {
-            text: "H2",
-            label: t`Heading 2`,
-            command: "heading2",
-          },
-          {
-            text: "H3",
-            label: t`Heading 3`,
-            command: "heading3",
-          },
-          {
-            icon: "list",
-            label: t`Bullet list`,
-            command: "bulletList",
-          },
-          {
-            icon: "ordered_list",
-            label: t`Numbered list`,
-            command: "orderedList",
-          },
-          {
-            icon: "quote",
-            label: t`Quote`,
-            command: "blockquote",
-          },
-          {
-            icon: "code_block",
-            label: t`Code block`,
-            command: "codeBlock",
-          },
-        ],
-      },
-    ],
+    getAllCommandSections,
     [],
   );
 
@@ -191,7 +123,7 @@ export const CommandSuggestion = forwardRef<
 
   // Filter command options based on query when not in link search mode
   const commandOptions = useMemo(() => {
-    if (showLinkSearch || showEmbedSearch) {
+    if (viewMode === "linkTo" || viewMode === "embedQuestion") {
       return allCommandOptions;
     }
 
@@ -203,11 +135,18 @@ export const CommandSuggestion = forwardRef<
     return allCommandOptions.filter((option) =>
       option.label.toLowerCase().includes(lowerQuery),
     );
-  }, [allCommandOptions, query, showLinkSearch, showEmbedSearch]);
+  }, [viewMode, query, allCommandOptions]);
+
+  const createQuestionsMenuItems = useCreateQuestionsMenuItems({
+    onSelectItem: setNewQuestionType,
+  });
+
+  const canCreateNewQuestion =
+    createQuestionsMenuItems.length > 0 && viewMode !== "linkTo";
 
   const onSelectLinkEntity = useCallback(
     (item: { id: number | string; model: string }) => {
-      if (showLinkSearch) {
+      if (viewMode === "linkTo") {
         command({
           selectItem: true,
           entityId: item.id,
@@ -223,8 +162,12 @@ export const CommandSuggestion = forwardRef<
         });
       }
     },
-    [command, showLinkSearch, document],
+    [viewMode, command, document],
   );
+
+  const onTriggerCreateNewQuestion = useCallback(() => {
+    setViewMode("newQuestionType");
+  }, []);
 
   // Use shared entity suggestions for link/embed mode and browse all functionality
   const entitySuggestions = useEntitySuggestions({
@@ -232,9 +175,12 @@ export const CommandSuggestion = forwardRef<
     editor,
     onSelectEntity: onSelectLinkEntity,
     enabled: true,
-    searchModels: showLinkSearch ? LINK_SEARCH_MODELS : EMBED_SEARCH_MODELS,
+    searchModels:
+      viewMode === "linkTo" ? LINK_SEARCH_MODELS : EMBED_SEARCH_MODELS,
     canFilterSearchModels: false,
     canBrowseAll: true,
+    canCreateNewQuestion,
+    onTriggerCreateNewQuestion,
   });
 
   const {
@@ -252,7 +198,7 @@ export const CommandSuggestion = forwardRef<
         clearQuery: true,
         switchToLinkMode: true,
       });
-      setShowLinkSearch(true);
+      setViewMode("linkTo");
       return;
     }
 
@@ -262,10 +208,7 @@ export const CommandSuggestion = forwardRef<
         switchToEmbedMode: true,
       });
 
-      if (searchMenuItems.length === 0) {
-        entityHandlers.openModal();
-      }
-      setShowEmbedSearch(true);
+      setViewMode("embedQuestion");
       return;
     }
 
@@ -283,8 +226,12 @@ export const CommandSuggestion = forwardRef<
   };
 
   const currentItems = useMemo(() => {
-    if (showLinkSearch || showEmbedSearch) {
+    if (viewMode === "linkTo" || viewMode === "embedQuestion") {
       return searchMenuItems;
+    }
+
+    if (viewMode === "newQuestionType") {
+      return createQuestionsMenuItems;
     }
 
     // When searching in command mode, combine search results with matching commands
@@ -294,17 +241,24 @@ export const CommandSuggestion = forwardRef<
     }
 
     return commandOptions;
-  }, [showLinkSearch, showEmbedSearch, query, searchMenuItems, commandOptions]);
+  }, [
+    viewMode,
+    query,
+    searchMenuItems,
+    commandOptions,
+    createQuestionsMenuItems,
+  ]);
+
   let totalItems = currentItems.length;
 
-  if (showLinkSearch || showEmbedSearch) {
-    totalItems = searchMenuItems.length + 1;
+  if (viewMode === "linkTo" || viewMode === "embedQuestion") {
+    totalItems = searchMenuItems.length + 1 + Number(canCreateNewQuestion); // "Browse all" footer and "New chart"
   } else if (currentItems.length === 0 && query) {
-    totalItems = 1; // Just the browse all footer
+    totalItems = 1 + Number(canCreateNewQuestion); // "Browse all" footer and "New chart"
   }
 
   const selectItem = (index: number) => {
-    if (showLinkSearch || showEmbedSearch) {
+    if (viewMode) {
       entityHandlers.selectItem(index);
     } else {
       // When searching in command mode, handle both entity results and commands
@@ -317,11 +271,23 @@ export const CommandSuggestion = forwardRef<
             executeCommand(commandOptions[commandIndex].command);
           }
         }
-      } else if (currentItems.length === 0 && query && index === 0) {
+      } else if (
+        currentItems.length === 0 &&
+        query &&
+        index ===
+          getBrowseAllItemIndex(currentItems.length, canCreateNewQuestion)
+      ) {
         // Handle browse all when no results
         // Switch to embed mode so selected questions get embedded
-        setShowEmbedSearch(true);
+        setViewMode("embedQuestion");
         entityHandlers.openModal();
+      } else if (
+        currentItems.length === 0 &&
+        query &&
+        index === 0 &&
+        canCreateNewQuestion
+      ) {
+        onTriggerCreateNewQuestion();
       } else {
         if (index < commandOptions.length) {
           executeCommand(commandOptions[index].command);
@@ -344,12 +310,7 @@ export const CommandSuggestion = forwardRef<
 
   useEffect(() => {
     setSelectedIndex(0);
-  }, [
-    currentItems.length,
-    showLinkSearch,
-    showEmbedSearch,
-    searchMenuItems.length,
-  ]);
+  }, [currentItems.length, viewMode, searchMenuItems.length]);
 
   useEffect(() => {
     const selectedItem = itemRefs.current[selectedIndex];
@@ -360,8 +321,13 @@ export const CommandSuggestion = forwardRef<
 
   useImperativeHandle(ref, () => ({
     onKeyDown: ({ event }: { event: KeyboardEvent }) => {
-      if (showLinkSearch || showEmbedSearch) {
+      if (viewMode === "linkTo" || viewMode === "embedQuestion") {
         return entityHandlers.onKeyDown({ event });
+      }
+
+      if (viewMode === "newQuestionType" && event.key === "Enter") {
+        createQuestionsMenuItems[selectedIndex]?.action();
+        return true;
       }
 
       if (event.key === "ArrowUp") {
@@ -383,13 +349,16 @@ export const CommandSuggestion = forwardRef<
     },
   }));
 
-  if ((showLinkSearch || showEmbedSearch) && isSearchLoading) {
+  if (
+    (viewMode === "linkTo" || viewMode === "embedQuestion") &&
+    isSearchLoading
+  ) {
     return <LoadingSuggestionPaper aria-label={t`Command Dialog`} />;
   }
 
   return (
     <SuggestionPaper aria-label={t`Command Dialog`}>
-      {showLinkSearch || showEmbedSearch ? (
+      {(viewMode === "linkTo" || viewMode === "embedQuestion") && (
         <EntitySearchSection
           menuItems={searchMenuItems}
           selectedIndex={entitySelectedIndex}
@@ -402,8 +371,27 @@ export const CommandSuggestion = forwardRef<
           onModalSelect={entityHandlers.handleModalSelect}
           onModalClose={entityHandlers.handleModalClose}
           canBrowseAll
+          canCreateNewQuestion={canCreateNewQuestion}
+          onTriggerCreateNew={onTriggerCreateNewQuestion}
         />
-      ) : (
+      )}
+
+      {viewMode === "newQuestionType" && (
+        <NewQuestionTypeMenuView
+          menuItems={createQuestionsMenuItems}
+          selectedIndex={selectedIndex}
+          setSelectedIndex={setSelectedIndex}
+          newQuestionType={newQuestionType}
+          setNewQuestionType={setNewQuestionType}
+          onSave={entityHandlers.onSaveNewQuestion}
+          onClose={() => {
+            setNewQuestionType(null);
+            setViewMode(null);
+          }}
+        />
+      )}
+
+      {!viewMode && (
         <>
           {commandOptions.length > 0 ||
           (query && searchMenuItems.length > 0) ? (
@@ -489,11 +477,33 @@ export const CommandSuggestion = forwardRef<
               {query && (
                 <>
                   <Divider my="sm" mx="sm" />
+                  {canCreateNewQuestion && (
+                    <CreateNewQuestionFooter
+                      isSelected={selectedIndex === 0}
+                      onMouseEnter={() => setSelectedIndex(0)}
+                      onClick={onTriggerCreateNewQuestion}
+                    />
+                  )}
+
                   <SearchResultsFooter
-                    isSelected={selectedIndex === currentItems.length}
+                    isSelected={
+                      selectedIndex ===
+                      getBrowseAllItemIndex(
+                        searchMenuItems.length,
+                        canCreateNewQuestion,
+                      )
+                    }
+                    onMouseEnter={() =>
+                      setSelectedIndex(
+                        getBrowseAllItemIndex(
+                          searchMenuItems.length,
+                          canCreateNewQuestion,
+                        ),
+                      )
+                    }
                     onClick={() => {
                       // Switch to embed mode so selected questions get embedded
-                      setShowEmbedSearch(true);
+                      setViewMode("embedQuestion");
                       entityHandlers.openModal();
                     }}
                   />
