@@ -1,7 +1,7 @@
 (ns metabase.driver.athena.schema-parser
   (:require
+   #_[metabase.driver.athena.hive-parser :as athena.hive-parser]
    [clojure.string :as str]
-   [metabase.driver.athena.hive-parser :as athena.hive-parser]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]))
 
 (set! *warn-on-reflection* true)
