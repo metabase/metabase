@@ -475,57 +475,49 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.visualize();
   });
 
-  it(
-    "should show an info popover when hovering over a field picker option for a table",
-    { tags: "@flaky" },
-    () => {
-      H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        H.entityPickerModalItem(2, "Orders").click();
-      });
-      cy.findByTestId("fields-picker").click();
-      H.popover()
-        .findByText("Total")
-        .closest("label")
-        .findByLabelText("More info")
-        .trigger("mouseover");
+  it("should show an info popover when hovering over a field picker option for a table", () => {
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      H.entityPickerModalItem(2, "Orders").click();
+    });
+    cy.findByTestId("fields-picker").click();
+    H.popover()
+      .findByText("Total")
+      .closest("label")
+      .findByLabelText("More info")
+      .trigger("mouseover");
 
-      H.popover()
-        .should("have.length", 2)
-        // the info popover is the second in the document
-        .last()
-        .contains("The total billed amount.");
-    },
-  );
+    H.popover()
+      .should("have.length", 2)
+      // the info popover is the second in the document
+      .last()
+      .contains("The total billed amount.");
+  });
 
-  it(
-    "should show an info popover when hovering over a field picker option for a saved question",
-    { tags: "@flaky" },
-    () => {
-      H.createNativeQuestion({
-        name: "question a",
-        native: { query: "select 'foo' as a_column" },
-      });
-      H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
-        cy.findByText("question a").click();
-      });
-      cy.findByTestId("fields-picker").click();
-      H.popover()
-        .findByText("A_COLUMN")
-        .closest("label")
-        .findByLabelText("More info")
-        .trigger("mouseover");
+  it("should show an info popover when hovering over a field picker option for a saved question", () => {
+    H.createNativeQuestion({
+      name: "question a",
+      native: { query: "select 'foo' as a_column" },
+    });
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText("question a").click();
+    });
+    cy.findByTestId("fields-picker").click();
+    H.popover()
+      .findByText("A_COLUMN")
+      .closest("label")
+      .findByLabelText("More info")
+      .trigger("mouseover");
 
-      H.popover()
-        .should("have.length", 2)
-        // the info popover is the second in the document
-        .last()
-        .contains("No description");
-    },
-  );
+    H.popover()
+      .should("have.length", 2)
+      // the info popover is the second in the document
+      .last()
+      .contains("No description");
+  });
 
   it("should allow to pick a saved question when there are models", () => {
     H.createNativeQuestion({
