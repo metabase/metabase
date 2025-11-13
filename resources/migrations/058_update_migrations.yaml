@@ -304,18 +304,6 @@ databaseChangeLog:
             where: revoked_at IS NULL
 
   - changeSet:
-      id: v58.2025-11-06T15:01:04
-      author: edpaget
-      comment: Add index for finding support access grants by ticket number
-      changes:
-        - createIndex:
-            indexName: idx_support_access_grant_log_ticket
-            tableName: support_access_grant_log
-            columns:
-              - column:
-                  name: ticket_number
-
-
       id: v58.2025-11-12T00:00:00
       author: edpaget
       comment: Add index on provider_id for efficient lookups
