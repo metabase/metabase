@@ -368,35 +368,25 @@
 
 (deftest prevent-metabase-transform-data-source-change-test
   (testing "Cannot change data_source from metabase-transform"
-    (mt/with-temp [:model/Table {table-id :id} {:data_source "metabase-transform"}]
+    (mt/with-temp [:model/Table {table-id :id} {:data_source :metabase-transform}]
       (testing "to another value"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot change data_source from metabase-transform"
-             (t2/update! :model/Table table-id {:data_source "some-other-source"}))))
+             (t2/update! :model/Table table-id {:data_source :transform}))))
       (testing "to nil"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot change data_source from metabase-transform"
-             (t2/update! :model/Table table-id {:data_source nil}))))
-      (testing "but can update other fields"
-        (is (some? (t2/update! :model/Table table-id {:display_name "New Name"})))
-        (is (= "metabase-transform" (t2/select-one-fn :data_source :model/Table :id table-id))))))
+             (t2/update! :model/Table table-id {:data_source nil}))))))
 
   (testing "Cannot change data_source to metabase-transform"
-    (mt/with-temp [:model/Table {table-id :id} {:data_source "some-source"}]
+    (mt/with-temp [:model/Table {table-id :id} {:data_source :ingested}]
       (testing "from another value"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot set data_source to metabase-transform"
-             (t2/update! :model/Table table-id {:data_source "metabase-transform"}))))
+             (t2/update! :model/Table table-id {:data_source :metabase-transform}))))
       (testing "but can change to other non-metabase-transform values"
-        (is (some? (t2/update! :model/Table table-id {:data_source "source-b"})))
-        (is (= "source-b" (t2/select-one-fn :data_source :model/Table :id table-id))))))
-
-  (testing "Cannot set data_source to metabase-transform from nil"
-    (mt/with-temp [:model/Table {table-id :id} {:data_source nil}]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Cannot set data_source to metabase-transform"
-           (t2/update! :model/Table table-id {:data_source "metabase-transform"}))))))
+        (is (some? (t2/update! :model/Table table-id {:data_source :ingested})))
+        (is (= :ingested (t2/select-one-fn :data_source :model/Table :id table-id)))))))

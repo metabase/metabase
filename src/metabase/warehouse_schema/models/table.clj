@@ -23,7 +23,11 @@
    (Basically any non-nil value is a reason for hiding the table.)"
   #{:hidden :technical :cruft})
 
-(def data-layer-types
+(def ^:private data-sources
+  "Valid values for data source"
+  #{:unknown :ingested :metabase-transform :transform :source-data :uploaded-data})
+
+(def ^:private data-layers
   "Valid values for `Table.data_layer`.
   :gold   - highest quality, fully visible
   :silver - high quality, visible
@@ -105,12 +109,13 @@
           (some-> value name))})
 
 (t2/deftransforms :model/Table
-  {:entity_type    mi/transform-keyword
+  {:entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
-   :data_layer     mi/transform-keyword
-   :field_order    mi/transform-keyword
+   :data_layer      (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-layers))
+   :field_order     mi/transform-keyword
+   :data_source     (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-sources))
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
-   :data_authority transform-data-authority})
+   :data_authority  transform-data-authority})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :table]
   [_original-model _k]
@@ -177,12 +182,12 @@
     (when (contains? changes :data_source)
       (let [original-data-source (:data_source original-table)
             new-data-source      (:data_source changes)]
-        (when (and (= original-data-source "metabase-transform")
-                   (not= new-data-source "metabase-transform"))
+        (when (and (= original-data-source :metabase-transform)
+                   (not= new-data-source :metabase-transform))
           (throw (ex-info "Cannot change data_source from metabase-transform"
                           {:status-code 400})))
         (when (and (not= original-data-source "metabase-transform")
-                   (= new-data-source "metabase-transform"))
+                   (= new-data-source :metabase-transform))
           (throw (ex-info "Cannot set data_source to metabase-transform"
                           {:status-code 400})))))
 
