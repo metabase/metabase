@@ -9,7 +9,11 @@ import {
   buildCollectionTree,
   getCollectionIcon,
 } from "metabase/entities/collections";
-import type { Collection, User } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionContentModel,
+  User,
+} from "metabase-types/api";
 
 export function getCollectionTree(
   collections: Collection[],
@@ -24,10 +28,13 @@ export function getCollectionTree(
     ),
   ];
 
+  const modelFilter = (model: CollectionContentModel) =>
+    model === "dataset" || model === "metric";
+
   const rootCollection = {
     ...ROOT_COLLECTION,
     icon: getCollectionIcon(ROOT_COLLECTION),
-    children: buildCollectionTree(preparedCollections),
+    children: buildCollectionTree(preparedCollections, modelFilter),
   };
 
   return [rootCollection];
