@@ -27,19 +27,30 @@ export function KeysetColumnSelect({
       // Use -1 to get the last stage
       const stageIndex = -1;
 
-      // Get the filterable columns from the query
+      // Get returned columns and filterable columns
+      const returnedColumns = Lib.returnedColumns(query, stageIndex);
       const filterableColumns = Lib.filterableColumns(query, stageIndex);
 
-      // Filter to only numeric columns
-      const numericColumns = filterableColumns.filter((column) =>
-        Lib.isNumeric(column),
+      // Create a set of filterable column identifiers using display info
+      const filterableIdentifiers = new Set(
+        filterableColumns.map((col) => {
+          const info = Lib.displayInfo(query, stageIndex, col);
+          return `${info.table?.id ?? "no-table"}:${info.name}`;
+        }),
       );
+
+      // Filter returned columns to only those that are also filterable and numeric
+      const numericFilterableColumns = returnedColumns.filter((column) => {
+        const info = Lib.displayInfo(query, stageIndex, column);
+        const identifier = `${info.table?.id ?? "no-table"}:${info.name}`;
+        return filterableIdentifiers.has(identifier) && Lib.isNumeric(column);
+      });
 
       // Convert to select options with unique keys
       const seenKeys = new Set<string>();
       const uniqueColumns: Array<{ value: string; label: string }> = [];
 
-      numericColumns.forEach((column) => {
+      numericFilterableColumns.forEach((column) => {
         const columnInfo = Lib.displayInfo(query, stageIndex, column);
         const uniqueKey = Lib.columnUniqueKey(column);
 
