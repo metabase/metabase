@@ -170,7 +170,12 @@ const SupportingTextComponent = ({
         )}
         <NodeViewContent />
       </div>
-      <button
+
+      {/* Would be nice to use a real `button` here, but that prevents ProseMirror plugin dragstart events from firing */}
+      <div
+        role="button"
+        tabIndex={0}
+        data-drag-handle
         contentEditable={false}
         aria-label={t`Supporting text`}
         className={S.handle}
@@ -187,21 +192,6 @@ const SupportingTextComponent = ({
               editor.commands.focus(pos);
             }
           }
-        }}
-        draggable
-        onDragStart={(e) => {
-          const pos = getPos();
-          pos && editor.commands.setNodeSelection(pos);
-          const slice = editor.view.state.selection.content();
-          const customImage =
-            e.currentTarget instanceof Element &&
-            e.currentTarget.closest(`.${S.wrapper}`);
-          if (customImage) {
-            // FIXME: Calculate x, y offset
-            e.dataTransfer.setDragImage(customImage, 0, 0);
-          }
-          editor.view.dragging = { slice, move: true };
-          editor.view.draggingNode = node;
         }}
       />
       {document && !isWithinIframe() && (

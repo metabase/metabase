@@ -49,6 +49,7 @@
   position: absolute;
   top: 0;
   width: 100%;
+  user-select: none; /* Needed to make this handle draggable in FF */
 
   &:focus-visible {
     outline: none !important;

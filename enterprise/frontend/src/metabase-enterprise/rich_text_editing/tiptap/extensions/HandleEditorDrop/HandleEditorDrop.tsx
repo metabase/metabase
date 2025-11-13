@@ -80,8 +80,8 @@ export const HandleEditorDrop = Extension.create({
               });
 
               if (maybePos) {
-                const { pos } = maybePos;
-                const node = view.state.doc.nodeAt(pos);
+                const { inside } = maybePos;
+                const node = view.state.doc.nodeAt(inside);
 
                 view.draggingNode = node;
                 return false;
