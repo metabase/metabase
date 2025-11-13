@@ -44,10 +44,11 @@
                 :database-type     "struct"
                 :database-position 1}
                ;; Leaf fields have nfc-path set and use arrow notation in name
+               ;; Position is 0 to match Postgres behavior where JSONB nested fields have position 0
                {:name              "data → name"
                 :base-type         :type/Text
                 :database-type     "string"
-                :database-position 1
+                :database-position 0
                 :nfc-path          ["data" "name"]}}
              (#'athena/describe-table-fields-with-nested-fields "test" "test" "test")))))
   (testing "sync with deeply nested struct fields"
