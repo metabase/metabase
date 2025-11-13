@@ -37,26 +37,30 @@
   - MBQL 5 full queries (passed through)
   - MBQL 4 full queries (from serialization - converted to MBQL 5)
   - MBQL 4 fragments (for backward compat during migration - wrapped then converted)
-  Empty seqs are normalized to `{}`."
-  [definition table-id database-id]
-  (if (seq definition)
-    (u/prog1 (-> (case (lib/normalized-mbql-version definition)
-                   (:mbql-version/mbql5 :mbql-version/legacy)
-                   definition
-                   ;; default MBQL4 fragment
-                   (let [definition
-                         (if (:aggregation definition)
-                           (do
-                             (log/warn "Stripping :aggregation from MBQL4 segment definition during migration"
-                                       {:segment-definition definition})
-                             (dissoc definition :aggregation))
-                           definition)]
-                     {:database database-id
-                      :type :query
-                      :query (merge {:source-table table-id} definition)}))
-                 lib-be/normalize-query)
-      (validate-mbql5-definition <>))
-    {}))
+  Empty seqs are normalized to `{}`.
+
+  Single arity version is for full queries only."
+  ([definition]
+   (normalize-segment-definition definition nil nil))
+  ([definition table-id database-id]
+   (if (seq definition)
+     (u/prog1 (-> (case (lib/normalized-mbql-version definition)
+                    (:mbql-version/mbql5 :mbql-version/legacy)
+                    definition
+                    ;; default MBQL4 fragment
+                    (let [definition
+                          (if (:aggregation definition)
+                            (do
+                              (log/warn "Stripping :aggregation from MBQL4 segment definition during migration"
+                                        {:segment-definition definition})
+                              (dissoc definition :aggregation))
+                            definition)]
+                      {:database database-id
+                       :type :query
+                       :query (merge {:source-table table-id} definition)}))
+                  lib-be/normalize-query)
+       (validate-mbql5-definition <>))
+     {})))
 
 (def ^:private transform-segment-definition
   "Transform for segment definitions. Only handles JSON serialization/deserialization.
@@ -93,9 +97,30 @@
    (mi/can-read? (t2/select-one model pk))))
 
 (t2/define-before-update :model/Segment [segment]
-  ;; throw an Exception if someone tries to update creator_id
-  (when (contains? (t2/changes segment) :creator_id)
-    (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
+  (let [changes (t2/changes segment)]
+    (when (contains? changes :creator_id)
+      (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
+    (when (contains? changes :table_id)
+      (throw (UnsupportedOperationException. (tru "You cannot update the table_id of a Segment."))))
+    (when (contains? changes :model_id)
+      (throw (UnsupportedOperationException. (tru "You cannot update the model_id of a Segment."))))
+    (when (contains? changes :definition)
+      (let [new-definition (:definition changes)
+            existing-table-id (:table_id segment)
+            existing-model-id (:model_id segment)]
+        (when (seq new-definition)
+          (when-not (lib/normalized-mbql-version new-definition)
+            (throw (ex-info (tru "Segment definition must be an MBQL query")
+                            {:definition new-definition})))
+          ;; Normalize and extract source
+          (let [normalized-def (lib-be/normalize-query new-definition)
+                new-source-table-id (lib/source-table-id normalized-def)
+                new-source-card-id (lib/source-card-id normalized-def)]
+            (when (or (and existing-table-id (not= existing-table-id new-source-table-id))
+                      (and existing-model-id (not= existing-model-id new-source-card-id))
+                      (and existing-table-id new-source-card-id)
+                      (and existing-model-id new-source-table-id))
+              (throw (UnsupportedOperationException. (tru "You cannot change the source table/model of a Segment.")))))))))
   segment)
 
 (defn- migrated-segment-definition

@@ -1,6 +1,8 @@
 (ns metabase.segments.models.segment-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -76,6 +78,78 @@
       (testing "calling `update!` with a value that is the same as the current value shouldn't throw an Exception"
         (is (= 0
                (t2/update! :model/Segment id {:creator_id (mt/user->id :rasta)})))))))
+
+(deftest update-segment-source-validation-test
+  (testing "Updating a Segment's source"
+    (let [metadata-provider (mt/metadata-provider)
+          venues-table (lib.metadata/table metadata-provider (mt/id :venues))
+          checkins-table (lib.metadata/table metadata-provider (mt/id :checkins))
+          venues-price-field (lib.metadata/field metadata-provider (mt/id :venues :price))
+          checkins-id-field (lib.metadata/field metadata-provider (mt/id :checkins :id))]
+      (testing "table-based segment"
+        (let [initial-query (lib/filter (lib/query metadata-provider venues-table)
+                                        (lib/= venues-price-field 4))]
+          (mt/with-temp [:model/Segment {:keys [id]} {:table_id (mt/id :venues)
+                                                      :definition initial-query}]
+            (testing "updating definition with same source table should succeed"
+              (let [updated-query (lib/filter (lib/query metadata-provider venues-table)
+                                              (lib/= venues-price-field 3))]
+                (is (= 1 (t2/update! :model/Segment id {:definition updated-query})))))
+            (testing "updating definition with different source table should fail"
+              (let [different-table-query (lib/filter (lib/query metadata-provider checkins-table)
+                                                      (lib/= checkins-id-field 1))]
+                (is (thrown-with-msg?
+                     Exception
+                     #"You cannot change the source table/model of a Segment"
+                     (t2/update! :model/Segment id {:definition different-table-query})))))
+            (testing "updating definition with source-card (model) instead of source-table should fail"
+              (mt/with-temp [:model/Card model {:type :model
+                                                :database_id (mt/id)
+                                                :dataset_query (mt/mbql-query venues)}]
+                (let [model-card (lib.metadata/card metadata-provider (:id model))
+                      model-query (lib/filter (lib/query metadata-provider model-card)
+                                              (lib/= venues-price-field 1))]
+                  (is (thrown-with-msg?
+                       Exception
+                       #"You cannot change the source table/model of a Segment"
+                       (t2/update! :model/Segment id {:definition model-query}))))))
+
+            (testing "updating other fields should still work"
+              (is (= 1 (t2/update! :model/Segment id
+                                   {:name "Updated Name"
+                                    :description "Updated description"})))))))
+      (testing "model-based segment"
+        (mt/with-temp [:model/Card model {:type :model
+                                          :database_id (mt/id)
+                                          :dataset_query (mt/mbql-query venues)}]
+          (let [model-card (lib.metadata/card metadata-provider (:id model))
+                initial-model-query (lib/filter (lib/query metadata-provider model-card)
+                                                (lib/= venues-price-field 4))]
+            (mt/with-temp [:model/Segment {:keys [id]} {:model_id (:id model)
+                                                        :table_id nil
+                                                        :definition initial-model-query}]
+              (testing "updating definition with same source model should succeed"
+                (let [updated-model-query (lib/filter (lib/query metadata-provider model-card)
+                                                      (lib/= venues-price-field 3))]
+                  (is (= 1 (t2/update! :model/Segment id {:definition updated-model-query})))))
+              (testing "updating definition with different source model should fail"
+                (mt/with-temp [:model/Card other-model {:type :model
+                                                        :database_id (mt/id)
+                                                        :dataset_query (mt/mbql-query checkins)}]
+                  (let [other-model-card (lib.metadata/card metadata-provider (:id other-model))
+                        different-model-query (lib/filter (lib/query metadata-provider other-model-card)
+                                                          (lib/= checkins-id-field 1))]
+                    (is (thrown-with-msg?
+                         Exception
+                         #"You cannot change the source table/model of a Segment"
+                         (t2/update! :model/Segment id {:definition different-model-query}))))))
+              (testing "updating definition with source-table instead of source-card should fail"
+                (let [table-query (lib/filter (lib/query metadata-provider venues-table)
+                                              (lib/= venues-price-field 1))]
+                  (is (thrown-with-msg?
+                       Exception
+                       #"You cannot change the source table/model of a Segment"
+                       (t2/update! :model/Segment id {:definition table-query}))))))))))))
 
 (deftest identity-hash-test
   (testing "Segment hashes are composed of the segment name and table identity-hash"
