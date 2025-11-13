@@ -162,14 +162,14 @@
   []
   (when-not (nil? (library-collection))
     (throw (ex-info "Library already exists" {})))
-  (let [library       (t2/insert-returning-instance! :model/Collection {:name     (tru "Library")
+  (let [library       (t2/insert-returning-instance! :model/Collection {:name     "Library"
                                                                         :type     library-collection-type
                                                                         :location "/"})
         base-location (str "/" (:id library) "/")
-        models        (t2/insert-returning-instance! :model/Collection {:name     (tru "Data")
+        models        (t2/insert-returning-instance! :model/Collection {:name     "Models"
                                                                         :type     library-models-collection-type
                                                                         :location base-location})
-        metrics       (t2/insert-returning-instance! :model/Collection {:name     (tru "Metrics")
+        metrics       (t2/insert-returning-instance! :model/Collection {:name     "Metrics"
                                                                         :type     library-metrics-collection-type
                                                                         :location base-location})]
     (doseq [col [library models metrics]]
