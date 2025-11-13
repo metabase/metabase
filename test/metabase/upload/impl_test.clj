@@ -2556,7 +2556,7 @@
               (io/delete-file file))))))))
 
 (deftest append-with-really-long-names-that-duplicate-test
-  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
+  (testing "Upload a CSV file with unique column names that get sanitized to the same string\n"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (let [long-string  (str (str/join (repeat 1000 "really_")) "long")
@@ -2570,11 +2570,14 @@
                     :file (csv-file-with [header original-row]))]
             (let [csv-rows [header appended-row]
                   file     (csv-file-with csv-rows (mt/random-name))]
-              (update-csv! :metabase.upload/append {:file file, :table-id (:id table)})
-              (is (= (rows-with-auto-pk (concat (csv/read-csv original-row)
-                                                (csv/read-csv appended-row)))
-                     (rows-for-table table)))
-              (io/delete-file file))))))))
+              (try
+                (testing "Column names get deduplicated"
+                  (update-csv! :metabase.upload/append {:file file, :table-id (:id table)})
+                  (is (= (rows-with-auto-pk (concat (csv/read-csv original-row)
+                                                    (csv/read-csv appended-row)))
+                         (rows-for-table table))))
+                (finally
+                  (io/delete-file file))))))))))
 
 (driver/register! ::short-column-test-driver)
 (defmethod driver/column-name-length-limit ::short-column-test-driver [_] 10)
