@@ -9,7 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
-(api.macros/defendpoint :post "/create"
+(api.macros/defendpoint :post "/"
   "Creates the Library if it doesn't exist. Returns the created collection.
 
   Requires superuser permissions."
