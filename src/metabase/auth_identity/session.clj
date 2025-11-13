@@ -17,7 +17,10 @@
   [user device-info provider]
   (let [user-id (u/the-id user)
         provider-str (name provider)
-        auth-identity-id (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider provider-str)
+        auth-identity (t2/select-one [:model/AuthIdentity :id :expires_at]
+                                     :user_id user-id
+                                     :provider provider-str)
+        auth-identity-id (:id auth-identity)
         session-key (str (random-uuid))
         session-id (string/random-string 12)
         session (t2/insert-returning-instance! :model/Session
@@ -26,7 +29,8 @@
                                                :id session-id
                                                :user_id user-id
                                                :auth_identity_id auth-identity-id
-                                               :session_key session-key)]
+                                               :session_key session-key
+                                               :expires_at (:expires_at auth-identity))]
     (when provider-str
       (log/debugf "Updating last_used_at for user %s with provider %s" user-id provider-str)
       (t2/update! :model/AuthIdentity auth-identity-id {:last_used_at :%now}))

@@ -2,6 +2,7 @@
   "Tests for AuthIdentity and Session integration."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.request.core :as request]
    [metabase.test :as mt]
@@ -167,3 +168,35 @@
           (is (some? session))
           (is (contains? session :type))
           (is (= :full-app-embed (:type session))))))))
+
+(deftest session-inherits-expires-at-test
+  (testing "Session inherits expires_at from auth-identity"
+    (mt/with-temp [:model/User user {}]
+      (let [expires-at (t/plus (t/offset-date-time) (t/days 7))
+            password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")]
+        (t2/update! :model/AuthIdentity (:id password-auth) {:expires_at expires-at})
+        (let [device-info {:device_id "test-device-expires"
+                           :embedded false
+                           :device_description "Test Browser"
+                           :ip_address "127.0.0.1"}
+              session (auth-identity/create-session-with-auth-tracking! user device-info :provider/password)]
+          (is (some? (:expires_at session))
+              "Session should have expires_at")
+          (is (instance? java.time.OffsetDateTime (:expires_at session))
+              "expires_at should be OffsetDateTime")
+          (is (t/equal? expires-at (:expires_at session))
+              "Session expires_at should match auth-identity expires_at"))))))
+
+(deftest session-no-expires-at-when-auth-identity-has-none-test
+  (testing "Session has no expires_at when auth-identity doesn't have one"
+    (mt/with-temp [:model/User user {}]
+      (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
+            device-info {:device_id "test-device-no-expires"
+                         :embedded false
+                         :device_description "Test Browser"
+                         :ip_address "127.0.0.1"}
+            session (auth-identity/create-session-with-auth-tracking! user device-info :provider/password)]
+        (is (nil? (:expires_at password-auth))
+            "Auth-identity should not have expires_at")
+        (is (nil? (:expires_at session))
+            "Session should not have expires_at when auth-identity doesn't")))))

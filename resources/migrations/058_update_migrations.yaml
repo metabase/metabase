@@ -92,6 +92,12 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
+                  name: expires_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this authentication method expires (null = never expires)
+                  constraints:
+                    nullable: true
+              - column:
                   name: created_at
                   type: ${timestamp_type}
                   remarks: Timestamp when this identity was created
@@ -427,7 +433,7 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-12T00:00:07
       author: edpaget
-      comment: Add auth_identity_id column to core_session table
+      comment: Add auth_identity_id and expires_at columns to core_session table
       changes:
         - addColumn:
             tableName: core_session
@@ -438,10 +444,19 @@ databaseChangeLog:
                   remarks: Foreign key to auth_identity - tracks which auth method was used for login
                   constraints:
                     nullable: true
+              - column:
+                  name: expires_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this session expires (from auth_identity or calculated)
+                  constraints:
+                    nullable: true
       rollback:
         - dropColumn:
             tableName: core_session
             columnName: auth_identity_id
+        - dropColumn:
+            tableName: core_session
+            columnName: expires_at
 
   - changeSet:
       id: v58.2025-11-12T00:00:08
