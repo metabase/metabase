@@ -29,11 +29,11 @@ v0.57.3.1
 
 ### Major
 
-We release major versions when we introduce new features or breaking changes. Check out our [release announcements](https://www.metabase.com/releases).
+We release major versions when we introduce new features or breaking changes. See [release announcements](https://www.metabase.com/releases).
 
 ### Point
 
-Sometimes called a minor release, we issue point releases when we add bug fixes and refinements to existing features.
+Sometimes called a minor release, we issue point releases when we add bug fixes and refinements to existing features. See the [changelog](https://www.metabase.com/changelog)
 
 ### Hotfix
 
