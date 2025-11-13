@@ -1,13 +1,8 @@
 (ns metabase.query-processor.streaming
-  (:refer-clojure :exclude [every? some])
+  (:refer-clojure :exclude [every? some mapv not-empty])
   (:require
    [clojure.string :as str]
-   [metabase.analytics.core :as analytics]
-   [metabase.driver :as driver]
-   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
-   ;; Lib soon
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -20,7 +15,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? some]])
+   [metabase.util.performance :refer [every? mapv some not-empty]])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.io OutputStream)
@@ -53,14 +48,13 @@
 
   TODO (Cam 9/23/25) -- We should use [[metabase.lib.field.util/add-deduplicated-names]] to do this."
   [cols]
-  (map (fn [col unique-name]
-         (-> col
-             (cond-> (not (:display_name col)) (assoc :display_name (:name col)))
-             (assoc :name unique-name)))
-       cols
-       ;; existing usage -- do not use going forward
-       #_{:clj-kondo/ignore [:deprecated-var]}
-       (mbql.u/uniquify-names (map :name cols))))
+  (mapv (let [unique-name-fn (lib/non-truncating-unique-name-generator)]
+          (fn [col]
+            (let [unique-name (unique-name-fn (:name col))]
+              (-> col
+                  (cond-> (not (:display_name col)) (assoc :display_name (:name col)))
+                  (assoc :name unique-name)))))
+        cols))
 
 (defn- validate-table-columns
   "Validate that all of the columns in `table-columns` correspond to actual columns in `cols`, correlating them by
@@ -180,7 +174,6 @@
          {:data initial-metadata})
 
         ([result]
-         (analytics/inc! :metabase-query-processor/query {:driver driver/*driver* :status "success"})
          (assoc result
                 :row_count @row-count
                 :status :completed))

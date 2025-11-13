@@ -134,11 +134,6 @@ databaseChangeLog:
       id: v56.2025-06-13T15:00:00
       author: rafpaf
       comment: Create content translation table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: content_translation
       changes:
         - createTable:
             tableName: content_translation
@@ -239,12 +234,6 @@ databaseChangeLog:
       id: v56.2025-07-30T10:35:00
       author: bronsa
       comment: Add deactivated_at column to metabase_table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: metabase_table
-                columnName: deactivated_at
       changes:
         - addColumn:
             tableName: metabase_table
@@ -260,12 +249,6 @@ databaseChangeLog:
       id: v56.2025-07-30T10:35:01
       author: bronsa
       comment: Add archived_at column to metabase_table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: metabase_table
-                columnName: archived_at
       changes:
         - addColumn:
             tableName: metabase_table
@@ -282,12 +265,6 @@ databaseChangeLog:
       author: bronsa
       comment: Add composite index on metabase_table for unarchived deactivated tables by db_id (PostgreSQL)
       dbms: postgresql
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: metabase_table
-                indexName: idx_metabase_table_db_deactivated
       changes:
         - sql:
             sql: >-
@@ -559,12 +536,6 @@ databaseChangeLog:
                   remarks: The metabot entity this prompt is associated with
                   constraints:
                     nullable: true
-            preConditions:
-              - onFail: MARK_RAN
-              - not:
-                  - columnExists:
-                      tableName: metabot_prompt
-                      columnName: metabot_entity_id
         - sql:
             comment: Restore metabot_prompt.metabot_entity_id values from metabot_prompt.metabot_id
             sql: >-

@@ -18,11 +18,19 @@
 (def ^:private ^String sample-database-name     "Sample Database")
 (def ^:private ^String sample-database-filename "sample-database.db.mv.db")
 
+(defn- sample-db-dir-from-env
+  "Change the folder from which we load the sample database, used locally to avoid E2E to use the same file used for local development"
+  []
+  (when-let [path (System/getenv "MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR")]
+    (u.files/get-path path)))
+
 ;; Reuse the plugins directory for the destination to extract the sample database because it's pretty much guaranteed
 ;; to exist and be writable.
 (defn- target-path
   []
-  (u.files/append-to-path (plugins/plugins-dir) sample-database-filename))
+  (let [base-dir (or (sample-db-dir-from-env)
+                     (plugins/plugins-dir))]
+    (u.files/append-to-path base-dir sample-database-filename)))
 
 (defn- process-sample-db-path
   [base-path]

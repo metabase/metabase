@@ -5,7 +5,7 @@
    [clojure.test.check.generators :as gen]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
    [metabase.util.log :as log]
    [reifyhealth.specmonstah.core :as rs]
    [reifyhealth.specmonstah.spec-gen :as rsg]
@@ -308,7 +308,7 @@
   [query]
   (rsg/ent-db-spec-gen {:schema schema} query))
 
-(def ^:private unique-name (mbql.u/unique-name-generator))
+(def ^:private unique-name (lib/non-truncating-unique-name-generator))
 
 (defn- unique-email [^String email]
   (let [at (.indexOf email "@")]

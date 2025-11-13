@@ -18,3 +18,15 @@
   :export?    false
   :type       :integer
   :visibility :internal)
+
+(defsetting notification-temp-file-size-max-bytes
+  "The maximum file size that will be created when storing notification query results on disk.
+  Note this is in BYTES. Default value is 10485760 which is `10 * 1024 * 1024`. To disable this size limit set the
+  value to 0."
+  :type :integer
+  :default (* 10 1024 1024)
+  :export? false
+  :setter :none
+  :visibility :internal
+  :can-read-from-env? true
+  :doc true)

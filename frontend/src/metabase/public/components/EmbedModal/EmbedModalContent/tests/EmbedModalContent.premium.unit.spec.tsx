@@ -49,15 +49,6 @@ describe("EmbedModalContent", () => {
           },
         });
 
-        // The card is clickable
-        expect(
-          screen.getByRole("link", { name: INTERACTIVE_EMBEDDING_TITLE }),
-        ).toHaveProperty(
-          "href",
-          // I have no idea why only this URL is absolute in the test, it is relative in the markup 🤷
-          "http://localhost/embed-js?resource_type=dashboard",
-        );
-
         // We don't show the link at the bottom of the card
         const withinInteractiveEmbeddingCard = within(
           screen.getByRole("article", { name: INTERACTIVE_EMBEDDING_TITLE }),

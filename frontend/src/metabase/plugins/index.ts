@@ -1,10 +1,13 @@
 import type { Middleware } from "@reduxjs/toolkit";
+import type { TagDescription } from "@reduxjs/toolkit/query";
 import React, {
   type ComponentType,
+  type Context,
   type Dispatch,
   type HTMLAttributes,
   type ReactNode,
   type SetStateAction,
+  createContext,
   useCallback,
 } from "react";
 import { t } from "ttag";
@@ -70,6 +73,7 @@ import type {
   DatabaseLocalSettingAvailability,
   Database as DatabaseType,
   Dataset,
+  DependencyEntry,
   Document,
   Group,
   GroupPermissions,
@@ -77,14 +81,15 @@ import type {
   ModelCacheRefreshStatus,
   ParameterId,
   Pulse,
-  PythonTransformSource,
-  PythonTransformTableAliases,
+  PythonTransformSourceDraft,
   Revision,
+  SearchModel,
   Series,
   TableId,
   Timeline,
   TimelineEvent,
   Transform,
+  TransformId,
   UpdateSnippetRequest,
   UpdateTransformRequest,
   User,
@@ -98,7 +103,11 @@ import type {
 } from "metabase-types/store";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
-import type { GetAuthProviders, PluginGroupManagersType } from "./types";
+import type {
+  GetAuthProviders,
+  PluginGroupManagersType,
+  SyncedCollectionsSidebarSectionProps,
+} from "./types";
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUNCTIONS: (() => void)[] = [];
@@ -333,6 +342,7 @@ export const PLUGIN_COLLECTIONS = {
   },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
   isRegularCollection: (_data: Partial<Collection> | Bookmark) => true,
+  isSyncedCollection: (_data: Partial<Collection>) => false,
   getCollectionType: (
     _collection: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
@@ -466,12 +476,14 @@ export const PLUGIN_REDUCERS: {
   shared: any;
   metabotPlugin: any;
   documents: any;
+  remoteSyncPlugin: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
   metabotPlugin: () => null,
   documents: () => null,
+  remoteSyncPlugin: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -569,6 +581,9 @@ export interface SimpleDataPickerProps {
 
 export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
+  onBeforeRequestHandlers: {
+    getOrRefreshSessionHandler: async () => {},
+  },
 };
 
 export const PLUGIN_EMBEDDING_IFRAME_SDK = {
@@ -576,10 +591,24 @@ export const PLUGIN_EMBEDDING_IFRAME_SDK = {
   SdkIframeEmbedRoute: (): ReactNode => null,
 };
 
+export type SdkIframeEmbedSetupModalProps = {
+  opened: boolean;
+  onClose: () => void;
+  initialState?: SdkIframeEmbedSetupModalInitialState;
+};
+
+export type SdkIframeEmbedSetupModalInitialState = {
+  resourceType?: string | null;
+  resourceId?: string | number | null;
+  useExistingUserSession?: boolean;
+};
+
 export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
   isFeatureEnabled: () => false,
   shouldShowEmbedInNewItemMenu: () => false,
-  SdkIframeEmbedSetup: (): ReactNode => null,
+  SdkIframeEmbedSetupModal: (
+    _props: SdkIframeEmbedSetupModalProps,
+  ): ReactNode => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
@@ -702,9 +731,20 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
   chartAnalysisRenderFormats: {},
 };
 
-type PLUGIN_METABOT_TYPE = {
+type PluginMetabotConfig = {
+  emptyText?: string;
+  hideSuggestedPrompts?: boolean;
+  preventClose?: boolean;
+  preventRetryMessage?: boolean;
+  suggestionModels: (SearchModel | "transform" | "user")[];
+};
+
+type PluginMetabotType = {
   isEnabled: () => boolean;
-  Metabot: (props: { hide?: boolean }) => React.ReactElement | null;
+  Metabot: (props: {
+    hide?: boolean;
+    config?: PluginMetabotConfig;
+  }) => React.ReactElement | null;
   defaultMetabotContextValue: MetabotContext;
   MetabotContext: React.Context<MetabotContext>;
   getMetabotProvider: () => ComponentType<{ children: React.ReactNode }>;
@@ -715,11 +755,13 @@ type PLUGIN_METABOT_TYPE = {
   getMetabotVisible: (state: State) => boolean;
   MetabotToggleButton: ComponentType<{ className?: string }>;
   MetabotAppBarButton: ComponentType;
+  MetabotAdminAppBarButton: ComponentType;
 };
 
-export const PLUGIN_METABOT: PLUGIN_METABOT_TYPE = {
+export const PLUGIN_METABOT: PluginMetabotType = {
   isEnabled: () => false,
-  Metabot: () => null,
+  Metabot: (_props: { hide?: boolean; config?: PluginMetabotConfig }) =>
+    null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),
   getMetabotProvider: () => {
@@ -737,6 +779,7 @@ export const PLUGIN_METABOT: PLUGIN_METABOT_TYPE = {
   getMetabotVisible: () => false,
   MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,
+  MetabotAdminAppBarButton: PluginPlaceholder,
 };
 
 type DashCardMenuItemGetter = (
@@ -838,6 +881,11 @@ export const PLUGIN_DOCUMENTS = {
   DocumentCopyForm: (_props: any) => null as React.ReactElement | null,
 };
 
+export const PLUGIN_PUBLIC_SHARING = {
+  PublicDocumentRoute: (_props: any) => null as React.ReactElement | null,
+  PublicLinksDocumentListing: () => null as React.ReactElement | null,
+};
+
 export const PLUGIN_ENTITIES = {
   entities: {} as Record<string, any>,
 };
@@ -846,47 +894,95 @@ export const PLUGIN_SEMANTIC_SEARCH = {
   SearchSettingsWidget: PluginPlaceholder,
 };
 
+export type TransformPickerItem = {
+  id: TransformId;
+  name: string;
+  model: "transform";
+};
+
+export type TransformPickerProps = {
+  value: TransformPickerItem | undefined;
+  onItemSelect: (transform: TransformPickerItem) => void;
+};
+
 export type TransformsPlugin = {
+  TransformPicker: ComponentType<TransformPickerProps>;
   getAdminPaths(): AdminPath[];
   getAdminRoutes(): ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  TransformPicker: PluginPlaceholder,
   getAdminPaths: () => [],
   getAdminRoutes: () => null,
 };
 
+export const PLUGIN_REMOTE_SYNC: {
+  LibraryNav: ComponentType;
+  RemoteSyncSettings: ComponentType;
+  SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
+  REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
+  useSyncStatus: () => {
+    isIdle: boolean;
+    taskType: any;
+    progress: number;
+    message: string;
+    progressModal: ReactNode;
+  };
+} = {
+  LibraryNav: PluginPlaceholder,
+  RemoteSyncSettings: NotFoundPlaceholder,
+  SyncedCollectionsSidebarSection: PluginPlaceholder,
+  REMOTE_SYNC_INVALIDATION_TAGS: null,
+  useSyncStatus: () => ({
+    isIdle: true,
+    taskType: null,
+    progress: 0,
+    message: "",
+    progressModal: null,
+  }),
+};
+
+export type PythonTransformEditorProps = {
+  name?: string;
+  source: PythonTransformSourceDraft;
+  proposedSource?: PythonTransformSourceDraft;
+  isNew: boolean;
+  isDirty: boolean;
+  isSaving: boolean;
+  onChangeSource: (source: PythonTransformSourceDraft) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onAcceptProposed: () => void;
+  onRejectProposed: () => void;
+};
+
+export type PythonTransformSourceSectionProps = {
+  transform: Transform;
+};
+
 export type PythonTransformsPlugin = {
+  isEnabled: boolean;
+  TransformEditor: ComponentType<PythonTransformEditorProps>;
+  SourceSection: ComponentType<PythonTransformSourceSectionProps>;
   PythonRunnerSettingsPage: ComponentType;
-  SourceSection: ComponentType<{ transform: Transform }>;
-  TransformEditor: ComponentType<{
-    initialSource: {
-      type: "python";
-      body: string;
-      "source-database": DatabaseId | undefined;
-      "source-tables": PythonTransformTableAliases;
-    };
-    isNew?: boolean;
-    isSaving?: boolean;
-    isRunnable?: boolean;
-    onSave: (newSource: PythonTransformSource) => void;
-    onCancel: () => void;
-  }>;
   getAdminRoutes: () => ReactNode;
   getTransformsNavLinks: () => ReactNode;
-  getCreateTransformsMenuItems: () => ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
-  PythonRunnerSettingsPage: NotFoundPlaceholder,
-  TransformEditor: NotFoundPlaceholder,
+  isEnabled: false,
+  TransformEditor: PluginPlaceholder,
   SourceSection: PluginPlaceholder,
+  PythonRunnerSettingsPage: NotFoundPlaceholder,
   getAdminRoutes: () => null,
   getTransformsNavLinks: () => null,
-  getCreateTransformsMenuItems: () => null,
 };
 
 type DependenciesPlugin = {
+  isEnabled: boolean;
+  DependencyGraphPage: ComponentType;
+  DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
   CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
   CheckDependenciesTitle: ComponentType;
@@ -899,6 +995,11 @@ type DependenciesPlugin = {
   useCheckTransformDependencies: (
     props: UseCheckDependenciesProps<UpdateTransformRequest>,
   ) => UseCheckDependenciesResult<UpdateTransformRequest>;
+};
+
+export type DependencyGraphPageContextType = {
+  baseUrl?: string;
+  defaultEntry?: DependencyEntry;
 };
 
 export type CheckDependenciesFormProps = {
@@ -916,7 +1017,6 @@ export type CheckDependenciesModalProps = {
 
 export type UseCheckDependenciesProps<TChange> = {
   onSave: (change: TChange) => Promise<void>;
-  onError: (error: unknown) => void;
 };
 
 export type UseCheckDependenciesResult<TChange> = {
@@ -941,6 +1041,9 @@ function useCheckDependencies<TChange>({
 }
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
+  isEnabled: false,
+  DependencyGraphPage: PluginPlaceholder,
+  DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,
   CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,

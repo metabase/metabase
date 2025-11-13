@@ -2,10 +2,8 @@
   (:require
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
-   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
-   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
@@ -109,15 +107,3 @@
         (events/publish-event! :event/user-joined {:user-id user-id}))
       ;; return response with session ID and set the cookie as well
       (request/set-session-cookies request {:id session-key} session (t/zoned-date-time (t/zone-id "GMT"))))))
-
-;; User defaults endpoint
-
-(api.macros/defendpoint :get "/user_defaults"
-  "Returns object containing default user details for initial setup, if configured,
-   and if the provided token value matches the token in the configuration value."
-  [_route-params
-   {:keys [token]}]
-  (let [{config-token :token :as defaults} (config/mb-user-defaults)]
-    (api/check-404 config-token)
-    (api/check-403 (= token config-token))
-    (dissoc defaults :token)))

@@ -1,7 +1,7 @@
 (ns metabase.driver.postgres
   "Database driver for PostgreSQL databases. Builds on top of the SQL JDBC driver, which implements most functionality
   for JDBC-based drivers."
-  (:refer-clojure :exclude [some select-keys mapv])
+  (:refer-clojure :exclude [some select-keys mapv not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -34,7 +34,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [some select-keys mapv]])
+   [metabase.util.performance :as perf :refer [some select-keys mapv not-empty]])
   (:import
    (java.io StringReader)
    (java.sql
@@ -43,6 +43,7 @@
     ResultSetMetaData
     Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
+   (org.apache.commons.codec.binary Hex)
    (org.postgresql.copy CopyManager)
    (org.postgresql.jdbc PgConnection)))
 
@@ -63,6 +64,9 @@
                               :describe-fields          true
                               :describe-fks             true
                               :describe-indexes         true
+                              :describe-default-expr    true
+                              :describe-is-generated    true
+                              :describe-is-nullable     true
                               :convert-timezone         true
                               :datetime-diff            true
                               :now                      true
@@ -155,7 +159,7 @@
     (assoc driver.common/default-port-details :placeholder 5432)
     driver.common/default-dbname-details
     driver.common/default-user-details
-    driver.common/auth-provider-options
+    (driver.common/auth-provider-options)
     (assoc driver.common/default-password-details
            :visible-if {"use-auth-provider" false})
     driver.common/cloud-ip-address-info
@@ -326,10 +330,15 @@
                         [:and [:!= :column_default nil] [:like :column_default [:inline "%nextval(%"]]]
                         [:!= :is_identity [:inline "NO"]]]]]
                 :database-required]
+               [:column_default :database-default]
                [[:or
                  [:and [:!= :column_default nil] [:like :column_default [:inline "%nextval(%"]]]
                  [:!= :is_identity [:inline "NO"]]]
-                :database-is-auto-increment]]
+                :database-is-auto-increment]
+               [[:= :is_generated "ALWAYS"]
+                :database-is-generated]
+               [[:= :is_nullable [:inline "YES"]]
+                :database-is-nullable]]
       :from [[:information_schema.columns :c]]
       :left-join [[{:select [:tc.table_schema
                              :tc.table_name
@@ -363,7 +372,10 @@
                [false :pk?]
                [nil :field-comment]
                [false :database-required]
-               [false :database-is-auto-increment]]
+               [nil   :database-default]
+               [false :database-is-auto-increment]
+               [false :database-is-generated]
+               [false :database-is-nullable]]
       :from [[:pg_catalog.pg_class :pc]]
       :join [[:pg_catalog.pg_namespace :pn] [:= :pn.oid :pc.relnamespace]
              [:pg_catalog.pg_attribute :pa] [:= :pa.attrelid :pc.oid]
@@ -446,42 +458,9 @@
   [_ json-field-identifier]
   [:length [:cast json-field-identifier :text]])
 
-(defn- ->timestamp [honeysql-form]
-  (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "timestamp with time zone" "date"} honeysql-form))
-
-(defn- format-interval
-  "Generate a Postgres 'INTERVAL' literal.
-
-    (sql/format-expr [::interval 2 :day])
-    =>
-    [\"INTERVAL '2 day'\"]"
-  ;; I tried to write this with Malli but couldn't figure out how to make it work. See
-  ;; https://metaboat.slack.com/archives/CKZEMT1MJ/p1676076592468909
-  [_fn [amount unit]]
-  {:pre [(number? amount)
-         (#{:millisecond :second :minute :hour :day :week :month :year} unit)]}
-  [(format "INTERVAL '%s %s'" (num amount) (name unit))])
-
-(sql/register-fn! ::interval #'format-interval)
-
-(defn- interval [amount unit]
-  (h2x/with-database-type-info [::interval amount unit] "interval"))
-
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
-  ;; Postgres doesn't support quarter in intervals (#20683)
-  (cond
-    (= unit :quarter)
-    (recur driver hsql-form (* 3 amount) :month)
-
-    ;; date + interval -> timestamp, so cast the expression back to date
-    (h2x/is-of-type? hsql-form "date")
-    (h2x/cast "date" (h2x/+ hsql-form (interval amount unit)))
-
-    :else
-    (let [hsql-form (->timestamp hsql-form)]
-      (-> (h2x/+ hsql-form (interval amount unit))
-          (h2x/with-type-info (h2x/type-info hsql-form))))))
+  (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
 (defmethod sql.qp/current-datetime-honeysql-form :postgres
   [driver]
@@ -539,12 +518,12 @@
     (h2x/cast "date" [:date_trunc (h2x/literal unit) expr])
 
     #_else
-    (let [expr' (->timestamp expr)]
+    (let [expr' (h2x/->pg-timestamp expr)]
       (-> [:date_trunc (h2x/literal unit) expr']
           (h2x/with-database-type-info (h2x/database-type expr'))))))
 
 (defn- extract-from-timestamp [unit expr]
-  (extract unit (->timestamp expr)))
+  (extract unit (h2x/->pg-timestamp expr)))
 
 (defn- extract-integer [unit expr]
   (h2x/->integer (extract-from-timestamp unit expr)))
@@ -592,7 +571,8 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
-        timestamptz? (or (h2x/is-of-type? expr "timestamptz")
+        timestamptz? (or (sql.qp.u/field-with-tz? arg)
+                         (h2x/is-of-type? expr "timestamptz")
                          (h2x/is-of-type? expr "timestamp with time zone"))
         _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
         expr         [:timezone target-timezone (if (not timestamptz?)
@@ -941,8 +921,9 @@
   {:sslmode "disable"})
 
 (defmethod sql-jdbc.conn/connection-details->spec :postgres
-  [_ {ssl? :ssl, :as details-map}]
-  (let [props (-> details-map
+  [_ {ssl? :ssl, :keys [auth-provider], :as details-map}]
+  (let [use-iam? (= (some-> auth-provider keyword) :aws-iam)
+        props (-> details-map
                   (update :port (fn [port]
                                   (if (string? port)
                                     (Integer/parseInt port)
@@ -958,10 +939,19 @@
                   ;; internal property values back; only merge in the ones the driver might recognize
                   (merge ssl-prms (select-keys props (keys ssl-prms))))
                 (merge disable-ssl-params props))
+        props (if use-iam?
+                (-> props
+                    (assoc :subprotocol "aws-wrapper:postgresql"
+                           :classname "software.amazon.jdbc.ds.AwsWrapperDataSource"
+                           :wrapperPlugins "iam")
+                    (dissoc :auth-provider :use-auth-provider))
+                props)
         props (as-> props it
                 (set/rename-keys it {:dbname :db})
                 (driver-api/spec :postgres it)
                 (sql-jdbc.common/handle-additional-options it details-map))]
+    (when (and use-iam? (not ssl?))
+      (throw (ex-info "You must enable SSL in order to use AWS IAM authentication" {})))
     props))
 
 (defmethod sql-jdbc.sync/excluded-schemas :postgres [_driver] #{"information_schema" "pg_catalog"})
@@ -1007,6 +997,13 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/SQLXML]
   [_driver ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
   (fn [] (.getString rs i)))
+
+;; Handle bytea columns to avoid truncation (#30671)
+(defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/BINARY]
+  [_driver ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
+  (fn []
+    (when-let [bytes (.getBytes rs i)]
+      (str "\\x" (String. (Hex/encodeHex bytes))))))
 
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :postgres

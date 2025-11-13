@@ -51,14 +51,6 @@ describe("issue 14636", () => {
   const total = 57;
   const limit = 50;
 
-  function shouldNotBeDisabled(selector) {
-    cy.get(selector).should("be.enabled");
-  }
-
-  function shouldBeDisabled(selector) {
-    cy.get(selector).should("be.disabled");
-  }
-
   /**
    * @param {Object} payload
    * @param {(0|1)} payload.page
@@ -70,15 +62,14 @@ describe("issue 14636", () => {
     cy.intercept(
       "GET",
       `/api/task?limit=${limit}&offset=${offset}&sort_column=started_at&sort_direction=desc`,
-      (req) => {
-        req.reply((res) => {
-          res.body = {
-            data: stubPageRows(page),
-            limit,
-            offset,
-            total,
-          };
-        });
+      {
+        status: 200,
+        body: {
+          data: stubPageRows(page),
+          limit,
+          offset,
+          total,
+        },
       },
     ).as(alias);
   }
@@ -130,7 +121,7 @@ describe("issue 14636", () => {
     stubPageResponses({ page: 1, alias: "second" });
   });
 
-  it("pagination should work (metabase#14636)", { tags: "@flaky" }, () => {
+  it("pagination should work (metabase#14636)", () => {
     cy.visit("/admin/tools/tasks");
     cy.wait("@first");
 
@@ -138,8 +129,6 @@ describe("issue 14636", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Troubleshooting logs");
-    cy.findByLabelText("Previous page").as("previous");
-    cy.findByLabelText("Next page").as("next");
 
     cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -147,10 +136,8 @@ describe("issue 14636", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("513");
 
-    shouldBeDisabled("@previous");
-    shouldNotBeDisabled("@next");
-
-    cy.get("@next").click();
+    cy.findByLabelText("Previous page").should("be.disabled");
+    cy.findByLabelText("Next page").should("not.be.disabled").click();
     cy.wait("@second");
 
     cy.location("search").should("eq", "?page=1");
@@ -164,10 +151,8 @@ describe("issue 14636", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("200");
 
-    shouldNotBeDisabled("@previous");
-    shouldBeDisabled("@next");
-
-    cy.get("@previous").click();
+    cy.findByLabelText("Next page").should("be.disabled");
+    cy.findByLabelText("Previous page").should("not.be.disabled").click();
 
     cy.location("search").should("eq", "");
 
@@ -302,14 +287,12 @@ describe("scenarios > admin > tools > tasks", () => {
 
     cy.log("copy button");
     cy.window().then((window) => {
-      window.clipboardData = {
-        setData: cy.stub(),
-      };
+      cy.stub(window.navigator.clipboard, "writeText").resolves();
     });
     cy.icon("copy").click();
     cy.window()
-      .its("clipboardData.setData")
-      .should("be.calledWith", "text", formattedTaskJson);
+      .its("navigator.clipboard.writeText")
+      .should("be.calledWith", formattedTaskJson);
     cy.findByRole("tooltip").should("have.text", "Copied!");
 
     cy.log("download button");
@@ -537,5 +520,30 @@ describe("admin > tools", () => {
       name: "Troubleshoot faster",
     }).should("be.visible");
     cy.findByRole("button", { name: "Try for free" });
+  });
+
+  describe("issue 57113", () => {
+    it("should navigate to /admin/tools/tasks when closing Task details modal even with no browser history", () => {
+      cy.visit("/admin/tools/tasks");
+
+      cy.log("Pick an existing task url");
+
+      cy.findAllByTestId("task").should("be.visible").first().click();
+
+      cy.location("pathname")
+        .should("match", /\/admin\/tools\/tasks\/[0-9]+$/)
+        .then((pathname) => {
+          // Clear all history and navigate to the task detail modal page
+          cy.window().then((window) => {
+            window.history.replaceState(null, "", pathname);
+            // Clear the entire history stack by going to about:blank first
+            window.location.href = "about:blank";
+          });
+
+          cy.visit(pathname);
+          H.modal().findByRole("img", { name: "close icon" }).click();
+          cy.location("pathname").should("eq", "/admin/tools/tasks");
+        });
+    });
   });
 });

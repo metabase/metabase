@@ -224,8 +224,12 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.modal().button("Save").should("be.disabled");
   });
 
-  it("should allow clicking on the title", { tags: "@flaky" }, () => {
+  it("should allow clicking on the title", () => {
     createDashboardWithVisualizerDashcards();
+    cy.findByTestId("loading-indicator").should("not.exist");
+    H.getDashboardCard(0).within(() => {
+      H.chartGridLines().should("exist"); // wait for charts to load to prevent flakiness
+    });
 
     // Click on both series of the first chart
     // Series 1

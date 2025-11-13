@@ -94,10 +94,7 @@ module.exports = {
     "react/jsx-no-target-blank": 2,
     "react/jsx-key": 2,
     "react/forbid-component-props": [2, { forbid: ["sx"] }],
-    "react-hooks/exhaustive-deps": [
-      "warn",
-      { additionalHooks: "(useSafeAsyncFunction)" },
-    ],
+    "react-hooks/exhaustive-deps": ["warn"],
     "prefer-const": [1, { destructuring: "all" }],
     "no-restricted-globals": ["error", "close"],
     "no-useless-escape": 0,
@@ -136,7 +133,7 @@ module.exports = {
   },
   env: {
     browser: true,
-    es6: true,
+    es2020: true,
     commonjs: true,
     jest: true,
     "jest/globals": true,
@@ -203,6 +200,7 @@ module.exports = {
         "frontend/src/metabase/admin/**/*",
         "frontend/src/metabase/setup/**/*",
         "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
+        "enterprise/frontend/src/metabase-enterprise/embedding/**/*",
         "frontend/lint/**/*",
         "*.stories.*",
         "**/.storybook/*",

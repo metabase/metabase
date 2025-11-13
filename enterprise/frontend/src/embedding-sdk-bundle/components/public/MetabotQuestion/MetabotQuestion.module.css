@@ -18,7 +18,12 @@
       border-left: 1px solid var(--mb-color-border);
     }
 
-    .stackedOverflowButton {
+    /**
+      We already have disclaimer in the sidebar, so we don't
+      need to repeat it in the empty state.
+    */
+    .stackedOverflowButton,
+    .emptyStateDisclaimerText {
       display: none;
     }
   }
@@ -37,7 +42,6 @@
       height: 40%;
       width: 100%;
       max-width: none;
-      border-top: 1px solid var(--mb-color-border);
       border-left: none;
     }
 
@@ -57,6 +61,16 @@
         background-color: var(--mb-color-brand-lighter);
       }
     }
+
+    .stopGenerationButton {
+      width: 1.3rem;
+      height: 1.3rem;
+    }
+
+    /** Only show the top border when there are messages. */
+    .chatHistory:not(:empty) {
+      border-top: 1px solid var(--mb-color-border);
+    }
   }
 }
 
@@ -72,7 +86,7 @@
   text-align: left;
   line-height: 1.4;
   padding: 0.5rem 0.75rem;
-  width: 100%;
+  width: fit-content;
   border-radius: 8px;
   border: 1px solid var(--mb-color-border);
   background-color: var(--mb-color-bg-white);

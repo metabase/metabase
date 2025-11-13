@@ -11,11 +11,13 @@ import S from "./SdkUsageProblemBanner.module.css";
 interface Props {
   authConfig: MetabaseAuthConfig;
   allowConsoleLog?: boolean;
+  isLocalHost?: boolean;
 }
 
 export const SdkUsageProblemDisplay = ({
   authConfig,
   allowConsoleLog,
+  isLocalHost,
 }: Props) => {
   const session = useSdkSelector((state) => getSessionTokenState(state).token);
 
@@ -23,6 +25,7 @@ export const SdkUsageProblemDisplay = ({
     authConfig,
     allowConsoleLog,
     session,
+    isLocalHost,
   });
 
   if (!usageProblem) {

@@ -1,5 +1,5 @@
 (ns metabase.lib-be.models.transforms
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [some empty?])
   (:require
    [metabase.lib-be.metadata.bootstrap :as lib-be.bootstrap]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -10,7 +10,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some]]))
+   [metabase.util.performance :refer [some empty?]]))
 
 (set! *warn-on-reflection* true)
 

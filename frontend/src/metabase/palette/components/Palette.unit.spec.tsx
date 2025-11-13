@@ -53,4 +53,20 @@ describe("command palette", () => {
       false,
     );
   });
+
+  it("should toggle dark mode", async () => {
+    setup();
+    await userEvent.keyboard("[ControlLeft>]k");
+    await screen.findByTestId("command-palette");
+    const input = await screen.findByPlaceholderText(/search for anything/i);
+    await userEvent.type(input, "dark mode");
+    await userEvent.click(await screen.findByText("Toggle dark/light mode"));
+
+    const getColorSchemeValue = () =>
+      window.localStorage.getItem("metabase-color-scheme");
+
+    expect(getColorSchemeValue()).toBe("dark");
+    await userEvent.click(await screen.findByText("Toggle dark/light mode"));
+    expect(getColorSchemeValue()).toBe("auto");
+  });
 });

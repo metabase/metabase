@@ -49,25 +49,7 @@ const CypressBackend = {
         MB_DB_CONNECTION_URI: "", // ignore connection URI in favor of the db file
         MB_CONFIG_FILE_PATH: "__cypress__", // ignore config.yml
         MB_HTTP_CHANNEL_HOST_STRATEGY: "allow-all", // we use a local webhook service for testing
-      };
-
-      /**
-       * This ENV is used for Cloud instances only, and is subject to change.
-       * As such, it is not documented anywhere in the code base!
-       *
-       * WARNING:
-       * Changing values here will break the related E2E test.
-       */
-      const userDefaults = {
-        MB_USER_DEFAULTS: JSON.stringify({
-          token: "123456",
-          user: {
-            first_name: "Testy",
-            last_name: "McTestface",
-            email: "testy@metabase.test",
-            site_name: "Epic Team",
-          },
-        }),
+        MB_IS_CYPRESS: "true", // custom flag so we can detect we're running in Cypress, used in tests.
       };
 
       this.server.process = spawn(
@@ -77,7 +59,6 @@ const CypressBackend = {
           env: {
             ...process.env,
             ...metabaseConfig,
-            ...userDefaults,
           },
           stdio:
             process.env["DISABLE_LOGGING"] ||

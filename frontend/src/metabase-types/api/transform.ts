@@ -24,7 +24,17 @@ export type Transform = {
   last_run?: TransformRun | null;
 };
 
+export type SuggestedTransform = Partial<Pick<Transform, "id">> &
+  Pick<Transform, "name" | "description" | "source" | "target">;
+
 export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
+
+export type PythonTransformSourceDraft = {
+  type: "python";
+  body: string;
+  "source-database": DatabaseId | undefined;
+  "source-tables": PythonTransformTableAliases;
+};
 
 export type PythonTransformSource = {
   type: "python";
@@ -32,12 +42,21 @@ export type PythonTransformSource = {
   "source-database": DatabaseId;
   "source-tables": PythonTransformTableAliases;
 };
+
 export type QueryTransformSource = {
   type: "query";
   query: DatasetQuery;
 };
 
 export type TransformSource = QueryTransformSource | PythonTransformSource;
+
+export type DraftTransformSource =
+  | Transform["source"]
+  | PythonTransformSourceDraft;
+
+export type DraftTransform = Partial<
+  Pick<Transform, "id" | "name" | "description" | "target">
+> & { source: DraftTransformSource };
 
 export type TransformTargetType = "table";
 

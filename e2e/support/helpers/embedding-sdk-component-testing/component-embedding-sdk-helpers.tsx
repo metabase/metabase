@@ -61,7 +61,9 @@ export function mountSdkContent(
   }
 
   if (waitForUser) {
-    cy.wait("@getUser").then(({ response }) => {
+    // When running stress tests with network throttling, the request can take longer to complete
+    // as it first needs to fetch the bundle from the server
+    cy.wait("@getUser", { timeout: 20_000 }).then(({ response }) => {
       expect(response?.statusCode).to.equal(200);
     });
   }

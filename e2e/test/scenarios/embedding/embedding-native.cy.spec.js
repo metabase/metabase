@@ -132,7 +132,8 @@ describe("scenarios > embedding > native questions", () => {
       cy.location("search")
         .should("include", "product_id=10")
         .and("include", "created_at=")
-        .and("include", "id=926&state=KS");
+        .and("include", "id=926")
+        .and("include", "state=KS");
     });
 
     it("should handle required parameters", () => {

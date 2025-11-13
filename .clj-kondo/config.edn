@@ -25,6 +25,7 @@
   :reduce-without-init          {:level :warning}
   :redundant-call               {:level :warning}
   :redundant-fn-wrapper         {:level :warning}
+  :redundant-str-call           {:level :warning}
   :self-requiring-namespace     {:level :warning}
   :single-key-in                {:level :warning}
   :unsorted-imports             {:level :warning}
@@ -55,20 +56,22 @@
   ;;
   ;; globally-enabled custom linters
   ;;
-  :metabase/check-defmulti-arglists                    {:level :warning}
-  :metabase/check-me-humanize                          {:level :warning}
-  :metabase/defsetting-must-specify-export             {:level :warning}
-  :metabase/defsetting-namespace                       {:level :warning}
-  :metabase/mbql-query-first-arg                       {:level :warning}
-  :metabase/missing-test-expr-requires-in-cljs         {:level :warning}
-  :metabase/modules                                    {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
-  :metabase/namespace-name                             {:level :warning}
-  :metabase/require-shape-checker                      {:level :warning}
-  :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
-  :metabase/validate-logging                           {:level :warning}
-  :metabase/validate-mb-driver-tests                   {:level :warning}
-  :metabase/validate-mb-once                           {:level :warning}
-  :metabase/discourage-millis-duration                 {:level :warning}
+  :metabase/check-defmulti-arglists                          {:level :warning}
+  :metabase/check-me-humanize                                {:level :warning}
+  :metabase/defsetting-must-specify-export                   {:level :warning}
+  :metabase/defsetting-namespace                             {:level :warning}
+  :metabase/discourage-millis-duration                       {:level :warning}
+  :metabase/mbql-query-first-arg                             {:level :warning}
+  :metabase/missing-test-expr-requires-in-cljs               {:level :warning}
+  :metabase/modules                                          {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
+  :metabase/namespace-name                                   {:level :warning}
+  :metabase/require-shape-checker                            {:level :warning}
+  :metabase/test-helpers-use-non-thread-safe-functions       {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
+  :metabase/validate-defendpoint-route-uses-kebab-case       {:level :warning}
+  :metabase/validate-defendpoint-query-params-use-kebab-case {:level :warning}
+  :metabase/validate-logging                                 {:level :warning}
+  :metabase/validate-mb-driver-tests                         {:level :warning}
+  :metabase/validate-mb-once                                 {:level :warning}
 
   :metabase/validate-deftest
   {:level :warning
@@ -489,6 +492,8 @@
   metabase.util.malli/defn-                                                             schema.core/defn
   metabase.util.malli/fn                                                                schema.core/fn
   metabase.util.namespaces/import-fns                                                   potemkin/import-vars
+  metabase.util.performance/doseq                                                       clojure.core/doseq
+  metabase.util.performance/for                                                         clojure.core/for
   metabase.util/with-timer-ms                                                           clojure.core/fn
   metabuild-common.core/with-open-jar-file-system                                       clojure.core/let
   metabuild-common.files/with-open-jar-file-system                                      clojure.core/let
@@ -519,6 +524,7 @@
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
+   metabase-enterprise.metabot-v3.tools.dependencies-test/with-dependent-transforms!                                         hooks.common/with-two-bindings
    metabase-enterprise.semantic-search.db.connection/with-migrate-tx                                                         hooks.common/let-one-with-optional-value
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
    metabase-enterprise.transforms-python.drivers-test/with-test-table                                                        hooks.common/with-two-bindings
@@ -547,6 +553,8 @@
    metabase.embedding.api.embed-test/with-temp-card                                                                          hooks.common/let-one-with-optional-value
    metabase.embedding.api.embed-test/with-temp-dashcard                                                                      hooks.common/let-one-with-optional-value
    metabase.legacy-mbql.schema.macros/defclause                                                                              hooks.metabase.legacy-mbql.schemas.macros/defclause
+   metabase.legacy-mbql.schema.macros/defclause*                                                                             hooks.metabase.legacy-mbql.schemas.macros/defclause*
+   metabase.legacy-mbql.schema.macros/one-of                                                                                 hooks.metabase.legacy-mbql.schemas.macros/one-of
    metabase.lib.schema.mbql-clause/define-catn-mbql-clause                                                                   hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    metabase.lib.schema.mbql-clause/define-mbql-clause                                                                        hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    metabase.lib.schema.mbql-clause/define-tuple-mbql-clause                                                                  hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
@@ -715,6 +723,8 @@
    :name    metabase-lib}
   {:pattern "^metabase\\.lib\\..*"
    :name    metabase-lib-excluding-legacy-mbql}
+  {:pattern "^metabase\\.legacy-mbql\\..*"
+   :name    legacy-mbql-namespaces}
   ;;
   ;; QP and driver source namespaces: `metabase.query-processor.*`, `metabase-enterprise.sandbox.query-processor.*`,
   ;; and `metabase.driver.*`, excluding `-test` namespaces.
@@ -729,7 +739,7 @@
   ;;
   ;; driver namespaces, including tests
   ;;
-  {:pattern "metabase\\.driver.*$"
+  {:pattern "metabase\\.driver(?:-api)?.*$"
    :name    driver-namespaces}
   ;;
   ;; Perf-sensitive namespaces are currently the union of metabase.lib.*, driver namespaces, and QP (without tests).
@@ -775,7 +785,14 @@
      clojure.core/eval        {:message "Don't use eval outside of tests"}}
 
     :discouraged-namespace
-    {metabase.query-processor.store {:message "Please do not use the QP Store outside of legacy QP or driver code. Use MBQL 5/Lib or lib.metadata.jvm/applicaton-database-metadata-provider instead."}}}}
+    {metabase.legacy-mbql.jvm-util       {:message "Avoid legacy MBQL utils, use Lib instead"}
+     metabase.legacy-mbql.normalize      {:message "Avoid legacy MBQL normalization, use MBQL 5 + lib/normalize instead"}
+     metabase.legacy-mbql.predicates     {:message "Avoid legacy MBQL utils, use Lib instead"}
+     metabase.legacy-mbql.schema         {:message "Avoid the legacy MBQL schema, use MBQL 5 + lib.schema instead"}
+     metabase.legacy-mbql.schema.helpers {:message "Avoid the legacy MBQL schema, use MBQL 5 + lib.schema instead"}
+     metabase.legacy-mbql.schema.macros  {:message "Avoid the legacy MBQL schema, use MBQL 5 + lib.schema instead"}
+     metabase.legacy-mbql.util           {:message "Avoid legacy MBQL utils, use Lib instead"}
+     metabase.query-processor.store      {:message "Please do not use the QP Store outside of legacy QP or driver code. Use MBQL 5/Lib or lib.metadata.jvm/applicaton-database-metadata-provider instead."}}}}
 
   printable-namespaces
   {:linters
@@ -817,25 +834,77 @@
      toucan2.core               {:message "Don't use application database inside Lib code"}}}}
 
   metabase-lib-excluding-legacy-mbql
-  {:linters
-   {:discouraged-var
-    {metabase.legacy-mbql.util/unique-name-generator {:message "Use metabase.lib.util/unique-name-generator or non-truncating-unique-name-generator"}}}
+  {}
 
-   :discouraged-namespace
-   {metabase.legacy-mbql.js         {:message "Avoid legacy MBQL utils in Lib; move things into Lib if needded."}
-    metabase.legacy-mbql.jvm-util   {:message "Avoid legacy MBQL utils in Lib; move things into Lib if needded."}
-    metabase.legacy-mbql.predicates {:message "Avoid legacy MBQL utils in Lib; move things into Lib if needded."}
-    metabase.legacy-mbql.util       {:message "Avoid legacy MBQL utils in Lib; move things into Lib if needded."}}}
+  legacy-mbql-namespaces
+  {:linters
+   {:discouraged-namespace
+    {metabase.legacy-mbql.jvm-util       {:level :off}
+     metabase.legacy-mbql.normalize      {:level :off}
+     metabase.legacy-mbql.predicates     {:level :off}
+     metabase.legacy-mbql.schema         {:level :off}
+     metabase.legacy-mbql.schema.helpers {:level :off}
+     metabase.legacy-mbql.schema.macros  {:level :off}
+     metabase.legacy-mbql.util           {:level :off}
+     metabase.query-processor.store      {:level :off}}
+
+    ;; the `metabase.legacy-mbql` stuff is all deprecated, so we don't need to warn inside the module about other stuff
+    ;; in the module being marked deprecated or discouraged.
+    :deprecated-namespace {:level :off}
+    :deprecated-var       {:level :off}}}
 
   driver-namespaces
   {:linters
    {:discouraged-var
-    {metabase.driver/database-supports? {:level :off}}}}
+    {metabase.driver/database-supports? {:level :off}}
+
+    ;; don't warn about the legacy MBQL namespaces being deprecated or discouraged in driver code now, we don't have a
+    ;; real alternative YET so it's not a helpful warning.
+    :discouraged-namespace
+    {metabase.legacy-mbql.jvm-util       {:level :off}
+     metabase.legacy-mbql.normalize      {:level :off}
+     metabase.legacy-mbql.predicates     {:level :off}
+     metabase.legacy-mbql.schema         {:level :off}
+     metabase.legacy-mbql.schema.helpers {:level :off}
+     metabase.legacy-mbql.schema.macros  {:level :off}
+     metabase.legacy-mbql.util           {:level :off}
+     metabase.query-processor.store      {:level :off}}
+
+    :deprecated-namespace
+    {:exclude
+     [metabase.driver.common.parameters
+      metabase.driver.common.parameters.dates
+      metabase.driver.common.parameters.operators
+      metabase.driver.common.parameters.parse
+      metabase.driver.common.parameters.values
+      metabase.legacy-mbql.jvm-util
+      metabase.legacy-mbql.normalize
+      metabase.legacy-mbql.predicates
+      metabase.legacy-mbql.schema
+      metabase.legacy-mbql.schema.helpers
+      metabase.legacy-mbql.schema.macros
+      metabase.legacy-mbql.util
+      metabase.query-processor.store]}
+
+    :deprecated-var
+    {:exclude
+     {metabase.legacy-mbql.schema.helpers/is-clause?   {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.schema.helpers/mbql-clause? {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.util/query->source-table-id {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.util/aggregation-at-index   {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.util/assoc-field-options    {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.util/expression-with-name   {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.util/field-options          {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.util/negate-filter-clause   {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.util/normalize-token        {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.util/update-field-options   {:namespaces ["metabase\\.driver.*"]}}}}}
 
   performance-sensitive
   {:linters
    {:discouraged-var
-    {clojure.core/every?          {:message "Use metabase.util.performance/every?"}
+    {clojure.core/empty?          {:message "Use metabase.util.performance/empty?"}
+     clojure.core/not-empty       {:message "Use metabase.util.performance/not-empty"}
+     clojure.core/every?          {:message "Use metabase.util.performance/every?"}
      clojure.core/mapv            {:message "Use metabase.util.performance/mapv"}
      clojure.core/run!            {:message "Use metabase.util.performance/run!"}
      clojure.core/select-keys     {:message "Use metabase.util.performance/select-keys"}
@@ -844,7 +913,9 @@
      clojure.walk/keywordize-keys {:message "Use metabase.util.performance/keywordize-keys"}
      clojure.walk/postwalk        {:message "Use metabase.util.performance/postwalk"}
      clojure.walk/prewalk         {:message "Use metabase.util.performance/prewalk"}
-     clojure.walk/walk            {:message "Use metabase.util.performance/walk"}}}}
+     clojure.walk/walk            {:message "Use metabase.util.performance/walk"}
+     clojure.walk/for             {:message "Use metabase.util.performance/for"}
+     clojure.walk/doseq           {:message "Use metabase.util.performance/doseq"}}}}
 
   qp-and-driver-source-namespaces
   {:linters
@@ -865,16 +936,7 @@
      metabase.lib.core/->legacy-MBQL      {:level :off}}}}
 
   qp-source-namespaces
-  {:linters
-   {:discouraged-namespace
-    {metabase.legacy-mbql.js             {:message "Avoid legacy MBQL namespaces in the QP, use Lib instead"}
-     metabase.legacy-mbql.jvm-util       {:message "Avoid legacy MBQL namespaces in the QP, use Lib instead"}
-     metabase.legacy-mbql.normalize      {:message "Avoid legacy MBQL namespaces in the QP, use Lib instead"}
-     metabase.legacy-mbql.predicates     {:message "Avoid legacy MBQL namespaces in the QP, use Lib instead"}
-     metabase.legacy-mbql.schema         {:message "Avoid legacy MBQL namespaces in the QP, use Lib instead"}
-     metabase.legacy-mbql.schema.helpers {:message "Avoid legacy MBQL namespaces in the QP, use Lib instead"}
-     metabase.legacy-mbql.schema.macros  {:message "Avoid legacy MBQL namespaces in the QP, use Lib instead"}
-     metabase.legacy-mbql.util           {:message "Avoid legacy MBQL namespaces in the QP, use Lib instead"}}}}
+  {}
 
   general-qp-and-driver-test-namespaces
   {:linters

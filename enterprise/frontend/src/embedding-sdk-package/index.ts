@@ -104,6 +104,7 @@ export type {
   MetabaseDashboard,
   MetabaseDashboardPluginsConfig,
   MetabaseFontFamily,
+  MetabaseGlobalPluginsConfig,
   MetabasePluginsConfig,
   MetabaseQuestion,
   MetabaseTheme,

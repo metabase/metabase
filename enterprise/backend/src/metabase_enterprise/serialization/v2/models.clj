@@ -97,6 +97,8 @@
    "QueryField"
    "QueryTable"
    "RecentViews"
+   "RemoteSyncObject"
+   "RemoteSyncTask"
    "Revision"
    "Sandbox"
    "SearchIndexMetadata"

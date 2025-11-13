@@ -1,8 +1,11 @@
+import { match } from "ts-pattern";
+
+import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import type { UrlableModel } from "metabase/lib/urls/modelToUrl";
 import type { MenuItem } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
-import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
+import type { MetabaseProtocolEntityModel } from "metabase-enterprise/metabot/utils/links";
 import type {
   Database,
   MentionableUser,
@@ -10,6 +13,8 @@ import type {
   SearchResult,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
+
+import type { SuggestionModel } from "./types";
 
 export const filterRecents = (item: RecentItem, models: SuggestionModel[]) =>
   models.includes(item.model);
@@ -80,6 +85,21 @@ export function buildUserMenuItems(
   });
 }
 
+export function buildSearchModelMenuItems(
+  searchModels: SuggestionModel[],
+  onSelect: (model: SuggestionModel) => void,
+): MenuItem[] {
+  return searchModels.map((model) => {
+    return {
+      icon: getIcon({ model }).name,
+      label: getTranslatedEntityName(model) || model,
+      model,
+      action: () => onSelect(model),
+      hasSubmenu: true,
+    };
+  });
+}
+
 export function entityToUrlableModel<
   T extends {
     id: string | number;
@@ -112,4 +132,25 @@ export function entityToUrlableModel<
 
 export function isMentionableUser(value: unknown): value is MentionableUser {
   return isObject(value) && typeof value.common_name === "string";
+}
+
+export function mbProtocolModelToSuggestionModel(inputModel: string): string {
+  // dom nodes record strings and it's better to not to error the input with invalid
+  // data. casting here still afford some amount of internal type awareness as these
+  // two types might diverge in the future.
+  const model: SuggestionModel = match(
+    inputModel as MetabaseProtocolEntityModel,
+  )
+    .with("model", () => "dataset" as const)
+    .with("question", () => "card" as const)
+    .otherwise((x) => x);
+
+  return model;
+}
+
+export function getBrowseAllItemIndex(
+  menuItemsLength: number,
+  canCreateNewQuestion?: boolean,
+): number {
+  return canCreateNewQuestion ? menuItemsLength + 1 : menuItemsLength;
 }

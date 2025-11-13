@@ -11,6 +11,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
@@ -119,14 +120,14 @@
 (defmethod mi/can-write? :model/Card
   ([instance]
    ;; Cards in audit collection should not be writable.
-   (if (and
+   (and
+    (not (and
         ;; We want to make sure there's an existing audit collection before doing the equality check below.
         ;; If there is no audit collection, this will be nil:
-        (some? (:id (audit/default-audit-collection)))
+          (some? (:id (audit/default-audit-collection)))
         ;; Is a direct descendant of audit collection
-        (= (:collection_id instance) (:id (audit/default-audit-collection))))
-     false
-     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
+          (= (:collection_id instance) (:id (audit/default-audit-collection)))))
+    (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Card :id pk))))
 
@@ -669,31 +670,28 @@
   (update card :result_metadata (fn [cols]
                                   (mapv #(dissoc % :ident :model/inner_ident) cols))))
 
-(mu/defn- upgrade-card-schema-to-latest :- [:map
-                                            [:result_metadata {:optional true} [:maybe
-                                                                                [:sequential
-                                                                                 ::lib.schema.metadata/lib-or-legacy-column]]]]
-  [card]
-  (if (and (:id card)
-           (or (:dataset_query card)
-               (:result_metadata card)
-               (:database_id card)
-               (:type card)))
-    ;; A plausible select to run the after-select logic on.
-    (if-not (:card_schema card)
-      ;; Plausible but no :card_schema - error.
-      (throw (ex-info "Cannot SELECT a Card without including :card_schema"
-                      {:card-id (:id card)}))
-      ;; Plausible and has the schema, so run the upgrades over it.
-      (loop [card card]
-        (if (= (:card_schema card) current-schema-version)
-          card
-          (let [new-version (inc (:card_schema card))]
-            (recur (assoc (upgrade-card-schema-to card new-version)
-                          :card_schema new-version))))))
-
-    ;; Some sort of odd query like an aggregation over cards. Just return it as-is.
-    card))
+(mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
+  [card :- :map]
+  (-> (if (and (:id card)
+               (or (:dataset_query card)
+                   (:result_metadata card)
+                   (:database_id card)
+                   (:type card)))
+        ;; A plausible select to run the after-select logic on.
+        (if-not (:card_schema card)
+          ;; Plausible but no :card_schema - error.
+          (throw (ex-info "Cannot SELECT a Card without including :card_schema"
+                          {:card-id (:id card)}))
+          ;; Plausible and has the schema, so run the upgrades over it.
+          (loop [card card]
+            (if (= (:card_schema card) current-schema-version)
+              card
+              (let [new-version (inc (:card_schema card))]
+                (recur (assoc (upgrade-card-schema-to card new-version)
+                              :card_schema new-version))))))
+        ;; Some sort of odd query like an aggregation over cards. Just return it as-is.
+        card)
+      queries.schema/normalize-card))
 
 (t2/define-after-select :model/Card
   [card]
@@ -920,9 +918,11 @@
                                               ;; Adding a new card at `collection_position` could cause other cards in
                                               ;; this collection to change position, check that and fix it if needed
                                               (api/maybe-reconcile-collection-position! position-info)
-                                              (t2/insert-returning-instance! :model/Card (cond-> card-data
-                                                                                           metadata
-                                                                                           (assoc :result_metadata metadata))))]
+                                              (u/prog1 (t2/insert-returning-instance! :model/Card (cond-> card-data
+                                                                                                    metadata
+                                                                                                    (assoc :result_metadata metadata)))
+                                                (when (collections/remote-synced-collection? (:collection_id <>))
+                                                  (collections/check-non-remote-synced-dependencies <>))))]
      (let [{:keys [dashboard_id]} card]
        (when (and dashboard_id autoplace-dashboard-questions?)
          (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card)))
@@ -1099,7 +1099,7 @@
                 ;; `collection_id` and `description` can be `nil` (in order to unset them).
                 ;; Other values should only be modified if they're passed in as non-nil
                 (u/select-keys-when card-updates
-                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id}
+                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id :embedding_type}
                                     :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                :result_metadata :collection_preview :verified-result-metadata?}))
@@ -1110,7 +1110,8 @@
         (log/error e "Update of dependent card parameters failed!")
         (log/debug e
                    "`card-before-update`:" (pr-str card-before-update)
-                   "`card-updates`:" (pr-str card-updates)))))
+                   "`card-updates`:" (pr-str card-updates))))
+    (collection/check-for-remote-sync-update card-before-update))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one :model/Card :id (:id card-before-update))]
     ;;; TODO -- this should be triggered indirectly by `:event/card-update`
@@ -1187,7 +1188,7 @@
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
-          :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name
+          :embedding_params :enable_embedding :embedding_type :entity_id :metabase_version :public_uuid :query_type :type :name
           :card_schema]
    :skip [;; cache invalidation is instance-specific
           :cache_invalidated_at
@@ -1235,7 +1236,7 @@
     (serdes/mbql-deps dataset_query)
     (serdes/visualization-settings-deps visualization_settings))))
 
-(defmethod serdes/descendants "Card" [_model-name id]
+(defmethod serdes/descendants "Card" [_model-name id _opts]
   (let [card               (t2/select-one :model/Card :id id)
         query              (not-empty (:dataset_query card))
         source-card        (some-> query lib/source-card-id)

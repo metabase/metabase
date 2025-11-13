@@ -1,6 +1,6 @@
 (ns metabase.driver.sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into HoneySQL SQL forms."
-  (:refer-clojure :exclude [some mapv every? select-keys])
+  (:refer-clojure :exclude [some mapv every? select-keys empty? not-empty])
   (:require
    [clojure.core.match :refer [match]]
    [clojure.string :as str]
@@ -19,7 +19,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [some mapv every? select-keys]]
+   [metabase.util.performance :as perf :refer [some mapv every? select-keys empty? not-empty]]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -422,13 +422,17 @@
   (binding [driver.common/*start-of-week* :monday]
     (date driver :day-of-week honeysql-expr)))
 
+;; add-interval-honeysql-form is also defined in metabase.util.honey-sql-2 for Postgres, MySQL/MariaDB, and H2. Prefer
+;; that for app db queries to avoid unnecessary dependencies on the driver module.
 (defmulti add-interval-honeysql-form
-  "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
+  "Return a HoneySQL form that represents addition of some temporal interval to the original `hsql-form`.
   `unit` is one of the units listed in [[metabase.util.date-2/add-units]].
 
     (add-interval-honeysql-form :my-driver hsql-form 1 :day) -> [:date_add hsql-form 1 (h2x/literal 'day')]
 
-  `amount` is usually an integer, but can be floating-point for units like seconds."
+  `amount` is usually an integer, but can be floating-point for units like seconds.
+
+  This multimethod can be extended by drivers in their respective namespaces."
   {:added "0.34.2" :arglists '([driver hsql-form amount unit])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -2007,60 +2011,41 @@
 (defmulti preprocess
   "Do miscellaneous transformations to the MBQL before compiling the query. These changes are idempotent, so it is safe
   to use this function in your own implementations of [[driver/mbql->native]], if you want to apply changes to the
-  same version of the query that we will ultimately be compiling."
-  {:changelog-test/ignore true, :arglists '([driver inner-query]), :added "0.42.0"}
+  same version of the query that we will ultimately be compiling.
+
+  Wants a `:lib/query` MBQL 5 query as input. Always returns an MBQL 4 **inner query**, for historical reasons."
+  {:changelog-test/ignore true, :arglists '([driver mbql5-query]), :added "0.42.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-;;; This is a wrapper
-;;; around [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation]], which is
-;;; written for pMBQL, so we can use it with a legacy inner query. Once we rework the SQL QP to use pMBQL we can remove
-;;; this.
-(mu/defn- nest-breakouts-in-queries-with-window-fn-aggregations :- driver-api/MBQLQuery
-  [inner-query :- driver-api/MBQLQuery]
-  (let [metadata-provider (driver-api/metadata-provider)
-        database-id       (u/the-id (driver-api/database (driver-api/metadata-provider)))]
-    (-> (driver-api/query-from-legacy-inner-query metadata-provider database-id inner-query)
-        driver-api/nest-breakouts-in-stages-with-window-aggregation
-        driver-api/->legacy-MBQL
-        :query)))
-
-;;; [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation]] already does
-;;; basically the same check, this is here mostly to avoid the performance hit of converting to pMBQL and back in
-;;; queries that have no cumulative aggregations at all. Once we convert the SQL QP to pMBQL we can remove this.
-(defn- has-window-function-aggregations? [inner-query]
-  (or (driver-api/match (mapcat inner-query [:aggregation :expressions])
-        #{:cum-sum :cum-count :offset}
-        true)
-      (when-let [source-query (:source-query inner-query)]
-        (has-window-function-aggregations? source-query))))
-
-(defn- maybe-nest-breakouts-in-queries-with-window-fn-aggregations
-  [inner-query]
-  (cond-> inner-query
-    (has-window-function-aggregations? inner-query)
-    nest-breakouts-in-queries-with-window-fn-aggregations))
-
 (defmethod preprocess :sql
-  [_driver inner-query]
-  (-> inner-query
-      maybe-nest-breakouts-in-queries-with-window-fn-aggregations
+  [_driver mbql5-query]
+  (-> mbql5-query
+      driver-api/nest-breakouts-in-stages-with-window-aggregation
+      driver-api/nest-expressions
       driver-api/add-alias-info
-      driver-api/nest-expressions))
+      driver-api/->legacy-MBQL
+      :query))
 
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver :- :keyword
    query  :- :map]
   (if (:lib/type query)
-    (recur driver (driver-api/->legacy-MBQL query))
-    (let [{inner-query :query} query]
-      (binding [driver/*driver* driver]
-        (let [inner-query (preprocess driver inner-query)]
-          (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
-          (u/prog1 (apply-clauses driver {} inner-query)
-            (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
-            (driver-api/debug> (list '🍯 <>))))))))
+    (binding [driver/*driver* driver]
+      (let [inner-query (preprocess driver query)]
+        (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
+        (u/prog1 (apply-clauses driver {} inner-query)
+          (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
+          (driver-api/debug> (list '🍯 <>)))))
+
+    (let [metadata-provider (driver-api/metadata-provider)
+          database-id       (if (:type query)
+                              (:database query)
+                              (u/the-id (driver-api/database metadata-provider)))
+          inner-query       (or (:query query) query)
+          mbql5-query (driver-api/query-from-legacy-inner-query metadata-provider database-id inner-query)]
+      (recur driver mbql5-query))))
 
 ;;;; MBQL -> Native
 

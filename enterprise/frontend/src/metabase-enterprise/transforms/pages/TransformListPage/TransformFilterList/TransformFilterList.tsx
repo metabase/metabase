@@ -2,9 +2,9 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import type { RelativeIntervalDirection } from "metabase/querying/filters/types";
 import { Group } from "metabase/ui";
-import { getTransformListUrl } from "metabase-enterprise/transforms/urls";
 import type {
   TransformRunStatus,
   TransformTag,
@@ -14,10 +14,9 @@ import type {
 import { StatusFilterWidget } from "../../../components/StatusFilterWidget";
 import { TagFilterWidget } from "../../../components/TagFilterWidget";
 import { TimeFilterWidget } from "../../../components/TimeFilterWidget";
-import type { TransformListParams } from "../../../types";
 
 type TransformFilterListProps = {
-  params: TransformListParams;
+  params: Urls.TransformListParams;
   tags: TransformTag[];
 };
 
@@ -33,17 +32,17 @@ export function TransformFilterList({
   const dispatch = useDispatch();
 
   const handleLastRunStartTimeChange = (lastRunStartTime?: string) => {
-    dispatch(replace(getTransformListUrl({ ...params, lastRunStartTime })));
+    dispatch(replace(Urls.transformList({ ...params, lastRunStartTime })));
   };
 
   const handleLastRunStatusesChange = (
     lastRunStatuses?: TransformRunStatus[],
   ) => {
-    dispatch(replace(getTransformListUrl({ ...params, lastRunStatuses })));
+    dispatch(replace(Urls.transformList({ ...params, lastRunStatuses })));
   };
 
   const handleTagsChange = (tagIds: TransformTagId[]) => {
-    dispatch(replace(getTransformListUrl({ ...params, tagIds })));
+    dispatch(replace(Urls.transformList({ ...params, tagIds })));
   };
 
   return (

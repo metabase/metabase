@@ -17,8 +17,9 @@
 
 (defn- visible-to? [search-ctx {:keys [visibility] :as _spec}]
   (case visibility
-    :all      true
-    :app-user (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))))
+    :all       true
+    :app-user  (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))
+    :superuser (:is-superuser? search-ctx)))
 
 (def ^:private context-key->filter
   "Map the context keys to their corresponding filters"
@@ -40,7 +41,8 @@
           (remove nil?)
           (for [search-model (:models search-ctx)
                 :let [spec (search.spec/spec search-model)]]
-            (when (and (visible-to? search-ctx spec) (every? (:attrs spec) required))
+            (when (and (visible-to? search-ctx spec)
+                       (every? (:attrs spec) required))
               (:name spec))))))
 
 (defn models-without-collection

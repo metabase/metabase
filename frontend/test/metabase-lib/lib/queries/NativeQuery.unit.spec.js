@@ -53,14 +53,14 @@ function makeDatasetQuery(queryText, templateTags, databaseId) {
 
 function makeQuery(query, templateTags, metadata = METADATA) {
   return new NativeQuery(
-    Question.create({ type: "native", metadata }),
+    Question.create({ DEPRECATED_RAW_MBQL_type: "native", metadata }),
     makeDatasetQuery(query, templateTags, SAMPLE_DB_ID),
   );
 }
 
 function makeMongoQuery(query, templateTags, metadata = METADATA) {
   return new NativeQuery(
-    Question.create({ type: "native", metadata }),
+    Question.create({ DEPRECATED_RAW_MBQL_type: "native", metadata }),
     makeDatasetQuery(query, templateTags, MONGO_DB_ID),
   );
 }

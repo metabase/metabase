@@ -40,7 +40,6 @@ export const PermissionsTableCell = styled.td`
 
   &:first-of-type {
     max-width: 300px;
-    background: var(--mb-color-white);
     left: 0;
     top: 0;
     position: sticky;
@@ -89,7 +88,7 @@ export const EntityNameLink = styled(Link)`
   display: inline;
   font-weight: 700;
   text-decoration: underline;
-  color: ${() => color("admin-navbar")};
+  color: ${() => color("admin-navbar-inverse")};
 `;
 
 export const HintIcon = styled(

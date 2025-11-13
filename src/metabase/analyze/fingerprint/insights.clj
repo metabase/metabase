@@ -6,11 +6,11 @@
    [kixi.stats.math :as math]
    [medley.core :as m]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.performance :refer [mapv-indexed]]
    [redux.core :as redux])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -241,11 +241,16 @@
         xfn        #(nth % x-position)]
     (fingerprinters/with-error-handling
       ((map (fn [row]
-              ;; Convert string datetimes or Instants into into days-from-epoch early.
-              (update (vec row) x-position #(some-> %
-                                                    fingerprinters/->temporal
-                                                    ->millis-from-epoch
-                                                    ms->day))))
+              ;; Convert string datetimes or Instants into into days-from-epoch, and BigDecimals into Doubles early.
+              (mapv-indexed (fn [^long i x]
+                              (cond (= i x-position)
+                                    (some-> x
+                                            fingerprinters/->temporal
+                                            ->millis-from-epoch
+                                            ms->day)
+                                    (decimal? x) (double x)
+                                    :else x))
+                            row)))
        (redux/juxt*
         (for [number-col numbers]
           (redux/post-complete
@@ -257,7 +262,7 @@
                           (simple-linear-regression xfn yfn :linear :linear)
                           (best-fit xfn yfn))))
            (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit-equation]]
-             (let [unit         (let [unit (some-> datetime :unit mbql.u/normalize-token)]
+             (let [unit         (let [unit (some-> datetime :unit keyword)]
                                   (if (or (nil? unit)
                                           (= unit :default))
                                     (infer-unit x-previous x-current)

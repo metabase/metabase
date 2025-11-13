@@ -42,6 +42,7 @@ const TYPE_FILTER_LABELS: Record<EnabledSearchModel, string> = {
   action: "Action",
   "indexed-entity": "Indexed record",
   document: "Document",
+  transform: "Transform",
 };
 
 const TEST_ITEMS: Partial<SearchResult>[] = [

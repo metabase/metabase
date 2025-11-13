@@ -4,7 +4,7 @@
   `metabase.driver.sql-jdbc.execute.old-impl`, which will be removed in a future release; implementations of methods
   for JDBC drivers that do not support `java.time` classes can be found in
   `metabase.driver.sql-jdbc.execute.legacy-impl`. "
-  (:refer-clojure :exclude [mapv])
+  (:refer-clojure :exclude [mapv empty?])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.core.async :as a]
@@ -25,7 +25,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [mapv]]
+   [metabase.util.performance :as perf :refer [mapv empty?]]
    [potemkin :as p])
   (:import
    (java.sql
@@ -742,7 +742,8 @@
   [context :- [:maybe ::lib.schema.info/context]]
   (let [download-contexts #{:csv-download :xlsx-download :json-download
                             :public-csv-download :public-xlsx-download :public-json-download
-                            :embedded-csv-download :embedded-xlsx-download :embedded-json-download}]
+                            :embedded-csv-download :embedded-xlsx-download :embedded-json-download
+                            :pulse}]
     (boolean (download-contexts context))))
 
 (defn execute-reducible-query

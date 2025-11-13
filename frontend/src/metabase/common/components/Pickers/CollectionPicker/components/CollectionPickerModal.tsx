@@ -29,7 +29,7 @@ export interface CollectionPickerModalProps {
   onChange: (item: CollectionPickerValueItem) => void;
   onClose: () => void;
   options?: CollectionPickerOptions;
-  value: Pick<CollectionPickerValueItem, "id" | "model" | "collection_id">;
+  value?: Pick<CollectionPickerValueItem, "id" | "model" | "collection_id">;
   shouldDisableItem?: (item: CollectionPickerItem) => boolean;
   searchResultFilter?: (searchResults: SearchResult[]) => SearchResult[];
   recentFilter?: (recentItems: RecentItem[]) => RecentItem[];
@@ -38,7 +38,7 @@ export interface CollectionPickerModalProps {
 }
 
 const baseCanSelectItem = (
-  item: Pick<CollectionPickerItem, "can_write" | "model"> | null,
+  item: Pick<CollectionPickerItem, "can_write" | "model"> | null | undefined,
 ): item is CollectionPickerValueItem => {
   return (
     !!item &&
@@ -62,17 +62,22 @@ export const CollectionPickerModal = ({
   shouldDisableItem,
   searchResultFilter,
   recentFilter,
-  models = ["collection"],
+  models: modelsProp,
   canSelectItem: _canSelectItem,
 }: CollectionPickerModalProps) => {
   options = { ...defaultOptions, ...options };
+
+  const models = modelsProp || ["collection"];
 
   const [selectedItem, setSelectedItem] = useState<CollectionPickerItem | null>(
     null,
   );
   const canSelectItem = useCallback(
     (
-      item: Pick<CollectionPickerItem, "id" | "can_write" | "model"> | null,
+      item:
+        | Pick<CollectionPickerItem, "id" | "can_write" | "model">
+        | null
+        | undefined,
     ): item is CollectionPickerValueItem => {
       return baseCanSelectItem(item) && (_canSelectItem?.(item) ?? true);
     },
@@ -166,8 +171,8 @@ export const CollectionPickerModal = ({
       displayName: models.some((model) => model !== "collection")
         ? t`Browse`
         : t`Collections`,
-      models,
-      folderModels: ["collection" as const],
+      models: models,
+      folderModels: ["collection"],
       icon: "folder",
       render: ({ onItemSelect }) => (
         <CollectionPicker

@@ -58,9 +58,6 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
       handleCloseConfirmation,
     } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
       onSave,
-      onError: (error) => {
-        throw error;
-      },
     });
 
     const handleCreate = (question: Question) => {
@@ -92,7 +89,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
     };
 
     return (
-      <Flex h="100%" direction="column" bg="white" ref={ref}>
+      <Flex h="100%" direction="column" bg="bg-white" ref={ref}>
         <MetricEditorHeader
           question={question}
           isDirty={isDirty}

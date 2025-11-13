@@ -14,7 +14,6 @@ import { useCheckDependencies } from "../use-check-dependencies";
 
 export function useCheckCardDependencies({
   onSave,
-  onError,
 }: UseCheckDependenciesProps<Question>): UseCheckDependenciesResult<Question> {
   const store = useStore();
 
@@ -35,6 +34,5 @@ export function useCheckCardDependencies({
     getCheckDependenciesRequest,
     useLazyCheckDependenciesQuery: useLazyCheckCardDependenciesQuery,
     onSave,
-    onError,
   });
 }

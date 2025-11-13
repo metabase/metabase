@@ -23,7 +23,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
@@ -214,9 +214,7 @@
                 ;; TODO (Cam 9/9/25) -- we should switch to saving Lib-style metadata in the app DB instead of legacy
                 ;; style in the near future
                 (t2/update! :model/Card card-id {:result_metadata cols}))
-              (assoc-in query [:stages 0 :lib/stage-metadata] (->> cols
-                                                                   lib.util/->stage-metadata
-                                                                   (lib/normalize ::lib.schema.metadata/stage)))))))
+              (lib/update-query-stage query 0 assoc :lib/stage-metadata (lib/->normalized-stage-metadata cols))))))
       query))
 
 (mu/defn- sandbox->query :- ::lib.schema/query
@@ -353,13 +351,16 @@
   (or (when (not api/*is-superuser?*)
         (when-let [table-id->sandbox (when *current-user-id*
                                        (query->table-id->sandbox query))]
+          (premium-features/assert-has-feature :sandboxes (tru "Sandboxing"))
           (sandboxed-query query table-id->sandbox)))
       query))
 
 (defenterprise apply-sandboxing
   "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
   restrict the rows returned, based on presence of sandboxes."
-  :feature :sandboxes
+  ;; run this even when the `:sandboxes` feature is not enabled, so that we can assert that it *is* enabled if
+  ;; sandboxing is configured. (Throwing here is better than silently ignoring the configured sandbox.)
+  :feature :none
   [query]
   (apply-sandboxing* query))
 

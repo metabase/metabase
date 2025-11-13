@@ -4,14 +4,13 @@ import { t } from "ttag";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { QuestionAlertsMenuItem } from "metabase/notifications/NotificationsActionsMenu/QuestionAlertsMenuItem";
 import { setUIControls } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import { Flex, Menu } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { EmbedMenuItem } from "./MenuItems/EmbedMenuItem";
@@ -85,12 +84,6 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
   return (
     <Flex>
       <SharingMenu>
-        <QuestionAlertsMenuItem
-          question={question}
-          onClick={() => setModalType("question-alert")}
-        />
-
-        <Menu.Divider />
         <PublicLinkMenuItem
           hasPublicLink={hasPublicLink}
           onClick={() => setModalType("question-public-link")}

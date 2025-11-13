@@ -3,10 +3,9 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import * as Urls from "metabase/lib/urls";
 import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
 import { useListTransformTagsQuery } from "metabase-enterprise/api";
-
-import { getNewJobUrl } from "../../urls";
 
 import { JobFilterList } from "./JobFilterList";
 import { JobList } from "./JobList";
@@ -33,7 +32,7 @@ export function JobListPage({ location }: JobListPageProps) {
         </Stack>
         <Button
           component={Link}
-          to={getNewJobUrl()}
+          to={Urls.newTransformJob()}
           variant="filled"
           leftSection={<Icon name="add" aria-hidden />}
         >

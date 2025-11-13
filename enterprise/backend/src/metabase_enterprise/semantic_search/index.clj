@@ -118,7 +118,7 @@
 
 (defn- doc->db-record
   "Convert a document to a database record with a provided embedding."
-  [embedding-vec {:keys [model id searchable_text created_at creator_id updated_at
+  [embedding-vec {:keys [model id searchable_text embeddable_text native_query created_at creator_id updated_at
                          last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
                          pinned dashboardcard_count view_count last_viewed_at] :as doc}]
   {:model               model
@@ -128,7 +128,7 @@
    :database_id         database_id
    :last_editor_id      last_editor_id
    :name                (or (:name doc) "")
-   :content             searchable_text
+   :content             embeddable_text
    :display_type        display_type
    :archived            (some-> archived to-boolean)
    :official_collection (some-> official_collection to-boolean)
@@ -145,18 +145,18 @@
    :text_search_vector  (if (:name doc)
                           [:||
                            (search/weighted-tsvector "A" (:name doc))
-                           (search/weighted-tsvector "B" (or (:searchable_text doc) ""))]
-                          (search/weighted-tsvector "A" (or (:searchable_text doc) "")))
+                           (search/weighted-tsvector "B" (or searchable_text ""))]
+                          (search/weighted-tsvector "A" (or searchable_text "")))
    :text_search_with_native_query_vector
    (if (:name doc)
      [:||
       (search/weighted-tsvector "A" (:name doc))
       (search/weighted-tsvector "B"
-                                (str/join " " (remove str/blank? [(or (:searchable_text doc) "")
-                                                                  (or (:native_query doc) "")])))]
+                                (str/join " " (remove str/blank? [(or searchable_text "")
+                                                                  (or native_query "")])))]
      (search/weighted-tsvector "A"
-                               (str/join " " (remove str/blank? [(or (:searchable_text doc) "")
-                                                                 (or (:native_query doc) "")]))))})
+                               (str/join " " (remove str/blank? [(or searchable_text "")
+                                                                 (or native_query "")]))))})
 
 (defn index-size
   "Fetches the number of documents in the index table."
@@ -299,14 +299,14 @@
 (defn- upsert-index-batch!
   [connectable index documents & {:as opts}]
   (when (seq documents)
-    (let [text->docs        (group-by :searchable_text documents)
-          searchable-texts  (keys text->docs)
+    (let [text->docs        (group-by :embeddable_text documents)
+          embeddable-texts  (keys text->docs)
           upsert-embedding! (upsert-embedding!-fn connectable index text->docs)
           [new-texts stats]
-          (u/profile (str "Semantic search embedding caching attempt for " {:docs (count documents) :texts (count searchable-texts)})
-            (let [[new-texts existing-embeddings] (partition-existing-embeddings connectable index searchable-texts)]
+          (u/profile (str "Semantic search embedding caching attempt for " {:docs (count documents) :texts (count embeddable-texts)})
+            (let [[new-texts existing-embeddings] (partition-existing-embeddings connectable index embeddable-texts)]
               (if-not (seq existing-embeddings)
-                [searchable-texts nil]
+                [embeddable-texts nil]
                 (u/profile (str "Semantic search cached embedding db update for " {:texts (count existing-embeddings)})
                   [new-texts (upsert-embedding! existing-embeddings)]))))]
       (->>
@@ -790,7 +790,7 @@
             embedding-time-ms (u/since-ms timer)
 
             db-timer (u/start-timer)
-            weights (search.config/weights (:context search-context))
+            weights (search.config/weights search-context)
             scorers (scoring/semantic-scorers (:table-name index) search-context)
             query (scored-search-query index embedding search-context scorers)
             xform (comp (map decode-metadata)

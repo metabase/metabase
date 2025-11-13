@@ -6,10 +6,11 @@
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (def ^:private metabot-search-models
-  #{"table" "dataset" "card" "dashboard" "metric" "database"})
+  #{"table" "dataset" "card" "dashboard" "metric" "database" "transform"})
 
 (def ^:private search-model-mappings
   "Maps metabot entity types to search engine model types"
@@ -24,18 +25,18 @@
   [search-model]
   (get (set/map-invert search-model-mappings) search-model search-model))
 
-(defn- transform-search-result
+(defn- postprocess-search-result
   "Transform a single search result to match the appropriate entity-specific schema."
   [{:keys [verified moderated_status collection] :as result}]
   (let [model (:model result)
         verified? (or (boolean verified) (= moderated_status "verified"))
-        collection-info (select-keys collection [:name :authority_level])
-        common-fields {:id           (:id result)
-                       :type         (search-model->result-type model)
-                       :name         (:name result)
-                       :description  (:description result)
-                       :updated_at   (:updated_at result)
-                       :created_at   (:created_at result)}]
+        collection-info (select-keys collection [:id :name :authority_level])
+        common-fields {:id          (:id result)
+                       :type        (search-model->result-type model)
+                       :name        (:name result)
+                       :description (:description result)
+                       :updated_at  (:updated_at result)
+                       :created_at  (:created_at result)}]
     (case model
       "database"
       common-fields
@@ -49,14 +50,34 @@
 
       "dashboard"
       (merge common-fields
-             {:verified        verified?
-              :collection      collection-info})
+             {:verified    verified?
+              :collection  collection-info})
+
+      "transform"
+      (merge common-fields
+             {:database_id (:database_id result)})
 
       ;; Questions, metrics, and datasets
       (merge common-fields
-             {:database_id     (:database_id result)
-              :verified        verified?
-              :collection      collection-info}))))
+             {:database_id (:database_id result)
+              :verified    verified?
+              :collection  collection-info}))))
+
+(defn- enrich-with-collection-descriptions
+  "Fetch and merge collection descriptions for all search results that have collection IDs."
+  [results]
+  (let [collection-ids (->> results
+                            (keep #(get-in % [:collection :id]))
+                            distinct
+                            seq)]
+    (if-not collection-ids
+      results
+      (let [descriptions (t2/select-pk->fn :description :model/Collection :id [:in collection-ids])]
+        (mapv (fn [result]
+                (if-let [coll-id (get-in result [:collection :id])]
+                  (assoc-in result [:collection :description] (get descriptions coll-id))
+                  result))
+              results)))))
 
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
@@ -95,13 +116,25 @@
           (map :search-result)))))
 
 (defn search
-  "Search for data sources (tables, models, cards, dashboards, metrics) in Metabase.
+  "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.
   Abstracted from the API endpoint logic."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot-id]}]
+           entity-types limit metabot-id search-native-query weights]}]
+  (log/infof "[METABOT-SEARCH] Starting search with params: %s"
+             {:term-queries term-queries
+              :semantic-queries semantic-queries
+              :database-id database-id
+              :created-at created-at
+              :last-edited-at last-edited-at
+              :entity-types entity-types
+              :limit limit
+              :metabot-id metabot-id
+              :search-native-query search-native-query
+              :weights weights})
   (let [search-models (if (seq entity-types)
                         (set (distinct (keep entity-type->search-model entity-types)))
                         metabot-search-models)
+        _ (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
         all-queries   (distinct (concat (or term-queries []) (or semantic-queries [])))
         metabot (t2/select-one :model/Metabot :entity_id (get-in metabot-v3.config/metabot-config [metabot-id :entity-id] metabot-id))
         use-verified-content? (if metabot-id
@@ -110,7 +143,7 @@
         limit (or limit 50)
         search-fn (fn [query]
                     (let [search-context (search/search-context
-                                          (merge
+                                          (cond->
                                            {:search-string query
                                             :models search-models
                                             :table-db-id database-id
@@ -121,16 +154,30 @@
                                             :is-sandboxed-user? (perms/sandboxed-user?)
                                             :is-superuser? api/*is-superuser?*
                                             :current-user-perms @api/*current-user-permissions-set*
+                                            :filter-items-in-personal-collection  "exclude-others"
                                             :context :metabot
                                             :archived false
                                             :limit limit
                                             :offset 0}
-                                           (when use-verified-content?
-                                             {:verified true})))
-                          search-results (search/search search-context)]
-                      (:data search-results)))
+                                           ;; Don't include search-native-query key if nil so that we don't
+                                           ;; inadvertently filter out search models that don't support it
+                                            search-native-query
+                                            (assoc :search-native-query (boolean search-native-query))
+                                            use-verified-content?
+                                            (assoc :verified true)
+                                            weights
+                                            (assoc :weights weights)))
+                          _ (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
+                                       query (:models search-context))
+                          search-results (search/search search-context)
+                          data (:data search-results)
+                          result-models (frequencies (map :model data))]
+                      (log/infof "[METABOT-SEARCH] Query '%s' returned entity types: %s" query result-models)
+                      data))
         ;; Create futures for parallel execution
         futures (mapv #(future (search-fn %)) all-queries)
         result-lists (mapv deref futures)
         fused-results (take limit (reciprocal-rank-fusion result-lists))]
-    (map transform-search-result fused-results)))
+    (->> fused-results
+         (map postprocess-search-result)
+         enrich-with-collection-descriptions)))

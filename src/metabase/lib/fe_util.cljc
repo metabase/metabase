@@ -1,5 +1,5 @@
 (ns metabase.lib.fe-util
-  (:refer-clojure :exclude [every? mapv select-keys some])
+  (:refer-clojure :exclude [every? mapv select-keys some #?(:clj doseq) #?(:clj for)])
   (:require
    [inflections.core :as inflections]
    [medley.core :as m]
@@ -33,7 +33,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
-   [metabase.util.performance :refer [every? mapv select-keys some]]
+   [metabase.util.performance :refer [every? mapv select-keys some #?(:clj doseq) #?(:clj for)]]
    [metabase.util.time :as u.time]))
 
 (def ^:private ExpressionArg
@@ -73,7 +73,7 @@
                            (:temporal-unit (lib.options/options maybe-clause-arg)))
                 (u.time/timestamp-coercible? other-arg))))
 
-(defn- expand-temporal-expression
+(defn expand-temporal-expression
   "Modify expression in a way, that its resulting [[expression-parts]] are digestable by filter picker.
 
    Current filter picker implementation is unable to handle expression parts of expressions of a form

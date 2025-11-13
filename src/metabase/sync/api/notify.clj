@@ -64,6 +64,8 @@
                         :schema_name schema-name
                         :table_name  table-name}))))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/db/attached_datawarehouse"
   "Sync the attached datawarehouse. Can provide in the body:
   - table_name and schema_name: both strings. Will look for an existing table and sync it, otherwise will try to find a

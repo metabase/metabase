@@ -1,7 +1,7 @@
 (ns metabase.driver.mongo.query-processor
   "Logic for translating MBQL queries into Mongo Aggregation Pipeline queries. See
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
-  (:refer-clojure :exclude [some mapv select-keys])
+  (:refer-clojure :exclude [some mapv select-keys empty?])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -28,7 +28,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [some mapv select-keys]])
+   [metabase.util.performance :as perf :refer [some mapv select-keys empty?]])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -1779,10 +1779,12 @@ function(bin) {
 (defn mbql->native
   "Compile an MBQL query."
   [query]
-  (let [query (update query :query preprocess)]
+  (let [query (-> query
+                  driver-api/->legacy-MBQL
+                  (update :query preprocess))]
     (binding [*query* query
               *next-alias-index* (volatile! 0)]
-      (let [source-table-name (if-let [source-table-id #_{:clj-kondo/ignore [:deprecated-var]} (driver-api/query->source-table-id query)]
+      (let [source-table-name (if-let [source-table-id (driver-api/query->source-table-id query)]
                                 (:name (driver-api/table (driver-api/metadata-provider) source-table-id))
                                 (query->collection-name query))
             compiled (mbql->native-rec (:query query))]

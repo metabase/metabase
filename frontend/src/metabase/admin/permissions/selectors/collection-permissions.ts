@@ -188,7 +188,7 @@ const getCollectionPermission = (
   permissions: CollectionPermissions,
   groupId: number,
   collectionId: CollectionId,
-) => getIn(permissions, [groupId, collectionId]);
+) => getIn(permissions, [groupId, collectionId]) || "none";
 
 const getNamespace = (_state: State, props: CollectionIdProps) =>
   props.namespace;

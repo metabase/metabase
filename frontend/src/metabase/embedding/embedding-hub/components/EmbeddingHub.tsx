@@ -4,12 +4,14 @@ import { P, match } from "ts-pattern";
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
 import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
 
-import { useCompletedEmbeddingHubSteps } from "../hooks";
+import {
+  useCompletedEmbeddingHubSteps,
+  useGetEmbeddingHubSteps,
+} from "../hooks";
 import type {
   EmbeddingHubModalToTrigger,
   EmbeddingHubStepId,
 } from "../types/embedding-checklist";
-import { getEmbeddingHubSteps } from "../utils";
 
 import { EmbeddingHubXrayPickerModal } from "./EmbeddingHubXrayPickerModal";
 import {
@@ -19,7 +21,7 @@ import {
 } from "./StepperWithCards/StepperWithCards";
 
 export const EmbeddingHub = () => {
-  const embeddingSteps = useMemo(() => getEmbeddingHubSteps(), []);
+  const embeddingSteps = useGetEmbeddingHubSteps();
   const { data: completedSteps } = useCompletedEmbeddingHubSteps();
 
   const [openedModal, setOpenedModal] =
@@ -43,6 +45,10 @@ export const EmbeddingHub = () => {
 
         const clickAction: StepperCardClickAction | undefined = match(action)
           .with({ to: P.string }, ({ to }) => ({ type: "link" as const, to }))
+          .with({ onClick: P.nonNullable }, ({ onClick }) => ({
+            type: "click" as const,
+            onClick,
+          }))
           .with({ docsPath: P.string }, ({ docsPath }) => ({
             type: "docs" as const,
             docsPath,

@@ -90,6 +90,9 @@ const FieldTypeDetail = ({
                 databaseId={databaseId}
                 field={field}
                 value={foreignKeyFormField.value || field.fk_target_field_id}
+                /** bottom-start with flip: true opens down and shrinks height
+                 * of popover to one line */
+                comboboxProps={{ position: "top-start" }}
                 onChange={(value) => {
                   foreignKeyFormField.onChange({
                     target: {

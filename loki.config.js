@@ -15,6 +15,7 @@ module.exports = {
     "^Components/overlays/Tooltip",
     "^Components/Documents",
     "^Components/Feedback/Alert",
+    "^App/Palette",
   ].join("|"),
   configurations: {
     "chrome.laptop": {

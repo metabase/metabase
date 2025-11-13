@@ -3,6 +3,7 @@ import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import { useUserSetting } from "metabase/common/hooks";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import {
   EMBED_FALLBACK_DASHBOARD_ID,
   USER_SETTINGS_DEBOUNCE_MS,
@@ -10,7 +11,6 @@ import {
 import type {
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupSettings,
-  SdkIframeEmbedSetupUrlParams,
 } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
 
 import { trackEmbedWizardOpened } from "../analytics";
@@ -48,12 +48,12 @@ const usePersistedSettings = () => {
 };
 
 export const useSdkIframeEmbedSettings = ({
-  urlParams,
+  initialState,
   recentDashboards,
   isRecentsLoading,
   modelCount,
 }: {
-  urlParams: SdkIframeEmbedSetupUrlParams;
+  initialState: SdkIframeEmbedSetupModalInitialState | undefined;
   recentDashboards: SdkIframeEmbedSetupRecentItem[];
   isRecentsLoading: boolean;
   modelCount: number;
@@ -62,18 +62,22 @@ export const useSdkIframeEmbedSettings = ({
   const [persistedSettings, persistSettings] = usePersistedSettings();
 
   const defaultSettings = useMemo(() => {
-    return match([urlParams.resourceType, urlParams.resourceId])
-      .with(["dashboard", P.nonNullable], ([, resourceId]) =>
-        getDefaultSdkIframeEmbedSettings({
-          experience: "dashboard",
-          resourceId,
-        }),
+    return match(initialState)
+      .with(
+        { resourceType: "dashboard", resourceId: P.nonNullable },
+        (initialState) =>
+          getDefaultSdkIframeEmbedSettings({
+            experience: "dashboard",
+            resourceId: initialState.resourceId,
+          }),
       )
-      .with(["question", P.nonNullable], ([, resourceId]) =>
-        getDefaultSdkIframeEmbedSettings({
-          experience: "chart",
-          resourceId,
-        }),
+      .with(
+        { resourceType: "question", resourceId: P.nonNullable },
+        (initialState) =>
+          getDefaultSdkIframeEmbedSettings({
+            experience: "chart",
+            resourceId: initialState.resourceId,
+          }),
       )
       .otherwise(() =>
         getDefaultSdkIframeEmbedSettings({
@@ -81,7 +85,7 @@ export const useSdkIframeEmbedSettings = ({
           resourceId: recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
         }),
       );
-  }, [recentDashboards, urlParams]);
+  }, [recentDashboards, initialState]);
 
   const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
 
@@ -137,10 +141,10 @@ export const useSdkIframeEmbedSettings = ({
         ...settings,
         ...persistedSettings,
 
-        // Override the persisted settings if `auth_method` is specified.
+        // Override the persisted settings if `useExistingUserSession` is specified.
         // This is used for Embedding Hub.
-        ...(urlParams.authMethod !== null && {
-          useExistingUserSession: urlParams.authMethod === "user_session",
+        ...(initialState?.useExistingUserSession !== undefined && {
+          useExistingUserSession: initialState.useExistingUserSession,
         }),
       });
 
@@ -153,7 +157,7 @@ export const useSdkIframeEmbedSettings = ({
     isEmbedSettingsLoaded,
     settings,
     isRecentsLoading,
-    urlParams,
+    initialState,
   ]);
 
   return {

@@ -7,17 +7,20 @@ import {
 import cx from "classnames";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push } from "react-router-redux";
-import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
+import { canDownloadResults } from "metabase/dashboard/components/DashCard/DashCardMenu/utils";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
+import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
+import { DocumentMode } from "metabase/visualizations/click-actions/modes/DocumentMode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
@@ -40,9 +43,11 @@ import {
   getHoveredChildTargetId,
 } from "metabase-enterprise/documents/selectors";
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
+import { usePublicDocumentContext } from "metabase-enterprise/public/contexts/PublicDocumentContext";
+import { usePublicDocumentCardData } from "metabase-enterprise/public/hooks/use-public-document-card-data";
 import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
-import type { Card, CardDisplayType, Dataset } from "metabase-types/api";
+import type { CardDisplayType, Dataset } from "metabase-types/api";
 
 import { CommentsButton } from "../../components/CommentsButton";
 import {
@@ -51,13 +56,149 @@ import {
 } from "../HandleEditorDrop/utils";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 import CS from "../extensions.module.css";
+import { NativeQueryModal } from "../shared/NativeQueryModal";
 
 import styles from "./CardEmbedNode.module.css";
-import { ModifyQuestionModal } from "./ModifyQuestionModal";
-import { NativeQueryModal } from "./NativeQueryModal";
+import { PublicDocumentCardMenu } from "./PublicDocumentCardMenu";
+import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
+import { useDndHelpers } from "./use-dnd-helpers";
+import { useUpdateCardOperations } from "./use-update-card-operations";
+import { getEmbedIndex } from "./utils";
+
+interface CardEmbedMenuContext {
+  canWrite: boolean;
+  dataset: Dataset | undefined;
+  question: Question | undefined;
+  isNativeQuestion: boolean | undefined;
+  commentsPath: string;
+  hasUnsavedChanges: boolean;
+  unresolvedCommentsCount: number;
+}
+
+interface CardEmbedMenuActions {
+  handleDownload: (opts: {
+    type: string;
+    enableFormatting: boolean;
+    enablePivot: boolean;
+  }) => void;
+  handleEditVisualizationSettings: () => void;
+  setIsModifyModalOpen: (open: boolean) => void;
+  handleReplaceQuestion: () => void;
+  handleRemoveNode: () => void;
+}
+
+interface CardEmbedMenuState {
+  menuView: string | null;
+  setMenuView: (view: string | null) => void;
+  isDownloadingData: boolean;
+}
+
+type CardEmbedMenuDropdownProps = CardEmbedMenuContext &
+  CardEmbedMenuActions &
+  CardEmbedMenuState;
+
+const CardEmbedMenuDropdown = ({
+  // Context
+  canWrite,
+  dataset,
+  question,
+  isNativeQuestion,
+  commentsPath,
+  hasUnsavedChanges,
+  unresolvedCommentsCount,
+  // Actions
+  handleDownload,
+  handleEditVisualizationSettings,
+  setIsModifyModalOpen,
+  handleReplaceQuestion,
+  handleRemoveNode,
+  // State
+  menuView,
+  setMenuView,
+  isDownloadingData,
+}: CardEmbedMenuDropdownProps) => {
+  if (menuView === "downloads" && question && dataset) {
+    return (
+      <QuestionDownloadWidget
+        question={question}
+        result={dataset}
+        onDownload={(opts) => {
+          setMenuView(null);
+          handleDownload(opts);
+        }}
+      />
+    );
+  }
+
+  return (
+    <>
+      {!isWithinIframe() && canWrite && (
+        <Menu.Item
+          leftSection={<Icon name="add_comment" size={14} />}
+          component={ForwardRefLink}
+          to={
+            unresolvedCommentsCount > 0
+              ? commentsPath
+              : `${commentsPath}?new=true`
+          }
+          onClick={(e) => {
+            if (!commentsPath || hasUnsavedChanges) {
+              e.preventDefault();
+            }
+          }}
+          disabled={!commentsPath || hasUnsavedChanges}
+        >
+          {t`Comment`}
+        </Menu.Item>
+      )}
+      <Menu.Item
+        onClick={handleEditVisualizationSettings}
+        leftSection={<Icon name="palette" size={14} />}
+        disabled={!canWrite}
+      >
+        {t`Edit Visualization`}
+      </Menu.Item>
+      <Menu.Item
+        onClick={() => setIsModifyModalOpen(true)}
+        leftSection={
+          <Icon name={isNativeQuestion ? "sql" : "notebook"} size={14} />
+        }
+        disabled={!canWrite}
+      >
+        {t`Edit Query`}
+      </Menu.Item>
+      <Menu.Item
+        onClick={handleReplaceQuestion}
+        leftSection={<Icon name="refresh" size={14} />}
+        disabled={!canWrite}
+      >
+        {t`Replace`}
+      </Menu.Item>
+      {canDownloadResults(dataset) && (
+        <Menu.Item
+          leftSection={<Icon name="download" aria-hidden />}
+          aria-label={isDownloadingData ? t`Downloading…` : t`Download results`}
+          disabled={isDownloadingData}
+          closeMenuOnClick={false}
+          onClick={() => {
+            setMenuView("downloads");
+          }}
+        >
+          {isDownloadingData ? t`Downloading…` : t`Download results`}
+        </Menu.Item>
+      )}
+      <Menu.Item
+        onClick={handleRemoveNode}
+        leftSection={<Icon name="trash" size={14} />}
+        disabled={!canWrite}
+      >
+        {t`Remove Chart`}
+      </Menu.Item>
+    </>
+  );
+};
 
 export const DROP_ZONE_COLOR = "var(--mb-color-brand)";
-const DRAG_LEAVE_TIMEOUT = 300;
 
 interface DropZoneProps {
   isOver: boolean;
@@ -188,6 +329,7 @@ export const CardEmbedComponent = memo(
     const childTargetId = useSelector(getChildTargetId);
     const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
     const document = useSelector(getCurrentDocument);
+    const { publicDocumentUuid } = usePublicDocumentContext();
     const { data: commentsData } = useListCommentsQuery(
       getListCommentsQuery(document),
     );
@@ -212,28 +354,27 @@ export const CardEmbedComponent = memo(
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
 
-    const isMountedRef = useRef(false);
+    const {
+      isBeingDragged,
+      dragState,
+      setDragState,
+      handleDragOver,
+      cardEmbedRef,
+    } = useDndHelpers({ editor, node, getPos });
 
-    let embedIndex = -1;
+    const embedIndex = getEmbedIndex(editor, getPos);
 
-    if (editor && getPos) {
-      const currentPos = getPos() ?? 0;
-      let nodeCount = 0;
+    // Use public hook when viewing a public document, otherwise use regular hook
+    const isPublicDocument = Boolean(publicDocumentUuid);
+    const regularCardData = useCardData({ id });
+    const publicCardData = usePublicDocumentCardData({
+      cardId: id,
+      documentUuid: publicDocumentUuid || "",
+    });
 
-      // Count cardEmbed nodes that appear before this position
-      editor.state.doc.descendants((node, pos) => {
-        if (node.type.name === "cardEmbed") {
-          if (pos < currentPos) {
-            nodeCount++;
-          } else if (pos === currentPos) {
-            embedIndex = nodeCount;
-            return false; // Stop traversing
-          }
-        }
-      });
-    }
-
-    const { card, dataset, isLoading, series, error } = useCardData({ id });
+    const { card, dataset, isLoading, series, error } = isPublicDocument
+      ? publicCardData
+      : regularCardData;
 
     const metadata = useSelector(getMetadata);
     const datasetError = dataset && getDatasetError(dataset);
@@ -242,18 +383,33 @@ export const CardEmbedComponent = memo(
     const titleInputRef = useRef<HTMLInputElement>(null);
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
     const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
-    const [dragState, setDragState] = useState<{
-      isDraggedOver: boolean;
-      side: "left" | "right" | null;
-    }>({ isDraggedOver: false, side: null });
-    const draggedOverTimeoutRef = useRef<number | undefined>();
-    const cardEmbedRef = useRef<HTMLDivElement>(null);
-
-    const isBeingDragged = editor.view.draggingNode === node;
+    const [menuView, setMenuView] = useState<string | null>(null);
 
     const displayName = name || card?.name;
-    const question = card != null ? new Question(card) : undefined;
+    const question = useMemo(
+      () => (card != null ? new Question(card, metadata) : undefined),
+      [card, metadata],
+    );
     const isNativeQuestion = question?.isNative();
+
+    const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
+      question: question!,
+      result: dataset!,
+      documentId: document?.id,
+    });
+
+    const {
+      handleChangeCardAndRun,
+      handleUpdateQuestion,
+      handleUpdateVisualizationSettings,
+    } = useUpdateCardOperations({
+      document,
+      regularCardData,
+      question,
+      editor,
+      embedIndex,
+      cardId: id,
+    });
 
     useEffect(() => {
       if (isEditingTitle && titleInputRef.current) {
@@ -261,14 +417,6 @@ export const CardEmbedComponent = memo(
         titleInputRef.current.select();
       }
     }, [isEditingTitle]);
-
-    useMount(() => {
-      isMountedRef.current = true;
-    });
-
-    useUnmount(() => {
-      isMountedRef.current = false;
-    });
 
     const handleTitleSave = () => {
       const trimmedTitle = editedTitle.trim();
@@ -356,107 +504,6 @@ export const CardEmbedComponent = memo(
       cleanupFlexContainerNodes(editor.view);
       editor.chain().focus();
     }, [deleteNode, editor, node]);
-
-    // Handle drill-through navigation
-    const handleChangeCardAndRun = useCallback(
-      ({
-        nextCard,
-      }: {
-        nextCard: Card;
-        previousCard?: Card;
-        objectId?: number;
-      }) => {
-        if (!metadata) {
-          console.warn("Metadata not available for drill-through navigation");
-          return;
-        }
-
-        try {
-          // For drill-through, we need to ensure the card is treated as adhoc
-          // Remove the ID so getUrl creates an adhoc question URL instead of navigating to saved question
-          const adhocCard = { ...nextCard, id: null };
-          const question = new Question(adhocCard, metadata);
-          const url = getUrl(question, { includeDisplayIsLocked: true });
-          dispatch(navigateToCardFromDocument(url, document));
-        } catch (error) {
-          console.error("Failed to create question URL:", error);
-          // Fallback: navigate to a new question with the dataset_query
-          if (nextCard.dataset_query) {
-            const params = new URLSearchParams();
-            params.set("dataset_query", JSON.stringify(nextCard.dataset_query));
-            dispatch(
-              navigateToCardFromDocument(
-                `/question?${params.toString()}`,
-                document,
-              ),
-            );
-          }
-        }
-      },
-      [dispatch, metadata, document],
-    );
-
-    const handleDragOver = useCallback(
-      (e: React.DragEvent) => {
-        e.preventDefault();
-
-        const draggingNode = editor.view.draggingNode;
-        if (
-          draggingNode &&
-          draggingNode.type.name === "cardEmbed" &&
-          cardEmbedRef.current
-        ) {
-          // Check if this cardEmbed is in a flexContainer that already has 3 children
-          const pos = getPos();
-          if (pos) {
-            const resolvedPos = editor.state.doc.resolve(pos);
-            const { parent } = resolvedPos;
-
-            if (
-              parent.type.name === "flexContainer" &&
-              parent.content.childCount >= 3
-            ) {
-              let containsDraggedNode = false;
-
-              for (let i = 0; i < parent.content.childCount; i++) {
-                const child = parent.child(i);
-                containsDraggedNode =
-                  containsDraggedNode || child === draggingNode;
-              }
-
-              if (!containsDraggedNode) {
-                // Don't show drop zones if flexContainer is already at max capacity
-                setDragState({ isDraggedOver: false, side: null });
-                return;
-              }
-            }
-          }
-
-          const rect = cardEmbedRef.current.getBoundingClientRect();
-          const relativeX = e.clientX - rect.left;
-          const nodeWidth = rect.width;
-
-          // Determine which side based on cursor position
-          let side: "left" | "right" | null = null;
-          if (relativeX < nodeWidth * 0.5) {
-            side = "left";
-          } else if (relativeX >= nodeWidth * 0.5) {
-            side = "right";
-          }
-
-          setDragState({ isDraggedOver: true, side });
-
-          window.clearTimeout(draggedOverTimeoutRef.current);
-
-          draggedOverTimeoutRef.current = window.setTimeout(() => {
-            if (isMountedRef.current) {
-              setDragState({ isDraggedOver: false, side: null });
-            }
-          }, DRAG_LEAVE_TIMEOUT);
-        }
-      },
-      [editor.view.draggingNode, getPos, editor.state.doc],
-    );
 
     if (isLoading && !card) {
       return (
@@ -591,9 +638,11 @@ export const CardEmbedComponent = memo(
                           size="md"
                           color="text-dark"
                           fw={700}
-                          c="pointer"
+                          c={isPublicDocument ? undefined : "pointer"}
                           truncate="end"
-                          onClick={handleTitleClick}
+                          onClick={
+                            isPublicDocument ? undefined : handleTitleClick
+                          }
                         >
                           {displayName}
                         </Text>
@@ -629,83 +678,58 @@ export const CardEmbedComponent = memo(
                         />
                       </Box>
                     )}
-                  {!isEditingTitle && (
-                    <Menu withinPortal position="bottom-end" data-hide-on-print>
-                      <Menu.Target>
-                        <Flex
-                          component="button"
-                          p="0.25rem"
-                          align="center"
-                          justify="center"
-                          className={styles.menuButton}
-                          onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                        >
-                          <Icon
-                            name="ellipsis"
-                            size={16}
-                            color="var(--mb-color-text-medium)"
-                          />
-                        </Flex>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        {!isWithinIframe() && (
-                          <Menu.Item
-                            leftSection={<Icon name="add_comment" size={14} />}
-                            component={ForwardRefLink}
-                            to={
-                              // If no existing unresolved comments comments, add query param to auto-open new comment form
-                              unresolvedCommentsCount > 0
-                                ? commentsPath
-                                : `${commentsPath}?new=true`
+                  {!isEditingTitle &&
+                    (isPublicDocument && dataset && !canWrite ? (
+                      <PublicDocumentCardMenu card={card} dataset={dataset} />
+                    ) : !isPublicDocument && (canWrite || dataset) ? (
+                      <Menu
+                        withinPortal
+                        position="bottom-end"
+                        data-hide-on-print
+                        opened={menuView !== null ? true : undefined}
+                        onClose={() => setMenuView(null)}
+                      >
+                        <Menu.Target>
+                          <Flex
+                            component="button"
+                            p="0.25rem"
+                            align="center"
+                            justify="center"
+                            className={styles.menuButton}
+                            onClick={(e: React.MouseEvent) =>
+                              e.stopPropagation()
                             }
-                            // actually stop the navigation from happening
-                            onClick={(e) => {
-                              if (!commentsPath || hasUnsavedChanges) {
-                                e.preventDefault();
-                              }
-                            }}
-                            // purely for presentation
-                            disabled={!commentsPath || hasUnsavedChanges}
                           >
-                            {t`Comment`}
-                          </Menu.Item>
-                        )}
-                        <Menu.Item
-                          onClick={handleEditVisualizationSettings}
-                          disabled={!canWrite}
-                          leftSection={<Icon name="palette" size={14} />}
-                        >
-                          {t`Edit Visualization`}
-                        </Menu.Item>
-                        <Menu.Item
-                          onClick={() => setIsModifyModalOpen(true)}
-                          disabled={!canWrite}
-                          leftSection={
                             <Icon
-                              name={isNativeQuestion ? "sql" : "notebook"}
-                              size={14}
+                              name="ellipsis"
+                              size={16}
+                              color="var(--mb-color-text-medium)"
                             />
-                          }
-                        >
-                          {t`Edit Query`}
-                        </Menu.Item>
-                        <Menu.Item
-                          onClick={handleReplaceQuestion}
-                          disabled={!canWrite}
-                          leftSection={<Icon name="refresh" size={14} />}
-                        >
-                          {t`Replace`}
-                        </Menu.Item>
-                        <Menu.Item
-                          onClick={handleRemoveNode}
-                          disabled={!canWrite}
-                          leftSection={<Icon name="trash" size={14} />}
-                        >
-                          {t`Remove Chart`}
-                        </Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
-                  )}
+                          </Flex>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <CardEmbedMenuDropdown
+                            menuView={menuView}
+                            setMenuView={setMenuView}
+                            canWrite={canWrite}
+                            dataset={dataset}
+                            question={question}
+                            isNativeQuestion={isNativeQuestion}
+                            isDownloadingData={isDownloadingData}
+                            handleDownload={handleDownload}
+                            handleEditVisualizationSettings={
+                              handleEditVisualizationSettings
+                            }
+                            setIsModifyModalOpen={setIsModifyModalOpen}
+                            handleReplaceQuestion={handleReplaceQuestion}
+                            handleRemoveNode={handleRemoveNode}
+                            commentsPath={commentsPath}
+                            hasUnsavedChanges={hasUnsavedChanges}
+                            unresolvedCommentsCount={unresolvedCommentsCount}
+                          />
+                        </Menu.Dropdown>
+                      </Menu>
+                    ) : null)}
                 </Flex>
               </Box>
             )}
@@ -715,7 +739,18 @@ export const CardEmbedComponent = memo(
                   <Visualization
                     rawSeries={series}
                     metadata={metadata}
-                    onChangeCardAndRun={handleChangeCardAndRun}
+                    mode={DocumentMode}
+                    onChangeCardAndRun={
+                      isPublicDocument ? undefined : handleChangeCardAndRun
+                    }
+                    onUpdateQuestion={
+                      isPublicDocument ? undefined : handleUpdateQuestion
+                    }
+                    onUpdateVisualizationSettings={
+                      isPublicDocument
+                        ? undefined
+                        : handleUpdateVisualizationSettings
+                    }
                     getExtraDataForClick={() => ({})}
                     isEditing={false}
                     isDashboard={false}
@@ -745,7 +780,6 @@ export const CardEmbedComponent = memo(
                 onSave={(result) => {
                   updateAttributes({
                     id: result.card_id,
-                    name: null,
                   });
                   setIsModifyModalOpen(false);
                 }}
@@ -758,7 +792,6 @@ export const CardEmbedComponent = memo(
                 onSave={(result) => {
                   updateAttributes({
                     id: result.card_id,
-                    name: null,
                   });
                   setIsModifyModalOpen(false);
                 }}

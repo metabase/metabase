@@ -819,19 +819,16 @@ describe("scenarios > admin > people > group managers", () => {
         });
 
       // Demote myself from being manager
-      H.popover().within(() => {
-        cy.icon("arrow_down").eq(0).click();
-      });
+      H.popover().findByLabelText("collection").click();
       confirmLosingAbilityToManageGroup();
+      H.popover().findByLabelText("collection").should("not.exist");
 
       // Remove myself from another group
-      H.popover().within(() => {
-        cy.findByText("data").click();
-      });
+      H.popover().findByLabelText("data").click();
       confirmLosingAbilityToManageGroup();
 
       // Redirected to the home page
-      cy.url().should("match", /\/$/);
+      cy.location("pathname").should("eq", "/");
     });
   });
 

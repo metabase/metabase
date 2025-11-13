@@ -138,7 +138,8 @@ export const DocumentPage = ({
   const hasComments =
     !!commentsData?.comments && commentsData.comments.length > 0;
 
-  const canWrite = isNewDocument || documentData?.can_write;
+  const canWrite =
+    !documentData?.archived && (isNewDocument || documentData?.can_write);
 
   useEffect(() => {
     if (error) {
@@ -198,7 +199,10 @@ export const DocumentPage = ({
   const hasUnsavedChanges = useCallback(() => {
     const currentTitle = documentTitle.trim();
     const originalTitle = documentData?.name || "";
-    const titleChanged = currentTitle !== originalTitle;
+    // We call .trim() on documentTitle to ensure that no one can push the save button
+    // with a document name that is all whitespace, the API will reject it. However,
+    // when comparing saved with current titles, we need to use unmofidied values
+    const titleChanged = documentTitle !== originalTitle;
 
     // Check if there are any draft cards
     const hasDraftCards = Object.keys(draftCards).length > 0;
@@ -349,6 +353,10 @@ export const DocumentPage = ({
     ],
   );
 
+  const focusEditorBody = useCallback(() => {
+    editorInstance?.commands.focus("start");
+  }, [editorInstance]);
+
   const handleUpdate = async (payload: {
     collection_id?: CollectionId | null;
     archived?: boolean;
@@ -416,6 +424,7 @@ export const DocumentPage = ({
               showSaveButton={showSaveButton ?? false}
               isBookmarked={isBookmarked}
               onTitleChange={setDocumentTitle}
+              onTitleSubmit={focusEditorBody}
               onSave={() => {
                 if (isNewDocument) {
                   setCollectionPickerMode("save");
@@ -455,7 +464,6 @@ export const DocumentPage = ({
           <CollectionPickerModal
             title={t`Where should we save this document?`}
             onClose={() => setCollectionPickerMode(null)}
-            value={{ id: "root", model: "collection" }}
             options={{
               showPersonalCollections: true,
               showRootCollection: true,

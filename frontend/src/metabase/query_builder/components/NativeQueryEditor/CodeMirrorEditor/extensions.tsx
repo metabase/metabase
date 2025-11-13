@@ -1,4 +1,5 @@
 import { autocompletion } from "@codemirror/autocomplete";
+import { unifiedMergeView } from "@codemirror/merge";
 import { type Extension, Prec } from "@codemirror/state";
 import {
   Decoration,
@@ -26,10 +27,15 @@ import { getReferencedCardIds } from "./util";
 
 type Options = {
   query: Lib.Query;
+  diff: boolean;
   onRunQuery?: () => void;
 };
 
-export function useExtensions({ query, onRunQuery }: Options): Extension[] {
+export function useExtensions({
+  query,
+  diff,
+  onRunQuery,
+}: Options): Extension[] {
   const { databaseId, engine, referencedCardIds } = useMemo(
     () => ({
       databaseId: Lib.databaseID(query),
@@ -78,10 +84,18 @@ export function useExtensions({ query, onRunQuery }: Options): Extension[] {
           },
         ]),
       ),
+      diff
+        ? unifiedMergeView({
+            original: Lib.rawNativeQuery(query),
+            mergeControls: false,
+          })
+        : null,
     ]
       .flat()
       .filter(isNotNull);
   }, [
+    query,
+    diff,
     engine,
     schemaCompletion,
     snippetCompletion,

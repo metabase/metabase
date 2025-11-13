@@ -42,8 +42,10 @@
 
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
   (and (or config/is-dev?
-           ;; if the default engine is semantic we want appdb to be available,
-           ;; as we want to mix results
+           ;; TODO (Chris 2025-11-07) This backwards dependency is unfortunate, we should find a better solution.
+           ;;                         Perhaps just an explicit setting for enabling it.
+           ;;                         This also opens us up to swapping out the fallback, e.g. to elastic search.
+           ;; if the default engine is semantic we want appdb to be available, as we want to mix results
            (#{"appdb" "semantic"} (some-> (search.settings/search-engine) name)))
        (supported-db? (mdb/db-type))))
 
@@ -178,14 +180,18 @@
 
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
-  (search.index/ensure-ready!)
-  (if in-place?
-    (when-let [table (search.index/active-table)]
-      ;; keep the current table, just delete its contents
-      (t2/delete! table))
-    (search.index/maybe-create-pending!))
-  (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
-    (search.index/activate-table!)))
+  (try
+    (search.index/ensure-ready!)
+    (if in-place?
+      (when-let [table (search.index/active-table)]
+        ;; keep the current table, just delete its contents
+        (t2/delete! table))
+      (search.index/maybe-create-pending!))
+    (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
+      (search.index/activate-table!))
+    (catch Throwable e
+      (log/error e "Error during reindexing")
+      (throw e))))
 
 (derive :event/setting-update ::settings-changed-event)
 

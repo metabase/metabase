@@ -2,7 +2,9 @@
   "The gory details of transforming date and time styles, with units and other options, into formatting functions.
 
   This namespace deals with the options only, not with specific dates, and returns reusable formatter functions."
+  #?(:clj (:refer-clojure :exclude [for]))
   (:require
+   #?(:clj [metabase.util.performance :refer [for]])
    [clojure.string :as str]
    [metabase.util.formatting.constants :as constants]
    [metabase.util.formatting.internal.date-builder :as builder]

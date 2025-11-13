@@ -208,11 +208,12 @@ export const SelectEmbedResourceStep = () => {
           </Text>
 
           <ActionIcon
-            variant="outline"
             size="lg"
             title={browseResourceTitle}
             onClick={openPicker}
             data-testid="embed-browse-entity-button"
+            c="text-primary"
+            bd="1px solid var(--mb-color-border)"
           >
             <Icon name="search" size={16} />
           </ActionIcon>

@@ -198,6 +198,8 @@ export const PublicApi = {
   prefetchDashcardValues: GET(
     `${publicBase}/dashboard/:dashboardId/dashcard/:dashcardId/execute`,
   ),
+  document: GET(`/api/ee/public/document/:uuid`),
+  documentCardQuery: GET(`/api/ee/public/document/:uuid/card/:cardId`),
 };
 
 export const EmbedApi = {
@@ -307,7 +309,6 @@ export const PersistedModelsApi = {
 
 export const SetupApi = {
   create: POST("/api/setup"),
-  user_defaults: GET("/api/setup/user_defaults"),
 };
 
 export const UserApi = {

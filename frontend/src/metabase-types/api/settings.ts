@@ -239,6 +239,7 @@ const tokenStatusFeatures = [
   "metabot-v3",
   "no-upsell",
   "offer-metabase-ai",
+  "offer-metabase-ai-tiered",
   "official-collections",
   "query-reference-validation",
   "question-error-logs",
@@ -314,6 +315,7 @@ export const tokenFeatures = [
   "cache_preemptive",
   "metabot_v3",
   "offer_metabase_ai",
+  "offer_metabase_ai_tiered",
   "ai_sql_fixer",
   "ai_sql_generation",
   "ai_entity_analysis",
@@ -322,6 +324,7 @@ export const tokenFeatures = [
   "etl_connections",
   "etl_connections_pg",
   "table_data_editing",
+  "remote_sync",
   "dependencies",
   "documents",
   "semantic_search",
@@ -630,9 +633,24 @@ export type DatabaseReplicationConnections = Record<
   { connection_id: string }
 >;
 
+export type SyncableEntity =
+  | "transform"
+  | "snippet"
+  | "dataset"
+  | "metric"
+  | "segment"
+  | "dashboard"
+  | "question";
+
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
+  "remote-sync-enabled"?: boolean | null;
+  "remote-sync-token"?: string | null;
+  "remote-sync-url"?: string | null;
+  "remote-sync-branch"?: string | null;
+  "remote-sync-type"?: "production" | "development" | null;
+  "remote-sync-auto-import"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;
