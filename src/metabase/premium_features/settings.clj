@@ -311,10 +311,11 @@
   "Should we allow users to use dependency tracking?"
   :dependencies)
 
-(define-premium-feature ^{:added "0.57.1"} enable-support-users?
-  "Should users be allowed to enable support users in-app?"
-  :support-users
-  :getter (constantly true))
+; uncomment this when the new feature can be defined in a token
+;(define-premium-feature ^{:added "0.57.1"} enable-support-users?
+;  "Should users be allowed to enable support users in-app?"
+;  :support-users)
+(defn- enable-support-users? [] (constantly true))
 
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
