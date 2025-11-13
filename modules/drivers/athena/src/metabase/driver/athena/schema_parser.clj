@@ -70,7 +70,7 @@
     (parse-array-type-field field-info (:database-position field-info))
 
     :else
-    {:name (:name field-info)
-     :base-type (column->base-type (:type field-info))
-     :database-type (:type field-info)
+    {:name              (:name field-info)
+     :base-type         (column->base-type (:type field-info))
+     :database-type     (:type field-info)
      :database-position (:database-position field-info)}))
