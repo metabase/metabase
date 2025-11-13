@@ -1,7 +1,6 @@
 (ns metabase-enterprise.representations.v0.core
   (:require
    [metabase-enterprise.representations.toucan.core :as rep-t2]
-   [metabase-enterprise.representations.v0.card :as v0-card]
    [metabase-enterprise.representations.v0.collection :as v0-coll]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.database :as v0-database]
@@ -71,11 +70,13 @@
     :timeline (v0-timeline/persist! representation ref-index)
     :transform (v0-transform/persist! representation ref-index)))
 
+;; TODO(rileythomp, 2025-11-11): Use a multimethod here instead of a case statement
 (defn insert!
   "Insert a v0 representation as a new entity."
   [representation ref-index]
   (case (:type representation)
     :transform (v0-transform/insert! representation ref-index)
+    :timeline (v0-timeline/insert! representation ref-index)
     ;; default
     (let [model (toucan-model (:type representation))
           toucan (->> (yaml->toucan representation ref-index)
@@ -87,6 +88,7 @@
   [representation id ref-index]
   (case (:type representation)
     :transform (v0-transform/update! representation id ref-index)
+    :timeline (v0-timeline/update! representation id ref-index)
     ;; default
     (let [model (toucan-model (:type representation))
           toucan (yaml->toucan representation ref-index)]

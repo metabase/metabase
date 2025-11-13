@@ -63,3 +63,9 @@
   [_t2-model timeline-entity]
   (->> timeline-entity
        (merge {:creator_id (or api/*current-user-id* config/internal-mb-user-id)})))
+
+(defmethod with-toucan-defaults :model/TimelineEvent
+  [_t2-model event-entity]
+  (->> event-entity
+       (merge {:creator_id (or api/*current-user-id* config/internal-mb-user-id)})))
+
