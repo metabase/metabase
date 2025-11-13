@@ -1,11 +1,28 @@
-import { isLibraryCollectionType } from "metabase/collections/utils";
-import type { Collection } from "metabase-types/api";
+import type { LibraryCollectionType } from "metabase/plugins";
+import type {
+  Collection,
+  CollectionItemModel,
+  CollectionType,
+} from "metabase-types/api";
+
+export function getLibraryCollectionType(
+  type: CollectionType | undefined | null,
+): LibraryCollectionType | undefined {
+  switch (type) {
+    case "library":
+      return "root";
+    case "library-models":
+      return "models";
+    case "library-metrics":
+      return "metrics";
+  }
+}
 
 export function canPlaceEntityInCollection(
-  entityType: string,
-  collectionType: Collection["type"],
+  entityType: CollectionItemModel,
+  collectionType: CollectionType | undefined | null,
 ): boolean {
-  if (!isLibraryCollectionType(collectionType)) {
+  if (getLibraryCollectionType(collectionType) == null) {
     return true;
   }
 
@@ -25,6 +42,24 @@ export function canPlaceEntityInCollection(
 
   if (collectionType === "library-metrics") {
     return entityType === "metric";
+  }
+
+  return false;
+}
+
+export function canPlaceEntityInCollectionOrDescendants(
+  entityType: CollectionItemModel,
+  collectionType: Collection["type"],
+): boolean {
+  if (canPlaceEntityInCollection(entityType, collectionType)) {
+    return true;
+  }
+
+  if (collectionType === "library") {
+    return (
+      canPlaceEntityInCollection(entityType, "library-models") ||
+      canPlaceEntityInCollection(entityType, "library-metrics")
+    );
   }
 
   return false;

@@ -68,6 +68,8 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  CollectionItemModel,
+  CollectionType,
   DashCardId,
   Dashboard,
   DashboardId,
@@ -1135,17 +1137,28 @@ export type LibrarySectionProps = {
   hasNativeWrite: boolean;
 };
 
+export type LibraryCollectionType = "root" | "models" | "metrics";
+
 export type LibraryPlugin = {
   isEnabled: boolean;
   LibrarySection: ComponentType<LibrarySectionProps>;
-  canPlaceEntityInCollection(
-    entityType: string,
-    collectionType: Collection["type"],
-  ): boolean;
+  getLibraryCollectionType: (
+    collectionType: CollectionType | undefined | null,
+  ) => LibraryCollectionType | undefined;
+  canPlaceEntityInCollection: (
+    entityType: CollectionItemModel,
+    collectionType: CollectionType | undefined | null,
+  ) => boolean;
+  canPlaceEntityInCollectionOrDescendants: (
+    entityType: CollectionItemModel,
+    collectionType: CollectionType | undefined | null,
+  ) => boolean;
 };
 
 export const PLUGIN_LIBRARY: LibraryPlugin = {
   isEnabled: false,
   LibrarySection: PluginPlaceholder,
+  getLibraryCollectionType: () => undefined,
   canPlaceEntityInCollection: () => true,
+  canPlaceEntityInCollectionOrDescendants: () => true,
 };

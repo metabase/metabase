@@ -8,7 +8,6 @@ import {
   type CollectionId,
   type CollectionItem,
   type CollectionItemModel,
-  type CollectionType,
   isBaseEntityID,
 } from "metabase-types/api";
 
@@ -95,20 +94,10 @@ export function isSyncedCollection(collection: Partial<Collection>): boolean {
   return PLUGIN_COLLECTIONS.isSyncedCollection(collection);
 }
 
-export function isLibraryCollectionType(
-  type: CollectionType | undefined,
-): boolean {
-  return (
-    type === "library" ||
-    type === "library-models" ||
-    type === "library-metrics"
-  );
-}
-
 export function isLibraryCollection(
   collection: Pick<Collection, "type">,
 ): boolean {
-  return isLibraryCollectionType(collection.type);
+  return PLUGIN_LIBRARY.isLibraryCollectionType(collection.type);
 }
 
 export function isExamplesCollection(collection: Collection): boolean {
@@ -239,18 +228,10 @@ export function canPlaceEntityInCollectionOrDescendants(
   entityType: EntityType,
   collectionType: Collection["type"],
 ): boolean {
-  if (canPlaceEntityInCollection(entityType, collectionType)) {
-    return true;
-  }
-
-  if (collectionType === "library") {
-    return (
-      canPlaceEntityInCollection(entityType, "library-models") ||
-      canPlaceEntityInCollection(entityType, "library-metrics")
-    );
-  }
-
-  return false;
+  return PLUGIN_LIBRARY.canPlaceEntityInCollectionOrDescendants(
+    entityType,
+    collectionType,
+  );
 }
 
 export function isPreviewShown(item: CollectionItem) {
