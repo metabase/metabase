@@ -18,9 +18,8 @@
 (set! *warn-on-reflection* true)
 
 (defmethod transforms.i/table-dependencies :query
-  [{:keys [id source]}]
+  [{:keys [source]}]
   (let [query (-> (:query source)
-                  (transforms.util/preprocess-incremental-query (:source-incremental-strategy source) id)
                   transforms.util/massage-sql-query
                   qp.preprocess/preprocess)
         driver (-> query

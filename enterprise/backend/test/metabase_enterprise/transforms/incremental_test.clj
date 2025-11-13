@@ -115,7 +115,9 @@
         result (qp/process-query native-query)]
     (some-> result :data :rows first first bigint)))
 
-(def get-checkpoint-value #'transforms.u/next-watermark-value)
+(defn get-checkpoint-value [transform-id]
+  (#'transforms.u/next-checkpoint-value
+   (#'transforms.u/next-checkpoint-query transform-id)))
 
 (defn- insert-test-products!
   "Insert new products into the transforms_products table."

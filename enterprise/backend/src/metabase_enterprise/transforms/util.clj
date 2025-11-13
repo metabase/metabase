@@ -228,10 +228,11 @@
                                            :name field-name)]
        (lib.metadata/field metadata-provider field-id)))))
 
-(defn- next-watermark-value
-  "Calculate the watermark value for the next incremental transform run.
+(defn- next-checkpoint-query
+  "Build a query to compute the MAX of the checkpoint column from the target table.
 
-  Returns the maximum value of the checkpoint column in the target table"
+  Returns a map with `:query` (MBQL query selecting the max) and `:filter-column` (column metadata),
+  or `nil` if the transform doesn't use checkpoint-based incremental strategy or the target table doesn't exist."
   [transform-id]
   (let [{:keys [source target] :as transform} (t2/select-one :model/Transform transform-id)
         db-id (transforms.i/target-db-id transform)]
@@ -240,63 +241,80 @@
         (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
               table-metadata (lib.metadata/table metadata-provider (:id table))
               query (lib/query metadata-provider table-metadata)]
-          (when-let [{:keys [base-type] :as filter-column}
-                     (source->checkpoint-filter-column query
-                                                       (:source-incremental-strategy source)
-                                                       table metadata-provider)]
-            (let [v (some-> query (lib/aggregate (lib/max filter-column))
-                            qp/process-query :data :rows first first)]
+          (when-let [filter-column (source->checkpoint-filter-column query
+                                                                     (:source-incremental-strategy source)
+                                                                     table metadata-provider)]
+            {:query (-> query (lib/aggregate (lib/max filter-column)))
+             :filter-column filter-column}))))))
 
-              ;; QP return values are lossy, we do a bit of parsing to ensure they're of the right
-              ;; shape for reinsertion
-              (cond
-                (isa? base-type :type/Integer)
-                (bigint v)
+(defn- next-checkpoint-value
+  "Execute the checkpoint query and normalize the result for database insertion.
 
-                ;; any other number that's not an integer, should be a decimal/float
-                (number? v)
-                (bigdec v)
+  Converts integers to `bigint` and other numbers to `bigdec` to compensate for QP type loss.
+  Returns `nil` if the target table is empty."
+  [{:keys [query filter-column]}]
+  (let [{:keys [base-type]} filter-column
+        v (some-> query qp/process-query :data :rows first first)]
+    ;; QP return values are lossy, we do a bit of parsing to ensure they're of the right
+    ;; shape for reinsertion
+    (cond
+      (isa? base-type :type/Integer)
+      (bigint v)
 
-                :else v))))))))
+      ;; any other number that's not an integer, should be a decimal/float
+      (number? v)
+      (bigdec v)
+
+      :else v)))
 
 (defn preprocess-incremental-query
-  "Preprocess a query for incremental transform execution by adding watermark filtering.
+  "Add checkpoint checkpoint filtering to a query for incremental execution.
 
-  For native queries with a checkpoint variable, simply adds the computed watermark as checkpoint value.
-  For other native queries, wraps the query with a SELECT * FROM (...) WHERE checkpoint-column > watermark.
-
-  For MBQL queries, adds a filter clause that constrains the checkpoint column to values greater
-  than the current watermark.
-
-  If no watermark value exists for the transform (i.e., this is the first run), returns the
-  query unchanged to allow a full initial load."
-  [query source-incremental-strategy transform-id]
-  (if-let [watermark-value (next-watermark-value transform-id)]
+  For native queries with a `checkpoint` template tag, adds the checkpoint as a parameter.
+  For MBQL queries, adds a filter clause `WHERE checkpoint_column > checkpoint`.
+  Returns the query unchanged on first run (no checkpoint) or for native queries without the checkpoint tag."
+  [query source-incremental-strategy checkpoint-query]
+  (if-let [checkpoint-value (next-checkpoint-value checkpoint-query)]
     (if (lib.query/native? query)
+      ;; native query with explicit checkpoint filter
       (if (get-in query [:stages 0 :template-tags "checkpoint"])
         (update query :parameters conj
                 {:type :number
                  :target [:variable [:template-tag "checkpoint"]]
-                 :value watermark-value})
-        (let [native-sql (get-in query [:stages 0 :native])
-              checkpoint-col-name (-> source-incremental-strategy :checkpoint-filter)
-              driver (some->> query :database (t2/select-one :model/Database) :engine keyword)
-              honeysql-query {:select [:*]
-                              :from [[[:raw (str "(" native-sql ")")] :subquery]]
-                              :where [:> (h2x/identifier :field checkpoint-col-name) watermark-value]}
-              [formatted-sql] (binding [driver/*compile-with-inline-parameters* true]
-                                (sql.qp/format-honeysql driver honeysql-query))]
-          (assoc-in query [:stages 0 :native] formatted-sql)))
-      (lib/filter query (lib/> (source->checkpoint-filter-unique-key query source-incremental-strategy) watermark-value)))
+                 :value checkpoint-value})
+        query)
+      ;; mbql query
+      (lib/filter query (lib/> (source->checkpoint-filter-unique-key query source-incremental-strategy) checkpoint-value)))
+    query))
+
+(defn- post-process-incremental-query
+  "Wrap a compiled native query with checkpoint filtering for native queries without explicit checkpoint tags.
+
+  Generates SQL that wraps the original query as a subquery and filters by `checkpoint_filter > (checkpoint_query)`.
+  Only applies when both `checkpoint-filter` (column name) and `checkpoint-query` are present."
+  [query driver {:keys [checkpoint-filter]} {checkpoint-query :query}]
+  (if (and checkpoint-query checkpoint-filter)
+    (let [honeysql-query {:select [:*]
+                          :from [[[:raw (str "(" query ")")] :subquery]]
+                          :where [:> (h2x/identifier :field checkpoint-filter)
+                                  [:raw (str "(" (:query (qp.compile/compile checkpoint-query)) ")")]]}]
+      (first (sql.qp/format-honeysql driver honeysql-query)))
     query))
 
 (defn compile-source
-  "Compile the source query of a transform."
-  [{query-type :type :as source} transform-id]
+  "Compile the source query of a transform to SQL, applying incremental filtering if required."
+  [{:keys [source-incremental-strategy] query-type :type :as source} transform-id]
   (case (keyword query-type)
     :query
-    (let [query-with-params (preprocess-incremental-query (:query source) (:source-incremental-strategy source) transform-id)]
-      (:query (qp.compile/compile-with-inline-parameters (massage-sql-query query-with-params))))))
+    (let [checkpoint-query (next-checkpoint-query transform-id)
+          query (:query source)
+          driver (some->> query :database (t2/select-one :model/Database) :engine keyword)]
+      (-> query
+          (preprocess-incremental-query source-incremental-strategy checkpoint-query)
+          massage-sql-query
+          qp.compile/compile-with-inline-parameters
+          :query
+          (post-process-incremental-query driver source-incremental-strategy checkpoint-query)))))
 
 (defn required-database-features
   "Returns the database features necessary to execute `transform`."
