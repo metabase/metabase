@@ -42,11 +42,13 @@ To create a new question directly in a document:
 2. Select **Chart**.
 3. Select **New chart**.
 4. Choose either:
-   - **New Question** to create a structured query using the notebook editor.
-   - **New SQL query** to write a native SQL query.
+   - **New Question** to use the [query builder](../questions/query-builder/introduction.md).
+   - **New SQL query** to use the [native SQL editor](../questions/native-editor/writing-sql.md).
 5. Build your question and click **Save and use** to add it to the document.
 
 Questions created this way are saved directly to the document and don't appear in your collections unless you explicitly save them there later. Deleting charts made in documents is permanent. You can't recover deleted charts from the [trash](../exploration-and-organization/delete-and-restore.md).
+
+To enter the full-screen editor for a question, click on the question's title.
 
 ### Adding a chart copies it to the document
 
