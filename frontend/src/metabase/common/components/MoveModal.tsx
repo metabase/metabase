@@ -94,7 +94,6 @@ export const MoveModal = ({
       return !canPlaceEntityInCollectionOrDescendants(
         entityType,
         getCollectionType(item),
-        item.below,
       );
     }
 
@@ -213,7 +212,6 @@ export const BulkMoveModal = ({
           !canPlaceEntityInCollectionOrDescendants(
             selectedItem.model,
             getCollectionType(item),
-            item.below,
           ),
       );
       if (hasInvalidItem) {

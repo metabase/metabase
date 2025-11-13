@@ -111,7 +111,6 @@ export const CollectionPickerModal = ({
             return !canPlaceEntityInCollectionOrDescendants(
               entityType,
               getCollectionType(item),
-              item.below,
             );
           }
           return false;
