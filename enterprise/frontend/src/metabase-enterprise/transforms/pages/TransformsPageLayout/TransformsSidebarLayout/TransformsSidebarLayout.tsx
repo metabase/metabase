@@ -1,6 +1,6 @@
 import { type ReactNode, useContext, useLayoutEffect } from "react";
 
-import { DataStudioContext } from "metabase/data-studio/app/contexts/DataStudioContext";
+import { DataStudioContext } from "metabase/data-studio/common/contexts/DataStudioContext";
 import * as Urls from "metabase/lib/urls";
 import { Box, Flex } from "metabase/ui";
 
@@ -29,9 +29,8 @@ export const TransformsSidebarLayout = ({
     useContext(DataStudioContext);
 
   useLayoutEffect(() => {
-    const hasSidebar = currentTab === "transforms" || currentTab === "jobs";
-    setIsSidebarOpened(hasSidebar);
-    setIsSidebarAvailable(hasSidebar);
+    setIsSidebarOpened(true);
+    setIsSidebarAvailable(true);
     return () => {
       setIsSidebarOpened(false);
       setIsSidebarAvailable(false);
