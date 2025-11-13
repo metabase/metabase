@@ -142,9 +142,10 @@
   (update-in qp-result [:data :viz-settings] merge (-> (get-in qp-result [:json_query :viz-settings])
                                                        viz-settings/db->norm)))
 
-(def rows-to-disk-threshold
-  "Maximum rows to hold in memory when running notification queries. After this, query results are streamed straight to disk. See [[metabase.notification.payload.temp-storage]] for more details."
-  2000)
+(def cells-to-disk-threshold
+  "Maximum cells (rows * columns) to hold in memory when running notification queries. After this, query results are
+  streamed straight to disk. See [[metabase.notification.payload.temp-storage]] for more details."
+  20000)
 
 (defn execute-dashboard-subscription-card
   "Returns subscription result for a card.
@@ -180,7 +181,7 @@
                                                                 (qp/userland-query query info)
                                                                ;; Pass streaming rff with 2000 row threshold
                                                                 (notification.temp-storage/notification-rff
-                                                                 rows-to-disk-threshold
+                                                                 cells-to-disk-threshold
                                                                  {:dashboard_id dashboard_id
                                                                   :card_id card-id
                                                                   :dashcard_id (u/the-id dashcard)}))))))})
@@ -300,7 +301,7 @@
                                                                     (qp/userland-query query info)
                                                                    ;; Pass streaming rff with 2000 row threshold
                                                                     (notification.temp-storage/notification-rff
-                                                                     rows-to-disk-threshold
+                                                                     cells-to-disk-threshold
                                                                      {:card-id card-id})))))))]
 
     (log/debugf "Result has %d rows" (:row_count result))

@@ -26,8 +26,8 @@
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.parameters.dashboard :as parameters.dashboard]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -5553,3 +5553,38 @@
           (is (=? {:values [["African"] ["Artisan"] ["Bakery"] ["Krua Siri"] ["Red Medicine"]]}
                   (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values"
                                                                     (:id d) param-key)))))))))
+
+(deftest param-mapped-to-nested-field-of-filtered-card-test
+  (testing "Values for param mapped to nested field of a card are computed correctly (#41684)"
+    (let [mp (mt/metadata-provider)
+          param-key "p"
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                    (lib/filter (lib/in (lib.metadata/field mp (mt/id :categories :name))
+                                        "African" "Artisan" "Bakery"))
+                    (lib/append-stage)
+                    (lib/aggregate (lib/count))
+                    (lib/breakout (lib.metadata/field mp (mt/id :categories :id)))
+                    (lib/append-stage)
+                    (lib/aggregate (lib/count)))]
+      (mt/with-temp
+        [:model/Card
+         c1
+         {:dataset_query  query}
+         :model/Dashboard
+         d
+         {:parameters [{:id param-key
+                        :name "filtered names filter"
+                        :slug param-key
+                        :type "string/="
+                        :sectionId "string"}]}
+         :model/DashboardCard
+         _
+         {:dashboard_id (:id d)
+          :card_id (:id c1)
+          :parameter_mappings [{:card_id (:id c1)
+                                :parameter_id param-key
+                                :target ["dimension" ["field" (mt/id :categories :name) nil]]}]}]
+
+        (is (=? {:values [["African"] ["Artisan"] ["Bakery"]]}
+                (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values"
+                                                                  (:id d) param-key))))))))
