@@ -8,7 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :refer [defenterprise] :as premium-features]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -334,7 +334,7 @@
                                                      :from_entity_type "table"
                                                      :from_entity_id [:in table-ids]
                                                      :to_entity_type "transform")
-          transform-id->transform  (when-let [transform-ids (vals table-id->transform-id)]
+          transform-id->transform  (when-let [transform-ids (seq (vals table-id->transform-id))]
                                      (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))]
       (update-vals table-id->transform-id transform-id->transform))
    :id
@@ -400,28 +400,34 @@
   (with-fields tables))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :published_as_model]
-  [_model _k tables]
-  (cond
-    (empty? tables)                                     tables
-    (not-every? :id tables)                             tables
-    (not (premium-features/has-feature? :dependencies)) tables
-    :else
-    (let [table-ids          (sort (set (map :id tables)))
-          ;; todo temporary: this logic is not well defined, seek clarity on what it means to be a model
-          ;; tested at api level but unsure about that or hydration as implementation
-          ;; archived? collection archived? permission / visibility
-          ;; open question on how best to achieve delivery of this data to client, work in progress
-          published-as-model (t2/select-fn-set :to_entity_id
-                                               [:model/Dependency :to_entity_id]
-                                               :to_entity_type "table"
-                                               :to_entity_id [:in table-ids]
-                                               :from_entity_type "card"
-                                               {:join [[:report_card :card]
-                                                       [:and
-                                                        [:= :dependency.from_entity_id :card.id]
-                                                        [:= :dependency.to_entity_id :card.table_id]]]
-                                                :where [:= "model" :card.type]})]
-      (map #(assoc % :published_as_model (contains? published-as-model (:id %))) tables))))
+  [_model k tables]
+  (mi/instances-with-hydrated-data
+   tables k
+   (fn []
+     (let [table-ids          (sort (set (map :id tables)))
+           published-as-model (t2/select-fn-set :published_table_id [:model/Card :published_table_id]
+                                                :published_table_id [:in table-ids]
+                                                :type               :model
+                                                :archived           false
+                                                :archived_directly  false)]
+       (u/index-by identity #(contains? published-as-model %) table-ids)))
+   :id
+   {:default nil}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Table :published_models]
+  [_model k tables]
+  (mi/instances-with-hydrated-data
+   tables k
+   (fn []
+     (let [table-ids (sort (set (map :id tables)))
+           models    (t2/select :model/Card
+                                :published_table_id [:in table-ids]
+                                :type               :model
+                                :archived           false
+                                :archived_directly  false)]
+       (group-by :published_table_id models)))
+   :id
+   {:default nil}))
 
 ;;; ------------------------------------------------ Convenience Fns -------------------------------------------------
 

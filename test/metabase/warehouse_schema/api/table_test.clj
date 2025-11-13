@@ -1268,46 +1268,62 @@
             (testing "models have correct attributes"
               (doseq [model (:models response)]
                 (is (= "model" (:type model)))
-                (is (= collection-id (:collection_id model)))))
+                (is (= collection-id (:collection_id model)))
+                (is (int? (:published_table_id model)))))
             (testing "the query should works"
               (is (some? (mt/process-query (-> response :models first :dataset_query)))))
             (testing "models are persisted in database"
               (is (= 2 (t2/count :model/Card :collection_id collection-id :type :model))))))))))
 ;: TODO (Ngoc 31/10/2025): test publish model to library mark the library as dirty
 
-;; todo many assertions missing regarding definition, but may place those on hydration
 (deftest published-as-model-test
   (mt/with-model-cleanup [:model/Card]
     (mt/with-temp [:model/Collection {collection-id :id} {}]
-      (mt/with-premium-features #{:dependencies}
-        (mt/user-http-request :crowberto :post 200 "table/publish-model"
-                              {:table_ids            [(mt/id :venues)]
-                               :target_collection_id collection-id}))
-      (testing "list tables"
-        (let [list-tables #(mt/user-http-request :crowberto :get 200 "table" :db_id (mt/id))]
-          (testing "has :dependencies feature"
-            (let [list-response      (mt/with-premium-features #{:dependencies} (list-tables))
-                  published-as-model (u/index-by :id :published_as_model list-response)]
-              (is (true? (published-as-model (mt/id :venues))))
-              (is (false? (published-as-model (mt/id :users))))))
-          (testing "no :dependencies feature"
-            (let [list-response (mt/with-premium-features #{} (list-tables))]
-              (testing "key absent"
-                (is (not-any? #(contains? % :published_as_model) list-response)))))))
-      ;; todo cleanup/move test
-      (testing "list tables via schema"
-        (let [schema (t2/select-one-fn :schema [:model/Table :schema] (mt/id :venues))
-              url (format "database/%d/schema/%s" (mt/id) schema)
-              list-tables #(mt/user-http-request :crowberto :get 200 url)]
-          (testing "has :dependencies feature"
-            (let [list-response      (mt/with-premium-features #{:dependencies} (list-tables))
-                  published-as-model (u/index-by :id :published_as_model list-response)]
-              (is (true? (published-as-model (mt/id :venues))))
-              (is (false? (published-as-model (mt/id :users))))))
-          (testing "no :dependencies feature"
-            (let [list-response (mt/with-premium-features #{} (list-tables))]
-              (testing "key absent"
-                (is (not-any? #(contains? % :published_as_model) list-response))))))))))
+      (let [{:keys [models]} (mt/user-http-request :crowberto :post 200 "table/publish-model"
+                                                   {:table_ids            [(mt/id :venues)]
+                                                    :target_collection_id collection-id})
+            [model] models
+            venues-schema              (t2/select-one-fn :schema [:model/Table :schema] (mt/id :venues))
+            schema-url                 (format "database/%d/schema/%s" (mt/id) venues-schema)
+            list-tables-via-table-api  (fn [] (->> (mt/user-http-request :crowberto :get 200 "table" :db-id (mt/id))
+                                                   (filter #(= (mt/id) (:db_id %)))))
+            list-tables-via-schema-api #(mt/user-http-request :crowberto :get 200 schema-url)]
+        (testing "list tables"
+          (let [list-response      (list-tables-via-table-api)
+                published-as-model (u/index-by :id :published_as_model list-response)]
+            (is (true? (published-as-model (mt/id :venues))))
+            (is (false? (published-as-model (mt/id :users))))))
+        (testing "list tables via schema"
+          (let [list-response      (list-tables-via-schema-api)
+                published-as-model (u/index-by :id :published_as_model list-response)]
+            (is (true? (published-as-model (mt/id :venues))))
+            (is (false? (published-as-model (mt/id :users))))))
+        (testing "archived tables are not returned"
+          (t2/update! :model/Card (:id model) {:archived true, :archived_directly false})
+          (is (not-any? :published_as_model (list-tables-via-table-api))))))))
+
+(deftest published-models-perm-test
+  ;; what I think would be reasonable permissions behaviour:
+  ;;  > if no permissions on model or its collection, model is filtered out
+  ;; what I have done:
+  ;;  > if not super-user we never give you the published models
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-temp [:model/Collection {collection1 :id} {}
+                   :model/Collection {collection2 :id} {}]
+      (let [publish-venues        #(mt/user-http-request :crowberto :post 200 "table/publish-model"
+                                                         {:table_ids            [(mt/id :venues)]
+                                                          :target_collection_id %})
+            {[{model1 :id}] :models} (publish-venues collection1)
+            {[{model2 :id}] :models} (publish-venues collection2)
+            query-meta-url        #(format "table/%d/query_metadata" %)
+            list-published-models #(:published_models (mt/user-http-request %1 :get 200 (query-meta-url %2)))]
+        (testing "admin sees both models"
+          (is (= [model1 model2] (map :id (list-published-models :crowberto (mt/id :venues))))))
+        (testing "no published models"
+          (is (nil? (list-published-models :crowberto (mt/id :users)))))
+        (testing "non admin does not see published models"
+          (is (nil? (list-published-models :rasta (mt/id :venues))))
+          (is (nil? (list-published-models :rasta (mt/id :users)))))))))
 
 (deftest ^:parallel bulk-edit-visibility-sync-test
   (testing "POST /api/table/edit visibility field synchronization"

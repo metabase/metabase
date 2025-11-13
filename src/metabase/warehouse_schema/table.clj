@@ -33,7 +33,8 @@
     (api/write-check table)
     (api/read-check table))
   (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :metrics]
-                         (premium-features/has-feature? :transforms) (conj :transform))]
+                         (premium-features/has-feature? :transforms) (conj :transform)
+                         api/*is-superuser?*                         (conj :published_models))]
     (-> table
         (#(apply t2/hydrate % hydration-keys))
         (m/dissoc-in [:db :details])
