@@ -50,7 +50,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
           isSidebarAvailable={isSidebarAvailable}
           onSidebarToggle={setIsSidebarOpened}
         />
-        <Box h="100%" flex={1}>
+        <Box h="100%" flex={1} miw={0}>
           {children}
         </Box>
       </Flex>

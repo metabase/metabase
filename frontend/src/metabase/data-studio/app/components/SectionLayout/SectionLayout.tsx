@@ -36,8 +36,10 @@ export function SectionLayout({ title, tabs, children }: SectionLayoutProps) {
           </Button>
         </Group>
       </Flex>
-      <Flex flex={1} mih={0}>
-        <Box flex={1}>{children}</Box>
+      <Flex flex={1} mih={0} miw={0}>
+        <Box flex={1} miw={0}>
+          {children}
+        </Box>
         <PLUGIN_METABOT.MetabotDataStudioSidebar />
       </Flex>
     </Stack>

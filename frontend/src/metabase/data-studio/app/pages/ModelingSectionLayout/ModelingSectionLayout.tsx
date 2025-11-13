@@ -37,7 +37,9 @@ export function ModelingSectionLayout({
           selectedSnippetId={snippetId}
           isGlossaryActive={isGlossaryActive}
         />
-        <Box flex={1}>{children}</Box>
+        <Box flex={1} miw={0}>
+          {children}
+        </Box>
       </Flex>
     </SectionLayout>
   );

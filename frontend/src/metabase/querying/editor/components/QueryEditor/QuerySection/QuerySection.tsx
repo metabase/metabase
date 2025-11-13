@@ -168,7 +168,7 @@ export function QuerySection({
       onResizeStart={() => setIsResizing(true)}
       onResizeStop={() => setIsResizing(false)}
     >
-      <Box w="100%" style={{ overflowY: isResizing ? "hidden" : "auto" }}>
+      <Box w="100%" style={{ overflow: isResizing ? "hidden" : "auto" }}>
         <Notebook
           question={question}
           readOnly={readOnly}
