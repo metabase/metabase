@@ -10,7 +10,7 @@
 
 (use-fixtures :each
   (fn [f]
-    (mt/with-temporary-setting-values [settings/remote-sync-type :development]
+    (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
       (f))))
 
 (deftest create-collection-with-remote-synced-type-test
@@ -84,10 +84,10 @@
           (is (nil? (:type updated)))
           (is (nil? (t2/select-one-fn :type :model/Collection :id (:id collection)))))))))
 
-(deftest update-collection-from-remote-synced-to-nil-in-production-fails-test
+(deftest update-collection-from-remote-synced-to-nil-in-read-only-fails-test
   (testing "PUT /api/collection/:id"
-    (testing "Cannot update a remote-synced collection to nil type in production mode"
-      (mt/with-temporary-setting-values [settings/remote-sync-type :production]
+    (testing "Cannot update a remote-synced collection to nil type in read-only mode"
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
         (mt/with-model-cleanup [:model/Collection]
           (let [collection (mt/user-http-request :crowberto :post 200 "collection"
                                                  {:name "Remote Synced Collection"
