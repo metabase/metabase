@@ -217,9 +217,6 @@ const SupportingTextComponent = ({
             }
           }
         }}
-        onDragStart={() => {
-          editor.view.draggingNode = node;
-        }}
       />
       {document && !isWithinIframe() && (
         <Box

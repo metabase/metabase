@@ -22,6 +22,7 @@ import { CommandExtension } from "metabase-enterprise/rich_text_editing/tiptap/e
 import { CommandSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/CommandSuggestion";
 import { CustomStarterKit } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase-enterprise/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
+import DropCursorS from "metabase-enterprise/rich_text_editing/tiptap/extensions/DropCursor/DropCursor.module.css";
 import { FlexContainer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
 import { HandleEditorDrop } from "metabase-enterprise/rich_text_editing/tiptap/extensions/HandleEditorDrop/HandleEditorDrop";
 import { LinkHoverMenu } from "metabase-enterprise/rich_text_editing/tiptap/extensions/LinkHoverMenu/LinkHoverMenu";
@@ -109,6 +110,7 @@ export const Editor: React.FC<EditorProps> = ({
         dropcursor: {
           color: DROP_ZONE_COLOR,
           width: 2,
+          class: DropCursorS.dropCursor,
         },
       }),
       Image.configure({

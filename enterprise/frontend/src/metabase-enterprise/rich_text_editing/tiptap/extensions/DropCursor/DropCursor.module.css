@@ -1,0 +1,5 @@
+.hideDropCursor {
+  .dropCursor {
+    display: none;
+  }
+}
