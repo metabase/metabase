@@ -32,56 +32,18 @@
    {:column_name "ts", :type_name "string"}])
 
 (deftest sync-test
-  (testing "sync with nested fields - flattened with nfc_path"
+  (testing "sync with nested fields"
     (with-redefs [athena/run-query (constantly nested-schema)]
       (is (= #{{:name              "key"
                 :base-type         :type/Integer
                 :database-type     "int"
                 :database-position 0}
-               ;; Parent struct field exists (without nfc-path) matching Postgres JSONB behavior
-               ;; Parent is :details-only (hidden from tables)
                {:name              "data"
                 :base-type         :type/Dictionary
                 :database-type     "struct"
-                :database-position 1
-                :visibility-type   :details-only}
-               ;; Leaf fields have nfc-path set and use arrow notation in name
-               ;; Position is 0 to match Postgres behavior where JSONB nested fields have position 0
-               ;; Visibility is :normal so they show in tables
-               {:name              "data → name"
-                :base-type         :type/Text
-                :database-type     "string"
-                :database-position 0
-                :visibility-type   :normal
-                :nfc-path          ["data" "name"]}}
+                :nested-fields     #{{:name "name", :base-type :type/Text, :database-type "string", :database-position 1}},
+                :database-position 1}}
              (#'athena/describe-table-fields-with-nested-fields "test" "test" "test")))))
-  (testing "sync with deeply nested struct fields"
-    (let [openinghours-schema [{:_col0 "openinghours\tstruct<monday:string,tuesday:string,wednesday:string>\t"}]]
-      (with-redefs [athena/run-query (constantly openinghours-schema)]
-        (is (= #{{:name              "openinghours"
-                  :base-type         :type/Dictionary
-                  :database-type     "struct"
-                  :database-position 0
-                  :visibility-type   :details-only}
-                 {:name              "openinghours → monday"
-                  :base-type         :type/Text
-                  :database-type     "string"
-                  :database-position 0
-                  :visibility-type   :normal
-                  :nfc-path          ["openinghours" "monday"]}
-                 {:name              "openinghours → tuesday"
-                  :base-type         :type/Text
-                  :database-type     "string"
-                  :database-position 0
-                  :visibility-type   :normal
-                  :nfc-path          ["openinghours" "tuesday"]}
-                 {:name              "openinghours → wednesday"
-                  :base-type         :type/Text
-                  :database-type     "string"
-                  :database-position 0
-                  :visibility-type   :normal
-                  :nfc-path          ["openinghours" "wednesday"]}}
-               (#'athena/describe-table-fields-with-nested-fields "test" "test" "test"))))))
   (testing "sync without nested fields"
     (is (= #{{:name "id", :base-type :type/Text, :database-type "string", :database-position 0}
              {:name "ts", :base-type :type/Text, :database-type "string", :database-position 1}}

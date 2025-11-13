@@ -346,35 +346,6 @@
   [driver [_ arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) pattern])
 
-;;; Nested field column (nfc) support for struct types
-;;; Athena uses dot notation to access nested struct fields: table.parent.child
-(defmethod sql.qp/->honeysql [:athena ::sql.qp/nfc-path]
-  [_driver [_ nfc-path]]
-  ;; For Athena struct fields, the nfc-path contains [parent-column nested-field]
-  ;; The SQL QP will concatenate: source-table-aliases + nfc-path-result + source-alias
-  ;; For example, for nfc-path ["openinghours" "friday"]:
-  ;;   - source-table-aliases: ["location_like"]
-  ;;   - source-alias: "friday" (the leaf field name)
-  ;;   - We need to return: ["openinghours"] (all but the last element)
-  ;; This produces: location_like.openinghours.friday
-  (when (> (count nfc-path) 1)
-    (vec (butlast nfc-path))))
-
-(defmethod sql.qp/->honeysql [:athena :field]
-  [driver [_ id-or-name options :as field-clause]]
-  (let [field-metadata (when (integer? id-or-name)
-                         (driver-api/field (driver-api/metadata-provider) id-or-name))
-        nfc-path       (:nfc-path field-metadata)]
-    (if (and field-metadata nfc-path)
-      ;; For nested fields with nfc-path, override the source-alias to use just the leaf field name
-      ;; instead of the display name with arrows (e.g., "friday" instead of "openinghours → friday")
-      (let [leaf-name (last nfc-path)
-            updated-options (assoc options driver-api/qp.add.source-alias leaf-name)
-            updated-clause [:field id-or-name updated-options]]
-        ((get-method sql.qp/->honeysql [:sql :field]) driver updated-clause))
-      ;; For all other fields (including parent structs), use default SQL behavior
-      ((get-method sql.qp/->honeysql [:sql :field]) driver field-clause))))
-
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
    Such as prepare statement"
@@ -417,11 +388,7 @@
               (remove-invalid-columns)
               (map-indexed (fn [i column-metadata]
                              (assoc column-metadata :database-position i)))
-              (mapcat (fn [field-info]
-                        (let [result (athena.schema-parser/parse-schema field-info)]
-                          (if (set? result)
-                            result
-                            [result])))))
+              (map athena.schema-parser/parse-schema))
         (run-query database (format "DESCRIBE `%s`.`%s`;" schema table-name))))
 
 (defn- describe-table-fields-without-nested-fields [driver schema table-name columns]
