@@ -120,22 +120,27 @@ export const CommandSuggestion = forwardRef<
     () => allCommandSections.flatMap((section) => section.items),
     [allCommandSections],
   );
+  const allowedCommandOptions = useMemo(() => {
+    return allCommandOptions.filter(
+      (item) => item.isAllowedAtPosition?.(editor) ?? true,
+    );
+  }, [allCommandOptions, editor]);
 
   // Filter command options based on query when not in link search mode
   const commandOptions = useMemo(() => {
     if (viewMode === "linkTo" || viewMode === "embedQuestion") {
-      return allCommandOptions;
+      return allowedCommandOptions;
     }
 
     if (!query) {
-      return allCommandOptions;
+      return allowedCommandOptions;
     }
 
     const lowerQuery = query.toLowerCase();
-    return allCommandOptions.filter((option) =>
+    return allowedCommandOptions.filter((option) =>
       option.label.toLowerCase().includes(lowerQuery),
     );
-  }, [viewMode, query, allCommandOptions]);
+  }, [viewMode, query, allowedCommandOptions]);
 
   const createQuestionsMenuItems = useCreateQuestionsMenuItems({
     onSelectItem: setNewQuestionType,
