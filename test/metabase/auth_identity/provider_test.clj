@@ -1,6 +1,7 @@
 (ns metabase.auth-identity.provider-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.auth-identity.provider :as provider]
    [methodical.core :as methodical]))
 
@@ -168,3 +169,96 @@
                                (and (:provider-id auth-result) (:user-data auth-result))
                                (assoc-in [:user-data :provider-id] (:provider-id auth-result)))]
           (is (= "newuser@example.com" (get-in merged-request [:user-data :provider-id]))))))))
+
+(deftest ^:parallel authenticate-expired-auth-identity-test
+  (testing "Authentication fails when auth-identity has expired"
+    (derive :provider/test-expired ::provider/provider)
+    (methodical/defmethod provider/authenticate :provider/test-expired
+      [_provider _request]
+      {:success? true
+       :user-id 123
+       :auth-identity {:id 1
+                       :user_id 123
+                       :provider "test-expired"
+                       :expires_at (t/minus (t/offset-date-time) (t/hours 1))}})
+
+    (let [result (provider/authenticate :provider/test-expired {:email "test@example.com"})]
+      (is (false? (:success? result))
+          "Authentication should fail for expired auth-identity")
+      (is (= :authentication-expired (:error result))
+          "Error should be :authentication-expired")
+      (is (some? (:message result))
+          "Should have error message"))))
+
+(deftest ^:parallel authenticate-not-expired-auth-identity-test
+  (testing "Authentication succeeds when auth-identity has not expired"
+    (derive :provider/test-not-expired ::provider/provider)
+    (methodical/defmethod provider/authenticate :provider/test-not-expired
+      [_provider _request]
+      {:success? true
+       :user-id 123
+       :auth-identity {:id 1
+                       :user_id 123
+                       :provider "test-not-expired"
+                       :expires_at (t/plus (t/offset-date-time) (t/hours 24))}})
+
+    (let [result (provider/authenticate :provider/test-not-expired {:email "test@example.com"})]
+      (is (true? (:success? result))
+          "Authentication should succeed for non-expired auth-identity")
+      (is (nil? (:error result))
+          "Should not have error")
+      (is (= 123 (:user-id result))
+          "Should return user-id"))))
+
+(deftest ^:parallel authenticate-no-expiration-test
+  (testing "Authentication succeeds when auth-identity has no expiration (nil expires_at)"
+    (derive :provider/test-no-expiration ::provider/provider)
+    (methodical/defmethod provider/authenticate :provider/test-no-expiration
+      [_provider _request]
+      {:success? true
+       :user-id 123
+       :auth-identity {:id 1
+                       :user_id 123
+                       :provider "test-no-expiration"
+                       :expires_at nil}})
+
+    (let [result (provider/authenticate :provider/test-no-expiration {:email "test@example.com"})]
+      (is (true? (:success? result))
+          "Authentication should succeed when no expiration set")
+      (is (nil? (:error result))
+          "Should not have error")
+      (is (= 123 (:user-id result))
+          "Should return user-id"))))
+
+(deftest ^:parallel authenticate-no-auth-identity-test
+  (testing "Authentication with no auth-identity bypasses expiration check"
+    (derive :provider/test-no-auth-identity ::provider/provider)
+    (methodical/defmethod provider/authenticate :provider/test-no-auth-identity
+      [_provider _request]
+      {:success? true
+       :user-data {:email "newuser@example.com"
+                   :first_name "New"
+                   :last_name "User"}})
+
+    (let [result (provider/authenticate :provider/test-no-auth-identity {:token "abc123"})]
+      (is (true? (:success? result))
+          "Authentication should succeed without auth-identity")
+      (is (nil? (:error result))
+          "Should not have error")
+      (is (some? (:user-data result))
+          "Should have user-data for new user creation"))))
+
+(deftest ^:parallel authenticate-failure-bypasses-expiration-check-test
+  (testing "Failed authentication bypasses expiration check"
+    (derive :provider/test-auth-failure ::provider/provider)
+    (methodical/defmethod provider/authenticate :provider/test-auth-failure
+      [_provider _request]
+      {:success? false
+       :error :invalid-credentials
+       :message "Invalid password"})
+
+    (let [result (provider/authenticate :provider/test-auth-failure {:email "test@example.com" :password "wrong"})]
+      (is (false? (:success? result))
+          "Authentication should fail")
+      (is (= :invalid-credentials (:error result))
+          "Should have original error, not expiration error"))))

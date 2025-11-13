@@ -51,6 +51,7 @@
   - metabase-enterprise.sso.providers.jwt (Enterprise)
   - metabase-enterprise.sso.providers.saml (Enterprise)"
   (:require
+   [java-time.api :as t]
    [metabase.auth-identity.session :as auth-session]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -176,6 +177,22 @@
   [provider _request]
   (throw (ex-info (str "Authentication not implemented for provider: " provider)
                   {:provider provider})))
+
+(methodical/defmethod authenticate :after ::provider
+  [_provider result]
+  (if (and (:success? result)
+           (:auth-identity result))
+    (let [auth-identity (:auth-identity result)
+          expires-at (:expires_at auth-identity)]
+      (if (and expires-at
+               (t/before? (t/offset-date-time expires-at)
+                          (t/offset-date-time)))
+        (assoc result
+               :success? false
+               :error :authentication-expired
+               :message (deferred-tru "This authentication method has expired. Please contact your administrator."))
+        result))
+    result))
 
 ;;; -------------------------------------------------- Multimethod: login! --------------------------------------------------
 
