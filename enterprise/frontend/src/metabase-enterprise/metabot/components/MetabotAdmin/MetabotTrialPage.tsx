@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import { useCallback } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -8,11 +7,8 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
-import { usePurchaseCloudAddOnMutation } from "metabase/api";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Markdown from "metabase/common/components/Markdown";
-import { useSetting } from "metabase/common/hooks";
 import {
   Form,
   FormCheckbox,
@@ -20,73 +16,23 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
+import { getStoreUsers } from "metabase/selectors/store-users";
 import { Divider, Flex, Group, List, Stack, Text } from "metabase/ui";
-import { MetabotPurchaseSettingUpModal } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchaseSettingUpModal";
+import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 
-// https://redux-toolkit.js.org/rtk-query/usage/error-handling
-// https://redux-toolkit.js.org/rtk-query/usage-with-typescript#type-safe-error-handling
-const isFetchBaseQueryError = (error: unknown): error is FetchBaseQueryError =>
-  error instanceof Object && "status" in error && "data" in error;
+import { MetabotSettingUpModal } from "./MetabotSettingUpModal";
+import { handleFieldError, isFetchBaseQueryError } from "./utils";
 
-type IFieldError =
-  | string
-  | {
-      message: string;
-    }
-  | {
-      errors: { [key: string]: any };
-    };
-
-const isFieldError = (error: unknown): error is IFieldError =>
-  typeof error === "string" ||
-  (error instanceof Object &&
-    (("message" in error && typeof error.message === "string") ||
-      ("errors" in error &&
-        error.errors instanceof Object &&
-        "terms_of_service" in error.errors &&
-        typeof error.errors.terms_of_service === "string")));
-
-export const handleFieldError = (error: unknown) => {
-  if (!isFieldError(error)) {
-    return;
-  }
-
-  if (typeof error === "string") {
-    throw { data: { errors: { terms_of_service: error } } };
-  }
-
-  if ("message" in error) {
-    throw { data: { errors: { terms_of_service: error.message } } };
-  }
-
-  if ("errors" in error) {
-    throw { data: error };
-  }
-};
-
-const validationSchema = Yup.object({
-  terms_of_service: Yup.boolean(),
-});
-
-interface MetabotPurchaseFormFields {
+interface MetabotTrialFormFields {
   terms_of_service: boolean;
 }
 
-export const MetabotPurchasePage = () => {
-  const currentUser = useSelector(getCurrentUser);
-  const tokenStatus = useSetting("token-status");
-  const storeUserEmails =
-    tokenStatus?.["store-users"]?.map(({ email }) => email.toLowerCase()) ?? [];
-  const isStoreUser = storeUserEmails.includes(
-    currentUser?.email.toLowerCase(),
-  );
-  const anyStoreUserEmailAddress =
-    storeUserEmails.length > 0 ? storeUserEmails[0] : undefined;
-
+export const MetabotTrialPage = () => {
+  const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
   const [purchaseCloudAddOn] = usePurchaseCloudAddOnMutation();
   const onSubmit = useCallback(
-    async ({ terms_of_service }: MetabotPurchaseFormFields) => {
+    async ({ terms_of_service }: MetabotTrialFormFields) => {
       settingUpModalHandlers.open();
       await purchaseCloudAddOn({
         product_type: "metabase-ai",
@@ -95,11 +41,23 @@ export const MetabotPurchasePage = () => {
         .unwrap()
         .catch((error: unknown) => {
           settingUpModalHandlers.close();
-          isFetchBaseQueryError(error) && handleFieldError(error.data);
+          if (isFetchBaseQueryError(error)) {
+            handleFieldError<MetabotTrialFormFields>(
+              error.data,
+              "terms_of_service",
+            );
+          }
+          throw error;
         });
     },
     [purchaseCloudAddOn, settingUpModalHandlers],
   );
+
+  const validationSchema = Yup.object({
+    terms_of_service: Yup.boolean()
+      .required()
+      .isTrue(t`Terms of Service must be accepted`),
+  });
 
   return (
     <SettingsPageWrapper title={t`Metabot AI`}>
@@ -159,6 +117,7 @@ export const MetabotPurchasePage = () => {
                       <FormSubmitButton
                         disabled={!values.terms_of_service}
                         label={t`Add Metabot AI`}
+                        failedLabel={t`Failed to add Metabot AI`}
                         variant="filled"
                         mt="xs"
                       />
@@ -180,7 +139,7 @@ export const MetabotPurchasePage = () => {
           </Text>
         )}
       </SettingsSection>
-      <MetabotPurchaseSettingUpModal
+      <MetabotSettingUpModal
         opened={settingUpModalOpened}
         onClose={() => {
           settingUpModalHandlers.close();
