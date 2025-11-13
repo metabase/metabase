@@ -34,7 +34,7 @@ export function KeysetColumnSelect({
       // Create a set of filterable column identifiers using display info
       const filterableIdentifiers = new Set(
         filterableColumns.map((col) => {
-          const info = Lib.displayInfo(query, stageIndex, col);ma
+          const info = Lib.displayInfo(query, stageIndex, col);
           return `${info.table?.name ?? "no-table"}:${info.name}`;
         }),
       );
