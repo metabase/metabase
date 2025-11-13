@@ -429,7 +429,7 @@
   (mi/instances-with-hydrated-data
    tables k
    (fn []
-     (let [table-ids          (sort (set (map :id tables)))
+     (let [table-ids          (map :id tables)
            published-as-model (t2/select-fn-set :published_table_id [:model/Card :published_table_id]
                                                 :published_table_id [:in table-ids]
                                                 :type               :model
@@ -444,7 +444,7 @@
   (mi/instances-with-hydrated-data
    tables k
    (fn []
-     (let [table-ids (sort (set (map :id tables)))
+     (let [table-ids (map :id tables)
            models    (t2/select :model/Card
                                 :published_table_id [:in table-ids]
                                 :type               :model
