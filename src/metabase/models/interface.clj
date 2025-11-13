@@ -263,7 +263,7 @@
   "Assert that a value is one of the values in `enum` or `nil`."
   [enum :- [:set :any]
    value :- :any]
-  (when value
+  (when (some? value)
     (assert-enum enum value)))
 
 (mu/defn assert-namespaced
