@@ -951,3 +951,46 @@
                                                     :database 999999
                                                     :stages [{:lib/type :mbql.stage/native
                                                               :native "SELECT * FROM transforms_products"}]}}))))))))))
+
+(deftest ^:parallel is-simple-query-test
+  (testing "POST /api/ee/transform/is-simple-query"
+    (mt/with-premium-features #{:transforms}
+      (testing "Returns true for simple SELECT queries"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products"})]
+          (is (true? (:is_simple response)))
+          (is (nil? (:reason response)))))
+
+      (testing "Returns true for simple SELECT with WHERE clause"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products WHERE category = 'Electronics'"})]
+          (is (true? (:is_simple response)))))
+
+      (testing "Returns true for simple SELECT with JOIN"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT p.id, p.name, c.name FROM products p JOIN categories c ON p.category_id = c.id"})]
+          (is (true? (:is_simple response)))))
+
+      (testing "Returns false for query with LIMIT"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products LIMIT 10"})]
+          (is (false? (:is_simple response)))
+          (is (= "Contains a LIMIT" (:reason response)))))
+
+      (testing "Returns false for query with OFFSET"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products OFFSET 5"})]
+          (is (false? (:is_simple response)))
+          (is (= "Contains an OFFSET" (:reason response)))))
+
+      (testing "Returns false for query with LIMIT and OFFSET"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products LIMIT 10 OFFSET 5"})]
+          (is (false? (:is_simple response)))
+          (is (= "Contains a LIMIT" (:reason response)))))
+
+      (testing "Returns false for query with CTE"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "WITH category_counts AS (SELECT category, COUNT(*) as cnt FROM products GROUP BY category) SELECT * FROM category_counts"})]
+          (is (false? (:is_simple response)))
+          (is (= "Contains a CTE" (:reason response))))))))
