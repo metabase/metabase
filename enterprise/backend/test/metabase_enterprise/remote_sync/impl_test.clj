@@ -405,7 +405,7 @@
                     "Should call async-import! in read-only mode")))))))))
 
 (deftest finish-remote-config!-does-nothing-when-collection-exists-in-dev-mode-test
-  (testing "finish-remote-config! does nothing when collection exists in development mode"
+  (testing "finish-remote-config! does nothing when collection exists in read-write mode"
     (mt/with-model-cleanup [:model/Collection]
       (let [mock-source (test-helpers/create-mock-source)
             import-called? (atom false)]

@@ -72,9 +72,9 @@
           (is (= "remote-synced" (:type updated)))
           (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id collection)))))))))
 
-(deftest update-collection-from-remote-synced-to-nil-in-development-test
+(deftest update-collection-from-remote-synced-to-nil-in-read-write-test
   (testing "PUT /api/collection/:id"
-    (testing "Can update a remote-synced collection to nil type in development mode"
+    (testing "Can update a remote-synced collection to nil type in read-write mode"
       (mt/with-model-cleanup [:model/Collection]
         (let [collection (mt/user-http-request :crowberto :post 200 "collection"
                                                {:name "Remote Synced Collection"

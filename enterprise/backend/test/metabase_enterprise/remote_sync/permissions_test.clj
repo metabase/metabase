@@ -42,7 +42,7 @@
                   "Document in remote-synced collection should not be writable when remote-sync-type is read-only"))))))))
 
 (deftest remote-synced-permissions-with-remote-sync-type-export-test
-  (testing "can_write should be true for remote-synced collection items when remote-sync-type is development"
+  (testing "can_write should be true for remote-synced collection items when remote-sync-type is read-write"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
@@ -53,20 +53,20 @@
                                                       :collection_id library-coll-id
                                                       :dataset_query (mt/native-query {:query "SELECT 1"})}]
               (is (true? (mi/can-write? (t2/select-one :model/Card :id card-id)))
-                  "Card in remote-synced collection should be writable when remote-sync-type is development")))
+                  "Card in remote-synced collection should be writable when remote-sync-type is read-write")))
 
           (testing "Dashboards in remote-synced collections have can_write=true"
             (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Library Dashboard"
                                                                 :collection_id library-coll-id}]
               (is (true? (mi/can-write? (t2/select-one :model/Dashboard :id dashboard-id)))
-                  "Dashboard in remote-synced collection should be writable when remote-sync-type is development")))
+                  "Dashboard in remote-synced collection should be writable when remote-sync-type is read-write")))
 
           (testing "Documents in remote-synced collections have can_write=true"
             (mt/with-temp [:model/Document {document-id :id} {:name "Library Document"
                                                               :document (text->prose-mirror-ast "Library content")
                                                               :collection_id library-coll-id}]
               (is (true? (mi/can-write? (t2/select-one :model/Document :id document-id)))
-                  "Document in remote-synced collection should be writable when remote-sync-type is development"))))))))
+                  "Document in remote-synced collection should be writable when remote-sync-type is read-write"))))))))
 
 (deftest non-remote-synced-permissions-unaffected-by-remote-sync-type-test
   (testing "can_write for non-remote-synced collection items should be unaffected by remote-sync-type setting"
@@ -130,7 +130,7 @@
                 (is (false? (mi/can-write? (t2/select-one :model/Document :id document-id)))
                     "Document in nested remote-synced collection should not be writable when remote-sync-type is read-only")))))
 
-        (testing "When remote-sync-type is development"
+        (testing "When remote-sync-type is read-write"
           (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
 
             (testing "Cards in nested remote-synced collections have can_write=true"
@@ -138,20 +138,20 @@
                                                         :collection_id child-library-id
                                                         :dataset_query (mt/native-query {:query "SELECT 1"})}]
                 (is (true? (mi/can-write? (t2/select-one :model/Card :id card-id)))
-                    "Card in nested remote-synced collection should be writable when remote-sync-type is development")))
+                    "Card in nested remote-synced collection should be writable when remote-sync-type is read-write")))
 
             (testing "Dashboards in nested remote-synced collections have can_write=true"
               (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Nested Library Dashboard"
                                                                   :collection_id child-library-id}]
                 (is (true? (mi/can-write? (t2/select-one :model/Dashboard :id dashboard-id)))
-                    "Dashboard in nested remote-synced collection should be writable when remote-sync-type is development")))
+                    "Dashboard in nested remote-synced collection should be writable when remote-sync-type is read-write")))
 
             (testing "Documents in nested remote-synced collections have can_write=true"
               (mt/with-temp [:model/Document {document-id :id} {:name "Nested Library Document"
                                                                 :document (text->prose-mirror-ast "Nested library content")
                                                                 :collection_id child-library-id}]
                 (is (true? (mi/can-write? (t2/select-one :model/Document :id document-id)))
-                    "Document in nested remote-synced collection should be writable when remote-sync-type is development")))))))))
+                    "Document in nested remote-synced collection should be writable when remote-sync-type is read-write")))))))))
 
 (deftest mixed-collection-types-permissions-test
   (testing "can_write behavior should differ between library and regular collections in same test"
@@ -252,13 +252,13 @@
           (is (false? (mi/can-write? (t2/select-one :model/Collection :id library-coll-id)))
               "Library collection itself should not be writable when remote-sync-type is read-only"))))
 
-    (testing "When remote-sync-type is development"
+    (testing "When remote-sync-type is read-write"
       (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
                                                                 :type "remote-synced"}]
           (mt/with-current-user (mt/user->id :rasta)
             (is (true? (mi/can-write? (t2/select-one :model/Collection :id library-coll-id)))
-                "Library collection itself should be writable when remote-sync-type is development")))))
+                "Library collection itself should be writable when remote-sync-type is read-write")))))
 
     (testing "Regular collections are always writable regardless of remote-sync-type"
       (doseq [remote-sync-setting [:read-only :read-write]]
