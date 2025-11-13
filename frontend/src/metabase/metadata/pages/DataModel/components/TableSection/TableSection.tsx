@@ -29,7 +29,6 @@ import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 import { DataModelContext } from "../../DataModelContext";
 import { getUrl } from "../../utils";
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
-import { SubstituteModelModal } from "../TablePicker/components/SubstituteModelModal";
 
 import { TableFieldList } from "./TableFieldList";
 import { TableMetadataInfo } from "./TableMetadataInfo";
@@ -60,8 +59,6 @@ const TableSectionBase = ({
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
   const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
-  const [isSubstituteModelModalOpen, setIsSubstituteModelModalOpen] =
-    useState(false);
 
   const getFieldHref = (fieldId: FieldId) => {
     return getUrl(baseUrl, {
@@ -309,12 +306,6 @@ const TableSectionBase = ({
         tables={new Set([table.id])}
         isOpen={isCreateModelsModalOpen}
         onClose={() => setIsCreateModelsModalOpen(false)}
-      />
-
-      <SubstituteModelModal
-        tableId={table.id}
-        isOpen={isSubstituteModelModalOpen}
-        onClose={() => setIsSubstituteModelModalOpen(false)}
       />
     </Stack>
   );
