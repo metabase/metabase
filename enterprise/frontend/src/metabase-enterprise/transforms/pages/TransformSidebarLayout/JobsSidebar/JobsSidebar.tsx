@@ -10,14 +10,14 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Button, Flex, Icon, Tooltip } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
+import { SidebarListItem } from "metabase-enterprise/transforms/pages/TransformSidebarLayout/SidebarListItem/SidebarListItem";
 
 import { ListEmptyState } from "../ListEmptyState";
 import { SidebarContainer } from "../SidebarContainer";
+import { SidebarList } from "../SidebarList";
 import { SidebarLoadingState } from "../SidebarLoadingState";
 import { SidebarSearchAndControls } from "../SidebarSearchAndControls";
 import { JOB_SORT_OPTIONS } from "../SidebarSortControl";
-import { SidebarList } from "../TransformsSidebarLayout/SidebarList";
-import { SidebarListItem } from "../TransformsSidebarLayout/SidebarListItem/SidebarListItem";
 import { lastModifiedSorter, nameSorter } from "../utils";
 
 import S from "./JobsSidebar.module.css";

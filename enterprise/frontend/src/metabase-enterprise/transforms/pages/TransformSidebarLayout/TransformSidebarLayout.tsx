@@ -4,24 +4,24 @@ import { DataStudioContext } from "metabase/data-studio/common/contexts/DataStud
 import * as Urls from "metabase/lib/urls";
 import { Box, Flex } from "metabase/ui";
 
-import { JobsSidebar } from "../JobsSidebar";
-import { TransformsSidebar } from "../TransformsSidebar";
-import { useTransformsCurrentTab } from "../hooks";
+import { JobsSidebar } from "./JobsSidebar";
+import { TransformsSidebar } from "./TransformsSidebar";
+import { useTransformsCurrentTab } from "./hooks";
 
-type TransformsSidebarLayoutParams = {
+type TransformSidebarLayoutParams = {
   transformId?: string;
   jobId?: string;
 };
 
-type TransformsSidebarLayoutProps = {
+type TransformSidebarLayoutProps = {
   children: ReactNode;
-  params: TransformsSidebarLayoutParams;
+  params: TransformSidebarLayoutParams;
 };
 
-export const TransformsSidebarLayout = ({
+export const TransformSidebarLayout = ({
   children,
   params,
-}: TransformsSidebarLayoutProps) => {
+}: TransformSidebarLayoutProps) => {
   const currentTab = useTransformsCurrentTab();
   const selectedTransformId = Urls.extractEntityId(params?.transformId);
   const selectedJobId = Urls.extractEntityId(params.jobId);

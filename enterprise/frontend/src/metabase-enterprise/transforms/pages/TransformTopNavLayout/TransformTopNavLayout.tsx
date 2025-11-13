@@ -2,13 +2,13 @@ import type { ReactNode } from "react";
 
 import { Flex } from "metabase/ui";
 
-interface TransformsTopNavLayoutProps {
+interface TransformTopNavLayoutProps {
   children: ReactNode;
 }
 
-export const TransformsTopNavLayout = ({
+export const TransformTopNavLayout = ({
   children,
-}: TransformsTopNavLayoutProps) => {
+}: TransformTopNavLayoutProps) => {
   return (
     <Flex direction="column" w="100%" h="100%">
       {children}

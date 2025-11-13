@@ -14,17 +14,17 @@ import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Flex } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
+import { SidebarListItem } from "metabase-enterprise/transforms/pages/TransformSidebarLayout/SidebarListItem/SidebarListItem";
+import { TransformListItem } from "metabase-enterprise/transforms/pages/TransformSidebarLayout/SidebarListItem/TransformListItem";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
 
 import { CreateTransformMenu } from "../CreateTransformMenu";
 import { ListEmptyState } from "../ListEmptyState";
 import { SidebarContainer } from "../SidebarContainer";
+import { SidebarList } from "../SidebarList";
 import { SidebarLoadingState } from "../SidebarLoadingState";
 import { SidebarSearchAndControls } from "../SidebarSearchAndControls";
 import { TRANSFORM_SORT_OPTIONS } from "../SidebarSortControl";
-import { SidebarList } from "../TransformsSidebarLayout/SidebarList";
-import { SidebarListItem } from "../TransformsSidebarLayout/SidebarListItem/SidebarListItem";
-import { TransformListItem } from "../TransformsSidebarLayout/SidebarListItem/TransformListItem";
 import { lastModifiedSorter, nameSorter } from "../utils";
 
 import S from "./TransformsSidebar.module.css";
