@@ -292,8 +292,8 @@
   "Wrap a compiled native query with checkpoint filtering for native queries without explicit checkpoint tags.
 
   Generates SQL that wraps the original query as a subquery and filters by `checkpoint_filter > (checkpoint_query)`. "
-  [query driver {:keys [checkpoint-filter]} {checkpoint-query :query}]
-  (if (and checkpoint-query checkpoint-filter (next-checkpoint-value checkpoint-query))
+  [query driver {:keys [checkpoint-filter]} {checkpoint-query :query :as checkpoint}]
+  (if (and checkpoint-query checkpoint-filter (next-checkpoint-value checkpoint))
     (let [honeysql-query {:select [:*]
                           :from [[[:raw (str "(" query ")")] :subquery]]
                           :where [:> (h2x/identifier :field checkpoint-filter)
