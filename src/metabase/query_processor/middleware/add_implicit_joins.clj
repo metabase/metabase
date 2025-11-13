@@ -233,35 +233,46 @@
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
-  (or (when (not-empty (:fields stage))
-        (when-let [next-path (lib.walk/next-path query path)]
-          (let [next-stage (get-in query next-path)]
-            (when-let [joins (not-empty (:joins next-stage))]
-              (when-let [needed (not-empty (into #{} (keep :fk-field-id) joins))]
-                (let [next-stage-visible-column-ids (into #{}
-                                                          (map :id)
-                                                          (lib.walk/apply-f-for-stage-at-path
-                                                           (fn [query stage-number]
-                                                             (lib/visible-columns
-                                                              query
-                                                              stage-number
-                                                              {:include-joined?                              true
-                                                               :include-expressions?                         false
-                                                               :include-implicitly-joinable?                 false
-                                                               :include-implicitly-joinable-for-source-card? false}))
-                                                           query
-                                                           next-path))]
-                  (when-let [needed (not-empty (set/difference needed next-stage-visible-column-ids))]
-                    (log/debugf "Adding fields needed for join conditions in next stage: %s" (pr-str needed))
-                    (let [stage' (update stage :fields (fn [existing-fields]
+  (or (when-let [next-path (lib.walk/next-path query path)]
+        (let [next-stage (get-in query next-path)]
+          (when-let [joins (not-empty (:joins next-stage))]
+            (when-let [needed (not-empty (into #{} (keep :fk-field-id) joins))]
+              (let [next-stage-visible-column-ids (into #{}
+                                                        (map :id)
+                                                        (lib.walk/apply-f-for-stage-at-path
+                                                         (fn [query stage-number]
+                                                           (lib/visible-columns
+                                                            query
+                                                            stage-number
+                                                            {:include-joined?                              true
+                                                             :include-expressions?                         false
+                                                             :include-implicitly-joinable?                 false
+                                                             :include-implicitly-joinable-for-source-card? false}))
+                                                         query
+                                                         next-path))]
+                (when-let [needed (not-empty (set/difference needed next-stage-visible-column-ids))]
+                  (log/debugf "Adding fields needed for join conditions in next stage: %s" (pr-str needed))
+                  (let [existing-fields (:fields stage)
+                        stage' (if (not-empty existing-fields)
+                                 ;; If stage already has explicit fields, just add the needed FK fields
+                                 (update stage :fields (fn [fields]
                                                          (into []
                                                                cat
-                                                               [existing-fields
+                                                               [fields
                                                                 (for [field-id needed]
-                                                                  [:field {:lib/uuid (str (random-uuid))} field-id])])))]
-                      (when-not (= stage' stage)
-                        ;; normalize the stage to remove any duplicate fields or breakouts
-                        (lib/normalize ::lib.schema/stage stage'))))))))))
+                                                                  [:field {:lib/uuid (str (random-uuid))} field-id])])))
+                                 ;; If stage has no explicit fields, add all visible columns plus the needed FK fields
+                                 ;; This is necessary for sandboxed queries where the source query doesn't have explicit :fields
+                                 (let [visible-cols (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)
+                                       visible-field-refs (mapv lib/ref visible-cols)]
+                                   (assoc stage :fields (into []
+                                                              cat
+                                                              [visible-field-refs
+                                                               (for [field-id needed]
+                                                                 [:field {:lib/uuid (str (random-uuid))} field-id])]))))]
+                    (when-not (= stage' stage)
+                      ;; normalize the stage to remove any duplicate fields or breakouts
+                      (lib/normalize ::lib.schema/stage stage')))))))))
       stage))
 
 (mu/defn- add-referenced-fields-from-next-stage :- ::lib.schema/stage
