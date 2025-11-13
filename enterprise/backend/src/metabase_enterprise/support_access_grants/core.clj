@@ -4,6 +4,8 @@
    [java-time.api :as t]
    [metabase-enterprise.support-access-grants.provider :as sag.provider]
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
+   [metabase.events.core :as events]
+   [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
@@ -47,7 +49,21 @@
                                                          :first_name (sag.settings/support-access-grant-first-name)
                                                          :last_name (sag.settings/support-access-grant-last-name)
                                                          :password (str (random-uuid))}))
-        token (sag.provider/create-support-access-reset! (:id support-user) grant)]
+        token (sag.provider/create-support-access-reset! (:id support-user) grant)
+        password-reset-url (when token
+                             (str (system/site-url) "/auth/reset_password/" token))]
+
+    ;; Publish event - the notification system handles email sending automatically
+    (when (and token password-reset-url)
+      (events/publish-event! :event/support-access-grant-created
+                             {:support_email support-email
+                              :ticket_number ticket-number
+                              :duration_minutes grant-duration-minutes
+                              :grant_end_time grant-end
+                              :password_reset_url password-reset-url
+                              :notes notes}))
+
+    ;; Return grant with token
     (cond-> grant
       token (assoc :token token))))
 

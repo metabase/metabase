@@ -2068,9 +2068,12 @@
    :uses #{api
            app-db
            auth-identity
+           events
            models
            request
            premium-features
+           settings
+           system
            util}}
 
   enterprise/sso

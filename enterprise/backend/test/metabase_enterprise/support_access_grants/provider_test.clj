@@ -105,7 +105,7 @@
         (provider/login! :provider/support-access-grant {:token token
                                                          :password new-password})
         (let [updated-user (t2/select-one [:model/User :password] :id user-id)
-              updated-pw-auth-identity #p (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")
+              updated-pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")
               updated-auth-identity (t2/select-one :model/AuthIdentity :id (:id auth-identity) :provider "support-access-grant")]
           (is (= (str grant-end) (get-in updated-pw-auth-identity [:credentials :password_expires_at])))
           (is (= (get-in updated-pw-auth-identity [:credentials :password_hash]) (:password updated-user)))

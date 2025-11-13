@@ -1,12 +1,17 @@
 (ns metabase-enterprise.support-access-grants.core-test
   "Tests for support access grant core business logic."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.support-access-grants.core :as grants]
+   [metabase-enterprise.support-access-grants.provider :as sag.provider]
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
+   [metabase.events.core :as events]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (deftest create-grant-returns-grant-test
   (mt/with-temp [:model/User {user-id :id} {}]
@@ -277,3 +282,75 @@
                                                  :user_id (:id created-user)
                                                  :provider "support-access-grant")]
                 (is (some? auth-identity) "AuthIdentity should be created for new support user")))))))))
+
+(deftest create-grant-publishes-event-test
+  (testing "Creating a grant publishes :event/support-access-grant-created event"
+    (let [support-email "support@example.com"
+          published-events (atom [])]
+      (mt/with-temp [:model/User {creator-id :id} {}]
+        (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
+          (with-redefs [sag.settings/support-access-grant-email (constantly support-email)
+                        sag.settings/support-access-grant-first-name (constantly "Support")
+                        sag.settings/support-access-grant-last-name (constantly "User")
+                        events/publish-event! (fn [topic payload]
+                                                (swap! published-events conj [topic payload]))]
+            (let [grant (grants/create-grant! creator-id 60 "TICKET-123" "Test notes")
+                  our-events (filter (fn [[topic _]] (= topic :event/support-access-grant-created)) @published-events)]
+              (is (some? (:token grant)) "Token should be created")
+              (testing "Event was published"
+                (is (= 1 (count our-events)) "Exactly one support-access-grant-created event should be published")
+                (let [[topic payload] (first our-events)]
+                  (is (= :event/support-access-grant-created topic) "Event topic should be correct")
+                  (is (= support-email (:support_email payload)) "Payload should contain support email")
+                  (is (= "TICKET-123" (:ticket_number payload)) "Payload should contain ticket number")
+                  (is (= "Test notes" (:notes payload)) "Payload should contain notes")
+                  (is (= 60 (:duration_minutes payload)) "Payload should contain duration")
+                  (is (some? (:grant_end_time payload)) "Payload should contain grant end time")
+                  (is (some? (:password_reset_url payload)) "Payload should contain password reset URL")
+                  (is (str/includes? (:password_reset_url payload) "reset_password")
+                      "Password reset URL should have correct path"))))))))))
+
+(deftest create-grant-does-not-publish-event-when-no-token-test
+  (testing "No event is published when token creation fails"
+    (let [support-email "support@example.com"
+          published-events (atom [])]
+      (mt/with-temp [:model/User {creator-id :id} {}]
+        (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
+          (with-redefs [sag.settings/support-access-grant-email (constantly support-email)
+                        sag.settings/support-access-grant-first-name (constantly "Support")
+                        sag.settings/support-access-grant-last-name (constantly "User")
+                        sag.provider/create-support-access-reset! (constantly nil)
+                        events/publish-event! (fn [topic payload]
+                                                (swap! published-events conj [topic payload]))]
+            (let [grant (grants/create-grant! creator-id 60 "TICKET-456" "Test notes")
+                  our-events (filter (fn [[topic _]] (= topic :event/support-access-grant-created)) @published-events)]
+              (is (nil? (:token grant)) "Token should not be created")
+              (is (zero? (count our-events)) "No support-access-grant-created event should be published when token is nil"))))))))
+
+(deftest create-grant-event-payload-has-correct-data-test
+  (testing "Event payload contains all required fields with correct values"
+    (let [support-email "support@example.com"
+          ticket-number "TICKET-789"
+          duration-minutes 120
+          published-events (atom [])]
+      (mt/with-temp [:model/User {creator-id :id} {}]
+        (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
+          (with-redefs [sag.settings/support-access-grant-email (constantly support-email)
+                        sag.settings/support-access-grant-first-name (constantly "Support")
+                        sag.settings/support-access-grant-last-name (constantly "User")
+                        events/publish-event! (fn [topic payload]
+                                                (swap! published-events conj [topic payload]))]
+            (let [grant-before (t/instant)
+                  _ (grants/create-grant! creator-id duration-minutes ticket-number "Test notes")
+                  grant-after (t/instant)
+                  our-events (filter (fn [[topic _]] (= topic :event/support-access-grant-created)) @published-events)
+                  [_topic payload] (first our-events)
+                  grant-end-time (:grant_end_time payload)]
+              (is (some? grant-end-time) "Grant end time should be present")
+              (is (t/after? grant-end-time grant-before) "Grant end time should be after creation started")
+              (is (t/after? grant-end-time grant-after) "Grant end time should be in the future")
+              (let [expected-end (t/plus grant-before (t/minutes duration-minutes))
+                    diff-seconds (t/as (t/duration expected-end grant-end-time) :seconds)]
+                (is (< (Math/abs ^long diff-seconds) 2)
+                    "Grant end time should be approximately duration_minutes in the future")))))))))
+
