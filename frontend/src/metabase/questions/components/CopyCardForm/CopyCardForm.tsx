@@ -4,6 +4,7 @@ import _ from "underscore";
 import * as Yup from "yup";
 
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
+import { getEntityTypeFromCardType } from "metabase/collections/utils";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import type { CollectionPickerModel } from "metabase/common/components/Pickers/CollectionPicker";
 import { FormDashboardTabSelect } from "metabase/dashboard/components/FormDashboardTabSelect";
@@ -129,6 +130,9 @@ export const CopyCardForm = ({
                 dashboardIdFieldName="dashboard_id"
                 dashboardTabIdFieldName="dashboard_tab_id"
                 title={t`Where do you want to save this?`}
+                entityType={
+                  model ? getEntityTypeFromCardType(model) : undefined
+                }
                 collectionPickerModalProps={{
                   models,
                   recentFilter: (items) =>

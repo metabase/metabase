@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
@@ -3309,19 +3310,35 @@
 
 (deftest create-library
   (mt/with-discard-model-updates! [:model/Collection]
-    (testing "Can create a semantic layer if none exist"
-      (t2/update! :model/Collection :type collection/semantic-layer-collection-type {:type nil})
-      (let [base (collection/create-semantic-layer-collection!)]
-        (is (= "Semantic Layer" (:name base)))
-        (is (= ["Metrics" "Models"] (sort (map :name (collection/descendants (first (collection/descendants base)))))))))
+    (testing "Can create a library if none exist"
+      (t2/update! :model/Collection :type collection/library-collection-type {:type nil})
+      (t2/update! :model/Collection :type collection/library-models-collection-type {:type nil})
+      (t2/update! :model/Collection :type collection/library-metrics-collection-type {:type nil})
+      (let [library (collection/create-library-collection!)]
+        (is (= "Library" (:name library)))
+        (is (= ["Metrics" "Models"] (sort (map :name (collection/descendants library)))))
+        (testing "Only admins can write to the library, all users can read"
+          (binding [api/*current-user*                 (mt/user->id :rasta)
+                    api/*current-user-permissions-set* (-> :rasta mt/user->id perms/user-permissions-set atom)]
+            (is (true? (mi/can-read? library)))
+            (is (false? (mi/can-write? library)))
+            (doseq [sub (collection/descendants library)]
+              (is (true? (mi/can-read? sub)))
+              (is (false? (mi/can-write? sub))))))))
     (testing "Creating a Layer when one already exists throws an exception"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Semantic Layer already exists" (collection/create-semantic-layer-collection!))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Library already exists" (collection/create-library-collection!))))
     ;;cleanup created libraries
-    (t2/delete! :model/Collection :type collection/semantic-layer-collection-type)))
+    (t2/delete! :model/Collection :type [:in [collection/library-collection-type
+                                              collection/library-models-collection-type
+                                              collection/library-metrics-collection-type]])))
 
-(deftest is-semantic-layer-collection?
-  (mt/with-temp [:model/Collection {semantic-layer-id :id} {:name "Test Semantic Layer" :type collection/semantic-layer-collection-type}
+(deftest is-library-collection?
+  (mt/with-temp [:model/Collection {library-id :id} {:name "Test Library" :type collection/library-collection-type}
+                 :model/Collection {models-id :id} {:name "Test Semantic Model Layer" :type collection/library-models-collection-type}
+                 :model/Collection {metrics-id :id} {:name "Test Semantic Metrics Layer" :type collection/library-metrics-collection-type}
                  :model/Collection {regular-collection-id :id} {:name "Regular Collection" :type nil}]
-    (testing "Correctly identifies semantic layer collections"
-      (is (true? (collection/is-semantic-layer-collection? semantic-layer-id)))
-      (is (false? (collection/is-semantic-layer-collection? regular-collection-id))))))
+    (testing "Correctly identifies library collections"
+      (is (true? (collection/is-library-collection? library-id)))
+      (is (true? (collection/is-library-collection? models-id)))
+      (is (true? (collection/is-library-collection? metrics-id)))
+      (is (false? (collection/is-library-collection? regular-collection-id))))))

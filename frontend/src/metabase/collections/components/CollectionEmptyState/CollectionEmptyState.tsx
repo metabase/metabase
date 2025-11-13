@@ -2,7 +2,10 @@ import type { PropsWithChildren } from "react";
 import { t } from "ttag";
 
 import EmptyStateIcon from "assets/img/empty-states/collection.svg";
-import { isRootTrashCollection } from "metabase/collections/utils";
+import {
+  isLibraryCollection,
+  isRootTrashCollection,
+} from "metabase/collections/utils";
 import NewItemMenu from "metabase/common/components/NewItemMenu";
 import { Box, Button, Icon, Stack, Text, useMantineTheme } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
@@ -52,16 +55,17 @@ const ArchivedCollectionEmptyState = () => {
 const DefaultCollectionEmptyState = ({
   collection,
 }: CollectionEmptyStateProps) => {
+  const { title, description } = getDefaultEmptyStateMessages(collection);
   const canWrite = !!collection?.can_write;
+  const isSemanticLayer = collection != null && isLibraryCollection(collection);
+  const showAddButton = canWrite && !isSemanticLayer;
 
   return (
     <EmptyStateWrapper>
       <CollectionEmptyIcon />
-      <EmptyStateTitle>{t`This collection is empty`}</EmptyStateTitle>
-      <EmptyStateSubtitle>
-        {t`Use collections to organize questions, dashboards, models, and other collections.`}
-      </EmptyStateSubtitle>
-      {canWrite && (
+      <EmptyStateTitle>{title}</EmptyStateTitle>
+      <EmptyStateSubtitle>{description}</EmptyStateSubtitle>
+      {showAddButton && (
         <NewItemMenu
           trigger={
             <Button
@@ -77,6 +81,26 @@ const DefaultCollectionEmptyState = ({
     </EmptyStateWrapper>
   );
 };
+
+function getDefaultEmptyStateMessages(collection: Collection | undefined) {
+  switch (collection?.type) {
+    case "library-models":
+      return {
+        title: t`No models yet`,
+        description: t`Put models in the Library to see them here.`,
+      };
+    case "library-metrics":
+      return {
+        title: t`No metrics yet`,
+        description: t`Put metrics in the Library to see them here.`,
+      };
+    default:
+      return {
+        title: t`This collection is empty`,
+        description: t`Use collections to organize questions, dashboards, models, and other collections.`,
+      };
+  }
+}
 
 export const CollectionEmptyIcon = (): JSX.Element => {
   return (

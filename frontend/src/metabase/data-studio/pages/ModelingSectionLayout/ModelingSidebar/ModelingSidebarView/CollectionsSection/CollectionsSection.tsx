@@ -1,16 +1,15 @@
-import { type MouseEvent, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
-import { t } from "ttag";
 
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUser } from "metabase/selectors/user";
-import { Button, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { ModelingSidebarTreeNode } from "../../ModelingSidebarTreeNode";
+import { CreateCardMenu } from "../CreateCardMenu";
 
 import { getCollectionTree } from "./utils";
 
@@ -32,6 +31,7 @@ export function CollectionsSection({
     () => (currentUser ? getCollectionTree(collections, currentUser) : []),
     [collections, currentUser],
   );
+  const initialExpandedIds = useMemo(() => ["root"], []);
   const dispatch = useDispatch();
 
   const handleCollectionSelect = useCallback(
@@ -41,102 +41,26 @@ export function CollectionsSection({
     [dispatch],
   );
 
-  const handleCreateModelNotebook = useCallback(
-    (event: MouseEvent) => {
-      event.stopPropagation();
-      dispatch(push(Urls.newDataStudioQueryModel()));
-    },
-    [dispatch],
-  );
-
-  const handleCreateModelNative = useCallback(
-    (event: MouseEvent) => {
-      event.stopPropagation();
-      dispatch(push(Urls.newDataStudioNativeModel()));
-    },
-    [dispatch],
-  );
-
-  const handleCreateMetric = useCallback(
-    (event: MouseEvent) => {
-      event.stopPropagation();
-      dispatch(push(Urls.newDataStudioMetric()));
-    },
-    [dispatch],
-  );
-
-  const initialExpandedIds = useMemo(() => ["root"], []);
-
   return (
     <Tree
       data={collectionTree}
       selectedId={selectedCollectionId}
       initialExpandedIds={initialExpandedIds}
-      onSelect={handleCollectionSelect}
       TreeNode={ModelingSidebarTreeNode}
       rightSection={(item: ITreeNodeItem) => {
         if (item.id !== "root" || !hasDataAccess) {
           return null;
         }
         return (
-          <Menu position="bottom-end">
-            <Tooltip label={t`Create model or metric`}>
-              <Menu.Target>
-                <Button
-                  w={24}
-                  h={24}
-                  size="compact-xs"
-                  variant="subtle"
-                  c="text-medium"
-                  leftSection={<FixedSizeIcon name="add" size={16} />}
-                  onClick={(e: React.MouseEvent) => {
-                    e.stopPropagation();
-                  }}
-                />
-              </Menu.Target>
-            </Tooltip>
-            <Menu.Dropdown>
-              {hasNativeWrite ? (
-                <Menu.Sub>
-                  <Menu.Sub.Target>
-                    <Menu.Sub.Item leftSection={<FixedSizeIcon name="model" />}>
-                      {t`Model`}
-                    </Menu.Sub.Item>
-                  </Menu.Sub.Target>
-                  <Menu.Sub.Dropdown>
-                    <Menu.Item
-                      leftSection={<FixedSizeIcon name="notebook" />}
-                      onClick={handleCreateModelNotebook}
-                    >
-                      {t`Query builder`}
-                    </Menu.Item>
-                    <Menu.Item
-                      leftSection={<FixedSizeIcon name="sql" />}
-                      onClick={handleCreateModelNative}
-                    >
-                      {t`SQL query`}
-                    </Menu.Item>
-                  </Menu.Sub.Dropdown>
-                </Menu.Sub>
-              ) : (
-                <Menu.Item
-                  leftSection={<FixedSizeIcon name="model" />}
-                  onClick={handleCreateModelNotebook}
-                >
-                  {t`Model`}
-                </Menu.Item>
-              )}
-              <Menu.Item
-                leftSection={<FixedSizeIcon name="metric" />}
-                onClick={handleCreateMetric}
-              >
-                {t`Metric`}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
+          <CreateCardMenu
+            canCreateModel={hasDataAccess}
+            canCreateMetric={hasDataAccess}
+            canCreateNativeQuery={hasNativeWrite}
+          />
         );
       }}
       role="tree"
+      onSelect={handleCollectionSelect}
     />
   );
 }

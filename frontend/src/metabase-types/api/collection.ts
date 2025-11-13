@@ -26,7 +26,7 @@ export type CollectionId =
   | "users"
   | "trash";
 
-export type CollectionContentModel = "card" | "dataset";
+export type CollectionContentModel = "card" | "dataset" | "metric";
 
 export type CollectionAuthorityLevel = "official" | null;
 
@@ -34,14 +34,14 @@ export type CollectionType =
   | "instance-analytics"
   | "trash"
   | "remote-synced"
-  | "semantic-layer"
-  | "semantic-layer-models"
-  | "semantic-layer-metrics"
+  | "library"
+  | "library-models"
+  | "library-metrics"
   | null;
 
-export type SemanticLayerCollectionType = Extract<
+export type LibraryCollectionType = Extract<
   CollectionType,
-  "semantic-layer" | "semantic-layer-models" | "semantic-layer-metrics"
+  "library" | "library-models" | "library-metrics"
 >;
 
 export type LastEditInfo = Pick<
@@ -169,6 +169,7 @@ export interface CollectionListQuery {
 export type getCollectionRequest = {
   id: CollectionId;
   namespace?: "snippets";
+  ignore_error?: boolean;
 };
 
 export type ListCollectionItemsSortColumn =

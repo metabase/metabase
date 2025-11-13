@@ -9,7 +9,6 @@ parent_id: olgKH56lYOjakuobH4zPz
 personal_owner_id: null
 namespace: null
 authority_level: null
-allowed_content: null
 serdes/meta:
 - id: qPZhJMPNGkfd3sq8jWiZS
   label: parent_collection

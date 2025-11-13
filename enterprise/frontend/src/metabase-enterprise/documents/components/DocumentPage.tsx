@@ -353,6 +353,10 @@ export const DocumentPage = ({
     ],
   );
 
+  const focusEditorBody = useCallback(() => {
+    editorInstance?.commands.focus("start");
+  }, [editorInstance]);
+
   const handleUpdate = async (payload: {
     collection_id?: CollectionId | null;
     archived?: boolean;
@@ -420,6 +424,7 @@ export const DocumentPage = ({
               showSaveButton={showSaveButton ?? false}
               isBookmarked={isBookmarked}
               onTitleChange={setDocumentTitle}
+              onTitleSubmit={focusEditorBody}
               onSave={() => {
                 if (isNewDocument) {
                   setCollectionPickerMode("save");
@@ -463,6 +468,7 @@ export const DocumentPage = ({
               showPersonalCollections: true,
               showRootCollection: true,
             }}
+            entityType="document"
             onChange={async (collection) => {
               if (collectionPickerMode === "save") {
                 handleSave(canonicalCollectionId(collection.id));

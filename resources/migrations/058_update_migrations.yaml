@@ -71,13 +71,13 @@ databaseChangeLog:
       author: wotbrew
       comment: Add foreign key report_card(published_table_id) to metabase_table(id)
       changes:
-       - addForeignKeyConstraint:
-           baseTableName: report_card
-           baseColumnNames: published_table_id
-           referencedTableName: metabase_table
-           referencedColumnNames: id
-           constraintName: fk_report_card_published_table
-           onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: published_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_report_card_published_table
+            onDelete: SET NULL
 
   - changeSet:
       id: v58.2025-11-12T11:57:00
