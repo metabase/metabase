@@ -7,6 +7,14 @@
     "Main";
 }
 
+.ContainerTwoRows {
+  display: grid;
+  grid-template: auto 1fr / 1fr;
+  grid-template-areas:
+    "TopBar"
+    "Main";
+}
+
 .TopBar {
   grid-area: TopBar;
 }

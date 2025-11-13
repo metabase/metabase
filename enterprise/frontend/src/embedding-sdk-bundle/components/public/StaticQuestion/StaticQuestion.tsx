@@ -117,7 +117,7 @@ const StaticQuestionInner = ({
       {children ?? (
         <FlexibleSizeComponent width={width} height={height} style={style}>
           <Stack
-            className={cx(InteractiveQuestionS.Container, className)}
+            className={cx(InteractiveQuestionS.ContainerTwoRows, className)}
             gap="sm"
             w="100%"
             h="100%"
