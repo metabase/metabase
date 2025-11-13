@@ -32,13 +32,12 @@ export function LibraryCollectionTree({
   );
 
   const modelCollection = useMemo(
-    () => getWritableLibraryCollection(rootCollection, "semantic-layer-models"),
+    () => getWritableLibraryCollection(rootCollection, "library-models"),
     [rootCollection],
   );
 
   const metricCollection = useMemo(
-    () =>
-      getWritableLibraryCollection(rootCollection, "semantic-layer-metrics"),
+    () => getWritableLibraryCollection(rootCollection, "library-metrics"),
     [rootCollection],
   );
 

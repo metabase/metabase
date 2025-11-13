@@ -25,6 +25,7 @@
    [metabase-enterprise.email.api]
    [metabase-enterprise.embedding-hub.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
+   [metabase-enterprise.library.api]
    [metabase-enterprise.llm.api]
    [metabase-enterprise.metabot-v3.api]
    [metabase-enterprise.metabot-v3.tools.api]
@@ -33,7 +34,6 @@
    [metabase-enterprise.remote-sync.api]
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
-   [metabase-enterprise.semantic-layer.api]
    [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.stale.api]
@@ -66,7 +66,7 @@
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
    :scim                       (deferred-tru "SCIM configuration")
-   :semantic-layer             (deferred-tru "Semantic Layer")
+   :library                    (deferred-tru "Library")
    :semantic-search            (deferred-tru "Semantic Search")
    :serialization              (deferred-tru "Serialization")
    :table-data-editing         (deferred-tru "Table Data Editing")
@@ -120,7 +120,7 @@
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))
-   "/semantic-layer"               (premium-handler metabase-enterprise.semantic-layer.api/routes :semantic-layer)
+   "/library"                      (premium-handler metabase-enterprise.library.api/routes :library)
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
    "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)

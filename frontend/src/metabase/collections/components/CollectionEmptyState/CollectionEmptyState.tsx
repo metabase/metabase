@@ -88,12 +88,12 @@ function getDefaultEmptyStateMessages(collection: Collection | undefined) {
     collection != null ? getLibraryCollectionType(collection) : undefined;
 
   switch (type) {
-    case "semantic-layer-models":
+    case "library-models":
       return {
         title: t`No models yet`,
         description: t`Put models in the Library to see them here.`,
       };
-    case "semantic-layer-metrics":
+    case "library-metrics":
       return {
         title: t`No metrics yet`,
         description: t`Put metrics in the Library to see them here.`,

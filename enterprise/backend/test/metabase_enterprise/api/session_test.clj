@@ -42,7 +42,7 @@
                               :sandboxes
                               :scim
                               :semantic-search
-                              :semantic-layer
+                              :library
                               :serialization
                               :session-timeout-config
                               :snippet-collections

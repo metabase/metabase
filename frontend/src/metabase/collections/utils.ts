@@ -100,9 +100,9 @@ export function isLibraryCollectionType(
   type: CollectionType | undefined,
 ): boolean {
   return (
-    type === "semantic-layer" ||
-    type === "semantic-layer-models" ||
-    type === "semantic-layer-metrics"
+    type === "library" ||
+    type === "library-models" ||
+    type === "library-metrics"
   );
 }
 
@@ -110,9 +110,9 @@ export function getLibraryCollectionType(
   collection: Pick<Collection, "type"> | Pick<CollectionItem, "type">,
 ): LibraryCollectionType | undefined {
   switch (collection.type) {
-    case "semantic-layer":
-    case "semantic-layer-models":
-    case "semantic-layer-metrics":
+    case "library":
+    case "library-models":
+    case "library-metrics":
       return collection.type;
   }
 }

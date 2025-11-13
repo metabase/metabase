@@ -73,11 +73,11 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
   }
 
   switch (getLibraryCollectionType(item)) {
-    case "semantic-layer":
+    case "library":
       return { name: "repository" };
-    case "semantic-layer-models":
+    case "library-models":
       return { name: "model" };
-    case "semantic-layer-metrics":
+    case "library-metrics":
       return { name: "metric" };
   }
 

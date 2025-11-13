@@ -1997,9 +1997,9 @@
    :uses #{premium-features
            search}}
 
-  enterprise/semantic-layer
+  enterprise/library
   {:team "UX West"
-   :api  #{metabase-enterprise.semantic-layer.api}
+   :api  #{metabase-enterprise.library.api}
    :uses #{api
            collections
            premium-features}}

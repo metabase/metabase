@@ -15,15 +15,15 @@ export function canPlaceEntityInCollection(
   }
 
   // Can't create anything in the root Library collection
-  if (collectionType === "semantic-layer") {
+  if (collectionType === "library") {
     return false;
   }
 
-  if (collectionType === "semantic-layer-models") {
+  if (collectionType === "library-models") {
     return entityType === "dataset";
   }
 
-  if (collectionType === "semantic-layer-metrics") {
+  if (collectionType === "library-metrics") {
     return entityType === "metric";
   }
 

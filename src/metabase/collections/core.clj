@@ -13,8 +13,8 @@
   check-for-remote-sync-update
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
-  semantic-layer-collection
-  create-semantic-layer-collection!
+  library-collection
+  create-library-collection!
   moving-into-remote-synced?
   moving-from-remote-synced?
   non-remote-synced-dependencies])
