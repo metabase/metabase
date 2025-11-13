@@ -28,3 +28,7 @@
   text-align: center;
   justify-content: center;
 }
+
+.noBorder {
+  border-bottom: none;
+}

@@ -109,6 +109,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
 
   /** Function to format cell values when copying to clipboard */
   clipboardFormatter?: PlainCellFormatter<TValue>;
+
+  /** Whether to show borders on cells in this column */
+  hasBorder?: boolean;
 }
 
 /**
@@ -120,6 +123,12 @@ export interface RowIdColumnOptions {
 
   /** Function to determine background color for the ID cells */
   getBackgroundColor?: (rowIndex: number) => string;
+
+  /** Whether to show border on the last row */
+  showLastRowBorder?: boolean;
+
+  /** Total number of rows in the table */
+  totalRows?: number;
 }
 
 export interface DataGridTheme {

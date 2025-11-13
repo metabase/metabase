@@ -46,6 +46,8 @@ export interface RowChartProps<TDatum> {
 
   hasXAxis?: boolean;
   hasYAxis?: boolean;
+  showXGridLines?: boolean;
+  showYGridLines?: boolean;
 
   tickFormatters?: ChartTicksFormatters;
   labelsFormatter?: (value: NumberValue) => string;
@@ -82,6 +84,8 @@ export const RowChart = <TDatum,>({
 
   hasXAxis = true,
   hasYAxis = true,
+  showXGridLines,
+  showYGridLines,
 
   xValueRange,
 
@@ -271,6 +275,8 @@ export const RowChart = <TDatum,>({
       xLabel={xLabel}
       hasXAxis={hasXAxis}
       hasYAxis={hasYAxis}
+      showXGridLines={showXGridLines}
+      showYGridLines={showYGridLines}
       onClick={onClick}
       onHover={onHover}
     />

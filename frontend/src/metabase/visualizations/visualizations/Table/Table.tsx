@@ -198,6 +198,48 @@ class Table extends Component<TableProps, TableState> {
       readDependencies: ["table.pivot", "table.pivot_column"],
       persistDefault: true,
     },
+    "table.show_column_headers": {
+      get section() {
+        return t`Columns`;
+      },
+      get title() {
+        return t`Show column headers`;
+      },
+      get description() {
+        return t`Toggle to show or hide the column header row`;
+      },
+      widget: "toggle",
+      inline: true,
+      default: true,
+    },
+    "table.show_row_borders": {
+      get section() {
+        return t`Columns`;
+      },
+      get title() {
+        return t`Show row borders`;
+      },
+      get description() {
+        return t`Toggle to show or hide borders between rows`;
+      },
+      widget: "toggle",
+      inline: true,
+      default: true,
+    },
+    "table.show_last_row_border": {
+      get section() {
+        return t`Columns`;
+      },
+      get title() {
+        return t`Show last row border`;
+      },
+      get description() {
+        return t`Toggle to show the border of the last row`;
+      },
+      widget: "toggle",
+      inline: true,
+      default: true,
+    },
     ...tableColumnSettings,
     "table.column_widths": {},
     [DataGrid.COLUMN_FORMATTING_SETTING]: {
@@ -235,20 +277,6 @@ class Table extends Component<TableProps, TableState> {
         );
       },
       readDependencies: [DataGrid.COLUMN_FORMATTING_SETTING, "table.pivot"],
-    },
-    "table.show_column_headers": {
-      get section() {
-        return t`Columns`;
-      },
-      get title() {
-        return t`Show column headers`;
-      },
-      get description() {
-        return t`Toggle to show or hide the column header row`;
-      },
-      widget: "toggle",
-      inline: true,
-      default: true,
     },
   };
 
@@ -555,6 +583,8 @@ class Table extends Component<TableProps, TableState> {
         data={data}
         isPivoted={isPivoted}
         showColumnHeaders={settings["table.show_column_headers"] !== false}
+        showRowBorders={settings["table.show_row_borders"] !== false}
+        showLastRowBorder={settings["table.show_last_row_border"] !== false}
         getColumnTitle={this.getColumnTitle}
         getColumnSortDirection={this.getColumnSortDirection}
       />

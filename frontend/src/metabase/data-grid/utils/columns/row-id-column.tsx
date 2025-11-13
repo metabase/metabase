@@ -7,6 +7,7 @@ import type {
   RowIdColumnOptions,
   RowIdVariant,
 } from "metabase/data-grid/types";
+import { shouldHideRowBorder } from "metabase/data-grid/utils/border-utils";
 
 export const getRowIdColumnSize = (variant: RowIdVariant) =>
   variant === "expandButton" ? 40 : 46;
@@ -14,6 +15,8 @@ export const getRowIdColumnSize = (variant: RowIdVariant) =>
 export const getRowIdColumn = <TRow, TValue>({
   variant,
   getBackgroundColor,
+  showLastRowBorder,
+  totalRows,
 }: RowIdColumnOptions): ColumnDef<TRow, TValue> => {
   const shouldShowIndex = ["index", "indexExpand"].includes(variant);
   const canExpand = variant !== "index";
@@ -32,11 +35,16 @@ export const getRowIdColumn = <TRow, TValue>({
             .getSortedRowModel()
             ?.flatRows?.findIndex((flatRow) => flatRow.id === row.id) + 1
         : null;
+      const hideBorder =
+        totalRows != null &&
+        showLastRowBorder != null &&
+        shouldHideRowBorder(row.index, totalRows, showLastRowBorder);
       return (
         <RowIdCell
           canExpand={canExpand}
           value={value}
           backgroundColor={getBackgroundColor?.(row.index)}
+          hasBorder={!hideBorder}
         />
       );
     },

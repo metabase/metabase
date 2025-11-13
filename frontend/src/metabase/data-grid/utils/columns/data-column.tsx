@@ -13,6 +13,7 @@ import type {
   ColumnOptions,
   ExpandedColumnsState,
 } from "metabase/data-grid/types";
+import { shouldHideRowBorder } from "metabase/data-grid/utils/border-utils";
 
 const getDefaultCellTemplate = <TRow, TValue>(
   {
@@ -24,9 +25,12 @@ const getDefaultCellTemplate = <TRow, TValue>(
     wrap,
     getCellClassName,
     getCellStyle,
+    hasBorder,
   }: ColumnOptions<TRow, TValue>,
   isTruncated: boolean,
   onExpand: (columnName: string, content: React.ReactNode) => void,
+  showLastRowBorder?: boolean,
+  totalRows?: number,
 ) => {
   return function Cell({
     getValue,
@@ -35,6 +39,10 @@ const getDefaultCellTemplate = <TRow, TValue>(
   }: CellContext<TRow, TValue> & { isSelected?: boolean }) {
     const value = getValue();
     const backgroundColor = getBackgroundColor?.(value, row?.index);
+    const hideBorder =
+      totalRows != null &&
+      showLastRowBorder != null &&
+      shouldHideRowBorder(row.index, totalRows, showLastRowBorder);
 
     return (
       <BodyCell
@@ -51,6 +59,7 @@ const getDefaultCellTemplate = <TRow, TValue>(
         wrap={wrap}
         className={getCellClassName?.(value, row.index)}
         style={getCellStyle?.(value, row.index)}
+        hasBorder={hasBorder && !hideBorder}
       />
     );
   };
@@ -81,6 +90,8 @@ export const getDataColumn = <TRow, TValue>(
   expandedColumns: ExpandedColumnsState,
   truncateWidth: number,
   onExpand: (columnName: string, content: React.ReactNode) => void,
+  showLastRowBorder?: boolean,
+  totalRows?: number,
 ): ColumnDef<TRow, TValue> => {
   const { id, accessorFn, wrap, cell, header, headerClickTargetSelector } =
     columnOptions;
@@ -103,7 +114,13 @@ export const getDataColumn = <TRow, TValue>(
       typeof cell !== "string"
         ? memo(
             cell ??
-              getDefaultCellTemplate(columnOptions, isTruncated, onExpand),
+              getDefaultCellTemplate(
+                columnOptions,
+                isTruncated,
+                onExpand,
+                showLastRowBorder,
+                totalRows,
+              ),
           )
         : cell,
     minSize: MIN_COLUMN_WIDTH,

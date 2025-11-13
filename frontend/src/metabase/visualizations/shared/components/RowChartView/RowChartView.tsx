@@ -1,6 +1,6 @@
 import type { AxisScale } from "@visx/axis";
 import { AxisBottom, AxisLeft } from "@visx/axis";
-import { GridColumns } from "@visx/grid";
+import { GridColumns, GridRows } from "@visx/grid";
 import { Group } from "@visx/group";
 import type { NumberLike, StringLike } from "@visx/scale";
 import { scaleBand } from "@visx/scale";
@@ -14,8 +14,10 @@ import type { Margin } from "metabase/visualizations/shared/types/layout";
 
 import type { SeriesInfo } from "../../types/data";
 import type { BarData, RowChartTheme, SeriesData } from "../RowChart/types";
+import { MAX_Y_TICK_WIDTH } from "../RowChart/utils/layout";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
 
+import { WrappedYAxisTick } from "./components/WrappedYAxisTick";
 import { DATA_LABEL_OFFSET } from "./constants";
 import { getDataLabel } from "./utils/data-labels";
 
@@ -43,6 +45,8 @@ export interface RowChartViewProps<TDatum> {
   yLabel?: string | null;
   hasXAxis?: boolean;
   hasYAxis?: boolean;
+  showXGridLines?: boolean;
+  showYGridLines?: boolean;
   isStacked?: boolean;
   style?: React.CSSProperties;
   hoveredData?: HoveredData | null;
@@ -60,6 +64,7 @@ const RowChartView = <TDatum,>({
   width,
   height,
   innerHeight,
+  innerWidth,
   xScale,
   yScale,
   seriesData,
@@ -75,6 +80,8 @@ const RowChartView = <TDatum,>({
   xLabel,
   hasXAxis = true,
   hasYAxis = true,
+  showXGridLines,
+  showYGridLines,
   isStacked,
   style,
   hoveredData,
@@ -93,12 +100,22 @@ const RowChartView = <TDatum,>({
   return (
     <svg width={width ?? undefined} height={height ?? undefined} style={style}>
       <Group top={margin.top} left={margin.left}>
-        <GridColumns
-          scale={xScale as AxisScale<number>}
-          height={innerHeight}
-          stroke={theme.grid.color}
-          tickValues={xTicks}
-        />
+        {showXGridLines && (
+          <GridColumns
+            scale={xScale as AxisScale<number>}
+            height={innerHeight}
+            stroke={theme.grid.color}
+            tickValues={xTicks}
+          />
+        )}
+
+        {showYGridLines && (
+          <GridRows
+            scale={yScale}
+            width={innerWidth}
+            stroke={theme.grid.color}
+          />
+        )}
 
         {seriesData.map((series, seriesIndex) => {
           return series.bars.map((bar) => {
@@ -211,14 +228,18 @@ const RowChartView = <TDatum,>({
           scale={yScale}
           stroke={theme.axis.color}
           tickStroke={theme.axis.color}
-          tickLabelProps={() => ({
-            fill: theme.axis.ticks.color,
-            fontFamily: theme.dataLabels.family,
-            fontSize: theme.axis.ticks.size,
-            fontWeight: theme.axis.ticks.weight,
-            textAnchor: "end",
-            dy: "0.33em",
-          })}
+          tickComponent={(tickProps) => (
+            <WrappedYAxisTick
+              {...tickProps}
+              maxWidth={MAX_Y_TICK_WIDTH}
+              fill={theme.axis.ticks.color}
+              fontFamily={theme.dataLabels.family}
+              fontSize={theme.axis.ticks.size}
+              fontWeight={theme.axis.ticks.weight}
+              textAnchor="end"
+              dy="0.33em"
+            />
+          )}
         />
         <AxisBottom
           label={xLabel ?? ""}

@@ -80,7 +80,10 @@ export const useDataGridInstance = <TData, TValue>({
   onColumnResize,
   onColumnReorder,
   measurementRenderWrapper,
-}: DataGridOptions<TData, TValue>): DataGridInstance<TData> => {
+  showLastRowBorder,
+}: DataGridOptions<TData, TValue> & {
+  showLastRowBorder?: boolean;
+}): DataGridInstance<TData> => {
   const gridRef = useRef<HTMLDivElement>(null);
   const hasRowIdColumn = rowId != null;
 
@@ -154,7 +157,13 @@ export const useDataGridInstance = <TData, TValue>({
   // Generate table columns configuration from options
   const columns = useMemo(() => {
     const rowIdColumnDefinition =
-      rowId != null ? getRowIdColumn<TData, TValue>(rowId) : null;
+      rowId != null
+        ? getRowIdColumn<TData, TValue>({
+            ...rowId,
+            showLastRowBorder,
+            totalRows: data.length,
+          })
+        : null;
 
     const dataColumns = columnsOptions.map((options) =>
       getDataColumn<TData, TValue>(
@@ -164,6 +173,8 @@ export const useDataGridInstance = <TData, TValue>({
         expandedColumnsMap,
         truncateLongCellWidth,
         handleExpandButtonClick,
+        showLastRowBorder,
+        data.length,
       ),
     );
 
@@ -181,6 +192,8 @@ export const useDataGridInstance = <TData, TValue>({
     expandedColumnsMap,
     truncateLongCellWidth,
     handleExpandButtonClick,
+    data.length,
+    showLastRowBorder,
   ]);
 
   // IDs of columns with fixed width that shouldn't be auto-resized

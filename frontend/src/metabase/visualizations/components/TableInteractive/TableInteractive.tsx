@@ -42,6 +42,7 @@ import type {
   PlainCellFormatter,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
+import { shouldHideRowBorder } from "metabase/data-grid/utils/border-utils";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { getScrollBarSize } from "metabase/lib/dom";
@@ -102,6 +103,8 @@ interface TableProps extends VisualizationProps {
   theme: MantineTheme;
   renderEmptyMessage?: boolean;
   showColumnHeaders?: boolean;
+  showRowBorders?: boolean;
+  showLastRowBorder?: boolean;
   getColumnTitle: (columnIndex: number) => string;
   getColumnSortDirection: (columnIndex: number) => OrderByDirection | undefined;
   renderTableHeader: HeaderCellWithColumnInfoProps["renderTableHeader"];
@@ -160,6 +163,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     token,
     uuid,
     showColumnHeaders = true,
+    showRowBorders = true,
+    showLastRowBorder = true,
     getColumnTitle,
     renderTableHeader,
     visualizationIsClickable,
@@ -566,6 +571,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         getCellStyle,
         formatter: formatter.rich,
         clipboardFormatter: formatter.plain,
+        hasBorder: showRowBorders,
       };
 
       if (isMinibar) {
@@ -576,6 +582,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
           const value = getValue();
           const backgroundColor = getBackgroundColor(value, row?.index);
           const columnExtent = getColumnExtent(cols, rows, columnIndex);
+          const hideBorder = shouldHideRowBorder(
+            row.index,
+            rows.length,
+            showLastRowBorder,
+          );
 
           return (
             <MiniBarCell
@@ -587,6 +598,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               formatter={formatter.rich}
               extent={columnExtent}
               columnSettings={columnSettings}
+              hasBorder={showRowBorders && !hideBorder}
             />
           );
         };
@@ -611,6 +623,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     isDashboard,
     tc,
     getInfoPopoversDisabledRef,
+    showRowBorders,
+    showLastRowBorder,
   ]);
 
   const handleColumnResize = useCallback(
@@ -741,6 +755,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     pageSize,
     minGridWidth,
     enableSelection: true,
+    showLastRowBorder,
   });
   const { virtualGrid } = tableProps;
 

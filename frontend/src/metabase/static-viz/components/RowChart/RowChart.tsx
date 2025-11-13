@@ -97,6 +97,8 @@ const StaticRowChart = ({
   const { hasXAxis, hasYAxis } = getAxesVisibility(settings);
   const xValueRange = getXValueRange(settings);
   const labelledSeries = getLabelledSeries(settings, series);
+  const showXGridLines = settings["graph.x_axis.show_grid_lines"];
+  const showYGridLines = settings["graph.y_axis.show_grid_lines"];
 
   const legend = calculateLegendRows({
     items: series.map((series) => ({
@@ -149,6 +151,8 @@ const StaticRowChart = ({
           xScaleType={settings["graph.y_axis.scale"]}
           xValueRange={xValueRange}
           labelledSeries={labelledSeries}
+          showXGridLines={showXGridLines}
+          showYGridLines={showYGridLines}
         />
       </Group>
       {hasDevWatermark && (

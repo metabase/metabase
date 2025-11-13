@@ -895,6 +895,21 @@ export const GRAPH_AXIS_SETTINGS = {
       placeholder: getDefaultDimensionLabel(series),
     }),
   },
+  "graph.x_axis.show_grid_lines": {
+    get section() {
+      return t`Axes`;
+    },
+    get group() {
+      return t`X-axis`;
+    },
+    get title() {
+      return t`Show grid lines`;
+    },
+    widget: "toggle",
+    inline: true,
+    default: false,
+    index: 5,
+  },
   "graph.y_axis.labels_enabled": {
     get section() {
       return t`Axes`;
@@ -952,6 +967,21 @@ export const GRAPH_AXIS_SETTINGS = {
       return getDefaultYAxisTitle(metricNames);
     },
     readDependencies: ["series", "graph.metrics"],
+  },
+  "graph.y_axis.show_grid_lines": {
+    get section() {
+      return t`Axes`;
+    },
+    get group() {
+      return t`Y-axis`;
+    },
+    get title() {
+      return t`Show grid lines`;
+    },
+    widget: "toggle",
+    inline: true,
+    default: true,
+    index: 10,
   },
   // DEPRECATED" replaced with "label" series setting
   "graph.series_labels": {},

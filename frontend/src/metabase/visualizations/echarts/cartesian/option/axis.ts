@@ -190,9 +190,13 @@ const getCommonDimensionAxisOptions = (
     axisTick: {
       show: false,
     },
-    splitLine: {
-      show: false,
-    },
+    splitLine: settings["graph.x_axis.axis_enabled"]
+      ? {
+          show: !!settings["graph.x_axis.show_grid_lines"],
+        }
+      : {
+          show: false,
+        },
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
       lineStyle: {
@@ -401,7 +405,8 @@ export const buildMetricAxis = (
       ? {
           lineStyle: {
             type: 5,
-            opacity: hasSplitLine ? 1 : 0,
+            opacity:
+              hasSplitLine && settings["graph.y_axis.show_grid_lines"] ? 1 : 0,
             ...renderingContext.theme.cartesian.splitLine.lineStyle,
           },
         }

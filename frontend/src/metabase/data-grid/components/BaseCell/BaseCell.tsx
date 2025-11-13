@@ -14,6 +14,7 @@ export type BaseCellProps = {
   isSelected?: boolean;
   backgroundColor?: string;
   hasHover?: boolean;
+  hasBorder?: boolean;
 } & React.HTMLProps<HTMLDivElement>;
 
 export const BaseCell = memo(function BaseCell({
@@ -22,6 +23,7 @@ export const BaseCell = memo(function BaseCell({
   backgroundColor,
   className,
   hasHover = true,
+  hasBorder = true,
   children,
   ...rest
 }: BaseCellProps) {
@@ -61,6 +63,7 @@ export const BaseCell = memo(function BaseCell({
           [styles.leftAligned]: align === "left",
           [styles.rightAligned]: align === "right",
           [styles.centerAligned]: align === "middle",
+          [styles.noBorder]: !hasBorder,
         },
         className,
       )}

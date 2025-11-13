@@ -241,6 +241,9 @@ export type VisualizationSettings = {
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];
+  "table.show_column_headers"?: boolean;
+  "table.show_row_borders"?: boolean;
+  "table.show_last_row_border"?: boolean;
   // Keys here can be modern (returned by `getColumnKey`) or legacy (`getLegacyColumnKey`).
   // Use `getColumnSettings` which checks for both keys.
   column_settings?: Record<string, ColumnSettings>;
@@ -254,11 +257,13 @@ export type VisualizationSettings = {
     | "compact"
     | "rotate-45"
     | "rotate-90";
+  "graph.x_axis.show_grid_lines"?: boolean;
 
   // Y-axis
   "graph.y_axis.title_text"?: string;
   "graph.y_axis.scale"?: YAxisScale;
   "graph.y_axis.axis_enabled"?: boolean;
+  "graph.y_axis.show_grid_lines"?: boolean;
 
   "graph.y_axis.min"?: number;
   "graph.y_axis.max"?: number;

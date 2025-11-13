@@ -34,6 +34,7 @@ export interface MiniBarCellProps<TValue> {
   rowIndex: number;
   columnId: string;
   columnSettings: ColumnSettings;
+  hasBorder?: boolean;
 }
 
 export const MiniBarCell = <TValue,>({
@@ -45,6 +46,7 @@ export const MiniBarCell = <TValue,>({
   rowIndex,
   columnId,
   columnSettings,
+  hasBorder = true,
 }: MiniBarCellProps<TValue>) => {
   if (typeof value !== "number") {
     return null;
@@ -86,6 +88,7 @@ export const MiniBarCell = <TValue,>({
       className={S.root}
       backgroundColor={backgroundColor}
       align={align}
+      hasBorder={hasBorder}
     >
       <div className={S.minibarWrapper}>
         {/* TEXT VALUE */}

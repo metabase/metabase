@@ -13,12 +13,14 @@ export interface RowIdCellProps {
   value?: React.ReactNode;
   backgroundColor?: string;
   canExpand?: boolean;
+  hasBorder?: boolean;
 }
 
 export const RowIdCell = memo(function RowIdCell({
   value,
   backgroundColor,
   canExpand = true,
+  hasBorder = true,
 }: RowIdCellProps) {
   const hasValue = value != null;
 
@@ -30,6 +32,7 @@ export const RowIdCell = memo(function RowIdCell({
           className={S.root}
           backgroundColor={backgroundColor}
           align="right"
+          hasBorder={hasBorder}
         >
           {hasValue ? (
             <span

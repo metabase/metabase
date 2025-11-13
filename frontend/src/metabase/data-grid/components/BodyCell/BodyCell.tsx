@@ -14,6 +14,7 @@ import S from "./BodyCell.module.css";
 export interface BodyCellProps<TValue> extends BodyCellBaseProps<TValue> {
   variant?: "text" | "pill";
   contentTestId?: string;
+  hasBorder?: boolean;
 }
 
 export const BodyCell = memo(function BodyCell<TValue>({
@@ -30,6 +31,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
   className,
   style,
   contentTestId = "cell-data",
+  hasBorder = true,
   onExpand,
 }: BodyCellProps<TValue>) {
   const theme = useDataGridTheme();
@@ -71,6 +73,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
         [S.pill]: variant === "pill",
       })}
       backgroundColor={backgroundColor}
+      hasBorder={hasBorder}
     >
       {formattedValue != null ? (
         <div

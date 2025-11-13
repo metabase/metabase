@@ -324,6 +324,8 @@ const RowChartVisualization = ({
           labelledSeries={labelledSeries}
           hasXAxis={hasXAxis}
           hasYAxis={hasYAxis}
+          showXGridLines={settings["graph.x_axis.show_grid_lines"]}
+          showYGridLines={settings["graph.y_axis.show_grid_lines"]}
         />
       </RowChartLegendLayout>
     </RowVisualizationRoot>

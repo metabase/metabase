@@ -217,6 +217,21 @@ export const ROW_CHART_SETTINGS = {
       placeholder: getDefaultDimensionLabel(series),
     }),
   },
+  "graph.x_axis.show_grid_lines": {
+    get section() {
+      return t`Axes`;
+    },
+    get group() {
+      return t`X-axis`;
+    },
+    get title() {
+      return t`Show grid lines`;
+    },
+    widget: "toggle",
+    inline: true,
+    default: true,
+    index: 5,
+  },
   "graph.y_axis.labels_enabled": {
     get section() {
       return t`Axes`;
@@ -261,6 +276,21 @@ export const ROW_CHART_SETTINGS = {
       return metricNames.length === 1 ? metricNames[0] : null;
     },
     readDependencies: ["series", "graph.metrics"],
+  },
+  "graph.y_axis.show_grid_lines": {
+    get section() {
+      return t`Axes`;
+    },
+    get group() {
+      return t`Y-axis`;
+    },
+    get title() {
+      return t`Show grid lines`;
+    },
+    widget: "toggle",
+    inline: true,
+    default: false,
+    index: 9,
   },
   "graph.show_values": {
     get section() {

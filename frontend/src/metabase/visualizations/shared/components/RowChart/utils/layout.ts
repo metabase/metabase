@@ -14,6 +14,7 @@ import type { SeriesData } from "../types";
 const CHART_PADDING = 10;
 const TICKS_OFFSET = 10;
 const GOAL_LINE_PADDING = 14;
+export const MAX_Y_TICK_WIDTH = 120; // Maximum width for Y-axis labels before wrapping
 
 export const getMaxWidth = (
   formattedYTicks: string[],
@@ -28,6 +29,7 @@ export const getMaxWidth = (
         weight: String(ticksFont.weight ?? 400),
       }),
     ),
+    MAX_Y_TICK_WIDTH,
   );
 };
 
