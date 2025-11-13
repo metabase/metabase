@@ -1,4 +1,3 @@
-export * from "./ActiveInput";
 export * from "./CoercionStrategyPicker";
 export * from "./CurrencyPicker";
 export * from "./DiscardFieldValuesButton";
