@@ -369,40 +369,13 @@ jobs:
           name: metabase-sdk
           path: sdk
 
-      - name: Compute master tag
-        id: compute-tag
-        run: |
-          if [ -n "${{ needs.determine-sdk-version.outputs.pre_release_label }}" ]; then
-            echo "masterTag=${{ needs.determine-sdk-version.outputs.pre_release_label }}" >> $GITHUB_OUTPUT
-          else
-            echo "masterTag=nightly" >> $GITHUB_OUTPUT
-          fi
-
       - name: Publish to NPM
         working-directory: sdk
         run: |
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
+          npm publish --tag 57-stable
 
-          TAG=$(jq -r --null-input \
-            --arg branch "${{ inputs.branch }}" \
-            --arg masterTag "${{ steps.compute-tag.outputs.masterTag }}" '
-            {
-              "master": $masterTag,
-              "release-x.51.x": "51-stable",
-              "release-x.52.x": "52-stable",
-              "release-x.53.x": "53-stable",
-              "release-x.54.x": "54-stable",
-              "release-x.55.x": "55-stable",
-              "release-x.56.x": "56-stable",
-              "release-x.57.x": "57-beta"
-            }[$branch]'
-          )
-
-          echo "Resolved npm tag: $TAG"
-          npm publish --tag "$TAG"
-
-      - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
-        if: ${{ inputs.branch == 'release-x.56.x' }}
+      - name: Add `latest` tag to the latest release branch e.g. (`release-x.55.x`) deployment
         working-directory: sdk
         run: |
           npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
