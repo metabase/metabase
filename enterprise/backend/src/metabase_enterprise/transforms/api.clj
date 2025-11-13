@@ -280,20 +280,18 @@
 
   Returns a vector of column names (as strings), or nil if extraction fails.
 
-  The query is first compiled to native SQL using [[qp.compile/compile-with-inline-parameters]],
-  which handles template tags like [[where id > {{checkpoint}}]]. Then uses
-  PreparedStatement.getMetaData() to inspect the query structure. This works for most
-  modern JDBC drivers but may not be supported by all drivers or for all query types."
+  The query is first compiled to native SQL, hen uses PreparedStatement.getMetaData()
+  to inspect the query structure. This works for most modern JDBC drivers but may not
+  be supported by all drivers or for all query types."
   [driver database-id query]
   (try
-    (let [compiled (qp.compile/compile-with-inline-parameters query)
-          native-sql (:query compiled)]
+    (let [{:keys [query]} (qp.compile/compile query)]
       (sql-jdbc.execute/do-with-connection-with-options
        driver
        database-id
        {}
        (fn [conn]
-         (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement driver conn native-sql [])]
+         (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement driver conn query [])]
            (when-let [rsmeta (.getMetaData stmt)]
              (let [columns (sql-jdbc.execute/column-metadata driver rsmeta)]
                (seq (map :name columns))))))))
