@@ -5,7 +5,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]

@@ -216,7 +216,10 @@
    request]
   (let [request-source (request/ip-address request)]
     (throttle-check reset-password-throttler request-source))
-  (let [auth-result (auth-identity/login! :provider/emailed-secret-password-reset request-body)]
+  (let [auth-result (auth-identity/with-fallback auth-identity/login!
+                      [:provider/support-access-grant
+                       :provider/emailed-secret-password-reset]
+                      request-body)]
     (if (:success? auth-result)
       (request/set-session-cookies request
                                    {:success true :session_id (get-in auth-result [:session :key])}
@@ -231,7 +234,10 @@
   [_route-params
    {:keys [token]} :- [:map
                        [:token ms/NonBlankString]]]
-  (let [auth-result (auth-identity/authenticate :provider/emailed-secret-password-reset {:token token})]
+  (let [auth-result (auth-identity/with-fallback auth-identity/authenticate
+                      [:provider/support-access-grant
+                       :provider/emailed-secret-password-reset]
+                      {:token token})]
     {:valid (:success? auth-result)}))
 
 (api.macros/defendpoint :get "/properties"
