@@ -1599,6 +1599,7 @@
    :uses #{api
            events
            premium-features
+           store-api
            util
            enterprise/harbormaster}}
 
