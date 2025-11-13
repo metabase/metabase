@@ -67,8 +67,7 @@
      :view_count  0
      :metrics     []
      :segments    []
-     :is_writable (or (= driver :h2) nil)
-     :transform   nil})))
+     :is_writable (or (= driver :h2) nil)})))
 
 (defn- field-defaults []
   (merge
@@ -411,7 +410,7 @@
                             {:display_name     "Userz"
                              :description      "What a nice table!"
                              ;; bulk-metadata-editing
-                             :data_source      "metabase-transform"
+                             :data_source      "transform"
                              :data_layer       "copper"
                              :owner_email      "bob@org.com"
                              :owner_user_id    (mt/user->id :crowberto)})
@@ -427,7 +426,7 @@
                :display_name    "Userz"
                :is_writable     nil
                ;; bulk-metadata-editing
-               :data_source      "metabase-transform"
+               :data_source      "transform"
                :data_layer       "copper"
                ;; exclusive later (not now)
                :owner_email      "bob@org.com"

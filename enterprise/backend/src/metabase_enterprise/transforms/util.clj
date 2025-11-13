@@ -166,11 +166,11 @@
     (when-not (= {:active         true
                   :data_authority :computed
                   ;; todo orphaned source if no longer target (detect target change?)
-                  :data_source    "metabase-transform"}
+                  :data_source    :metabase-transform}
                  (select-keys table [:active :data_authority :data_source]))
-      (t2/update! :model/Table (:id table) {:active true
+      (t2/update! :model/Table (:id table) {:active         true
                                             :data_authority :computed
-                                            :data_source    "metabase-transform"}))))
+                                            :data_source    :metabase-transform}))))
 
 (defn deactivate-table!
   "Deactivate table for `target` in `database` in the app db."
