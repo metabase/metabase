@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.api.document]
    [metabase-enterprise.metabot-v3.api.metabot]
+   [metabase-enterprise.metabot-v3.api.slackbot]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
@@ -115,7 +116,8 @@
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."
   (handlers/routes
-   (api.macros/ns-handler *ns* +auth)
+   ;; TODO: seems to already be done in the route definitions? (api.macros/ns-handler *ns* +auth)
    (handlers/route-map-handler
     {"/metabot" metabase-enterprise.metabot-v3.api.metabot/routes
-     "/document" metabase-enterprise.metabot-v3.api.document/routes})))
+     "/document" metabase-enterprise.metabot-v3.api.document/routes
+     "/slack" metabase-enterprise.metabot-v3.api.slackbot/routes})))
