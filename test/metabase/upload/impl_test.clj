@@ -2570,12 +2570,10 @@
                     :file (csv-file-with [header original-row]))]
             (let [csv-rows [header appended-row]
                   file     (csv-file-with csv-rows (mt/random-name))]
-             ;; TODO: we should be able to make this work with smarter truncation
-              (is (= {:message "The CSV file contains duplicate column names."
-                      :data    {:status-code 422}}
-                     (catch-ex-info (update-csv! :metabase.upload/append {:file file, :table-id (:id table)}))))
+              (update-csv! :metabase.upload/append {:file file, :table-id (:id table)})
               (testing "Check the data was not uploaded into the table"
-                (is (= (rows-with-auto-pk (csv/read-csv original-row))
+                (is (= (rows-with-auto-pk (concat (csv/read-csv original-row)
+                                                  (csv/read-csv appended-row)))
                        (rows-for-table table))))
               (io/delete-file file))))))))
 

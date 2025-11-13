@@ -678,12 +678,12 @@
     - the schema of the CSV file does not match the schema of the table
 
     Note that we do not require the column ordering to be consistent between the header and the table schema."
-  [fields-by-normed-name normalized-header]
+  [fields-by-normed-name column-names]
   ;; Assumes table-cols are unique when normalized
   (let [normalized-field-names (keys fields-by-normed-name)
-        [extra missing _both]  (data/diff (set normalized-header) (set normalized-field-names))]
+        [extra missing _both]  (data/diff (set column-names) (set normalized-field-names))]
     ;; check for duplicates
-    (when (some #(< 1 %) (vals (frequencies normalized-header)))
+    (when (some #(< 1 %) (vals (frequencies column-names)))
       (throw (ex-info (tru "The CSV file contains duplicate column names.")
                       {:status-code 422})))
     (when-let [error-message (extra-and-missing-error-markdown extra missing)]
@@ -788,7 +788,18 @@
                                    auto-pk?
                                    without-auto-pk-columns)
               name->field        (m/index-by :name (t2/select :model/Field :table_id (:id table) :active true))
-              column-names       (for [h header] (normalize-column-name driver h))
+              ;; Gotcha: If there are long names that have the same lossily-escaped-and-truncated representation AND
+              ;;         these columns appear in a different order to previous uploads, we will deduplicate the column
+              ;;         names based on their order in the latest files, and with match up incorrectly with the existing
+              ;;         fields. Previously we simply skipped deduplication on upload to avoid the ambiguity, see
+              ;;         https://github.com/metabase/metabase/issues/44926#issuecomment-3524373073.
+              ;;
+              ;;         In retrospect, I think it's better to risk this edge-case-within-an-edge-case, since we can
+              ;;         still explain the issue easily to customers, who can then manually reorder their CSV columns.
+              ;;
+              ;;         If we wanted to further polish this, we could look for matches on the display name as well,
+              ;;         to do smart re-ordering.
+              column-names       (map name (derive-column-names driver header))
               display-names      (for [h header] (normalize-display-name h))
               create-auto-pk?    (and
                                   auto-pk?
