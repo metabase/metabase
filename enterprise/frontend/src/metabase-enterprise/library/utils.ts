@@ -1,12 +1,8 @@
 import type { LibraryCollectionType } from "metabase/plugins";
-import type {
-  Collection,
-  CollectionItemModel,
-  CollectionType,
-} from "metabase-types/api";
+import type { CollectionItemModel, CollectionType } from "metabase-types/api";
 
 export function getLibraryCollectionType(
-  type: CollectionType | undefined | null,
+  type: CollectionType | null | undefined,
 ): LibraryCollectionType | undefined {
   switch (type) {
     case "library":
@@ -20,7 +16,7 @@ export function getLibraryCollectionType(
 
 export function canPlaceEntityInCollection(
   entityType: CollectionItemModel,
-  collectionType: CollectionType | undefined | null,
+  collectionType: CollectionType | null | undefined,
 ): boolean {
   if (getLibraryCollectionType(collectionType) == null) {
     return true;
@@ -49,7 +45,7 @@ export function canPlaceEntityInCollection(
 
 export function canPlaceEntityInCollectionOrDescendants(
   entityType: CollectionItemModel,
-  collectionType: Collection["type"],
+  collectionType: CollectionType | null | undefined,
 ): boolean {
   if (canPlaceEntityInCollection(entityType, collectionType)) {
     return true;

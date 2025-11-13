@@ -8,6 +8,7 @@ import {
   type CollectionId,
   type CollectionItem,
   type CollectionItemModel,
+  type CollectionType,
   isBaseEntityID,
 } from "metabase-types/api";
 
@@ -219,14 +220,14 @@ export function canCopyItem(item: CollectionItem) {
 
 export function canPlaceEntityInCollection(
   entityType: EntityType,
-  collectionType: Collection["type"],
+  collectionType: CollectionType | null | undefined,
 ): boolean {
   return PLUGIN_LIBRARY.canPlaceEntityInCollection(entityType, collectionType);
 }
 
 export function canPlaceEntityInCollectionOrDescendants(
   entityType: EntityType,
-  collectionType: Collection["type"],
+  collectionType: CollectionType | null | undefined,
 ): boolean {
   return PLUGIN_LIBRARY.canPlaceEntityInCollectionOrDescendants(
     entityType,

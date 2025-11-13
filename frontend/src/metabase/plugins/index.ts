@@ -1143,15 +1143,15 @@ export type LibraryPlugin = {
   isEnabled: boolean;
   LibrarySection: ComponentType<LibrarySectionProps>;
   getLibraryCollectionType: (
-    collectionType: CollectionType | undefined | null,
+    collectionType: CollectionType | null | undefined,
   ) => LibraryCollectionType | undefined;
   canPlaceEntityInCollection: (
     entityType: CollectionItemModel,
-    collectionType: CollectionType | undefined | null,
+    collectionType: CollectionType | null | undefined,
   ) => boolean;
   canPlaceEntityInCollectionOrDescendants: (
     entityType: CollectionItemModel,
-    collectionType: CollectionType | undefined | null,
+    collectionType: CollectionType | null | undefined,
   ) => boolean;
 };
 
