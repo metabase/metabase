@@ -1,8 +1,9 @@
 (ns metabase-enterprise.library.api-test
-  (:require [clojure.test :refer :all]
-            [metabase.collections.models.collection :as collection]
-            [metabase.test :as mt]
-            [toucan2.core :as t2]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest get-library
   (mt/with-premium-features #{:library}
