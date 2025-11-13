@@ -18,12 +18,14 @@ import { useExpandedState, useTableLoader } from "../hooks";
 import type {
   ChangeOptions,
   DatabaseNode,
+  ExpandedItem,
   FlatItem,
   SchemaItem,
   SchemaNode,
   TreeNode,
   TreePath,
 } from "../types";
+import { isSchemaNode, isTableNode } from "../types";
 import { flatten } from "../utils";
 
 import { EmptyState } from "./EmptyState";
@@ -290,8 +292,8 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
         }
       }
     }
-    if (item.type === "schema") {
-      if (item.children.length > 0) {
+    if (item.type === "schema" && item.isLoading === undefined) {
+      if (item.children.length > 0 && isSchemaNode(item)) {
         if (isSelected === "yes") {
           setSelectedTables((prev) => {
             const tableIds = getSchemaChildrenTableIds(item);
@@ -331,7 +333,14 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
 
   function onItemRangeSelect(rangeItems: FlatItem[], targetItem: FlatItem) {
     const tableIds = rangeItems
-      .map((rangeItem) => rangeItem.value?.tableId)
+      .filter(
+        (rangeItem): rangeItem is ExpandedItem =>
+          rangeItem.isLoading === undefined,
+      )
+      .filter(isTableNode)
+      .map((rangeItem) =>
+        rangeItem.value?.tableId ? rangeItem.value.tableId : null,
+      )
       .filter((tableId): tableId is TableId => tableId != null);
 
     if (tableIds.length === 0) {
@@ -383,6 +392,9 @@ function markAllSchemas(
     (child): child is SchemaNode => child.type === "schema",
   );
   schemas.forEach((schema) => {
+    if (!isSchemaNode(schema)) {
+      return;
+    }
     const schemaId = getSchemaId(schema);
     if (!schemaId) {
       return;
