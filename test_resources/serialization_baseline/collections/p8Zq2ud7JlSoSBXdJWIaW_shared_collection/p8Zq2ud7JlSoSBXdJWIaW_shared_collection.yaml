@@ -9,6 +9,7 @@ parent_id: null
 personal_owner_id: null
 namespace: null
 authority_level: null
+allowed_content: null
 serdes/meta:
 - id: p8Zq2ud7JlSoSBXdJWIaW
   label: shared_collection

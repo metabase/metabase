@@ -375,6 +375,7 @@ export interface GetCardRequest {
   context?: "collection";
   ignore_view?: boolean;
   ignore_error?: boolean;
+  include_editable_semantic_layer?: boolean;
 }
 
 export interface CreateCardRequest {
@@ -386,13 +387,13 @@ export interface CreateCardRequest {
   parameters?: Parameter[];
   parameter_mappings?: unknown;
   description?: string | null;
-  collection_id?: CollectionId;
-  dashboard_id?: DashboardId;
+  collection_id?: CollectionId | null;
+  dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
   dashboard_tab_id?: DashboardTabId;
-  collection_position?: number;
+  collection_position?: number | null;
   result_metadata?: Field[] | null;
-  cache_ttl?: number;
+  cache_ttl?: number | null;
 }
 
 export interface CreateCardFromCsvRequest {

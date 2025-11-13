@@ -13,7 +13,8 @@ export function SnippetCollectionPickerModal({
 }: SnippetCollectionPickerModalProps) {
   const handleChange = useCallback(
     (item: CollectionPickerValueItem) => {
-      const collectionId: CollectionId | null = item.id === "root" ? null : item.id;
+      const collectionId: CollectionId | null =
+        item.id === "root" ? null : item.id;
       onSelect(collectionId);
     },
     [onSelect],

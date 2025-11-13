@@ -1,39 +1,76 @@
-import { memo, useState } from "react";
+import { memo, useContext, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { useUpdateTableMutation } from "metabase/api";
+import {
+  useUpdateTableFieldsOrderMutation,
+  useUpdateTableMutation,
+} from "metabase/api";
+import EmptyState from "metabase/common/components/EmptyState";
 import { dependencyGraph } from "metabase/lib/urls/dependencies";
 import {
-  FieldOrderPicker2,
+  FieldOrderPicker,
   NameDescriptionInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Button, Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
-import type { Table, TableFieldOrder } from "metabase-types/api";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import {
+  Box,
+  Button,
+  Group,
+  Icon,
+  Loader,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
+import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
+import { DataModelContext } from "../../DataModelContext";
+import { getUrl } from "../../utils";
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 import { SubstituteModelModal } from "../TablePicker/components/SubstituteModelModal";
 
+import { TableFieldList } from "./TableFieldList";
 import { TableMetadataInfo } from "./TableMetadataInfo";
 import { TableMetadataSettings } from "./TableMetadataSection";
 import { TableModels } from "./TableModels";
 import S from "./TableSection.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
+import { TableSortableFieldList } from "./TableSortableFieldList";
 
 interface Props {
   table: Table;
+  activeFieldId?: FieldId;
   onSyncOptionsClick: () => void;
 }
 
-const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
+const TableSectionBase = ({
+  table,
+  activeFieldId,
+  onSyncOptionsClick,
+}: Props) => {
   const [updateTable] = useUpdateTableMutation();
-  const [updateTableSorting] = useUpdateTableMutation();
+  const [updateTableSorting, { isLoading: isUpdatingSorting }] =
+    useUpdateTableMutation();
+  const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
+  const { baseUrl } = useContext(DataModelContext);
+  const [isSorting, setIsSorting] = useState(false);
+  const hasFields = Boolean(table.fields && table.fields.length > 0);
   const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
   const [isSubstituteModelModalOpen, setIsSubstituteModelModalOpen] =
     useState(false);
+
+  const getFieldHref = (fieldId: FieldId) => {
+    return getUrl(baseUrl, {
+      databaseId: table.db_id,
+      schemaName: table.schema,
+      tableId: table.id,
+      fieldId,
+    });
+  };
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateTable({
@@ -89,6 +126,34 @@ const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
     }
   };
 
+  const handleCustomFieldOrderChange = async (fieldOrder: FieldId[]) => {
+    const { error } = await updateTableFieldsOrder({
+      id: table.id,
+      field_order: fieldOrder,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update field order`);
+    } else {
+      sendSuccessToast(t`Field order updated`, async () => {
+        const { error: fieldsOrderError } = await updateTableFieldsOrder({
+          id: table.id,
+          field_order: table.fields?.map(getRawTableFieldId) ?? [],
+        });
+
+        if (table.field_order !== "custom") {
+          const { error: tableError } = await updateTable({
+            id: table.id,
+            field_order: table.field_order,
+          });
+          sendUndoToast(fieldsOrderError ?? tableError);
+        } else {
+          sendUndoToast(fieldsOrderError);
+        }
+      });
+    }
+  };
+
   return (
     <Stack data-testid="table-section" gap="md" pb="xl">
       <Box
@@ -123,17 +188,15 @@ const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
           >
             {t`Sync settings`}
           </Button>
-          <Tooltip label={t`Create model and publish to a collection`}>
-            <Button
-              flex="1"
-              onClick={() => setIsCreateModelsModalOpen(true)}
-              p="sm"
-              leftSection={<Icon name="add_folder" />}
-              style={{
-                width: "100%",
-              }}
-            >{t`Publish`}</Button>
-          </Tooltip>
+          <Button
+            flex="1"
+            onClick={() => setIsCreateModelsModalOpen(true)}
+            p="sm"
+            leftSection={<Icon name="add_folder" />}
+            style={{
+              width: "100%",
+            }}
+          >{t`Publish`}</Button>
           <Tooltip label={t`Dependency graph`}>
             <Box /* wrapping with a Box because Tooltip does not work for <Button component={Link} /> */
             >
@@ -157,7 +220,9 @@ const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
         </Group>
       </Box>
 
-      <TransformLink table={table} />
+      <Box px="lg">
+        <TableMetadataSettings table={table} />
+      </Box>
 
       <Box px="lg">
         <TableSectionGroup title={t`Metadata`}>
@@ -166,27 +231,79 @@ const TableSectionBase = ({ table, onSyncOptionsClick }: Props) => {
       </Box>
 
       <Box px="lg">
-        <TableMetadataSettings table={table} />
+        <Stack gap={12}>
+          <Group
+            align="center"
+            gap="md"
+            justify="space-between"
+            miw={0}
+            wrap="nowrap"
+            h={36}
+          >
+            <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
+
+            <Group
+              flex="1"
+              gap="md"
+              justify="flex-end"
+              miw={0}
+              wrap="nowrap"
+              h="100%"
+            >
+              {isUpdatingSorting && (
+                <Loader data-testid="loading-indicator" size="xs" />
+              )}
+
+              {!isSorting && hasFields && (
+                <Button
+                  leftSection={<Icon name="sort_arrows" />}
+                  onClick={() => setIsSorting(true)}
+                >{t`Sorting`}</Button>
+              )}
+
+              {isSorting && (
+                <FieldOrderPicker
+                  value={table.field_order}
+                  onChange={handleFieldOrderTypeChange}
+                />
+              )}
+
+              {isSorting && (
+                <Button
+                  leftSection={<Icon name="check" />}
+                  onClick={() => setIsSorting(false)}
+                  variant="filled"
+                  h="100%"
+                >{t`Done`}</Button>
+              )}
+            </Group>
+          </Group>
+
+          {!hasFields && <EmptyState message={t`This table has no fields`} />}
+
+          {hasFields && (
+            <>
+              <Box display={isSorting ? "block" : "none"}>
+                <TableSortableFieldList
+                  activeFieldId={activeFieldId}
+                  table={table}
+                  onChange={handleCustomFieldOrderChange}
+                />
+              </Box>
+
+              <Box display={!isSorting ? "block" : "none"}>
+                <TableFieldList
+                  table={table}
+                  activeFieldId={activeFieldId}
+                  getFieldHref={getFieldHref}
+                />
+              </Box>
+            </>
+          )}
+        </Stack>
       </Box>
 
       <TableModels table={table} />
-
-      <Box
-        bd="1px solid var(--mb-color-border)"
-        bg="bg-white"
-        bdrs="md"
-        p="md"
-        mx="lg"
-      >
-        <Text c="text-secondary" fw="bold" lh="16px" mb="md" size="sm">
-          {t`Field sort order`}
-        </Text>
-
-        <FieldOrderPicker2
-          value={table.field_order}
-          onChange={handleFieldOrderTypeChange}
-        />
-      </Box>
 
       <PublishModelsModal
         tables={new Set([table.id])}
@@ -219,45 +336,6 @@ function TableLink({ table }: { table: Table }) {
         />
       </Box>
     </Tooltip>
-  );
-}
-
-function TransformLink({ table }: { table: Table }) {
-  const shouldShowTransform =
-    table.transform_id != null && table.data_source === "metabase-transform";
-
-  if (!shouldShowTransform) {
-    return null;
-  }
-
-  return (
-    <Box
-      component={Link}
-      to={`/admin/transforms?id=${table.transform_id}`}
-      py="sm"
-      px="xl"
-      style={{
-        borderRadilg: 4,
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 2,
-        cursor: "pointer",
-        textDecoration: "none",
-        backgroundColor: "rgba(5, 114, 210, 0.07)",
-      }}
-    >
-      <Text
-        size="sm"
-        fw="bold"
-        c="text-dark"
-        style={{
-          fontSize: 12,
-          lineHeight: "16px",
-        }}
-      >
-        {t`Generated by a transform`}
-      </Text>
-    </Box>
   );
 }
 

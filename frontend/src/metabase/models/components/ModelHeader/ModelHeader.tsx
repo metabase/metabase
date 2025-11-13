@@ -30,7 +30,6 @@ type ModelHeaderProps = {
 export function ModelHeader({ card, actions }: ModelHeaderProps) {
   return (
     <PaneHeader
-      icon="model"
       title={
         card.can_write ? (
           <ModelNameInput card={card} />
@@ -38,6 +37,7 @@ export function ModelHeader({ card, actions }: ModelHeaderProps) {
           <PanelHeaderTitle>{card.name}</PanelHeaderTitle>
         )
       }
+      icon="model"
       badge={
         <PLUGIN_MODERATION.EntityModerationIcon
           moderationReviews={card.moderation_reviews}
@@ -88,6 +88,10 @@ type ModelMoreMenuProps = {
 function ModelMoreMenu({ card }: ModelMoreMenuProps) {
   const dispatch = useDispatch();
 
+  const handleCopy = (newCard: Card) => {
+    dispatch(push(Urls.dataStudioModel(newCard.id)));
+  };
+
   const handleArchive = () => {
     dispatch(push(Urls.dataStudioModeling()));
   };
@@ -99,6 +103,7 @@ function ModelMoreMenu({ card }: ModelMoreMenuProps) {
   return (
     <CardMoreMenu
       card={card}
+      onCopy={handleCopy}
       onArchive={handleArchive}
       onUnarchive={handleUnarchive}
     />
@@ -127,7 +132,7 @@ function getTabs(card: Card, metadata: Metadata): PaneHeaderTab[] {
   const queryInfo = Lib.queryDisplayInfo(query);
   if (queryInfo.isEditable) {
     tabs.push({
-      label: t`Query`,
+      label: t`Definition`,
       to: Urls.dataStudioModelQuery(card.id),
     });
   }

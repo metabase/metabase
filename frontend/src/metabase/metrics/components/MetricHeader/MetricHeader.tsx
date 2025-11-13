@@ -30,7 +30,6 @@ type MetricHeaderProps = {
 export function MetricHeader({ card, actions }: MetricHeaderProps) {
   return (
     <PaneHeader
-      icon="metric"
       title={
         card.can_write ? (
           <MetricNameInput card={card} />
@@ -38,6 +37,7 @@ export function MetricHeader({ card, actions }: MetricHeaderProps) {
           <PanelHeaderTitle>{card.name}</PanelHeaderTitle>
         )
       }
+      icon="metric"
       badge={
         <PLUGIN_MODERATION.EntityModerationIcon
           moderationReviews={card.moderation_reviews}
@@ -88,6 +88,10 @@ type MetricMoreMenuProps = {
 function MetricMoreMenu({ card }: MetricMoreMenuProps) {
   const dispatch = useDispatch();
 
+  const handleCopy = (newCard: Card) => {
+    dispatch(push(Urls.dataStudioMetric(newCard.id)));
+  };
+
   const handleArchive = () => {
     dispatch(push(Urls.dataStudioModeling()));
   };
@@ -99,6 +103,7 @@ function MetricMoreMenu({ card }: MetricMoreMenuProps) {
   return (
     <CardMoreMenu
       card={card}
+      onCopy={handleCopy}
       onArchive={handleArchive}
       onUnarchive={handleUnarchive}
     />
@@ -127,7 +132,7 @@ function getTabs(card: Card, metadata: Metadata): PaneHeaderTab[] {
   const queryInfo = Lib.queryDisplayInfo(query);
   if (queryInfo.isEditable) {
     tabs.push({
-      label: t`Query`,
+      label: t`Definition`,
       to: Urls.dataStudioMetricQuery(card.id),
     });
   }

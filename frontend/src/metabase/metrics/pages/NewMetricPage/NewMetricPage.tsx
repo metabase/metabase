@@ -86,6 +86,7 @@ export function NewMetricPage({ route }: NewMetricPageProps) {
               onChange={setName}
             />
           }
+          icon="metric"
           actions={
             <PaneHeaderActions
               errorMessage={validationResult.errorMessage}
@@ -106,7 +107,7 @@ export function NewMetricPage({ route }: NewMetricPageProps) {
       {isModalOpened && (
         <CreateMetricModal
           query={query}
-          defaultValues={{ name, resultMetadata }}
+          defaultValues={{ name, result_metadata: resultMetadata }}
           onCreate={handleCreate}
           onClose={closeModal}
         />

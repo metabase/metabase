@@ -1162,6 +1162,75 @@
                      :collection_position 1}
                     (t2/select-one :model/Card :name card-name)))))))))
 
+(deftest create-card-with-entity-id-as-collection-id-test
+  (testing "POST /api/card with entity ID as collection_id"
+    (testing "Should be able to create a Card using collection entity ID"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [card-name (mt/random-name)]
+          (mt/with-temp [:model/Collection collection {}]
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+            (mt/with-model-cleanup [:model/Card]
+              (let [collection-entity-id (:entity_id collection)
+                    created-card (mt/user-http-request :rasta :post 200 "card"
+                                                       (assoc (card-with-name-and-query card-name)
+                                                              :collection_id collection-entity-id))]
+                (testing "Card should be created successfully"
+                  (is (=? {:collection_id (u/the-id collection)
+                           :name          card-name}
+                          created-card)))
+                (testing "Card should be saved with numeric collection_id in database"
+                  (is (=? {:collection_id (u/the-id collection)}
+                          (t2/select-one :model/Card :name card-name))))))))))))
+
+(deftest create-card-with-entity-id-and-nil-collection-id-test
+  (testing "POST /api/card with nil collection_id should work (root collection)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (let [card-name (mt/random-name)]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection/root-collection)
+        (mt/with-model-cleanup [:model/Card]
+          (let [created-card (mt/user-http-request :rasta :post 200 "card"
+                                                   (assoc (card-with-name-and-query card-name)
+                                                          :collection_id nil))]
+            (testing "Card should be created successfully in root collection"
+              (is (=? {:collection_id nil
+                       :name          card-name}
+                      created-card)))
+            (testing "Card should be saved with nil collection_id in database"
+              (is (=? {:collection_id nil}
+                      (t2/select-one :model/Card :name card-name))))))))))
+
+(deftest create-card-with-entity-id-and-position-test
+  (testing "POST /api/card with entity ID as collection_id and collection_position"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (let [card-name (mt/random-name)]
+        (mt/with-temp [:model/Collection collection {}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+          (mt/with-model-cleanup [:model/Card]
+            (let [collection-entity-id (:entity_id collection)
+                  created-card (mt/user-http-request :rasta :post 200 "card"
+                                                     (assoc (card-with-name-and-query card-name)
+                                                            :collection_id collection-entity-id
+                                                            :collection_position 1))]
+              (testing "Card should be created with correct collection and position"
+                (is (=? {:collection_id       (u/the-id collection)
+                         :collection_position 1
+                         :name                card-name}
+                        created-card)))
+              (testing "Card should be saved correctly in database"
+                (is (=? {:collection_id       (u/the-id collection)
+                         :collection_position 1}
+                        (t2/select-one :model/Card :name card-name)))))))))))
+
+(deftest create-card-with-invalid-entity-id-test
+  (testing "POST /api/card with invalid entity ID should return 400"
+    (mt/with-model-cleanup [:model/Card]
+      (let [invalid-entity-id "invalid_entity_id_12345"
+            response (mt/user-http-request :crowberto :post 400 "card"
+                                           (assoc (card-with-name-and-query)
+                                                  :collection_id invalid-entity-id))]
+        (testing "Should get 400 for malformed entity ID"
+          (is (contains? (:errors response) :collection_id)))))))
+
 (deftest need-permission-for-collection
   (testing "You need to have Collection permissions to create a Card in a Collection"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -1407,7 +1476,20 @@
                      (->> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
                           mt/boolean-ids-and-timestamps
                           :moderation_reviews
-                          (map clean)))))))))))
+                          (map clean)))))))
+        (testing "A card in a semantic layer is only marked as can_write when include_editable_semantic_layer is true"
+          (mt/with-temp [:model/Collection semantic-collection {:type collection/semantic-layer-collection-type}
+                         :model/Card semantic-card {:collection_id (u/the-id semantic-collection)}]
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) semantic-collection)
+            (testing "without include_editable_semantic_layer"
+              (is (= false
+                     (:can_write
+                      (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id semantic-card)))))))
+            (testing "with include_editable_semantic_layer"
+              (is (:can_write
+                   (mt/user-http-request :rasta :get 200
+                                         (str "card/" (u/the-id semantic-card)
+                                              "?include_editable_semantic_layer=true")))))))))))
 
 (deftest fetch-card-entity-id-test
   (testing "GET /api/card/:id with entity ID"

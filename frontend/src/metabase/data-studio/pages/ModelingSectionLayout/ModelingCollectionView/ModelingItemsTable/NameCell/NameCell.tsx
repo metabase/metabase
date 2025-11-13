@@ -7,7 +7,7 @@ import {
 } from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
 import { entityForObject } from "metabase/lib/schema";
 import * as Urls from "metabase/lib/urls";
-import { Icon, type IconName, Skeleton } from "metabase/ui";
+import { FixedSizeIcon, type IconName, Skeleton } from "metabase/ui";
 
 import type { ItemIcon, ModelingItem } from "../types";
 
@@ -57,7 +57,12 @@ export function NameCell({ item }: NameCellProps) {
         className={S.nameLink}
         onClick={preventDefault}
       >
-        <Icon size={16} {...icon} c="icon-primary" className={S.icon} />
+        <FixedSizeIcon
+          size={16}
+          {...icon}
+          c="icon-primary"
+          className={S.icon}
+        />
         {item ? (
           <EntityItem.Name
             name={item.name || ""}

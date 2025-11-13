@@ -3,6 +3,7 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { useCreateCardMutation } from "metabase/api";
+import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import {
   Form,
   FormErrorMessage,
@@ -21,6 +22,7 @@ import type { NewMetricValues } from "../types";
 const NEW_METRIC_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
   description: Yup.string().nullable(),
+  collection_id: Yup.number().nullable().default(null),
 });
 
 type CreateMetricModalProps = {
@@ -95,6 +97,10 @@ function CreateMetricForm({
             minRows={4}
             maxRows={10}
           />
+          <FormCollectionPicker
+            name="collection_id"
+            title={t`Where do you want to save this?`}
+          />
           <Group>
             <Box flex={1}>
               <FormErrorMessage />
@@ -114,22 +120,24 @@ function getInitialValues(
   return {
     name: "",
     description: null,
-    resultMetadata: null,
+    collection_id: null,
+    result_metadata: null,
     ...defaultValues,
   };
 }
 
 function getCreateRequest(
   query: Lib.Query,
-  { name, description, resultMetadata }: NewMetricValues,
+  { name, description, collection_id, result_metadata }: NewMetricValues,
 ): CreateCardRequest {
   const { display, settings = {} } = Lib.defaultDisplay(query);
   return {
-    name: name,
+    name,
     description,
+    collection_id,
+    result_metadata,
     type: "metric",
     dataset_query: Lib.toJsQuery(query),
-    result_metadata: resultMetadata,
     display,
     visualization_settings: settings,
   };

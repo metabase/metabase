@@ -10,17 +10,18 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Button, Flex, Icon, Menu, Tooltip } from "metabase/ui";
+import { Button, FixedSizeIcon, Flex, Menu, Tooltip } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { ModelingSidebarSection } from "../../ModelingSidebarSection";
 import { ModelingSidebarTreeNode } from "../../ModelingSidebarTreeNode";
+
 import {
   type TreeItem,
   buildSnippetTree,
   isCollectionTreeItem,
   isSnippetTreeItem,
-} from "../utils";
+} from "./utils";
 
 type SnippetsSectionProps = {
   selectedSnippetId?: number;
@@ -79,13 +80,13 @@ export function SnippetsSection({ selectedSnippetId }: SnippetsSectionProps) {
                     c="text-medium"
                     size="compact-xs"
                     variant="subtle"
-                    leftSection={<Icon name="ellipsis" size={16} />}
+                    leftSection={<FixedSizeIcon name="ellipsis" size={16} />}
                     aria-label={t`Snippet collection options`}
                   />
                 </Menu.Target>
                 <Menu.Dropdown>
                   <Menu.Item
-                    leftSection={<Icon name="lock" />}
+                    leftSection={<FixedSizeIcon name="lock" />}
                     onClick={() => {
                       setPermissionsCollectionId(rootCollection?.id ?? null);
                     }}
@@ -105,14 +106,14 @@ export function SnippetsSection({ selectedSnippetId }: SnippetsSectionProps) {
                       size="compact-xs"
                       variant="subtle"
                       c="text-medium"
-                      leftSection={<Icon name="add" size={16} />}
+                      leftSection={<FixedSizeIcon name="add" size={16} />}
                       aria-label={t`Create snippet`}
                     />
                   </Menu.Target>
                 </Tooltip>
                 <Menu.Dropdown>
                   <Menu.Item
-                    leftSection={<Icon name="snippet" />}
+                    leftSection={<FixedSizeIcon name="snippet" />}
                     onClick={handleCreateSnippet}
                     aria-label={t`Create new snippet`}
                   >

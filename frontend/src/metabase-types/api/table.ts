@@ -4,7 +4,7 @@ import type { Database, DatabaseId, InitialSyncStatus } from "./database";
 import type { DatasetData } from "./dataset";
 import type { Field, FieldId } from "./field";
 import type { Segment } from "./segment";
-import type { TransformId } from "./transform";
+import type { Transform, TransformId } from "./transform";
 import type { UserId } from "./user";
 
 export type ConcreteTableId = number;
@@ -70,7 +70,7 @@ export type Table = {
   transform_id: TransformId | null; // readonly
   data_update_frequency: string; // readonly
   view_count: number;
-  estimated_row_count: number;
+  transform?: Transform;
 };
 
 export type SchemaName = string;

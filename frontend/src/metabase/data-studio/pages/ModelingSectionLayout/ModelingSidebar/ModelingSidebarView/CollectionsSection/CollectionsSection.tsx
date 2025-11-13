@@ -4,15 +4,18 @@ import { t } from "ttag";
 
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Button, Icon, Menu, Tooltip } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
+import { getUser } from "metabase/selectors/user";
+import { Button, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 import { ModelingSidebarTreeNode } from "../../ModelingSidebarTreeNode";
 
+import { getCollectionTree } from "./utils";
+
 interface CollectionsSectionProps {
-  collections: ITreeNodeItem[];
+  collections: Collection[];
   selectedCollectionId?: CollectionId;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
@@ -24,6 +27,11 @@ export function CollectionsSection({
   hasDataAccess,
   hasNativeWrite,
 }: CollectionsSectionProps) {
+  const currentUser = useSelector(getUser);
+  const collectionTree = useMemo(
+    () => (currentUser ? getCollectionTree(collections, currentUser) : []),
+    [collections, currentUser],
+  );
   const dispatch = useDispatch();
 
   const handleCollectionSelect = useCallback(
@@ -61,7 +69,7 @@ export function CollectionsSection({
 
   return (
     <Tree
-      data={collections}
+      data={collectionTree}
       selectedId={selectedCollectionId}
       initialExpandedIds={initialExpandedIds}
       onSelect={handleCollectionSelect}
@@ -80,7 +88,7 @@ export function CollectionsSection({
                   size="compact-xs"
                   variant="subtle"
                   c="text-medium"
-                  leftSection={<Icon name="add" size={16} />}
+                  leftSection={<FixedSizeIcon name="add" size={16} />}
                   onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
                   }}
@@ -91,19 +99,19 @@ export function CollectionsSection({
               {hasNativeWrite ? (
                 <Menu.Sub>
                   <Menu.Sub.Target>
-                    <Menu.Sub.Item leftSection={<Icon name="model" />}>
+                    <Menu.Sub.Item leftSection={<FixedSizeIcon name="model" />}>
                       {t`Model`}
                     </Menu.Sub.Item>
                   </Menu.Sub.Target>
                   <Menu.Sub.Dropdown>
                     <Menu.Item
-                      leftSection={<Icon name="notebook" />}
+                      leftSection={<FixedSizeIcon name="notebook" />}
                       onClick={handleCreateModelNotebook}
                     >
                       {t`Query builder`}
                     </Menu.Item>
                     <Menu.Item
-                      leftSection={<Icon name="sql" />}
+                      leftSection={<FixedSizeIcon name="sql" />}
                       onClick={handleCreateModelNative}
                     >
                       {t`SQL query`}
@@ -112,14 +120,14 @@ export function CollectionsSection({
                 </Menu.Sub>
               ) : (
                 <Menu.Item
-                  leftSection={<Icon name="model" />}
+                  leftSection={<FixedSizeIcon name="model" />}
                   onClick={handleCreateModelNotebook}
                 >
                   {t`Model`}
                 </Menu.Item>
               )}
               <Menu.Item
-                leftSection={<Icon name="metric" />}
+                leftSection={<FixedSizeIcon name="metric" />}
                 onClick={handleCreateMetric}
               >
                 {t`Metric`}

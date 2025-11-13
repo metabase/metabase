@@ -15,12 +15,11 @@ import type {
 } from "./types";
 
 export function hasChildren(type: ItemType): boolean {
-  return type !== "field";
+  return type !== "table";
 }
 
 export function getUrl(baseUrl: string, value: TreePath) {
   return getUrl_(baseUrl, {
-    fieldId: undefined,
     tableId: undefined,
     databaseId: undefined,
     schemaName: undefined,
@@ -39,18 +38,15 @@ export function expandPath(
     ...state,
     [toKey({
       ...path,
-      fieldId: undefined,
       tableId: undefined,
     })]: true,
     [toKey({
       ...path,
-      fieldId: undefined,
       tableId: undefined,
       schemaName: undefined,
     })]: true,
     [toKey({
       ...path,
-      fieldId: undefined,
       tableId: undefined,
       schemaName: undefined,
       databaseId: undefined,
@@ -146,11 +142,6 @@ export function flatten(
 }
 
 export function sort(nodes: TreeNode[]): TreeNode[] {
-  if (nodes[0].type === "field") {
-    // sorting is done on BE
-    return nodes;
-  }
-
   return Array.from(nodes).sort((a, b) => {
     return a.label.localeCompare(b.label);
   });
@@ -194,8 +185,8 @@ export function merge(
 /**
  * Create a unique key for a TreePath
  */
-export function toKey({ databaseId, schemaName, tableId, fieldId }: TreePath) {
-  return JSON.stringify([databaseId, schemaName, tableId, fieldId]);
+export function toKey({ databaseId, schemaName, tableId }: TreePath) {
+  return JSON.stringify([databaseId, schemaName, tableId]);
 }
 
 type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;

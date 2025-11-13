@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { t } from "ttag";
 
-import type { DatabaseId, TableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 import { useSelection } from "../../../contexts/SelectionContext";
 import {
@@ -21,7 +21,6 @@ import type {
   FlatItem,
   SchemaItem,
   SchemaNode,
-  TableItem,
   TreeNode,
   TreePath,
 } from "../types";
@@ -36,11 +35,7 @@ interface Props {
   setOnUpdateCallback: (callback: (() => void) | null) => void;
 }
 
-export function Tree({
-  path,
-  onChange,
-  setOnUpdateCallback,
-}: Props) {
+export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   const {
     selectedTables,
     setSelectedTables,
@@ -52,12 +47,6 @@ export function Tree({
   const { databaseId, schemaName } = path;
   const { isExpanded, toggle } = useExpandedState(path);
   const { tree, reload } = useTableLoader(path);
-  // refs were used to avoid unnecessary re-renders
-  // re-think approach later
-  const loadedTablesRef = useRef<Set<TableId>>(new Set());
-  const reloadRef = useRef(reload);
-
-  reloadRef.current = reload;
 
   useEffect(() => {
     setOnUpdateCallback(() => () => reload(path));
@@ -75,13 +64,6 @@ export function Tree({
     },
   });
 
-  const loadTableFields = useCallback((tableId: TableId, databaseId: DatabaseId, schemaName: string) => {
-    if (!loadedTablesRef.current.has(tableId)) {
-      loadedTablesRef.current.add(tableId);
-      reloadRef.current({ databaseId, schemaName, tableId });
-    }
-  }, []);
-
   useEffect(() => {
     const expandedDatabases = items.filter(
       (item) =>
@@ -93,37 +75,26 @@ export function Tree({
     expandedDatabases.forEach((database) => {
       const databaseId = database.value?.databaseId;
       if (databaseId) {
-        reloadRef.current({ databaseId });
+        reload({ databaseId });
       }
     });
-  }, [items]);
+  }, [items, reload]);
 
   useEffect(() => {
     // Load tables when schemas are expanded
     const expandedSchemas = items.filter(
-      (item) => item.type === "schema" && item.isExpanded && item.children.length === 0,
+      (item) =>
+        item.type === "schema" && item.isExpanded && item.children.length === 0,
     ) as SchemaItem[];
 
     expandedSchemas.forEach((schema) => {
       const { databaseId, schemaName } = schema.value ?? {};
       if (databaseId && schemaName) {
-        reloadRef.current({ databaseId, schemaName });
+        reload({ databaseId, schemaName });
       }
     });
-  }, [items]);
+  }, [items, reload]);
 
-  useEffect(() => {
-    const expandedTables = items.filter(
-      (item) => item.type === "table" && item.isExpanded && item.children.length === 0,
-    ) as TableItem[];
-
-    expandedTables.forEach((table) => {
-      const tableId = table.value?.tableId;
-      if (tableId) {
-        loadTableFields(tableId, table.value.databaseId, table.value.schemaName);
-      }
-    });
-  }, [items, loadTableFields]);
   const isEmpty = items.length === 0;
 
   useEffect(() => {
@@ -199,7 +170,14 @@ export function Tree({
         });
       }
     });
-  }, [isExpanded, selectedSchemas, items, selectedTables]);
+  }, [
+    isExpanded,
+    selectedSchemas,
+    items,
+    selectedTables,
+    setSelectedTables,
+    setSelectedSchemas,
+  ]);
 
   useEffect(() => {
     const expandedSelectedDatabaseItems = items.filter(
@@ -252,7 +230,16 @@ export function Tree({
         });
       }
     });
-  }, [isExpanded, selectedDatabases, items, selectedSchemas, selectedTables]);
+  }, [
+    isExpanded,
+    selectedDatabases,
+    items,
+    selectedSchemas,
+    selectedTables,
+    setSelectedDatabases,
+    setSelectedTables,
+    setSelectedSchemas,
+  ]);
 
   if (isEmpty) {
     return <EmptyState title={t`No data to show`} />;

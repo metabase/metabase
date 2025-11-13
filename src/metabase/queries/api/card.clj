@@ -232,7 +232,10 @@
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql
-    :keys        []} :- [:map [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
+    include-editable-semantic-layer? :include_editable_semantic_layer
+    :keys        []} :- [:map [:legacy-mbql {:optional true, :default false} [:maybe :boolean]
+                               :include_editable_semantic_layer {:optional true, :default false} [:maybe :boolean]]]]
+  include-editable-semantic-layer?
   (let [resolved-id (eid-translation/->id-or-404 :card id)
         card (get-card resolved-id)]
     (cond-> card
@@ -240,7 +243,10 @@
       (update :dataset_query (fn [query]
                                #_{:clj-kondo/ignore [:discouraged-var]}
                                (cond-> query
-                                 (seq query) lib/->legacy-MBQL))))))
+                                 (seq query) lib/->legacy-MBQL)))
+
+      (and (not include-editable-semantic-layer?) (collection/is-semantic-layer-collection? (:collection_id card)))
+      (assoc :can_write false))))
 
 (defn- check-allowed-to-remove-from-existing-dashboards [card]
   (let [dashboards (or (:in_dashboards card)
@@ -503,7 +509,7 @@
    [:description            {:optional true} [:maybe ms/NonBlankString]]
    [:display                ms/NonBlankString]
    [:visualization_settings ms/Map]
-   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_id          {:optional true} [:maybe [:or ms/PositiveInt ms/NanoIdString]]]
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
    [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
@@ -514,8 +520,11 @@
   "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
   [_route-params
    _query-params
-   {card-type :type, :as card} :- CardCreateSchema]
-  (let [card  (update card :dataset_query lib-be/normalize-query)
+   {card-type :type, collection-id :collection_id, :as card} :- CardCreateSchema]
+  (let [card (-> card
+                 (update :dataset_query lib-be/normalize-query)
+                 (cond-> (some? collection-id)
+                   (update :collection_id #(eid-translation/->id-or-404 :collection %))))
         query (:dataset_query card)]
     (check-if-card-can-be-saved query card-type)
     ;; check that we have permissions to run the query that we're trying to save

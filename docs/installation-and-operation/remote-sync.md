@@ -369,6 +369,21 @@ In Production mode, you can set Metabase to auto-sync changes from your main bra
 
 By default, Metabase will pull any changes (if any) from the branch you specify every five minutes. You can also manually sync as needed.
 
+## Disabling Remote Sync
+
+To disable Remote Sync, go to the Remote Sync settings page in Admin settings. 
+
+To disable Remote Sync:
+
+1. Go to **Admin settings** > **Settings** > **Remote sync**.
+2. Click **Disable Remote Sync**.
+3. In the confirmation dialog, click **Disable**.
+
+- All remote sync settings are cleared, including the repository URL, access token, and branch information.
+- Your synced collection and its content remain in your Metabase (they're not deleted).
+- The synced collection becomes a regular collection that you can edit like any other collection.
+- You can re-enable Remote Sync later by reconnecting to a repository, but any changes you made to the collection after disabling can be overwritten if you enable sync again.
+
 ## Migrating existing content to Remote Sync
 
 If you already have content in your Metabase, you can gradually adopt Remote Sync. Content that lives outside the synced collection remains unaffected—you can continue working with it normally while you migrate content into the synced collection over time.

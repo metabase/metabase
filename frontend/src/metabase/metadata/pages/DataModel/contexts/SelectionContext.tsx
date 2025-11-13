@@ -1,16 +1,21 @@
-import { type ReactNode, createContext, useContext, useState } from "react";
+import {
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  createContext,
+  useContext,
+  useState,
+} from "react";
 
-import type { DatabaseId, FieldId, TableId } from "metabase-types/api";
+import type { DatabaseId, TableId } from "metabase-types/api";
 
 interface SelectionContextValue {
   selectedTables: Set<TableId>;
-  setSelectedTables: (tables: Set<TableId>) => void;
+  setSelectedTables: Dispatch<SetStateAction<Set<TableId>>>;
   selectedSchemas: Set<string>;
-  setSelectedSchemas: (schemas: Set<string>) => void;
+  setSelectedSchemas: Dispatch<SetStateAction<Set<string>>>;
   selectedDatabases: Set<DatabaseId>;
-  setSelectedDatabases: (databases: Set<DatabaseId>) => void;
-  selectedFields: Set<FieldId>;
-  setSelectedFields: (fields: Set<FieldId>) => void;
+  setSelectedDatabases: Dispatch<SetStateAction<Set<DatabaseId>>>;
   resetSelection: () => void;
   hasSelectedItems: boolean;
   selectedItemsCount: number;
@@ -28,26 +33,20 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
   const [selectedDatabases, setSelectedDatabases] = useState<Set<DatabaseId>>(
     new Set(),
   );
-  const [selectedFields, setSelectedFields] = useState<Set<FieldId>>(new Set());
 
   const resetSelection = () => {
     setSelectedTables(new Set());
     setSelectedSchemas(new Set());
     setSelectedDatabases(new Set());
-    setSelectedFields(new Set());
   };
 
   const hasSelectedItems =
     selectedTables.size > 0 ||
     selectedSchemas.size > 0 ||
-    selectedDatabases.size > 0 ||
-    selectedFields.size > 0;
+    selectedDatabases.size > 0;
 
   const selectedItemsCount =
-    selectedTables.size +
-    selectedSchemas.size +
-    selectedDatabases.size +
-    selectedFields.size;
+    selectedTables.size + selectedSchemas.size + selectedDatabases.size;
 
   const hasOnlyOneTableSelected =
     selectedTables.size === 1 &&
@@ -66,8 +65,6 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
         setSelectedSchemas,
         selectedDatabases,
         setSelectedDatabases,
-        selectedFields,
-        setSelectedFields,
         resetSelection,
         hasSelectedItems,
         selectedItemsCount,

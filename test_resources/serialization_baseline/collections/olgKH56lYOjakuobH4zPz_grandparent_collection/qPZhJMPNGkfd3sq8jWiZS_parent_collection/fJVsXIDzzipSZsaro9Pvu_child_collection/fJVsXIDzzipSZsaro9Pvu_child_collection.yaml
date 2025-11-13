@@ -9,6 +9,7 @@ parent_id: qPZhJMPNGkfd3sq8jWiZS
 personal_owner_id: null
 namespace: null
 authority_level: null
+allowed_content: null
 serdes/meta:
 - id: fJVsXIDzzipSZsaro9Pvu
   label: child_collection

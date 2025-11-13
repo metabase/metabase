@@ -8,16 +8,16 @@ import type {
 
 export type RouteParams = {
   databaseId?: string;
-  fieldId?: string;
   schemaId?: SchemaId;
   tableId?: string;
+  fieldId?: string;
 };
 
 export type ParsedRouteParams = {
   databaseId: DatabaseId | undefined;
-  fieldId?: FieldId;
   schemaName: SchemaName | undefined;
   tableId: TableId | undefined;
+  fieldId?: FieldId;
 };
 
 export type Column = "nav" | "table" | "field" | "preview";

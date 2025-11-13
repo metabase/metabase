@@ -3,9 +3,6 @@ import type { ComponentType } from "react";
 import { IndexRoute } from "react-router";
 import { t } from "ttag";
 
-import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
-import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
-import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
 import { Route } from "metabase/hoc/Title";
 import * as Urls from "metabase/lib/urls";
 import { getDataStudioMetadataRoutes } from "metabase/metadata/routes";
@@ -30,6 +27,7 @@ import {
   NewSnippetPage,
   SnippetDependenciesPage,
 } from "./pages/ModelingSectionLayout/SnippetEditorPage";
+import { TransformsSectionLayout } from "./pages/TransformsSectionLayout";
 
 export function getDataStudioRoutes(
   store: Store<State>,
@@ -50,7 +48,7 @@ export function getDataStudioRoutes(
       </Route>
       {PLUGIN_TRANSFORMS.isEnabled && (
         <Route path="transforms" component={CanAccessTransforms}>
-          <Route title={t`Transforms`} component={DataSectionLayout}>
+          <Route title={t`Transforms`} component={TransformsSectionLayout}>
             {PLUGIN_TRANSFORMS.getDataStudioTransformRoutes()}
           </Route>
         </Route>
@@ -78,10 +76,6 @@ export function getDataStudioRoutes(
         )}
         {getDataStudioModelRoutes()}
         {getDataStudioMetricRoutes()}
-        <Route path="segments" component={SegmentListApp} />
-        <Route path="segments/new" component={SegmentApp} />
-        <Route path="segments/:id" component={SegmentApp} />
-        <Route path="segments/:id/revisions" component={RevisionHistoryApp} />
       </Route>
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route

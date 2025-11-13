@@ -13,3 +13,9 @@
   grid-template-columns: subgrid;
   grid-column: 1 / 3;
 }
+
+
+.transformLink {
+  grid-column: 2 / 3;
+  margin-top: -8px;
+}

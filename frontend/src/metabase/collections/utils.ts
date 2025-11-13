@@ -1,11 +1,12 @@
 import { t } from "ttag";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import type {
-  Collection,
-  CollectionEssentials,
-  CollectionId,
-  CollectionItem,
+import {
+  type Collection,
+  type CollectionEssentials,
+  type CollectionId,
+  type CollectionItem,
+  isBaseEntityID,
 } from "metabase-types/api";
 
 export function nonPersonalOrArchivedCollection(
@@ -123,24 +124,8 @@ export function isPersonalCollectionChild(
   return Boolean(parentCollection && !!parentCollection.personal_owner_id);
 }
 
-export function isPersonalCollectionOrChild(
-  collection: Collection,
-  collectionList: Collection[],
-): boolean {
-  return (
-    isRootPersonalCollection(collection) ||
-    isPersonalCollectionChild(collection, collectionList)
-  );
-}
-
 export function isRootCollection(collection: Pick<Collection, "id">): boolean {
   return canonicalCollectionId(collection?.id) === null;
-}
-
-export function isTopLevelCollection(
-  collection: Pick<Collection, "location">,
-): boolean {
-  return collection.location === "/";
 }
 
 export function isItemPinned(item: CollectionItem) {
@@ -236,6 +221,16 @@ export function canonicalCollectionId(
   } else {
     return parseInt(collectionId, 10);
   }
+}
+
+export function canonicalCollectionIdOrEntityId(
+  collectionId: string | number | null | undefined,
+): number | string | null {
+  if (isBaseEntityID(collectionId)) {
+    return collectionId;
+  }
+
+  return canonicalCollectionId(collectionId);
 }
 
 export function isValidCollectionId(

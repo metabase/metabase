@@ -22,7 +22,6 @@ import { SidebarContainer } from "../SidebarContainer";
 import { SidebarLoadingState } from "../SidebarLoadingState";
 import { SidebarSearchAndControls } from "../SidebarSearchAndControls";
 import { TRANSFORM_SORT_OPTIONS } from "../SidebarSortControl";
-import { TransformsInnerNav } from "../TransformsInnerNav";
 import { SidebarList } from "../TransformsSidebarLayout/SidebarList";
 import { SidebarListItem } from "../TransformsSidebarLayout/SidebarListItem/SidebarListItem";
 import { TransformListItem } from "../TransformsSidebarLayout/SidebarListItem/TransformListItem";
@@ -97,7 +96,6 @@ export const TransformsSidebar = ({
   return (
     <SidebarContainer data-testid="transforms-sidebar">
       <Flex direction="column" gap="md" p="md">
-        <TransformsInnerNav />
         <SidebarSearchAndControls
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
@@ -149,7 +147,7 @@ export const TransformsSidebar = ({
           <SidebarListItem
             icon="code_block"
             href={Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })}
-            label={t`Python Library`}
+            label={t`Python library`}
             subtitle={t`Shared helper functions`}
           />
         </Box>

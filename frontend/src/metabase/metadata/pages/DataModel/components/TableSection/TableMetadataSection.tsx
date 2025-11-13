@@ -1,6 +1,8 @@
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
+import * as Urls from "metabase/lib/urls";
 import {
   DataSourceInput,
   EntityTypeInput,
@@ -8,10 +10,11 @@ import {
   UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { Box, Icon, Text } from "metabase/ui";
 import type {
   Table,
+  TableDataLayer,
   TableDataSource,
-  TableVisibilityType2,
   UserId,
 } from "metabase-types/api";
 
@@ -72,16 +75,14 @@ export function TableMetadataSettings({ table }: Props) {
     }
   };
 
-  const handleLayerChange = async (
-    visibilityType: TableVisibilityType2 | null,
-  ) => {
-    if (visibilityType == null) {
+  const handleLayerChange = async (dataLayer: TableDataLayer | null) => {
+    if (dataLayer == null) {
       return; // should never happen as the input is not clearable here
     }
 
     const { error } = await updateTable({
       id: table.id,
-      data_layer: visibilityType,
+      data_layer: dataLayer,
     });
 
     if (error) {
@@ -142,7 +143,7 @@ export function TableMetadataSettings({ table }: Props) {
   };
 
   return (
-    <TableSectionGroup title={t`Settings`}>
+    <TableSectionGroup title={t`Attributes`}>
       <div className={S.container}>
         <UserInput
           email={table.owner_email}
@@ -194,7 +195,6 @@ export function TableMetadataSettings({ table }: Props) {
         />
 
         <DataSourceInput
-          transformId={table.transform_id}
           value={table.data_source ?? "unknown"}
           onChange={handleDataSourceChange}
           styles={{
@@ -208,20 +208,51 @@ export function TableMetadataSettings({ table }: Props) {
           className={S.gridLabelInput}
         />
 
-        {/* <ActiveInput
-          value={table.active}
-          styles={{
-            label: {
-              gridColumn: 1,
-              fontWeight: "normal",
-            },
-            input: {
-              gridColumn: 2,
-            },
-          }}
-          className={S.gridLabelInput}
-        /> */}
+        <TransformLink table={table} />
       </div>
     </TableSectionGroup>
+  );
+}
+function TransformLink({ table }: { table: Table }) {
+  const { transform } = table;
+  const shouldShowTransform =
+    transform !== undefined && table.data_source === "metabase-transform";
+
+  if (!shouldShowTransform) {
+    return null;
+  }
+
+  return (
+    <Box className={S.transformLink}>
+      <Box
+        component={Link}
+        to={Urls.transform(transform.id)}
+        py="xs"
+        px="sm"
+        style={{
+          borderRadius: 4,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          cursor: "pointer",
+          textDecoration: "none",
+          backgroundColor: "rgba(5, 114, 210, 0.07)",
+        }}
+        c="brand"
+      >
+        <Icon name="insight" size={12} />
+        <Text
+          size="sm"
+          fw="bold"
+          c="brand"
+          style={{
+            fontSize: 12,
+            lineHeight: "16px",
+          }}
+        >
+          {transform.name}
+        </Text>
+      </Box>
+    </Box>
   );
 }

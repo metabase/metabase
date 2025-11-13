@@ -121,13 +121,12 @@ function DataModelContent({ params }: Props) {
     !isEmptyStateShown && field && table && isPreviewOpen;
 
   const showBulkTableEdit =
-    hasSelectedItems && !hasOnlyOneTableSelected && !showFieldPreview;
+    hasSelectedItems && !hasOnlyOneTableSelected;
   const showFieldDetails = field && !showBulkTableEdit && !isEmptyStateShown;
   const showTableDetailsSection =
     metadataTableId &&
     !hasSelectedMoreThanOneTable &&
-    !showFieldPreview &&
-    !showFieldDetails;
+    !showBulkTableEdit;
 
   return (
     <Flex bg="accent-gray-light" data-testid="data-model" h="100%">
@@ -144,7 +143,6 @@ function DataModelContent({ params }: Props) {
           databaseId={databaseId}
           schemaName={schemaName}
           tableId={navigationTableId}
-          fieldId={fieldId}
           params={params}
         />
       </Stack>
@@ -194,6 +192,7 @@ function DataModelContent({ params }: Props) {
                    */
                   key={table.id}
                   table={table}
+                  activeFieldId={fieldId}
                   onSyncOptionsClick={openSyncModal}
                 />
               )}

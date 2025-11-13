@@ -507,6 +507,11 @@
                 :file     (get-in multipart-params ["file" :tempfile])
                 :action   :metabase.upload/replace}))
 
+(defn- sync-schema-async!
+  [table user-id]
+  (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
+  (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table))))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/sync_schema"
@@ -515,7 +520,6 @@
                     [:id ms/PositiveInt]]]
   (let [table (api/write-check (t2/select-one :model/Table :id id))
         database (api/write-check (warehouses/get-database (:db_id table) {:exclude-uneditable-details? true}))]
-    (events/publish-event! :event/table-manual-sync {:object table :user-id api/*current-user-id*})
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
     ;; purposes of creating a new H2 database.
     (if-let [ex (try
@@ -528,10 +532,10 @@
                     e))]
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do
-        (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table)))
+        (sync-schema-async! table api/*current-user-id*)
         {:status :ok}))))
 
-(api.macros/defendpoint :post "/sync_schema"
+(api.macros/defendpoint :post "/sync-schema"
   "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.
   - Currently checks policy before returning (so you might receive a 4xx on e.g. AuthZ policy failure)
   - The sync itself is however, asyncronous. This call may return before all tables synced."
@@ -544,17 +548,10 @@
   ;; idea: flag dirty / ready for sync
   ;;       job comes along and actually performs sync
   ;;       promise is nothing is done apart from the dirty/queueing with the call (incl authz/event until batchy batchy)
+  (api/check-superuser)
   (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})
-        ;; join in clojure, nice, not sure why get-database is important yet, copied from single table sync api
-        db-ids (sort (set (map :db_id tables)))
-        databases (mapv #(warehouses/get-database % {:exclude-uneditable-details? true}) db-ids)
-        db-id->database (u/index-by :id databases)]
-    (doseq [table tables]
-      (api/write-check table)
-      (api/write-check (db-id->database (:db_id table))))
-    (doseq [table tables]
-      (events/publish-event! :event/table-manual-sync {:object table :user-id api/*current-user-id*}))
-    (doseq [database databases]
+        db-ids (sort (set (map :db_id tables)))]
+    (doseq [database (t2/select :model/Database :id [:in db-ids])]
       (try
         (binding [driver.settings/*allow-testing-h2-connections* true]
           (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
@@ -563,32 +560,30 @@
           (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync tables" (:name database)))
           (throw (ex-info (ex-message e) {:status-code 422})))))
     (doseq [table tables]
-      (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table))))
+      (sync-schema-async! table api/*current-user-id*))
     {:status :ok}))
 
-(api.macros/defendpoint :post "/rescan_values"
+(api.macros/defendpoint :post "/rescan-values"
   "Batch version of /table/:id/rescan_values. Takes an abstract table selection as /table/edit does."
   [_
    _
    body :- ::table-selectors]
+  (api/check-superuser)
   (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})]
-    (doseq [table tables]
-      (api/write-check table))
-    (doseq [table tables]
-      (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*}))
     ;; same permission skip as the single-table api, see comment in /:id/rescan_values
-    (request/as-admin
-      (doseq [table tables]
+    (doseq [table tables]
+      (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
+      (request/as-admin
         (quick-task/submit-task! #(sync/update-field-values-for-table! table))))
     {:status :ok}))
 
-(api.macros/defendpoint :post "/discard_values"
+(api.macros/defendpoint :post "/discard-values"
   "Batch version of /table/:id/discard_values. Takes an abstract table selection as /table/edit does."
   [_
    _
    body :- ::table-selectors]
+  (api/check-superuser)
   (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})]
-    (run! api/write-check tables)
     (let [field-ids-to-delete-q {:select [:id]
                                  :from   [(t2/table-name :model/Field)]
                                  :where  [:in :table_id (map :id tables)]}]

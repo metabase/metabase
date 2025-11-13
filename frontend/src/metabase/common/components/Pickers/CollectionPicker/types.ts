@@ -54,10 +54,10 @@ export type CollectionPickerValueItem =
     });
 
 export type CollectionPickerOptions = EntityPickerModalOptions & {
+  namespace?: "snippets";
   allowCreateNew?: boolean;
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
-  namespace?: "snippets";
 };
 
 export type CollectionItemListProps = ListProps<

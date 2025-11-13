@@ -135,16 +135,14 @@ export function EditTableMetadata() {
               </Button>
             </Box>
             <Box flex={1}>
-              <Tooltip label={t`Create models and publish to a collection`}>
-                <Button
-                  onClick={() => setIsCreateModelsModalOpen(true)}
-                  p="sm"
-                  leftSection={<Icon name="add_folder" />}
-                  style={{
-                    width: "100%",
-                  }}
-                >{t`Publish`}</Button>
-              </Tooltip>
+              <Button
+                onClick={() => setIsCreateModelsModalOpen(true)}
+                p="sm"
+                leftSection={<Icon name="add_folder" />}
+                style={{
+                  width: "100%",
+                }}
+              >{t`Publish`}</Button>
             </Box>
           </Group>
         </Box>
