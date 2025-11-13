@@ -262,8 +262,8 @@
 (defn preprocess-incremental-query
   "Preprocess a query for incremental transform execution by adding watermark filtering.
 
-  For native queries, wraps the query with a SELECT * FROM (...) WHERE checkpoint-column > watermark
-  using HoneySQL to properly format the SQL with driver-specific quoting.
+  For native queries with a checkpoint variable, simply adds the computed watermark as checkpoint value.
+  For other native queries, wraps the query with a SELECT * FROM (...) WHERE checkpoint-column > watermark.
 
   For MBQL queries, adds a filter clause that constrains the checkpoint column to values greater
   than the current watermark.
@@ -271,25 +271,24 @@
   If no watermark value exists for the transform (i.e., this is the first run), returns the
   query unchanged to allow a full initial load."
   [query source-incremental-strategy transform-id]
-  (let [watermark-value (next-watermark-value transform-id)]
-    (if watermark-value
-      (if (lib.query/native? query)
-        (if (seq (get-in query [:stages 0 :template-tags]))
-          (update query :parameters conj
-                  {:type :number
-                   :target [:variable [:template-tag "checkpoint"]]
-                   :value watermark-value})
-          (let [native-sql (get-in query [:stages 0 :native])
-                checkpoint-col-name (-> source-incremental-strategy :checkpoint-filter)
-                driver (some->> query :database (t2/select-one :model/Database) :engine keyword)
-                honeysql-query {:select [:*]
-                                :from [[[:raw (str "(" native-sql ")")] :subquery]]
-                                :where [:> (h2x/identifier :field checkpoint-col-name) watermark-value]}
-                [formatted-sql] (binding [driver/*compile-with-inline-parameters* true]
-                                  (sql.qp/format-honeysql driver honeysql-query))]
-            (assoc-in query [:stages 0 :native] formatted-sql)))
-        (lib/filter query (lib/> (source->checkpoint-filter-unique-key query source-incremental-strategy) watermark-value)))
-      query)))
+  (if-let [watermark-value (next-watermark-value transform-id)]
+    (if (lib.query/native? query)
+      (if (get-in query [:stages 0 :template-tags "checkpoint"])
+        (update query :parameters conj
+                {:type :number
+                 :target [:variable [:template-tag "checkpoint"]]
+                 :value watermark-value})
+        (let [native-sql (get-in query [:stages 0 :native])
+              checkpoint-col-name (-> source-incremental-strategy :checkpoint-filter)
+              driver (some->> query :database (t2/select-one :model/Database) :engine keyword)
+              honeysql-query {:select [:*]
+                              :from [[[:raw (str "(" native-sql ")")] :subquery]]
+                              :where [:> (h2x/identifier :field checkpoint-col-name) watermark-value]}
+              [formatted-sql] (binding [driver/*compile-with-inline-parameters* true]
+                                (sql.qp/format-honeysql driver honeysql-query))]
+          (assoc-in query [:stages 0 :native] formatted-sql)))
+      (lib/filter query (lib/> (source->checkpoint-filter-unique-key query source-incremental-strategy) watermark-value)))
+    query))
 
 (defn compile-source
   "Compile the source query of a transform."
