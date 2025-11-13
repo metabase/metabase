@@ -25,7 +25,11 @@
   Deprecated and will eventually be replaced by data-layer"
   #{:hidden :technical :cruft})
 
-(def data-layer-types
+(def ^:private data-sources
+  "Valid values for data source"
+  #{:unknown :ingested :metabase-transform :transform :source-data :uploaded-data})
+
+(def ^:private data-layers
   "Valid values for `Table.data_layer`.
   :gold   - highest quality, fully visible, synced
   :silver - high quality, visible, synced
@@ -109,10 +113,11 @@
 (t2/deftransforms :model/Table
   {:entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
-   :data_layer      mi/transform-keyword
+   :data_layer      (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-layers))
    :field_order     mi/transform-keyword
+   :data_source     (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-sources))
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
-   :data_authority transform-data-authority})
+   :data_authority  transform-data-authority})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :table]
   [_original-model _k]
@@ -174,6 +179,19 @@
                (= (keyword (:data_authority changes)) :unconfigured))
       (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
                       {:status-code 400})))
+
+    ;; Prevent changing data_source to/from metabase-transform
+    (when (contains? changes :data_source)
+      (let [original-data-source (:data_source original-table)
+            new-data-source      (:data_source changes)]
+        (when (and (= original-data-source :metabase-transform)
+                   (not= new-data-source :metabase-transform))
+          (throw (ex-info "Cannot change data_source from metabase-transform"
+                          {:status-code 400})))
+        (when (and (not= original-data-source "metabase-transform")
+                   (= new-data-source :metabase-transform))
+          (throw (ex-info "Cannot set data_source to metabase-transform"
+                          {:status-code 400})))))
 
     ;; Sync visibility_type and data_layer fields
     (let [changes (sync-visibility-fields changes original-table)]
@@ -465,8 +483,7 @@
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
                :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
-               :data_source :owner_email :owner_user_id
-               :data_layer]
+               :data_source :data_layer :owner_email :owner_user_id]
    :skip      [:estimated_row_count :view_count]
    :transform {:created_at (serdes/date)
                :archived_at (serdes/date)

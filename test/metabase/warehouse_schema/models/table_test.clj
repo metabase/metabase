@@ -366,6 +366,34 @@
                    (fetch-visible-ids user-info permission-map :id))
                 "Clause should filter correctly when requiring :blocked level")))))))
 
+(deftest prevent-metabase-transform-data-source-change-test
+  (testing "Cannot change data_source from metabase-transform"
+    (mt/with-temp [:model/Table {table-id :id} {:data_source :metabase-transform}]
+      (testing "to another value"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cannot change data_source from metabase-transform"
+             (t2/update! :model/Table table-id {:data_source :transform}))))
+      (testing "to nil"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cannot change data_source from metabase-transform"
+             (t2/update! :model/Table table-id {:data_source nil}))))))
+
+  (testing "Cannot change data_source to metabase-transform"
+    (mt/with-temp [:model/Table {table-id :id} {:data_source :ingested}]
+      (testing "from another value"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cannot set data_source to metabase-transform"
+             (t2/update! :model/Table table-id {:data_source :metabase-transform}))))
+      (testing "but can change to other non-metabase-transform values"
+        (is (some? (t2/update! :model/Table table-id {:data_source :ingested})))
+        (is (= :ingested (t2/select-one-fn :data_source :model/Table :id table-id))))
+      (testing "can also change it to nil"
+        (is (some? (t2/update! :model/Table table-id {:data_source nil})))
+        (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id)))))))
+
 (deftest published-as-model-test
   (testing "hydrating :published_as_model"
     (mt/with-temp [:model/Table {t1 :id :as table1} {}
