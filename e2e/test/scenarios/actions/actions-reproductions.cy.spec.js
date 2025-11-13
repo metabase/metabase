@@ -154,6 +154,13 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   }
 
   function setupDashboardAndAction() {
+    let fieldId;
+    H.getTable({ databaseId: WRITABLE_DB_ID, name: TEST_TABLE }).then(
+      (table) => {
+        fieldId = table.fields.find((field) => field.name === "id").id;
+      },
+    );
+
     cy.get("@modelId").then((modelId) => {
       H.createImplicitActions({ modelId });
 
@@ -176,7 +183,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
                       {
                         parameter_id: ID_DASHBOARD_PARAMETER.id,
                         card_id: modelId,
-                        target: ["dimension", ["field-id", 1334, null]], // TODO how to get this field ID dynamically?
+                        target: ["dimension", ["field-id", fieldId, null]],
                       },
                     ],
                   },
@@ -220,7 +227,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   });
 
   it("can submit query action linked with dashboard parameters (metabase#32974)", () => {
-    H.visitDashboard("@dashboardId", { params: { id: 10 } });
+    H.visitDashboard("@dashboardId", { params: { id: 1 } });
 
     cy.log("Execute action");
     cy.button(QUERY_ACTION.name).click();
