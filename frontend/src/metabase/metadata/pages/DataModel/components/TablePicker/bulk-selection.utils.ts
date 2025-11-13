@@ -1,7 +1,7 @@
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import type { DatabaseNode, ExpandedItem, FlatItem, TreeNode } from "./types";
-import { isExpandedItem, isTableNode } from "./types";
+import { isExpandedItem, isSchemaNode, isTableNode } from "./types";
 
 export interface NodeSelection {
   tables: Set<TableId>;
@@ -19,7 +19,7 @@ export function isItemSelected(
   if (node.type === "table") {
     return selection.tables.has(node.value?.tableId ?? -1) ? "yes" : "no";
   }
-  if (node.type === "schema") {
+  if (isSchemaNode(node)) {
     if (selection.schemas.has(getSchemaId(node) ?? "")) {
       return "yes";
     }
@@ -178,8 +178,11 @@ export function getSchemaTables(
   return result;
 }
 
-export function getSchemaTableIds(schema: FlatItem, allItems: ExpandedItem[]) {
-  return getSchemaTables(schema, allItems).map((x) => x.value?.tableId ?? "");
+export function getSchemaTableIds(schema: FlatItem, allItems: FlatItem[]) {
+  const expandedItems = allItems.filter(isExpandedItem);
+  return getSchemaTables(schema, expandedItems).map(
+    (x) => x.value?.tableId ?? "",
+  );
 }
 
 export function getSchemaChildrenTableIds(schema: TreeNode) {
