@@ -128,7 +128,7 @@ The SDK doesn't support:
 - Official collections
 - Subscriptions
 - Alerts
-- Click behavior set up to go to destinations within the same Metabase (e.g. other questions or dashboards)
+- Click behavior with custom destinations to other items in the same Metabase (like to other questions or dashboards)
 - Server-side rendering (SSR)
 
 Other limitations:
