@@ -20,15 +20,17 @@
 
 (def visibility-types
   "Valid values for `Table.visibility_type` (field may also be `nil`).
-   (Basically any non-nil value is a reason for hiding the table.)"
+   (Basically any non-nil value is a reason for hiding the table.)
+
+  Deprecated and will eventually be replaced by data-layer"
   #{:hidden :technical :cruft})
 
 (def data-layer-types
   "Valid values for `Table.data_layer`.
-  :gold   - highest quality, fully visible
-  :silver - high quality, visible
-  :bronze - acceptable quality, visible
-  :copper - low quality, hidden"
+  :gold   - highest quality, fully visible, synced
+  :silver - high quality, visible, synced
+  :bronze - acceptable quality, visible, synced
+  :copper - low quality, hidden, not synced"
   #{:gold :silver :bronze :copper})
 
 (defn- visibility-type->data-layer
@@ -36,15 +38,15 @@
   Used when updating via the legacy field."
   [visibility-type]
   (if (contains? #{:hidden :retired :sensitive :technical :cruft} visibility-type)
-    "copper"
-    "gold"))
+    :copper
+    :gold))
 
 (defn- data-layer->visibility-type
   "Convert data_layer back to legacy visibility_type.
   Used for rollback compatibility to v56."
   [data-layer]
   (case data-layer
-    :copper "hidden"
+    :copper :hidden
     ;; gold, silver, bronze all map to visible (nil)
     nil))
 
@@ -105,10 +107,10 @@
           (some-> value name))})
 
 (t2/deftransforms :model/Table
-  {:entity_type    mi/transform-keyword
+  {:entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
-   :data_layer     mi/transform-keyword
-   :field_order    mi/transform-keyword
+   :data_layer      mi/transform-keyword
+   :field_order     mi/transform-keyword
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
    :data_authority transform-data-authority})
 

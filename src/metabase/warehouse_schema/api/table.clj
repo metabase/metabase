@@ -170,23 +170,25 @@
         (t2/hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
-;; TODO -- this seems like it belongs in the `sync` module... right?
+;; TODO (Cam 2015/01/16) this seems like it belongs in the `sync` module... right?
 (defn- sync-unhidden-tables
-  "Function to call on newly unhidden tables. Starts a thread to sync all tables."
+  "Function to call on newly unhidden tables. Starts a thread to sync all tables. Groups tables by database to
+  efficiently sync tables from different databases."
   [newly-unhidden]
   (when (seq newly-unhidden)
     (quick-task/submit-task!
      (fn []
-       (let [database (table/database (first newly-unhidden))]
-         ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
-         ;; purposes of creating a new H2 database.
-         (if (binding [driver.settings/*allow-testing-h2-connections* true]
-               (driver.u/can-connect-with-details? (:engine database) (:details database)))
-           (doseq [table newly-unhidden]
-             (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
-             (sync/sync-table! table))
-           (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
-                                     (:name database)))))))))
+       (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
+         (let [database (t2/select-one :model/Database db-id)]
+           ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
+           ;; purposes of creating a new H2 database.
+           (if (binding [driver.settings/*allow-testing-h2-connections* true]
+                 (driver.u/can-connect-with-details? (:engine database) (:details database)))
+             (doseq [table tables]
+               (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
+               (sync/sync-table! table))
+             (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
+                                       (:name database))))))))))
 
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
@@ -222,11 +224,13 @@
   (first (update-tables! [id] body)))
 
 (api.macros/defendpoint :put "/"
-  "Update all `Table` in `ids`."
+  "Update all `Table` in `ids`.
+
+  Deprecated, should use PUT /table/edit from now on."
   [_route-params
    _query-params
    {:keys [ids], :as body} :- [:map
-                               [:ids                     [:sequential ms/PositiveInt]]
+                               [:ids                                      [:sequential ms/PositiveInt]]
                                [:display_name            {:optional true} [:maybe ms/NonBlankString]]
                                [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
                                [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
@@ -256,42 +260,45 @@
                         [:and [:= :db_id (parse-long schema-db-id)] [:= :schema schema-name]]))]
     (cond-> [:or false]
       (seq database_ids) (conj [:in :db_id (sort database_ids)])
-      (seq table_ids) (conj [:in :id (sort table_ids)])
-      (seq schema_ids) (conj (into [:or] (map schema-expr) (sort schema_ids))))))
+      (seq table_ids)    (conj [:in :id    (sort table_ids)])
+      (seq schema_ids)   (conj (into [:or] (map schema-expr) (sort schema_ids))))))
+
+(mr/def ::data-layers (into [:enum {:decode/string keyword}] table/data-layer-types))
+
+(defn- maybe-sync-undhidden-tables!
+  [existing-tables {:keys [data_layer] :as body}]
+  ;; sync any tables that are changed from copper to something else
+  (sync-unhidden-tables (when (and (contains? body :data_layer) (not= :copper data_layer))
+                          (filter #(= :copper (:data_layer %)) existing-tables))))
 
 (api.macros/defendpoint :post "/edit"
-  "Bulk edit tables."
+  "Bulk updating tables."
   [_route-params
    _query-params
    body
    :- [:merge
        ::table-selectors
-       [:map
-        ;; settables
-        [:visibility_type {:optional true} [:maybe :string]]
+       [:map {:closed true}
         [:data_authority {:optional true} [:maybe :string]]
         [:data_source {:optional true} [:maybe :string]]
-        [:data_layer {:optional true} [:maybe :string]]
+        [:data_layer {:optional true} [:maybe ::data-layers]]
         [:entity_type {:optional true} [:maybe :string]]
         [:owner_email {:optional true} [:maybe :string]]
         [:owner_user_id {:optional true} [:maybe :int]]]]]
   (api/check-superuser)
-  (let [where   (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
-        set-ks  [:visibility_type
-                 :data_authority
-                 :data_source
-                 :data_layer
-                 :owner_email
-                 :owner_user_id
-                 :entity_type]
-        set-map (select-keys body set-ks)
-        ;; Sync visibility fields
-        set-map (table/sync-visibility-fields set-map {})
-        stmt    {:update :metabase_table
-                 :set    set-map
-                 :where  where}]
+  (let [where           (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
+        set-ks          [:data_authority
+                         :data_source
+                         :data_layer
+                         :owner_email
+                         :owner_user_id
+                         :entity_type]
+        existing-tables (t2/select :model/Table {:where where})
+        table-ids        (set (map :id existing-tables))
+        set-map          (select-keys body set-ks)]
     (when (seq set-map)
-      (t2/query stmt))
+      (t2/update! :model/Table [:in table-ids] set-map)
+      (maybe-sync-undhidden-tables! existing-tables set-map))
     {}))
 
 (defn- table->published-model
@@ -329,9 +336,6 @@
                                    (map t2.realize/realize)
                                    (partition-all 20)
                                    (mapcat (fn [batch]
-                                             ;; TODO (Ngoc 29/10/25): create-card! does async calculation of metadata
-                                             ;; and it's gonna be expensive if we're doing this for lots of tables.
-                                             ;; maybe we should an option to skip it
                                              (mapv (fn [table]
                                                      (queries/create-card! (table->published-model table api/*current-user-id* (:id target-collection)) @api/*current-user*))
                                                    batch))))
