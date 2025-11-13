@@ -128,13 +128,39 @@
     (testing "GET /api/automagic-dashboards/segment/:id/rule/example/indepth"
       (is (some? (api-call! "segment/%s/rule/example/indepth" [segment-id]))))))
 
-(deftest field-xray-test
-  (testing "GET /api/automagic-dashboards/field/:id"
-    (is (some? (api-call! "field/%s" [(mt/id :venues :price)])))))
-
 (defn- revoke-collection-permissions!
   [collection-id]
   (perms/revoke-collection-permissions! (perms-group/all-users) collection-id))
+
+(deftest model-based-segment-xray-test
+  (testing "X-ray of a model-based segment"
+    (doseq [test-fn
+            [(fn [collection-id segment-id]
+               (testing "GET /api/automagic-dashboards/segment/:id"
+                 (is (some? (api-call! "segment/%s" [segment-id] #(revoke-collection-permissions! collection-id))))))
+
+             (fn [collection-id segment-id]
+               (testing "GET /api/automagic-dashboards/segment/:id/rule/example/indepth"
+                 (is (some? (api-call! "segment/%s/rule/example/indepth" [segment-id] #(revoke-collection-permissions! collection-id))))))]]
+      (mt/with-temp [:model/Collection {collection-id :id} {}
+                     :model/Card model {:type :model
+                                        :table_id (mt/id :venues)
+                                        :database_id (mt/id)
+                                        :collection_id collection-id
+                                        :dataset_query (mt/mbql-query venues)}
+                     :model/Segment {segment-id :id} {:model_id (:id model)
+                                                      :table_id nil
+                                                      :definition {:lib/type :mbql/query
+                                                                   :stages [{:lib/type :mbql.stage/mbql
+                                                                             :source-card (:id model)
+                                                                             :filters [[:> {} [:field {} (mt/id :venues :price)] 10]]}]
+                                                                   :database (mt/id)}}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+        (test-fn collection-id segment-id)))))
+
+(deftest field-xray-test
+  (testing "GET /api/automagic-dashboards/field/:id"
+    (is (some? (api-call! "field/%s" [(mt/id :venues :price)])))))
 
 (deftest question-xray-test
   (mt/with-non-admin-groups-no-root-collection-perms

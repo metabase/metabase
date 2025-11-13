@@ -180,20 +180,45 @@
 (defn- pmbql-segment-definition
   "Create an MBQL5 segment definition"
   [table-id field-id value]
-  (let [metadata-provider (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))
-        table (lib.metadata/table metadata-provider table-id)
-        query (lib/query metadata-provider table)
-        field (lib.metadata/field metadata-provider field-id)]
-    (dissoc (lib/filter query (lib/> field value)) :lib/metadata)))
+  (let [mp (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))
+        table (lib.metadata/table mp table-id)
+        query (lib/query mp table)
+        field (lib.metadata/field mp field-id)]
+    (lib/filter query (lib/> field value))))
+
+(defn- pmbql-model-segment-definition
+  "Create an MBQL5 segment definition for a model (card with dataset=true)"
+  [model-id field-id value]
+  (let [table-id (t2/select-one-fn :table_id :model/Card :id model-id)
+        mp (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))
+        card (lib.metadata/card mp model-id)
+        query (lib/query mp card)
+        field (lib.metadata/field mp field-id)]
+    (lib/filter query (lib/> field value))))
 
 (deftest ^:parallel source-root-segment-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Segment"
     (testing "The source of a segment is its underlying table."
       (mt/with-temp [:model/Segment segment {:table_id   (mt/id :venues)
-                                             :definition (pmbql-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
+                                             :definition (pmbql-segment-definition
+                                                          (mt/id :venues) (mt/id :venues :price) 10)}]
         (let [{:keys [entity source]} (#'magic/->root segment)]
           (is (= entity segment))
           (is (= source (t2/select-one :model/Table (mt/id :venues)))))))))
+
+(deftest ^:parallel source-root-segment-model-test
+  (testing "The source of a model-based segment is the model (Card) itself"
+    (mt/with-temp [:model/Card model {:type :model
+                                      :table_id (mt/id :venues)
+                                      :database_id (mt/id)
+                                      :dataset_query (mt/mbql-query venues)}
+                   :model/Segment segment {:model_id (:id model)
+                                           :table_id nil
+                                           :definition (pmbql-model-segment-definition
+                                                        (:id model) (mt/id :venues :price) 10)}]
+      (let [{:keys [entity source]} (#'magic/->root segment)]
+        (is (= entity segment))
+        (is (= source model))))))
 
 ;;; ------------------- `automagic-analysis` -------------------
 

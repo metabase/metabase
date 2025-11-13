@@ -197,13 +197,19 @@
 
 (mu/defmethod ->root :model/Segment :- ::ads/root
   [segment :- [:map [:definition ::segments.schema/segment]]]
-  (let [table (->> segment :table_id (t2/select-one :model/Table :id))]
+  (let [source (if-let [model-id (:model_id segment)]
+                 (t2/select-one :model/Card :id model-id)
+                 (t2/select-one :model/Table :id (:table_id segment)))
+        database (if (:model_id segment)
+                   (:database_id source)
+                   (:db_id source))
+        source-name ((some-fn :display_name :name) source)]
     {:entity                     segment
-     :full-name                  (tru "{0} in the {1} segment" (:display_name table) (:name segment))
-     :short-name                 (:display_name table)
+     :full-name                  (tru "{0} in the {1} segment" source-name (:name segment))
+     :short-name                 source-name
      :comparison-name            (tru "{0} segment" (:name segment))
-     :source                     table
-     :database                   (:db_id table)
+     :source                     source
+     :database                   database
      :query-filter               [(lib/segment (u/the-id segment))]
      :url                        (format "%ssegment/%s" public-endpoint (u/the-id segment))
      :dashboard-templates-prefix ["table"]}))

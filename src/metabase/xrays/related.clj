@@ -100,18 +100,29 @@
                          (not= active false)
                          (mi/can-read? instance)))))
 
-(defn- metrics-for-table
-  [table]
-  (filter-visible (t2/select :model/Card
-                             :table_id (:id table)
-                             :type :metric
-                             :archived false)))
+(defn- metrics-for-table-or-model
+  [table-or-model]
+  (filter-visible
+   (if (t2/instance-of? :model/Card table-or-model)
+     (t2/select :model/Card
+                :source_card_id (:id table-or-model)
+                :type :metric
+                :archived false)
+     (t2/select :model/Card
+                :table_id (:id table-or-model)
+                :type :metric
+                :archived false))))
 
-(defn- segments-for-table
-  [table]
-  (filter-visible (t2/select :model/Segment
-                             :table_id (:id table)
-                             :archived false)))
+(defn- segments-for-table-or-model
+  [table-or-model]
+  (filter-visible
+   (if (t2/instance-of? :model/Card table-or-model)
+     (t2/select :model/Segment
+                :model_id (:id table-or-model)
+                :archived false)
+     (t2/select :model/Segment
+                :table_id (:id table-or-model)
+                :archived false))))
 
 (defn- linking-to
   [table]
@@ -220,15 +231,15 @@
   (let [table             (t2/select-one :model/Table :id (:table_id card))
         similar-questions (similar-questions card)
         similar-metrics   (similar-metrics card)]
-    {:table             table
-     :metrics           (interesting-mix similar-metrics)
-     :segments          (->> table
-                             segments-for-table
-                             (rank-by-similarity card)
-                             interesting-mix)
-     :dashboard-mates   (cards-sharing-dashboard card)
-     :dashboards        (recommended-dashboards similar-questions)
-     :collections       (recommended-collections similar-questions)}))
+    {:table           table
+     :metrics         (interesting-mix similar-metrics)
+     :segments        (->> table
+                           segments-for-table-or-model
+                           (rank-by-similarity card)
+                           interesting-mix)
+     :dashboard-mates (cards-sharing-dashboard card)
+     :dashboards      (recommended-dashboards similar-questions)
+     :collections     (recommended-collections similar-questions)}))
 
 (defmethod related :model/Query
   [query]
@@ -239,27 +250,29 @@
   (let [table (t2/select-one :model/Table :id (:table_id metric))]
     {:table    table
      :segments (->> table
-                    segments-for-table
+                    segments-for-table-or-model
                     (rank-by-similarity metric)
                     interesting-mix)}))
 
 (defmethod related :model/Segment
   [segment]
-  (let [table (t2/select-one :model/Table :id (:table_id segment))]
-    {:table       table
-     :metrics     (metrics-for-table table)
-     :segments    (->> table
-                       segments-for-table
+  (let [source (if-let [model-id (:model_id segment)]
+                 (t2/select-one :model/Card :id model-id)
+                 (t2/select-one :model/Table :id (:table_id segment)))]
+    {:table       source
+     :metrics     (metrics-for-table-or-model source)
+     :segments    (->> source
+                       segments-for-table-or-model
                        (rank-by-similarity segment)
                        interesting-mix)
-     :linked-from (linked-from table)}))
+     :linked-from (linked-from source)}))
 
 (defmethod related :model/Table
   [table]
   (let [linking-to  (linking-to table)
         linked-from (linked-from table)]
-    {:segments    (segments-for-table table)
-     :metrics     (metrics-for-table table)
+    {:segments    (segments-for-table-or-model table)
+     :metrics     (metrics-for-table-or-model table)
      :linking-to  linking-to
      :linked-from linked-from
      :tables      (->> (t2/select :model/Table
@@ -277,11 +290,11 @@
   (let [table (t2/select-one :model/Table :id (:table_id field))]
     {:table    table
      :segments (->> table
-                    segments-for-table
+                    segments-for-table-or-model
                     (rank-by-similarity field)
                     interesting-mix)
      :metrics  (->> table
-                    metrics-for-table
+                    metrics-for-table-or-model
                     (rank-by-similarity field)
                     (filter (comp pos? :similarity))
                     interesting-mix)
