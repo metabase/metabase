@@ -18,21 +18,12 @@
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]))
 
-(def ^:private api-key-that-should-never-match (str (random-uuid)))
-(def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
-
-(defn do-useless-hash
-  "Password check that will always fail, used to avoid exposing any info about existing users or API keys via timing
-  attacks."
-  []
-  (u.password/verify-password api-key-that-should-never-match "" hash-that-should-never-match))
-
 (defn- matching-api-key? [{:keys [api-key] :as _user-data} passed-api-key]
   ;; if we get an API key, check the hash against the passed value. If not, don't reveal info via a timing attack - do
   ;; a useless hash, *then* return `false`.
   (if api-key
     (u.password/verify-password passed-api-key "" api-key)
-    (do-useless-hash)))
+    (u.password/do-useless-hash)))
 
 ;; See above: because this query runs on every single API request (with an API Key) it's worth it to optimize it a bit
 ;; and only compile it to SQL once rather than every time

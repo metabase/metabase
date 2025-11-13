@@ -120,3 +120,12 @@ the result of previously hashing that password."
   ;; we wrap the friend/bcrypt-verify with this function specifically to avoid unintended exceptions getting out
   (boolean (u/ignore-exceptions
              (bcrypt-verify (str salt password) hashed-password))))
+
+(def ^:private never-match-string (str (random-uuid)))
+(def ^:private never-match-hash (hash-bcrypt "password"))
+
+(defn do-useless-hash
+  "Password check that will always fail, used to avoid exposing any info about existing users or API keys via timing
+  attacks."
+  []
+  (verify-password never-match-string "" never-match-hash))
