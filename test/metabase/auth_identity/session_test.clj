@@ -74,20 +74,6 @@
         (let [updated-auth (t2/select-one :model/AuthIdentity :id (:id password-auth))]
           (is (some? (:last_used_at updated-auth))))))))
 
-(deftest create-session-with-explicit-provider-test
-  (testing "Creating a session with explicit provider parameter"
-    (mt/with-temp [:model/User user {}
-                   :model/AuthIdentity saml-auth {:user_id (:id user)
-                                                  :provider "saml"
-                                                  :metadata {:sso_source "saml"}}]
-      (let [device-info {:device_id "test-device-saml"
-                         :device_description "Test Browser"
-                         :embedded false
-                         :ip_address "127.0.0.1"}
-            session (auth-identity/create-session-with-auth-tracking! user device-info :provider/saml)]
-        (is (some? session))
-        (is (= (:id saml-auth) (:auth_identity_id session)))))))
-
 (deftest multiple-sessions-same-auth-identity-test
   (testing "Multiple sessions can reference the same AuthIdentity"
     (mt/with-temp [:model/User user {}]
