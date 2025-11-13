@@ -249,8 +249,6 @@
 
 (defn- next-checkpoint-value
   "Execute the checkpoint query and normalize the result for database insertion.
-
-  Converts integers to `bigint` and other numbers to `bigdec` to compensate for QP type loss.
   Returns `nil` if the target table is empty."
   [{:keys [query filter-column]}]
   (let [{:keys [base-type]} filter-column
@@ -290,10 +288,9 @@
 (defn- post-process-incremental-query
   "Wrap a compiled native query with checkpoint filtering for native queries without explicit checkpoint tags.
 
-  Generates SQL that wraps the original query as a subquery and filters by `checkpoint_filter > (checkpoint_query)`.
-  Only applies when both `checkpoint-filter` (column name) and `checkpoint-query` are present."
+  Generates SQL that wraps the original query as a subquery and filters by `checkpoint_filter > (checkpoint_query)`. "
   [query driver {:keys [checkpoint-filter]} {checkpoint-query :query}]
-  (if (and checkpoint-query checkpoint-filter)
+  (if (and checkpoint-query checkpoint-filter (next-checkpoint-value checkpoint-query))
     (let [honeysql-query {:select [:*]
                           :from [[[:raw (str "(" query ")")] :subquery]]
                           :where [:> (h2x/identifier :field checkpoint-filter)
