@@ -11,7 +11,7 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { Collection, CollectionId } from "metabase-types/api";
 
-import { getWritableLibraryCollection } from "./utils";
+import { getWritableCollection } from "./utils";
 
 type LibraryCollectionTreeProps = {
   rootCollection: Collection;
@@ -32,12 +32,12 @@ export function LibraryCollectionTree({
   );
 
   const modelCollection = useMemo(
-    () => getWritableLibraryCollection(rootCollection, "library-models"),
+    () => getWritableCollection(rootCollection, "library-models"),
     [rootCollection],
   );
 
   const metricCollection = useMemo(
-    () => getWritableLibraryCollection(rootCollection, "library-metrics"),
+    () => getWritableCollection(rootCollection, "library-metrics"),
     [rootCollection],
   );
 
