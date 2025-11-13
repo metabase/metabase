@@ -328,7 +328,7 @@
 
 (deftest native-query-without-template-tag-test
   (testing "Native query without template tags uses automatic checkpoint wrapping"
-    (mt/test-drivers
+    (mt/test-drivers (test-drivers)
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [target-table "native_no_template"]
