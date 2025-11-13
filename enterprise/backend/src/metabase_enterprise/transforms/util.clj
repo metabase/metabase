@@ -229,11 +229,20 @@
         (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
               table-metadata (lib.metadata/table metadata-provider (:id table))
               query (lib/query metadata-provider table-metadata)]
-          (when-let [filter-column (source->checkpoint-filter-column query
-                                                                     (:source-incremental-strategy source)
-                                                                     table metadata-provider)]
-            (some-> query (lib/aggregate (lib/max filter-column))
-                    qp/process-query :data :rows first first bigint)))))))
+          (when-let [{:keys [base-type] :as filter-column}
+                     (source->checkpoint-filter-column query
+                                                       (:source-incremental-strategy source)
+                                                       table metadata-provider)]
+            (let [v (some-> query (lib/aggregate (lib/max filter-column))
+                            qp/process-query :data :rows first first)]
+              (cond
+                (isa? base-type :type/Integer)
+                (bigint v)
+
+                (number? v)
+                (bigdec v)
+
+                :else v))))))))
 
 (defn preprocess-incremental-query
   "Preprocess a query for incremental transform execution by adding watermark filtering.
@@ -252,7 +261,7 @@
       (if (lib.query/native? query)
         (if (seq (get-in query [:stages 0 :template-tags]))
           (update query :parameters conj
-                  {:type :number
+                  {:type (if (number? watermark-value) :number :temporal-unit)
                    :target [:variable [:template-tag "checkpoint"]]
                    :value watermark-value})
           (let [native-sql (get-in query [:stages 0 :native])
