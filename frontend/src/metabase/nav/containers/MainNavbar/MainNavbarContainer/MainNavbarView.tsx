@@ -7,6 +7,7 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   isExamplesCollection,
+  isLibraryCollection,
   isRootTrashCollection,
   isSyncedCollection,
 } from "metabase/collections/utils";
@@ -119,16 +120,19 @@ export function MainNavbarView({
     syncedCollections,
   ] = useMemo(() => {
     const synced = collections.filter(isSyncedCollection);
+    const library = collections.filter(isLibraryCollection);
 
     const normalCollections = collections.filter((c) => {
       const isNormalCollection =
         !isRootTrashCollection(c) && !isExamplesCollection(c);
-      return isNormalCollection && !isSyncedCollection(c);
+      return (
+        isNormalCollection && !isSyncedCollection(c) && !isLibraryCollection(c)
+      );
     });
 
     if (!showSyncGroup && synced.length > 0 && normalCollections.length > 0) {
       const [root, ...rest] = normalCollections;
-      const reordered = [root, ...synced, ...rest];
+      const reordered = [root, ...library, ...synced, ...rest];
 
       return [
         reordered,
@@ -138,8 +142,9 @@ export function MainNavbarView({
       ];
     }
 
+    const [root, ...rest] = normalCollections;
     return [
-      normalCollections,
+      [root, ...library, ...rest],
       collections.find(isRootTrashCollection),
       collections.find(isExamplesCollection),
       synced,
