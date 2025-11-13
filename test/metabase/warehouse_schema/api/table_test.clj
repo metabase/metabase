@@ -1288,7 +1288,46 @@
                 jit        nil}
                (t2/select-pk->fn :owner_user_id :model/Table :db_id [:in [clojure jvm]])))))))
 
-;; TODO tests trigger resync if unhide a table by changign data layer (waiting for confirmation from Sameer on this)
+(deftest trigger-sync-on-data-layer-change-from-copper-test
+  (testing "Changing data_layer from copper to another value triggers sync"
+    (mt/with-temp [:model/Database {db-id :id}      {}
+                   :model/Table    {copper-1 :id}   {:db_id db-id, :data_layer "copper"}
+                   :model/Table    {copper-2 :id}   {:db_id db-id, :data_layer "copper"}
+                   :model/Table    {copper-3 :id}   {:db_id db-id, :data_layer "copper"}
+                   :model/Table    {copper-4 :id}   {:db_id db-id, :data_layer "copper"}
+                   :model/Table    {gold-1 :id}     {:db_id db-id, :data_layer "gold"}
+                   :model/Table    {gold-2 :id}     {:db_id db-id, :data_layer "gold"}]
+      (let [synced-ids (atom #{})]
+        (mt/with-dynamic-fn-redefs [api.table/sync-unhidden-tables (fn [tables] (reset! synced-ids (set (map :id tables))))]
+          (testing "Changing from copper to gold triggers sync"
+            (reset! synced-ids #{})
+            (mt/user-http-request :crowberto :post 200 "table/edit" {:table_ids  [copper-1 copper-2]
+                                                                     :data_layer "gold"})
+            (is (= #{copper-1 copper-2} @synced-ids)))
+
+          (testing "Changing from copper to silver triggers sync"
+            (reset! synced-ids #{})
+            (mt/user-http-request :crowberto :post 200 "table/edit" {:table_ids  [copper-3]
+                                                                     :data_layer "silver"})
+            (is (= #{copper-3} @synced-ids)))
+
+          (testing "Changing from copper to bronze triggers sync"
+            (reset! synced-ids #{})
+            (mt/user-http-request :crowberto :post 200 "table/edit" {:table_ids  [copper-4]
+                                                                     :data_layer "bronze"})
+            (is (= #{copper-4} @synced-ids)))
+
+          (testing "Not changing from copper does not trigger sync"
+            (reset! synced-ids #{})
+            (mt/user-http-request :crowberto :post 200 "table/edit" {:table_ids  [gold-1]
+                                                                     :data_layer "silver"})
+            (is (= #{} @synced-ids)))
+
+          (testing "Changing to copper does not trigger sync"
+            (reset! synced-ids #{})
+            (mt/user-http-request :crowberto :post 200 "table/edit" {:table_ids  [gold-2]
+                                                                     :data_layer "copper"})
+            (is (= #{} @synced-ids))))))))
 
 (deftest ^:parallel table-selectors->filter-test
   (testing "table-selectors->filter function generates correct WHERE clauses"

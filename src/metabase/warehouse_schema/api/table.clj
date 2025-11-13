@@ -191,11 +191,6 @@
              (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
                                        (:name database))))))))))
 
-(defn- maybe-sync-undhidden-tables!
-  [existing-tables {:keys [visibility_type] :as body}]
-  (sync-unhidden-tables (when (and (contains? body :visibility_type) (nil? visibility_type))
-                          (into [] (filter (comp some? :visibility_type)) existing-tables))))
-
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
   (let [existing-tables (t2/select :model/Table :id [:in ids])]
@@ -269,6 +264,14 @@
       (seq table_ids)    (conj [:in :id    (sort table_ids)])
       (seq schema_ids)   (conj (into [:or] (map schema-expr) (sort schema_ids))))))
 
+(mr/def ::data-layers (into [:enum {:decode/string keyword}] table/data-layer-types))
+
+(defn- maybe-sync-undhidden-tables!
+  [existing-tables {:keys [data_layer] :as body}]
+  ;; sync any tables that are changed from copper to something else
+  (sync-unhidden-tables (when (and (contains? body :data_layer) (not= :copper data_layer))
+                          (filter #(= :copper (:data_layer %)) existing-tables))))
+
 (api.macros/defendpoint :post "/edit"
   "Bulk updating tables."
   [_route-params
@@ -279,7 +282,7 @@
        [:map {:closed true}
         [:data_authority {:optional true} [:maybe :string]]
         [:data_source {:optional true} [:maybe :string]]
-        [:data_layer {:optional true} [:maybe :string]]
+        [:data_layer {:optional true} [:maybe ::data-layers]]
         [:entity_type {:optional true} [:maybe :string]]
         [:owner_email {:optional true} [:maybe :string]]
         [:owner_user_id {:optional true} [:maybe :int]]]]]
@@ -291,9 +294,7 @@
                          :owner_email
                          :owner_user_id
                          :entity_type]
-        existing-tables (t2/query {:select [:id :visibility_type]
-                                   :from   [:metabase_table]
-                                   :where  where})
+        existing-tables (t2/select :model/Table {:where where})
         table-ids        (set (map :id existing-tables))
         set-map          (select-keys body set-ks)]
     (when (seq set-map)
