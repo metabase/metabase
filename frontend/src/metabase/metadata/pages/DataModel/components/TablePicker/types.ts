@@ -62,7 +62,7 @@ export type ItemType = Item["type"];
 
 export type FlatItem = LoadingItem | ExpandedItem;
 
-type ExpandedItem = Item & {
+interface ExpandedItemBase {
   isExpanded?: boolean;
   isLoading?: false;
   parent?: NodeKey;
@@ -70,7 +70,16 @@ type ExpandedItem = Item & {
   disabled?: boolean;
   isSelected?: "yes" | "no" | "some";
   children: TreeNode[];
-};
+}
+
+export type ExpandedItem = Item & ExpandedItemBase;
+
+export type ExpandedSchemaItem = SchemaItem &
+  ExpandedItemBase & {
+    children: TableNode[];
+  };
+
+export type ExpandedTableItem = TableItem & ExpandedItemBase;
 
 type LoadingItem = {
   isLoading: true;
@@ -100,4 +109,20 @@ export interface FilterState {
   ownerEmail: string | null;
   ownerUserId: UserId | "unknown" | null;
   orphansOnly: boolean | null;
+}
+
+export function isSchemaNode(
+  node: ExpandedItem | TreeNode,
+): node is ExpandedSchemaItem {
+  return (
+    node.type === "schema" &&
+    node.children.every((child) => child.type === "table")
+  );
+}
+
+export function isTableNode(node: ExpandedItem): node is ExpandedTableItem {
+  return (
+    node.type === "schema" &&
+    node.children.every((child) => child.type === "table")
+  );
 }
