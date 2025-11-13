@@ -2,14 +2,14 @@ import type { Location } from "history";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
-import * as Urls from "metabase/lib/urls";
-import { Group } from "metabase/ui";
-
 import {
   type PaneHeaderTab,
   PaneHeaderTabs,
-} from "../../../common/components/PaneHeader";
+} from "metabase/data-studio/common/components/PaneHeader";
+import * as Urls from "metabase/lib/urls";
+import { Group } from "metabase/ui";
+
+import { SectionLayout } from "../../components/SectionLayout";
 
 type TransformsSectionLayoutProps = {
   location: Location;
