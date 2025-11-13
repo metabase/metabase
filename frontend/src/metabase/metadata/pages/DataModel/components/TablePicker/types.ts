@@ -111,6 +111,10 @@ export interface FilterState {
   orphansOnly: boolean | null;
 }
 
+export function isExpandedItem(node: FlatItem): node is ExpandedItem {
+  return node.isLoading === undefined;
+}
+
 export function isSchemaNode(
   node: ExpandedItem | TreeNode,
 ): node is ExpandedSchemaItem {
@@ -120,7 +124,9 @@ export function isSchemaNode(
   );
 }
 
-export function isTableNode(node: ExpandedItem): node is ExpandedTableItem {
+export function isTableNode(
+  node: ExpandedItem | TreeNode,
+): node is ExpandedTableItem {
   return (
     node.type === "schema" &&
     node.children.every((child) => child.type === "table")

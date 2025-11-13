@@ -1,6 +1,7 @@
 import type { DatabaseId, TableId } from "metabase-types/api";
 
-import type { DatabaseNode, FlatItem, TreeNode } from "./types";
+import type { DatabaseNode, ExpandedItem, FlatItem, TreeNode } from "./types";
+import { isExpandedItem, isTableNode } from "./types";
 
 export interface NodeSelection {
   tables: Set<TableId>;
@@ -74,7 +75,10 @@ function areChildSchemasSelected(
 }
 
 export function getSchemaId(item: FlatItem) {
-  if (item.type !== "table" && item.type !== "schema") {
+  if (!isExpandedItem(item)) {
+    return undefined;
+  }
+  if (!isTableNode(item)) {
     return undefined;
   }
   return `${item.value?.databaseId}:${item.value?.schemaName}`;
@@ -158,18 +162,23 @@ export function getParentSchema(tableItem: FlatItem, allItems: FlatItem[]) {
   );
 }
 
-export function getSchemaTables(schema: FlatItem, allItems: FlatItem[]) {
-  const result = allItems.filter(
-    (x) =>
-      x.type === "table" &&
-      getSchemaId(schema) === getSchemaId(x) &&
-      x.value?.tableId,
-  );
+export function getSchemaTables(
+  schema: FlatItem,
+  allItems: ExpandedItem[] | TreeNode[],
+) {
+  const result = allItems
+    .filter(
+      (x) =>
+        isTableNode(x) &&
+        getSchemaId(schema) === getSchemaId(x) &&
+        x.value?.tableId,
+    )
+    .filter(isTableNode);
 
   return result;
 }
 
-export function getSchemaTableIds(schema: FlatItem, allItems: FlatItem[]) {
+export function getSchemaTableIds(schema: FlatItem, allItems: ExpandedItem[]) {
   return getSchemaTables(schema, allItems).map((x) => x.value?.tableId ?? "");
 }
 
@@ -193,7 +202,7 @@ export function getParentSchemaTables(item: FlatItem, allItems: FlatItem[]) {
 
 export function areTablesSelected(
   schema: FlatItem,
-  allItems: FlatItem[],
+  allItems: TreeNode[],
   selectedItems: Set<TableId> | undefined,
 ): "all" | "some" | "none" {
   const tables = getSchemaTables(schema, allItems);
