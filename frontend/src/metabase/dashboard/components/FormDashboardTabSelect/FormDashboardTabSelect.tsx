@@ -25,7 +25,9 @@ export const FormDashboardTabSelect = ({
       const firstTabId = currentData?.tabs?.length
         ? String(currentData.tabs[0].id)
         : undefined;
-      dashboardTabHelpers.setValue(firstTabId);
+      setTimeout(() => {
+        dashboardTabHelpers.setValue(firstTabId);
+      }, 0);
     },
     [currentData, dashboardTabHelpers],
   );
