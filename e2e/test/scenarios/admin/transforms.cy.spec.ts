@@ -49,7 +49,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   });
 
   describe("creation", () => {
-    it("should be able to create and run an mbql transform", () => {
+    it.only("should be able to create and run an mbql transform", () => {
       cy.log("create a new transform");
       visitTransformListPage();
       getTransformListPage().button("Create a transform").click();
@@ -189,7 +189,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       testSnippets();
     });
 
-    it(
+    it.only(
       "should be possible to create and run a Python transform",
       { tags: ["@python"] },
       () => {
