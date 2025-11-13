@@ -201,8 +201,8 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       }),
     }),
     checkQueryComplexity: builder.mutation<
-      { is_simple: boolean, reason: string },
-      { query: string; }
+      { is_simple: boolean; reason: string },
+      { query: string }
     >({
       query: (body) => ({
         method: "POST",
