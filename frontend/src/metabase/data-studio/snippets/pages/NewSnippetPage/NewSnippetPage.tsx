@@ -33,12 +33,12 @@ type NewSnippetPageProps = {
 export function NewSnippetPage({ route }: NewSnippetPageProps) {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-  const [name, setName] = useState(t`New SQL snippet`);
+  const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [content, setContent] = useState("");
   const [isCollectionPickerOpen, setIsCollectionPickerOpen] = useState(false);
-
   const [createSnippet, { isLoading: isSaving }] = useCreateSnippetMutation();
+  const isValid = name.length > 0 && content.length > 0;
 
   const handleCreateSnippet = async (
     collectionId: RegularCollectionId | null,
@@ -87,13 +87,15 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
           title={
             <PaneHeaderInput
               initialValue={name}
+              placeholder={t`New SQL snippet`}
               maxLength={SNIPPET_NAME_MAX_LENGTH}
+              isOptional
               onChange={setName}
             />
           }
           actions={
             <PaneHeaderActions
-              isValid={true}
+              isValid={isValid}
               isDirty={true}
               isSaving={isSaving}
               onSave={handleSave}
