@@ -59,8 +59,37 @@ export const HandleEditorDrop = Extension.create({
                 return handleCardDropOnParagraph(cardEmbedInitialData);
               }
 
+              // Handle drops on supportingText
               if (dropToParent.type.name === "supportingText") {
-                return true;
+                // Check if the supportingText is inside a flexContainer
+                const supportingTextPos = view.state.doc.resolve(
+                  cardEmbedInitialData.dropPos,
+                );
+                let currentDepth = supportingTextPos.depth;
+                let foundFlexContainer = false;
+
+                // Walk up the tree to find a flexContainer parent
+                while (currentDepth > 0) {
+                  const parentAtDepth = supportingTextPos.node(currentDepth);
+                  if (parentAtDepth.type.name === "flexContainer") {
+                    foundFlexContainer = true;
+                    // Update the drop target to be the flexContainer
+                    const flexContainerPos =
+                      supportingTextPos.before(currentDepth);
+                    const flexContainerResolvedPos =
+                      view.state.doc.resolve(flexContainerPos);
+                    cardEmbedInitialData.dropToParent = parentAtDepth;
+                    cardEmbedInitialData.dropToParentPos =
+                      flexContainerResolvedPos;
+                    return handleCardDropToFlexContainer(cardEmbedInitialData);
+                  }
+                  currentDepth--;
+                }
+
+                // If not in a flexContainer, block the drop
+                if (!foundFlexContainer) {
+                  return true;
+                }
               }
 
               // Check if dropping into document (not into another flexContainer or cardEmbed)

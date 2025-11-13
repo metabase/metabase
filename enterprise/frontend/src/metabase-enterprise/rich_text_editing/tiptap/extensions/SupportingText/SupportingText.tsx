@@ -69,7 +69,7 @@ export const SupportingText = Node.create<{
     return [
       "div",
       mergeAttributes(HTMLAttributes, {
-        "data-type": "supportingText",
+        "data-type": SupportingText.name,
       }),
       0,
     ];
