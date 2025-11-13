@@ -153,14 +153,7 @@ const TableSectionBase = ({
 
   return (
     <Stack data-testid="table-section" gap="md" pb="xl">
-      <Box
-        className={S.header}
-        bg="accent-gray-light"
-        px="lg"
-        mt="xl"
-        pos="sticky"
-        top={0}
-      >
+      <Box className={S.header} bg="accent-gray-light" px="lg" mt="xl">
         <NameDescriptionInput
           description={table.description ?? ""}
           descriptionPlaceholder={t`Give this table a description`}
