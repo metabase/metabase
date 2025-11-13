@@ -1,7 +1,9 @@
 import { type ReactNode, useState } from "react";
 import { c, t } from "ttag";
 
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { getMetadata } from "metabase/selectors/metadata";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -54,6 +56,18 @@ function CardMenu({ card, onOpenModal }: CardMenuProps) {
   const metadata = useSelector(getMetadata);
   const query = Lib.fromJsQueryAndMetadata(metadata, card.dataset_query);
   const queryInfo = Lib.queryDisplayInfo(query);
+
+  menuItems.push(
+    <Menu.Item
+      key="view"
+      leftSection={<Icon name="external" />}
+      component={ForwardRefLink}
+      to={Urls.question(card)}
+      target="_blank"
+    >
+      {c("A verb, not a noun").t`View`}
+    </Menu.Item>,
+  );
 
   if (card.can_write) {
     menuItems.push(
