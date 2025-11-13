@@ -96,22 +96,17 @@ export const IncrementalTransformSettings = ({
         checkOnMount &&
         transformType === "native" &&
         libQuery &&
-        values.incremental
+        "source-incremental-strategy" in source
       ) {
         const { is_simple } = await checkQueryComplexity(
           Lib.rawNativeQuery(libQuery),
+          true,
         ).unwrap();
         setShowComplexityWarning(!is_simple);
       }
     }
     checkExistingQueryComplexity();
-  }, [
-    checkOnMount,
-    checkQueryComplexity,
-    libQuery,
-    transformType,
-    values?.incremental,
-  ]);
+  }, [checkOnMount, checkQueryComplexity, libQuery, transformType, source]);
 
   return (
     <>
@@ -127,6 +122,7 @@ export const IncrementalTransformSettings = ({
           if (transformType === "native" && libQuery && e.target.checked) {
             const complexity = await checkQueryComplexity(
               Lib.rawNativeQuery(libQuery),
+              true,
             ).unwrap();
             setShowComplexityWarning(complexity?.is_simple === false);
           }
@@ -137,7 +133,10 @@ export const IncrementalTransformSettings = ({
           {showComplexityWarning && (
             <Alert variant="info" icon="info">
               <Stack gap="xs">
-                <span>{t`This query is too complex to allow automatic checkpoint column selection.`}</span>
+                <span>
+                  {t`This query is too complex to allow automatic checkpoint column selection. You may need to explicitely add a conditional filter in your query, for example:`}
+                </span>
+                <code>{`[[ WHERE id > {{checkpoint}} ]]`}</code>
                 <span>
                   {t`Reason: `}
                   <strong>{complexity?.reason}</strong>

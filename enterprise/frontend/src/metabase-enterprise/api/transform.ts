@@ -201,7 +201,7 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       }),
     }),
     checkQueryComplexity: builder.query<
-      { is_simple: boolean, reason: string },
+      { is_simple: boolean; reason: string },
       string
     >({
       query: (queryString) => ({
