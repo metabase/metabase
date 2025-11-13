@@ -6,9 +6,8 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import type { TreeNodeProps } from "metabase/common/components/tree/types";
 import { Box, Icon } from "metabase/ui";
+import { SidebarListItemContent } from "metabase-enterprise/transforms/pages/TransformSidebarLayout/SidebarListItem/SidebarListItem";
 import type { Transform } from "metabase-types/api";
-
-import { SidebarListItemContent } from "../TransformsSidebarLayout/SidebarListItem/SidebarListItem";
 
 import S from "./TransformsTreeNode.module.css";
 

@@ -21,7 +21,7 @@ import type {
 
 import { ResizeHandle } from "../ResizeHandle";
 
-import S from "./QuerySection.module.css";
+import S from "./QueryEditorBody.module.css";
 
 const EDITOR_HEIGHT = 550;
 const NATIVE_HEADER_HEIGHT = 55;
@@ -36,7 +36,7 @@ const NATIVE_EDITOR_SIDEBAR_FEATURES = {
   aiGeneration: false,
 };
 
-type QuerySectionProps = {
+type QueryEditorBodyProps = {
   question: Question;
   proposedQuestion: Question | undefined;
   modalSnippet?:
@@ -68,7 +68,7 @@ type QuerySectionProps = {
   onRejectProposed?: () => void;
 };
 
-export function QuerySection({
+export function QueryEditorBody({
   question,
   proposedQuestion,
   modalSnippet,
@@ -93,7 +93,7 @@ export function QuerySection({
   onOpenModal,
   onAcceptProposed,
   onRejectProposed,
-}: QuerySectionProps) {
+}: QueryEditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
   const editorHeight = useInitialEditorHeight(isNative);

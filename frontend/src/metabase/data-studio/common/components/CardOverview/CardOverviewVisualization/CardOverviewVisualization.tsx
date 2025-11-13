@@ -10,15 +10,15 @@ import type { Card } from "metabase-types/api";
 
 import S from "./VisualizationSection.css";
 
-type VisualizationSectionProps = {
+type CardOverviewVisualizationProps = {
   className?: string;
   card: Card;
 };
 
-export function VisualizationSection({
+export function CardOverviewVisualization({
   className,
   card,
-}: VisualizationSectionProps) {
+}: CardOverviewVisualizationProps) {
   const metadata = useSelector(getMetadata);
   const question = useMemo(
     () => new Question(card, metadata),

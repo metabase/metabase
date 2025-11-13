@@ -3,6 +3,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { DataStudioContext } from "metabase/data-studio/common/contexts/DataStudioContext";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -20,8 +21,6 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-
-import { DataStudioContext } from "../../contexts/DataStudioContext";
 
 import S from "./DataStudioLayout.module.css";
 

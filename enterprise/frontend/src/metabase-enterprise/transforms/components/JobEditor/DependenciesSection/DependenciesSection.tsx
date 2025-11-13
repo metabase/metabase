@@ -5,6 +5,7 @@ import { AdminContentTable } from "metabase/common/components/AdminContentTable"
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { Card } from "metabase/ui";
 import { useListTransformJobTransformsQuery } from "metabase-enterprise/api";
 import type { Transform, TransformJobId } from "metabase-types/api";
 
@@ -32,7 +33,9 @@ export function DependenciesSection({ jobId }: DependenciesSectionProps) {
       {isLoading || error != null ? (
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
       ) : transforms.length === 0 ? (
-        <ListEmptyState label={t`There are no transforms for this job.`} />
+        <Card shadow="none" withBorder>
+          <ListEmptyState label={t`There are no transforms for this job.`} />
+        </Card>
       ) : (
         <TransformTable transforms={transforms} />
       )}

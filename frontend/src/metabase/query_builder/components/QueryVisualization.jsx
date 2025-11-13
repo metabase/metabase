@@ -43,8 +43,8 @@ export default function QueryVisualization(props) {
     isResultDirty &&
     isRunnable &&
     !isRunning &&
-    !isNativeEditorOpen &&
     (result?.error == null ||
+      !isNativeEditorOpen ||
       result.error_type === SERVER_ERROR_TYPES.missingRequiredParameter);
 
   return (
