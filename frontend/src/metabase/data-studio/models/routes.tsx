@@ -1,15 +1,13 @@
 import { IndexRoute } from "react-router";
 
-import { ModelDependenciesPage } from "metabase/data-studio/models/pages/ModelDependenciesPage";
-import { ModelFieldsPage } from "metabase/data-studio/models/pages/ModelFieldsPage";
-import { ModelOverviewPage } from "metabase/data-studio/models/pages/ModelOverviewPage";
-import { ModelQueryPage } from "metabase/data-studio/models/pages/ModelQueryPage";
-import {
-  NewNativeModelPage,
-  NewQueryModelPage,
-} from "metabase/data-studio/models/pages/NewModelPage";
 import { Route } from "metabase/hoc/Title";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+
+import { ModelDependenciesPage } from "./pages/ModelDependenciesPage";
+import { ModelFieldsPage } from "./pages/ModelFieldsPage";
+import { ModelOverviewPage } from "./pages/ModelOverviewPage";
+import { ModelQueryPage } from "./pages/ModelQueryPage";
+import { NewNativeModelPage, NewQueryModelPage } from "./pages/NewModelPage";
 
 export function getDataStudioModelRoutes() {
   return (

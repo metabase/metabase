@@ -1,24 +1,9 @@
 import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
-import type { Dataset, DatasetQuery, Field } from "metabase-types/api";
+import type { Field } from "metabase-types/api";
 
 import type { ValidationResult } from "./types";
-
-export function getResultMetadata(
-  currentQuery: DatasetQuery,
-  lastRunQuery: DatasetQuery | null,
-  lastRunResult: Dataset | null,
-) {
-  if (
-    lastRunQuery != null &&
-    lastRunResult != null &&
-    Lib.areLegacyQueriesEqual(currentQuery, lastRunQuery)
-  ) {
-    return lastRunResult.data?.results_metadata?.columns ?? null;
-  }
-  return null;
-}
 
 export function getValidationResult(
   query: Lib.Query,

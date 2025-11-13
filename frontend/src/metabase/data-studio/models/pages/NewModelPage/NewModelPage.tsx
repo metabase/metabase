@@ -7,6 +7,7 @@ import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { getResultMetadata } from "metabase/data-studio/common/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
@@ -22,7 +23,7 @@ import {
 } from "../../../common/components/PaneHeader";
 import { ModelQueryEditor } from "../../components/ModelQueryEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
-import { getResultMetadata, getValidationResult } from "../../utils";
+import { getValidationResult } from "../../utils";
 
 import { CreateModelModal } from "./CreateModelModal";
 import { getInitialNativeQuery, getInitialQuery, getQuery } from "./utils";

@@ -7,6 +7,7 @@ import { useUpdateCardMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
+import { getResultMetadata } from "metabase/data-studio/common/utils";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -24,7 +25,7 @@ import type { Card } from "metabase-types/api";
 import { PaneHeaderActions } from "../../../common/components/PaneHeader";
 import { ModelHeader } from "../../components/ModelHeader";
 import { ModelQueryEditor } from "../../components/ModelQueryEditor";
-import { getResultMetadata, getValidationResult } from "../../utils";
+import { getValidationResult } from "../../utils";
 
 import {
   applyFieldOverridesInDataset,

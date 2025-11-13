@@ -7,7 +7,7 @@ import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { getResultMetadata } from "metabase/data-studio/models/utils";
+import { getResultMetadata } from "metabase/data-studio/common/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";

@@ -3,16 +3,6 @@ import type { ComponentType } from "react";
 import { IndexRoute } from "react-router";
 import { t } from "ttag";
 
-import { ModelingCollectionView } from "metabase/data-studio/app/pages/ModelingSectionLayout/ModelingCollectionView";
-import { ModelingEmptyPage } from "metabase/data-studio/app/pages/ModelingSectionLayout/ModelingEmptyPage";
-import { ModelingGlossary } from "metabase/data-studio/app/pages/ModelingSectionLayout/ModelingGlossary";
-import {
-  EditSnippetPage,
-  NewSnippetPage,
-  SnippetDependenciesPage,
-} from "metabase/data-studio/app/pages/ModelingSectionLayout/SnippetEditorPage";
-import { getDataStudioMetricRoutes } from "metabase/data-studio/metrics/routes";
-import { getDataStudioModelRoutes } from "metabase/data-studio/models/routes";
 import { Route } from "metabase/hoc/Title";
 import * as Urls from "metabase/lib/urls";
 import { getDataStudioMetadataRoutes } from "metabase/metadata/routes";
@@ -23,11 +13,21 @@ import {
 } from "metabase/plugins";
 import type { State } from "metabase-types/store";
 
-import { DataSectionLayout } from "./pages/DataSectionLayout";
-import { DataStudioLayout } from "./pages/DataStudioLayout";
-import { DependenciesSectionLayout } from "./pages/DependenciesSectionLayout";
-import { ModelingSectionLayout } from "./pages/ModelingSectionLayout";
-import { TransformsSectionLayout } from "./pages/TransformsSectionLayout";
+import { DataSectionLayout } from "./app/pages/DataSectionLayout";
+import { DataStudioLayout } from "./app/pages/DataStudioLayout";
+import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
+import { ModelingSectionLayout } from "./app/pages/ModelingSectionLayout";
+import { ModelingCollectionView } from "./app/pages/ModelingSectionLayout/ModelingCollectionView";
+import { ModelingEmptyPage } from "./app/pages/ModelingSectionLayout/ModelingEmptyPage";
+import { ModelingGlossary } from "./app/pages/ModelingSectionLayout/ModelingGlossary";
+import {
+  EditSnippetPage,
+  NewSnippetPage,
+  SnippetDependenciesPage,
+} from "./app/pages/ModelingSectionLayout/SnippetEditorPage";
+import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
+import { getDataStudioMetricRoutes } from "./metrics/routes";
+import { getDataStudioModelRoutes } from "./models/routes";
 
 export function getDataStudioRoutes(
   store: Store<State>,
