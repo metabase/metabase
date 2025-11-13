@@ -30,6 +30,10 @@ export const getError = (state: SdkStoreState) => state.sdk.error;
 export const getMetabaseInstanceUrl = (state: SdkStoreState) =>
   state.sdk?.metabaseInstanceUrl;
 
+// We can't inject the actual version into SDK bundle dist file, so we assume that the version we received in `/settings` request is the SDK bundle version.
+export const getSdkBundleVersion = (state: SdkStoreState) =>
+  getSetting(state, "version")?.tag;
+
 export const getMetabaseInstanceVersion = (state: SdkStoreState) =>
   state.sdk?.metabaseInstanceVersion ?? getSetting(state, "version")?.tag;
 

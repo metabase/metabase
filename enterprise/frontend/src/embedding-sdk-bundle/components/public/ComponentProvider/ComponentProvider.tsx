@@ -2,6 +2,8 @@ import { Global } from "@emotion/react";
 import { type JSX, memo, useEffect, useId, useRef } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
+import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk-bundle/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
+import { useDefineSdkBundleVersion } from "embedding-sdk-bundle/hooks/private/use-define-sdk-bundle-version";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
@@ -64,6 +66,9 @@ export const ComponentProviderInternal = ({
 }: ComponentProviderInternalProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
 
+  // Set SDK bundle version to the global window object
+  useDefineSdkBundleVersion();
+
   // The main call of useInitData happens in the MetabaseProvider
   // This call in the ComponentProvider is still needed for:
   // - Storybook stories, where we don't have the MetabaseProvider
@@ -109,6 +114,8 @@ export const ComponentProviderInternal = ({
             <>
               <LocaleProvider locale={locale || instanceLocale}>
                 {children}
+
+                <SdkIncompatibilityWithInstanceBanner />
               </LocaleProvider>
 
               {isInstanceToRender && (

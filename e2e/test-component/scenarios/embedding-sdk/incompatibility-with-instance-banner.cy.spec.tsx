@@ -21,7 +21,7 @@ const mockIncompatibleMetabaseVersion = () => {
   });
 };
 
-describe.skip("scenarios > embedding-sdk > incompatibility-with-instance-banner", () => {
+describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
