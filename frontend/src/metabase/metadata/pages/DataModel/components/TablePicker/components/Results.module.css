@@ -1,19 +1,14 @@
 .header {
   --owner-column-width: 140px;
-  --rows-column-width: 70px;
-  --published-column-width: 70px;
+  --rows-column-width: 80px;
+  --published-column-width: 80px;
 
   display: flex;
   align-items: center;
-  padding: 0 var(--mantine-spacing-md);
+  padding-left: var(--mantine-spacing-md);
   padding-bottom: var(--mantine-spacing-xs);
   font-size: 0.75rem;
   font-weight: 700;
-}
-
-.headerSpacer {
-  flex: 1;
-  min-width: 0;
 }
 
 .headerCell {

@@ -158,8 +158,7 @@ export function TablePickerResults({
 
   return (
     <>
-      <Flex className={S.header} gap="sm">
-        <Box className={S.headerSpacer} />
+      <Flex className={S.header} gap="sm" justify="flex-end">
         <Box className={cx(S.headerCell, S.ownerColumn)}>{t`Owner`}</Box>
         <Box className={cx(S.headerCell, S.rowsColumn)}>{t`Rows`}</Box>
         <Box
