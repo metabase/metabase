@@ -1,12 +1,8 @@
 import { t } from "ttag";
 
-import {
-  CollectionEmptyIcon,
-  EmptyStateSubtitle,
-  EmptyStateTitle,
-  EmptyStateWrapper,
-} from "metabase/collections/components/CollectionEmptyState";
-import { PLUGIN_SEMANTIC_LAYER } from "metabase/plugins";
+import EmptyStateCollection from "assets/img/empty-states/collection.svg";
+import EmptyState from "metabase/common/components/EmptyState";
+import { Center } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
 type ModelingCollectionEmptyStateProps = {
@@ -16,33 +12,35 @@ type ModelingCollectionEmptyStateProps = {
 export function ModelingCollectionEmptyState({
   collection,
 }: ModelingCollectionEmptyStateProps) {
-  const { title, description } = getMessages(collection);
+  const { title, message } = getMessages(collection);
 
   return (
-    <EmptyStateWrapper data-testid="modeling-collection-empty-state">
-      <CollectionEmptyIcon />
-      <EmptyStateTitle>{title}</EmptyStateTitle>
-      <EmptyStateSubtitle>{description}</EmptyStateSubtitle>
-    </EmptyStateWrapper>
+    <Center h="100%" bg="bg-light">
+      <EmptyState
+        illustrationElement={<img src={EmptyStateCollection} />}
+        title={title}
+        message={message}
+      />
+    </Center>
   );
 }
 
 function getMessages(collection: Collection) {
-  switch (PLUGIN_SEMANTIC_LAYER.getSemanticLayerCollectionType(collection)) {
-    case "semantic-layer-models":
+  switch (collection.type) {
+    case "library-models":
       return {
         title: t`No models yet`,
-        description: t`Put models in the Library to see them here.`,
+        message: t`Put models in the Library to see them here.`,
       };
-    case "semantic-layer-metrics":
+    case "library-metrics":
       return {
         title: t`No metrics yet`,
-        description: t`Put metrics in the Library to see them here.`,
+        message: t`Put metrics in the Library to see them here.`,
       };
     default:
       return {
         title: t`No models or metrics yet`,
-        description: t`Models and metrics in this collection will appear here.`,
+        message: t`Models and metrics in this collection will appear here.`,
       };
   }
 }

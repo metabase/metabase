@@ -6,6 +6,7 @@ import {
 } from "@tiptap/react";
 import { memo, useEffect } from "react";
 import { t } from "ttag";
+import { isObject } from "underscore";
 
 import {
   useGetActionQuery,
@@ -119,6 +120,7 @@ export function parseEntityUrl(
     }[] = [
       { pattern: /^\/question\/(\d+)/, model: "card" },
       { pattern: /^\/model\/(\d+)/, model: "dataset" },
+      { pattern: /^\/metric\/(\d+)/, model: "metric" },
       { pattern: /^\/dashboard\/(\d+)/, model: "dashboard" },
       { pattern: /^\/collection\/(\d+)/, model: "collection" },
       {
@@ -222,23 +224,34 @@ export const SmartLink = Node.create<{
 
   addPasteRules() {
     return [
-      nodePasteRule({
+      {
         find: /https?:\/\/[^\s]+/g,
-        type: this.type,
-        getAttributes: (match) => {
+        handler: ({ state, range, match }) => {
           const url = match[0];
+
+          // Check if the preceding characters are "](" which indicates the user is typing a markdown link
+          const start = range.from;
+          if (start >= 2) {
+            const textBefore = state.doc.textBetween(start - 2, start);
+            if (textBefore === "](") {
+              return;
+            }
+          }
+
           const parsedEntity = parseEntityUrl(url, this.options.siteUrl);
 
           if (parsedEntity) {
-            return {
-              entityId: parsedEntity.entityId,
-              model: parsedEntity.model,
-            };
+            state.tr.replaceRangeWith(
+              range.from,
+              range.to,
+              this.type.create({
+                entityId: parsedEntity.entityId,
+                model: parsedEntity.model,
+              }),
+            );
           }
-
-          return null; // Return null to prevent node creation
         },
-      }),
+      },
       nodePasteRule({
         find: new RegExp(METABSE_PROTOCOL_MD_LINK, "g"),
         type: this.type,
@@ -271,20 +284,19 @@ export const useEntityData = (
   entityId: number | null,
   model: SuggestionModel | null,
 ) => {
+  const isCard = model && ["card", "dataset", "metric"].includes(model);
   const cardQuery = useGetCardQuery(
-    { id: entityId! },
-    {
-      skip: !entityId || (model !== "card" && model !== "dataset"),
-    },
+    { id: entityId!, ignore_error: true },
+    { skip: !entityId || !isCard },
   );
 
   const dashboardQuery = useGetDashboardQuery(
-    { id: entityId! },
+    { id: entityId!, ignore_error: true },
     { skip: !entityId || model !== "dashboard" },
   );
 
   const collectionQuery = useGetCollectionQuery(
-    { id: entityId! },
+    { id: entityId!, ignore_error: true },
     { skip: !entityId || model !== "collection" },
   );
 
@@ -440,8 +452,17 @@ export const SmartLinkComponent = memo(
         <NodeViewWrapper as="span">
           <span className={styles.smartLink}>
             <span className={styles.smartLinkInner}>
-              <Icon name="warning" className={styles.icon} />
-              {error ? t`Failed to load` : t`Unknown`} {model}
+              {isObject(error) && error.status === 403 ? (
+                <>
+                  <Icon name="eye_crossed_out" className={styles.icon} />
+                  {t`No access`}
+                </>
+              ) : (
+                <>
+                  <Icon name="warning" className={styles.icon} />
+                  {error ? t`Failed to load` : t`Unknown`} {model}
+                </>
+              )}
             </span>
           </span>
         </NodeViewWrapper>

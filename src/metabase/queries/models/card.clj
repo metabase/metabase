@@ -721,10 +721,7 @@
         card.metadata/populate-result-metadata
         pre-insert
         populate-query-fields)
-    (collection/check-allowed-content (name (cond
-                                              (nil? (:type <>)) :question
-                                              (= :model (:type <>)) :dataset
-                                              :else (:type <>))) (:collection_id <>))))
+    (collection/check-allowed-content (:type <>) (:collection_id <>))))
 
 (t2/define-after-insert :model/Card
   [card]

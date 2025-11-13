@@ -1,5 +1,6 @@
 import {
   currentUserPersonalCollections,
+  isLibraryCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
@@ -8,8 +9,11 @@ import {
   buildCollectionTree,
   getCollectionIcon,
 } from "metabase/entities/collections";
-import { PLUGIN_SEMANTIC_LAYER } from "metabase/plugins";
-import type { Collection, User } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionContentModel,
+  User,
+} from "metabase-types/api";
 
 export function getCollectionTree(
   collections: Collection[],
@@ -20,14 +24,17 @@ export function getCollectionTree(
     ...collections.filter(
       (collection) =>
         nonPersonalOrArchivedCollection(collection) &&
-        !PLUGIN_SEMANTIC_LAYER.isSemanticLayerCollection(collection),
+        !isLibraryCollection(collection),
     ),
   ];
+
+  const modelFilter = (model: CollectionContentModel) =>
+    model === "dataset" || model === "metric";
 
   const rootCollection = {
     ...ROOT_COLLECTION,
     icon: getCollectionIcon(ROOT_COLLECTION),
-    children: buildCollectionTree(preparedCollections),
+    children: buildCollectionTree(preparedCollections, modelFilter),
   };
 
   return [rootCollection];

@@ -375,7 +375,6 @@ export interface GetCardRequest {
   context?: "collection";
   ignore_view?: boolean;
   ignore_error?: boolean;
-  include_editable_semantic_layer?: boolean;
 }
 
 export interface CreateCardRequest {

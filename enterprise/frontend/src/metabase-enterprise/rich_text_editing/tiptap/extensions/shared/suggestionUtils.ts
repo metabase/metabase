@@ -147,3 +147,10 @@ export function mbProtocolModelToSuggestionModel(inputModel: string): string {
 
   return model;
 }
+
+export function getBrowseAllItemIndex(
+  menuItemsLength: number,
+  canCreateNewQuestion?: boolean,
+): number {
+  return canCreateNewQuestion ? menuItemsLength + 1 : menuItemsLength;
+}

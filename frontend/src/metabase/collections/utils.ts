@@ -1,13 +1,29 @@
 import { t } from "ttag";
 
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
 import {
+  type CardType,
   type Collection,
   type CollectionEssentials,
   type CollectionId,
   type CollectionItem,
+  type CollectionItemModel,
+  type CollectionType,
   isBaseEntityID,
 } from "metabase-types/api";
+
+export type EntityType = CollectionItemModel;
+
+export function getEntityTypeFromCardType(cardType: CardType): EntityType {
+  switch (cardType) {
+    case "question":
+      return "card";
+    case "model":
+      return "dataset";
+    case "metric":
+      return "metric";
+  }
+}
 
 export function nonPersonalOrArchivedCollection(
   collection: Collection,
@@ -51,7 +67,8 @@ export function isEditableCollection(collection: Collection) {
     collection.can_write &&
     !isRootCollection(collection) &&
     !isRootPersonalCollection(collection) &&
-    !isTrashedCollection(collection)
+    !isTrashedCollection(collection) &&
+    !isLibraryCollection(collection)
   );
 }
 
@@ -76,6 +93,22 @@ export function isInstanceAnalyticsCustomCollection(
 
 export function isSyncedCollection(collection: Partial<Collection>): boolean {
   return PLUGIN_COLLECTIONS.isSyncedCollection(collection);
+}
+
+export function isLibraryCollectionType(
+  type: CollectionType | undefined,
+): boolean {
+  return (
+    type === "library" ||
+    type === "library-models" ||
+    type === "library-metrics"
+  );
+}
+
+export function isLibraryCollection(
+  collection: Pick<Collection, "type">,
+): boolean {
+  return isLibraryCollectionType(collection.type);
 }
 
 export function isExamplesCollection(collection: Collection): boolean {
@@ -152,6 +185,12 @@ export function isReadOnlyCollection(collection: CollectionItem) {
   return isItemCollection(collection) && !collection.can_write;
 }
 
+export function canBookmarkItem(item: CollectionItem) {
+  return (
+    !isLibraryCollection(item as Pick<Collection, "type">) && !item.archived
+  );
+}
+
 export function canPinItem(item: CollectionItem, collection?: Collection) {
   return collection?.can_write && item.setPinned != null && !item.archived;
 }
@@ -170,7 +209,8 @@ export function canMoveItem(item: CollectionItem, collection?: Collection) {
     (collection?.can_write || isRootTrashCollection(collection)) &&
     !isReadOnlyCollection(item) &&
     item.setCollection != null &&
-    !(isItemCollection(item) && isRootPersonalCollection(item))
+    !(isItemCollection(item) && isRootPersonalCollection(item)) &&
+    !isLibraryCollection(item as Pick<Collection, "type">)
   );
 }
 
@@ -179,12 +219,38 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
     collection?.can_write &&
     !isReadOnlyCollection(item) &&
     !(isItemCollection(item) && isRootPersonalCollection(item)) &&
+    !isLibraryCollection(item as Pick<Collection, "type">) &&
     !item.archived
   );
 }
 
 export function canCopyItem(item: CollectionItem) {
   return item.copy && !item.archived;
+}
+
+export function canPlaceEntityInCollection(
+  entityType: EntityType,
+  collectionType: Collection["type"],
+): boolean {
+  return PLUGIN_LIBRARY.canPlaceEntityInCollection(entityType, collectionType);
+}
+
+export function canPlaceEntityInCollectionOrDescendants(
+  entityType: EntityType,
+  collectionType: Collection["type"],
+): boolean {
+  if (canPlaceEntityInCollection(entityType, collectionType)) {
+    return true;
+  }
+
+  if (collectionType === "library") {
+    return (
+      canPlaceEntityInCollection(entityType, "library-models") ||
+      canPlaceEntityInCollection(entityType, "library-metrics")
+    );
+  }
+
+  return false;
 }
 
 export function isPreviewShown(item: CollectionItem) {

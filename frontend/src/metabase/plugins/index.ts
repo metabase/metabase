@@ -88,7 +88,6 @@ import type {
   PythonTransformSourceDraft,
   Revision,
   SearchModel,
-  SemanticLayerCollectionType,
   Series,
   TableId,
   Timeline,
@@ -1138,23 +1137,24 @@ export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   }),
 };
 
-export type SemanticLayerSectionProps = {
+export type LibrarySectionProps = {
   collections: Collection[];
   selectedCollectionId: CollectionId | undefined;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
 };
 
-export type SemanticLayerPlugin = {
+export type LibraryPlugin = {
   isEnabled: boolean;
-  getSemanticLayerCollectionType(
-    collection: Pick<Collection, "type">,
-  ): SemanticLayerCollectionType | undefined;
-  SemanticLayerSection: ComponentType<SemanticLayerSectionProps>;
+  LibrarySection: ComponentType<LibrarySectionProps>;
+  canPlaceEntityInCollection(
+    entityType: string,
+    collectionType: Collection["type"],
+  ): boolean;
 };
 
-export const PLUGIN_SEMANTIC_LAYER: SemanticLayerPlugin = {
+export const PLUGIN_LIBRARY: LibraryPlugin = {
   isEnabled: false,
-  getSemanticLayerCollectionType: () => undefined,
-  SemanticLayerSection: PluginPlaceholder,
+  LibrarySection: PluginPlaceholder,
+  canPlaceEntityInCollection: () => true,
 };

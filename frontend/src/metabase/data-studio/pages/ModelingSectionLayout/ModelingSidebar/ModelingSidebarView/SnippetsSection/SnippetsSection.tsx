@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
 import { isRootCollection } from "metabase/collections/utils";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -60,10 +61,6 @@ export function SnippetsSection({ selectedSnippetId }: SnippetsSectionProps) {
     [dispatch],
   );
 
-  const handleCreateSnippet = useCallback(() => {
-    dispatch(push(Urls.newDataStudioSnippet()));
-  }, [dispatch]);
-
   return (
     <>
       <ModelingSidebarSection
@@ -113,8 +110,9 @@ export function SnippetsSection({ selectedSnippetId }: SnippetsSectionProps) {
                 </Tooltip>
                 <Menu.Dropdown>
                   <Menu.Item
+                    component={ForwardRefLink}
+                    to={Urls.newDataStudioSnippet()}
                     leftSection={<FixedSizeIcon name="snippet" />}
-                    onClick={handleCreateSnippet}
                     aria-label={t`Create new snippet`}
                   >
                     {t`New snippet`}

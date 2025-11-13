@@ -68,9 +68,17 @@
   "The value of the `:type` field for remote-synced collections."
   "remote-synced")
 
-(def ^:constant semantic-layer-collection-type
-  "The value of the `:type` field for semantic layer collections."
-  "semantic-layer")
+(def ^:constant library-collection-type
+  "The value of the `:type` field for library collections."
+  "library")
+
+(def ^:constant library-models-collection-type
+  "The value of the `:type` field for collections that only allow models."
+  "library-models")
+
+(def ^:constant library-metrics-collection-type
+  "The value of the `:type` field for collections that only allow models."
+  "library-metrics")
 
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
@@ -144,29 +152,30 @@
   (binding [*clearing-remote-sync* true]
     (t2/update! :model/Collection :type remote-synced-collection-type {:type nil})))
 
-(defn semantic-layer-collection
-  "Get the semantic layer collection, if it exists."
+(defn library-collection
+  "Get the 'library' collection, if it exists."
   []
-  (t2/select-one :model/Collection :type semantic-layer-collection-type :location "/"))
+  (t2/select-one :model/Collection :type library-collection-type))
 
-(defn create-semantic-layer-collection!
-  "Create the semantic layer collection. Returns root semantic layer collection"
+(defn create-library-collection!
+  "Create the Library collection. Returns Created collection. Throws if it already exists."
   []
-  (when-not (nil? (semantic-layer-collection))
-    (throw (ex-info "Semantic Layer already exists" {})))
-  (u/prog1 (t2/insert-returning-instance! :model/Collection {:name     "Library"
-                                                             :type     semantic-layer-collection-type
-                                                             :location "/"
-                                                             :allowed_content ["collection"]})
-    (let [base-location        (str "/" (:id <>) "/")]
-      (t2/insert! :model/Collection {:name            "Models"
-                                     :type            semantic-layer-collection-type
-                                     :location        base-location
-                                     :allowed_content ["collection" "dataset"]})
-      (t2/insert! :model/Collection {:name            "Metrics"
-                                     :type            semantic-layer-collection-type
-                                     :location        base-location
-                                     :allowed_content ["collection" "metric"]}))))
+  (when-not (nil? (library-collection))
+    (throw (ex-info "Library already exists" {})))
+  (let [library       (t2/insert-returning-instance! :model/Collection {:name     "Library"
+                                                                        :type     library-collection-type
+                                                                        :location "/"})
+        base-location (str "/" (:id library) "/")
+        models        (t2/insert-returning-instance! :model/Collection {:name     "Models"
+                                                                        :type     library-models-collection-type
+                                                                        :location base-location})
+        metrics       (t2/insert-returning-instance! :model/Collection {:name     "Metrics"
+                                                                        :type     library-metrics-collection-type
+                                                                        :location base-location})]
+    (doseq [col [library models metrics]]
+      (t2/delete! :model/Permissions :collection_id (:id col))
+      (perms/grant-collection-read-permissions! (perms/all-users-group) col))
+    library))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
@@ -176,8 +185,7 @@
 
 (t2/deftransforms :model/Collection
   {:namespace       mi/transform-keyword
-   :authority_level mi/transform-keyword
-   :allowed_content mi/transform-json})
+   :authority_level mi/transform-keyword})
 
 (defn maybe-localize-trash-name
   "If the collection is the Trash, translate the `name`. This is a public function because we can't rely on
@@ -365,8 +373,14 @@
 
 (defenterprise check-allowed-content
   "Checks contents of a collection before saving it. The OSS implementation is a no-op."
-  metabase-enterprise.semantic-layer.validation
+  metabase-enterprise.library.validation
   [_model-type _collection-id]
+  true)
+
+(defenterprise check-library-update
+  "Checks that a collection of type `:library` only contains allowed content."
+  metabase-enterprise.library.validation
+  [collection-id]
   true)
 
 ;; This function is defined later after children-location is available
@@ -1502,7 +1516,7 @@
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
   (assert-valid-remote-synced-parent collection)
-  (check-allowed-content "collection" (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
+  (check-allowed-content (:type collection) (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
   (assoc collection :slug (slugify collection-name)))
 
 (defn- copy-collection-permissions!
@@ -1677,7 +1691,9 @@
       (let [merged-collection (merge collection-before-updates collection-updates)]
         (assert-valid-remote-synced-parent merged-collection)))
     ;; (3.6) Check that the parent collection allows this collection to be there
-    (check-allowed-content "collection" (when-let [location (:location collection)] (location-path->parent-id location)))
+    (check-allowed-content (:type collection) (when-let [location (:location collection)] (location-path->parent-id location)))
+    ;; (3.7) Check if it's a semantic-library collection that can't be updated
+    (check-library-update collection)
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)
@@ -1849,8 +1865,7 @@
       (str location id "/"))))
 
 (defmethod serdes/make-spec "Collection" [_model-name _opts]
-  {:copy [:allowed_content
-          :archive_operation_id
+  {:copy [:archive_operation_id
           :archived
           :archived_directly
           :authority_level
@@ -2139,8 +2154,10 @@
                                              ;; a magical alias, or perhaps this clause can be implicit
                                              [:= :bookmark.user_id :current_user/id]]]})
 
-(defn is-semantic-layer-collection?
-  "Return true if the given collection ID corresponds to a semantic layer collection."
+(defn is-library-collection?
+  "Return true if the given collection ID corresponds to a collection in the library."
   [collection-id]
   (when collection-id
-    (pos-int? (t2/count :model/Collection :id collection-id :type semantic-layer-collection-type))))
+    (pos-int? (t2/count :model/Collection :id collection-id :type [:in [library-collection-type
+                                                                        library-models-collection-type
+                                                                        library-metrics-collection-type]]))))

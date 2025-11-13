@@ -45,8 +45,14 @@ export function RouterTablePicker({ params, ...props }: Props) {
   );
 
   useEffect(() => {
-    setValue(props);
-  }, [props]);
+    if (
+      value.databaseId !== props.databaseId ||
+      value.schemaName !== props.schemaName ||
+      value.tableId !== props.tableId
+    ) {
+      setValue(props);
+    }
+  }, [props, value]);
 
   return <TablePicker path={value} onChange={onChange} params={params} />;
 }

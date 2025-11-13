@@ -11,7 +11,6 @@ import {
   TableColumn,
 } from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
-import { Repeat } from "metabase/ui";
 
 import { ItemRow } from "./ItemRow";
 import type { ModelingItemsTableProps } from "./types";
@@ -32,10 +31,7 @@ const menuProps = {
   ...sharedProps,
 };
 
-export function ModelingItemsTable({
-  items,
-  skeleton = false,
-}: ModelingItemsTableProps) {
+export function ModelingItemsTable({ items }: ModelingItemsTableProps) {
   const [sortingOptions, setSortingOptions] = useState(DEFAULT_SORTING_OPTIONS);
 
   const sortedItems = useMemo(
@@ -43,12 +39,10 @@ export function ModelingItemsTable({
     [items, sortingOptions],
   );
 
-  const handleSortingOptionsChange = skeleton ? undefined : setSortingOptions;
-
   const descriptionWidth = 100;
 
   return (
-    <Table aria-label={skeleton ? undefined : t`Table of models and metrics`}>
+    <Table aria-label={t`Table of models and metrics`}>
       <colgroup>
         <NameColumn {...sharedProps} />
         <TableColumn {...descriptionProps} width={`${descriptionWidth}%`} />
@@ -60,7 +54,7 @@ export function ModelingItemsTable({
           <SortableColumnHeader
             name="name"
             sortingOptions={sortingOptions}
-            onSortingOptionsChange={handleSortingOptionsChange}
+            onSortingOptionsChange={setSortingOptions}
             {...sharedProps}
             style={{ paddingInlineStart: ".625rem" }}
             columnHeaderProps={{
@@ -72,7 +66,7 @@ export function ModelingItemsTable({
           <SortableColumnHeader
             name="description"
             sortingOptions={sortingOptions}
-            onSortingOptionsChange={handleSortingOptionsChange}
+            onSortingOptionsChange={setSortingOptions}
             {...descriptionProps}
             columnHeaderProps={{
               style: {
@@ -91,15 +85,9 @@ export function ModelingItemsTable({
         </tr>
       </thead>
       <TBody>
-        {skeleton ? (
-          <Repeat times={7}>
-            <ItemRow />
-          </Repeat>
-        ) : (
-          sortedItems.map((item) => (
-            <ItemRow item={item} key={`${item.model}-${item.id}`} />
-          ))
-        )}
+        {sortedItems.map((item) => (
+          <ItemRow item={item} key={`${item.model}-${item.id}`} />
+        ))}
       </TBody>
     </Table>
   );
