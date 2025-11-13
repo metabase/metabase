@@ -2,7 +2,6 @@
   height: 100%;
   position: relative;
   border-radius: var(--mantine-radius-md);
-  overflow: hidden;
   background-color: var(--mb-color-background-light);
   border: 1px solid transparent;
   transition:

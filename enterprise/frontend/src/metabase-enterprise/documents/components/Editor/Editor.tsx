@@ -17,10 +17,7 @@ import type { DocumentsStoreState } from "metabase-enterprise/documents/types";
 import { isMetabotBlock } from "metabase-enterprise/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase-enterprise/documents/utils/mentionsUtils";
 import { EditorBubbleMenu } from "metabase-enterprise/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
-import {
-  CardEmbed,
-  DROP_ZONE_COLOR,
-} from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
+import { CardEmbed } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/CommandExtension";
 import { CommandSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/CommandSuggestion";
 import { CustomStarterKit } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
@@ -40,6 +37,7 @@ import { PlainLink } from "metabase-enterprise/rich_text_editing/tiptap/extensio
 import { ResizeNode } from "metabase-enterprise/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { SupportingText } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
+import { DROP_ZONE_COLOR } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/constants";
 import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/suggestionRenderer";
 
 import S from "./Editor.module.css";

@@ -18,7 +18,7 @@ export const useDndHelpers = ({
     side: "left" | "right" | null;
   }>({ isDraggedOver: false, side: null });
   const draggedOverTimeoutRef = useRef<number | undefined>();
-  const cardEmbedRef = useRef<HTMLDivElement | null>(null);
+  const dragElRef = useRef<HTMLDivElement | null>(null);
   const isMountedRef = useRef(false);
 
   const isBeingDragged = editor.view.draggingNode === node;
@@ -32,7 +32,7 @@ export const useDndHelpers = ({
         draggingNode &&
         (draggingNode.type.name === "cardEmbed" ||
           draggingNode.type.name === "supportingText") &&
-        cardEmbedRef.current
+        dragElRef.current
       ) {
         // Check if this cardEmbed is in a flexContainer that already has 3 children
         const pos = getPos();
@@ -60,7 +60,7 @@ export const useDndHelpers = ({
           }
         }
 
-        const rect = cardEmbedRef.current?.getBoundingClientRect();
+        const rect = dragElRef.current?.getBoundingClientRect();
         const relativeX = e.clientX - rect.left;
         const nodeWidth = rect.width;
 
@@ -99,6 +99,6 @@ export const useDndHelpers = ({
     dragState,
     setDragState,
     handleDragOver,
-    cardEmbedRef,
+    dragElRef,
   };
 };
