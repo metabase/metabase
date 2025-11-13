@@ -36,6 +36,20 @@
                                             :type :number
                                             :required false}}}}))
 
+(defn- make-incremental-source-query-without-template-tag
+  "Create a native query without template tags for testing automatic checkpoint insertion.
+  Note: Does not use LIMIT to allow the automatic wrapping with WHERE clause."
+  [schema]
+  (let [timestamp-sql (first (sql/format (sql.qp/current-datetime-honeysql-form driver/*driver*)))
+        query (format "SELECT *, %s AS load_timestamp FROM %s"
+                      timestamp-sql
+                      (if schema
+                        (sql.u/quote-name driver/*driver* :table schema "transforms_products")
+                        "transforms_products"))]
+    {:database (mt/id)
+     :type :native
+     :native {:query query}}))
+
 (defn- make-incremental-mbql-query
   "Create an MBQL query for incremental transforms."
   []
@@ -308,3 +322,52 @@
                                   checkpoint (get-checkpoint-value (:id transform))]
                               (is (= 17 row-count) "Should append 1 new row (16 + 1 = 17)")
                               (is (>= checkpoint 17) "Checkpoint should be updated to at least 17"))))))))))))))))
+
+(deftest native-query-without-template-tag-test
+  (testing "Native query without template tags uses automatic checkpoint wrapping"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [target-table "native_no_template"]
+            (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+                  transform-payload {:name "Native Without Template Tag"
+                                     :source {:type "query"
+                                              :query (make-incremental-source-query-without-template-tag schema)
+                                              :source-incremental-strategy {:type "checkpoint"
+                                                                            :checkpoint-filter "id"}}
+                                     :target {:type "table-incremental"
+                                              :schema schema
+                                              :name target-table
+                                              :database (mt/id)
+                                              :target-incremental-strategy {:type "append"}}}]
+              (mt/with-temp [:model/Transform transform transform-payload]
+                (testing "First run processes all existing data"
+                  (transforms.i/execute! transform {:run-method :manual})
+                  (transforms.tu/wait-for-table target-table 10000)
+                  (let [row-count (get-table-row-count target-table)
+                        checkpoint (get-checkpoint-value (:id transform))]
+                    (is (= 16 row-count) "First run should process all 16 products")
+                    (is (= 16 checkpoint) "Checkpoint should be MAX(id) = 16")))
+
+                (testing "Second run without new data adds nothing"
+                  (transforms.i/execute! transform {:run-method :manual})
+                  (let [row-count (get-table-row-count target-table)]
+                    (is (= 16 row-count) "Should still have 16 rows, no new data")))
+
+                (when-not (= driver/*driver* :clickhouse) ; struggles with eventual consistency
+                  (testing "After inserting new data, incremental run appends only new rows"
+                    (with-insert-test-products!
+                      [{:name "New Product 1"
+                        :category "Electronics"
+                        :price 99.99
+                        :created-at "2024-01-21T10:00:00"}
+                       {:name "New Product 2"
+                        :category "Books"
+                        :price 19.99
+                        :created-at "2024-01-21T11:00:00"}]
+
+                      (transforms.i/execute! transform {:run-method :manual})
+                      (let [row-count (get-table-row-count target-table)
+                            checkpoint (get-checkpoint-value (:id transform))]
+                        (is (= 18 row-count) "Should append 2 new rows (16 + 2 = 18)")
+                        (is (>= checkpoint 18) "Checkpoint should be updated to at least 18")))))))))))))
