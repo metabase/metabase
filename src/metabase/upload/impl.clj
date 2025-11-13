@@ -678,10 +678,10 @@
     - the schema of the CSV file does not match the schema of the table
 
     Note that we do not require the column ordering to be consistent between the header and the table schema."
-  [old-column-names new-column-names]
+  [old-column-names new-column-names raw-header]
   (let [[extra missing _both] (data/diff (set new-column-names) (set old-column-names))]
-    ;; check for duplicates
-    (when (some #(< 1 %) (vals (frequencies new-column-names)))
+    ;; check for duplicates in the original column names (before de-duplication in the column names)
+    (when (some #(< 1 %) (vals (frequencies raw-header)))
       (throw (ex-info (tru "The CSV file contains duplicate column names.")
                       {:status-code 422})))
     (when-let [error-message (extra-and-missing-error-markdown extra missing)]
@@ -804,7 +804,7 @@
                                   (driver/create-auto-pk-with-append-csv? driver)
                                   (not (contains? name->field auto-pk-column-name)))
               name->field        (cond-> name->field auto-pk? (dissoc auto-pk-column-name))
-              _                  (check-schema (keys name->field) column-names)
+              _                  (check-schema (keys name->field) column-names header)
               settings           (upload-parsing/get-settings)
               ;; TODO: Add a method for drivers to override types here. See https://github.com/metabase/metabase/pull/55209.
               old-types          (map (comp upload-types/base-type->upload-type :base_type name->field) column-names)
