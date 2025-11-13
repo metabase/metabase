@@ -73,14 +73,14 @@ export function PythonKeysetColumnSelect({
       const filterableIdentifiers = new Set(
         filterableColumns.map((col) => {
           const info = Lib.displayInfo(query, stageIndex, col);
-          return `${info.table?.id ?? "no-table"}:${info.name}`;
+          return `${info.table?.name ?? "no-table"}:${info.name}`;
         }),
       );
 
       // Filter returned columns to only those that are also filterable and numeric
       const numericFilterableColumns = returnedColumns.filter((column) => {
         const info = Lib.displayInfo(query, stageIndex, column);
-        const identifier = `${info.table?.id ?? "no-table"}:${info.name}`;
+        const identifier = `${info.table?.name ?? "no-table"}:${info.name}`;
         return filterableIdentifiers.has(identifier) && Lib.isNumeric(column);
       });
 
