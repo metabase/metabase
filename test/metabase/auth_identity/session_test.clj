@@ -170,7 +170,8 @@
               "Session should have expires_at")
           (is (instance? java.time.OffsetDateTime (:expires_at session))
               "expires_at should be OffsetDateTime")
-          (is (= expires-at (:expires_at session))
+          (is (= (t2/select-one-fn :expires_at :model/AuthIdentity (:id password-auth))
+                 expires-at (:expires_at session))
               "Session expires_at should match auth-identity expires_at"))))))
 
 (deftest session-no-expires-at-when-auth-identity-has-none-test
