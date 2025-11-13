@@ -1,17 +1,3 @@
-.root {
-  height: 100%;
-  overflow: hidden;
-  position: relative;
-  background-color: var(--mb-color-bg-secondary);
-}
-
-.content {
-  margin: 0 auto;
-  overflow-y: auto;
-  max-height: 100%;
-  padding: 3rem 5% 1rem;
-}
-
-.emptyState {
-  margin-top: calc(20vh - 3.5rem);
+.body {
+  overflow: auto;
 }

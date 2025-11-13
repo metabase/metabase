@@ -13,6 +13,7 @@ import type {
 } from "metabase/collections/types";
 import {
   canArchiveItem,
+  canBookmarkItem,
   canCopyItem,
   canMoveItem,
   canPinItem,
@@ -86,6 +87,7 @@ function ActionMenu({
   const dispatch = useDispatch();
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
+  const canBookmark = canBookmarkItem(item);
   const canPin = canPinItem(item, collection);
   const canPreview = canPreviewItem(item, collection);
   const canMove = canMoveItem(item, collection);
@@ -171,7 +173,7 @@ function ActionMenu({
         onMove={canMove ? handleMove : undefined}
         onCopy={canCopy ? handleCopy : undefined}
         onArchive={canArchive ? handleArchive : undefined}
-        onToggleBookmark={!item.archived ? handleToggleBookmark : undefined}
+        onToggleBookmark={canBookmark ? handleToggleBookmark : undefined}
         onTogglePreview={canPreview ? handleTogglePreview : undefined}
         onRestore={canRestore ? handleRestore : undefined}
         onDeletePermanently={canDelete ? openModal : undefined}

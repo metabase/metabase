@@ -874,6 +874,9 @@
    {:name      :remote-sync
     :available (premium-features/enable-remote-sync?)
     :enabled   (premium-features/enable-remote-sync?)}
+   {:name      :library
+    :available (premium-features/enable-library?)
+    :enabled   (premium-features/enable-library?)}
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}

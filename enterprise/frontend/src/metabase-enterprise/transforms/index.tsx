@@ -6,10 +6,16 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { TransformPicker } from "./components/TransformPicker";
 import { getDataStudioTransformRoutes } from "./routes";
 
-if (hasPremiumFeature("transforms")) {
-  PLUGIN_TRANSFORMS.isEnabled = true;
-  PLUGIN_ENTITIES.entities["transforms"] = Transforms;
-  PLUGIN_TRANSFORMS.canAccessTransforms = getUserIsAdmin;
-  PLUGIN_TRANSFORMS.getDataStudioTransformRoutes = getDataStudioTransformRoutes;
-  PLUGIN_TRANSFORMS.TransformPicker = TransformPicker;
+/**
+ * Initialize transforms plugin features that depend on hasPremiumFeature.
+ */
+export function initializePlugin() {
+  if (hasPremiumFeature("transforms")) {
+    PLUGIN_TRANSFORMS.isEnabled = true;
+    PLUGIN_ENTITIES.entities["transforms"] = Transforms;
+    PLUGIN_TRANSFORMS.canAccessTransforms = getUserIsAdmin;
+    PLUGIN_TRANSFORMS.getDataStudioTransformRoutes =
+      getDataStudioTransformRoutes;
+    PLUGIN_TRANSFORMS.TransformPicker = TransformPicker;
+  }
 }

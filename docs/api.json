@@ -2827,12 +2827,30 @@
         "allOf" : [ {
           "type" : "object",
           "properties" : {
-            "created_at" : {
-              "type" : "string",
-              "minLength" : 1
+            "weights" : {
+              "type" : "object",
+              "additionalProperties" : {
+                "type" : "number"
+              }
+            },
+            "semantic_queries" : {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              }
+            },
+            "limit" : {
+              "default" : 50,
+              "type" : "integer"
             },
             "database_id" : {
               "type" : "integer"
+            },
+            "term_queries" : {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              }
             },
             "entity_types" : {
               "type" : "array",
@@ -2841,29 +2859,17 @@
                 "enum" : [ "table", "model", "question", "dashboard", "metric", "database", "transform" ]
               }
             },
+            "created_at" : {
+              "type" : "string",
+              "minLength" : 1
+            },
             "last_edited_at" : {
               "type" : "string",
               "minLength" : 1
             },
-            "limit" : {
-              "default" : 50,
-              "type" : "integer"
-            },
             "search_native_query" : {
               "type" : "boolean",
               "default" : false
-            },
-            "semantic_queries" : {
-              "type" : "array",
-              "items" : {
-                "type" : "string"
-              }
-            },
-            "term_queries" : {
-              "type" : "array",
-              "items" : {
-                "type" : "string"
-              }
             }
           }
         }, {
@@ -27975,11 +27981,6 @@
             "default" : "default",
             "type" : "string"
           }
-        }, {
-          "in" : "query",
-          "name" : "search_engine",
-          "required" : false,
-          "schema" : { }
         } ],
         "responses" : {
           "2XX" : {

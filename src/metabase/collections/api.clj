@@ -203,11 +203,12 @@
                                                  [:shallow                        {:default false} [:maybe :boolean]]
                                                  [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
   (let [archived    (if exclude-archived false nil)
-        collections (select-collections {:archived                       archived
-                                         :exclude-other-user-collections exclude-other-user-collections
-                                         :namespace                      namespace
-                                         :shallow                        shallow
-                                         :collection-id                  collection-id})]
+        collections (-> (select-collections {:archived                       archived
+                                             :exclude-other-user-collections exclude-other-user-collections
+                                             :namespace                      namespace
+                                             :shallow                        shallow
+                                             :collection-id                  collection-id})
+                        (t2/hydrate :can_write))]
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]

@@ -42,20 +42,20 @@
 
           (testing "the Collections properly exported"
             (is (= (-> (into {} (t2/select-one :model/Collection :id (:id parent)))
-                       (dissoc :id :location :allowed_content)
+                       (dissoc :id :location)
                        (assoc :parent_id nil)
                        (update :created_at t/offset-date-time))
-                   (-> (into {} (yaml/from-file (io/file dump-dir "collections" parent-filename (str parent-filename ".yaml"))))
-                       (dissoc :serdes/meta :allowed_content)
+                   (-> (yaml/from-file (io/file dump-dir "collections" parent-filename (str parent-filename ".yaml")))
+                       (dissoc :serdes/meta)
                        (update :created_at t/offset-date-time))))
 
             (is (= (-> (into {} (t2/select-one :model/Collection :id (:id child)))
-                       (dissoc :id :location :allowed_content)
+                       (dissoc :id :location)
                        (assoc :parent_id (:entity_id parent))
                        (update :created_at t/offset-date-time))
                    (-> (yaml/from-file (io/file dump-dir "collections" parent-filename
                                                 child-filename (str child-filename ".yaml")))
-                       (dissoc :serdes/meta :allowed_content)
+                       (dissoc :serdes/meta)
                        (update :created_at t/offset-date-time))))))))))
 
 (deftest collection-nesting-test

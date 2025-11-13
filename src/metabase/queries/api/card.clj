@@ -232,10 +232,7 @@
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql
-    include-editable-semantic-layer? :include_editable_semantic_layer
-    :keys        []} :- [:map [:legacy-mbql {:optional true, :default false} [:maybe :boolean]
-                               :include_editable_semantic_layer {:optional true, :default false} [:maybe :boolean]]]]
-  include-editable-semantic-layer?
+    :keys        []} :- [:map [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
         card (get-card resolved-id)]
     (cond-> card
@@ -243,10 +240,7 @@
       (update :dataset_query (fn [query]
                                #_{:clj-kondo/ignore [:discouraged-var]}
                                (cond-> query
-                                 (seq query) lib/->legacy-MBQL)))
-
-      (and (not include-editable-semantic-layer?) (collection/is-semantic-layer-collection? (:collection_id card)))
-      (assoc :can_write false))))
+                                 (seq query) lib/->legacy-MBQL))))))
 
 (defn- check-allowed-to-remove-from-existing-dashboards [card]
   (let [dashboards (or (:in_dashboards card)

@@ -57,7 +57,7 @@ const Groups = createEntity({
 
   actions: {
     clearMember:
-      async ({ id }) =>
+      ({ id }) =>
       async (dispatch) => {
         await dispatch(
           entityCompatibleQuery(

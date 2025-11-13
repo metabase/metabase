@@ -1,9 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { Location } from "history";
 import { useMemo, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import {
   PaneHeader,
@@ -16,7 +18,7 @@ import { getInitialUiState } from "metabase/querying/editor/components/QueryEdit
 import { getMetadata } from "metabase/selectors/metadata";
 import { Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { Card } from "metabase-types/api";
+import type { Card, CollectionId } from "metabase-types/api";
 
 import { ModelQueryEditor } from "../../components/ModelQueryEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
@@ -25,15 +27,21 @@ import { getResultMetadata, getValidationResult } from "../../utils";
 import { CreateModelModal } from "./CreateModelModal";
 import { getInitialNativeQuery, getInitialQuery, getQuery } from "./utils";
 
+type NewModelPageQuery = {
+  collectionId?: string;
+};
+
 type NewModelPageProps = {
   initialName?: string;
   initialQuery: Lib.Query;
+  initialCollectionId?: CollectionId | null;
   route: Route;
 };
 
 function NewModelPage({
   initialName = t`New model`,
   initialQuery,
+  initialCollectionId,
   route,
 }: NewModelPageProps) {
   const [name, setName] = useState(initialName);
@@ -44,6 +52,7 @@ function NewModelPage({
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const metadata = useSelector(getMetadata);
+  const defaultCollectionId = useGetDefaultCollectionId();
   const dispatch = useDispatch();
 
   const query = useMemo(
@@ -62,6 +71,15 @@ function NewModelPage({
   const validationResult = useMemo(
     () => getValidationResult(query, resultMetadata),
     [query, resultMetadata],
+  );
+
+  const defaultValues = useMemo(
+    () => ({
+      name,
+      result_metadata: resultMetadata,
+      collection_id: initialCollectionId ?? defaultCollectionId,
+    }),
+    [name, resultMetadata, initialCollectionId, defaultCollectionId],
   );
 
   const handleCreate = (card: Card) => {
@@ -115,7 +133,7 @@ function NewModelPage({
       {isModalOpened && (
         <CreateModelModal
           query={query}
-          defaultValues={{ name, result_metadata: resultMetadata }}
+          defaultValues={defaultValues}
           onCreate={handleCreate}
           onClose={closeModal}
         />
@@ -126,24 +144,47 @@ function NewModelPage({
 }
 
 type NewQueryModelPageProps = {
+  location: Location<NewModelPageQuery>;
   route: Route;
 };
 
-export function NewQueryModelPage({ route }: NewQueryModelPageProps) {
+export function NewQueryModelPage({ route, location }: NewQueryModelPageProps) {
   const metadata = useSelector(getMetadata);
   const initialQuery = useMemo(() => getInitialQuery(metadata), [metadata]);
-  return <NewModelPage initialQuery={initialQuery} route={route} />;
+  const collectionId = Urls.extractCollectionId(location.query.collectionId);
+
+  return (
+    <NewModelPage
+      initialQuery={initialQuery}
+      initialCollectionId={collectionId}
+      route={route}
+    />
+  );
 }
 
 type NewNativeModelPageProps = {
+  location: Location<NewModelPageQuery>;
   route: Route;
 };
 
-export function NewNativeModelPage({ route }: NewNativeModelPageProps) {
+export function NewNativeModelPage({
+  location,
+  route,
+}: NewNativeModelPageProps) {
   const metadata = useSelector(getMetadata);
   const initialQuery = useMemo(
     () => getInitialNativeQuery(metadata),
     [metadata],
   );
-  return <NewModelPage initialQuery={initialQuery} route={route} />;
+  const initialCollectionId = Urls.extractCollectionId(
+    location.query.collectionId,
+  );
+
+  return (
+    <NewModelPage
+      initialQuery={initialQuery}
+      initialCollectionId={initialCollectionId}
+      route={route}
+    />
+  );
 }
