@@ -11,6 +11,10 @@
   grid-area: TopBar;
 }
 
+.BackButtonWrapper:empty {
+  display: none;
+}
+
 .MidBar {
   grid-area: MidBar;
 }

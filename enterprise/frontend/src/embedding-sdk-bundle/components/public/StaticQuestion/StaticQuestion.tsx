@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { PropsWithChildren } from "react";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
@@ -21,12 +22,13 @@ import {
 } from "embedding-sdk-bundle/components/private/SdkQuestion/components";
 import { ResultToolbar } from "embedding-sdk-bundle/components/private/SdkQuestion/components/ResultToolbar/ResultToolbar";
 import { DefaultViewTitle } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/DefaultViewTitle";
+import InteractiveQuestionS from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/SdkQuestionDefaultView.module.css";
 import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { StaticQuestionSdkMode } from "embedding-sdk-bundle/components/public/StaticQuestion/mode";
-import { Stack } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
@@ -113,28 +115,39 @@ const StaticQuestionInner = ({
       withDownloads={withDownloads}
     >
       {children ?? (
-        <FlexibleSizeComponent
-          width={width}
-          height={height}
-          className={className}
-          style={style}
-        >
-          <Stack gap="sm" w="100%" h="100%">
-            {title && <DefaultViewTitle title={title} />}
+        <FlexibleSizeComponent width={width} height={height} style={style}>
+          <Stack
+            className={cx(InteractiveQuestionS.Container, className)}
+            gap="sm"
+            w="100%"
+            h="100%"
+          >
+            <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
+              {title && <DefaultViewTitle title={title} />}
 
-            {(withChartTypeSelector || withDownloads) && (
-              <ResultToolbar>
-                {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
-                {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
-              </ResultToolbar>
-            )}
+              {(withChartTypeSelector || withDownloads) && (
+                <ResultToolbar>
+                  {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
+                  {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
+                </ResultToolbar>
+              )}
+            </Stack>
 
-            <SdkQuestion.QuestionVisualization
-              height={height}
-              width={width}
-              className={className}
-              style={style}
-            />
+            <Box
+              className={cx(InteractiveQuestionS.Main, "sdk-question-main")}
+              p="sm"
+              w="100%"
+              h="100%"
+            >
+              <Box className={InteractiveQuestionS.Content}>
+                <SdkQuestion.QuestionVisualization
+                  height={height}
+                  width={width}
+                  className={className}
+                  style={style}
+                />
+              </Box>
+            </Box>
           </Stack>
         </FlexibleSizeComponent>
       )}
