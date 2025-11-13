@@ -29,6 +29,8 @@ import { CollectionItemPickerResolver } from "./CollectionItemPickerResolver";
 const defaultOptions: CollectionPickerOptions = {
   showPersonalCollections: true,
   showRootCollection: true,
+  showLibrary: true,
+  showDatabases: true,
 };
 
 interface CollectionPickerProps {

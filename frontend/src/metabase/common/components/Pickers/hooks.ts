@@ -5,6 +5,7 @@ import {
   useGetDashboardQuery,
 } from "metabase/api";
 import { isValidCollectionId } from "metabase/collections/utils";
+import { DATABASES_COLLECTION } from "metabase/entities/collections";
 
 import type { CollectionPickerItem } from "./CollectionPicker";
 
@@ -16,6 +17,7 @@ export const useGetInitialContainer = (
     initialValue && ["card", "dataset", "metric"].includes(initialValue.model);
   const isCollection = initialValue?.model === "collection";
   const isDashboard = initialValue?.model === "dashboard";
+  const isTable = initialValue?.model === "table";
 
   // Determine the IDs of the things we care about
   const cardId = isQuestion ? Number(initialValue.id) : undefined;
@@ -25,6 +27,8 @@ export const useGetInitialContainer = (
       ? initialValue.id
       : "root"
     : undefined;
+
+  const databasesCollection = isTable ? DATABASES_COLLECTION : undefined;
 
   // Fetch the initial value's entity
   const {
@@ -81,6 +85,7 @@ export const useGetInitialContainer = (
   return {
     currentQuestion: currentQuestion,
     currentCollection:
+      databasesCollection ??
       currentQuestionCollection ??
       currentDashboardCollection ??
       currentCollection,

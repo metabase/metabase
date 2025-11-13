@@ -173,6 +173,7 @@ export const QuestionPicker = ({
 
   return (
     <NestedItemPicker
+      initialValue={initialValue}
       isFolder={(item: QuestionPickerItem) => isFolder(item, models)}
       options={options}
       onFolderSelect={onFolderSelect}
