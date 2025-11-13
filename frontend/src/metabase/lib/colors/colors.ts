@@ -305,6 +305,10 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.orionAlpha[60],
     dark: baseColors.orionAlpha[70],
   },
+  "bg-ocean-alpha-light": {
+    light: baseColors.oceanAlpha[5],
+    dark: baseColors.oceanAlpha[20],
+  },
   "bg-black": { light: baseColors.orion[80], dark: baseColors.orion[20] }, //should be background-primary-inverse
   "bg-dark": { light: baseColors.orion[40], dark: baseColors.orion[70] }, //should be background-tertiary-inverse
   "bg-darker": { light: baseColors.orion[70], dark: baseColors.orion[30] }, //should be background-secondary-inverse

@@ -236,7 +236,7 @@ function TransformLink({ table }: { table: Table }) {
           gap: 4,
           cursor: "pointer",
           textDecoration: "none",
-          backgroundColor: "rgba(5, 114, 210, 0.07)",
+          backgroundColor: "var(--mb-color-bg-ocean-alpha-light)",
         }}
         c="brand"
       >
