@@ -26,10 +26,12 @@
                 (flatten-nested-fields v current-path)
                 ;; For non-struct types (leaf fields), include this field with nfc-path
                 ;; Position is 0 to match Postgres behavior where JSONB nested fields have position 0
+                ;; Visibility is :normal so they show in tables (parent structs are :details-only)
                 [{:name display-name
                   :database-type (if (sequential? v) "array" v)
                   :base-type (if (sequential? v) :type/Array (column->base-type v))
                   :database-position 0
+                  :visibility-type :normal
                   :nfc-path current-path}])))
           schema))
 
@@ -38,11 +40,13 @@
         schema (athena.hive-parser/hive-schema->map (:type field-info))]
     ;; Return a set containing the root struct field (without nfc-path) and all leaf nested fields (with nfc-path)
     ;; This matches Postgres behavior: the parent JSONB column exists in metadata but only leaf fields are selectable
+    ;; Parent struct is :details-only (hidden from tables), leaf fields are :normal (shown in tables)
     (into #{}
           (cons {:name root-field-name
                  :base-type :type/Dictionary
                  :database-type "struct"
-                 :database-position database-position}
+                 :database-position database-position
+                 :visibility-type :details-only}
                 (flatten-nested-fields schema [root-field-name])))))
 
 (defn- parse-array-type-field [field-info database-position]
