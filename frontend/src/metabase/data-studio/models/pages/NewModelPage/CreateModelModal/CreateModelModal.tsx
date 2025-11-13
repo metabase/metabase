@@ -13,7 +13,7 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
+import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Card, CreateCardRequest } from "metabase-types/api";
 
@@ -40,7 +40,6 @@ export function CreateModelModal({
 }: CreateModelModalProps) {
   return (
     <Modal title={t`Save your model`} opened padding="xl" onClose={onClose}>
-      <FocusTrap.InitialFocus />
       <CreateModelForm
         query={query}
         defaultValues={defaultValues}
@@ -89,6 +88,7 @@ function CreateModelForm({
             name="name"
             label={t`Name`}
             placeholder={t`My Great Model`}
+            data-autofocus
           />
           <FormTextarea
             name="description"

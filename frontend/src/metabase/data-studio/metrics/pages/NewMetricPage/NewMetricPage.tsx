@@ -39,7 +39,7 @@ type NewMetricPageProps = {
 
 export function NewMetricPage({ location, route }: NewMetricPageProps) {
   const metadata = useSelector(getMetadata);
-  const [name, setName] = useState(t`New metric`);
+  const [name, setName] = useState("");
   const [datasetQuery, setDatasetQuery] = useState(() =>
     Lib.toJsQuery(getInitialQuery(metadata)),
   );
@@ -102,7 +102,9 @@ export function NewMetricPage({ location, route }: NewMetricPageProps) {
           title={
             <PaneHeaderInput
               initialValue={name}
+              placeholder={t`New metric`}
               maxLength={NAME_MAX_LENGTH}
+              isOptional
               onChange={setName}
             />
           }

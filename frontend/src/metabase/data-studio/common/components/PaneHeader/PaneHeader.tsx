@@ -66,24 +66,31 @@ export function PanelHeaderTitle({ children }: PaneHeaderTitleProps) {
 
 type PaneHeaderInputProps = {
   initialValue?: string;
+  placeholder?: string;
   maxLength?: number;
+  isOptional?: boolean;
   onChange?: (value: string) => void;
 };
 
 export function PaneHeaderInput({
   initialValue,
+  placeholder = t`Name`,
   maxLength,
+  isOptional,
   onChange,
 }: PaneHeaderInputProps) {
   return (
     <EditableText
       initialValue={initialValue}
+      placeholder={placeholder}
       maxLength={maxLength}
-      placeholder={t`Name`}
       p={0}
       fw="bold"
       fz="h3"
       lh="h3"
+      px={isOptional ? "xs" : undefined}
+      bd={isOptional ? "1px solid var(--mb-color-border)" : undefined}
+      isOptional={isOptional}
       onChange={onChange}
     />
   );

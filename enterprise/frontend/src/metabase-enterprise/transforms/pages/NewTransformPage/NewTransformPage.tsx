@@ -45,16 +45,11 @@ import {
 } from "./utils";
 
 type NewTransformPageProps = {
-  initialName?: string;
   initialSource: DraftTransformSource;
   route: Route;
 };
 
-function NewTransformPage({
-  initialName = t`New transform`,
-  initialSource,
-  route,
-}: NewTransformPageProps) {
+function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
   const {
     data: databases,
     isLoading,
@@ -71,7 +66,6 @@ function NewTransformPage({
 
   return (
     <NewTransformPageBody
-      initialName={initialName}
       initialSource={initialSource}
       databases={databases.data}
       route={route}
@@ -80,14 +74,12 @@ function NewTransformPage({
 }
 
 type NewTransformPageBodyProps = {
-  initialName: string;
   initialSource: DraftTransformSource;
   databases: Database[];
   route: Route;
 };
 
 function NewTransformPageBody({
-  initialName,
   initialSource,
   databases,
   route,
@@ -101,7 +93,7 @@ function NewTransformPageBody({
     acceptProposed,
     rejectProposed,
   } = useSourceState({ initialSource });
-  const [name, setName] = useState(suggestedTransform?.name ?? initialName);
+  const [name, setName] = useState(suggestedTransform?.name ?? "");
   const [uiState, setUiState] = useState(getInitialUiState);
   const metadata = useSelector(getMetadata);
   const [isModalOpened, { open: openModal, close: closeModal }] =
@@ -137,7 +129,9 @@ function NewTransformPageBody({
           title={
             <PaneHeaderInput
               initialValue={name}
+              placeholder={t`New transform`}
               maxLength={NAME_MAX_LENGTH}
+              isOptional
               onChange={setName}
             />
           }

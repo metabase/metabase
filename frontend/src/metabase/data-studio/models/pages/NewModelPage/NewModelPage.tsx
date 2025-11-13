@@ -33,19 +33,17 @@ type NewModelPageQuery = {
 };
 
 type NewModelPageProps = {
-  initialName?: string;
   initialQuery: Lib.Query;
   initialCollectionId?: CollectionId | null;
   route: Route;
 };
 
 function NewModelPage({
-  initialName = t`New model`,
   initialQuery,
   initialCollectionId,
   route,
 }: NewModelPageProps) {
-  const [name, setName] = useState(initialName);
+  const [name, setName] = useState("");
   const [datasetQuery, setDatasetQuery] = useState(() =>
     Lib.toJsQuery(initialQuery),
   );
@@ -109,7 +107,9 @@ function NewModelPage({
           title={
             <PaneHeaderInput
               initialValue={name}
+              placeholder={t`New model`}
               maxLength={NAME_MAX_LENGTH}
+              isOptional
               onChange={setName}
             />
           }
