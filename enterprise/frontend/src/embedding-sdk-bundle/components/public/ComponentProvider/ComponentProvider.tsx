@@ -2,7 +2,6 @@ import { Global } from "@emotion/react";
 import { type JSX, memo, useEffect, useId, useRef } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
-import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk-bundle/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
@@ -110,8 +109,6 @@ export const ComponentProviderInternal = ({
             <>
               <LocaleProvider locale={locale || instanceLocale}>
                 {children}
-
-                <SdkIncompatibilityWithInstanceBanner />
               </LocaleProvider>
 
               {isInstanceToRender && (

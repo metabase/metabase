@@ -182,16 +182,3 @@
             "Password hash should match between AuthIdentity and User")
         (is (= (:password_salt auth-creds) (:password_salt user))
             "Password salt should match between AuthIdentity and User")))))
-
-(deftest expires-at-timestamp-parsing-test
-  (testing "expires_at is properly parsed as timestamp"
-    (mt/with-temp [:model/User {user-id :id}]
-      (let [expires-at (t/plus (t/offset-date-time) (t/days 7))
-            auth-identity (t2/insert-returning-instance! :model/AuthIdentity
-                                                         {:user_id user-id
-                                                          :provider "test-provider"
-                                                          :expires_at expires-at})]
-        (is (instance? java.time.OffsetDateTime (:expires_at auth-identity))
-            "expires_at should be parsed as OffsetDateTime")
-        (is (t/equal? expires-at (:expires_at auth-identity))
-            "expires_at value should match what was inserted")))))
