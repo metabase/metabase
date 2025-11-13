@@ -267,7 +267,7 @@
              {:order-by [[:database_position :asc]]}))
 
 (defn- build-table-query
-  "Build a mbql query for table, mgiht add a proper filter for incremental transforms."
+  "Build a mbql query for table, might add a proper filter for incremental transforms."
   [table-id source-incremental-strategy transform-id limit]
   (let [db-id             (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id)
         metadata-provider (lib-be/application-database-metadata-provider db-id)
@@ -288,7 +288,7 @@
            transform-id]}]
   (when (and (:source-incremental-strategy source)
              (> (count (:source-tables source)) 1))
-    (throw (ex-info "Incremental transforms for python only support one source tables" {})))
+    (throw (ex-info "Incremental transforms for python only supports one source table" {})))
   ;; TODO there's scope for some parallelism here, in particular across different databases
   (doseq [[table-name table-id] (:source-tables source)
           :let [{:keys [s3-client bucket-name objects]} shared-storage
