@@ -6,6 +6,10 @@
 
 (set! *warn-on-reflection* true)
 
+(def map-close
+  "The closing brackets of a map type"
+  "}]")
+
 (defn- parse-to-json-string [s]
   (loop [schema s
          closes []
@@ -21,14 +25,9 @@
              (conj closes "]")
              (str result "["))
 
-      (str/starts-with? schema "map<string,string>")
-      (recur (str/replace-first schema #"map<string,string>" "")
-             closes
-             (str result "[{\"key\":\"string\",\"value\":\"string\"}]"))
-
       (str/starts-with? schema "map<")
       (recur (str/replace-first schema #"map<" "")
-             (conj closes [:map-key "}]"])
+             (conj closes map-close)
              (str result "[{\"key\":"))
 
       (str/starts-with? schema "struct<")
@@ -42,20 +41,16 @@
              (str result ":"))
 
       (str/starts-with? schema ",")
-      (let [top (peek closes)]
-        (if (and (vector? top) (= :map-key (first top)))
-          (recur (str/replace-first schema #",\s*" "")
-                 (conj (pop closes) [:map-value (second top)])
-                 (str result ",\"value\":"))
-          (recur (str/replace-first schema #",\s*" "")
-                 closes
-                 (str result ","))))
+      (recur (str/replace-first schema #",\s*" "")
+             closes
+             (str result (if (= (peek closes) map-close)
+                           ",\"value\":"
+                           ",")))
 
       (str/starts-with? schema ">")
-      (let [top (peek closes)]
-        (recur (str/replace-first schema #">" "")
-               (pop closes)
-               (str result (if (vector? top) (second top) top))))
+      (recur (str/replace-first schema #">" "")
+             (pop closes)
+             (str result (peek closes)))
 
       :else (let [name-or-type (re-find #"\w+" schema)]
               (if (= name-or-type nil)

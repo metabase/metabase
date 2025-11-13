@@ -17,6 +17,12 @@
            (hive-schema->map "struct<accredited_buyer_representative_abr: boolean>")))
     (is (= {:mediacategory "string" :mediakey "string" :mediaurl "string" :order "bigint"}
            (hive-schema->map "struct<mediacategory: string, mediakey: string, mediaurl: string, order: bigint>")))
+    (is (= [{:key "string" :value "string"}]
+           (hive-schema->map "map<string, string>")))
+    (is (= [{:key "int" :value "int"}]
+           (hive-schema->map "map<int, int>")))
+    (is (= [{:key "int" :value [{:key "string" :value "boolean"}]}]
+           (hive-schema->map "map<int, map<string, boolean>>")))
     (is (= {:field [{:key "string" :value {:x "string"}}]}
            (hive-schema->map "struct<field:map<string,struct<x:string>>>")))
     (is (= {:extendedfields [{:key "string"
