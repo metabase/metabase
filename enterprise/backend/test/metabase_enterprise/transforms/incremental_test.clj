@@ -117,7 +117,7 @@
 
 (defn get-checkpoint-value [transform-id]
   (#'transforms.u/next-checkpoint-value
-   (#'transforms.u/next-checkpoint-query transform-id)))
+   (transforms.u/next-checkpoint transform-id)))
 
 (defn- insert-test-products!
   "Insert new products into the transforms_products table."

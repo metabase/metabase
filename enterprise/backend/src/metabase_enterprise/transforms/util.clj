@@ -228,7 +228,7 @@
                                            :name field-name)]
        (lib.metadata/field metadata-provider field-id)))))
 
-(defn- next-checkpoint-query
+(defn next-checkpoint
   "Build a query to compute the MAX of the checkpoint column from the target table.
 
   Returns a map with `:query` (MBQL query selecting the max) and `:filter-column` (column metadata),
@@ -274,8 +274,8 @@
   For native queries with a `checkpoint` template tag, adds the checkpoint as a parameter.
   For MBQL queries, adds a filter clause `WHERE checkpoint_column > checkpoint`.
   Returns the query unchanged on first run (no checkpoint) or for native queries without the checkpoint tag."
-  [query source-incremental-strategy checkpoint-query]
-  (if-let [checkpoint-value (next-checkpoint-value checkpoint-query)]
+  [query source-incremental-strategy checkpoint]
+  (if-let [checkpoint-value (next-checkpoint-value checkpoint)]
     (if (lib.query/native? query)
       ;; native query with explicit checkpoint filter
       (if (get-in query [:stages 0 :template-tags "checkpoint"])
@@ -306,15 +306,15 @@
   [{:keys [source-incremental-strategy] query-type :type :as source} transform-id]
   (case (keyword query-type)
     :query
-    (let [checkpoint-query (next-checkpoint-query transform-id)
+    (let [checkpoint (next-checkpoint transform-id)
           query (:query source)
           driver (some->> query :database (t2/select-one :model/Database) :engine keyword)]
       (-> query
-          (preprocess-incremental-query source-incremental-strategy checkpoint-query)
+          (preprocess-incremental-query source-incremental-strategy checkpoint)
           massage-sql-query
           qp.compile/compile-with-inline-parameters
           :query
-          (post-process-incremental-query driver source-incremental-strategy checkpoint-query)))))
+          (post-process-incremental-query driver source-incremental-strategy checkpoint)))))
 
 (defn required-database-features
   "Returns the database features necessary to execute `transform`."
