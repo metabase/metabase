@@ -138,14 +138,12 @@ jobs:
   e2e-tests-result:
     needs:
       - e2e-tests
-      - flaky-e2e-tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
     name: e2e-tests-result
     if: always() && !cancelled()
     env:
       E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
-      FLAKY_E2E_TESTS_RESULT: ${{ needs.flaky-e2e-tests.result }}
     steps:
       - name: Stub
         if: ${{ needs.e2e-tests.result == 'skipped' }}
@@ -155,7 +153,6 @@ jobs:
         if: ${{ needs.e2e-tests.result != 'skipped' }}
         run: | # sh
           echo "E2E Tests: ${{ needs.e2e-tests.result }}"
-          echo "Flaky E2E Tests: ${{ needs.flaky-e2e-tests.result }}"
 
           if [ "${{ needs.e2e-tests.result }}" != "success" ]; then
             echo "E2E Tests failed"
