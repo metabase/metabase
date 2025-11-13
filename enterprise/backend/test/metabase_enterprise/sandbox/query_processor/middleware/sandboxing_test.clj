@@ -1685,3 +1685,28 @@
       (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
         (mt/with-premium-features #{}
           (is (thrown-with-msg? clojure.lang.ExceptionInfo sandboxing-disabled-error (run-venues-count-query))))))))
+
+(deftest aggregating-over-implicitly-joined-column-with-fk-remapping-test
+  (testing "Aggregating over an implicitly joined column with FK display value remapping should work with sandboxing (#65726)"
+    (mt/dataset test-data
+      (mt/test-drivers (mt/normal-drivers-with-feature :left-join :nested-queries)
+        (qp.store/with-metadata-provider (-> (mt/metadata-provider)
+                                             (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                                             (mt/id :products :title)))
+          (testing "Without sandboxing, query should work"
+            (let [query (mt/mbql-query orders
+                          {:aggregation [[:count]]
+                           :breakout    [$product_id->products.title]
+                           :limit       3})]
+              (is (= 3
+                     (count (mt/rows (qp/process-query query)))))))
+
+          (testing "With sandboxing on Orders table, query should still work"
+            (met/with-gtaps! {:gtaps      {:orders {:remappings {"user_id" ["variable" [:field (mt/id :orders :user_id) nil]]}}}
+                              :attributes {"user_id" 1}}
+              (let [query (mt/mbql-query orders
+                            {:aggregation [[:count]]
+                             :breakout    [$product_id->products.title]
+                             :limit       3})]
+                (testing "Query should return results without error"
+                  (is (seq (mt/rows (qp/process-query query))))))))))))))
