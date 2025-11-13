@@ -204,13 +204,21 @@
   [query]
   (assoc-in query [:middleware :disable-remaps?] true))
 
-(defn- is-checkpoint-incremental? [source]
+(defn- is-checkpoint-incremental?
+  "Returns true if `source` uses checkpoint-based incremental strategy."
+  [source]
   (= :checkpoint (some-> source :source-incremental-strategy :type keyword)))
 
-(defn- source->checkpoint-filter-unique-key [query source-incremental-strategy]
+(defn- source->checkpoint-filter-unique-key
+  "Extract the checkpoint filter column from `query` using the unique key specified in `source-incremental-strategy`."
+  [query source-incremental-strategy]
   (some->> source-incremental-strategy :checkpoint-filter-unique-key (lib/column-with-unique-key query)))
 
 (defn- source->checkpoint-filter-column
+  "Resolve the checkpoint filter column for an incremental transform.
+
+  Tries to resolve the column using the unique key first.
+  Falls back to looking up the column by name from the target table if a `:checkpoint-filter` is specified."
   [query source-incremental-strategy table metadata-provider]
   (or
    (source->checkpoint-filter-unique-key query source-incremental-strategy)
@@ -221,6 +229,9 @@
        (lib.metadata/field metadata-provider field-id)))))
 
 (defn- next-watermark-value
+  "Calculate the watermark value for the next incremental transform run.
+
+  Returns the maximum value of the checkpoint column in the target table"
   [transform-id]
   (let [{:keys [source target] :as transform} (t2/select-one :model/Transform transform-id)
         db-id (transforms.i/target-db-id transform)]
@@ -235,10 +246,14 @@
                                                        table metadata-provider)]
             (let [v (some-> query (lib/aggregate (lib/max filter-column))
                             qp/process-query :data :rows first first)]
+
+              ;; QP return values are lossy, we do a bit of parsing to ensure they're of the right
+              ;; shape for reinsertion
               (cond
                 (isa? base-type :type/Integer)
                 (bigint v)
 
+                ;; any other number that's not an integer, should be a decimal/float
                 (number? v)
                 (bigdec v)
 
