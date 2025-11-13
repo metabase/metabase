@@ -183,8 +183,5 @@ export function usePageTitleWithLoadingTime(
   usePageTitle(finalTitle, { titleIndex: options?.titleIndex });
 
   // Include refreshTrigger in dependency to force re-render
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    // This effect intentionally empty - refreshTrigger dependency causes re-render
-  }, [refreshTrigger]);
+  useEffect(() => {}, [refreshTrigger]);
 }
