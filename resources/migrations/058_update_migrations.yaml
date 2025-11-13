@@ -232,7 +232,31 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-11-06T15:01:00
-      author: support-access-grants
+      author: edpaget
+      comment: Add index for finding support access grants by user
+      changes:
+        - createIndex:
+            indexName: idx_support_access_grant_log_user_id
+            tableName: support_access_grant_log
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: v58.2025-11-06T15:01:01
+      author: edpaget
+      comment: Add index for finding support access grants by revoked_by_user_id
+      changes:
+        - createIndex:
+            indexName: idx_support_access_grant_log_revoked_by_user_id
+            tableName: support_access_grant_log
+            columns:
+              - column:
+                  name: revoked_by_user_id
+
+  - changeSet:
+      id: v58.2025-11-06T15:01:02
+      author: edpaget
       comment: Add foreign key constraint from support_access_grant_log.user_id to core_user with SET NULL on delete
       changes:
         - addForeignKeyConstraint:
@@ -248,8 +272,8 @@ databaseChangeLog:
             constraintName: fk_support_access_grant_log_user_id
 
   - changeSet:
-      id: v58.2025-11-06T15:01:01
-      author: support-access-grants
+      id: v58.2025-11-06T15:01:03
+      author: edpaget
       comment: Add foreign key constraint from support_access_grant_log.revoked_by_user_id to core_user with SET NULL on delete
       changes:
         - addForeignKeyConstraint:
@@ -265,8 +289,8 @@ databaseChangeLog:
             constraintName: fk_support_access_grant_log_revoked_by_user_id
 
   - changeSet:
-      id: v58.2025-11-06T15:01:02
-      author: support-access-grants
+      id: v58.2025-11-06T15:01:04
+      author: edpaget
       comment: Add index for finding active support access grants
       changes:
         - createIndex:
@@ -280,20 +304,8 @@ databaseChangeLog:
             where: revoked_at IS NULL
 
   - changeSet:
-      id: v58.2025-11-06T15:01:03
-      author: support-access-grants
-      comment: Add index for finding support access grants by user
-      changes:
-        - createIndex:
-            indexName: idx_support_access_grant_log_user_id
-            tableName: support_access_grant_log
-            columns:
-              - column:
-                  name: user_id
-
-  - changeSet:
       id: v58.2025-11-06T15:01:04
-      author: support-access-grants
+      author: edpaget
       comment: Add index for finding support access grants by ticket number
       changes:
         - createIndex:
