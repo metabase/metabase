@@ -90,16 +90,20 @@
   "Lazy seq of cards from `dashboard` that are mapped to param `param-key` and contain some filters.
   Dashboard is expected to have hydrated `:resolved-params`."
   [dashboard param-key]
-  (for [mapping (get-in dashboard [:resolved-params param-key :mappings])
-        :let [database-id (get-in mapping [:dashcard :card :dataset_query :database])
-              card-id (get-in mapping [:dashcard :card :id])
-              mp (lib-be/application-database-metadata-provider database-id)
-              card (lib.metadata/card mp card-id)
-              query (lib/card->underlying-query mp card)]
-        :when (and (not-empty query)
-                   (m/find-first (partial lib/filters query)
-                                 (range (lib/stage-count query))))]
-    card))
+  (keep (fn [mapping]
+          (let [database-id (get-in mapping [:dashcard :card :dataset_query :database])
+                card-id (get-in mapping [:dashcard :card :id])]
+            (when (and (pos-int? database-id)
+                       (pos-int? card-id))
+              (let [mp (lib-be/application-database-metadata-provider database-id)
+                    card (lib.metadata/card mp card-id)]
+                (when (some? card)
+                  (let [query (lib/card->underlying-query mp card)]
+                    (when (and (not-empty query)
+                               (m/find-first (partial lib/filters query)
+                                             (range (lib/stage-count query))))
+                      card)))))))
+        (get-in dashboard [:resolved-params param-key :mappings])))
 
 (defn- cards-with-filters?
   "Does param-key have any card with filter mapped? Dashboard is expected to have hydrated `:resolved-params`."
