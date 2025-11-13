@@ -80,7 +80,8 @@
                 (assoc (into {:is_personal false} collection)
                        :can_write true
                        :can_delete false
-                       :is_remote_synced false)]
+                       :is_remote_synced false
+                       :parent_id nil)]
                (filter #(#{(:id collection) "root"} (:id %))
                        (mt/user-http-request :crowberto :get 200 "collection"))))))))
 

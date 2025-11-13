@@ -144,7 +144,7 @@
         (cond->> collections
           (mi/can-read? root)
           (cons root))))
-    (t2/hydrate collections :can_write :is_personal :can_delete :is_remote_synced)
+    (t2/hydrate collections :can_write :is_personal :can_delete :is_remote_synced :parent_id)
     ;; remove the :metabase.collection.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal collections we translate the name to user's locale
     (collection/personal-collections-with-ui-details  (for [collection collections]

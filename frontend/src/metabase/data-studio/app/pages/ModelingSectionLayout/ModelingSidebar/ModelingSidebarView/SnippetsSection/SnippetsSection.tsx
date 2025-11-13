@@ -14,7 +14,6 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, FixedSizeIcon, Flex, Menu, Tooltip } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
 
-import { ModelingSidebarSection } from "../../ModelingSidebarSection";
 import { ModelingSidebarTreeNode } from "../../ModelingSidebarTreeNode";
 
 import {
@@ -36,6 +35,7 @@ export function SnippetsSection({ selectedSnippetId }: SnippetsSectionProps) {
   );
   const [permissionsCollectionId, setPermissionsCollectionId] =
     useState<CollectionId | null>(null);
+  const [creatingFolder, setCreatingFolder] = useState(false);
 
   const { data: snippets = [] } = useListSnippetsQuery();
   const { data: snippetCollections = [] } = useListCollectionsQuery({
@@ -45,11 +45,6 @@ export function SnippetsSection({ selectedSnippetId }: SnippetsSectionProps) {
   const snippetTree = useMemo(
     () => buildSnippetTree(snippetCollections, snippets),
     [snippetCollections, snippets],
-  );
-
-  const rootCollection = useMemo(
-    () => snippetCollections.find(isRootCollection),
-    [snippetCollections],
   );
 
   const handleSnippetSelect = useCallback(
@@ -63,92 +58,119 @@ export function SnippetsSection({ selectedSnippetId }: SnippetsSectionProps) {
 
   return (
     <>
-      <ModelingSidebarSection
-        icon="snippet"
-        title={t`SQL snippets`}
-        rightSection={
-          <Flex gap="xs" align="center">
-            {isAdmin && (
-              <Menu position="bottom-end">
-                <Menu.Target>
-                  <Button
-                    w={24}
-                    h={24}
-                    c="text-medium"
-                    size="compact-xs"
-                    variant="subtle"
-                    leftSection={<FixedSizeIcon name="ellipsis" size={16} />}
-                    aria-label={t`Snippet collection options`}
-                  />
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Item
-                    leftSection={<FixedSizeIcon name="lock" />}
-                    onClick={() => {
-                      setPermissionsCollectionId(rootCollection?.id ?? null);
-                    }}
-                  >
-                    {t`Change permissions`}
-                  </Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
-            )}
-            {rootCollection?.can_write && (
-              <Menu position="bottom-end">
-                <Tooltip label={t`Create snippet`}>
-                  <Menu.Target>
-                    <Button
-                      w={24}
-                      h={24}
-                      size="compact-xs"
-                      variant="subtle"
-                      c="text-medium"
-                      leftSection={<FixedSizeIcon name="add" size={16} />}
-                      aria-label={t`Create snippet`}
-                    />
-                  </Menu.Target>
-                </Tooltip>
-                <Menu.Dropdown>
-                  <Menu.Item
-                    component={ForwardRefLink}
-                    to={Urls.newDataStudioSnippet()}
-                    leftSection={<FixedSizeIcon name="snippet" />}
-                    aria-label={t`Create new snippet`}
-                  >
-                    {t`New snippet`}
-                  </Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
-            )}
-          </Flex>
-        }
-      >
-        <Tree
-          data={snippetTree}
-          selectedId={selectedSnippetId}
-          onSelect={handleSnippetSelect}
-          TreeNode={ModelingSidebarTreeNode}
-          rightSection={(item: ITreeNodeItem<TreeItem>) => {
-            if (!item.data || !isCollectionTreeItem(item.data)) {
-              return null;
-            }
+      <Tree
+        data={snippetTree}
+        selectedId={selectedSnippetId}
+        onSelect={handleSnippetSelect}
+        TreeNode={ModelingSidebarTreeNode}
+        rightSection={(item: ITreeNodeItem<TreeItem>) => {
+          if (!item.data || !isCollectionTreeItem(item.data)) {
+            return null;
+          }
+
+          const isRoot = isRootCollection(item.data);
+
+          if (isRoot) {
             return (
-              <PLUGIN_SNIPPET_FOLDERS.CollectionMenu
-                collection={item.data}
-                onEditDetails={setEditingCollection}
-                onChangePermissions={setPermissionsCollectionId}
-              />
+              <Flex
+                gap="xs"
+                align="center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {isAdmin && (
+                  <Menu position="bottom-end">
+                    <Menu.Target>
+                      <Button
+                        w={24}
+                        h={24}
+                        c="text-medium"
+                        size="compact-xs"
+                        variant="subtle"
+                        leftSection={
+                          <FixedSizeIcon name="ellipsis" size={16} />
+                        }
+                        aria-label={t`Snippet collection options`}
+                      />
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Item
+                        leftSection={<FixedSizeIcon name="lock" />}
+                        onClick={() => {
+                          if (item.data) {
+                            setPermissionsCollectionId(item.data.id);
+                          }
+                        }}
+                      >
+                        {t`Change permissions`}
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+                )}
+                {item.data.can_write && (
+                  <Menu position="bottom-end">
+                    <Tooltip label={t`Create snippet`}>
+                      <Menu.Target>
+                        <Button
+                          w={24}
+                          h={24}
+                          size="compact-xs"
+                          variant="subtle"
+                          c="text-medium"
+                          leftSection={<FixedSizeIcon name="add" size={16} />}
+                          aria-label={t`Create snippet`}
+                        />
+                      </Menu.Target>
+                    </Tooltip>
+                    <Menu.Dropdown>
+                      <Menu.Item
+                        component={ForwardRefLink}
+                        to={Urls.newDataStudioSnippet()}
+                        leftSection={<FixedSizeIcon name="snippet" />}
+                        aria-label={t`Create new snippet`}
+                      >
+                        {t`New snippet`}
+                      </Menu.Item>
+                      {PLUGIN_SNIPPET_FOLDERS.isEnabled && (
+                        <Menu.Item
+                          leftSection={<FixedSizeIcon name="folder" />}
+                          onClick={() => setCreatingFolder(true)}
+                        >
+                          {t`New folder`}
+                        </Menu.Item>
+                      )}
+                    </Menu.Dropdown>
+                  </Menu>
+                )}
+              </Flex>
             );
-          }}
-          role="tree"
-          aria-label="modeling-snippets-tree"
-        />
-      </ModelingSidebarSection>
+          }
+
+          return (
+            <PLUGIN_SNIPPET_FOLDERS.CollectionMenu
+              collection={item.data}
+              onEditDetails={setEditingCollection}
+              onChangePermissions={setPermissionsCollectionId}
+            />
+          );
+        }}
+        role="tree"
+        aria-label="modeling-snippets-tree"
+      />
       {editingCollection && (
         <PLUGIN_SNIPPET_FOLDERS.CollectionFormModal
           collection={editingCollection}
           onClose={() => setEditingCollection(null)}
           onSaved={() => setEditingCollection(null)}
+        />
+      )}
+      {creatingFolder && (
+        <PLUGIN_SNIPPET_FOLDERS.CollectionFormModal
+          collection={{
+            name: "",
+            description: null,
+          }}
+          onClose={() => setCreatingFolder(false)}
+          onSaved={() => setCreatingFolder(false)}
         />
       )}
       {permissionsCollectionId != null && (
