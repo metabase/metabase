@@ -1,13 +1,14 @@
 import { useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { usePublishModelsMutation } from "metabase/api";
-import Link from "metabase/common/components/Link/Link";
 import {
   CollectionPickerModal,
   type CollectionPickerValueItem,
 } from "metabase/common/components/Pickers/CollectionPicker";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
+import { useDispatch } from "metabase/lib/redux";
 import * as urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Checkbox, Group, Modal, Text, rem } from "metabase/ui";
@@ -35,6 +36,7 @@ export function PublishModelsModal({
   onClose,
   onSuccess,
 }: Props) {
+  const dispatch = useDispatch();
   const [seenPublishModelsInfo, { ack: ackSeenPublishModelsInfo }] =
     useUserAcknowledgement("seen-publish-models-info");
   const [showPublishInfo, setShowPublishInfo] = useState(
@@ -62,7 +64,13 @@ export function PublishModelsModal({
     if (error) {
       sendErrorToast(t`Failed to publish models`);
     } else if (data) {
-      sendSuccessToast(<ToastSuccessMessage response={data} />);
+      sendSuccessToast(
+        t`Published`,
+        () => {
+          dispatch(push(getLink(data)));
+        },
+        t`See it`,
+      );
       onSuccess?.();
       handleClose();
     }
@@ -111,23 +119,6 @@ export function PublishModelsModal({
         handleSubmit(collection);
       }}
     />
-  );
-}
-
-function ToastSuccessMessage({
-  response,
-}: {
-  response: PublishModelsResponse;
-}) {
-  return (
-    <Group gap="xl" display="inline-flex" align="center" wrap="nowrap">
-      <span>{t`Published`}</span>
-      <Button
-        component={Link}
-        to={getLink(response)}
-        variant="subtle"
-      >{t`See it`}</Button>
-    </Group>
   );
 }
 
