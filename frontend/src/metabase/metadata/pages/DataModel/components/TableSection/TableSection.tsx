@@ -300,7 +300,9 @@ const TableSectionBase = ({
         </Stack>
       </Box>
 
-      <TableModels table={table} />
+      {table.published_models != null && table.published_models.length > 0 && (
+        <TableModels table={table} />
+      )}
 
       <PublishModelsModal
         tables={new Set([table.id])}

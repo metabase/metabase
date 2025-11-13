@@ -366,6 +366,7 @@ const ResultsItem = ({
   const formatNumber = useNumberFormatter({ maximumFractionDigits: 0 });
   const ownerDisplay = getOwnerDisplay(item, ownerNameById);
   const expectedRowsDisplay = getExpectedRowsDisplay(item, formatNumber);
+  const publishedDisplay = getPublishedDisplay(item);
 
   const isActive = isItemActive(item, path, selectedItemsCount);
   const indent = level * INDENT_OFFSET;
@@ -583,7 +584,9 @@ const ResultsItem = ({
               {expectedRowsDisplay}
             </Box>
 
-            <Box className={cx(S.column, S.publishedColumn)}></Box>
+            <Box className={cx(S.column, S.publishedColumn)}>
+              {publishedDisplay}
+            </Box>
           </>
         )}
       </Flex>
@@ -627,4 +630,12 @@ function getExpectedRowsDisplay(
 
   const formatted = formatNumber(expectedRows);
   return formatted;
+}
+
+function getPublishedDisplay(item: FlatItem): string | null {
+  if (item.type !== "table" || item.isLoading || !item.table) {
+    return null;
+  }
+
+  return item.table.published_as_model ? t`Yes` : null;
 }

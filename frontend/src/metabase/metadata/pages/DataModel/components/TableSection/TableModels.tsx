@@ -1,8 +1,7 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Box, Group, Icon, Loader, Stack, Text } from "metabase/ui";
-import { useListNodeDependentsQuery } from "metabase-enterprise/api/dependencies";
+import { Box, Group, Icon, Stack, Text } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 import S from "./TableModels.module.css";
@@ -13,34 +12,7 @@ interface Props {
 }
 
 export function TableModels({ table }: Props) {
-  const {
-    data: models,
-    isLoading,
-    error,
-  } = useListNodeDependentsQuery({
-    id: Number(table.id),
-    type: "table",
-    dependent_type: "card",
-    dependent_card_type: "model",
-    archived: false,
-  });
-
-  if (isLoading) {
-    return (
-      <Box p="md">
-        <Group gap="sm">
-          <Loader size="sm" />
-          <Text c="text-medium">{t`Loading models...`}</Text>
-        </Group>
-      </Box>
-    );
-  }
-
-  if (error) {
-    return null;
-  }
-
-  if (!models || models.length === 0) {
+  if (table.published_models == null || table.published_models.length === 0) {
     return null;
   }
 
@@ -48,10 +20,7 @@ export function TableModels({ table }: Props) {
     <Box px="lg">
       <TableSectionGroup title={t`This table has been published as a model`}>
         <Stack gap={8}>
-          {models.map((model) => {
-            if (!("name" in model.data) || !("collection" in model.data)) {
-              return null;
-            }
+          {table.published_models.map((model) => {
             return (
               <Box
                 key={model.id}
@@ -63,16 +32,16 @@ export function TableModels({ table }: Props) {
                   <Icon name="model" size={16} c="brand" />
                   <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
                     <Text fw="bold" size="md" lh="md" className={S.modelName}>
-                      {model.data.name}
+                      {model.name}
                     </Text>
-                    {model.data.collection && (
+                    {model.collection && (
                       <Text
                         c="text-medium"
                         size="xs"
                         lh="16px"
                         className={S.collectionName}
                       >
-                        {model.data.collection.name}
+                        {model.collection.name}
                       </Text>
                     )}
                   </Stack>

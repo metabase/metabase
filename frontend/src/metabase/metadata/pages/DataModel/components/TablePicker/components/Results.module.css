@@ -158,7 +158,6 @@
 }
 
 .publishedColumn {
-  text-align: right;
   flex-basis: var(--published-column-width);
 }
 

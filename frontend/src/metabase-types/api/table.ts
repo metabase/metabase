@@ -70,6 +70,9 @@ export type Table = {
   transform_id: TransformId | null; // readonly
   view_count: number;
   transform?: Transform;
+
+  published_models?: Card[] | null; // present in /api/table/:id/query_metadata
+  published_as_model?: boolean; // present in /api/database/:id/schemas/:schemaId
 };
 
 export type SchemaName = string;
