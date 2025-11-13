@@ -1,4 +1,4 @@
-import { type Editor, type Range, findParentNode } from "@tiptap/core";
+import type { Editor, Range } from "@tiptap/core";
 import {
   type DOMAttributes,
   forwardRef,
@@ -58,7 +58,6 @@ interface CommandOption {
   text?: string;
   label: string;
   command: string;
-  nodeName?: string;
 }
 
 interface CommandSection {
@@ -104,32 +103,6 @@ const CommandMenuItem = forwardRef<
   );
 });
 
-const isCommandAllowedAtPosition =
-  (editor: Editor) =>
-  (item: CommandOption): boolean => {
-    const nodeType = item.nodeName && editor.schema.nodes[item.nodeName];
-    if (!nodeType) {
-      return true;
-    }
-    // An ideal solution would be to check if the node getting inserted would be allowed
-    // in EVERY one of the current position's parents, but that could be costly especially
-    // if we're deeply nested. Instead, this just checks if it'd be allowed in its closest
-    // `isolating` parent since those nodes would likely have the relevant restrictions.
-    const closestIsolatingParent = findParentNode(
-      (n) => !!n.type.spec.isolating,
-    )(editor.state.selection);
-
-    if (!closestIsolatingParent) {
-      return true;
-    }
-
-    const wouldInsertedNodeBeAllowed = !!closestIsolatingParent?.node
-      .contentMatchAt(0)
-      .matchType(nodeType);
-
-    return wouldInsertedNodeBeAllowed;
-  };
-
 export const CommandSuggestion = forwardRef<
   SuggestionRef,
   CommandSuggestionProps
@@ -165,7 +138,7 @@ export const CommandSuggestion = forwardRef<
             label: t`Link`,
             command: "linkTo",
           },
-        ].filter(isCommandAllowedAtPosition(editor)),
+        ],
       },
       {
         title: t`Formatting`,
@@ -208,7 +181,7 @@ export const CommandSuggestion = forwardRef<
         ],
       },
     ],
-    [editor],
+    [],
   );
 
   const allCommandOptions = useMemo(
