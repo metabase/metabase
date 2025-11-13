@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,7 +13,8 @@ import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import { SlackChannelField } from "metabase/notifications/channels/SlackChannelField";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
-import { Icon } from "metabase/ui";
+import { RepresentationsModal } from "metabase/representations/RepresentationsModal";
+import { Button, Icon } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
@@ -69,6 +71,8 @@ export const AddEditSlackSidebar = ({
   setPulseParameters,
 }: AddEditSlackSidebarProps) => {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+  const [representationsModalOpen, setRepresentationsModalOpen] =
+    useState(false);
 
   return (
     <Sidebar
@@ -76,9 +80,28 @@ export const AddEditSlackSidebar = ({
       onClose={handleSave}
       onCancel={onCancel}
     >
-      <div className={cx(CS.pt4, CS.flex, CS.alignCenter, CS.px4)}>
-        <Icon name="slack" className={CS.mr1} size={21} />
-        <Heading>{t`Send this dashboard to Slack`}</Heading>
+      <div
+        className={cx(
+          CS.pt4,
+          CS.flex,
+          CS.alignCenter,
+          CS.justifyBetween,
+          CS.px4,
+        )}
+      >
+        <div className={cx(CS.flex, CS.alignCenter)}>
+          <Icon name="slack" className={CS.mr1} size={21} />
+          <Heading>{t`Send this dashboard to Slack`}</Heading>
+        </div>
+        {pulse.id != null && (
+          <Button
+            variant="subtle"
+            size="xs"
+            onClick={() => setRepresentationsModalOpen(true)}
+          >
+            {t`Representations`}
+          </Button>
+        )}
       </div>
       <CaveatMessage />
       <div
@@ -162,6 +185,12 @@ export const AddEditSlackSidebar = ({
           {t`Charts in subscriptions may look slightly different from charts in dashboards.`}
         </div>
       </div>
+      <RepresentationsModal
+        opened={representationsModalOpen}
+        onClose={() => setRepresentationsModalOpen(false)}
+        entityId={pulse.id ?? null}
+        entityType="pulse"
+      />
     </Sidebar>
   );
 };

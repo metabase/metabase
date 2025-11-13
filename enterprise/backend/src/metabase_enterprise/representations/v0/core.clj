@@ -7,6 +7,7 @@
    [metabase-enterprise.representations.v0.document :as v0-document]
    [metabase-enterprise.representations.v0.metric :as v0-metric]
    [metabase-enterprise.representations.v0.model :as v0-model]
+   [metabase-enterprise.representations.v0.pulse :as v0-pulse]
    [metabase-enterprise.representations.v0.question :as v0-question]
    [metabase-enterprise.representations.v0.snippet :as v0-snippet]
    [metabase-enterprise.representations.v0.timeline :as v0-timeline]
@@ -21,6 +22,7 @@
     :document v0-document/toucan-model
     :metric v0-metric/toucan-model
     :model v0-model/toucan-model
+    :pulse v0-pulse/toucan-model
     :question v0-question/toucan-model
     :snippet v0-snippet/toucan-model
     :timeline v0-timeline/toucan-model
@@ -37,6 +39,7 @@
     :document (v0-document/export-document t2-entity)
     :metric (v0-metric/export-metric t2-entity)
     :model (v0-model/export-model t2-entity)
+    :pulse (v0-pulse/export-pulse t2-entity)
     :question (v0-question/export-question t2-entity)
     :snippet (v0-snippet/export-snippet t2-entity)
     :timeline (v0-timeline/export-timeline t2-entity)
@@ -51,6 +54,7 @@
     :document (v0-document/yaml->toucan representation ref-index)
     :metric (v0-metric/yaml->toucan representation ref-index)
     :model (v0-model/yaml->toucan representation ref-index)
+    :pulse (v0-pulse/yaml->toucan representation ref-index)
     :question (v0-question/yaml->toucan representation ref-index)
     :snippet (v0-snippet/yaml->toucan representation ref-index)
     :timeline (v0-timeline/yaml->toucan representation ref-index)
@@ -65,6 +69,7 @@
     :document (v0-document/persist! representation ref-index)
     :metric (v0-metric/persist! representation ref-index)
     :model (v0-model/persist! representation ref-index)
+    :pulse (v0-pulse/persist! representation ref-index)
     :question (v0-question/persist! representation ref-index)
     :snippet (v0-snippet/persist! representation ref-index)
     :timeline (v0-timeline/persist! representation ref-index)
@@ -75,6 +80,7 @@
   "Insert a v0 representation as a new entity."
   [representation ref-index]
   (case (:type representation)
+    :pulse (v0-pulse/insert! representation ref-index)
     :transform (v0-transform/insert! representation ref-index)
     :timeline (v0-timeline/insert! representation ref-index)
     ;; default
@@ -87,6 +93,7 @@
   "Update an existing v0 entity from a representation."
   [representation id ref-index]
   (case (:type representation)
+    :pulse (v0-pulse/update! representation id ref-index)
     :transform (v0-transform/update! representation id ref-index)
     :timeline (v0-timeline/update! representation id ref-index)
     ;; default

@@ -19,7 +19,8 @@ type EntityType =
   | "transform"
   | "document"
   | "collection"
-  | "timeline";
+  | "timeline"
+  | "pulse";
 
 interface RepresentationsModalProps {
   opened: boolean;

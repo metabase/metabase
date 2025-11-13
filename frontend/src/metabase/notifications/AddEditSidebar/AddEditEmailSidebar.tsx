@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -14,8 +15,9 @@ import { useSelector } from "metabase/lib/redux";
 import EmailAttachmentPicker from "metabase/notifications/EmailAttachmentPicker";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
+import { RepresentationsModal } from "metabase/representations/RepresentationsModal";
 import { canAccessSettings } from "metabase/selectors/user";
-import { Icon } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
@@ -80,6 +82,8 @@ export const AddEditEmailSidebar = ({
 }: AddEditEmailSidebarProps) => {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
   const userCanAccessSettings = useSelector(canAccessSettings);
+  const [representationsModalOpen, setRepresentationsModalOpen] =
+    useState(false);
 
   return (
     <Sidebar
@@ -87,9 +91,28 @@ export const AddEditEmailSidebar = ({
       onClose={handleSave}
       onCancel={onCancel}
     >
-      <div className={cx(CS.pt3, CS.px4, CS.flex, CS.alignCenter)}>
-        <Icon name="mail" className={CS.mr1} size={21} />
-        <Heading>{t`Email this dashboard`}</Heading>
+      <div
+        className={cx(
+          CS.pt3,
+          CS.px4,
+          CS.flex,
+          CS.alignCenter,
+          CS.justifyBetween,
+        )}
+      >
+        <div className={cx(CS.flex, CS.alignCenter)}>
+          <Icon name="mail" className={CS.mr1} size={21} />
+          <Heading>{t`Email this dashboard`}</Heading>
+        </div>
+        {pulse.id != null && (
+          <Button
+            variant="subtle"
+            size="xs"
+            onClick={() => setRepresentationsModalOpen(true)}
+          >
+            {t`Representations`}
+          </Button>
+        )}
       </div>
       <CaveatMessage />
       <div
@@ -186,6 +209,12 @@ export const AddEditEmailSidebar = ({
           {t`Charts in subscriptions may look slightly different from charts in dashboards.`}
         </div>
       </div>
+      <RepresentationsModal
+        opened={representationsModalOpen}
+        onClose={() => setRepresentationsModalOpen(false)}
+        entityId={pulse.id ?? null}
+        entityType="pulse"
+      />
     </Sidebar>
   );
 };

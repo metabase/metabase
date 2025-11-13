@@ -8,8 +8,8 @@ import DateTime, {
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { isWithinIframe } from "metabase/lib/dom";
-import { RepresentationsModal } from "metabase/representations/RepresentationsModal";
 import { useSelector } from "metabase/lib/redux";
+import { RepresentationsModal } from "metabase/representations/RepresentationsModal";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   ActionIcon,
