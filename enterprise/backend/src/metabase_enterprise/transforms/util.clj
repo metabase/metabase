@@ -276,7 +276,7 @@
       (if (lib.query/native? query)
         (if (seq (get-in query [:stages 0 :template-tags]))
           (update query :parameters conj
-                  {:type (if (number? watermark-value) :number :temporal-unit)
+                  {:type :number
                    :target [:variable [:template-tag "checkpoint"]]
                    :value watermark-value})
           (let [native-sql (get-in query [:stages 0 :native])
