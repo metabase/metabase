@@ -493,6 +493,13 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.orionAlpha[60],
     dark: baseColors.orionAlphaInverse[60],
   },
+
+  //Used in gauge viz... there should be a better way to do this
+  "text-medium-opaque": {
+    //should be text-secondary
+    light: baseColors.orion[60],
+    dark: baseColors.orion[20],
+  },
   "text-primary": {
     light: baseColors.orionAlpha[80],
     dark: baseColors.orionAlphaInverse[80],

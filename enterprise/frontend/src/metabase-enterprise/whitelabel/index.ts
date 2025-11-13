@@ -25,31 +25,36 @@ import { WhiteLabelBrandingSettingsPage } from "./components/WhiteLabelBrandingS
 import { WhiteLabelConcealSettingsPage } from "./components/WhiteLabelConcealSettingsPage";
 import { updateColors } from "./lib/whitelabel";
 
-if (hasPremiumFeature("whitelabel")) {
-  PLUGIN_LANDING_PAGE.getLandingPage = () =>
-    // TODO: MetabaseSettings doesn't have EnterpriseSetting keys, so the type and mapping don't work
-    MetabaseSettings.get("landing-page" as SettingKey) as string;
-  PLUGIN_LANDING_PAGE.LandingPageWidget = LandingPageWidget;
+/**
+ * Initialize whitelabel plugin features that depend on hasPremiumFeature.
+ */
+export function initializePlugin() {
+  if (hasPremiumFeature("whitelabel")) {
+    PLUGIN_LANDING_PAGE.getLandingPage = () =>
+      // TODO: MetabaseSettings doesn't have EnterpriseSetting keys, so the type and mapping don't work
+      MetabaseSettings.get("landing-page" as SettingKey) as string;
+    PLUGIN_LANDING_PAGE.LandingPageWidget = LandingPageWidget;
 
-  PLUGIN_WHITELABEL.WhiteLabelBrandingSettingsPage =
-    WhiteLabelBrandingSettingsPage;
-  PLUGIN_WHITELABEL.WhiteLabelConcealSettingsPage =
-    WhiteLabelConcealSettingsPage;
+    PLUGIN_WHITELABEL.WhiteLabelBrandingSettingsPage =
+      WhiteLabelBrandingSettingsPage;
+    PLUGIN_WHITELABEL.WhiteLabelConcealSettingsPage =
+      WhiteLabelConcealSettingsPage;
 
-  PLUGIN_APP_INIT_FUNCTIONS.push(() => {
-    updateColors();
-  });
+    PLUGIN_APP_INIT_FUNCTIONS.push(() => {
+      updateColors();
+    });
 
-  PLUGIN_LOGO_ICON_COMPONENTS.push(LogoIcon);
-  PLUGIN_SELECTORS.canWhitelabel = () => true;
+    PLUGIN_LOGO_ICON_COMPONENTS.push(LogoIcon);
+    PLUGIN_SELECTORS.canWhitelabel = () => true;
 
-  // these selectors control whitelabeling UI
-  PLUGIN_SELECTORS.getLoadingMessageFactory = getLoadingMessage;
-  PLUGIN_SELECTORS.getIsWhiteLabeling = getIsWhiteLabeling;
-  PLUGIN_SELECTORS.getApplicationName = getApplicationName;
-  PLUGIN_SELECTORS.getShowMetabaseLinks = getShowMetabaseLinks;
-  PLUGIN_SELECTORS.getLoginPageIllustration = getLoginPageIllustration;
-  PLUGIN_SELECTORS.getLandingPageIllustration = getLandingPageIllustration;
-  PLUGIN_SELECTORS.getNoDataIllustration = getNoDataIllustration;
-  PLUGIN_SELECTORS.getNoObjectIllustration = getNoObjectIllustration;
+    // these selectors control whitelabeling UI
+    PLUGIN_SELECTORS.getLoadingMessageFactory = getLoadingMessage;
+    PLUGIN_SELECTORS.getIsWhiteLabeling = getIsWhiteLabeling;
+    PLUGIN_SELECTORS.getApplicationName = getApplicationName;
+    PLUGIN_SELECTORS.getShowMetabaseLinks = getShowMetabaseLinks;
+    PLUGIN_SELECTORS.getLoginPageIllustration = getLoginPageIllustration;
+    PLUGIN_SELECTORS.getLandingPageIllustration = getLandingPageIllustration;
+    PLUGIN_SELECTORS.getNoDataIllustration = getNoDataIllustration;
+    PLUGIN_SELECTORS.getNoObjectIllustration = getNoObjectIllustration;
+  }
 }

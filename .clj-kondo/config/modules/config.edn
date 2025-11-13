@@ -381,7 +381,7 @@
 
   core
   {:team "UX West"
-   :api  #{metabase.core.initialization-status}
+   :api  #{}
    :uses :any}
 
   dashboards
@@ -584,6 +584,11 @@
            sync
            task
            util}}
+
+  initialization-status
+  {:team "UX West"
+   :api  #{metabase.initialization-status.core}
+   :uses #{}}
 
   internal-stats
   {:team "UX West"
@@ -796,9 +801,9 @@
 
   permissions
   {:team "UX West"
-   :api  #{metabase.permissions.api
-           metabase.permissions.core
-           metabase.permissions.init}
+   :api  #{metabase.permissions.core
+           metabase.permissions.init
+           metabase.permissions.schema}
    :uses #{api
            app-db
            audit-app
@@ -809,10 +814,20 @@
            models
            premium-features
            remote-sync
-           request
            settings
            util
            enterprise/advanced-permissions}}
+
+  permissions-rest
+  {:team "UX West"
+   :api  #{metabase.permissions-rest.api}
+   :uses #{api
+           audit-app
+           events
+           permissions
+           premium-features
+           request
+           util}}
 
   pivot
   {:team "UX West"
@@ -908,7 +923,7 @@
            metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
-           metabase.queries.schema} ; TODO FIXME
+           metabase.queries.schema}      ; TODO FIXME
    :uses #{analytics
            analyze
            api
@@ -1037,7 +1052,7 @@
    :uses #{api
            config
            embedding
-           permissions ; FIXME
+           permissions                  ; FIXME
            session
            settings
            users
@@ -1133,9 +1148,9 @@
            app-db
            appearance
            config
-           core
            driver
            embedding
+           initialization-status
            lib-be
            premium-features
            query-processor
@@ -1152,7 +1167,7 @@
            metabase.session.core
            metabase.session.init
            metabase.session.models.session ; TODO -- shouldn't be exposed as an API namespace
-           metabase.session.settings} ; TODO -- shouldn't be exposed as an API namespace
+           metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
            app-db
            channel
@@ -1169,18 +1184,24 @@
 
   settings
   {:team "DevEx"
-   :api  #{metabase.settings.api
-           metabase.settings.core
+   :api  #{metabase.settings.core
            metabase.settings.init}
    :uses #{api
            app-db
            config
            events
            models
-           permissions
            premium-features
            util
            enterprise/advanced-permissions}}
+
+  settings-rest
+  {:team "DevEx"
+   :api  #{metabase.settings-rest.api}
+   :uses #{api
+           permissions
+           settings
+           util}}
 
   setup
   {:team "UX West"
@@ -1588,8 +1609,14 @@
 
   enterprise/api
   {:team "UX West"
-   :api  #{metabase-enterprise.api.routes
-           metabase-enterprise.api.routes.common}
+   :api  #{metabase-enterprise.api.core}
+   :uses #{api
+           premium-features
+           util}}
+
+  enterprise/api-routes
+  {:team "UX West"
+   :api  #{metabase-enterprise.api-routes.routes}
    :uses :any}
 
   enterprise/audit-app

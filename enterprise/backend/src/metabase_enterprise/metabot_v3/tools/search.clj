@@ -119,7 +119,7 @@
   "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.
   Abstracted from the API endpoint logic."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot-id search-native-query]}]
+           entity-types limit metabot-id search-native-query weights]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:term-queries term-queries
               :semantic-queries semantic-queries
@@ -129,7 +129,8 @@
               :entity-types entity-types
               :limit limit
               :metabot-id metabot-id
-              :search-native-query search-native-query})
+              :search-native-query search-native-query
+              :weights weights})
   (let [search-models (if (seq entity-types)
                         (set (distinct (keep entity-type->search-model entity-types)))
                         metabot-search-models)
@@ -142,7 +143,7 @@
         limit (or limit 50)
         search-fn (fn [query]
                     (let [search-context (search/search-context
-                                          (merge
+                                          (cond->
                                            {:search-string query
                                             :models search-models
                                             :table-db-id database-id
@@ -160,10 +161,12 @@
                                             :offset 0}
                                            ;; Don't include search-native-query key if nil so that we don't
                                            ;; inadvertently filter out search models that don't support it
-                                           (when search-native-query
-                                             {:search-native-query (boolean search-native-query)})
-                                           (when use-verified-content?
-                                             {:verified true})))
+                                            search-native-query
+                                            (assoc :search-native-query (boolean search-native-query))
+                                            use-verified-content?
+                                            (assoc :verified true)
+                                            weights
+                                            (assoc :weights weights)))
                           _ (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
                                        query (:models search-context))
                           search-results (search/search search-context)

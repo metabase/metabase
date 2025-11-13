@@ -16,7 +16,7 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
-   (java.io ByteArrayOutputStream PipedInputStream PipedOutputStream)
+   (java.io ByteArrayOutputStream Closeable PipedInputStream PipedOutputStream)
    (metabase.server.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
@@ -41,9 +41,12 @@
             (Thread/sleep ^long delay-ms))
           (finally
             (.close pipe))))
-      {:status  200
-       :headers {"content-type" "text/event-stream"}
-       :body    ret})))
+      {:status      200
+       :headers     {"content-type" "text/event-stream"}
+       :body        ret
+       :http-client (reify Closeable
+                      (close [_this]
+                        (.close ret)))})))
 
 (defn consume-streaming-response
   "Execute a StreamingResponse and capture its output"
@@ -75,7 +78,7 @@
             (is (string? body))
             (is (=? [{:_type :TEXT :content "a1a2a3"}
                      {:_type :FINISH_MESSAGE :finish_reason "stop"}]
-                    (metabot-v3.util/aisdk->messages "assistant" (str/split-lines body))))))))))
+                    (metabot-v3.util/aisdk->messages :assistant (str/split-lines body))))))))))
 
 (deftest example-generation-payload-unknown-field-types-test
   (let [mp (mt/metadata-provider)]
