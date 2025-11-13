@@ -105,6 +105,8 @@ const StaticQuestionInner = ({
     );
   };
 
+  const hasTopBar = Boolean(title || withChartTypeSelector || withDownloads);
+
   return (
     <SdkQuestion
       questionId={questionId}
@@ -117,25 +119,30 @@ const StaticQuestionInner = ({
       {children ?? (
         <FlexibleSizeComponent width={width} height={height} style={style}>
           <Stack
-            className={cx(InteractiveQuestionS.ContainerTwoRows, className)}
-            gap="sm"
+            className={cx(
+              hasTopBar
+                ? InteractiveQuestionS.ContainerTwoRows
+                : InteractiveQuestionS.ContainerSingleRow,
+              className,
+            )}
             w="100%"
             h="100%"
           >
-            <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
-              {title && <DefaultViewTitle title={title} />}
+            {hasTopBar && (
+              <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
+                {title && <DefaultViewTitle title={title} />}
 
-              {(withChartTypeSelector || withDownloads) && (
-                <ResultToolbar>
-                  {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
-                  {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
-                </ResultToolbar>
-              )}
-            </Stack>
+                {(withChartTypeSelector || withDownloads) && (
+                  <ResultToolbar>
+                    {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
+                    {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
+                  </ResultToolbar>
+                )}
+              </Stack>
+            )}
 
             <Box
               className={cx(InteractiveQuestionS.Main, "sdk-question-main")}
-              p="sm"
               w="100%"
               h="100%"
             >
