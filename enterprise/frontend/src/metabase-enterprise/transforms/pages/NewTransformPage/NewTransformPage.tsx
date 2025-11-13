@@ -28,7 +28,7 @@ import {
   PaneHeader,
   PaneHeaderActions,
   PaneHeaderInput,
-} from "../../../../../../../frontend/src/metabase/data-studio/common/PaneHeader";
+} from "../../../../../../../frontend/src/metabase/data-studio/common/components/PaneHeader";
 import { TransformEditor } from "../../components/TransformEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";

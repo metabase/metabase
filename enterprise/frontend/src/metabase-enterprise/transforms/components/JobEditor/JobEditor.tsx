@@ -5,7 +5,7 @@ import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 import {
   PaneHeader,
   PaneHeaderInput,
-} from "../../../../../../../frontend/src/metabase/data-studio/common/PaneHeader";
+} from "../../../../../../../frontend/src/metabase/data-studio/common/components/PaneHeader";
 import { NAME_MAX_LENGTH } from "../../constants";
 import { ColumnLayout, ColumnLayoutBody } from "../ColumnLayout";
 

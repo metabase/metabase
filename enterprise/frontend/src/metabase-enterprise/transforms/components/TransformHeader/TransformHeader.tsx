@@ -12,7 +12,7 @@ import {
   PaneHeaderInput,
   type PaneHeaderTab,
   PaneHeaderTabs,
-} from "../../../../../../../frontend/src/metabase/data-studio/common/PaneHeader";
+} from "../../../../../../../frontend/src/metabase/data-studio/common/components/PaneHeader";
 import { NAME_MAX_LENGTH } from "../../constants";
 
 import { TransformMoreMenu } from "./TransformMoreMenu";

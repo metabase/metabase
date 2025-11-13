@@ -4,7 +4,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { isLibraryCollection } from "metabase/collections/utils";
-import { ModelingSidebarSection } from "metabase/data-studio/pages/ModelingSectionLayout/ModelingSidebar/ModelingSidebarSection";
+import { ModelingSidebarSection } from "metabase/data-studio/app/pages/ModelingSectionLayout/ModelingSidebar/ModelingSidebarSection";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { LibrarySectionProps } from "metabase/plugins";

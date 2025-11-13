@@ -6,7 +6,10 @@ import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout
 import * as Urls from "metabase/lib/urls";
 import { Group } from "metabase/ui";
 
-import { type PaneHeaderTab, PaneHeaderTabs } from "../../../common/PaneHeader";
+import {
+  type PaneHeaderTab,
+  PaneHeaderTabs,
+} from "../../../common/components/PaneHeader";
 
 type TransformsSectionLayoutProps = {
   location: Location;
