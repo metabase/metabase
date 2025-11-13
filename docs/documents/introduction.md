@@ -42,7 +42,7 @@ To create a new question directly in a document:
 2. Select **Chart**.
 3. Select **New chart**.
 4. Choose either:
-   - **New Question** to use the [query builder](../questions/query-builder/introduction.md).
+   - **New Question** to use the [query builder](../questions/query-builder/editor.md).
    - **New SQL query** to use the [native SQL editor](../questions/native-editor/writing-sql.md).
 5. Build your question and click **Save and use** to add it to the document.
 
