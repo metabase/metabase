@@ -1,4 +1,5 @@
 import {
+  DOCUMENT_WITH_SUPPORTING_TEXT,
   DOCUMENT_WITH_THREE_CARDS_AND_COLUMNS,
   DOCUMENT_WITH_TWO_CARDS,
 } from "e2e/support/document-initial-data";
@@ -454,5 +455,54 @@ describe("documents supporting text", () => {
     cy.log("No cards remaining in group, supportingText should not exist");
     H.dragAndDropCardOnAnotherCard("Orders, Count", targetCardTitle);
     H.documentContent().findByText("Lorem ipsum").should("not.exist");
+  });
+
+  describe("drag and drop", () => {
+    beforeEach(() => {
+      H.createDocument({
+        name: "DnD Test Document",
+        document: DOCUMENT_WITH_SUPPORTING_TEXT,
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+    });
+
+    const assertTestIdOrder = (testIds: string[]) => {
+      cy.get(
+        testIds.map((testId) => `[data-testid="${testId}"]`).join(","),
+      ).then(($results) => {
+        expect(
+          $results
+            .toArray()
+            .slice(0, testIds.length)
+            .map((el) => el.getAttribute("data-testid")),
+        ).to.deep.eq(testIds);
+      });
+    };
+
+    it("should reorder a supporting text card when dropping onto a card", () => {
+      H.getDocumentCard("Orders").should("exist");
+      assertTestIdOrder([
+        "document-card-supporting-text",
+        "document-card-embed",
+      ]);
+
+      H.documentsDragAndDrop({
+        getSource: () =>
+          H.documentContent()
+            .findByTestId("document-card-supporting-text")
+            .find("[data-drag-handle]"),
+        getTarget: () => H.getDocumentCard("Orders"),
+        side: "right",
+      });
+
+      assertTestIdOrder([
+        "document-card-embed",
+        "document-card-supporting-text",
+      ]);
+    });
   });
 });
