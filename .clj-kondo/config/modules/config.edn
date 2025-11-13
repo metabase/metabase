@@ -1856,6 +1856,13 @@
    :uses #{premium-features
            settings}}
 
+  enterprise/library
+  {:team "UX West"
+   :api  #{metabase-enterprise.library.api}
+   :uses #{api
+           collections
+           premium-features}}
+
   enterprise/llm
   {:team "Metabot"
    :api  #{metabase-enterprise.llm.api
@@ -1996,13 +2003,6 @@
    :api  #{}
    :uses #{premium-features
            search}}
-
-  enterprise/library
-  {:team "UX West"
-   :api  #{metabase-enterprise.library.api}
-   :uses #{api
-           collections
-           premium-features}}
 
   enterprise/semantic-search
   {:team "Metabot"
