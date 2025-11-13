@@ -256,6 +256,9 @@
     ;; QP return values are lossy, we do a bit of parsing to ensure they're of the right
     ;; shape for reinsertion
     (cond
+      (nil? v)
+      nil
+
       (isa? base-type :type/Integer)
       (bigint v)
 
