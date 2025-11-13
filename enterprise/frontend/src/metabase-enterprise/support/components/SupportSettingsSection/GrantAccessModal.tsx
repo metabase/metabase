@@ -1,6 +1,6 @@
+import { useMount } from "react-use";
 import { t } from "ttag";
 
-import ModalContent from "metabase/common/components/ModalContent";
 import { useToast } from "metabase/common/hooks";
 import {
   Form,
@@ -11,7 +11,8 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Box, Flex, Stack, Text } from "metabase/ui";
+import { PLUGIN_SUPPORT } from "metabase/plugins";
+import { Box, Flex, Modal, Stack, Text } from "metabase/ui";
 import { useCreateSupportAccessGrantMutation } from "metabase-enterprise/api";
 
 interface GrantAccessModalProps {
@@ -27,6 +28,12 @@ type AccessGrantFormValues = {
 export const GrantAccessModal = ({ onClose }: GrantAccessModalProps) => {
   const [createSupportAccessGrant] = useCreateSupportAccessGrantMutation();
   const [sendToast] = useToast();
+
+  useMount(() => {
+    if (!PLUGIN_SUPPORT.isEnabled) {
+      onClose();
+    }
+  });
 
   const handleSubmit = async (values: AccessGrantFormValues) => {
     if (!values.grant_duration_minutes) {
@@ -58,10 +65,11 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModalProps) => {
   };
 
   return (
-    <ModalContent
+    <Modal
       data-testid="grant-access-modal"
       onClose={onClose}
-      title={t`Grant Access`}
+      opened
+      title={t`Grant Access?`}
     >
       <Stack>
         <Box mt="sm">
@@ -112,7 +120,7 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModalProps) => {
           )}
         </FormProvider>
       </Stack>
-    </ModalContent>
+    </Modal>
   );
 };
 
