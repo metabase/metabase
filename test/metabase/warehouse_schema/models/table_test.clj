@@ -389,4 +389,7 @@
              (t2/update! :model/Table table-id {:data_source :metabase-transform}))))
       (testing "but can change to other non-metabase-transform values"
         (is (some? (t2/update! :model/Table table-id {:data_source :ingested})))
-        (is (= :ingested (t2/select-one-fn :data_source :model/Table :id table-id)))))))
+        (is (= :ingested (t2/select-one-fn :data_source :model/Table :id table-id))))
+      (testing "can also change it to nil"
+        (is (some? (t2/update! :model/Table table-id {:data_source nil})))
+        (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id)))))))
