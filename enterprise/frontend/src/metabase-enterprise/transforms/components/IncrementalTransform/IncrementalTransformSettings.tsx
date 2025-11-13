@@ -13,6 +13,7 @@ import {
 } from "metabase-enterprise/transforms/components/IncrementalTransform/KeysetColumnSelect";
 import { NativeQueryColumnSelect } from "metabase-enterprise/transforms/components/IncrementalTransform/NativeQueryColumnSelect";
 import {
+  CHECKPOINT_TEMPLATE_TAG,
   SOURCE_STRATEGY_OPTIONS,
   TARGET_STRATEGY_OPTIONS,
 } from "metabase-enterprise/transforms/constants";
@@ -90,12 +91,21 @@ export const IncrementalTransformSettings = ({
     return { transformType: "native" as const, query: source.query };
   }, [isMbqlQuery, isPythonTransform, libQuery, source]);
 
+  const hasCheckpointTag = useMemo(() => {
+    if (!libQuery || transformType !== "native") {
+      return false;
+    }
+    const tags = Lib.templateTags(libQuery);
+    return CHECKPOINT_TEMPLATE_TAG in tags;
+  }, [libQuery, transformType]);
+
   useEffect(() => {
     async function checkExistingQueryComplexity() {
       if (
         checkOnMount &&
         transformType === "native" &&
         libQuery &&
+        !hasCheckpointTag &&
         "source-incremental-strategy" in source
       ) {
         const { is_simple } = await checkQueryComplexity(
@@ -106,7 +116,14 @@ export const IncrementalTransformSettings = ({
       }
     }
     checkExistingQueryComplexity();
-  }, [checkOnMount, checkQueryComplexity, libQuery, transformType, source]);
+  }, [
+    checkOnMount,
+    checkQueryComplexity,
+    libQuery,
+    transformType,
+    source,
+    hasCheckpointTag,
+  ]);
 
   return (
     <>
@@ -119,7 +136,12 @@ export const IncrementalTransformSettings = ({
             : t`Incremental?`
         }
         onChange={async (e) => {
-          if (transformType === "native" && libQuery && e.target.checked) {
+          if (
+            e.target.checked &&
+            transformType === "native" &&
+            libQuery &&
+            !hasCheckpointTag
+          ) {
             const complexity = await checkQueryComplexity(
               Lib.rawNativeQuery(libQuery),
               true,
@@ -136,7 +158,7 @@ export const IncrementalTransformSettings = ({
                 <span>
                   {t`This query is too complex to allow automatic checkpoint column selection. You may need to explicitely add a conditional filter in your query, for example:`}
                 </span>
-                <code>{`[[ WHERE id > {{checkpoint}} ]]`}</code>
+                <code>{`[[ WHERE id > {{${CHECKPOINT_TEMPLATE_TAG}}} ]]`}</code>
                 <span>
                   {t`Reason: `}
                   <strong>{complexity?.reason}</strong>
