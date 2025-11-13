@@ -461,8 +461,9 @@
                   test-entity? (comp #{id-1 id-2 id-3 id-4} :id)
                   query        (fn [join-with-or?]
                                  (->> (search/search (assoc base-query
-                                                            :join-with-or? join-with-or?
-                                                            :non-semantic-keywords? true))
+                                                            :experimental-opts
+                                                            {:join-with-or?          join-with-or?
+                                                             :non-semantic-keywords? true}))
                                       (filter test-entity?)
                                       (map :name)))]
               (doseq [join-with-or? [false true]]
