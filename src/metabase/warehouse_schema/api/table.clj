@@ -263,7 +263,7 @@
       (seq table_ids)    (conj [:in :id    (sort table_ids)])
       (seq schema_ids)   (conj (into [:or] (map schema-expr) (sort schema_ids))))))
 
-(mr/def ::data-layers (into [:enum {:decode/string keyword}] table/data-layer-types))
+(mr/def ::data-layers (into [:enum {:decode/string keyword}] table/data-layers))
 
 (defn- maybe-sync-undhidden-tables!
   [existing-tables {:keys [data_layer] :as body}]

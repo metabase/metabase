@@ -29,7 +29,7 @@
   "Valid values for data source"
   #{:unknown :ingested :metabase-transform :transform :source-data :uploaded-data})
 
-(def ^:private data-layers
+(def data-layers
   "Valid values for `Table.data_layer`.
   :gold   - highest quality, fully visible, synced
   :silver - high quality, visible, synced
