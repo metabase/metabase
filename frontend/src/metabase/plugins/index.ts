@@ -170,11 +170,21 @@ export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS = {
   impersonated: [],
 };
 
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS = [];
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS: {
+  label: string;
+  value: DataPermissionValue;
+  icon: string;
+  iconColor: string;
+}[] = [];
 
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES = [];
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS = [];
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS: {
+  label: string;
+  value: DataPermissionValue;
+  icon: string;
+  iconColor: string;
+}[] = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS = [] as Array<
   (
     _permissions: GroupsPermissions,
@@ -477,6 +487,7 @@ export const PLUGIN_REDUCERS: {
   metabotPlugin: any;
   documents: any;
   remoteSyncPlugin: any;
+  advancedPermissionsPlugin: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
@@ -484,9 +495,10 @@ export const PLUGIN_REDUCERS: {
   metabotPlugin: () => null,
   documents: () => null,
   remoteSyncPlugin: () => null,
+  advancedPermissionsPlugin: undefined,
 };
 
-export const PLUGIN_ADVANCED_PERMISSIONS = {
+export const getDefaultAdvancedPermissionsPlugin = () => ({
   addDatabasePermissionOptions: (permissions: any[], _database: Database) =>
     permissions,
   addSchemaPermissionOptions: (permissions: any[], _value: string) =>
@@ -501,7 +513,10 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
   isRestrictivePermission: (_value: string) => false,
   shouldShowViewDataColumn: false,
   defaultViewDataPermission: DataPermissionValue.UNRESTRICTED,
-};
+  isBlockPermission: undefined,
+});
+export const PLUGIN_ADVANCED_PERMISSIONS =
+  getDefaultAdvancedPermissionsPlugin();
 
 export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
   getFeatureLevelDataPermissions: (

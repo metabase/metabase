@@ -17,6 +17,7 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATA_PERMISSIONS,
   PLUGIN_REDUCERS,
+  getDefaultAdvancedPermissionsPlugin,
 } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -158,6 +159,41 @@ export function initializePlugin() {
     PLUGIN_DATA_PERMISSIONS.shouldRestrictNativeQueryPermissions =
       shouldRestrictNativeQueryPermissions;
   }
+}
+
+/**
+ * Reset advanced permissions plugin features to their original state.
+ * This function reverses all changes made by initializePlugin.
+ */
+export function resetPlugin() {
+  const defaultAdvancedPermissions = getDefaultAdvancedPermissionsPlugin();
+  Object.assign(PLUGIN_ADVANCED_PERMISSIONS, defaultAdvancedPermissions);
+  delete PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission;
+
+  // Reset route arrays to empty
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES.length = 0;
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES.length = 0;
+
+  // Reset post action to original value
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS[
+    DataPermissionValue.IMPERSONATED
+  ] = null;
+
+  // Remove reducer
+  delete PLUGIN_REDUCERS.advancedPermissionsPlugin;
+
+  // Reset arrays to empty
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS.length = 0;
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.length = 0;
+  PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.length = 0;
+  PLUGIN_DATA_PERMISSIONS.hasChanges.length = 0;
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS[
+    DataPermissionValue.IMPERSONATED
+  ].length = 0;
+
+  // Reset DATA_PERMISSIONS functions to original values
+  PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded = null;
+  PLUGIN_DATA_PERMISSIONS.shouldRestrictNativeQueryPermissions = () => false;
 }
 
 const getDatabaseViewImpersonationModalUrl = (entityId, groupId) => {
