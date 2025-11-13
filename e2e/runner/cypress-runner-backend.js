@@ -33,7 +33,7 @@ const CypressBackend = {
         "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
         "-Dmail.smtps.ssl.trust=*", // trust self signed certs for testing
         "-Duser.timezone=US/Pacific",
-        process.env.SHOW_BACKEND_LOGS === "true"
+        process.env.SHOW_BACKEND_LOGS === "false"
           ? null
           : `-Dlog4j.configurationFile=file:${__dirname}/../../frontend/test/__runner__/log4j2.xml`,
       ].filter(Boolean);
@@ -61,6 +61,7 @@ const CypressBackend = {
             ...metabaseConfig,
           },
           stdio:
+            process.env.SHOW_BACKEND_LOGS === "false" ||
             process.env["DISABLE_LOGGING"] ||
             process.env["DISABLE_LOGGING_BACKEND"]
               ? "ignore"
