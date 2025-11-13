@@ -5570,7 +5570,6 @@
         [:model/Card
          c1
          {:dataset_query  query}
-
          :model/Dashboard
          d
          {:parameters [{:id param-key
@@ -5578,7 +5577,6 @@
                         :slug param-key
                         :type "string/="
                         :sectionId "string"}]}
-
          :model/DashboardCard
          _
          {:dashboard_id (:id d)
