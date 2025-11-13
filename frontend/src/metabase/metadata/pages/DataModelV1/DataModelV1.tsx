@@ -14,18 +14,17 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 
-import S from "./DataModel.module.css";
 import {
   FieldSection,
   FieldValuesModal,
   NoDatabasesEmptyState,
   PreviewSection,
   type PreviewType,
-  RouterTablePicker,
-  SegmentsLink,
   SyncOptionsModal,
-  TableSection,
-} from "./components";
+} from "../DataModel/components";
+
+import S from "./DataModel.module.css";
+import { RouterTablePicker, SegmentsLink, TableSection } from "./components";
 import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
 import type { RouteParams } from "./types";
 import { getTableMetadataQuery, parseRouteParams } from "./utils";
@@ -249,7 +248,7 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
       {table && (
         <SyncOptionsModal
           isOpen={isSyncModalOpen}
-          tableId={table.id}
+          tableIds={[table.id]}
           onClose={closeSyncModal}
         />
       )}

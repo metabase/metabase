@@ -26,9 +26,9 @@ import {
 } from "metabase/ui";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
+import { ResponsiveButton } from "../../../DataModel/components";
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
-import { ResponsiveButton } from "../ResponsiveButton";
 
 import { FieldList } from "./FieldList";
 import S from "./TableSection.module.css";
@@ -249,8 +249,9 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
 
           {isSorting && hasFields && (
             <SortableFieldList
-              activeFieldId={fieldId}
-              table={table}
+              activeFieldKey={fieldId}
+              fields={table.fields ?? []}
+              getFieldKey={getRawTableFieldId}
               onChange={handleCustomFieldOrderChange}
             />
           )}
