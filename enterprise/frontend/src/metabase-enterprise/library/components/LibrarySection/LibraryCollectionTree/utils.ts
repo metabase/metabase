@@ -1,4 +1,3 @@
-import { getLibraryCollectionType } from "metabase/collections/utils";
 import type { Collection, LibraryCollectionType } from "metabase-types/api";
 
 export function getWritableLibraryCollection(
@@ -6,7 +5,7 @@ export function getWritableLibraryCollection(
   type: LibraryCollectionType,
 ) {
   const collection = rootCollection.children?.find(
-    (collection) => getLibraryCollectionType(collection) === type,
+    (collection) => collection.type === type,
   );
   return collection?.can_write ? collection : undefined;
 }

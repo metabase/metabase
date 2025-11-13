@@ -1,5 +1,4 @@
 import {
-  getLibraryCollectionType,
   isRootCollection,
   isRootPersonalCollection,
   isRootTrashCollection,
@@ -42,7 +41,7 @@ export function getCollectionIcon(
     return { name: "synced_collection" };
   }
 
-  switch (getLibraryCollectionType(collection)) {
+  switch (collection.type) {
     case "library":
       return { name: "repository" };
     case "library-models":

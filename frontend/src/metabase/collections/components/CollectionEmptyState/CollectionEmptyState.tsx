@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import EmptyStateIcon from "assets/img/empty-states/collection.svg";
 import {
-  getLibraryCollectionType,
   isLibraryCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
@@ -84,10 +83,7 @@ const DefaultCollectionEmptyState = ({
 };
 
 function getDefaultEmptyStateMessages(collection: Collection | undefined) {
-  const type =
-    collection != null ? getLibraryCollectionType(collection) : undefined;
-
-  switch (type) {
+  switch (collection?.type) {
     case "library-models":
       return {
         title: t`No models yet`,

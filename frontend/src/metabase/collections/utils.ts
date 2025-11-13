@@ -9,7 +9,6 @@ import {
   type CollectionItem,
   type CollectionItemModel,
   type CollectionType,
-  type LibraryCollectionType,
   isBaseEntityID,
 } from "metabase-types/api";
 
@@ -104,17 +103,6 @@ export function isLibraryCollectionType(
     type === "library-models" ||
     type === "library-metrics"
   );
-}
-
-export function getLibraryCollectionType(
-  collection: Pick<Collection, "type"> | Pick<CollectionItem, "type">,
-): LibraryCollectionType | undefined {
-  switch (collection.type) {
-    case "library":
-    case "library-models":
-    case "library-metrics":
-      return collection.type;
-  }
 }
 
 export function isLibraryCollection(

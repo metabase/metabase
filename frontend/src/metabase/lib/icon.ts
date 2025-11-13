@@ -1,4 +1,3 @@
-import { getLibraryCollectionType } from "metabase/collections/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
@@ -72,7 +71,7 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
     return { name: "person" };
   }
 
-  switch (getLibraryCollectionType(item)) {
+  switch (item.type) {
     case "library":
       return { name: "repository" };
     case "library-models":

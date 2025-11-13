@@ -6,7 +6,6 @@ import {
   EmptyStateTitle,
   EmptyStateWrapper,
 } from "metabase/collections/components/CollectionEmptyState";
-import { getLibraryCollectionType } from "metabase/collections/utils";
 import type { Collection } from "metabase-types/api";
 
 type ModelingCollectionEmptyStateProps = {
@@ -28,7 +27,7 @@ export function ModelingCollectionEmptyState({
 }
 
 function getMessages(collection: Collection) {
-  switch (getLibraryCollectionType(collection)) {
+  switch (collection.type) {
     case "library-models":
       return {
         title: t`No models yet`,
