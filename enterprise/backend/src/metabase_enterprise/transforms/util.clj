@@ -228,12 +228,12 @@
       (when-let [table (target-table db-id target)]
         (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
               table-metadata (lib.metadata/table metadata-provider (:id table))
-              query (lib/query metadata-provider table-metadata)
-              mbql-query (-> query
-                             (lib/aggregate (lib/max (source->checkpoint-filter-column query
-                                                                                       (:source-incremental-strategy source)
-                                                                                       table metadata-provider))))]
-          (some-> mbql-query qp/process-query :data :rows first first bigint))))))
+              query (lib/query metadata-provider table-metadata)]
+          (when-let [filter-column (source->checkpoint-filter-column query
+                                                                     (:source-incremental-strategy source)
+                                                                     table metadata-provider)]
+            (some-> query (lib/aggregate (lib/max filter-column))
+                    qp/process-query :data :rows first first bigint)))))))
 
 (defn preprocess-incremental-query
   "Preprocess a query for incremental transform execution by adding watermark filtering.
