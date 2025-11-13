@@ -216,22 +216,34 @@ function ElementCheckbox({
     return null;
   }
 
-  const indeterminate = !item.isLoading && item.isSelected === "some";
+  const indeterminate = item.isSelected === "some";
 
-  const isSelected = !item.isLoading ? item.isSelected : undefined;
+  const { isSelected } = item;
+
   return (
     <Checkbox
       size="sm"
       checked={isSelected !== "no"}
       className={S.checkbox}
       disabled={disabled}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (disabled) {
+          return;
+        }
+        onCheckboxToggle?.(item, index, {
+          isShiftPressed: Boolean(
+            (event.nativeEvent as { shiftKey?: boolean }).shiftKey,
+          ),
+        });
+      }}
       wrapperProps={{
         onClick(event) {
           event.preventDefault();
           event.stopPropagation();
 
           if ((event.target as HTMLElement).tagName.toLowerCase() === "input") {
-            // it's already handled in onChange
+            // it's already handled in onClick
             return;
           }
 
@@ -244,17 +256,7 @@ function ElementCheckbox({
           });
         },
       }}
-      onChange={(event) => {
-        event.stopPropagation();
-        if (disabled) {
-          return;
-        }
-        onCheckboxToggle?.(item, index, {
-          isShiftPressed: Boolean(
-            (event.nativeEvent as { shiftKey?: boolean }).shiftKey,
-          ),
-        });
-      }}
+      onChange={() => {}}
       indeterminate={indeterminate}
     />
   );

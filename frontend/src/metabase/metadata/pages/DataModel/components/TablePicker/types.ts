@@ -128,7 +128,8 @@ export function isTableNode(
   node: ExpandedItem | TreeNode,
 ): node is ExpandedTableItem {
   return (
-    node.type === "schema" &&
-    node.children.every((child) => child.type === "table")
+    node.type === "table" ||
+    (node.type === "schema" &&
+      node.children.every((child) => child.type === "table"))
   );
 }
