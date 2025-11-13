@@ -115,7 +115,7 @@ export function noManuallySelectedTables(
 }
 
 export function noManuallySelectedSchemas(
-  database: FlatItem | undefined,
+  database: { key: string },
   items: FlatItem[],
   selectedSchemas: Set<string> | undefined,
 ) {
