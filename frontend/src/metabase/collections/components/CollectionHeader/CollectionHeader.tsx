@@ -2,7 +2,7 @@ import { withRouter } from "react-router";
 
 import {
   isInstanceAnalyticsCollection,
-  isSemanticLayerCollection,
+  isLibraryCollection,
   isTrashedCollection,
 } from "metabase/collections/utils";
 import type { Collection } from "metabase-types/api";
@@ -43,7 +43,7 @@ const CollectionHeader = ({
 }: CollectionHeaderProps): JSX.Element => {
   const isTrash = isTrashedCollection(collection);
   const isInstanceAnalytics = isInstanceAnalyticsCollection(collection);
-  const isSemanticLayer = isSemanticLayerCollection(collection);
+  const isSemanticLayer = isLibraryCollection(collection);
   const hasCuratePermissions = !!collection?.can_write;
 
   const showNewButton = hasCuratePermissions && !isInstanceAnalytics;

@@ -1128,24 +1128,24 @@ export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   useCheckTransformDependencies: useCheckDependencies,
 };
 
-export type SemanticLayerSectionProps = {
+export type LibrarySectionProps = {
   collections: Collection[];
   selectedCollectionId: CollectionId | undefined;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
 };
 
-export type SemanticLayerPlugin = {
+export type LibraryPlugin = {
   isEnabled: boolean;
-  SemanticLayerSection: ComponentType<SemanticLayerSectionProps>;
+  LibrarySection: ComponentType<LibrarySectionProps>;
   canPlaceEntityInCollection(
     entityType: string,
     collectionType: Collection["type"],
   ): boolean;
 };
 
-export const PLUGIN_SEMANTIC_LAYER: SemanticLayerPlugin = {
+export const PLUGIN_LIBRARY: LibraryPlugin = {
   isEnabled: false,
-  SemanticLayerSection: PluginPlaceholder,
+  LibrarySection: PluginPlaceholder,
   canPlaceEntityInCollection: () => true,
 };

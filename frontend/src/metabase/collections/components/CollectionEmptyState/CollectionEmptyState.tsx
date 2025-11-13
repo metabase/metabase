@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import EmptyStateIcon from "assets/img/empty-states/collection.svg";
 import {
-  getSemanticLayerCollectionType,
+  getLibraryCollectionType,
+  isLibraryCollection,
   isRootTrashCollection,
-  isSemanticLayerCollection,
 } from "metabase/collections/utils";
 import NewItemMenu from "metabase/common/components/NewItemMenu";
 import { Box, Button, Icon, Stack, Text, useMantineTheme } from "metabase/ui";
@@ -58,8 +58,7 @@ const DefaultCollectionEmptyState = ({
 }: CollectionEmptyStateProps) => {
   const { title, description } = getDefaultEmptyStateMessages(collection);
   const canWrite = !!collection?.can_write;
-  const isSemanticLayer =
-    collection != null && isSemanticLayerCollection(collection);
+  const isSemanticLayer = collection != null && isLibraryCollection(collection);
   const showAddButton = canWrite && !isSemanticLayer;
 
   return (
@@ -86,7 +85,7 @@ const DefaultCollectionEmptyState = ({
 
 function getDefaultEmptyStateMessages(collection: Collection | undefined) {
   const type =
-    collection != null ? getSemanticLayerCollectionType(collection) : undefined;
+    collection != null ? getLibraryCollectionType(collection) : undefined;
 
   switch (type) {
     case "semantic-layer-models":

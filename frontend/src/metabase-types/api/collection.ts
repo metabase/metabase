@@ -39,7 +39,7 @@ export type CollectionType =
   | "semantic-layer-metrics"
   | null;
 
-export type SemanticLayerCollectionType = Extract<
+export type LibraryCollectionType = Extract<
   CollectionType,
   "semantic-layer" | "semantic-layer-models" | "semantic-layer-metrics"
 >;

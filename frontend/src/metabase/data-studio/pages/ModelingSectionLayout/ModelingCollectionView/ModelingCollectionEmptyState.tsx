@@ -6,7 +6,7 @@ import {
   EmptyStateTitle,
   EmptyStateWrapper,
 } from "metabase/collections/components/CollectionEmptyState";
-import { getSemanticLayerCollectionType } from "metabase/collections/utils";
+import { getLibraryCollectionType } from "metabase/collections/utils";
 import type { Collection } from "metabase-types/api";
 
 type ModelingCollectionEmptyStateProps = {
@@ -28,7 +28,7 @@ export function ModelingCollectionEmptyState({
 }
 
 function getMessages(collection: Collection) {
-  switch (getSemanticLayerCollectionType(collection)) {
+  switch (getLibraryCollectionType(collection)) {
     case "semantic-layer-models":
       return {
         title: t`No models yet`,

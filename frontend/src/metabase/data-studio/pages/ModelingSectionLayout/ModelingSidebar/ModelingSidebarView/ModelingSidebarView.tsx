@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_SEMANTIC_LAYER } from "metabase/plugins";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { Box, Stack } from "metabase/ui";
 import type {
   Collection,
@@ -35,9 +35,9 @@ export function ModelingSidebarView({
   return (
     <Box w={320} h="100%" bg="bg-white" className={S.sidebar}>
       <Stack gap={0}>
-        {PLUGIN_SEMANTIC_LAYER.isEnabled && (
+        {PLUGIN_LIBRARY.isEnabled && (
           <Box className={S.section} p="md">
-            <PLUGIN_SEMANTIC_LAYER.SemanticLayerSection
+            <PLUGIN_LIBRARY.LibrarySection
               collections={collections}
               selectedCollectionId={selectedCollectionId}
               hasDataAccess={hasDataAccess}

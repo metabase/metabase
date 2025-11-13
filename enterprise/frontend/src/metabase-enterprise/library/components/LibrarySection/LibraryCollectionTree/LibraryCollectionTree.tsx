@@ -11,35 +11,34 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { Collection, CollectionId } from "metabase-types/api";
 
-import { getWritableSemanticCollection } from "./utils";
+import { getWritableLibraryCollection } from "./utils";
 
-type SemanticLayerCollectionTreeProps = {
+type LibraryCollectionTreeProps = {
   rootCollection: Collection;
   selectedCollectionId: CollectionId | undefined;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
 };
 
-export function SemanticLayerCollectionTree({
+export function LibraryCollectionTree({
   rootCollection,
   selectedCollectionId,
   hasDataAccess,
   hasNativeWrite,
-}: SemanticLayerCollectionTreeProps) {
+}: LibraryCollectionTreeProps) {
   const collectionTree = useMemo(
     () => buildCollectionTree([rootCollection]),
     [rootCollection],
   );
 
   const modelCollection = useMemo(
-    () =>
-      getWritableSemanticCollection(rootCollection, "semantic-layer-models"),
+    () => getWritableLibraryCollection(rootCollection, "semantic-layer-models"),
     [rootCollection],
   );
 
   const metricCollection = useMemo(
     () =>
-      getWritableSemanticCollection(rootCollection, "semantic-layer-metrics"),
+      getWritableLibraryCollection(rootCollection, "semantic-layer-metrics"),
     [rootCollection],
   );
 

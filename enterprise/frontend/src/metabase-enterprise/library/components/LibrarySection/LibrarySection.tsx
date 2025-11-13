@@ -3,30 +3,30 @@ import { useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { isSemanticLayerCollection } from "metabase/collections/utils";
+import { isLibraryCollection } from "metabase/collections/utils";
 import { ModelingSidebarSection } from "metabase/data-studio/pages/ModelingSectionLayout/ModelingSidebar/ModelingSidebarSection";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import type { SemanticLayerSectionProps } from "metabase/plugins";
+import type { LibrarySectionProps } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type { Collection } from "metabase-types/api";
 
-import { CreateSemanticLayerModal } from "./CreateSemanticLayerModal";
-import { SemanticLayerCollectionTree } from "./SemanticLayerCollectionTree";
+import { CreateLibraryModal } from "./CreateLibraryModal";
+import { LibraryCollectionTree } from "./LibraryCollectionTree";
 
-export function SemanticLayerSection({
+export function LibrarySection({
   collections,
   selectedCollectionId,
   hasDataAccess,
   hasNativeWrite,
-}: SemanticLayerSectionProps) {
+}: LibrarySectionProps) {
   const isAdmin = useSelector(getUserIsAdmin);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const dispatch = useDispatch();
 
   const rootCollection = useMemo(
-    () => collections.find(isSemanticLayerCollection),
+    () => collections.find(isLibraryCollection),
     [collections],
   );
 
@@ -37,7 +37,7 @@ export function SemanticLayerSection({
 
   if (rootCollection != null) {
     return (
-      <SemanticLayerCollectionTree
+      <LibraryCollectionTree
         rootCollection={rootCollection}
         selectedCollectionId={selectedCollectionId}
         hasDataAccess={hasDataAccess}
@@ -55,10 +55,7 @@ export function SemanticLayerSection({
           onClick={openModal}
         />
         {isModalOpened && (
-          <CreateSemanticLayerModal
-            onCreate={handleCreate}
-            onClose={closeModal}
-          />
+          <CreateLibraryModal onCreate={handleCreate} onClose={closeModal} />
         )}
       </>
     );

@@ -13,22 +13,22 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { useCreateSemanticLayerMutation } from "metabase-enterprise/api";
+import { useCreateLibraryMutation } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
-type CreateSemanticLayerModalProps = {
+type CreateLibraryModalProps = {
   onCreate: (collection: Collection) => void;
   onClose: () => void;
 };
 
-export function CreateSemanticLayerModal({
+export function CreateLibraryModal({
   onCreate,
   onClose,
-}: CreateSemanticLayerModalProps) {
-  const [createSemanticLayer] = useCreateSemanticLayerMutation();
+}: CreateLibraryModalProps) {
+  const [createLibrary] = useCreateLibraryMutation();
 
   const handleSubmit = async () => {
-    const collection = await createSemanticLayer().unwrap();
+    const collection = await createLibrary().unwrap();
     onCreate(collection);
   };
 

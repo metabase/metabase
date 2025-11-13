@@ -1,11 +1,11 @@
-import { isSemanticLayerCollectionType } from "metabase/collections/utils";
+import { isLibraryCollectionType } from "metabase/collections/utils";
 import type { Collection } from "metabase-types/api";
 
 export function canPlaceEntityInCollection(
   entityType: string,
   collectionType: Collection["type"],
 ): boolean {
-  if (!isSemanticLayerCollectionType(collectionType)) {
+  if (!isLibraryCollectionType(collectionType)) {
     return true;
   }
 
@@ -14,7 +14,7 @@ export function canPlaceEntityInCollection(
     return false;
   }
 
-  // Can't create anything in the root semantic layer collection
+  // Can't create anything in the root Library collection
   if (collectionType === "semantic-layer") {
     return false;
   }

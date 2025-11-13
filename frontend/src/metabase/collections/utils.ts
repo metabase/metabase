@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { PLUGIN_COLLECTIONS, PLUGIN_SEMANTIC_LAYER } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
 import {
   type CardType,
   type Collection,
@@ -8,7 +8,8 @@ import {
   type CollectionId,
   type CollectionItem,
   type CollectionItemModel,
-  type SemanticLayerCollectionType,
+  type CollectionType,
+  type LibraryCollectionType,
   isBaseEntityID,
 } from "metabase-types/api";
 
@@ -68,7 +69,7 @@ export function isEditableCollection(collection: Collection) {
     !isRootCollection(collection) &&
     !isRootPersonalCollection(collection) &&
     !isTrashedCollection(collection) &&
-    !isSemanticLayerCollection(collection)
+    !isLibraryCollection(collection)
   );
 }
 
@@ -95,35 +96,35 @@ export function isSyncedCollection(collection: Partial<Collection>): boolean {
   return PLUGIN_COLLECTIONS.isSyncedCollection(collection);
 }
 
-export function isSemanticLayerCollectionType(
-  collectionType: Collection["type"],
+export function isLibraryCollectionType(
+  type: CollectionType | undefined,
 ): boolean {
   return (
-    collectionType === "semantic-layer" ||
-    collectionType === "semantic-layer-models" ||
-    collectionType === "semantic-layer-metrics"
+    type === "semantic-layer" ||
+    type === "semantic-layer-models" ||
+    type === "semantic-layer-metrics"
   );
 }
 
-export function isSemanticLayerCollection(
-  collection: Pick<Collection, "type">,
-): boolean {
-  return isSemanticLayerCollectionType(collection.type);
-}
-
-export function isExamplesCollection(collection: Collection): boolean {
-  return !!collection.is_sample && collection.name === "Examples";
-}
-
-export function getSemanticLayerCollectionType(
+export function getLibraryCollectionType(
   collection: Pick<Collection, "type"> | Pick<CollectionItem, "type">,
-): SemanticLayerCollectionType | undefined {
+): LibraryCollectionType | undefined {
   switch (collection.type) {
     case "semantic-layer":
     case "semantic-layer-models":
     case "semantic-layer-metrics":
       return collection.type;
   }
+}
+
+export function isLibraryCollection(
+  collection: Pick<Collection, "type">,
+): boolean {
+  return isLibraryCollectionType(collection.type);
+}
+
+export function isExamplesCollection(collection: Collection): boolean {
+  return !!collection.is_sample && collection.name === "Examples";
 }
 
 // Replace the name for the current user's collection
@@ -198,8 +199,7 @@ export function isReadOnlyCollection(collection: CollectionItem) {
 
 export function canBookmarkItem(item: CollectionItem) {
   return (
-    !isSemanticLayerCollection(item as Pick<Collection, "type">) &&
-    !item.archived
+    !isLibraryCollection(item as Pick<Collection, "type">) && !item.archived
   );
 }
 
@@ -222,7 +222,7 @@ export function canMoveItem(item: CollectionItem, collection?: Collection) {
     !isReadOnlyCollection(item) &&
     item.setCollection != null &&
     !(isItemCollection(item) && isRootPersonalCollection(item)) &&
-    !isSemanticLayerCollection(item as Pick<Collection, "type">)
+    !isLibraryCollection(item as Pick<Collection, "type">)
   );
 }
 
@@ -231,7 +231,7 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
     collection?.can_write &&
     !isReadOnlyCollection(item) &&
     !(isItemCollection(item) && isRootPersonalCollection(item)) &&
-    !isSemanticLayerCollection(item as Pick<Collection, "type">) &&
+    !isLibraryCollection(item as Pick<Collection, "type">) &&
     !item.archived
   );
 }
@@ -244,10 +244,7 @@ export function canPlaceEntityInCollection(
   entityType: EntityType,
   collectionType: Collection["type"],
 ): boolean {
-  return PLUGIN_SEMANTIC_LAYER.canPlaceEntityInCollection(
-    entityType,
-    collectionType,
-  );
+  return PLUGIN_LIBRARY.canPlaceEntityInCollection(entityType, collectionType);
 }
 
 export function canPlaceEntityInCollectionOrDescendants(

@@ -1,5 +1,5 @@
 import {
-  getSemanticLayerCollectionType,
+  getLibraryCollectionType,
   isRootCollection,
   isRootPersonalCollection,
   isRootTrashCollection,
@@ -42,7 +42,7 @@ export function getCollectionIcon(
     return { name: "synced_collection" };
   }
 
-  switch (getSemanticLayerCollectionType(collection)) {
+  switch (getLibraryCollectionType(collection)) {
     case "semantic-layer":
       return { name: "repository" };
     case "semantic-layer-models":
