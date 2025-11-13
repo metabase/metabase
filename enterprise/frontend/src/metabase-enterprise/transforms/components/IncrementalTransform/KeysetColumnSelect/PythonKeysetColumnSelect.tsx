@@ -2,11 +2,12 @@ import { skipToken } from "@reduxjs/toolkit/query";
 import { useMemo } from "react";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
-import { FormSelect } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type { PythonTransformTableAliases } from "metabase-types/api";
+
+import { KeysetColumnSelect } from "./KeysetColumnSelect";
 
 type PythonKeysetColumnSelectProps = {
   name: string;
@@ -57,65 +58,14 @@ export function PythonKeysetColumnSelect({
     }
   }, [table, metadata]);
 
-  const columnOptions = useMemo((): Array<{ value: string; label: string }> => {
-    if (!query) {
-      return [];
-    }
-
-    try {
-      const stageIndex = -1;
-
-      // Get returned columns and filterable columns
-      const returnedColumns = Lib.returnedColumns(query, stageIndex);
-      const filterableColumns = Lib.filterableColumns(query, stageIndex);
-
-      // Create a set of filterable column identifiers using display info
-      const filterableIdentifiers = new Set(
-        filterableColumns.map((col) => {
-          const info = Lib.displayInfo(query, stageIndex, col);
-          return `${info.table?.name ?? "no-table"}:${info.name}`;
-        }),
-      );
-
-      // Filter returned columns to only those that are also filterable and numeric
-      const numericFilterableColumns = returnedColumns.filter((column) => {
-        const info = Lib.displayInfo(query, stageIndex, column);
-        const identifier = `${info.table?.name ?? "no-table"}:${info.name}`;
-        return filterableIdentifiers.has(identifier) && Lib.isNumeric(column);
-      });
-
-      // Deduplicate by unique key (keep first occurrence)
-      const seenKeys = new Set<string>();
-      const uniqueColumns: Array<{ value: string; label: string }> = [];
-
-      numericFilterableColumns.forEach((column) => {
-        const uniqueKey = Lib.columnUniqueKey(column);
-
-        if (!seenKeys.has(uniqueKey)) {
-          seenKeys.add(uniqueKey);
-          const columnInfo = Lib.displayInfo(query, stageIndex, column);
-          uniqueColumns.push({
-            value: uniqueKey,
-            label: columnInfo.displayName,
-          });
-        }
-      });
-
-      return uniqueColumns;
-    } catch {
-      return [];
-    }
-  }, [query]);
-
   return (
-    <FormSelect
+    <KeysetColumnSelect
       name={name}
       label={label}
       placeholder={placeholder}
       description={description}
-      data={columnOptions}
-      searchable
-      disabled={isLoading || !!error || columnOptions.length === 0}
+      query={query}
+      disabled={isLoading || !!error}
     />
   );
 }

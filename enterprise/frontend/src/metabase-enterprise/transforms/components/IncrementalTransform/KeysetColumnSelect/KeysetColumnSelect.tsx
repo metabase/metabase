@@ -8,7 +8,8 @@ type KeysetColumnSelectProps = {
   label: string;
   placeholder: string;
   description: string;
-  query: Lib.Query;
+  query: Lib.Query | null;
+  disabled?: boolean;
 };
 
 export function KeysetColumnSelect({
@@ -17,6 +18,7 @@ export function KeysetColumnSelect({
   placeholder,
   description,
   query,
+  disabled,
 }: KeysetColumnSelectProps) {
   const columnOptions = useMemo((): Array<{ value: string; label: string }> => {
     if (!query) {
@@ -86,6 +88,7 @@ export function KeysetColumnSelect({
       description={description}
       data={columnOptions}
       searchable
+      disabled={disabled || columnOptions.length === 0}
     />
   );
 }
