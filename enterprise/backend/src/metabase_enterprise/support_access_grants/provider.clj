@@ -67,7 +67,7 @@
     (throw (ex-info "Cannot create support access reset token: no grant provided"
                     {:status-code 400})))
   (let [grant-ends-at (:grant_end_timestamp grant)]
-    (when (t/before? grant-ends-at #p (t/offset-date-time))
+    (when (t/before? grant-ends-at (t/offset-date-time))
       (throw (ex-info "Cannot create support access reset token: grant has expired"
                       {:status-code 400})))
     (u/prog1 (emailed-secret/generate-reset-token user-id)
