@@ -1,4 +1,3 @@
-import { ThemeIcon } from "@mantine/core";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -11,21 +10,8 @@ import {
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import * as urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import {
-  Box,
-  Button,
-  Checkbox,
-  Flex,
-  Group,
-  Icon,
-  List,
-  Modal,
-  Stack,
-  Text,
-  rem,
-} from "metabase/ui";
+import { Box, Button, Checkbox, Group, Modal, Text, rem } from "metabase/ui";
 import type {
-  Card,
   DatabaseId,
   PublishModelsResponse,
   SchemaId,
@@ -105,30 +91,26 @@ export function PublishModelsModal({
   }
 
   return (
-    <>
-      {
-        <CollectionPickerModal
-          value={{
-            id: "root",
-            model: "collection",
-          }}
-          options={{
-            showSearch: true,
-            hasConfirmButtons: true,
-            showRootCollection: true,
-            showPersonalCollections: true,
-            confirmButtonText: t`Publish here`,
-          }}
-          title={t`Pick the collection to publish this table in`}
-          onClose={() => {
-            handleClose();
-          }}
-          onChange={(collection) => {
-            handleSubmit(collection);
-          }}
-        />
-      }
-    </>
+    <CollectionPickerModal
+      value={{
+        id: "root",
+        model: "collection",
+      }}
+      options={{
+        showSearch: true,
+        hasConfirmButtons: true,
+        showRootCollection: true,
+        showPersonalCollections: true,
+        confirmButtonText: t`Publish here`,
+      }}
+      title={t`Pick the collection to publish this table in`}
+      onClose={() => {
+        handleClose();
+      }}
+      onChange={(collection) => {
+        handleSubmit(collection);
+      }}
+    />
   );
 }
 
@@ -193,69 +175,5 @@ function AcknowledgePublishModelsModal({
         >{t`Got it`}</Button>
       </Group>
     </Modal>
-  );
-}
-
-function PublishedModelsList({
-  publishedModels,
-  collection,
-  handleClose,
-}: {
-  publishedModels: Card[];
-  collection: CollectionPickerValueItem | null;
-  handleClose: () => void;
-}) {
-  return (
-    <Stack gap="md" pt="sm">
-      <Text
-        px={0}
-        style={{ display: "inline-flex", alignItems: "baseline", gap: rem(4) }}
-      >
-        <span>{t`Successfully published ${publishedModels.length} model${publishedModels.length !== 1 ? "s" : ""} to `}</span>
-        {collection ? (
-          <Button
-            component={Link}
-            h="auto"
-            p={0}
-            to={`/collection/${collection?.id}`}
-            size="xs"
-            variant="subtle"
-          >
-            {collection?.name}
-          </Button>
-        ) : null}
-      </Text>
-      <Text>
-        <List
-          spacing="xs"
-          px={0}
-          center
-          icon={
-            <ThemeIcon radius="xl" color="white">
-              <Icon name="model_with_badge" c="brand" />
-            </ThemeIcon>
-          }
-        >
-          {publishedModels.map((model) => (
-            <List.Item key={model.id}>
-              <Button
-                component={Link}
-                h="auto"
-                p={0}
-                to={`/model/${model.id}`}
-                size="xs"
-                variant="subtle"
-              >
-                {model.name}
-              </Button>
-            </List.Item>
-          ))}
-        </List>
-      </Text>
-
-      <Flex justify="flex-end" gap="sm">
-        <Button onClick={handleClose}>{t`Close`}</Button>
-      </Flex>
-    </Stack>
   );
 }
