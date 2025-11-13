@@ -14,4 +14,3 @@
         (throw (ex-info "Content type not allowed in this collection" {:content-type content-type, :allowed-content allowed-content})))))
 
   true)
-
