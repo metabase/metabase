@@ -93,8 +93,8 @@
   (keep (fn [mapping]
           (let [database-id (get-in mapping [:dashcard :card :dataset_query :database])
                 card-id (get-in mapping [:dashcard :card :id])]
-            ;; Actions is dashcards are stored under :action key. The following makes this function compatible with
-            ;; dashcards that have no `:card`.
+            ;; The following makes sure with ignore dashcards that have no `:card`.
+            ;; For example, Action dashcards stored under the :action key will be skipped.
             (when (and (pos-int? database-id)
                        (pos-int? card-id))
               (let [mp (lib-be/application-database-metadata-provider database-id)
