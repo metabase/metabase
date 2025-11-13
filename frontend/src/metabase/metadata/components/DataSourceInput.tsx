@@ -11,7 +11,7 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
 
 export const DataSourceInput = ({
   comboboxProps,
-  showMetabaseTransform = true,
+  showMetabaseTransform,
   value,
   onChange,
   onFocus,
@@ -29,7 +29,8 @@ export const DataSourceInput = ({
         position: "bottom-start",
         ...comboboxProps,
       }}
-      data={getData(showMetabaseTransform)}
+      disabled={value === "metabase-transform"}
+      data={getData(showMetabaseTransform || value === "metabase-transform")}
       label={t`Source`}
       placeholder={t`Select a data source`}
       value={value}
