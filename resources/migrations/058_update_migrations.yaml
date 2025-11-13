@@ -433,7 +433,7 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-12T00:00:07
       author: edpaget
-      comment: Add auth_identity_id and expires_at columns to core_session table
+      comment: Add auth_identity_id columns to core_session table
       changes:
         - addColumn:
             tableName: core_session
@@ -444,7 +444,20 @@ databaseChangeLog:
                   remarks: Foreign key to auth_identity - tracks which auth method was used for login
                   constraints:
                     nullable: true
-              - column:
+      rollback:
+        - dropColumn:
+            tableName: core_session
+            columnName: auth_identity_id
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:08
+      author: edpaget
+      comment: Add expires_at columns to core_session table
+      changes:
+        - addColumn:
+            tableName: core_session
+            columns:
+               - column:
                   name: expires_at
                   type: ${timestamp_type}
                   remarks: Timestamp when this session expires (from auth_identity or calculated)
@@ -453,13 +466,10 @@ databaseChangeLog:
       rollback:
         - dropColumn:
             tableName: core_session
-            columnName: auth_identity_id
-        - dropColumn:
-            tableName: core_session
             columnName: expires_at
 
   - changeSet:
-      id: v58.2025-11-12T00:00:08
+      id: v58.2025-11-12T00:00:09
       author: edpaget
       comment: Add index on core_session.auth_identity_id
       changes:
@@ -475,7 +485,7 @@ databaseChangeLog:
             indexName: idx_core_session_auth_identity_id
 
   - changeSet:
-      id: v58.2025-11-12T00:00:09
+      id: v58.2025-11-12T00:00:10
       author: edpaget
       comment: Add foreign key constraint from core_session to auth_identity
       changes:
