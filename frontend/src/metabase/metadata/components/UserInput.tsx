@@ -79,7 +79,7 @@ export const UserInput = ({
           <Avatar name={t`?`} />
         )
       }
-      placeholder={t`Select user or type an email`}
+      placeholder={t`Pick someone, or type an email`}
       nothingFoundMessage={t`Didn't find any results`}
       searchable
       searchValue={search}

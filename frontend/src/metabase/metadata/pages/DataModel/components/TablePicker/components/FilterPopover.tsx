@@ -6,22 +6,12 @@ import {
   LayerInput,
   UserInput,
 } from "metabase/metadata/components";
-import {
-  ActionIcon,
-  Button,
-  Checkbox,
-  Group,
-  Icon,
-  Stack,
-  Tooltip,
-} from "metabase/ui";
+import { Button, Checkbox, Group, Stack } from "metabase/ui";
 import type {
-  TableDataSource,
   TableDataLayer,
+  TableDataSource,
   UserId,
 } from "metabase-types/api";
-
-import { getFiltersCount } from "../utils";
 
 export interface FilterState {
   visibilityType2: TableDataLayer | null;
@@ -33,13 +23,11 @@ export interface FilterState {
 
 interface Props {
   filters: FilterState;
-  onClose: () => void;
   onSubmit: (filters: FilterState) => void;
 }
 
-export function FilterPopover({ filters, onClose, onSubmit }: Props) {
+export function FilterPopover({ filters, onSubmit }: Props) {
   const [form, setForm] = useState(filters);
-  const filtersCount = getFiltersCount(form);
 
   const handleReset = () => {
     onSubmit({
@@ -58,7 +46,7 @@ export function FilterPopover({ filters, onClose, onSubmit }: Props) {
         onSubmit(form);
       }}
     >
-      <Stack gap="md" p="lg">
+      <Stack gap="xl" p="lg">
         <LayerInput
           clearable
           value={form.visibilityType2}
@@ -90,7 +78,7 @@ export function FilterPopover({ filters, onClose, onSubmit }: Props) {
         />
 
         <Checkbox
-          label={t`Only show unused tables`}
+          label={t`Table isn’t referenced by anything`}
           checked={form.orphansOnly === true}
           onChange={(e) =>
             setForm((form) => ({ ...form, orphansOnly: e.target.checked }))
@@ -98,21 +86,11 @@ export function FilterPopover({ filters, onClose, onSubmit }: Props) {
         />
 
         <Group justify="space-between" wrap="nowrap">
-          <Tooltip label={t`Reset filters`}>
-            <ActionIcon disabled={filtersCount === 0} onClick={handleReset}>
-              <Icon name="revert" />
-            </ActionIcon>
-          </Tooltip>
+          <Button flex={1} onClick={handleReset}>{t`Clear filters`}</Button>
 
-          <Group gap="sm" wrap="nowrap">
-            <Button variant="subtle" onClick={onClose}>
-              {t`Cancel`}
-            </Button>
-
-            <Button variant="primary" type="submit">
-              {t`Apply`}
-            </Button>
-          </Group>
+          <Button flex={1} variant="primary" type="submit">
+            {t`Apply`}
+          </Button>
         </Group>
       </Stack>
     </form>

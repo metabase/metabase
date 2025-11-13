@@ -106,7 +106,7 @@ export function TablePicker({
           onChange={(event) => setQuery(event.target.value)}
         />
 
-        <Popover width={rem(300)} position="bottom-start" opened={isOpen}>
+        <Popover width={rem(340)} position="bottom-start" opened={isOpen}>
           <Popover.Target>
             <Tooltip label={t`Filter`}>
               <Button
@@ -134,7 +134,6 @@ export function TablePicker({
           <Popover.Dropdown>
             <FilterPopover
               filters={filters}
-              onClose={close}
               onSubmit={(newFilters) => {
                 setFilters(newFilters);
                 close();
