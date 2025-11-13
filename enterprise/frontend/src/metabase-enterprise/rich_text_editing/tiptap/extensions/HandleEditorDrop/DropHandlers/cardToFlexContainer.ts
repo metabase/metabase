@@ -83,8 +83,31 @@ export const handleCardDropToFlexContainer = (
     // Insert the dragged element at the correct position
     allChildren.splice(adjustedTargetIndex, 0, cardEmbedNode);
 
+    // Preserve column widths by reordering them to match the new card positions
+    const currentColumnWidths = dropToParent.attrs.columnWidths;
+    let newColumnWidths = currentColumnWidths;
+    if (
+      currentColumnWidths &&
+      currentColumnWidths.length === dropToParent.childCount
+    ) {
+      // Create array of widths excluding the source column width
+      const allWidths = [];
+      for (let i = 0; i < currentColumnWidths.length; i++) {
+        if (i !== sourceIndex) {
+          allWidths.push(currentColumnWidths[i]);
+        }
+      }
+      // Insert the source column width at the new position
+      allWidths.splice(
+        adjustedTargetIndex,
+        0,
+        currentColumnWidths[sourceIndex],
+      );
+      newColumnWidths = allWidths;
+    }
+
     const newContainer = view.state.schema.nodes.flexContainer.create(
-      dropToParent.attrs,
+      { ...dropToParent.attrs, columnWidths: newColumnWidths },
       allChildren,
     );
 
