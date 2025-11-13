@@ -2571,10 +2571,9 @@
             (let [csv-rows [header appended-row]
                   file     (csv-file-with csv-rows (mt/random-name))]
               (update-csv! :metabase.upload/append {:file file, :table-id (:id table)})
-              (testing "Check the data was not uploaded into the table"
-                (is (= (rows-with-auto-pk (concat (csv/read-csv original-row)
-                                                  (csv/read-csv appended-row)))
-                       (rows-for-table table))))
+              (is (= (rows-with-auto-pk (concat (csv/read-csv original-row)
+                                                (csv/read-csv appended-row)))
+                     (rows-for-table table)))
               (io/delete-file file))))))))
 
 (driver/register! ::short-column-test-driver)

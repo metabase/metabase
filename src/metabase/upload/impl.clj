@@ -788,7 +788,7 @@
               name->field        (m/index-by :name (t2/select :model/Field :table_id (:id table) :active true))
               ;; Gotcha: If there are long names that have the same lossily-escaped-and-truncated representation AND
               ;;         these columns appear in a different order to previous uploads, we will deduplicate the column
-              ;;         names based on their order in the latest files, and with match up incorrectly with the existing
+              ;;         names based on their order in the latest files, and will match up incorrectly with the existing
               ;;         fields. Previously we simply skipped deduplication on upload to avoid the ambiguity, see
               ;;         https://github.com/metabase/metabase/issues/44926#issuecomment-3524373073.
               ;;
