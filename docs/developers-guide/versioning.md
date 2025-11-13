@@ -37,7 +37,7 @@ Sometimes called a minor release, we issue point releases when we add bug fixes 
 
 ### Hotfix
 
-Sometimes called a patch release, we issue these hotfix releases to fix security issues as soon as we can.
+Sometimes called a patch release, we issue these releases nightly so we can fix bugs or security issues as soon as we can.
 
 You'll see releases ending as `.x` in [releases on GitHub](https://github.com/metabase/metabase/releases). These are placeholder links. The actual link will go to the latest hotfix. For example:
 
@@ -45,16 +45,23 @@ You'll see releases ending as `.x` in [releases on GitHub](https://github.com/me
 
 ## Other release terms
 
-### The Gold Release
+### The beta release
 
-The gold release is the first release of a new major version of Metabase. So for Metabase version 57, the gold releases would be:
+The beta release is the beta release of a new major version of Metabase. So for Metabase version 57, the gold releases would be:
+
+- `v0.57.0` (the OSS version)
+- `v1.57.0` (the EE version)
+
+### The gold release
+
+The gold release is the first stable release of a new major version of Metabase. So for Metabase version 57, the gold releases would be:
 
 - `v0.57.1` (the OSS version)
 - `v1.57.1` (the EE version)
 
 ### Cloud builds
 
-If you see a version followed by an `-X`, like `v1.56.2-X01`, these are version numbers related to builds for customers on [Metabase Cloud](https://www.metabase.com/cloud/), which may bundle additional drivers.
+If you see a version followed by an `-X`, like `v1.56.2-X01`, these are version numbers related to builds for customers on [Metabase Cloud](https://www.metabase.com/cloud/).
 
 ## Further reading
 
