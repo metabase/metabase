@@ -25,7 +25,6 @@ import {
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
-import { ModelingEmptyPage } from "./modeling/pages/ModelingEmptyPage";
 import { getDataStudioModelingRoutes } from "./modeling/routes";
 import { getDataStudioModelRoutes } from "./models/routes";
 
@@ -58,7 +57,6 @@ export function getDataStudioRoutes(
         path="modeling"
         component={ModelingSectionLayout}
       >
-        <IndexRoute component={ModelingEmptyPage} />
         <Route path="snippets/new" component={NewSnippetPage} />
         <Route path="snippets/:snippetId" component={EditSnippetPage} />
         {PLUGIN_DEPENDENCIES.isEnabled && (
