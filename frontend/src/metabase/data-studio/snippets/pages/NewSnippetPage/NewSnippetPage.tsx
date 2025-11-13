@@ -20,7 +20,7 @@ import {
   PaneHeader,
   PaneHeaderActions,
   PaneHeaderInput,
-} from "../../../../../common/components/PaneHeader";
+} from "../../../common/components/PaneHeader";
 
 import S from "./NewSnippetPage.module.css";
 

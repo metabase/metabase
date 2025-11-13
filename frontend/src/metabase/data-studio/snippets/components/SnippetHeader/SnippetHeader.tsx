@@ -13,7 +13,7 @@ import {
   PaneHeaderInput,
   type PaneHeaderTab,
   PaneHeaderTabs,
-} from "../../../../../common/components/PaneHeader";
+} from "../../../common/components/PaneHeader";
 
 const SNIPPET_NAME_MAX_LENGTH = 254;
 

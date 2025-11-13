@@ -6,7 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Center, Flex } from "metabase/ui";
 
-import { SnippetHeader } from "../SnippetHeader";
+import { SnippetHeader } from "../../components/SnippetHeader";
 
 export type SnippetDependenciesPageParams = {
   snippetId: string;

@@ -17,16 +17,12 @@ import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
 import { ModelingSectionLayout } from "./app/pages/ModelingSectionLayout";
-import {
-  EditSnippetPage,
-  NewSnippetPage,
-  SnippetDependenciesPage,
-} from "./app/pages/ModelingSectionLayout/SnippetEditorPage";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioModelingRoutes } from "./modeling/routes";
 import { getDataStudioModelRoutes } from "./models/routes";
+import { getDataStudioSnippetRoutes } from "./snippets/routes";
 
 export function getDataStudioRoutes(
   store: Store<State>,
@@ -57,19 +53,10 @@ export function getDataStudioRoutes(
         path="modeling"
         component={ModelingSectionLayout}
       >
-        <Route path="snippets/new" component={NewSnippetPage} />
-        <Route path="snippets/:snippetId" component={EditSnippetPage} />
-        {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route
-            path="snippets/:snippetId/dependencies"
-            component={SnippetDependenciesPage}
-          >
-            <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
-          </Route>
-        )}
         {getDataStudioModelingRoutes()}
         {getDataStudioModelRoutes()}
         {getDataStudioMetricRoutes()}
+        {getDataStudioSnippetRoutes()}
         {getDataStudioGlossaryRoutes()}
       </Route>
       {PLUGIN_DEPENDENCIES.isEnabled && (

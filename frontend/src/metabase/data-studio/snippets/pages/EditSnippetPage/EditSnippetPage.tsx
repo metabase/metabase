@@ -17,9 +17,9 @@ import { useToast } from "metabase/common/hooks";
 import * as Urls from "metabase/lib/urls";
 import { Box, Center, Flex, Stack } from "metabase/ui";
 
-import { PaneHeaderActions } from "../../../../../common/components/PaneHeader";
-import { SnippetDescriptionSection } from "../SnippetDescriptionSection";
-import { SnippetHeader } from "../SnippetHeader";
+import { PaneHeaderActions } from "../../../common/components/PaneHeader";
+import { SnippetDescriptionSection } from "../../components/SnippetDescriptionSection";
+import { SnippetHeader } from "../../components/SnippetHeader";
 
 import S from "./EditSnippetPage.module.css";
 

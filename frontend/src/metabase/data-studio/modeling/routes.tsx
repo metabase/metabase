@@ -1,6 +1,4 @@
-import { IndexRoute } from "react-router";
-
-import { Route } from "metabase/hoc/Title";
+import { IndexRoute, Route } from "react-router";
 
 import { CollectionPage } from "./pages/CollectionPage";
 import { ModelingEmptyPage } from "./pages/ModelingEmptyPage";
