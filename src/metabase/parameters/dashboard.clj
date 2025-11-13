@@ -93,10 +93,13 @@
   (keep (fn [mapping]
           (let [database-id (get-in mapping [:dashcard :card :dataset_query :database])
                 card-id (get-in mapping [:dashcard :card :id])]
+            ;; Actions is dashcards are stored under :action key. Following makes this function compatible with
+            ;; dashcards that have no `:card`.
             (when (and (pos-int? database-id)
                        (pos-int? card-id))
               (let [mp (lib-be/application-database-metadata-provider database-id)
                     card (lib.metadata/card mp card-id)]
+                ;; Following check is in place because card schema has dataset-query optional.
                 (when (not-empty (:dataset-query card))
                   (let [query (lib/card->underlying-query mp card)]
                     (when (and (not-empty query)
