@@ -10,6 +10,7 @@ import type {
 import {
   type EntityType,
   canPlaceEntityInCollection,
+  canPlaceEntityInCollectionOrDescendants,
   isItemCollection,
 } from "metabase/collections/utils";
 import {
@@ -90,7 +91,11 @@ export const MoveModal = ({
     }
 
     if (entityType && item.model === "collection") {
-      return !canPlaceEntityInCollection(entityType, getCollectionType(item));
+      return !canPlaceEntityInCollectionOrDescendants(
+        entityType,
+        getCollectionType(item),
+        item.below,
+      );
     }
 
     return false;
@@ -161,6 +166,7 @@ export const MoveModal = ({
         confirmButtonText: t`Move`,
       }}
       shouldDisableItem={shouldDisableItem}
+      entityType={entityType}
       searchResultFilter={searchResultFilter}
       recentFilter={recentFilter}
       onClose={onClose}
@@ -204,9 +210,10 @@ export const BulkMoveModal = ({
     if (item.model === "collection") {
       const hasInvalidItem = selectedItems.some(
         (selectedItem) =>
-          !canPlaceEntityInCollection(
+          !canPlaceEntityInCollectionOrDescendants(
             selectedItem.model,
             getCollectionType(item),
+            item.below,
           ),
       );
       if (hasInvalidItem) {
@@ -239,6 +246,21 @@ export const BulkMoveModal = ({
     ? ["collection", "dashboard"]
     : ["collection"];
 
+  const canSelectItem = useCallback(
+    (item: CollectionPickerItem) => {
+      if (item.model === "collection") {
+        return selectedItems.every((selectedItem) =>
+          canPlaceEntityInCollection(
+            selectedItem.model,
+            getCollectionType(item),
+          ),
+        );
+      }
+      return true;
+    },
+    [selectedItems],
+  );
+
   const handleMove = useCallback(
     async (destination: CollectionPickerValueItem) => {
       return onMove({
@@ -266,6 +288,7 @@ export const BulkMoveModal = ({
         confirmButtonText: t`Move`,
       }}
       shouldDisableItem={shouldDisableItem}
+      canSelectItem={canSelectItem}
       searchResultFilter={searchResultFilter}
       recentFilter={recentFilter}
       onClose={onClose}

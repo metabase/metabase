@@ -5,6 +5,7 @@ import _ from "underscore";
 import {
   type EntityType,
   canPlaceEntityInCollection,
+  canPlaceEntityInCollectionOrDescendants,
 } from "metabase/collections/utils";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
@@ -107,9 +108,10 @@ export const CollectionPickerModal = ({
     const entityTypeCheck = entityType
       ? (item: CollectionPickerItem) => {
           if (item.model === "collection") {
-            return !canPlaceEntityInCollection(
+            return !canPlaceEntityInCollectionOrDescendants(
               entityType,
               getCollectionType(item),
+              item.below,
             );
           }
           return false;
@@ -135,9 +137,24 @@ export const CollectionPickerModal = ({
         | null
         | undefined,
     ): item is CollectionPickerValueItem => {
-      return baseCanSelectItem(item) && (_canSelectItem?.(item) ?? true);
+      if (!baseCanSelectItem(item)) {
+        return false;
+      }
+
+      if (_canSelectItem && !_canSelectItem(item)) {
+        return false;
+      }
+
+      if (entityType && item.model === "collection") {
+        const collectionType = getCollectionType(item as CollectionPickerItem);
+        if (!canPlaceEntityInCollection(entityType, collectionType)) {
+          return false;
+        }
+      }
+
+      return true;
     },
-    [_canSelectItem],
+    [_canSelectItem, entityType],
   );
 
   const { tryLogRecentItem } = useLogRecentItem();

@@ -250,6 +250,22 @@ export function canPlaceEntityInCollection(
   );
 }
 
+export function canPlaceEntityInCollectionOrDescendants(
+  entityType: EntityType,
+  collectionType: Collection["type"],
+  below?: CollectionItemModel[],
+): boolean {
+  if (canPlaceEntityInCollection(entityType, collectionType)) {
+    return true;
+  }
+
+  if (below && below.includes(entityType)) {
+    return true;
+  }
+
+  return false;
+}
+
 export function isPreviewShown(item: CollectionItem) {
   return isPreviewEnabled(item) && isFullyParameterized(item);
 }
