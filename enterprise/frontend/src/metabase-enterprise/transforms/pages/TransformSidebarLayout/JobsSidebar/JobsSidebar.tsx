@@ -12,7 +12,7 @@ import { Button, Flex, Icon, Tooltip } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
 import { SidebarListItem } from "metabase-enterprise/transforms/pages/TransformSidebarLayout/SidebarListItem/SidebarListItem";
 
-import { ListEmptyState } from "../ListEmptyState";
+import { ListEmptyState } from "../../../components/ListEmptyState";
 import { SidebarContainer } from "../SidebarContainer";
 import { SidebarList } from "../SidebarList";
 import { SidebarLoadingState } from "../SidebarLoadingState";

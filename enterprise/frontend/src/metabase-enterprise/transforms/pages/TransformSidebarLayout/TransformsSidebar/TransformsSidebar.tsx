@@ -18,8 +18,8 @@ import { SidebarListItem } from "metabase-enterprise/transforms/pages/TransformS
 import { TransformListItem } from "metabase-enterprise/transforms/pages/TransformSidebarLayout/SidebarListItem/TransformListItem";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
 
+import { ListEmptyState } from "../../../components/ListEmptyState";
 import { CreateTransformMenu } from "../CreateTransformMenu";
-import { ListEmptyState } from "../ListEmptyState";
 import { SidebarContainer } from "../SidebarContainer";
 import { SidebarList } from "../SidebarList";
 import { SidebarLoadingState } from "../SidebarLoadingState";
