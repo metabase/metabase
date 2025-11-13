@@ -18,10 +18,10 @@ import {
 
 import { useSelection } from "../../../contexts/SelectionContext";
 import type { RouteParams } from "../../../types";
-import type { ChangeOptions, TreePath } from "../types";
+import type { ChangeOptions, FilterState, TreePath } from "../types";
 import { getFiltersCount } from "../utils";
 
-import { FilterPopover, type FilterState } from "./FilterPopover";
+import { FilterPopover } from "./FilterPopover";
 import { PublishModelsModal } from "./PublishModelsModal";
 import { SearchNew } from "./SearchNew";
 import { Tree } from "./Tree";

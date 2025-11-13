@@ -11,8 +11,8 @@ import { DataModelContext } from "../../../DataModelContext";
 import { useSelection } from "../../../contexts/SelectionContext";
 import type { RouteParams } from "../../../types";
 import { getUrl, parseRouteParams } from "../../../utils";
+import type { FilterState } from "../types";
 
-import type { FilterState } from "./FilterPopover";
 import S from "./Results.module.css";
 
 interface SearchNewProps {
