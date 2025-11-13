@@ -8,7 +8,7 @@ export const libraryApi = EnterpriseApi.injectEndpoints({
     createLibrary: builder.mutation<Collection, void>({
       query: () => ({
         method: "POST",
-        url: "/api/ee/library/create",
+        url: "/api/ee/library",
       }),
       invalidatesTags: [listTag("collection")],
     }),
