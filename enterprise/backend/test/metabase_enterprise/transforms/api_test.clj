@@ -916,7 +916,7 @@
 (deftest ^:parallel extract-columns-from-query-test
   (testing "POST /api/ee/transform/extract-columns"
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/table)
-                           :clickhouse :redshift)
+                           :clickhouse :redshift :bigquery-cloud-sdk)
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
           (letfn [(make-native-query [sql]

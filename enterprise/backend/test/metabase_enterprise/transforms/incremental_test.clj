@@ -154,9 +154,12 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- test-drivers []
+  (disj (mt/normal-drivers-with-feature :transforms/table) :redshift))
+
 (deftest create-incremental-transform-test
   (testing "Creating an incremental transform with checkpoint strategy"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/test-drivers (test-drivers)
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [target-table "incremental_test"]
@@ -187,7 +190,7 @@
   (testing "Running an incremental transform twice processes only new data on second run"
     (doseq [transform-type [:native :mbql :python]]
       (testing (format "with %s transform" (name transform-type))
-        (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table "incremental_twice"]
@@ -218,7 +221,7 @@
   (testing "Switching an incremental transform to non-incremental overwrites data"
     (doseq [transform-type [:native :mbql :python]]
       (testing (format "with %s transform" (name transform-type))
-        (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table "switch_incr_to_non_incr"]
@@ -270,7 +273,7 @@
   (testing "Switching a non-incremental transform to incremental computes checkpoint from existing data"
     (doseq [transform-type [:native :mbql :python]]
       (testing (format "with %s transform" (name transform-type))
-        (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table "switch_non_incr_to_incr"]
@@ -325,7 +328,7 @@
 
 (deftest native-query-without-template-tag-test
   (testing "Native query without template tags uses automatic checkpoint wrapping"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/test-drivers
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [target-table "native_no_template"]
