@@ -105,7 +105,7 @@ const documentsSlice = createSlice({
     createDraftCard: (
       state,
       action: PayloadAction<{
-        originalCard: Card;
+        originalCard: Card | undefined;
         modifiedData: Partial<Card>;
         draftId: number;
       }>,
@@ -115,7 +115,7 @@ const documentsSlice = createSlice({
         ...originalCard,
         ...modifiedData,
         id: draftId,
-      };
+      } as Card;
     },
     clearDraftCards: (state) => {
       state.draftCards = {};
