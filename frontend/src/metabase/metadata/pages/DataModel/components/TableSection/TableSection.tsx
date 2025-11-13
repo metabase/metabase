@@ -28,6 +28,7 @@ import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import { DataModelContext } from "../../DataModelContext";
 import { getUrl } from "../../utils";
+import { ResponsiveButton } from "../ResponsiveButton";
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 
 import { TableFieldList } from "./TableFieldList";
@@ -249,10 +250,11 @@ const TableSectionBase = ({
               )}
 
               {!isSorting && hasFields && (
-                <Button
-                  leftSection={<Icon name="sort_arrows" />}
+                <ResponsiveButton
+                  icon="sort_arrows"
+                  showLabel
                   onClick={() => setIsSorting(true)}
-                >{t`Sorting`}</Button>
+                >{t`Sorting`}</ResponsiveButton>
               )}
 
               {isSorting && (
@@ -263,12 +265,11 @@ const TableSectionBase = ({
               )}
 
               {isSorting && (
-                <Button
-                  leftSection={<Icon name="check" />}
+                <ResponsiveButton
+                  icon="check"
+                  showLabel
                   onClick={() => setIsSorting(false)}
-                  variant="filled"
-                  h="100%"
-                >{t`Done`}</Button>
+                >{t`Done`}</ResponsiveButton>
               )}
             </Group>
           </Group>

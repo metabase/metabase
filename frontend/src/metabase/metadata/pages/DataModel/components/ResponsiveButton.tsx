@@ -1,5 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
 import { useLayoutEffect } from "react";
+import _ from "underscore";
 
 import {
   Button,
@@ -15,7 +16,7 @@ interface Props extends Omit<ButtonProps, "leftSection"> {
   icon: IconName;
   showLabel: boolean;
   showIconWithLabel?: boolean;
-  onRequestWidth: (width: number) => void;
+  onRequestWidth?: (width: number) => void;
 }
 
 export const ResponsiveButton = ({
@@ -23,7 +24,7 @@ export const ResponsiveButton = ({
   icon,
   showLabel,
   showIconWithLabel = true,
-  onRequestWidth,
+  onRequestWidth = _.noop,
   ...props
 }: Props) => {
   const { ref: measureRef, width: desiredWidth } = useElementSize();
