@@ -220,6 +220,10 @@ const TableSectionBase = ({
         </TableSectionGroup>
       </Box>
 
+      {table.published_models != null && table.published_models.length > 0 && (
+        <TableModels table={table} />
+      )}
+
       <Box px="lg">
         <Stack gap={12}>
           <Group
@@ -292,10 +296,6 @@ const TableSectionBase = ({
           )}
         </Stack>
       </Box>
-
-      {table.published_models != null && table.published_models.length > 0 && (
-        <TableModels table={table} />
-      )}
 
       <PublishModelsModal
         tables={new Set([table.id])}
