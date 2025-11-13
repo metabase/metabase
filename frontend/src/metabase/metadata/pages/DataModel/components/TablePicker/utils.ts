@@ -20,6 +20,7 @@ export function hasChildren(type: ItemType): boolean {
 
 export function getUrl(baseUrl: string, value: TreePath) {
   return getUrl_(baseUrl, {
+    fieldId: undefined,
     tableId: undefined,
     databaseId: undefined,
     schemaName: undefined,

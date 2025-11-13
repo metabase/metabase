@@ -28,9 +28,6 @@ export function ModelingSectionLayout({
   const collectionId = Urls.extractCollectionId(params?.collectionId);
   const snippetId = Urls.extractEntityId(params?.snippetId);
   const isGlossaryActive = location.pathname === Urls.dataStudioGlossary();
-  const isSegmentsActive = location.pathname.startsWith(
-    Urls.dataStudioSegments(),
-  );
 
   return (
     <SectionLayout title={<SectionTitle title={t`Modeling`} />}>
@@ -39,7 +36,6 @@ export function ModelingSectionLayout({
           selectedCollectionId={collectionId}
           selectedSnippetId={snippetId}
           isGlossaryActive={isGlossaryActive}
-          isSegmentsActive={isSegmentsActive}
         />
         <Box flex={1}>{children}</Box>
       </Flex>

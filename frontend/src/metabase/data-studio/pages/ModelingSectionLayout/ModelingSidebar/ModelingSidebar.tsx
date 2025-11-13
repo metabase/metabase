@@ -13,14 +13,12 @@ type ModelingSidebarProps = {
   selectedCollectionId: CollectionId | undefined;
   selectedSnippetId: NativeQuerySnippetId | undefined;
   isGlossaryActive: boolean;
-  isSegmentsActive: boolean;
-}
+};
 
 export function ModelingSidebar({
   selectedCollectionId,
   selectedSnippetId,
   isGlossaryActive,
-  isSegmentsActive,
 }: ModelingSidebarProps) {
   const { data: databaseData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery();
@@ -50,7 +48,6 @@ export function ModelingSidebar({
       selectedCollectionId={selectedCollectionId}
       selectedSnippetId={selectedSnippetId}
       isGlossaryActive={isGlossaryActive}
-      isSegmentsActive={isSegmentsActive}
       hasDataAccess={hasDataAccess}
       hasNativeWrite={hasNativeWrite}
     />

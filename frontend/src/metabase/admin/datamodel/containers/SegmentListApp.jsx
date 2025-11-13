@@ -12,7 +12,6 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import Segments from "metabase/entities/segments";
 import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 
 class SegmentListAppInner extends Component {
   render() {
@@ -25,7 +24,7 @@ class SegmentListAppInner extends Component {
       >
         <div className={cx(CS.flex, CS.py2)}>
           {tableSelector}
-          <Link to={Urls.newDataStudioSegment()} className={CS.mlAuto}>
+          <Link to="/admin/datamodel/segment/create" className={CS.mlAuto}>
             <Button primary>{t`New segment`}</Button>
           </Link>
         </div>
