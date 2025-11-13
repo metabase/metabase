@@ -9,8 +9,9 @@ export const useDefineSdkBundleVersion = () => {
 
   useEffect(() => {
     if (
+      !sdkBundleVersion ||
       window.METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO?.version !==
-      EMBEDDING_SDK_BUNDLE_UNKNOWN_VERSION
+        EMBEDDING_SDK_BUNDLE_UNKNOWN_VERSION
     ) {
       return;
     }
