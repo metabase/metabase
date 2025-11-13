@@ -49,3 +49,23 @@
   :encryption :no
   :export?    false
   :doc        false)
+
+(defsetting metabot-slack-signing-secret
+  (deferred-tru "Signing secret for verifying requests from the Metabot Slack app")
+  :type       :string
+  :visibility :admin
+  :encryption :when-encryption-key-set
+  :sensitive? true
+  :feature    :metabot-v3
+  :export?    false
+  :audit      :no-value)
+
+(defsetting metabot-slack-bot-token
+  (deferred-tru "Bot user OAuth token for the Metabot Slack app")
+  :type       :string
+  :visibility :admin
+  :encryption :when-encryption-key-set
+  :sensitive? true
+  :feature    :metabot-v3
+  :export?    false
+  :audit      :no-value)

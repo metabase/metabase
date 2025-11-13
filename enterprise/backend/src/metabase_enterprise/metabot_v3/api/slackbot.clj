@@ -1,49 +1,34 @@
 (ns metabase-enterprise.metabot-v3.api.slackbot
   "`/api/ee/metabot-v3/slack` routes"
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.mac :as mac]
    [cheshire.core :as json]
    [clj-http.client :as http]
-   [clojure.string :as str]
+   [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase.api.macros :as api.macros]
    [metabase.permissions.core :as perms]
-   [metabase.system.core :as system]
-   [metabase.util.malli.schema :as ms])
-  (:import
-   [javax.crypto Mac]
-   [javax.crypto.spec SecretKeySpec]))
+   [metabase.system.core :as system]))
 
-;; TODO: move these into some kind of private setting
-(def signing-secret
-  "Secret to verify requests are from Slack"
-  "TEMP")
+(set! *warn-on-reflection* true)
 
-(def bot-token
-  "Token to send messages back to Slack"
-  "TEMP")
-
-(def ack-msg
-  "Acknowledgement payload"
-  {:status 200
-   :headers {"Content-Type" "text/plain"}
-   :body "ok"})
+;; ------------------ VALIDATING INCOMING SLACK REQUEST --------------------
 
 (defn- hmac-sha256
   "Generate HMAC-SHA256 signature"
   [key message]
-  (let [mac (Mac/getInstance "HmacSHA256")
-        secret-key (SecretKeySpec. (.getBytes ^String key "UTF-8") "HmacSHA256")]
-    (.init mac secret-key)
-    (->> (.doFinal mac (.getBytes ^String message "UTF-8"))
-         (map #(format "%02x" (bit-and % 0xff)))
-         (apply str))))
+  (-> (mac/hash message {:key key :alg :hmac+sha256})
+      codecs/bytes->hex))
 
 (defn- verify-slack-signature
   "Verify that the request came from Slack using signature verification"
   [request-body timestamp slack-signature]
-  (let [base-string (str "v0:" timestamp ":" request-body)
-        computed-hash (hmac-sha256 signing-secret base-string)
-        expected-signature (str "v0=" computed-hash)]
-    (= expected-signature slack-signature)))
+  (if-let [signing-secret (metabot.settings/metabot-slack-signing-secret)]
+    (let [message (str "v0:" timestamp ":" request-body)
+          computed-signature (hmac-sha256 signing-secret message)
+          expected-signature (str "v0=" computed-signature)]
+      (= expected-signature slack-signature))
+    false))
 
 (defn- verify-request-timestamp
   "Verify request timestamp to prevent replay attacks"
@@ -54,17 +39,35 @@
     ;; Allow 5 minutes tolerance
     (<= time-diff 300)))
 
+(defn- verify-slack-request
+  "Verify that the request came from Slack"
+  [{:keys [headers body]}]
+  (let [slack-signature (get headers "x-slack-signature")
+        timestamp (get headers "x-slack-request-timestamp")
+        raw-body (if (string? body) body (str body))]
+    (and slack-signature
+         timestamp
+         (verify-request-timestamp timestamp)
+         (verify-slack-signature raw-body timestamp slack-signature))))
+
+;; ------------------ SLACK CLIENT --------------------
+
+(comment
+  (hmac-sha256 (metabot.settings/metabot-slack-signing-secret) (str "v0:" "timestamp" ":" "request-body")))
+
 (defn send-message
   "Send a Slack message"
-  [channel text]
+  [client channel text]
   (try
     (http/post "https://slack.com/api/chat.postMessage"
-               {:headers {"Authorization" (str "Bearer " bot-token)}
+               {:headers {"Authorization" (str "Bearer " (:bot-token client))}
                 :content-type :json
                 :form-params {:channel channel :text text}})
     (catch Exception e
       (println "Error sending message to Slack:" (.getMessage e))
       nil)))
+
+;; ---------------- MANFIEST ENDPOINT ---------------
 
 (defn- slackbot-manifest [base-url]
   {"display_information" {"name" "Metabot"
@@ -100,11 +103,14 @@
                "socket_mode_enabled" false
                "token_rotation_enabled" false}})
 
+;; TODO: add auth middleware + check that user has admin settings access
 (api.macros/defendpoint :get "/manifest"
   "Returns the YAML manifest file that should be used to bootstrap new Slack apps"
   []
   (perms/check-has-application-permission :setting)
   (slackbot-manifest (system/site-url)))
+
+;; ------------------------- EVENT HANDLING ENDPOINT ------------------------------
 
 (defn- handle-url-verification
   "Respond to a url_verification request (docs: https://docs.slack.dev/reference/events/url_verification)"
@@ -124,26 +130,29 @@
          (or has-text has-files)
          (not is-bot-message))))
 
-;; TODO: this should return a 200 without a body and kick off work that issues a reply
+(def ack-msg
+  "Acknowledgement payload"
+  {:status 200
+   :headers {"Content-Type" "text/plain"}
+   :body "ok"})
+
+(defn- process-user-message
+  "Resond to an incoming user slack message"
+  [event]
+  (let [client {:bot-token (metabot.settings/metabot-slack-bot-token)}]
+    (send-message client (:channel event) "Hello from Clojure")))
+
 (defn- handle-event-callback
   "Respond to an event_callback request (docs: TODO)"
   [payload]
   (let [event (:event payload)]
     (when (user-message? event)
-      (send-message (:channel event) "Hello from Clojure"))
+      ;; we must respond to slack w/ a 200 within 3 seconds
+      ;; otherwise slack will retry their request
+      (future (process-user-message event)))
     ack-msg))
 
-(defn- verify-slack-request
-  "Verify that the request came from Slack"
-  [{:keys [headers body]}]
-  (let [slack-signature (get headers "x-slack-signature")
-        timestamp (get headers "x-slack-request-timestamp")
-        raw-body (if (string? body) body (str body))]
-    (and slack-signature
-         timestamp
-         (verify-request-timestamp timestamp)
-         (verify-slack-signature raw-body timestamp slack-signature))))
-
+;; TODO: add auth middleware
 (api.macros/defendpoint :post "/events"
   "Respond to activities in Slack"
   [_route-params
@@ -179,8 +188,8 @@
          :headers {"Content-Type" "text/plain"}
          :body "Unauthorized: Missing or invalid signature"}))))
 
+;; ----------------------- ROUTES --------------------------
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3/slack` routes."
   (api.macros/ns-handler *ns*))
-
-;; and is there really no way to get the original untouched request from our defendpoint tool?
