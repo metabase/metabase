@@ -24,11 +24,11 @@ Type `/` in your document to see available commands:
 
 - **Ask Metabot** to chat with [Metabot](../ai/metabot.md) in the document.
 - **Chart** to insert a table or chart from an existing question or model, or create a new question directly in the document. You can't add dashboards or other documents, but you can mention them (see the next section).
-- **Link**. You can mention other items in your Metabase.
+- **Link** to mention other items in your Metabase.
 
 ## Mention items with `@`
 
-You can type `@` to mention items from your Metabase. (The mentions get a fancy little icon next to them).
+You can type `@` to mention items from your Metabase (mentions get a fancy little icon next to them).
 
 ## Add charts to documents
 
@@ -54,7 +54,7 @@ To enter the full-screen editor for a question, click on the question's title.
 
 When you add a chart from a collection, Metabase creates a copy in the document. The original question remains in the collection. Changes to one copy won't affect the other; they're independent.
 
-If however, you delete the document's copy, that copy is permanently deleted. It can't be recovered from the [trash](../exploration-and-organization/delete-and-restore.md).
+If you delete the document's copy, that copy is permanently deleted and can't be recovered from the [trash](../exploration-and-organization/delete-and-restore.md).
 
 ### Charts created in documents only exist in the document
 
@@ -115,7 +115,7 @@ To edit a link:
 3. Update the URL.
 4. Click the **check icon** to save, or the **trash icon** to remove the link entirely.
 
-To edit the link's visible text, simple edit the text in the document itself.
+To edit the link's visible text, edit the text in the document itself.
 
 ## Commenting on documents
 
