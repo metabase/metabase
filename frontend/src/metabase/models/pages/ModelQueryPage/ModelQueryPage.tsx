@@ -6,7 +6,6 @@ import { t } from "ttag";
 import { useUpdateCardMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PaneHeaderActions } from "metabase/data-studio/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -21,6 +20,7 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
+import { PaneHeaderActions } from "../../../data-studio/common/PaneHeader";
 import { ModelHeader } from "../../components/ModelHeader";
 import { ModelQueryEditor } from "../../components/ModelQueryEditor";
 import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";

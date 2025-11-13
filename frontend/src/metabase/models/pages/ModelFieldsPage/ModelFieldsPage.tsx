@@ -11,13 +11,13 @@ import {
 } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PaneHeaderActions } from "metabase/data-studio/components/PaneHeader";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Center, Flex } from "metabase/ui";
 import type { Card, Field } from "metabase-types/api";
 
+import { PaneHeaderActions } from "../../../data-studio/common/PaneHeader";
 import { ModelHeader } from "../../components/ModelHeader";
 import { useLoadCardWithMetadata } from "../../hooks/use-load-card-with-metadata";
 import type { FieldOverrides } from "../../types";

@@ -2,10 +2,12 @@ import type { Location } from "history";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import {
+  SectionLayout,
+  SectionTitle,
+} from "metabase/data-studio/app/components/SectionLayout";
 import * as Urls from "metabase/lib/urls";
 import { Box, Flex } from "metabase/ui";
-
-import { SectionLayout, SectionTitle } from "../../components/SectionLayout";
 
 import { ModelingSidebar } from "./ModelingSidebar";
 

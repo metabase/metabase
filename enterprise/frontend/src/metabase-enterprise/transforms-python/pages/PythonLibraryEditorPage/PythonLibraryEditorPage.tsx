@@ -4,10 +4,6 @@ import { t } from "ttag";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import {
-  PaneHeader,
-  PanelHeaderTitle,
-} from "metabase/data-studio/components/PaneHeader";
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import type * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -17,6 +13,10 @@ import {
   useUpdatePythonLibraryMutation,
 } from "metabase-enterprise/api/python-transform-library";
 
+import {
+  PaneHeader,
+  PanelHeaderTitle,
+} from "../../../../../../../frontend/src/metabase/data-studio/common/PaneHeader";
 import { PythonEditor } from "../../components/PythonEditor";
 
 import S from "./PythonLibraryEditorPage.module.css";

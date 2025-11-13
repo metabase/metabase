@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { SectionLayout, SectionTitle } from "../../components/SectionLayout";
+import {
+  SectionLayout,
+  SectionTitle,
+} from "metabase/data-studio/app/components/SectionLayout";
 
 type DependenciesSectionLayoutProps = {
   children?: ReactNode;

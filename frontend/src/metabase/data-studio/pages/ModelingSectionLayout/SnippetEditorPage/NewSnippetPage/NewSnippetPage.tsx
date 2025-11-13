@@ -10,16 +10,17 @@ import { CodeMirror } from "metabase/common/components/CodeMirror";
 import EditableText from "metabase/common/components/EditableText";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useToast } from "metabase/common/hooks";
-import {
-  PaneHeader,
-  PaneHeaderActions,
-  PaneHeaderInput,
-} from "metabase/data-studio/components/PaneHeader";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { Box, Flex, Stack } from "metabase/ui";
 import type { RegularCollectionId } from "metabase-types/api";
+
+import {
+  PaneHeader,
+  PaneHeaderActions,
+  PaneHeaderInput,
+} from "../../../../common/PaneHeader";
 
 import S from "./NewSnippetPage.module.css";
 

@@ -7,7 +7,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Box, Center, Flex } from "metabase/ui";
 
-import { PaneHeader, PanelHeaderTitle } from "../../../components/PaneHeader";
+import { PaneHeader, PanelHeaderTitle } from "../../../common/PaneHeader";
 
 import { ModelingCollectionEmptyState } from "./ModelingCollectionEmptyState";
 import S from "./ModelingCollectionView.module.css";

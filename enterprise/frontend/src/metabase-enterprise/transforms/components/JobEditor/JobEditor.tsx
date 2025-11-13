@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 
+import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
+
 import {
   PaneHeader,
   PaneHeaderInput,
-} from "metabase/data-studio/components/PaneHeader";
-import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
-
+} from "../../../../../../../frontend/src/metabase/data-studio/common/PaneHeader";
 import { NAME_MAX_LENGTH } from "../../constants";
 import { ColumnLayout, ColumnLayoutBody } from "../ColumnLayout";
 

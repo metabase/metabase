@@ -14,10 +14,10 @@ import { EntityCreationInfo } from "metabase/common/components/EntityCreationInf
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
-import { PaneHeaderActions } from "metabase/data-studio/components/PaneHeader";
 import * as Urls from "metabase/lib/urls";
 import { Box, Center, Flex, Stack } from "metabase/ui";
 
+import { PaneHeaderActions } from "../../../../common/PaneHeader";
 import { SnippetDescriptionSection } from "../SnippetDescriptionSection";
 import { SnippetHeader } from "../SnippetHeader";
 

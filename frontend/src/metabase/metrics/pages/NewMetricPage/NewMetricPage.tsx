@@ -7,11 +7,6 @@ import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import {
-  PaneHeader,
-  PaneHeaderActions,
-  PaneHeaderInput,
-} from "metabase/data-studio/components/PaneHeader";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getResultMetadata } from "metabase/models/utils";
@@ -21,6 +16,11 @@ import { Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
 
+import {
+  PaneHeader,
+  PaneHeaderActions,
+  PaneHeaderInput,
+} from "../../../data-studio/common/PaneHeader";
 import { MetricQueryEditor } from "../../components/MetricQueryEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
 import { getValidationResult } from "../../utils";

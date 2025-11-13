@@ -1,6 +1,6 @@
 import { type ReactNode, useContext, useLayoutEffect } from "react";
 
-import { DataStudioContext } from "metabase/data-studio/contexts/DataStudioContext";
+import { DataStudioContext } from "metabase/data-studio/app/contexts/DataStudioContext";
 import * as Urls from "metabase/lib/urls";
 import { Box, Flex } from "metabase/ui";
 

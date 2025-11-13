@@ -4,15 +4,16 @@ import { t } from "ttag";
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
+import * as Urls from "metabase/lib/urls";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import type { NativeQuerySnippet } from "metabase-types/api";
+
 import {
   PaneHeader,
   PaneHeaderInput,
   type PaneHeaderTab,
   PaneHeaderTabs,
-} from "metabase/data-studio/components/PaneHeader";
-import * as Urls from "metabase/lib/urls";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import type { NativeQuerySnippet } from "metabase-types/api";
+} from "../../../../common/PaneHeader";
 
 const SNIPPET_NAME_MAX_LENGTH = 254;
 

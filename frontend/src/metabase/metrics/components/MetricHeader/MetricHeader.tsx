@@ -3,13 +3,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useUpdateCardMutation } from "metabase/api";
-import {
-  PaneHeader,
-  PaneHeaderInput,
-  type PaneHeaderTab,
-  PaneHeaderTabs,
-  PanelHeaderTitle,
-} from "metabase/data-studio/components/PaneHeader";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -20,6 +13,13 @@ import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";
 
+import {
+  PaneHeader,
+  PaneHeaderInput,
+  type PaneHeaderTab,
+  PaneHeaderTabs,
+  PanelHeaderTitle,
+} from "../../../data-studio/common/PaneHeader";
 import { NAME_MAX_LENGTH } from "../../constants";
 
 type MetricHeaderProps = {

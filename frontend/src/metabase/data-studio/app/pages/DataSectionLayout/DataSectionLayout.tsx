@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import {
+  SectionLayout,
+  SectionTitle,
+} from "metabase/data-studio/app/components/SectionLayout";
 import * as Urls from "metabase/lib/urls";
 import { DataModelContext } from "metabase/metadata/pages/DataModel/DataModelContext";
-
-import { SectionLayout, SectionTitle } from "../../components/SectionLayout";
 
 type DataSectionLayoutProps = {
   children?: ReactNode;

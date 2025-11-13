@@ -15,9 +15,10 @@ import {
 } from "metabase/plugins";
 import type { State } from "metabase-types/store";
 
-import { DataSectionLayout } from "./pages/DataSectionLayout";
-import { DataStudioLayout } from "./pages/DataStudioLayout";
-import { DependenciesSectionLayout } from "./pages/DependenciesSectionLayout";
+import { DataSectionLayout } from "./app/pages/DataSectionLayout";
+import { DataStudioLayout } from "./app/pages/DataStudioLayout";
+import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
+import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { ModelingSectionLayout } from "./pages/ModelingSectionLayout";
 import { ModelingCollectionView } from "./pages/ModelingSectionLayout/ModelingCollectionView";
 import { ModelingEmptyPage } from "./pages/ModelingSectionLayout/ModelingEmptyPage";
@@ -27,7 +28,6 @@ import {
   NewSnippetPage,
   SnippetDependenciesPage,
 } from "./pages/ModelingSectionLayout/SnippetEditorPage";
-import { TransformsSectionLayout } from "./pages/TransformsSectionLayout";
 
 export function getDataStudioRoutes(
   store: Store<State>,
