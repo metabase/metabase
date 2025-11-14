@@ -59,11 +59,11 @@ databaseChangeLog:
       comment: Add index for report_card.published_table_id
       changes:
         - createIndex:
-          tableName: report_card
-          indexName: idx_report_card_published_table_id
-          columns:
-            - column:
-                name: published_table_id
+            tableName: report_card
+            indexName: idx_report_card_published_table_id
+            columns:
+              - column:
+                  name: published_table_id
 
   - changeSet:
       id: v58.2025-11-10T14:39:02
