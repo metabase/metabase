@@ -446,7 +446,7 @@
   `(do-with-indexable-documents! (fn [] ~@body)))
 
 (defn index-all!
-  "Run indexer synchonously until we've exhausted polling all documents"
+  "Run indexer synchronously until we've exhausted polling all documents"
   []
   (let [metadata-row   {:indexer_last_poll Instant/EPOCH
                         :indexer_last_seen Instant/EPOCH}

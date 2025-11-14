@@ -3,10 +3,13 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.search :as search]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search-core]
    [metabase.search.engine :as search.engine]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -416,62 +419,52 @@
             (is (= ["Bookmarked" "Regular"] (query)))
             (is (= ["Regular" "Bookmarked"] (query {:bookmarked -1})))))))))
 
-(deftest join-with-or-test
-  (testing "search combines results with OR logic when join-with-or? is true"
-    (mt/with-test-user :rasta
-      (search.tu/with-temp-index-table
-        (mt/with-temp [:model/Dashboard  {id-1 :id}  {:name "f00b4r"}
-                       :model/Dashboard  {id-2 :id}  {:name "b4rf00"}
-                       :model/Dashboard  {id-3 :id}  {:name "quixotic"}
-                       :model/Dashboard  {id-4 :id}  {:name "ancillary"}]
-          (let [base-query   {:term-queries     ["f00b4r" "b4rf00"]
-                             ;; Not sure if semantic search is always active for this test in CI
-                             ;; TODO (Chris 2025-11-11) Make sure this works with actual semantic disjunction
-                              :semantic-queries (if (search.engine/supported-engine? :search.engine/semantic)
-                                                  ["unrealistic" "adjunct"]
-                                                  ["quixotic" "ancillary"])}
-                test-entity? (comp #{id-1 id-2 id-3 id-4} :id)
-                query        (fn [join-with-or?]
-                               (->> (search/search (assoc base-query :join-with-or? join-with-or?))
-                                    (filter test-entity?)
-                                    (map :name)))]
-            (doseq [join-with-or? [false true]]
-              (is (= #{"f00b4r" "b4rf00" "quixotic" "ancillary"}
-                     (set (query join-with-or?)))))))))))
+(defmacro with-semantic-search-if-available! [& body]
+  `(mt/with-premium-features #{:semantic-search}
+     (when (search.engine/supported-engine? :search.engine/semantic)
+       (with-open [_# (semantic.tu/open-temp-index!)]
+         (semantic.tu/cleanup-index-metadata! (semantic.env/get-pgvector-datasource!)
+                                              semantic.tu/mock-index-metadata)
+         (semantic.tu/with-test-db! {:mode :mock-indexed}
+           ;; Ensure the temporary items we create within the test are indexed
+           (binding [search.ingestion/*disable-updates* false]
+             ~@body))))))
+
+(defmacro with-and-without-semantic-search! [& body]
+  `(do ~@body (with-semantic-search-if-available! ~@body)))
 
 (deftest non-semantic-keywords-test
-  (testing "search returns only exact matches for keyword terms when non-semantic-keywords? is true"
+  (testing "search returns only exact matches for keyword terms when {:non-semantic-keywords? true}\n"
     (mt/with-test-user :rasta
-      (search.tu/with-temp-index-table
-       ;; Not sure if semantic search is active for this test in CI
-       ;; TODO (Chris 2025-11-11) Make sure this works with actual semantic matching
-        (let [semantic-support? (search.engine/supported-engine? :search.engine/semantic)]
-          (mt/with-temp [:model/Dashboard {id-1 :id} {:name "belligerent"}
-                         :model/Dashboard {id-2 :id} {:name "bellicose"}
-                         :model/Dashboard {id-3 :id} {:name "quixotic"}
-                         :model/Dashboard {id-4 :id} {:name "ancillary"}]
-            (let [base-query   {:term-queries     (if semantic-support?
-                                                    ["combative" "quarrelsome"]
-                                                    ["belligerent" "bellicose"])
-                               ;; Not sure if semantic search is always active for this test in CI
-                               ;; TODO (Chris 2025-11-11) Make sure this works with actual semantic disjunction
-                                :semantic-queries (if semantic-support?
-                                                    ["unrealistic" "adjunct"]
-                                                    ["quixotic" "ancillary"])}
-                  test-entity? (comp #{id-1 id-2 id-3 id-4} :id)
-                  query        (fn [join-with-or?]
-                                 (->> (search/search (assoc base-query
-                                                            :experimental-opts
-                                                            {:join-with-or?          join-with-or?
-                                                             :non-semantic-keywords? true}))
-                                      (filter test-entity?)
-                                      (map :name)))]
+      (with-and-without-semantic-search!
+        (search.tu/with-temp-index-table
+          (let [semantic-support? (search.engine/supported-engine? :search.engine/semantic)]
+          ;; we expect these to fail matching via keyword search (even though they match semantically)
+            (mt/with-temp [:model/Dashboard {id-1 :id} {:name "belligerent"}
+                           :model/Dashboard {id-2 :id} {:name "bellicose"}
+                         ;; these we expect to match successfully via semantic search
+                           :model/Dashboard {id-3 :id} {:name "quixotic"}
+                           :model/Dashboard {id-4 :id} {:name "ancillary"}
+                         ;; these we
+                           :model/Dashboard {id-5 :id} {:name "baseline"}]
+              (when semantic-support?
+                (semantic.tu/index-all!))
               (doseq [join-with-or? [false true]]
-                (testing (str "join-with-or? = " join-with-or? "\n")
-                  (testing (if semantic-support?
-                             "Semantic results are not returned for keyword terms"
-                             "Exact matches are returned for both keyword and semantic terms")
-                    (is (= (if semantic-support?
-                             #{"quixotic" "ancillary"}
-                             #{"belligerent" "bellicose" "quixotic" "ancillary"})
-                           (set (query join-with-or?))))))))))))))
+                (testing (str "{join-with-or? " join-with-or? "}\n")
+                  (let [base-query   {:term-queries     ["combative" "quarrelsome" "baseline"]
+                                      :semantic-queries (if semantic-support?
+                                                          ["unrealistic" "adjunct"]
+                                                          ["quixotic" "ancillary"])}
+                        test-entity? (comp #{id-1 id-2 id-3 id-4 id-5} :id)
+                        query        (fn [join-with-or?]
+                                       (->> (search/search (assoc base-query
+                                                                  :experimental-opts
+                                                                  {:join-with-or?          join-with-or?
+                                                                   :non-semantic-keywords? true}))
+                                            (filter test-entity?)
+                                            (map :name)))]
+                    (testing (if semantic-support?
+                               "Semantic results are not returned for keyword terms"
+                               "Exact matches are returned for both keyword and semantic terms")
+                      (is (= #{"quixotic" "ancillary" "baseline"}
+                             (set (query join-with-or?)))))))))))))))
