@@ -1,21 +1,22 @@
 ---
 name: docs-write
 description: Write documentation following Metabase's conversational, clear, and user-focused style. Use when creating or editing documentation files (markdown, MDX, etc.).
+allowed-tools: Read, Write, Grep, Bash, Glob
 ---
 
 # Documentation Writing Skill
 
 @./../\_shared/metabase-style-guide.md
 
-## When Writing Documentation
+## When writing documentation
 
-### Start Here
+### Start here
 
 1. **Who is this for?** Match complexity to audience. Don't oversimplify hard things or overcomplicate simple ones.
 2. **What do they need?** Get them to the answer fast. Nobody wants to be in docs longer than necessary.
 3. **What did you struggle with?** Those "dumb questions" you had? Answer them (without literally including the question).
 
-### Writing Process
+### Writing process
 
 **Draft:**
 
@@ -42,7 +43,7 @@ description: Write documentation following Metabase's conversational, clear, and
 - Run prettier on the file after making edits: `yarn prettier --write <file-path>`
 - This ensures consistent formatting across all documentation
 
-### Common Patterns
+### Common patterns
 
 **Instructions:**
 
@@ -73,7 +74,7 @@ Not: "(remember to run X before Y...)" buried in a paragraph.
 - "Check out the [SAML documentation](link)" ✅
 - "Read the docs [here](link)" ❌
 
-### Watch Out For
+### Watch out for
 
 - Describing tasks as "easy" (you don't know the reader's context)
 - Using "we" when talking about Metabase features (use "Metabase" or "it")
@@ -83,12 +84,11 @@ Not: "(remember to run X before Y...)" buried in a paragraph.
 - Code examples that don't work
 - Numbers that will become outdated
 
-### Quick Reference
+### Quick reference
 
 | Write This                 | Not This           |
 | -------------------------- | ------------------ |
 | people, companies          | users              |
-| Metabase can               | we can             |
 | summarize                  | aggregate          |
 | take a look at             | reference          |
 | can't, don't               | cannot, do not     |
