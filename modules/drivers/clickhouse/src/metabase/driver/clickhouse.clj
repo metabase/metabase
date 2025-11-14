@@ -326,7 +326,7 @@
                 ;; i.e. only do this if we don't have a non-nullable field to use as a primary key?
                 (sql.qp/format-honeysql driver {:raw "ORDER BY ()"})
                 ["AS"]
-                [sql-query sql-params]]
+                (cond-> [sql-query] (seq sql-params) (conj sql-params))]
         sql (str/join " " (map first pieces))]
     (into [sql] (mapcat rest) pieces)))
 
