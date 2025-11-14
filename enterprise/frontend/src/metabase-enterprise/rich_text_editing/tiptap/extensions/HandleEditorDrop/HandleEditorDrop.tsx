@@ -13,7 +13,7 @@ import { handleCardDropOnDocument } from "./DropHandlers/cardToDocument";
 import {
   type DroppedCardEmbedNodeData,
   cleanupFlexContainerNodes,
-  extractCardEmbed,
+  extractContainerSingleCardNode,
   getDroppedCardEmbedNodeData,
 } from "./utils";
 
@@ -53,7 +53,8 @@ export const HandleEditorDrop = Extension.create({
                 return handleCardDropToFlexContainer(cardEmbedInitialData);
               }
 
-              const targetCardEmbed = extractCardEmbed(dropToParent);
+              const targetCardEmbed =
+                extractContainerSingleCardNode(dropToParent);
               // Dropping on another cardEmbed
               if (
                 targetCardEmbed &&

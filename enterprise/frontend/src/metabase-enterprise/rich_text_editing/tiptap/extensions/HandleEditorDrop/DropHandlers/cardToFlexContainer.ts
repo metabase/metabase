@@ -6,7 +6,7 @@ import {
 } from "../../ResizeNode/ResizeNode";
 import {
   type DroppedCardEmbedNodeData,
-  extractCardEmbed,
+  extractContainerSingleCardNode,
   getCardEmbedDropSide,
   getTargetCardEmbedNode,
 } from "../utils";
@@ -56,7 +56,7 @@ export const handleCardDropToFlexContainer = (
     for (let i = 0; i < dropToParent.childCount; i++) {
       if (i !== sourceIndex) {
         const child = dropToParent.child(i);
-        const extractedChild = extractCardEmbed(child);
+        const extractedChild = extractContainerSingleCardNode(child);
         allChildren.push(extractedChild ? extractedChild : child);
       }
     }
@@ -190,7 +190,7 @@ export const handleCardDropToFlexContainer = (
     if (sourceNewChildren.length === 1) {
       // Only one card left in source - unwrap it from flexContainer
       const remainingChild = sourceNewChildren[0];
-      const remainingCardEmbed = extractCardEmbed(remainingChild);
+      const remainingCardEmbed = extractContainerSingleCardNode(remainingChild);
 
       if (remainingCardEmbed) {
         const wrappedRemainingCard = view.state.schema.nodes.resizeNode.create(

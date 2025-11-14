@@ -4,7 +4,10 @@ import {
   RESIZE_NODE_DEFAULT_HEIGHT,
   RESIZE_NODE_MIN_HEIGHT,
 } from "../../ResizeNode/ResizeNode";
-import { type DroppedCardEmbedNodeData, extractCardEmbed } from "../utils";
+import {
+  type DroppedCardEmbedNodeData,
+  extractContainerSingleCardNode,
+} from "../utils";
 
 export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
   const {
@@ -54,7 +57,8 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
       if (newChildren.length === 1) {
         // If only one card left, unwrap it from FlexContainer and wrap in resizeNode
         const remainingChild = newChildren[0];
-        const remainingCardEmbed = extractCardEmbed(remainingChild);
+        const remainingCardEmbed =
+          extractContainerSingleCardNode(remainingChild);
 
         if (remainingCardEmbed?.type.name === "supportingText") {
           // Only a SupportingText is left, remove the entire FlexContainer and its wrapper

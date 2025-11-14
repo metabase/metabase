@@ -2,7 +2,7 @@ import type { Node, ResolvedPos, Slice } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
 
 // Helper function to extract cardEmbed or supportingText from resizeNode wrapper
-export const extractCardEmbed = (node: Node): Node | null => {
+export const extractContainerSingleCardNode = (node: Node): Node | null => {
   if (node.type.name === "cardEmbed" || node.type.name === "supportingText") {
     return node;
   }
@@ -68,7 +68,7 @@ export const getTargetCardEmbedNode = (e: DragEvent, view: EditorView) => {
       // For cardEmbed, nodeAt works as expected
       const targetNode = view.state.doc.nodeAt(pos);
       if (targetNode) {
-        return extractCardEmbed(targetNode);
+        return extractContainerSingleCardNode(targetNode);
       }
     }
   }
@@ -100,7 +100,7 @@ export const getDroppedCardEmbedNodeData = (
   // Check if we're moving a cardEmbed or supportingText node
   if (slice.content.childCount === 1) {
     const droppedNode = slice.content.child(0);
-    const draggedNode = extractCardEmbed(droppedNode);
+    const draggedNode = extractContainerSingleCardNode(droppedNode);
 
     // Dropping a "cardEmbed" or "supportingText" node
     if (draggedNode && moved) {
@@ -161,7 +161,10 @@ export const findNodeParentAndPos = (
       return false;
     }
 
-    if (extractCardEmbed(node) === nodeToFind && node !== nodeToFind) {
+    if (
+      extractContainerSingleCardNode(node) === nodeToFind &&
+      node !== nodeToFind
+    ) {
       parentPos = pos;
       parent = node;
       return false;
