@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import { DataModelContext } from "metabase/metadata/pages/DataModel/DataModelContext";
+import { DataModelContext } from "metabase/metadata/pages/shared";
 
 import { SectionLayout, SectionTitle } from "../../components/SectionLayout";
 

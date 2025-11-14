@@ -14,6 +14,7 @@ import {
   SortableFieldList,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { ResponsiveButton } from "metabase/metadata/pages/shared/ResponsiveButton";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,
@@ -26,7 +27,6 @@ import {
 } from "metabase/ui";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
-import { ResponsiveButton } from "../../../DataModel/components";
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
 

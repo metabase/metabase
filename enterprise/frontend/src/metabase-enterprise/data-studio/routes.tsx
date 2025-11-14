@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 import { Route } from "metabase/hoc/Title";
 import * as Urls from "metabase/lib/urls";
-import { getDataStudioMetadataRoutes } from "metabase/metadata/routes";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -22,6 +21,7 @@ import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioModelingRoutes } from "./modeling/routes";
 import { getDataStudioModelRoutes } from "./models/routes";
+import { getDataStudioMetadataRoutes } from "./pages/DataModel/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
 
 export function getDataStudioRoutes(
