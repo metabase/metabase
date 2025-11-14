@@ -26,6 +26,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.secrets.core :as secret]
    [metabase.sync.core :as sync]
@@ -1323,3 +1324,63 @@
       :type/Integer            [:INTEGER]
       :type/Text               [:TEXT]
       :type/Time               [:TIME])))
+
+(deftest snowflake-string-filter-tests
+  (mt/test-driver :snowflake
+    (testing "contains"
+      (let [metadata-provider (mt/metadata-provider)
+            products (lib.metadata/table metadata-provider (mt/id :products))
+            products-category (lib.metadata/field metadata-provider (mt/id :products :category))
+            products-name (lib.metadata/field metadata-provider (mt/id :products :title))
+            products-id (lib.metadata/field metadata-provider (mt/id :products :id))
+            query (-> (lib/query metadata-provider products)
+                      (lib/filter (lib/contains products-category "get" {:case-sensitive false}))
+                      (lib/fields [products-id products-name products-category])
+                      (lib/order-by products-id :asc)
+                      (lib/limit 3))]
+        (testing "returns correct rows"
+          (is (= [[1 "Rustic Paper Wallet" "Gizmo"]
+                  [2 "Small Marble Shoes" "Doohickey"]
+                  [3 "Synergistic Granite Chair" "Doohickey"]]
+                 (mt/rows (qp/process-query query)))))
+        (testing "generates correct SQL"
+          (is (str/includes? (:query (qp.compile/compile-with-inline-parameters query))
+                             "CONTAINS(LOWER(\"PUBLIC\".\"PRODUCTS\".\"CATEGORY\"), LOWER('get')")))))
+    (testing "starts-with"
+      (let [metadata-provider (mt/metadata-provider)
+            products (lib.metadata/table metadata-provider (mt/id :products))
+            products-category (lib.metadata/field metadata-provider (mt/id :products :category))
+            products-name (lib.metadata/field metadata-provider (mt/id :products :title))
+            products-id (lib.metadata/field metadata-provider (mt/id :products :id))
+            query (-> (lib/query metadata-provider products)
+                      (lib/filter (lib/starts-with products-category "Gad" {:case-sensitive false}))
+                      (lib/fields [products-id products-name products-category])
+                      (lib/order-by products-id :asc)
+                      (lib/limit 3))]
+        (testing "returns correct rows"
+          (is (= [[5 "Enormous Marble Wallet" "Gadget"]
+                  [11 "Ergonomic Silk Coat" "Gadget"]
+                  [16 "Fantastic Wool Shirt" "Gadget"]]
+                 (mt/rows (qp/process-query query)))))
+        (testing "generates correct SQL"
+          (is (str/includes? (:query (qp.compile/compile-with-inline-parameters query))
+                             "STARTSWITH(LOWER(\"PUBLIC\".\"PRODUCTS\".\"CATEGORY\"), LOWER('Gad')")))))
+    (testing "ends-with"
+      (let [metadata-provider (mt/metadata-provider)
+            products (lib.metadata/table metadata-provider (mt/id :products))
+            products-category (lib.metadata/field metadata-provider (mt/id :products :category))
+            products-name (lib.metadata/field metadata-provider (mt/id :products :title))
+            products-id (lib.metadata/field metadata-provider (mt/id :products :id))
+            query (-> (lib/query metadata-provider products)
+                      (lib/filter (lib/ends-with products-category "mo" {:case-sensitive false}))
+                      (lib/fields [products-id products-name products-category])
+                      (lib/order-by products-id :asc)
+                      (lib/limit 3))]
+        (testing "returns correct rows"
+          (is (= [[1 "Rustic Paper Wallet" "Gizmo"]
+                  [4 "Rustic Concrete Bench" "Gizmo"]
+                  [13 "Aerodynamic Linen Coat" "Gizmo"]]
+                 (mt/rows (qp/process-query query)))))
+        (testing "generates correct SQL"
+          (is (str/includes? (:query (qp.compile/compile-with-inline-parameters query))
+                             "ENDSWITH(LOWER(\"PUBLIC\".\"PRODUCTS\".\"CATEGORY\"), LOWER('mo')")))))))
