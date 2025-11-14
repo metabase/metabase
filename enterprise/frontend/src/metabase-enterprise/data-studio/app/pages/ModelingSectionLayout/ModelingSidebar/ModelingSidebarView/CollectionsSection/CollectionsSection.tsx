@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 
+import { isLibraryCollection } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -31,7 +32,14 @@ export function CollectionsSection({
     () => (currentUser ? getCollectionTree(collections, currentUser) : []),
     [collections, currentUser],
   );
-  const initialExpandedIds = useMemo(() => ["root"], []);
+  const libraryExists = useMemo(
+    () => collections.some(isLibraryCollection),
+    [collections],
+  );
+  const initialExpandedIds = useMemo(
+    () => (libraryExists ? [] : ["root"]),
+    [libraryExists],
+  );
   const dispatch = useDispatch();
 
   const handleCollectionSelect = useCallback(

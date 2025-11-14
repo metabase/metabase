@@ -1,11 +1,17 @@
 import {
   type HTMLAttributes,
   type KeyboardEvent,
+  type MouseEvent,
   useCallback,
   useState,
 } from "react";
 
-import { Header, HeaderContainer, ToggleIcon } from "./CollapseSection.styled";
+import {
+  Header,
+  HeaderContainer,
+  HeaderContent,
+  ToggleIcon,
+} from "./CollapseSection.styled";
 
 type CollapseSectionProps = {
   children?: React.ReactNode;
@@ -18,6 +24,7 @@ type CollapseSectionProps = {
   iconPosition?: "left" | "right";
   iconSize?: number;
   onToggle?: (nextState: boolean) => void;
+  rightAction?: React.ReactNode;
 } & HTMLAttributes<HTMLDivElement>;
 
 const CollapseSection = ({
@@ -31,6 +38,7 @@ const CollapseSection = ({
   bodyClass,
   children,
   onToggle,
+  rightAction,
   ...props
 }: CollapseSectionProps) => {
   const [isExpanded, setIsExpanded] = useState(initialState === "expanded");
@@ -40,6 +48,13 @@ const CollapseSection = ({
     setIsExpanded(!isExpanded);
     onToggle?.(nextState);
   }, [isExpanded, onToggle]);
+
+  const handleRightActionClick = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      e.stopPropagation();
+    },
+    [],
+  );
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
@@ -68,10 +83,16 @@ const CollapseSection = ({
         className={headerClass}
         onClick={toggle}
         onKeyDown={onKeyDown}
+        hasRightAction={!!rightAction}
       >
-        {iconPosition === "left" && HeaderIcon}
-        <Header>{header}</Header>
-        {iconPosition === "right" && HeaderIcon}
+        <HeaderContent>
+          {iconPosition === "left" && HeaderIcon}
+          <Header>{header}</Header>
+          {iconPosition === "right" && HeaderIcon}
+        </HeaderContent>
+        {rightAction && (
+          <div onClick={handleRightActionClick}>{rightAction}</div>
+        )}
       </HeaderContainer>
       <div role="tabpanel">
         {isExpanded && <div className={bodyClass}>{children}</div>}

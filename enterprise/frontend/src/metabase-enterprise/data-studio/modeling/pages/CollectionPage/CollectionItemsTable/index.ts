@@ -1,2 +1,2 @@
 export * from "./CollectionItemsTable";
-export type { ModelingItem, ModelingItemsTableProps } from "./types";
+export type { ModelingItem } from "./types";
