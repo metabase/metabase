@@ -6,6 +6,41 @@ import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
 import { halfRoundToEven } from "../../shared/utils/scoring";
 
+// Helper function to parse score range filter (e.g., "0-78.6" -> {min: 0, max: 78.6})
+function parseScoreRange(rangeString: string | undefined): {
+  min: number;
+  max: number;
+} | null {
+  if (!rangeString || typeof rangeString !== "string") {
+    return null;
+  }
+
+  const trimmed = rangeString.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  // Match pattern: number-number (e.g., "0-78.6", "78.6-92.9")
+  const match = trimmed.match(/^(\d+\.?\d*)\s*-\s*(\d+\.?\d*)$/);
+  if (!match) {
+    return null; // Invalid format
+  }
+
+  const min = parseFloat(match[1]);
+  const max = parseFloat(match[2]);
+
+  if (isNaN(min) || isNaN(max)) {
+    return null;
+  }
+
+  // Ensure min <= max
+  if (min > max) {
+    return { min: max, max: min };
+  }
+
+  return { min, max };
+}
+
 export interface SQLPivotSettings {
   "sqlpivot.row_columns"?: string | string[];
   "sqlpivot.column_dimension"?: string;
@@ -16,6 +51,7 @@ export interface SQLPivotSettings {
   "sqlpivot.row_aggregation_sort"?: "default" | "asc" | "desc";
   "sqlpivot.hidden_column_labels"?: string[];
   "sqlpivot.enable_color_coding"?: boolean;
+  "sqlpivot.score_range_filter"?: string;
 }
 
 export function isSQLPivotSensible(data: DatasetData): boolean {
@@ -211,6 +247,7 @@ export function transformSQLDataToPivot(
       settings["sqlpivot.show_column_aggregation"] || false;
     const rowAggregationSort =
       settings["sqlpivot.row_aggregation_sort"] || "default";
+    const scoreRangeFilter = settings["sqlpivot.score_range_filter"];
     const result = transformToMatrixPivot(
       data,
       rowColumnIndexes,
@@ -219,6 +256,7 @@ export function transformSQLDataToPivot(
       showRowAggregation,
       showColumnAggregation,
       rowAggregationSort,
+      scoreRangeFilter,
     );
     return validateTransformedData(result);
   }
@@ -464,6 +502,7 @@ function transformToMatrixPivot(
   showRowAggregation: boolean = false,
   _showColumnAggregation: boolean = false,
   rowAggregationSort: "default" | "asc" | "desc" = "default",
+  scoreRangeFilter?: string,
 ) {
   // Matrix pivot: Create hierarchical row structure with column values spread across columns
 
@@ -472,6 +511,12 @@ function transformToMatrixPivot(
   const uniqueColumnValues = _.uniq(
     data.rows.map((row) => row[columnDimensionIndex]),
   ).sort();
+
+  // Parse score range filter (only applies to single-dimension pivots)
+  const scoreRange =
+    rowColumnIndexes.length === 1 && showRowAggregation
+      ? parseScoreRange(scoreRangeFilter)
+      : null;
 
   if (rowColumnIndexes.length === 1) {
     // Single row dimension - use simple matrix pivot
@@ -544,8 +589,25 @@ function transformToMatrixPivot(
       return row;
     });
 
+    // Apply score range filtering if requested (only for single dimension + row aggregation)
+    let filteredRows = matrixRows;
+    if (scoreRange && showRowAggregation) {
+      const aggregationColumnIndex = newCols.length - 1; // Last column is aggregation
+      filteredRows = matrixRows.filter((row) => {
+        const scoreValue = row[aggregationColumnIndex];
+        if (scoreValue === null || scoreValue === undefined) {
+          return false; // Exclude rows with no score
+        }
+        const score = Number(scoreValue);
+        if (isNaN(score)) {
+          return false;
+        }
+        return score >= scoreRange.min && score <= scoreRange.max;
+      });
+    }
+
     // Apply sorting if requested
-    let sortedRows = matrixRows;
+    let sortedRows = filteredRows;
     if (
       showRowAggregation &&
       rowAggregationSort !== "default" &&
@@ -553,7 +615,7 @@ function transformToMatrixPivot(
     ) {
       const aggregationColumnIndex = newCols.length - 1; // Last column is aggregation
       sortedRows = sortRowsByAggregation(
-        [...matrixRows],
+        [...filteredRows],
         rowAggregationSort,
         aggregationColumnIndex,
       );

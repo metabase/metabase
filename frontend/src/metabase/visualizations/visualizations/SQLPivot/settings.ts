@@ -238,4 +238,34 @@ export const SQL_PIVOT_SETTINGS = {
     inline: true,
     default: false,
   },
+
+  "sqlpivot.score_range_filter": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Filter by score range`;
+    },
+    get description() {
+      return t`Show only rows with overall scores in the specified range (e.g., "0-78.6" or "78.6-92.9"). Leave empty to show all rows.`;
+    },
+    widget: "input",
+    default: "",
+    getHidden: (series: any, settings: any) => {
+      // Only show this setting when:
+      // 1. Column dimension is selected (matrix pivot)
+      // 2. Row aggregation is enabled
+      // 3. Single row dimension (not multi-dimensional)
+      const rowColumns = settings["sqlpivot.row_columns"];
+      const isSingleDimension =
+        (typeof rowColumns === "string" && rowColumns.length > 0) ||
+        (Array.isArray(rowColumns) && rowColumns.length === 1);
+
+      return (
+        isColumnDimensionHidden(series, settings) ||
+        !settings["sqlpivot.show_row_aggregation"] ||
+        !isSingleDimension
+      );
+    },
+  },
 };
