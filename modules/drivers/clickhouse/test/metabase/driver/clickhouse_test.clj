@@ -318,11 +318,11 @@
   (mt/test-driver :clickhouse
     (testing "compile-transform for clickhouse with empty primary key column"
       (is (= ["CREATE TABLE `PRODUCTS_COPY` ORDER BY () AS SELECT * FROM products"]
-             (driver/compile-transform :clickhouse {:query "SELECT * FROM products"
+             (driver/compile-transform :clickhouse {:query {:query "SELECT * FROM products"}
                                                     :output-table "PRODUCTS_COPY"}))))
     (testing "compile-insert generates INSERT INTO"
       (is (= ["INSERT INTO `PRODUCTS_COPY` SELECT * FROM products"]
-             (driver/compile-insert :clickhouse {:query "SELECT * FROM products"
+             (driver/compile-insert :clickhouse {:query {:query "SELECT * FROM products"}
                                                  :output-table "PRODUCTS_COPY"}))))))
 
 (deftest ^:parallel clickhouse-db-supports-schemas-test

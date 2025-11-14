@@ -11,7 +11,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (testing "simple table name"
         (let [result (driver/compile-transform driver/*driver*
-                                               {:query "SELECT * FROM products"
+                                               {:query {:query "SELECT * FROM products"}
                                                 :output-table :my_table
                                                 :primary-key "id"})]
           (testing "returns a vector"
@@ -28,7 +28,7 @@
 
       (testing "schema-qualified table name"
         (let [result (driver/compile-transform driver/*driver*
-                                               {:query "SELECT * FROM products"
+                                               {:query {:query "SELECT * FROM products"}
                                                 :output-table :my_schema/my_table
                                                 :primary-key "id"})]
           (testing "returns a vector"
@@ -82,7 +82,7 @@
   (testing "execute-transform! should pass correct format to execute-raw-queries!"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (let [compile-result (driver/compile-transform driver/*driver*
-                                                     {:query "SELECT * FROM products"
+                                                     {:query {:query "SELECT * FROM products"}
                                                       :output-table :my_table
                                                       :primary-key "id"})
             drop-result (driver/compile-drop-table driver/*driver* :my_table)]
@@ -132,7 +132,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (testing "simple table name"
         (let [result (driver/compile-insert driver/*driver*
-                                            {:query "SELECT * FROM products"
+                                            {:query {:query "SELECT * FROM products"}
                                              :output-table :my_table})]
           (testing "returns a vector"
             (is (vector? result)))
@@ -145,7 +145,7 @@
 
       (testing "schema-qualified table"
         (let [result (driver/compile-insert driver/*driver*
-                                            {:query "SELECT * FROM products"
+                                            {:query {:query "SELECT * FROM products"}
                                              :output-table :my_schema/my_table})]
           (testing "returns a vector"
             (is (vector? result)))
