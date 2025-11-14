@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [malli.core :as mc]
    [metabase.indexed-entities.models.model-index :as model-index]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -148,13 +150,14 @@
                                         :database_id (mt/id)
                                         :collection_id collection-id
                                         :dataset_query (mt/mbql-query venues)}
-                     :model/Segment {segment-id :id} {:model_id (:id model)
-                                                      :table_id nil
-                                                      :definition {:lib/type :mbql/query
-                                                                   :stages [{:lib/type :mbql.stage/mbql
-                                                                             :source-card (:id model)
-                                                                             :filters [[:> {} [:field {} (mt/id :venues :price)] 10]]}]
-                                                                   :database (mt/id)}}]
+                     :model/Segment {segment-id :id} (let [metadata-provider (mt/metadata-provider)
+                                                           model-card (lib.metadata/card metadata-provider (:id model))
+                                                           venues-price-field (lib.metadata/field metadata-provider (mt/id :venues :price))
+                                                           query (lib/filter (lib/query metadata-provider model-card)
+                                                                             (lib/> venues-price-field 10))]
+                                                       {:model_id   (:id model)
+                                                        :table_id   nil
+                                                        :definition query})]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
         (test-fn collection-id segment-id)))))
 
