@@ -65,6 +65,8 @@ describe("scenarios > data studio > datamodel", () => {
     describe("1 database, no schemas", () => {
       it("should allow to navigate tables", { tags: ["@external"] }, () => {
         H.restore("mysql-8");
+        cy.signInAsAdmin();
+        H.activateToken("bleeding-edge");
         H.DataModel.visit();
 
         TablePicker.getDatabase("QA MySQL8").click();
@@ -88,6 +90,8 @@ describe("scenarios > data studio > datamodel", () => {
 
       it("should allow searching for tables", { tags: ["@external"] }, () => {
         H.restore("mysql-8");
+        cy.signInAsAdmin();
+        H.activateToken("bleeding-edge");
         H.DataModel.visit();
 
         TablePicker.getSearchInput().type("rEvIeWs");
@@ -105,6 +109,8 @@ describe("scenarios > data studio > datamodel", () => {
 
       it("should restore previously selected table when expanding the tree (SEM-435)", () => {
         H.restore("mysql-8");
+        cy.signInAsAdmin();
+        H.activateToken("bleeding-edge");
         H.DataModel.visit({
           databaseId: MYSQL_DB_ID,
           schemaId: MYSQL_DB_SCHEMA_ID,
@@ -187,6 +193,8 @@ describe("scenarios > data studio > datamodel", () => {
       () => {
         beforeEach(() => {
           H.restore("postgres-writable");
+          cy.signInAsAdmin();
+          H.activateToken("bleeding-edge");
           H.resetTestTable({ type: "postgres", table: "multi_schema" });
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });
         });
