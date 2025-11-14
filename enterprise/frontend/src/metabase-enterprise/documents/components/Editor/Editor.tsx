@@ -1,5 +1,4 @@
 import Image from "@tiptap/extension-image";
-import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -10,7 +9,6 @@ import { useLatest, usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
-import CS from "metabase/css/core/index.css";
 import { useSelector, useStore } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
@@ -29,6 +27,7 @@ import { CustomStarterKit } from "metabase-enterprise/rich_text_editing/tiptap/e
 import { DisableMetabotSidebar } from "metabase-enterprise/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
 import { FlexContainer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
 import { HandleEditorDrop } from "metabase-enterprise/rich_text_editing/tiptap/extensions/HandleEditorDrop/HandleEditorDrop";
+import { LinkHoverMenu } from "metabase-enterprise/rich_text_editing/tiptap/extensions/LinkHoverMenu/LinkHoverMenu";
 import { MentionExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
 import {
@@ -37,6 +36,7 @@ import {
 } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotEmbed";
 import { MetabotMentionExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
 import { MetabotMentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestion";
+import { PlainLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/PlainLink/PlainLink";
 import { ResizeNode } from "metabase-enterprise/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/suggestionRenderer";
@@ -121,10 +121,8 @@ export const Editor: React.FC<EditorProps> = ({
         },
         siteUrl,
       }),
-      Link.configure({
-        HTMLAttributes: {
-          class: CS.link,
-        },
+      PlainLink.configure({
+        defaultProtocol: "https",
       }),
       Placeholder.configure({
         placeholder: t`Start writing, type "/" to list commands, or "@" to mention an item...`,
@@ -262,6 +260,11 @@ export const Editor: React.FC<EditorProps> = ({
             disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
           />
         )}
+        <Box pos="absolute" top={0} left={0} w="100%">
+          <Box className={S.editorContentInner} pos="relative">
+            <LinkHoverMenu editor={editor} editable={editable} />
+          </Box>
+        </Box>
       </Box>
     </Box>
   );

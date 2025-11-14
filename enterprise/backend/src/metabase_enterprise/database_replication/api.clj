@@ -70,7 +70,7 @@
           ;; apply filter over the memoized result for snappy UI
           hm-preview-memo
           :tables
-          (filter (comp (schema-filters->fn replication-schema-filters) :table_schema))))
+          (filter (comp (schema-filters->fn replication-schema-filters) :table-schema))))
     (catch PatternSyntaxException _
       {:error "Invalid schema pattern"})))
 
@@ -91,14 +91,14 @@
         tables                     (if tables-error [] tables)
         free-quota                 (get-free-quota quotas)
         replicated-tables          (->> tables
-                                        (filter :has_pkey)
-                                        (filter :has_ownership))
-        tables-without-pk          (filter (comp not :has_pkey) tables)
-        tables-without-owner-match (filter (comp not :has_ownership) tables)
+                                        (filter :has-pkey)
+                                        (filter :has-ownership))
+        tables-without-pk          (filter (comp not :has-pkey) tables)
+        tables-without-owner-match (filter (comp not :has-ownership) tables)
         total-estimated-row-count  (or
                                     (some->>
                                      replicated-tables
-                                     (map :estimated_row_count)
+                                     (map :estimated-row-count)
                                      (remove nil?)
                                      (reduce +))
                                     0)

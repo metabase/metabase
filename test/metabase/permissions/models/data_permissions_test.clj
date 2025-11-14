@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.app-db.schema-migrations-test.impl :as impl]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -378,7 +379,7 @@
               {database-id-1 {:perms/view-data
                               {"PUBLIC"
                                {table-id-1 :legacy-no-self-service}}}}}
-             (data-perms/data-permissions-graph))))
+             (data-perms.graph/data-permissions-graph))))
 
       (testing "Additional data permissions are included when set"
         (data-perms/set-table-permission! group-id-1 table-id-3 :perms/download-results :one-million-rows)
@@ -393,7 +394,7 @@
                               {""
                                {table-id-3 :one-million-rows}}
                               :perms/manage-database :yes}}}
-             (data-perms/data-permissions-graph))))
+             (data-perms.graph/data-permissions-graph))))
 
       (testing "Data permissions graph can be filtered by group ID, database ID, and permission type"
         (is (= {group-id-1
@@ -413,7 +414,7 @@
                                  {table-id-3 :one-million-rows}}
                                 :perms/manage-database :yes
                                 :perms/create-queries :no}}}
-               (data-perms/data-permissions-graph :group-id group-id-1)))
+               (data-perms.graph/data-permissions-graph :group-id group-id-1)))
 
         (is (= {group-id-1
                 {database-id-1 {:perms/view-data
@@ -424,17 +425,17 @@
                                 :perms/manage-table-metadata
                                 {"PUBLIC"
                                  {table-id-1 :yes}}}}}
-               (data-perms/data-permissions-graph :group-id group-id-1
-                                                  :db-id database-id-1)))
+               (data-perms.graph/data-permissions-graph :group-id group-id-1
+                                                        :db-id database-id-1)))
 
         (is (= {group-id-1
                 {database-id-1 {:perms/view-data
                                 {"PUBLIC"
                                  {table-id-1 :unrestricted
                                   table-id-2 :legacy-no-self-service}}}}}
-               (data-perms/data-permissions-graph :group-id group-id-1
-                                                  :db-id database-id-1
-                                                  :perm-type :perms/view-data)))))))
+               (data-perms.graph/data-permissions-graph :group-id group-id-1
+                                                        :db-id database-id-1
+                                                        :perm-type :perms/view-data)))))))
 
 (deftest most-restrictive-per-group-works
   (is (= #{:query-builder-and-native}

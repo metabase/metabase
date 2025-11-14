@@ -1690,7 +1690,7 @@
 
 (deftest ^:synchronized weights-test
   (let [base-url         (weights-url)
-        original-weights (search.config/weights :default)]
+        original-weights (search.config/weights)]
     (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
       (testing "default weights"
         (is (= original-weights (mt/user-http-request :crowberto :get 200 base-url)))
@@ -1706,8 +1706,9 @@
   (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
     (testing "custom context"
       (let [context          :none-given
+            search-ctx       {:context context}
             context-url      (weights-url context {})
-            original-weights (search.config/weights context)]
+            original-weights (search.config/weights search-ctx)]
         (is (= original-weights (mt/user-http-request :crowberto :get 200 context-url)))
         (mt/user-http-request :rasta :put 403 (weights-url context {:recency 5}))
         (is (= original-weights
@@ -1724,8 +1725,9 @@
     (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
       (testing "all weights (nested)"
         (let [context     :all
+              search-ctx  {:context context}
               context-url (weights-url context {})
-              all-weights (search.config/weights context)]
+              all-weights (search.config/weights search-ctx)]
           (is (= all-weights (mt/user-http-request :crowberto :get 200 context-url)))
           (is (= (mt/user-http-request :crowberto :get 200 base-url)
                  (:default (mt/user-http-request :crowberto :get 200 context-url))))
@@ -1741,13 +1743,14 @@
 (deftest ^:synchronized weights-test-4
   (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
     (testing "ranker parameters"
-      (let [context :just-for-fun]
+      (let [context    :just-for-fun
+            search-ctx {:context context}]
         (is (=? {:model/dataset 10.0}
                 (mt/user-http-request :crowberto :put 200 (weights-url context {:model/dataset 10}))))
-        (is (= 10.0 (search.config/scorer-param context :model :dataset)))
+        (is (= 10.0 (search.config/scorer-param search-ctx :model :dataset)))
         (is (=? {:model/dataset 5.0}
                 (mt/user-http-request :crowberto :put 200 (weights-url context {:model/dataset 5}))))
-        (is (= 5.0 (search.config/scorer-param context :model :dataset)))))))
+        (is (= 5.0 (search.config/scorer-param search-ctx :model :dataset)))))))
 
 (deftest ^:synchronized dashboard-questions
   (testing "Dashboard questions get a dashboard_id when searched"
