@@ -1528,7 +1528,7 @@
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
-(defn like-clause
+(defn- like-clause
   "Generate honeysql like clause used in `:starts-with`, `:contains` or `:ends-with.
   If matching case insensitively, `pattern` is lowercased earlier in [[generate-pattern]]."
   [field pattern {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
@@ -1549,7 +1549,7 @@
     [:fn {:error/message "string value"} #(string? (second %))]]
    driver-api/mbql.schema.FieldOrExpressionDef])
 
-(mu/defn generate-pattern
+(mu/defn- generate-pattern
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
   [driver
    pre
@@ -1872,44 +1872,12 @@
 (defn- format-honeysql-2 [driver dialect honeysql-form]
   ;; make sure [[driver/*driver*]] is bound, we need it for [[sqlize-value]]
   (binding [driver/*driver* driver]
-    (tap> honeysql-form)
-    (tap> dialect)
-    (tap> (not (map? honeysql-form)))
     (sql/format honeysql-form {:dialect      dialect
                                :quoted       true
                                :quoted-snake false
                                :inline       driver/*compile-with-inline-parameters*
                                ;; Enable :nested when we want to compile just one particular snippet.
                                :nested (not (map? honeysql-form))})))
-
-(comment
-
-  (sql/format {:from [[[:metabase.util.honey-sql-2/identifier :table ["PUBLIC" "products"]]]],
-               :select [[[:metabase.util.honey-sql-2/typed [:metabase.util.honey-sql-2/identifier :field ["PUBLIC" "products" "id"]] {:database-type "number"}] [[:metabase.util.honey-sql-2/identifier :field-alias ["id"]]]]
-                        [[:metabase.util.honey-sql-2/typed [:metabase.util.honey-sql-2/identifier :field ["PUBLIC" "products" "category"]] {:database-type "varchar"}] [[:metabase.util.honey-sql-2/identifier :field-alias ["category"]]]]],
-               :where [:contains
-                       [:lower [:metabase.util.honey-sql-2/typed [:metabase.util.honey-sql-2/identifier :field ["PUBLIC" "products" "category"]] {:database-type "varchar"}]]
-                       "get"],
-               :limit [:inline 10]}
-              {:dialect      :ansi
-               :quoted       true
-               :quoted-snake false
-               :inline       true
-               :nested false})
-
-  (sql/format {:from [[[:metabase.util.honey-sql-2/identifier :table ["PUBLIC" "products"]]]],
-               :select [[[:metabase.util.honey-sql-2/typed [:metabase.util.honey-sql-2/identifier :field ["PUBLIC" "products" "id"]] {:database-type "number"}] [[:metabase.util.honey-sql-2/identifier :field-alias ["id"]]]] [[:metabase.util.honey-sql-2/typed [:metabase.util.honey-sql-2/identifier :field ["PUBLIC" "products" "category"]] {:database-type "varchar"}] [[:metabase.util.honey-sql-2/identifier :field-alias ["category"]]]]],
-               :where [:like
-                       [:lower [:metabase.util.honey-sql-2/typed [:metabase.util.honey-sql-2/identifier :field ["PUBLIC" "products" "category"]] {:database-type "varchar"}]]
-                       "%get%"],
-               :limit [:inline 10]}
-              {:dialect      :ansi
-               :quoted       true
-               :quoted-snake false
-               :inline       true
-               :nested false})
-
-  (tap> 1))
 
 (defmulti format-honeysql
   "Compile `honeysql-form` to a `[sql & args]` vector. Prior to 0.51.0, this was a plain function, but was made a
