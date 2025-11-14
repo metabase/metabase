@@ -107,7 +107,7 @@ export interface TableListQuery {
   "data-source"?: string | null;
   "owner-user-id"?: UserId | null;
   "owner-email"?: string | null;
-  "orphan-only"?: boolean | null;
+  "unused-only"?: boolean | null;
 }
 
 export interface ForeignKey {

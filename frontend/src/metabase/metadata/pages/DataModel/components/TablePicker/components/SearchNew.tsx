@@ -47,7 +47,7 @@ export function SearchNew({
         ? null
         : (filters.ownerUserId ?? undefined),
     "owner-email": filters.ownerEmail ?? undefined,
-    "orphan-only": filters.orphansOnly === true ? true : undefined,
+    "unused-only": filters.unusedOnly === true ? true : undefined,
   });
 
   useEffect(() => {

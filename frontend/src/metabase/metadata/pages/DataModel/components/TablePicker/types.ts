@@ -108,7 +108,7 @@ export interface FilterState {
   dataSource: TableDataSource | "unknown" | null;
   ownerEmail: string | null;
   ownerUserId: UserId | "unknown" | null;
-  orphansOnly: boolean | null;
+  unusedOnly: boolean | null;
 }
 
 export function isExpandedItem(node: FlatItem): node is ExpandedItem {

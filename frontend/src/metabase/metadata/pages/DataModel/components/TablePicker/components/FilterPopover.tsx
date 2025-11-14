@@ -24,7 +24,7 @@ export function FilterPopover({ filters, onSubmit }: Props) {
       dataSource: null,
       ownerEmail: null,
       ownerUserId: null,
-      orphansOnly: null,
+      unusedOnly: null,
     });
   };
 
@@ -68,9 +68,9 @@ export function FilterPopover({ filters, onSubmit }: Props) {
 
         <Checkbox
           label={t`Table isn’t referenced by anything`}
-          checked={form.orphansOnly === true}
+          checked={form.unusedOnly === true}
           onChange={(e) =>
-            setForm((form) => ({ ...form, orphansOnly: e.target.checked }))
+            setForm((form) => ({ ...form, unusedOnly: e.target.checked }))
           }
         />
 
