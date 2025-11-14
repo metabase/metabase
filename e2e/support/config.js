@@ -131,6 +131,7 @@ const defaultConfig = {
     // See: https://github.com/cypress-io/cypress/issues/24452#issuecomment-1295377775
     config.env.grepIntegrationFolder = "../../";
     config.env.grepFilterSpecs = true;
+    config.env.grepOmitFiltered = true;
 
     config.env.IS_ENTERPRISE = isEnterprise;
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;

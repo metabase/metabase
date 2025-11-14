@@ -196,7 +196,7 @@ jobs:
         if: ${{ matrix.edition == 'oss' }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="@smoke+-@EE",grepOmitFiltered=true \
+            --env grepTags="@smoke+-@EE" \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
@@ -204,7 +204,7 @@ jobs:
         if: ${{ matrix.edition == 'ee' }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="@smoke+-@OSS",grepOmitFiltered=true \
+            --env grepTags="@smoke+-@OSS" \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
