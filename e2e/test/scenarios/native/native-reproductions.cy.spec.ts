@@ -41,7 +41,9 @@ describe("issue 11727", { tags: "@external" }, () => {
       .findByText("Doing science...")
       .should("be.visible");
     cy.get("body").type("{cmd}{enter}");
-    H.runButtonInOverlay().should("be.visible");
+    cy.findByTestId("query-builder-main")
+      .findByText("Here's where your results will appear")
+      .should("be.visible");
   });
 });
 
@@ -767,6 +769,12 @@ describe("issue 59356", () => {
     return H.queryBuilderMain().findByTestId("loading-indicator");
   }
 
+  function getEmptyStateMessage() {
+    return H.queryBuilderMain().findByText(
+      "Here's where your results will appear",
+    );
+  }
+
   beforeEach(() => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
@@ -782,30 +790,31 @@ describe("issue 59356", () => {
 
     cy.log("verify that the query is not running");
     getLoader().should("not.exist");
-    H.runButtonInOverlay().should("be.visible");
+    getEmptyStateMessage().should("be.visible");
     cy.get("@dataset.all").should("have.length", 0);
 
     cy.log("run the query and verify that it is running");
     typeRunShortcut();
     getLoader().should("be.visible");
-    H.runButtonInOverlay().should("not.be.visible");
+    getEmptyStateMessage().should("not.exist");
     cy.get("@dataset.all").should("have.length", 1);
+
     cy.log("cancel the query and verify that no new query is running");
     typeRunShortcut();
     getLoader().should("not.exist");
-    H.runButtonInOverlay().should("be.visible");
+    getEmptyStateMessage().should("be.visible");
     cy.get("@dataset.all").should("have.length", 1);
 
     cy.log("run the query again and verify that it is running");
     typeRunShortcut();
     getLoader().should("be.visible");
-    H.runButtonInOverlay().should("not.be.visible");
+    getEmptyStateMessage().should("not.exist");
     cy.get("@dataset.all").should("have.length", 2);
 
     cy.log("cancel the query and verify that no new query is running");
     typeRunShortcut();
     getLoader().should("not.exist");
-    H.runButtonInOverlay().should("be.visible");
+    getEmptyStateMessage().should("be.visible");
     cy.get("@dataset.all").should("have.length", 2);
   });
 });
