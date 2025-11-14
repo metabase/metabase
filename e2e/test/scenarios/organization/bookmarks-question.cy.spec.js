@@ -53,6 +53,7 @@ H.describeWithSnowplow("scenarios > question > bookmarks", () => {
     // when we assert on the next toast (when we turn the model back to the question).
     H.undoToastList().icon("close").click();
 
+    H.openNavigationSidebar();
     H.navigationSidebar().within(() => {
       cy.findByRole("section", { name: "Bookmarks" })
         .icon("model")
