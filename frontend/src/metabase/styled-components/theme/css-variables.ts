@@ -15,7 +15,7 @@ import type { MantineTheme } from "metabase/ui";
 
 const createColorVars = (colorScheme: "light" | "dark"): string =>
   Object.entries(colorConfig)
-    .map(([name, value]) => `--mb-color-${name}: ${value[colorScheme]};`)
+    .map(([name, value]) => `--mb-color-${name}: ${value};`)
     .join("\n");
 
 /**

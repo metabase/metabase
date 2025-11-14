@@ -23,6 +23,7 @@ import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import { getCurrentOpenModalState } from "metabase/selectors/ui";
 import type { WritebackAction } from "metabase-types/api";
+import { ThemeModal } from "./ThemeModal";
 
 export const NewModals = withRouter((props: WithRouterProps) => {
   const { pathname } = useLocation();
@@ -60,6 +61,16 @@ export const NewModals = withRouter((props: WithRouterProps) => {
             handleModalClose();
           } else {
             dispatch(setOpenModal("help"));
+          }
+        },
+      },
+      {
+        id: "theme-modal",
+        perform: () => {
+          if (currentNewModalId) {
+            handleModalClose();
+          } else {
+            dispatch(setOpenModal("theme"));
           }
         },
       },
@@ -115,6 +126,9 @@ export const NewModals = withRouter((props: WithRouterProps) => {
           onClose={handleModalClose}
         />
       );
+    }
+    case "theme": {
+      return <ThemeModal open onClose={handleModalClose} />;
     }
     default:
       return (

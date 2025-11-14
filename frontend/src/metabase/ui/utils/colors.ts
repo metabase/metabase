@@ -1,10 +1,10 @@
 import type { MantineTheme } from "@mantine/core";
 
-import { colorConfig } from "metabase/lib/colors";
+import { colors } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 type ColorShades = MantineTheme["colors"]["dark"];
 
-const allColorNames = Object.keys(colorConfig);
+const allColorNames = Object.keys(colors);
 
 const ORIGINAL_COLORS = [
   "dark",
@@ -47,9 +47,9 @@ export function getThemeColors(
       ORIGINAL_COLORS.map((name) => [name, getColorShades("transparent")]),
     ),
     ...Object.fromEntries(
-      Object.entries(colorConfig).map(([name, colors]) => [
+      Object.entries(colors).map(([name, colors]) => [
         name,
-        getColorShades(colors[colorScheme] || colors.light),
+        getColorShades(colors),
       ]),
     ),
   };

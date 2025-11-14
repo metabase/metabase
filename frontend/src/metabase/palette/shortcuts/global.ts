@@ -167,4 +167,12 @@ export const globalShortcuts = {
       "ArrowUp ArrowUp ArrowDown ArrowDown ArrowLeft ArrowRight ArrowLeft ArrowRight B A",
     ],
   },
+  "theme-modal": {
+    get name() {
+      return t`Theme modal`;
+    },
+    shortcutGroup: "global" as const,
+    shortcut: ["$mod+e"],
+    icon: "pencil",
+  },
 };
