@@ -136,6 +136,9 @@ export const handleCardDropToFlexContainer = (
 
   // Handle dropping from one FlexContainer to another FlexContainer
   if (cameFromFlexContainer && originalParent !== dropToParent) {
+    if (draggedNode.type.name === "supportingText") {
+      return true;
+    }
     const targetFlexContainer = dropToParent;
 
     // Check if target flexContainer already has 3 or more items
