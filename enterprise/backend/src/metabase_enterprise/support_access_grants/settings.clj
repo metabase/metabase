@@ -11,7 +11,7 @@
   :setter :none
   :audit :never
   :doc false
-  :default "support@metabase.com")
+  :default "success-instance-access@metabase.com")
 
 (defsetting support-access-grant-first-name
   (deferred-tru "First name of the support user")
@@ -21,7 +21,7 @@
   :setter :none
   :audit :never
   :doc false
-  :default "support@metabase.com")
+  :default "Support")
 
 (defsetting support-access-grant-last-name
   (deferred-tru "Last name of the support user")
@@ -31,4 +31,4 @@
   :setter :none
   :audit :never
   :doc false
-  :default "support@metabase.com")
+  :default "User")

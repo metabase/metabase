@@ -39,5 +39,5 @@
     (when revoked-at
       (let [support-user-id (:id (fetch-or-create-support-user!))
             auth-identity-ids (t2/select-pks-vec :model/AuthIdentity :user_id support-user-id)]
-        (t2/update! :model/AuthIdentity :id [:in auth-identity-ids] :expires_at revoked-at)
+        (t2/update! :model/AuthIdentity :id [:in auth-identity-ids] {:expires_at revoked-at})
         (t2/delete! :model/Session :user_id support-user-id)))))
