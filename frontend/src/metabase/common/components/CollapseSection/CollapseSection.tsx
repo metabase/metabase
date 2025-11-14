@@ -91,7 +91,7 @@ const CollapseSection = ({
       >
         <HeaderContent>
           {iconPosition === "left" && HeaderIcon}
-          <Header role="heading">{header}</Header>
+          <Header>{header}</Header>
           {iconPosition === "right" && HeaderIcon}
         </HeaderContent>
         {rightAction && (
