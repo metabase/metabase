@@ -15,7 +15,7 @@ import {
 } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-export const MetabotPurchaseSettingUpModal = ({
+export const MetabotSettingUpModal = ({
   onClose,
   opened,
 }: Pick<ModalProps, "opened" | "onClose">) => {
@@ -36,6 +36,7 @@ export const MetabotPurchaseSettingUpModal = ({
       <Stack align="center" gap="lg" my="4.5rem">
         <Box h={96} pos="relative" w={96}>
           <MetabotLogo variant="cloud" alt={t`Metabot Cloud`} />
+
           {isSettingUp && (
             <Flex
               bottom={0}
@@ -59,6 +60,7 @@ export const MetabotPurchaseSettingUpModal = ({
             </Flex>
           )}
         </Box>
+
         {isSettingUp ? (
           <Box ta="center">
             <Title c="text-primary" fz="lg">
@@ -69,23 +71,21 @@ export const MetabotPurchaseSettingUpModal = ({
             </Text>
           </Box>
         ) : (
-          <Box ta="center">
-            <Title c="text-primary" fz="lg">
-              {t`Metabot AI is ready`}
-            </Title>
-            <Text c="text-secondary" fz="md" lh={1.43}>
-              {t`Happy exploring!`}
-            </Text>
-          </Box>
+          <>
+            <Box ta="center">
+              <Title c="text-primary" fz="lg">
+                {t`Metabot AI is ready`}
+              </Title>
+              <Text c="text-secondary" fz="md" lh={1.43}>
+                {t`Happy exploring!`}
+              </Text>
+            </Box>
+
+            <Button variant="filled" size="md" onClick={onClose}>
+              {t`Done`}
+            </Button>
+          </>
         )}
-        <Button
-          disabled={isSettingUp}
-          variant="filled"
-          size="md"
-          onClick={onClose}
-        >
-          {t`Done`}
-        </Button>
       </Stack>
     </Modal>
   );
