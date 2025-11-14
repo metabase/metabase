@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.models.interface :as mi]
    [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]))
 
@@ -18,6 +19,7 @@
    _query-params
    body :- ::grants.schema/create-grant-request]
   (api/check-superuser)
+  (mi/can-create? :model/SupportAccessGrantLog body)
   (grants/create-grant! api/*current-user-id*
                         (:grant_duration_minutes body)
                         (:ticket_number body)
@@ -30,6 +32,7 @@
   Requires superuser permissions. Any admin can revoke any grant."
   [{id :id} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
+  (mi/can-write? :model/SupportAccessGrantLog id)
   (grants/revoke-grant! api/*current-user-id* id))
 
 (api.macros/defendpoint :get "/"

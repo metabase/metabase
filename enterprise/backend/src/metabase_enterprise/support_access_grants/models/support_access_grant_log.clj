@@ -2,6 +2,7 @@
   "Model for support access grant log entries. Tracks temporary access grants for customer support."
   (:require
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -12,6 +13,9 @@
 
 (doto :model/SupportAccessGrantLog
   (derive :metabase/model)
+  (derive ::mi/read-policy.superuser)
+  (derive ::mi/write-policy.superuser)
+  (derive ::mi/create-policy.superuser)
   (derive :hook/timestamped?))
 
 (defn fetch-or-create-support-user!

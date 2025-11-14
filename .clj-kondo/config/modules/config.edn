@@ -2098,14 +2098,11 @@
   enterprise/support-access-grants
   {:team "UX West"
    :api  #{metabase-enterprise.support-access-grants.api
-           metabase-enterprise.support-access-grants.core
            metabase-enterprise.support-access-grants.init}
    :uses #{api
-           app-db
            auth-identity
            events
            models
-           premium-features
            request
            settings
            system
