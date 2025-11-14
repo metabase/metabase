@@ -28,14 +28,16 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
     it("should navigate to question when clicking on a question item", () => {
       setupEmbed('<metabase-browser initial-collection="root" />');
 
-      H.getSimpleEmbedIframeContent().findByText("Orders").should("be.visible");
-
-      cy.wait(500); // trying this
-
-      H.getSimpleEmbedIframeContent().findByText("Orders").click();
+      H.getSimpleEmbedIframeContent()
+        .findByText("Orders")
+        .should("be.visible")
+        .click();
 
       cy.log("should show question view");
-      cy.wait(500); // trying this
+      cy.get("iframe[data-metabase-embed]").should(($iframe) => {
+        const body = $iframe.contents().find("body");
+        expect(body).to.exist;
+      });
       H.getSimpleEmbedIframeContent()
         .findByTestId("query-visualization-root")
         .should("be.visible");
