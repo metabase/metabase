@@ -7,7 +7,6 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useDispatch } from "metabase/lib/redux";
 import { adminToolsGrantAccess } from "metabase/lib/urls";
 import { Box, Button, Flex, LoadingOverlay, Text, Title } from "metabase/ui";
-import { useGetCurrentSupportAccessGrantQuery } from "metabase-enterprise/api";
 
 import { useAccessGrantsQuery } from "../../hooks/useAccessGrantsQuery";
 
@@ -15,10 +14,10 @@ import { AccessGrantList } from "./AccessGrantList";
 
 export function SupportSettingsSection() {
   const dispatch = useDispatch();
-  const { data: currentAccessGrant } = useGetCurrentSupportAccessGrantQuery();
   const {
     accessGrants,
     accessGrantsError,
+    currentAccessGrant,
     handleNextPage,
     handlePreviousPage,
     isFetchingAccessGrants,

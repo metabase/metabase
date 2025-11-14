@@ -2,9 +2,10 @@ import cx from "classnames";
 import dayjs, { type Dayjs } from "dayjs";
 import { c, t } from "ttag";
 
-import { useConfirmation, useToast } from "metabase/common/hooks";
+import { useConfirmation } from "metabase/common/hooks";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Badge, Group, Icon } from "metabase/ui";
 import { useRevokeSupportAccessGrantMutation } from "metabase-enterprise/api";
 import type { SupportAccessGrant } from "metabase-types/api";
@@ -17,7 +18,7 @@ export const AccessGrantList = (props: AccessGrantListProps) => {
   const { accessGrants } = props;
   const [revokeSupportAccessGrant, { isLoading: isRevoking }] =
     useRevokeSupportAccessGrantMutation();
-  const [sendToast] = useToast();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const { modalContent, show } = useConfirmation();
 
   const handleRevokeAccessGrant = async (grantId: number) => {
@@ -30,15 +31,9 @@ export const AccessGrantList = (props: AccessGrantListProps) => {
       onConfirm: async () => {
         try {
           await revokeSupportAccessGrant(grantId).unwrap();
-          sendToast({
-            message: t`Access grant revoked successfully`,
-            icon: "check",
-          });
+          sendSuccessToast(t`Access grant revoked successfully`);
         } catch {
-          sendToast({
-            message: t`Sorry, something went wrong. Please try again.`,
-            icon: "warning",
-          });
+          sendErrorToast(t`Sorry, something went wrong. Please try again.`);
         }
       },
     });

@@ -1,7 +1,6 @@
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -11,6 +10,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_SUPPORT } from "metabase/plugins";
 import { Box, Flex, Modal, Stack, Text } from "metabase/ui";
 import { useCreateSupportAccessGrantMutation } from "metabase-enterprise/api";
@@ -27,7 +27,7 @@ type AccessGrantFormValues = {
 
 export const GrantAccessModal = ({ onClose }: GrantAccessModalProps) => {
   const [createSupportAccessGrant] = useCreateSupportAccessGrantMutation();
-  const [sendToast] = useToast();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
   useMount(() => {
     if (!PLUGIN_SUPPORT.isEnabled) {
@@ -37,10 +37,7 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModalProps) => {
 
   const handleSubmit = async (values: AccessGrantFormValues) => {
     if (!values.grant_duration_minutes) {
-      sendToast({
-        message: t`Please select a duration and provide a ticket number.`,
-        icon: "warning",
-      });
+      sendErrorToast(t`Please select a duration and provide a ticket number.`);
       return Promise.reject();
     }
 
@@ -50,16 +47,10 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModalProps) => {
         notes: values.notes || null,
         ticket_number: values.ticket_number || null,
       }).unwrap();
-      sendToast({
-        message: t`Access grant created successfully`,
-        icon: "check",
-      });
+      sendSuccessToast(t`Access grant created successfully`);
       onClose();
     } catch (error) {
-      sendToast({
-        message: t`Sorry, something went wrong. Please try again.`,
-        icon: "warning",
-      });
+      sendErrorToast(t`Sorry, something went wrong. Please try again`);
       throw error;
     }
   };
@@ -70,6 +61,7 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModalProps) => {
       onClose={onClose}
       opened
       title={t`Grant Access?`}
+      padding="xl"
     >
       <Stack>
         <Box mt="sm">
@@ -84,10 +76,10 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModalProps) => {
         <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
           {({ values }) => (
             <Form>
-              <Stack>
+              <Stack mt="md">
                 <FormSelect
                   name="grant_duration_minutes"
-                  label={t`Access Duration`}
+                  label={t`Access duration`}
                   data={[
                     { value: String(24 * 60), label: t`24 hours` },
                     { value: String(48 * 60), label: t`48 hours` },
@@ -103,6 +95,7 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModalProps) => {
                 />
                 <FormTextarea
                   label={t`Notes`}
+                  minRows={3}
                   name="notes"
                   placeholder={t`Add any important information we should know to help you better.`}
                 />
