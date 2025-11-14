@@ -14,7 +14,7 @@ allowed-tools: Read, Write, Grep, Bash, Glob
 
 1. **Who is this for?** Match complexity to audience. Don't oversimplify hard things or overcomplicate simple ones.
 2. **What do they need?** Get them to the answer fast. Nobody wants to be in docs longer than necessary.
-3. **What did you struggle with?** Those "dumb questions" you had? Answer them (without literally including the question).
+3. **What did you struggle with?** Those common questions you had when learning? Answer them (without literally including the question).
 
 ### Writing process
 

@@ -1,5 +1,3 @@
-# TypeScript/JavaScript Quick Commands
-
 ## Linting and Formatting
 
 - **Lint:** `yarn lint-eslint-pure`

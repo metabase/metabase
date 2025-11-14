@@ -1,5 +1,3 @@
-# Clojure Quick Commands
-
 ## Linting and Formatting
 
 - **Lint PR:** `./bin/mage kondo-updated master` (or whatever target branch)
