@@ -204,7 +204,7 @@
   [query]
   (assoc-in query [:middleware :disable-remaps?] true))
 
-(defn- is-checkpoint-incremental?
+(defn- checkpoint-incremental?
   "Returns true if `source` uses checkpoint-based incremental strategy."
   [source]
   (= :checkpoint (some-> source :source-incremental-strategy :type keyword)))
@@ -236,7 +236,7 @@
   [transform-id]
   (let [{:keys [source target] :as transform} (t2/select-one :model/Transform transform-id)
         db-id (transforms.i/target-db-id transform)]
-    (when (is-checkpoint-incremental? source)
+    (when (checkpoint-incremental? source)
       (when-let [table (target-table db-id target)]
         (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
               table-metadata (lib.metadata/table metadata-provider (:id table))

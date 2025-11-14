@@ -294,7 +294,7 @@
          (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement driver conn query [])]
            (when-let [rsmeta (.getMetaData stmt)]
              (let [columns (sql-jdbc.execute/column-metadata driver rsmeta)]
-               (seq (map :name columns))))))))
+               (seq (mapv :name columns))))))))
     (catch Exception e
       (log/debugf e "Failed to extract columns from query: %s" (ex-message e))
       nil)))
