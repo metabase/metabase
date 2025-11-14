@@ -3,6 +3,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   useCallback,
+  useId,
   useState,
 } from "react";
 
@@ -42,6 +43,7 @@ const CollapseSection = ({
   ...props
 }: CollapseSectionProps) => {
   const [isExpanded, setIsExpanded] = useState(initialState === "expanded");
+  const contentId = useId();
 
   const toggle = useCallback(() => {
     const nextState = !isExpanded;
@@ -78,12 +80,14 @@ const CollapseSection = ({
   );
 
   return (
-    <div className={className} role="tab" aria-selected={isExpanded} {...props}>
+    <div className={className} {...props}>
       <HeaderContainer
         className={headerClass}
         onClick={toggle}
         onKeyDown={onKeyDown}
         hasRightAction={!!rightAction}
+        aria-expanded={isExpanded}
+        aria-controls={contentId}
       >
         <HeaderContent>
           {iconPosition === "left" && HeaderIcon}
@@ -94,9 +98,11 @@ const CollapseSection = ({
           <div onClick={handleRightActionClick}>{rightAction}</div>
         )}
       </HeaderContainer>
-      <div role="tabpanel">
-        {isExpanded && <div className={bodyClass}>{children}</div>}
-      </div>
+      {isExpanded && (
+        <div id={contentId} className={bodyClass}>
+          {children}
+        </div>
+      )}
     </div>
   );
 };
