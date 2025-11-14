@@ -126,7 +126,7 @@
    May return more results than requested limit."
   [search-fn search-engine all-queries]
   (if (<= (count all-queries) 1)
-    (search-fn (first all-queries))
+    (search-fn (first all-queries) search-engine)
     ;; Create futures for parallel execution
     (let [futures      (mapv #(future (search-fn % search-engine)) all-queries)
           result-lists (mapv deref futures)]
@@ -160,7 +160,7 @@
                           (:use_verified_content metabot)
                           false)
         limit           (or limit 50)
-        search-fn       (fn [search-string & [search-engine]]
+        search-fn       (fn [search-string search-engine]
                           (let [search-context (search/search-context
                                                 (cond->
                                                  {:search-string                       search-string
@@ -187,7 +187,7 @@
                                                   weights
                                                   (assoc :weights weights)
                                                   search-engine
-                                                  (assoc :search-engine search-engine)))
+                                                  (assoc :search-engine (name search-engine))))
                                 _              (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
                                                           search-string (:models search-context))
                                 search-results (search/search search-context)

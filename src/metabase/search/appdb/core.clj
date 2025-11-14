@@ -50,9 +50,9 @@
            (#{"appdb" "semantic"} (some-> (search.settings/search-engine) name)))
        (supported-db? (mdb/db-type))))
 
-(defmethod search.engine/disjunction :search.engine/in-place [_ terms]
+(defmethod search.engine/disjunction :search.engine/appdb [_ terms]
   (when (seq terms)
-    [(str/join " OR " (map #(str "(" % ")" ) terms))]))
+    [(str/join " OR " (map #(str "(" % ")") terms))]))
 
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))
