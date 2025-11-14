@@ -63,7 +63,7 @@ databaseChangeLog:
           indexName: idx_report_card_published_table_id
           columns:
             - column:
-              name: published_table_id
+                name: published_table_id
 
   - changeSet:
       id: v58.2025-11-10T14:39:02
