@@ -90,10 +90,7 @@
                      (assoc :left-join [[:dependency :d]
                                         [:and
                                          [:= :d.to_entity_type "table"]
-                                         [:= :d.to_entity_id :metabase_table.id]
-                                         ;; TODO: Ngoc (31/10/2025) we are not sure whether to exclude transform here
-                                         ;; let's circle back before merging bulk editing
-                                         [:not= :d.from_entity_type "transform"]]]
+                                         [:= :d.to_entity_id :metabase_table.id]]]
                             :where     [:and where [:= :d.id nil]]))
         hydrations (cond-> [:db :published_as_model]
                      (premium-features/has-feature? :transforms)   (conj :transform))]
