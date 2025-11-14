@@ -195,7 +195,10 @@ export const handleCardDropToFlexContainer = (
       const remainingChild = sourceNewChildren[0];
       const remainingCardEmbed = extractContainerSingleCardNode(remainingChild);
 
-      if (remainingCardEmbed) {
+      if (
+        remainingCardEmbed &&
+        remainingCardEmbed.type.name !== "supportingText"
+      ) {
         const wrappedRemainingCard = view.state.schema.nodes.resizeNode.create(
           {
             height: RESIZE_NODE_DEFAULT_HEIGHT,
