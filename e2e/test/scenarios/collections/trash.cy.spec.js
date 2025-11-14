@@ -100,7 +100,7 @@ describe("scenarios > collections > trash", () => {
     H.sidebar().findByText("Trash").should("not.exist");
   });
 
-  H.describeWithSnowplow("", () => {
+  describe("", () => {
     beforeEach(() => {
       H.resetSnowplow();
     });
