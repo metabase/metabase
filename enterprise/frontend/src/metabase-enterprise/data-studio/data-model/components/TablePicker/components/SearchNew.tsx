@@ -107,6 +107,8 @@ export function SearchNew({
                 [S.active]: active,
               })}
               key={table.id}
+              data-testid="tree-item"
+              data-type="table"
               p="sm"
               align="center"
               gap="sm"
