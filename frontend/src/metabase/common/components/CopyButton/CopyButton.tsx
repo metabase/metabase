@@ -1,7 +1,6 @@
+import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback, useRef, useState } from "react";
-import CopyToClipboard from "react-copy-to-clipboard";
-import { useUnmount } from "react-use";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { isPlainKey } from "metabase/common/utils/keyboard";
@@ -15,7 +14,7 @@ export const COPY_BUTTON_ICON = (
 );
 
 type CopyButtonProps = {
-  value: CopyToClipboard.Props["text"];
+  value: string;
   onCopy?: () => void;
   className?: string;
   style?: object;
@@ -30,20 +29,12 @@ export const CopyButton = ({
   style,
   target = COPY_BUTTON_ICON,
 }: CopyButtonProps) => {
-  const [copied, setCopied] = useState(false);
-  const timeoutIdRef = useRef<number>();
-
-  useUnmount(() => {
-    window.clearTimeout(timeoutIdRef.current);
-  });
+  const clipboard = useClipboard({ timeout: 2000 });
 
   const onCopyValue = useCallback(() => {
-    setCopied(true);
-
-    window.clearTimeout(timeoutIdRef.current);
-    timeoutIdRef.current = window.setTimeout(() => setCopied(false), 2000);
+    clipboard.copy(value);
     onCopy?.();
-  }, [onCopy]);
+  }, [clipboard, value, onCopy]);
 
   const copyOnEnter = useCallback(
     (e: React.KeyboardEvent<HTMLElement>) => {
@@ -55,15 +46,15 @@ export const CopyButton = ({
   );
 
   return (
-    <CopyToClipboard text={value} onCopy={onCopyValue}>
-      <div className={className} style={style} data-testid="copy-button">
-        <Tooltip
-          label={<Text fw={700} c="inherit">{t`Copied!`}</Text>}
-          opened={copied}
-        >
-          <span onKeyDown={copyOnEnter}>{target}</span>
-        </Tooltip>
-      </div>
-    </CopyToClipboard>
+    <div className={className} style={style} data-testid="copy-button">
+      <Tooltip
+        label={<Text fw={700} c="inherit">{t`Copied!`}</Text>}
+        opened={clipboard.copied}
+      >
+        <span onClick={onCopyValue} onKeyDown={copyOnEnter}>
+          {target}
+        </span>
+      </Tooltip>
+    </div>
   );
 };

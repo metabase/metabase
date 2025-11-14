@@ -5,8 +5,8 @@ import type {
   SdkUsageProblem,
   SdkUsageProblemKey,
 } from "embedding-sdk-bundle/types/usage-problem";
-import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-package";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
+import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 
 import { getIsLocalhost } from "./get-is-localhost";
 
