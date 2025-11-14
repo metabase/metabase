@@ -791,7 +791,7 @@
               ;; uploads, they will be matched incorrectly.
               ;; We accept this edge case (customers can reorder CSV columns to fix) rather than rejecting uploads
               ;; with ambiguous column names even when the order is consistent (see #44926/#issuecomment-3524373073).
-              ;; Future ideal: match on display names for smart re-ordering.
+              ;; Future idea: match on display names for smart re-ordering.
               column-names       (map name (derive-column-names driver header))
               display-names      (for [h header] (normalize-display-name h))
               create-auto-pk?    (and
