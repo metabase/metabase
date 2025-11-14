@@ -218,10 +218,9 @@
             :private-key-value (mt/priv-key->base64-uri priv-key)
             :use-password false})))
 
-(doseq [driver [:postgres]]
-  (defmethod impersonation-details driver
-    [_driver {:keys [details]}]
-    details))
+(defmethod impersonation-details :postgres
+  [_driver {:keys [details]}]
+  details)
 
 (deftest conn-impersonation-simple-test
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
