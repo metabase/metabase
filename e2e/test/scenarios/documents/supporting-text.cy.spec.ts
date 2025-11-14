@@ -466,43 +466,102 @@ describe("documents supporting text", () => {
         alias: "document",
         idAlias: "documentId",
       });
-
       H.visitDocument("@documentId");
     });
 
-    const assertTestIdOrder = (testIds: string[]) => {
-      cy.get(
-        testIds.map((testId) => `[data-testid="${testId}"]`).join(","),
-      ).then(($results) => {
-        expect(
-          $results
-            .toArray()
-            .slice(0, testIds.length)
-            .map((el) => el.getAttribute("data-testid")),
-        ).to.deep.eq(testIds);
+    const getSupportingText = (contents: string = "Lorem ipsum") => {
+      const testId = "document-card-supporting-text";
+      return cy
+        .findAllByTestId(testId)
+        .contains(contents)
+        .closest(`[data-testid="${testId}"]`);
+    };
+
+    const assertHorizontalLayout = (
+      c1: Cypress.Chainable<JQuery<HTMLElement>>,
+      c2: Cypress.Chainable<JQuery<HTMLElement>>,
+    ) => {
+      c1.then(($c1) => {
+        c2.then(($c2) => {
+          const rect1 = $c1[0].getBoundingClientRect();
+          const rect2 = $c2[0].getBoundingClientRect();
+          expect(rect2.left).to.gte(rect1.right);
+          expect(rect1.top).to.be.closeTo(rect2.top, 2);
+        });
       });
     };
 
-    it("should reorder a supporting text card when dropping onto a card", () => {
-      H.getDocumentCard("Orders").should("exist");
-      assertTestIdOrder([
-        "document-card-supporting-text",
-        "document-card-embed",
-      ]);
+    const assertVerticalLayout = (
+      c1: Cypress.Chainable<JQuery<HTMLElement>>,
+      c2: Cypress.Chainable<JQuery<HTMLElement>>,
+    ) => {
+      c1.then(($c1) => {
+        c2.then(($c2) => {
+          const rect1 = $c1[0].getBoundingClientRect();
+          const rect2 = $c2[0].getBoundingClientRect();
+          expect(rect2.top).to.gte(rect1.bottom);
+          expect(rect1.left).to.be.closeTo(rect2.left, 2);
+        });
+      });
+    };
 
+    it("should reorder when dropping a supporting text block onto a card", () => {
+      H.getDocumentCard("Orders").should("exist");
       H.documentsDragAndDrop({
-        getSource: () =>
-          H.documentContent()
-            .findByTestId("document-card-supporting-text")
-            .find("[data-drag-handle]"),
+        getSource: () => getSupportingText().find("[data-drag-handle]"),
         getTarget: () => H.getDocumentCard("Orders"),
         side: "right",
       });
 
-      assertTestIdOrder([
-        "document-card-embed",
-        "document-card-supporting-text",
-      ]);
+      assertHorizontalLayout(H.getDocumentCard("Orders"), getSupportingText());
+      assertVerticalLayout(
+        H.getDocumentCard("Orders"),
+        H.getDocumentCard("Orders, Count"),
+      );
+    });
+
+    it("should reorder when dropping a card onto a supporting text block", () => {
+      H.getDocumentCard("Orders").should("exist");
+      H.documentsDragAndDrop({
+        getSource: () => H.getDocumentCard("Orders"),
+        getTarget: () => getSupportingText(),
+        side: "left",
+      });
+
+      assertHorizontalLayout(H.getDocumentCard("Orders"), getSupportingText());
+      assertVerticalLayout(
+        H.getDocumentCard("Orders"),
+        H.getDocumentCard("Orders, Count"),
+      );
+    });
+
+    it("should insert a card when dropped onto a supporting text block", () => {
+      H.getDocumentCard("Orders").should("exist");
+      H.documentsDragAndDrop({
+        getSource: () => H.getDocumentCard("Orders, Count"),
+        getTarget: () => getSupportingText(),
+        side: "left",
+      });
+
+      assertHorizontalLayout(
+        H.getDocumentCard("Orders, Count"),
+        getSupportingText(),
+      );
+      assertHorizontalLayout(getSupportingText(), H.getDocumentCard("Orders"));
+    });
+
+    it("should do nothing if dragging a supporting text block outside of a group", () => {
+      H.getDocumentCard("Orders").should("exist");
+      H.documentsDragAndDrop({
+        getSource: () => getSupportingText().find("[data-drag-handle]"),
+        getTarget: () => H.getDocumentCard("Orders, Count"),
+      });
+
+      assertHorizontalLayout(getSupportingText(), H.getDocumentCard("Orders"));
+      assertVerticalLayout(
+        getSupportingText(),
+        H.getDocumentCard("Orders, Count"),
+      );
     });
   });
 });
