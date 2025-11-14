@@ -18,6 +18,22 @@ const mockIncompatibleMetabaseVersion = () => {
       },
       body: req.body,
     });
+  }).as("incompatibleVersionRequest");
+};
+
+const mockCompatibleMetabaseVersion = () => {
+  cy.window().then((win) => {
+    cy.intercept("POST", "*", (req) => {
+      req.reply({
+        statusCode: 500,
+        headers: {
+          "X-Metabase-Version": (win as any)[
+            "METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO"
+          ].version, // incompatible version
+        },
+        body: req.body,
+      });
+    }).as("compatibleVersionRequest");
   });
 };
 
@@ -32,6 +48,28 @@ describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () 
     cy.signOut();
 
     mockAuthProviderAndJwtSignIn();
+  });
+
+  describe("when the SDK bundle is compatible with an instance", () => {
+    it("should not show an error with a close button", () => {
+      cy.mount(
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+        </MetabaseProvider>,
+      );
+
+      getSdkRoot().within(() => {
+        cy.findByTestId("notebook-button").click();
+
+        mockCompatibleMetabaseVersion();
+
+        cy.findByText("Visualize").click();
+      });
+
+      cy.wait("@compatibleVersionRequest");
+
+      cy.findByTestId("sdk-error-container").should("not.exist");
+    });
   });
 
   describe("when the SDK bundle is incompatible with an instance", () => {
@@ -49,6 +87,8 @@ describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () 
 
         cy.findByText("Visualize").click();
       });
+
+      cy.wait("@incompatibleVersionRequest");
 
       cy.findByTestId("sdk-error-container").should(
         "contain.text",
@@ -92,6 +132,8 @@ describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () 
         cy.findByText("Visualize").click();
       });
 
+      cy.wait("@incompatibleVersionRequest");
+
       cy.findByTestId("sdk-error-container").should(
         "contain.text",
         "The analytics server is undergoing maintenance",
@@ -134,6 +176,8 @@ describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () 
 
         cy.findByText("Visualize").click();
       });
+
+      cy.wait("@incompatibleVersionRequest");
 
       cy.findByTestId("sdk-error-container").should(
         "contain.text",
