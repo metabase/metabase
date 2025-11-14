@@ -121,7 +121,7 @@ export function assertNavigationSidebarItemSelected(name, value = "true") {
 
 export function assertNavigationSidebarBookmarkSelected(name, value = "true") {
   navigationSidebar()
-    .findByRole("section", { name: /Bookmarks/i })
+    .findByRole("section", { name: "Bookmarks" })
     .findByRole("listitem", { name })
     .should("have.attr", "aria-selected", value);
 }

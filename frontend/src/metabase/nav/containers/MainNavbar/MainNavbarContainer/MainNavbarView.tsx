@@ -263,6 +263,8 @@ export function MainNavbarView({
                     </ActionIcon>
                   </Tooltip>
                 }
+                role="section"
+                aria-label={t`Collections`}
               >
                 <Tree
                   data={regularCollections}

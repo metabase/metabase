@@ -53,6 +53,8 @@ export function NavbarLibrarySection({
           initialState={expandLibrary ? "expanded" : "collapsed"}
           iconPosition="right"
           iconSize={8}
+          role="section"
+          aria-label={t`Library`}
           onToggle={setExpandLibrary}
         >
           <Tree

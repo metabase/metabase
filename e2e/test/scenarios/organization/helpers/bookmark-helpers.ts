@@ -31,7 +31,7 @@ export const createSimpleQuestion = (name: string) =>
 
 export const verifyBookmarksOrder = (expectedOrder: string[]) => {
   navigationSidebar()
-    .findByRole("section", { name: /Bookmarks/i })
+    .findByRole("section", { name: "Bookmarks" })
     .within(() => {
       cy.get("li")
         .should("have.length", expectedOrder.length)
@@ -51,7 +51,7 @@ export const moveBookmark = (
 ) => {
   moveDnDKitElement(
     navigationSidebar()
-      .findByRole("section", { name: /Bookmarks/i })
+      .findByRole("section", { name: "Bookmarks" })
       .findByText(name),
     { vertical: verticalDistance },
   );

@@ -143,7 +143,7 @@ describe("Add data modal", () => {
       cy.findByText(/Getting Started/i).should("not.exist");
 
       cy.log("Adding data from the 'Data' section should work");
-      cy.findByRole("section", { name: /^Data/i })
+      cy.findByRole("section", { name: "Data" })
         .findByLabelText("Add data")
         .click();
     });
@@ -249,7 +249,7 @@ describe("Add data modal", () => {
 
       cy.findByLabelText("Navigation bar").contains("Exit admin").click();
       H.navigationSidebar()
-        .findByRole("section", { name: /^Data/i })
+        .findByRole("section", { name: "Data" })
         .findByLabelText("Add data")
         .should("be.visible")
         .click();
@@ -383,7 +383,7 @@ describe("Add data modal", () => {
     it("should be hidden for non-admins without upload permissions", () => {
       cy.signInAsNormalUser();
       cy.visit("/");
-      cy.findByRole("section", { name: /^Data/i }).within(() => {
+      cy.findByRole("section", { name: "Data" }).within(() => {
         cy.findByLabelText("Add data").should("not.exist");
       });
     });
@@ -394,7 +394,7 @@ const addDataModal = () => cy.findByRole("dialog", { name: "Add data" });
 
 const openAddDataModalFromSidebar = () =>
   H.navigationSidebar()
-    .findByRole("section", { name: /^Data/i })
+    .findByRole("section", { name: "Data" })
     .findByLabelText("Add data")
     .should("be.visible")
     .click();

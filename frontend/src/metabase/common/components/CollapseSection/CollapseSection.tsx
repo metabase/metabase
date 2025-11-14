@@ -81,12 +81,7 @@ const CollapseSection = ({
   );
 
   return (
-    <div
-      className={className}
-      role="section"
-      aria-labelledby={buttonId}
-      {...props}
-    >
+    <div className={className} {...props}>
       <HeaderContainer
         id={buttonId}
         className={headerClass}

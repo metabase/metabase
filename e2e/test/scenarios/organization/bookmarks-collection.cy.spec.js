@@ -229,7 +229,7 @@ function addBookmarkTo(name) {
   H.popover().findByTextEnsureVisible("Bookmark").click();
 
   H.navigationSidebar()
-    .findByRole("section", { name: /^Bookmark/ })
+    .findByRole("section", { name: "Bookmarks" })
     .should("contain", name);
 }
 
@@ -239,7 +239,7 @@ function removeBookmarkFrom(name) {
   H.popover().findByTextEnsureVisible("Remove from bookmarks").click();
 
   H.navigationSidebar()
-    .findByRole("section", { name: /^Bookmark/ })
+    .findByRole("section", { name: "Bookmarks" })
     .should("not.exist");
 }
 

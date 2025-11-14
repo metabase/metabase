@@ -154,6 +154,8 @@ const BookmarkList = ({
       initialState={initialState}
       iconPosition="right"
       iconSize={8}
+      role="section"
+      aria-label={t`Bookmarks`}
       onToggle={onToggle}
     >
       <DndContext

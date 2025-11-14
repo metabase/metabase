@@ -994,7 +994,7 @@ function assertTrashSelectedInNavigationSidebar() {
 }
 
 function ensureBookmarkVisible(bookmark) {
-  cy.findByRole("section", { name: /bookmarks/i })
+  cy.findByRole("section", { name: "Bookmarks" })
     .findByText(bookmark)
     .should("be.visible");
 }
