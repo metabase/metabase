@@ -15,6 +15,8 @@ import type {
   TransformSource,
 } from "metabase-types/api";
 
+import { CHECKPOINT_TEMPLATE_TAG } from "./constants";
+
 export function parseTimestampWithTimezone(
   timestamp: string,
   systemTimezone: string | undefined,
@@ -174,7 +176,7 @@ export function isNotDraftSource(
   return source.type !== "python" || source["source-database"] != null;
 }
 
-const ALLOWED_TRANSFORM_VARIABLES = ["checkpoint"];
+const ALLOWED_TRANSFORM_VARIABLES = [CHECKPOINT_TEMPLATE_TAG];
 
 export type ValidationResult = {
   isValid: boolean;
