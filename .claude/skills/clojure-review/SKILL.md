@@ -9,11 +9,12 @@ allowed-tools: Read, Grep, Bash, Glob
 @./../_shared/clojure-style-guide.md
 @./../_shared/clojure-commands.md
 
-## Review Guidelines
+## Review guidelines
 
 **What to flag:**
 
-- Read `CLOJURE_STYLE_GUIDE.adoc` and check compliance
+- Check compliance with the Metabase Clojure style guide (included above)
+- If `CLOJURE_STYLE_GUIDE.adoc` exists in the working directory, also check compliance with the community Clojure style guide
 - Flag all style guide violations
 
 **What NOT to post:**
@@ -36,7 +37,7 @@ Example bad code review comments to avoid:
 
 - Do not post comments about missing parentheses (these will be caught by the linter)
 
-## Quick Review Checklist
+## Quick review checklist
 
 Use this to scan through changes efficiently:
 
@@ -107,7 +108,7 @@ Use this to scan through changes efficiently:
 - [ ] Example data is bird-themed when possible
 - [ ] Kondo linter suppressions use proper format (not `#_:clj-kondo/ignore` keyword form)
 
-## Pattern Matching Table
+## Pattern matching table
 
 Quick scan for common issues:
 
@@ -124,7 +125,7 @@ Quick scan for common issues:
 | Query params with `snake_case`               | Use kebab-case for query params                             |
 | New API endpoint without tests               | Add tests for the endpoint                                  |
 
-## Feedback Format Examples
+## Feedback format examples
 
 **For style violations:**
 
