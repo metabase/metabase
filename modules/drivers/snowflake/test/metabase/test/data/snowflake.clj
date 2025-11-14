@@ -6,6 +6,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
+   [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -61,7 +62,9 @@
   (merge
    {:account             (tx/db-test-env-var-or-throw :snowflake :account)
     :user                (tx/db-test-env-var-or-throw :snowflake :user)
-    :password            (tx/db-test-env-var-or-throw :snowflake :password)
+    :private-key-options "uploaded"
+    :private-key-value (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))
+    :use-password false
     :additional-options  (tx/db-test-env-var :snowflake :additional-options)
     ;; this lowercasing this value is part of testing the fix for
     ;; https://github.com/metabase/metabase/issues/9511
