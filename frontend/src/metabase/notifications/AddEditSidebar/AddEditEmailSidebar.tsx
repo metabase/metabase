@@ -91,27 +91,17 @@ export const AddEditEmailSidebar = ({
       onClose={handleSave}
       onCancel={onCancel}
     >
-      <div
-        className={cx(
-          CS.pt3,
-          CS.px4,
-          CS.flex,
-          CS.alignCenter,
-          CS.justifyBetween,
-        )}
-      >
+      <div className={cx(CS.pt3, CS.px4)}>
         <div className={cx(CS.flex, CS.alignCenter)}>
           <Icon name="mail" className={CS.mr1} size={21} />
           <Heading>{t`Email this dashboard`}</Heading>
         </div>
         {pulse.id != null && (
-          <Button
-            variant="subtle"
-            size="xs"
-            onClick={() => setRepresentationsModalOpen(true)}
-          >
-            {t`Representations`}
-          </Button>
+          <div className={cx(CS.mt2)}>
+            <Button onClick={() => setRepresentationsModalOpen(true)}>
+              {t`Representations`}
+            </Button>
+          </div>
         )}
       </div>
       <CaveatMessage />

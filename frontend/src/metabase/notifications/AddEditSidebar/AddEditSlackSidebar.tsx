@@ -80,27 +80,17 @@ export const AddEditSlackSidebar = ({
       onClose={handleSave}
       onCancel={onCancel}
     >
-      <div
-        className={cx(
-          CS.pt4,
-          CS.flex,
-          CS.alignCenter,
-          CS.justifyBetween,
-          CS.px4,
-        )}
-      >
+      <div className={cx(CS.pt4, CS.px4)}>
         <div className={cx(CS.flex, CS.alignCenter)}>
           <Icon name="slack" className={CS.mr1} size={21} />
           <Heading>{t`Send this dashboard to Slack`}</Heading>
         </div>
         {pulse.id != null && (
-          <Button
-            variant="subtle"
-            size="xs"
-            onClick={() => setRepresentationsModalOpen(true)}
-          >
-            {t`Representations`}
-          </Button>
+          <div className={cx(CS.mt2)}>
+            <Button onClick={() => setRepresentationsModalOpen(true)}>
+              {t`Representations`}
+            </Button>
+          </div>
         )}
       </div>
       <CaveatMessage />
