@@ -1,13 +1,10 @@
 .Container {
   display: grid;
-  grid-template: auto auto 1fr / 1fr;
-  grid-template-areas:
-    "TopBar"
-    "MidBar"
-    "Main";
+  grid-template: 1fr / 1fr;
+  grid-template-areas: "Main";
 }
 
-.ContainerTwoRows {
+.Container:has(.TopBar) {
   display: grid;
   grid-template: auto 1fr / 1fr;
   grid-template-areas:
@@ -15,10 +12,13 @@
     "Main";
 }
 
-.ContainerSingleRow {
+.Container:has(.TopBar):has(.MidBar) {
   display: grid;
-  grid-template: 1fr / 1fr;
-  grid-template-areas: "Main";
+  grid-template: auto auto 1fr / 1fr;
+  grid-template-areas:
+    "TopBar"
+    "MidBar"
+    "Main";
 }
 
 .TopBar {

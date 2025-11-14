@@ -1,4 +1,3 @@
-import cx from "classnames";
 import type { PropsWithChildren } from "react";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
@@ -117,16 +116,17 @@ const StaticQuestionInner = ({
       withDownloads={withDownloads}
     >
       {children ?? (
-        <FlexibleSizeComponent width={width} height={height} style={style}>
+        <FlexibleSizeComponent
+          className={className}
+          width={width}
+          height={height}
+          style={style}
+        >
           <Stack
-            className={cx(
-              hasTopBar
-                ? InteractiveQuestionS.ContainerTwoRows
-                : InteractiveQuestionS.ContainerSingleRow,
-              className,
-            )}
+            className={InteractiveQuestionS.Container}
             w="100%"
             h="100%"
+            gap="xs"
           >
             {hasTopBar && (
               <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
@@ -141,11 +141,7 @@ const StaticQuestionInner = ({
               </Stack>
             )}
 
-            <Box
-              className={cx(InteractiveQuestionS.Main, "sdk-question-main")}
-              w="100%"
-              h="100%"
-            >
+            <Box className={InteractiveQuestionS.Main} w="100%" h="100%">
               <Box className={InteractiveQuestionS.Content}>
                 <SdkQuestion.QuestionVisualization
                   height={height}
