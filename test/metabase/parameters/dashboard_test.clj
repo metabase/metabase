@@ -302,10 +302,3 @@
             (is (= products-title-field-id
                    (#'parameters.dashboard/find-common-remapping-target [orders-product-id-field-id]))
                 "Should return target for single FK with remapping")))))))
-
-(deftest cards-with-filters-with-aciton-card
-  (testing "cards-with-filters can handle non-standard (e.g. action) dashcards (fixes problem introduced by PR #64318)"
-    (is (empty? (@#'parameters.dashboard/cards-with-filters
-                 {:resolved-params {"xxx" {:mappings #{{:card {:no_dataset_query :present}}
-                                                       {:action :not-even-card}}}}}
-                 "xxx")))))

@@ -533,19 +533,3 @@
     (:query :native) :mbql-version/legacy
     ;; otherwise, this is not a valid MBQL query.
     nil))
-
-(defn drop-summary-clauses
-  "Remove :aggregation and :breakout from the stage at `stage-number` of a `query`. Adjust stage metadata accordingly."
-  ([query]
-   (drop-summary-clauses query -1))
-  ([query stage-number]
-   (let [stage (query-stage query stage-number)
-         stage-cols (-> stage :lib/stage-metadata :columns)
-         new-stage-cols (into []
-                              (remove (comp #{:source/breakouts :source/aggregations} :lib/source))
-                              stage-cols)]
-     (-> query
-         (update-query-stage stage-number dissoc :aggregation :breakout)
-         (update-query-stage stage-number u/assoc-dissoc
-                             :lib/stage-metadata (when (seq new-stage-cols)
-                                                   {:columns new-stage-cols}))))))
