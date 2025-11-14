@@ -27,7 +27,7 @@
 
 (def ^:private data-sources
   "Valid values for data source"
-  #{:unknown :ingested :metabase-transform :transform :source-data :uploaded-data})
+  #{:unknown :ingested :metabase-transform :transform :source-data :upload})
 
 (def data-layers
   "Valid values for `Table.data_layer`.
