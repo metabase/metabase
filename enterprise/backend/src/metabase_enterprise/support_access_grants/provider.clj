@@ -7,8 +7,7 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.support-access-grants.schema :as schema]
-   [metabase.auth-identity.provider :as provider]
-   [metabase.auth-identity.providers.emailed-secret :as emailed-secret]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -70,14 +69,14 @@
     (when (t/before? grant-ends-at (t/offset-date-time))
       (throw (ex-info "Cannot create support access reset token: grant has expired"
                       {:status-code 400})))
-    (u/prog1 (emailed-secret/generate-reset-token user-id)
+    (u/prog1 (auth-identity/generate-reset-token user-id)
       (t2/with-transaction [_]
         (let [user (t2/select-one :model/User user-id)
               auth-identity {:user_id user-id
                              :provider "support-access-grant"
                              :provider_id (:email user)
                              :credentials (create-support-access-reset-token-credentials <> grant-ends-at)
-                             :metadata (emailed-secret/create-reset-token-metadata (:email user))}]
+                             :metadata (auth-identity/create-reset-token-metadata (:email user))}]
           (if-let [auth-identity-id (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "support-access-grant")]
             (t2/update! :model/AuthIdentity auth-identity-id auth-identity)
             (t2/insert! :model/AuthIdentity auth-identity)))))))
@@ -89,13 +88,13 @@
 
 ;;; -------------------------------------------------- Multimethod Implementations --------------------------------------------------
 
-(methodical/defmethod provider/login! :after :provider/support-access-grant
+(methodical/defmethod auth-identity/login! :after :provider/support-access-grant
   "Completes the support access password reset process after successful authentication.
 
   After a successful support access authentication, this method:
   - Marks the reset token as consumed in the [[AuthIdentity]]
   - Updates the user's password
-  - Sets the user's password_expires_at based on the grant's end time
+  - Sets the user's expires_at based on the grant's end time
 
   All operations are performed within a transaction to ensure consistency."
   [_provider {:keys [user password auth-identity] :as result}]
@@ -104,7 +103,8 @@
       (log/infof "Setting password expiration for user %s to %s based on support access grant"
                  (:id user) grant-ends-at)
       (t2/with-transaction [_]
-        (t2/update! :model/AuthIdentity (:id auth-identity) (emailed-secret/mark-token-consumed auth-identity))
+        (t2/update! :model/AuthIdentity (:id auth-identity) (auth-identity/mark-token-consumed auth-identity))
         (t2/update! :model/AuthIdentity :user_id (:id user) :provider "password"
-                    {:credentials {:plaintext_password password :password_expires_at grant-ends-at}}))))
+                    {:expires_at grant-ends-at
+                     :credentials {:plaintext_password password}}))))
   result)

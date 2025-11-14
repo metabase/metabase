@@ -27,17 +27,13 @@
 (defn- parse-credentials-timestamps-out
   "Parse timestamp strings in credentials to java.time.Instant when reading from database."
   [credentials]
-  (when credentials
-    (cond-> credentials
-      ;; Parse expires_at for emailed_secret providers
-      (and (string? (:expires_at credentials))
-           (:expires_at credentials))
-      (update :expires_at t/instant)
-
-      ;; Parse consumed_at for emailed_secret providers
-      (and (string? (:consumed_at credentials))
-           (:consumed_at credentials))
-      (update :consumed_at t/instant))))
+  (into {}
+        (map (fn [[key value]]
+               (cond-> [key value]
+                 (and  (contains? #{:expires_at :consumed_at :grant_ends_at} key)
+                       (string? value))
+                 (update 1 t/instant))))
+        credentials))
 
 (t2/deftransforms :model/AuthIdentity
   {:credentials {:in mi/json-in

@@ -85,8 +85,8 @@
         (is (not= first-token second-token))
         (is (= (:id first-auth-identity) (:id (first auth-identities))))))))
 
-(deftest support-access-login-sets-password-expires-at-test
-  (testing "login! :after sets password_expires_at based on grant_ends_at"
+(deftest support-access-login-sets-expires-at-test
+  (testing "login! :after sets expires_at on password auth-identity based on grant_ends_at"
     (mt/with-temp [:model/User {grant-creator-id :id} {}
                    :model/User {user-id :id} {}
                    :model/SupportAccessGrantLog {grant-end :grant_end_timestamp :as grant}
@@ -107,7 +107,7 @@
         (let [updated-user (t2/select-one [:model/User :password] :id user-id)
               updated-pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")
               updated-auth-identity (t2/select-one :model/AuthIdentity :id (:id auth-identity) :provider "support-access-grant")]
-          (is (= (str grant-end) (get-in updated-pw-auth-identity [:credentials :password_expires_at])))
+          (is (= grant-end (:expires_at updated-pw-auth-identity)))
           (is (= (get-in updated-pw-auth-identity [:credentials :password_hash]) (:password updated-user)))
           (is (some? (get-in updated-auth-identity [:credentials :consumed_at]))))))))
 

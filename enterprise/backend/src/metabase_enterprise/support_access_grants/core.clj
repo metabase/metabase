@@ -2,6 +2,7 @@
   "Core business logic for support access grant management."
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.support-access-grants.models.support-access-grant-log :as sag.model]
    [metabase-enterprise.support-access-grants.provider :as sag.provider]
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
    [metabase.events.core :as events]
@@ -33,39 +34,35 @@
   (when (active-grant-exists?)
     (throw (ex-info (tru "Cannot create grant: an active grant already exists")
                     {:status-code 409})))
-  (let [now (t/instant)
-        grant-end (t/plus now (t/minutes grant-duration-minutes))
-        grant-record {:user_id user-id
-                      :ticket_number ticket-number
-                      :notes notes
-                      :grant_start_timestamp now
-                      :grant_end_timestamp grant-end}
-        grant (-> (t2/insert-returning-instance! :model/SupportAccessGrantLog grant-record)
-                  (t2/hydrate :user_name))
-        support-email (sag.settings/support-access-grant-email)
-        support-user (or (t2/select-one :model/User :email support-email)
-                         (t2/insert-returning-instance! :model/User
-                                                        {:email support-email
-                                                         :first_name (sag.settings/support-access-grant-first-name)
-                                                         :last_name (sag.settings/support-access-grant-last-name)
-                                                         :password (str (random-uuid))}))
-        token (sag.provider/create-support-access-reset! (:id support-user) grant)
-        password-reset-url (when token
-                             (str (system/site-url) "/auth/reset_password/" token))]
+  (t2/with-transaction [_]
+    (let [now (t/instant)
+          grant-end (t/plus now (t/minutes grant-duration-minutes))
+          grant-record {:user_id user-id
+                        :ticket_number ticket-number
+                        :notes notes
+                        :grant_start_timestamp now
+                        :grant_end_timestamp grant-end}
+          grant (-> (t2/insert-returning-instance! :model/SupportAccessGrantLog grant-record)
+                    (t2/hydrate :user_name))
+          support-email (sag.settings/support-access-grant-email)
+          support-user (sag.model/fetch-or-create-support-user!)
+          token (sag.provider/create-support-access-reset! (:id support-user) grant)
+          password-reset-url (when token
+                               (str (system/site-url) "/auth/reset_password/" token))]
 
-    ;; Publish event - the notification system handles email sending automatically
-    (when (and token password-reset-url)
-      (events/publish-event! :event/support-access-grant-created
-                             {:support_email support-email
-                              :ticket_number ticket-number
-                              :duration_minutes grant-duration-minutes
-                              :grant_end_time grant-end
-                              :password_reset_url password-reset-url
-                              :notes notes}))
+      ;; Publish event - the notification system handles email sending automatically
+      (when (and token password-reset-url)
+        (events/publish-event! :event/support-access-grant-created
+                               {:support_email support-email
+                                :ticket_number ticket-number
+                                :duration_minutes grant-duration-minutes
+                                :grant_end_time grant-end
+                                :password_reset_url password-reset-url
+                                :notes notes}))
 
-    ;; Return grant with token
-    (cond-> grant
-      token (assoc :token token))))
+      ;; Return grant with token
+      (cond-> grant
+        token (assoc :token token)))))
 
 (defn revoke-grant!
   "Revoke an existing support access grant.

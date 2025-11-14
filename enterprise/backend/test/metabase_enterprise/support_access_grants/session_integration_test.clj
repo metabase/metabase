@@ -8,11 +8,14 @@
    [metabase-enterprise.support-access-grants.core :as grants]
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.session.api :as api.session]
    [metabase.session.core :as session]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(use-fixtures :each (fn [f] (mt/with-premium-features #{:support-access-grants} (f))))
+(use-fixtures :each (fn [f] (mt/with-premium-features #{:support-access-grants}
+                              (with-redefs [api.session/throttling-disabled? true]
+                                (f)))))
 
 (deftest reset-password-with-support-access-grant-token-test
   (testing "POST /api/session/reset_password works with support access grant token"
@@ -35,9 +38,10 @@
                   (let [login-result (auth-identity/login! :provider/password
                                                            {:email "support@example.com"
                                                             :password new-password
-                                                            :device-info {:device-id "test-device"
-                                                                          :device-description "Test"
-                                                                          :ip-address "127.0.0.1"}})]
+                                                            :device-info {:device_id "test-device"
+                                                                          :device_description "Test"
+                                                                          :embedded true
+                                                                          :ip_address "127.0.0.1"}})]
                     (is (:success? login-result) "Should be able to login with new password")))))))))))
 
 (deftest reset-password-fallback-to-regular-token-test
@@ -55,9 +59,10 @@
               (let [login-result (auth-identity/login! :provider/password
                                                        {:email "regular@example.com"
                                                         :password new-password
-                                                        :device-info {:device-id "test-device"
-                                                                      :device-description "Test"
-                                                                      :ip-address "127.0.0.1"}})]
+                                                        :device-info {:device_id "test-device"
+                                                                      :device_description "Test"
+                                                                      :ip_address "127.0.0.1"
+                                                                      :embedded true}})]
                 (is (:success? login-result) "Should be able to login with new password")))))))))
 
 (deftest reset-password-with-expired-support-grant-test
@@ -67,12 +72,10 @@
         (with-redefs [sag.settings/support-access-grant-email (constantly "support@example.com")
                       sag.settings/support-access-grant-first-name (constantly "Support")
                       sag.settings/support-access-grant-last-name (constantly "User")]
-          (let [grant (grants/create-grant! creator-id 60 "TICKET-123" "Test notes")
+          (let [grant (t/with-clock (t/mock-clock (t/minus (t/instant) (t/weeks 5)))
+                        (grants/create-grant! creator-id 60 "TICKET-123" "Test notes"))
                 token (:token grant)]
             (is (some? token) "Token should be created")
-            ;; Expire the grant by setting grant_end_timestamp to the past
-            (t2/update! :model/SupportAccessGrantLog (:id grant)
-                        {:grant_end_timestamp (t/minus (t/instant) (t/minutes 5))})
             (testing "Expired support access grant token is rejected"
               (let [response (mt/client :post 400 "session/reset_password"
                                         {:token token
@@ -116,12 +119,10 @@
         (with-redefs [sag.settings/support-access-grant-email (constantly "support@example.com")
                       sag.settings/support-access-grant-first-name (constantly "Support")
                       sag.settings/support-access-grant-last-name (constantly "User")]
-          (let [grant (grants/create-grant! creator-id 60 "TICKET-789" "Test notes")
+          (let [grant (t/with-clock (t/mock-clock (t/minus (t/instant) (t/weeks 5)))
+                        (grants/create-grant! creator-id 60 "TICKET-123" "Test notes"))
                 token (:token grant)]
             (is (some? token) "Token should be created")
-            ;; Expire the grant by setting grant_end_timestamp to the past
-            (t2/update! :model/SupportAccessGrantLog (:id grant)
-                        {:grant_end_timestamp (t/minus (t/instant) (t/minutes 5))})
             (testing "Expired support grant token is invalid"
               (let [response (mt/client :get 200 "session/password_reset_token_valid"
                                         :token token)]
