@@ -1590,6 +1590,60 @@ describe("scenarios > embedding > full app", () => {
       );
     });
 
+    it("should navigate to and from an unknown question through postMessage (metabase#65500)", () => {
+      cy.signInAsAdmin();
+
+      H.createDashboardWithTabs({
+        dashboard: {
+          name: "Dashboard with tabs",
+        },
+        dashcards: [
+          createMockDashboardCard({
+            card_id: ORDERS_QUESTION_ID,
+            size_x: 10,
+            size_y: 8,
+          }),
+        ],
+      }).then((dashboard) => {
+        H.loadInteractiveIframeEmbedTestPage({
+          dashboardId: dashboard.id,
+          iframeSelector: 'iframe[src*="localhost:4000/dashboard"]',
+        });
+
+        cy.get('iframe[src*="localhost:4000/dashboard"]')
+          .its("0.contentDocument.body")
+          .should("not.be.empty")
+          .then(cy.wrap)
+          .as("iframeBody");
+
+        cy.get("@iframeBody")
+          .find("[data-testid=table-footer]")
+          .should("contain", "Showing first 2,000 rows");
+
+        H.postMessageToIframe({
+          iframeSelector: 'iframe[src*="localhost:4000/dashboard"]',
+          messageData: {
+            metabase: { type: "location", location: "/dashboard/9999990" },
+          },
+        });
+
+        cy.get("@iframeBody")
+          .find("[role=status]")
+          .should("contain", "We're a little lost");
+
+        H.postMessageToIframe({
+          iframeSelector: 'iframe[src*="localhost:4000/dashboard"]',
+          messageData: {
+            metabase: { type: "location", location: "/dashboard/10" },
+          },
+        });
+
+        cy.get("@iframeBody")
+          .find("[data-testid=table-footer]")
+          .should("contain", "Showing first 2,000 rows");
+      });
+    });
+
     it("should send `frame` message with dashboard height when the dashboard is resized (metabase#37437)", () => {
       const TAB_1 = { id: 1, name: "Tab 1" };
       const TAB_2 = { id: 2, name: "Tab 2" };

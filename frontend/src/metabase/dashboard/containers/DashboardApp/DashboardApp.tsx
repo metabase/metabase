@@ -147,6 +147,11 @@ export const DashboardApp = ({
   const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
     useAutoScrollToDashcard(location);
 
+  const isRouteInSync = window.location.pathname === location.pathname;
+  if (!isRouteInSync) {
+    return null; // Don't render until route syncs (metabase#65500)
+  }
+
   return (
     <ErrorBoundary message={error}>
       <DashboardContextProvider
