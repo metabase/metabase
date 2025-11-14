@@ -41,7 +41,7 @@ import { ToolsApp } from "metabase/admin/tools/components/ToolsApp";
 import { EmbeddingHubAdminSettingsPage } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
-import { DataModel } from "metabase/metadata/pages/DataModel";
+import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_ADMIN_TOOLS,
@@ -81,21 +81,21 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
         <Route title={t`Table Metadata`}>
           <IndexRedirect to="database" />
-          <Route path="database" component={DataModel} />
-          <Route path="database/:databaseId" component={DataModel} />
+          <Route path="database" component={DataModelV1} />
+          <Route path="database/:databaseId" component={DataModelV1} />
           <Route
             path="database/:databaseId/schema/:schemaId"
-            component={DataModel}
+            component={DataModelV1}
           />
           <Route
             path="database/:databaseId/schema/:schemaId/table/:tableId"
-            component={DataModel}
+            component={DataModelV1}
           />
           <Route
             path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-            component={DataModel}
+            component={DataModelV1}
           />
-          <Route component={DataModel}>
+          <Route component={DataModelV1}>
             <Route path="segments" component={SegmentListApp} />
             <Route path="segment/create" component={SegmentApp} />
             <Route path="segment/:id" component={SegmentApp} />

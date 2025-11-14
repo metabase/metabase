@@ -80,6 +80,7 @@ import type {
   Dataset,
   DependencyEntry,
   Document,
+  GetDependencyGraphRequest,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -1072,6 +1073,10 @@ type DependenciesPlugin = {
   useCheckTransformDependencies: (
     props: UseCheckDependenciesProps<UpdateTransformRequest>,
   ) => UseCheckDependenciesResult<UpdateTransformRequest>;
+  useGetDependenciesCount: (args: GetDependencyGraphRequest) => {
+    dependenciesCount: number;
+    dependentsCount: number;
+  };
 };
 
 export type DependencyGraphPageContextType = {
@@ -1128,6 +1133,10 @@ export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   useCheckCardDependencies: useCheckDependencies,
   useCheckSnippetDependencies: useCheckDependencies,
   useCheckTransformDependencies: useCheckDependencies,
+  useGetDependenciesCount: () => ({
+    dependenciesCount: 0,
+    dependentsCount: 0,
+  }),
 };
 
 export type LibrarySectionProps = {

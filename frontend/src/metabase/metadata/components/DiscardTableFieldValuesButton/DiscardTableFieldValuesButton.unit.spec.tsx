@@ -21,7 +21,7 @@ function setup() {
 
   renderWithProviders(
     <>
-      <DiscardTableFieldValuesButton tableId={table.id} />
+      <DiscardTableFieldValuesButton tableIds={[table.id]} />
       <UndoListing />
     </>,
   );

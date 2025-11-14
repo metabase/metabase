@@ -21,7 +21,7 @@ function setup() {
 
   renderWithProviders(
     <>
-      <SyncTableSchemaButton tableId={table.id} />
+      <SyncTableSchemaButton tableIds={[table.id]} />
       <UndoListing />
     </>,
   );

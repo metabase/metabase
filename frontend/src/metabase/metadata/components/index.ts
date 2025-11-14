@@ -18,3 +18,7 @@ export * from "./SyncTableSchemaButton";
 export * from "./TableBreadcrumbs";
 export * from "./TitledSection";
 export * from "./UnfoldJsonPicker";
+export * from "./DataSourceInput";
+export * from "./UserInput";
+export * from "./LayerInput";
+export * from "./EntityTypeInput";

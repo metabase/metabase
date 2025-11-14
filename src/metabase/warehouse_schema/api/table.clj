@@ -2,19 +2,26 @@
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as app-db]
+   [metabase.collections.core :as collections]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
    ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
@@ -31,7 +38,8 @@
    [metabase.warehouses.api :as warehouses]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
@@ -53,12 +61,48 @@
 
 (api.macros/defendpoint :get "/"
   "Get all `Tables`."
-  []
-  (as-> (t2/select :model/Table, :active true, {:order-by [[:name :asc]]}) tables
-    (t2/hydrate tables :db)
-    (into [] (comp (filter mi/can-read?)
-                   (map schema.table/present-table))
-          tables)))
+  [_
+   {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only]}
+   :- [:map
+       ;; conjunctive search terms
+       [:term {:optional true} :string]
+       [:visibility-type {:optional true} :string]
+       [:data-layer {:optional true} :string]
+       [:data-source {:optional true} :string]
+       [:owner-user-id {:optional true} [:maybe :int]]
+       [:owner-email {:optional true} :string]
+       [:orphan-only {:optional true} [:maybe ms/BooleanValue]]
+       [:unused-only {:optional true} [:maybe ms/BooleanValue]]]]
+  (let [pattern    (some-> term (str/replace "*" "%") (cond-> (not (str/ends-with? term "%")) (str "%")))
+        empty-null (fn [x] (if (and (string? x) (str/blank? x)) nil x))
+        like       (case (app-db/db-type)
+                     (:h2 :postgres) [:ilike :name pattern]
+                     [:raw [:like :name pattern] " COLLATE " [:inline "utf8mb4_unicode_ci"]])
+        where      (cond-> [:and [:= :active true]]
+                     (not (str/blank? term)) (conj like)
+                     visibility-type         (conj [:= :visibility_type (empty-null visibility-type)])
+                     data-layer              (conj [:= :data_layer      (empty-null data-layer)])
+                     data-source             (conj [:= :data_source     (empty-null data-source)])
+                     owner-user-id           (conj [:= :owner_user_id   (empty-null owner-user-id)])
+                     owner-email             (conj [:= :owner_email     (empty-null owner-email)])
+                     orphan-only             (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]]))
+        ;; Use LEFT JOIN to efficiently filter orphaned tables
+        ;; Exclude transforms as dependents since they produce tables
+        query      (cond-> {:where    where
+                            :order-by [[:name :asc]]}
+                     (and unused-only (premium-features/has-feature? :dependencies))
+                     (assoc :left-join [[:dependency :d]
+                                        [:and
+                                         [:= :d.to_entity_type "table"]
+                                         [:= :d.to_entity_id :metabase_table.id]]]
+                            :where     [:and where [:= :d.id nil]]))
+        hydrations (cond-> [:db :published_as_model]
+                     (premium-features/has-feature? :transforms)   (conj :transform))]
+    (as-> (t2/select :model/Table query) tables
+      (apply t2/hydrate tables hydrations)
+      (into [] (comp (filter mi/can-read?)
+                     (map schema.table/present-table))
+            tables))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -113,9 +157,15 @@
   if field positions have changed."
   [{:keys [id] :as existing-table} :- [:map [:id ::lib.schema.id/table]]
    body]
-  (when-let [changes (not-empty (u/select-keys-when body
-                                                    :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                                                    :present [:description :caveats :points_of_interest :visibility_type :data_authority]))]
+  (when-let [changes (-> body
+                         (u/select-keys-when
+                          :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
+                          :present [:description :caveats :points_of_interest :visibility_type
+                                    ;; bulk-metadata-editing
+                                    :data_layer :data_authority :data_source :owner_email :owner_user_id])
+                         (u/update-some :data_layer keyword)
+                         (u/update-some :data_source keyword)
+                         not-empty)]
     (t2/update! :model/Table id changes))
   (let [updated-table        (t2/select-one :model/Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
@@ -125,23 +175,25 @@
         (t2/hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
-;; TODO -- this seems like it belongs in the `sync` module... right?
+;; TODO (Cam 2015/01/16) this seems like it belongs in the `sync` module... right?
 (defn- sync-unhidden-tables
-  "Function to call on newly unhidden tables. Starts a thread to sync all tables."
+  "Function to call on newly unhidden tables. Starts a thread to sync all tables. Groups tables by database to
+  efficiently sync tables from different databases."
   [newly-unhidden]
   (when (seq newly-unhidden)
     (quick-task/submit-task!
      (fn []
-       (let [database (table/database (first newly-unhidden))]
-         ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
-         ;; purposes of creating a new H2 database.
-         (if (binding [driver.settings/*allow-testing-h2-connections* true]
-               (driver.u/can-connect-with-details? (:engine database) (:details database)))
-           (doseq [table newly-unhidden]
-             (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
-             (sync/sync-table! table))
-           (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
-                                     (:name database)))))))))
+       (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
+         (let [database (t2/select-one :model/Database db-id)]
+           ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
+           ;; purposes of creating a new H2 database.
+           (if (binding [driver.settings/*allow-testing-h2-connections* true]
+                 (driver.u/can-connect-with-details? (:engine database) (:details database)))
+             (doseq [table tables]
+               (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
+               (sync/sync-table! table))
+             (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
+                                       (:name database))))))))))
 
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
@@ -168,15 +220,22 @@
             [:points_of_interest      {:optional true} [:maybe :string]]
             [:show_in_getting_started {:optional true} [:maybe :boolean]]
             [:field_order             {:optional true} [:maybe FieldOrder]]
-            [:data_authority          {:optional true} [:maybe ::data-authority-write]]]]
+            [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+            ;; bulk-metadata-editing
+            [:data_source             {:optional true} [:maybe :string]]
+            [:data_layer              {:optional true} [:maybe :string]]
+            [:owner_email             {:optional true} [:maybe :string]]
+            [:owner_user_id           {:optional true} [:maybe :int]]]]
   (first (update-tables! [id] body)))
 
 (api.macros/defendpoint :put "/"
-  "Update all `Table` in `ids`."
+  "Update all `Table` in `ids`.
+
+  Deprecated, should use PUT /table/edit from now on."
   [_route-params
    _query-params
    {:keys [ids], :as body} :- [:map
-                               [:ids                     [:sequential ms/PositiveInt]]
+                               [:ids                                      [:sequential ms/PositiveInt]]
                                [:display_name            {:optional true} [:maybe ms/NonBlankString]]
                                [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
                                [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
@@ -184,11 +243,112 @@
                                [:caveats                 {:optional true} [:maybe :string]]
                                [:points_of_interest      {:optional true} [:maybe :string]]
                                [:show_in_getting_started {:optional true} [:maybe :boolean]]
-                               [:data_authority          {:optional true} [:maybe ::data-authority-write]]]]
+                               [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+                               ;; bulk-metadata-editing
+                               [:data_source             {:optional true} [:maybe :string]]
+                               [:data_layer              {:optional true} [:maybe :string]]
+                               [:owner_email             {:optional true} [:maybe :string]]
+                               [:owner_user_id           {:optional true} [:maybe :int]]]]
   (update-tables! ids body))
 
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
+(mr/def ::table-selectors
+  [:map
+   ;; disjunctive filters (e.g. db_id IN $database_ids OR id IN $table_ids)
+   [:database_ids {:optional true} [:sequential ms/PositiveInt]]
+   [:schema_ids {:optional true} [:sequential :string]] ;todo find schema
+   [:table_ids {:optional true} [:sequential ms/PositiveInt]]])
+
+(mu/defn ^:private table-selectors->filter
+  [{:keys [database_ids table_ids schema_ids]}]
+  (let [schema-expr (fn [s]
+                      (let [[schema-db-id schema-name] (str/split s #"\:")]
+                        [:and [:= :db_id (parse-long schema-db-id)] [:= :schema schema-name]]))]
+    (cond-> [:or false]
+      (seq database_ids) (conj [:in :db_id (sort database_ids)])
+      (seq table_ids)    (conj [:in :id    (sort table_ids)])
+      (seq schema_ids)   (conj (into [:or] (map schema-expr) (sort schema_ids))))))
+
+(mr/def ::data-layers (into [:enum {:decode/string keyword}] table/data-layers))
+
+(defn- maybe-sync-unhidden-tables!
+  [existing-tables {:keys [data_layer] :as body}]
+  ;; sync any tables that are changed from copper to something else
+  (sync-unhidden-tables (when (and (contains? body :data_layer) (not= :copper data_layer))
+                          (filter #(= :copper (:data_layer %)) existing-tables))))
+
+(api.macros/defendpoint :post "/edit"
+  "Bulk updating tables."
+  [_route-params
+   _query-params
+   body
+   :- [:merge
+       ::table-selectors
+       [:map {:closed true}
+        [:data_authority {:optional true} [:maybe :string]]
+        [:data_source {:optional true} [:maybe :string]]
+        [:data_layer {:optional true} [:maybe ::data-layers]]
+        [:entity_type {:optional true} [:maybe :string]]
+        [:owner_email {:optional true} [:maybe :string]]
+        [:owner_user_id {:optional true} [:maybe :int]]]]]
+  (api/check-superuser)
+  (let [where           (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
+        set-ks          [:data_authority
+                         :data_source
+                         :data_layer
+                         :owner_email
+                         :owner_user_id
+                         :entity_type]
+        existing-tables (t2/select :model/Table {:where where})
+        table-ids       (set (map :id existing-tables))
+        set-map         (select-keys body set-ks)]
+    (when (seq set-map)
+      (t2/update! :model/Table [:in table-ids] set-map)
+      (maybe-sync-unhidden-tables! existing-tables set-map))
+    {}))
+
+(defn- table->published-model
+  [{:keys [id name db_id] :as _table} creator-id collection-id]
+  {:name                   (format "Model based on %s" name)
+   :description            (format "Base model for table %s " name)
+   :dataset_query          (let [mp (lib-be/application-database-metadata-provider db_id)]
+                             (lib/query mp (lib.metadata/table mp id)))
+   :type                   :model
+   :display                :table
+   :visualization_settings {}
+   :creator_id             creator-id
+   :collection_id          collection-id
+   :published_table_id     id})
+
+(api.macros/defendpoint :post "/publish-model"
+  "Create a model for each of selected tables"
+  [_route-params
+   _query-params
+   {:keys [target_collection_id]
+    :as body}
+   :- [:merge
+       ::table-selectors
+       [:map
+        [:target_collection_id [:maybe [:or pos-int? [:= "library"]]]]]]]
+  (api/check-superuser)
+  (let [target-collection (cond
+                            (= "library" target_collection_id) (api/check-403 (collections/remote-synced-collection))
+                            (nil? target_collection_id) nil
+                            :else (api/check-404 (t2/select-one :model/Collection target_collection_id)))
+        where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
+        created-models    (t2/with-transaction [_conn]
+                            (into []
+                                  (comp
+                                   (map t2.realize/realize)
+                                   (partition-all 20)
+                                   (mapcat (fn [batch]
+                                             (mapv (fn [table]
+                                                     (queries/create-card! (table->published-model table api/*current-user-id* (:id target-collection)) @api/*current-user*))
+                                                   batch))))
+                                  (t2/reducible-select :model/Table :active true {:where where})))]
+    {:created_count     (count created-models)
+     :models            created-models
+     :target_collection target-collection}))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
@@ -353,6 +513,11 @@
                 :file     (get-in multipart-params ["file" :tempfile])
                 :action   :metabase.upload/replace}))
 
+(defn- sync-schema-async!
+  [table user-id]
+  (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
+  (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table))))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/sync_schema"
@@ -361,7 +526,6 @@
                     [:id ms/PositiveInt]]]
   (let [table (api/write-check (t2/select-one :model/Table :id id))
         database (api/write-check (warehouses/get-database (:db_id table) {:exclude-uneditable-details? true}))]
-    (events/publish-event! :event/table-manual-sync {:object table :user-id api/*current-user-id*})
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
     ;; purposes of creating a new H2 database.
     (if-let [ex (try
@@ -374,5 +538,60 @@
                     e))]
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do
-        (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table)))
+        (sync-schema-async! table api/*current-user-id*)
         {:status :ok}))))
+
+(api.macros/defendpoint :post "/sync-schema"
+  "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.
+  - Currently checks policy before returning (so you might receive a 4xx on e.g. AuthZ policy failure)
+  - The sync itself is however, asyncronous. This call may return before all tables synced."
+  [_
+   _
+   body :- ::table-selectors]
+  ;; todo this obviously will not do
+  ;; a. can checks/events/sync be batched
+  ;; b. sync is flakey
+  ;; idea: flag dirty / ready for sync
+  ;;       job comes along and actually performs sync
+  ;;       promise is nothing is done apart from the dirty/queueing with the call (incl authz/event until batchy batchy)
+  (api/check-superuser)
+  (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})
+        db-ids (sort (set (map :db_id tables)))]
+    (doseq [database (t2/select :model/Database :id [:in db-ids])]
+      (try
+        (binding [driver.settings/*allow-testing-h2-connections* true]
+          (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
+        nil
+        (catch Throwable e
+          (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync tables" (:name database)))
+          (throw (ex-info (ex-message e) {:status-code 422})))))
+    (doseq [table tables]
+      (sync-schema-async! table api/*current-user-id*))
+    {:status :ok}))
+
+(api.macros/defendpoint :post "/rescan-values"
+  "Batch version of /table/:id/rescan_values. Takes an abstract table selection as /table/edit does."
+  [_
+   _
+   body :- ::table-selectors]
+  (api/check-superuser)
+  (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})]
+    ;; same permission skip as the single-table api, see comment in /:id/rescan_values
+    (doseq [table tables]
+      (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
+      (request/as-admin
+        (quick-task/submit-task! #(sync/update-field-values-for-table! table))))
+    {:status :ok}))
+
+(api.macros/defendpoint :post "/discard-values"
+  "Batch version of /table/:id/discard_values. Takes an abstract table selection as /table/edit does."
+  [_
+   _
+   body :- ::table-selectors]
+  (api/check-superuser)
+  (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})]
+    (let [field-ids-to-delete-q {:select [:id]
+                                 :from   [(t2/table-name :model/Field)]
+                                 :where  [:in :table_id (map :id tables)]}]
+      (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids-to-delete-q]))
+    {:status :ok}))

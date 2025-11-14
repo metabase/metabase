@@ -128,15 +128,10 @@
 
 (defn sync-target!
   "Sync target of a transform"
-  ([transform-id run-id]
-   (let [{:keys [source target]} (t2/select-one :model/Transform transform-id)
-         db (get-in source [:query :database])
-         database (t2/select-one :model/Database db)]
-     (sync-target! target database run-id)))
-  ([target database _run-id]
-   ;; sync the new table (note that even a failed sync status means that the execution succeeded)
-   (log/info "Syncing target" (pr-str target) "for transform")
-   (activate-table-and-mark-computed! database target)))
+  [target database _run-id]
+  ;; sync the new table (note that even a failed sync status means that the execution succeeded)
+  (log/info "Syncing target" (pr-str target) "for transform")
+  (activate-table-and-mark-computed! database target))
 
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
@@ -168,8 +163,14 @@
   "Activate table for `target` in `database` in the app db."
   [database target]
   (when-let [table (sync-table! database target {:create? true})]
-    (when (or (not (:active table)) (not (= (:data_authority table) :computed)))
-      (t2/update! :model/Table (:id table) {:active true, :data_authority :computed}))))
+    (when-not (= {:active         true
+                  :data_authority :computed
+                  ;; todo orphaned source if no longer target (detect target change?)
+                  :data_source    :metabase-transform}
+                 (select-keys table [:active :data_authority :data_source]))
+      (t2/update! :model/Table (:id table) {:active         true
+                                            :data_authority :computed
+                                            :data_source    :metabase-transform}))))
 
 (defn deactivate-table!
   "Deactivate table for `target` in `database` in the app db."

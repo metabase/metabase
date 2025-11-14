@@ -104,6 +104,8 @@ import cloud_filled_component from "./cloud_filled.svg?component";
 import cloud_filled_source from "./cloud_filled.svg?source";
 import code_block_component from "./code_block.svg?component";
 import code_block_source from "./code_block.svg?source";
+import collection2_component from "./collection2.svg?component";
+import collection2_source from "./collection2.svg?source";
 import combine_component from "./combine.svg?component";
 import combine_source from "./combine.svg?source";
 import comment_component from "./comment.svg?component";
@@ -278,6 +280,8 @@ import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
 import mail_filled_source from "./mail_filled.svg?source";
+import medallion_component from "./medallion.svg?component";
+import medallion_source from "./medallion.svg?source";
 import message_circle_component from "./message_circle.svg?component";
 import message_circle_source from "./message_circle.svg?source";
 import metabot_component from "./metabot.svg?component";
@@ -296,6 +300,8 @@ import move_component from "./move.svg?component";
 import move_source from "./move.svg?source";
 import move_card_component from "./move_card.svg?component";
 import move_card_source from "./move_card.svg?source";
+import network_component from "./network.svg?component";
+import network_source from "./network.svg?source";
 import new_folder_component from "./new_folder.svg?component";
 import new_folder_source from "./new_folder.svg?source";
 import notebook_component from "./notebook.svg?component";
@@ -380,6 +386,8 @@ import segment_component from "./segment.svg?component";
 import segment_source from "./segment.svg?source";
 import send_component from "./send.svg?component";
 import send_source from "./send.svg?source";
+import settings_component from "./settings.svg?component";
+import settings_source from "./settings.svg?source";
 import share_component from "./share.svg?component";
 import share_source from "./share.svg?source";
 import shield_component from "./shield.svg?component";
@@ -1049,6 +1057,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: mail_filled_component,
       source: mail_filled_source,
     },
+    medallion: {
+      component: medallion_component,
+      source: medallion_source,
+    },
     message_circle: {
       component: message_circle_component,
       source: message_circle_source,
@@ -1084,6 +1096,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     move_card: {
       component: move_card_component,
       source: move_card_source,
+    },
+    network: {
+      component: network_component,
+      source: network_source,
     },
     new_folder: {
       component: new_folder_component,
@@ -1196,6 +1212,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     sankey: {
       component: sankey_component,
       source: sankey_source,
+    },
+    settings: {
+      component: settings_component,
+      source: settings_source,
     },
     share: {
       component: share_component,
@@ -1531,6 +1551,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     external: { component: share_component, source: share_source },
     table_spaced: { component: table_component, source: table_source },
     collection: { component: folder_component, source: folder_source },
+    collection2: {
+      component: collection2_component,
+      source: collection2_source,
+    },
     beaker: { component: formula_component, source: formula_source },
     test_tube: { component: test_tube_component, source: test_tube_source },
     eye_filled: { component: eye_component, source: eye_source },
@@ -1590,6 +1614,7 @@ export type IconName =
   | "close"
   | "cloud"
   | "cloud_filled"
+  | "collection2"
   | "compare"
   | "combine"
   | "company"
@@ -1678,6 +1703,7 @@ export type IconName =
   | "lock_filled"
   | "mail"
   | "mail_filled"
+  | "medallion"
   | "message_circle"
   | "metabot"
   | "metabot_sad"
@@ -1687,6 +1713,7 @@ export type IconName =
   | "moon"
   | "move"
   | "move_card"
+  | "network"
   | "new_folder"
   | "notebook"
   | "number"
@@ -1714,6 +1741,7 @@ export type IconName =
   | "sankey"
   | "share"
   | "send"
+  | "settings"
   | "smile"
   | "split"
   | "sql"

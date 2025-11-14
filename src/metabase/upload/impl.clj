@@ -536,7 +536,10 @@
         table             (sync/create-table! db {:name         table-name
                                                   :schema       (not-empty schema)
                                                   :display_name display-name})
-        _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true, :data_authority :authoritative, :is_writable true})
+        _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true
+                                                                :data_authority :authoritative
+                                                                :data_source :upload
+                                                                :is_writable true})
         _sync             (scan-and-sync-table! db table)
         _set_names        (set-display-names! (:id table) columns)
         ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
