@@ -17,6 +17,11 @@ import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Center, Stack } from "metabase/ui";
+import {
+  PaneHeader,
+  PaneHeaderActions,
+  PaneHeaderInput,
+} from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import * as Lib from "metabase-lib";
 import type {
   Database,
@@ -24,11 +29,6 @@ import type {
   Transform,
 } from "metabase-types/api";
 
-import {
-  PaneHeader,
-  PaneHeaderActions,
-  PaneHeaderInput,
-} from "../../../../../../../frontend/src/metabase/data-studio/common/components/PaneHeader";
 import { TransformEditor } from "../../components/TransformEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";

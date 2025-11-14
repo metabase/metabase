@@ -12,9 +12,9 @@ import {
   useCreateTransformJobMutation,
   useLazyGetTransformJobQuery,
 } from "metabase-enterprise/api";
+import { PaneHeaderActions } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
-import { PaneHeaderActions } from "../../../../../../../frontend/src/metabase/data-studio/common/components/PaneHeader";
 import { JobEditor, type TransformJobInfo } from "../../components/JobEditor";
 
 type NewJobPageProps = {

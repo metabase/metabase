@@ -311,8 +311,12 @@
   "Should we allow users to use dependency tracking?"
   :dependencies)
 
+(define-premium-feature ^{:added "0.58.0"} enable-data-studio?
+  "Should we enable the Data Studio?"
+  :data-studio)
+
 (define-premium-feature ^{:added "0.58.0"} enable-library?
-  "Should we allow users to use the library collection?"
+  "Should we eanble the Library?"
   :library)
 
 (defn- -token-features []
@@ -332,6 +336,7 @@
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)
+   :data_studio                    (enable-data-studio?)
    :dependencies                   (enable-dependencies?)
    :development_mode               (development-mode?)
    :disable_password_login         (can-disable-password-login?)
@@ -344,6 +349,7 @@
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)
+   :library                        (enable-library?)
    :llm_autodescription            (enable-llm-autodescription?)
    :metabot_v3                     (enable-metabot-v3?)
    :offer_metabase_ai              (offer-metabase-ai-trial?)
@@ -353,7 +359,6 @@
    :remote_sync                    (enable-remote-sync?)
    :sandboxes                      (enable-sandboxes?)
    :scim                           (enable-scim?)
-   :semantic_layer                 (enable-library?)
    :semantic_search                (enable-semantic-search?)
    :serialization                  (enable-serialization?)
    :session_timeout_config         (enable-session-timeout-config?)

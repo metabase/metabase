@@ -1,8 +1,8 @@
 import { type ReactNode, useContext, useLayoutEffect } from "react";
 
-import { DataStudioContext } from "metabase/data-studio/common/contexts/DataStudioContext";
 import * as Urls from "metabase/lib/urls";
 import { Box, Flex } from "metabase/ui";
+import { DataStudioContext } from "metabase-enterprise/data-studio/common/contexts/DataStudioContext";
 
 import { JobsSidebar } from "./JobsSidebar";
 import { TransformsSidebar } from "./TransformsSidebar";

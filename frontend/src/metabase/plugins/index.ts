@@ -1,4 +1,4 @@
-import type { Middleware } from "@reduxjs/toolkit";
+import type { Middleware, Store } from "@reduxjs/toolkit";
 import type { TagDescription } from "@reduxjs/toolkit/query";
 import React, {
   type Component,
@@ -1161,4 +1161,21 @@ export const PLUGIN_LIBRARY: LibraryPlugin = {
   getLibraryCollectionType: () => undefined,
   canPlaceEntityInCollection: () => true,
   canPlaceEntityInCollectionOrDescendants: () => true,
+};
+
+export type DataStudioPlugin = {
+  isEnabled: boolean;
+  canAccessDataStudio: (state: State) => boolean;
+  getDataStudioRoutes: (
+    store: Store<State>,
+    CanAccessDataStudio: ComponentType,
+    CanAccessDataModel: ComponentType,
+    CanAccessTransforms: ComponentType,
+  ) => ReactNode;
+};
+
+export const PLUGIN_DATA_STUDIO: DataStudioPlugin = {
+  isEnabled: false,
+  canAccessDataStudio: () => false,
+  getDataStudioRoutes: () => null,
 };

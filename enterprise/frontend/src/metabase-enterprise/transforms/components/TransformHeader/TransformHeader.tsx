@@ -5,14 +5,14 @@ import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
-import type { Transform, TransformId } from "metabase-types/api";
-
 import {
   PaneHeader,
   PaneHeaderInput,
   type PaneHeaderTab,
   PaneHeaderTabs,
-} from "../../../../../../../frontend/src/metabase/data-studio/common/components/PaneHeader";
+} from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import type { Transform, TransformId } from "metabase-types/api";
+
 import { NAME_MAX_LENGTH } from "../../constants";
 
 import { TransformMoreMenu } from "./TransformMoreMenu";

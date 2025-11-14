@@ -20,10 +20,10 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
+import { PaneHeaderActions } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import * as Lib from "metabase-lib";
 import type { Database, Transform } from "metabase-types/api";
 
-import { PaneHeaderActions } from "../../../../../../../frontend/src/metabase/data-studio/common/components/PaneHeader";
 import { TransformEditor } from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";

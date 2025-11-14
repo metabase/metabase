@@ -12,11 +12,11 @@ import {
   useGetPythonLibraryQuery,
   useUpdatePythonLibraryMutation,
 } from "metabase-enterprise/api/python-transform-library";
-
 import {
   PaneHeader,
   PanelHeaderTitle,
-} from "../../../../../../../frontend/src/metabase/data-studio/common/components/PaneHeader";
+} from "metabase-enterprise/data-studio/common/components/PaneHeader";
+
 import { PythonEditor } from "../../components/PythonEditor";
 
 import S from "./PythonLibraryEditorPage.module.css";

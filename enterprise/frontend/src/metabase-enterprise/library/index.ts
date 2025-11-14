@@ -9,7 +9,7 @@ import {
 } from "./utils";
 
 export function initializePlugin() {
-  if (hasPremiumFeature("semantic_layer")) {
+  if (hasPremiumFeature("library")) {
     PLUGIN_LIBRARY.isEnabled = true;
     PLUGIN_LIBRARY.LibrarySection = LibrarySection;
     PLUGIN_LIBRARY.getLibraryCollectionType = getLibraryCollectionType;

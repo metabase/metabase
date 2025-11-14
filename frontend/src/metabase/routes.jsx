@@ -30,7 +30,6 @@ import { DashboardMoveModalConnected } from "metabase/dashboard/components/Dashb
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
 import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-import { getDataStudioRoutes } from "metabase/data-studio/routes";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
@@ -41,6 +40,7 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
+  PLUGIN_DATA_STUDIO,
   PLUGIN_DOCUMENTS,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
@@ -68,6 +68,7 @@ import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import {
   CanAccessDataModel,
+  CanAccessDataStudio,
   CanAccessOnboarding,
   CanAccessSettings,
   CanAccessTransforms,
@@ -376,13 +377,12 @@ export const getRoutes = (store) => {
           {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
 
           {/* DATA STUDIO */}
-          <Route path="data-studio">
-            {getDataStudioRoutes(
-              store,
-              CanAccessDataModel,
-              CanAccessTransforms,
-            )}
-          </Route>
+          {PLUGIN_DATA_STUDIO.getDataStudioRoutes(
+            store,
+            CanAccessDataStudio,
+            CanAccessDataModel,
+            CanAccessTransforms,
+          )}
         </Route>
       </Route>
 
