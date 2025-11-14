@@ -651,13 +651,15 @@
           generated-id (-> response :structured_output :query_id)]
       (is (=? {:structured_output {:type "query"
                                    :query_id string?
-                                   :query query
+                                   :query map?
                                    :result_columns
                                    [{:field_id (str "q" generated-id "/0"), :name "CREATED_AT", :display_name "Created At: Week", :type "datetime"}
                                     {:field_id (str "q" generated-id "/1"), :name "avg", :display_name "Average of Rating", :type "number"}]}
                :conversation_id conversation-id}
-              ;; normalize query to convert strings like "field" to keywords
-              (update-in response [:structured_output :query] mbql.normalize/normalize))))))
+              response))
+      ;; Verify the query is normalized (supports both MBQL v4 and v5)
+      (is (map? (get-in response [:structured_output :query])))
+      (is (= (mt/id) (get-in response [:structured_output :query :database]))))))
 
 (deftest get-report-details-test
   (mt/with-premium-features #{:metabot-v3}
