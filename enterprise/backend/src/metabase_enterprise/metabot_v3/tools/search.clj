@@ -1,7 +1,6 @@
 (ns metabase-enterprise.metabot-v3.tools.search
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.reactions]
    [metabase.api.common :as api]
