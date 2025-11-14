@@ -1,6 +1,7 @@
 (ns dev.h2
   (:require
    [environ.core :as env]
+   [metabase.app-db.core :as mdb]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.env :as mdb.env])
   (:import (org.h2.tools Server)))
@@ -26,7 +27,14 @@
 (defn tcp-listen
   "Starts a TCP server for the H2 app-db database on port 9092."
   []
-  (when @tcp-listener
-    (throw (ex-info "TCP listener is already running" {:port 9092})))
-  (reset! tcp-listener (.start (Server/createTcpServer (into-array ["-tcp" "-tcpAllowOthers" "-tcpPort" "9092"]))))
-  (println (str "H2 TCP server started (no username or password): jdbc:h2:tcp://localhost:9092/" (#'metabase.app-db.env/env->db-file metabase.app-db.env/env))))
+  (when (= :h2 (mdb/db-type))
+    (when @tcp-listener
+      (throw (ex-info "TCP listener is already running" {:port 9092})))
+    (reset! tcp-listener (.start (Server/createTcpServer (into-array ["-tcp" "-tcpAllowOthers" "-tcpPort" "9092"]))))
+    (println (str "H2 TCP server started (no username or password): jdbc:h2:tcp://localhost:9092/" (#'metabase.app-db.env/env->db-file metabase.app-db.env/env)))))
+
+(defn shutdown!
+  "Shuts down the TCP server if it is running"
+  []
+  (when-let [listener @tcp-listener]
+    (.shutdown listener)))

@@ -182,12 +182,14 @@
   (server/start-web-server! (server.test-handler/test-handler))
   (init!)
   (when config/is-dev?
+    (dev.h2/tcp-listen)
     (prune-deleted-inmem-databases!)
     (with-out-str (malli-dev/start!))))
 
 (defn stop!
   "Stop Metabase"
   []
+  (dev.h2/shutdown!)
   (malli-dev/stop!)
   (server/stop-web-server!))
 
