@@ -25,7 +25,6 @@ export const HandleEditorDrop = Extension.create({
         key: new PluginKey("metabaseTiptapDrop"),
         props: {
           handleDrop: (view, e, slice, moved) => {
-            // FIXME: Call this conditionally based on what was dropped
             view.dom.offsetParent?.classList.remove(DropCursorS.hideDropCursor);
 
             const cardEmbedInitialData = getDroppedCardEmbedNodeData(
