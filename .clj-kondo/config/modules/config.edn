@@ -199,9 +199,7 @@
   auth-identity
   {:team "UX West"
    :api  #{metabase.auth-identity.core
-           metabase.auth-identity.init
-           metabase.auth-identity.provider
-           metabase.auth-identity.providers.emailed-secret}
+           metabase.auth-identity.init}
    :uses #{channel
            events
            login-history
