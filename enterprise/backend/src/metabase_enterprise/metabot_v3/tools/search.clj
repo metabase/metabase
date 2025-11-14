@@ -99,26 +99,28 @@
   ([result-lists]
    (reciprocal-rank-fusion result-lists 60))
   ([result-lists k]
-   (if (<= (count result-lists) 1)
-     (first result-lists)
-     (let [rrf-results (reduce
-                        (fn [acc-map result-list]
-                          (reduce-kv
-                           (fn [acc rank search-result]
-                             (let [id        (search-result-id search-result)
-                                   rrf-score (/ 1.0 (+ k (inc rank)))]
-                               (if (contains? acc id)
-                                 (update-in acc [id :rrf] + rrf-score)
-                                 (assoc acc id {:search-result search-result
-                                                :rrf           rrf-score}))))
-                           acc-map
-                           (vec result-list)))
-                        {}
-                        result-lists)]
-       (->> rrf-results
-            vals
-            (sort-by :rrf >)
-            (map :search-result))))))
+   ;; Remove empty result lists, as they're common, and can save a lot of work.
+   (let [result-lists (keep seq result-lists)]
+     (if (<= (count result-lists) 1)
+       (first result-lists)
+       (let [rrf-results (reduce
+                          (fn [acc-map result-list]
+                            (reduce-kv
+                             (fn [acc rank search-result]
+                               (let [id        (search-result-id search-result)
+                                     rrf-score (/ 1.0 (+ k (inc rank)))]
+                                 (if (contains? acc id)
+                                   (update-in acc [id :rrf] + rrf-score)
+                                   (assoc acc id {:search-result search-result
+                                                  :rrf           rrf-score}))))
+                             acc-map
+                             (vec result-list)))
+                          {}
+                          result-lists)]
+         (->> rrf-results
+              vals
+              (sort-by :rrf >)
+              (map :search-result)))))))
 
 (defn- join-results-by-rrf
   "Execute multiple search queries in parallel and combine results using Reciprocal Rank Fusion.
@@ -206,7 +208,7 @@
         fused-results   (if (and non-semantic-keywords? semantic-engine)
                           ;; Perform semantic and non-semantic search respectively, then fuse results.
                           (reciprocal-rank-fusion
-                           (map (fn [[engine queries]] (search-fn* engine queries))
+                           (map (fn [[engine queries]] (when (seq queries) (search-fn* engine queries)))
                                 {semantic-engine semantic-queries
                                  fallback-engine term-queries}))
                           ;; Search for all the terms on equal footing, using the default engine.
