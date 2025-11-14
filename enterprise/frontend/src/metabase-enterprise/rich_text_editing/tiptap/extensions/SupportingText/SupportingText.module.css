@@ -42,6 +42,11 @@
   caret-color: auto;
 }
 
+/* Prevent dropCursor from displaying while dragging over SupportingText contents */
+:global(.dragging) .scrollContainer {
+  pointer-events: none;
+}
+
 .handle {
   cursor: grab;
   height: 1rem;

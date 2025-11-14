@@ -3,8 +3,6 @@ import { Fragment, type NodeType as PMNodeType, Slice } from "@tiptap/pm/model";
 import { NodeSelection, Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 
-import DropCursorS from "metabase-enterprise/rich_text_editing/tiptap/extensions/DropCursor/DropCursor.module.css";
-
 import {
   handleCardDropOnCard,
   handleCardDropToFlexContainer,
@@ -25,13 +23,15 @@ export const HandleEditorDrop = Extension.create({
         key: new PluginKey("metabaseTiptapDrop"),
         props: {
           handleDrop: (view, e, slice, moved) => {
-            view.dom.offsetParent?.classList.remove(DropCursorS.hideDropCursor);
-
             const cardEmbedInitialData = getDroppedCardEmbedNodeData(
               view,
               e,
               slice,
               moved,
+            );
+            view.dom.offsetParent?.classList.remove(
+              "dragging",
+              `dragging-${cardEmbedInitialData?.draggedNode.type.name}`,
             );
 
             if (cardEmbedInitialData) {
@@ -146,11 +146,10 @@ export const HandleEditorDrop = Extension.create({
                 const { inside } = maybePos;
                 const node = view.state.doc.nodeAt(inside);
 
-                if (node?.type.name === "supportingText") {
-                  view.dom.offsetParent?.classList.add(
-                    DropCursorS.hideDropCursor,
-                  );
-                }
+                view.dom.offsetParent?.classList.add(
+                  "dragging",
+                  `dragging-${node?.type.name}`,
+                );
 
                 view.draggingNode = node;
                 return false;
