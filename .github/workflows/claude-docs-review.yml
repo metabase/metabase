@@ -9,6 +9,12 @@ on:
     paths:
       - 'docs/**/*.md'
       - 'docs/**/*.mdx'
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+        type: number
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-claude-docs-review
@@ -32,7 +38,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
         shell: bash
         run: |
           # Delete old reviews from the bot (reviews contain inline comments)
@@ -60,7 +66,7 @@ jobs:
           github_token: ${{ steps.claude-app-token.outputs.token }}
           prompt: |
             REPO: ${{ github.repository }}
-            PR NUMBER: ${{ github.event.pull_request.number }}
+            PR NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
 
             Review the documentation changes in this pull request.
 
