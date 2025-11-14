@@ -16252,7 +16252,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai", "python-execution" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "python-execution" ]
           }
         } ],
         "responses" : {
@@ -16272,6 +16272,9 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "quantity" : {
+                    "type" : "integer"
+                  },
                   "terms_of_service" : {
                     "type" : "boolean"
                   }
@@ -28669,25 +28672,6 @@
                 "required" : [ "token", "user", "prefs" ]
               }
             }
-          }
-        },
-        "tags" : [ "/api/setup" ]
-      }
-    },
-    "/api/setup/user_defaults" : {
-      "get" : {
-        "summary" : "GET /api/setup/user_defaults",
-        "description" : "Returns object containing default user details for initial setup, if configured,\n   and if the provided token value matches the token in the configuration value.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/setup" ]
