@@ -130,6 +130,21 @@
       ;; If :type field exists, compare directly
       (= type remote-synced-collection-type))))
 
+(defn- is-library?
+  "Is this the Library collection?"
+  [collection]
+  (= (:type collection) library-collection-type))
+
+(defn- is-library-models-collection?
+  "Is this the library-models (named 'Data') collection?"
+  [collection]
+  (= (:type collection) library-models-collection-type))
+
+(defn- is-library-metrics-collection?
+  "Is this the Metrics collection?"
+  [collection]
+  (= (:type collection) library-metrics-collection-type))
+
 (defn remote-synced-collection
   "Get the remote-synced collection, if it exists."
   []
@@ -187,16 +202,19 @@
   {:namespace       mi/transform-keyword
    :authority_level mi/transform-keyword})
 
-(defn maybe-localize-trash-name
-  "If the collection is the Trash, translate the `name`. This is a public function because we can't rely on
-  `define-after-select` in all circumstances, e.g. when searching or listing collection items (where we do a direct DB
-  query without `:model/Collection`)."
+(defn maybe-localize-system-collection-name
+  "If the collection is a system-defined collection (Trash, Library, Data, or Metrics), translate the `name`.
+  This is a public function because we can't rely on `define-after-select` in all circumstances, e.g. when searching
+  or listing collection items (where we do a direct DB query without `:model/Collection`)."
   [collection]
   (cond-> collection
-    (is-trash? collection) (assoc :name (tru "Trash"))))
+    (is-trash? collection) (assoc :name (tru "Trash"))
+    (is-library? collection) (assoc :name (tru "Library"))
+    (is-library-models-collection? collection) (assoc :name (tru "Data"))
+    (is-library-metrics-collection? collection) (assoc :name (tru "Metrics"))))
 
 (t2/define-after-select :model/Collection [collection]
-  (maybe-localize-trash-name collection))
+  (maybe-localize-system-collection-name collection))
 
 (doto :model/Collection
   (derive :metabase/model)

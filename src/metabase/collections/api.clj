@@ -732,7 +732,7 @@
     (for [row (annotate-collections parent-collection rows options)]
       (let [type-value (:type row)]
         (-> (t2/instance :model/Collection row)
-            collection/maybe-localize-trash-name
+            collection/maybe-localize-system-collection-name
             (update :archived api/bit->boolean)
             (t2/hydrate :can_write :effective_location :can_restore :can_delete)
             (dissoc :collection_position :display :moderated_status :icon
