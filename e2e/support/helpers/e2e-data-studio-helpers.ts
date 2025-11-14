@@ -1,5 +1,8 @@
 export const DataStudio = {
   header: () => cy.findByTestId("data-studio-header"),
+  transformsButton: () => DataStudio.header().findByText("Transforms"),
+  jobsButton: () => DataStudio.header().findByText("Jobs"),
+  runsButton: () => DataStudio.header().findByText("Runs"),
   exitButton: () => DataStudio.header().findByText("Exit data studio"),
   Transforms: {
     header: () => cy.findByTestId("transforms-header"),

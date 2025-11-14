@@ -161,17 +161,19 @@ function SharedLibraryImportButton({
   source: string;
   onChange: (source: string) => void;
 }) {
-  function handleToggleSharedLib() {
+  const label = t`Import common library`;
+
+  const handleToggleSharedLib = () => {
     if (hasImport(source, SHARED_LIB_IMPORT_PATH)) {
       onChange(removeImport(source, SHARED_LIB_IMPORT_PATH));
     } else {
       onChange(insertImport(source, SHARED_LIB_IMPORT_PATH));
     }
-  }
+  };
 
   return (
-    <Tooltip label={t`Import common library`}>
-      <ActionIcon onChange={handleToggleSharedLib}>
+    <Tooltip label={label}>
+      <ActionIcon aria-label={label} onClick={handleToggleSharedLib}>
         <Icon name="reference" c="text-dark" />
       </ActionIcon>
     </Tooltip>
@@ -179,11 +181,14 @@ function SharedLibraryImportButton({
 }
 
 function SharedLibraryEditLink() {
+  const label = t`Edit common library`;
+
   return (
-    <Tooltip label={t`Edit common library`}>
+    <Tooltip label={label}>
       <ActionIcon
         component={ForwardRefLink}
         target="_blank"
+        aria-label={label}
         to={Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })}
       >
         <Icon name="pencil" c="text-dark" />
