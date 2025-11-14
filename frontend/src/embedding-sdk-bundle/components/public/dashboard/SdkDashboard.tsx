@@ -374,6 +374,7 @@ export const SdkDashboard = withPublicComponentWrapper(
     | "ParametersList"
     | "FullscreenButton"
     | "ExportAsPdfButton"
+    | "SubscriptionsButton"
     | "InfoButton"
     | "RefreshPeriod"
   >;
@@ -385,6 +386,7 @@ SdkDashboard.Tabs = Dashboard.Tabs;
 SdkDashboard.ParametersList = Dashboard.ParametersList;
 SdkDashboard.FullscreenButton = Dashboard.FullscreenButton;
 SdkDashboard.ExportAsPdfButton = Dashboard.ExportAsPdfButton;
+SdkDashboard.SubscriptionsButton = Dashboard.SubscriptionsButton;
 SdkDashboard.InfoButton = Dashboard.InfoButton;
 SdkDashboard.RefreshPeriod = Dashboard.RefreshPeriod;
 

@@ -6,7 +6,7 @@ import { ActionIcon, Box, Icon, Tooltip } from "metabase/ui";
 
 export type ToolbarButtonProps = {
   icon?: IconName;
-  "aria-label": string;
+  "aria-label"?: string;
   tooltipLabel?: TooltipProps["label"];
   tooltipPosition?: TooltipProps["position"];
   visibleOnSmallScreen?: boolean;
@@ -49,7 +49,11 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
       }}
       size="2rem"
       variant="viewHeader"
-      aria-label={ariaLabel}
+      aria-label={
+        typeof tooltipLabel === "string"
+          ? (tooltipLabel ?? ariaLabel)
+          : ariaLabel
+      }
       onClick={handleButtonClick}
       bg={hasBackground ? undefined : "transparent"}
       disabled={disabled}

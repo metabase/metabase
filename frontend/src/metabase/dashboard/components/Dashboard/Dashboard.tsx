@@ -18,6 +18,7 @@ import type { DashboardCard } from "metabase-types/api";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "../../constants";
 import {
   DashboardInfoButton,
+  DashboardSubscriptionsButton,
   ExportAsPdfButton,
   FullscreenToggle,
 } from "../DashboardHeader/buttons";
@@ -145,6 +146,7 @@ type DashboardComponentType = typeof DashboardDefaultView & {
   ParametersList: typeof ParametersList;
   FullscreenButton: typeof FullscreenToggle;
   ExportAsPdfButton: typeof ExportAsPdfButton;
+  SubscriptionsButton: typeof DashboardSubscriptionsButton;
   InfoButton: typeof DashboardInfoButton;
   RefreshPeriod: typeof RefreshWidget;
 };
@@ -157,6 +159,7 @@ DashboardComponent.Tabs = DashboardTabs;
 DashboardComponent.ParametersList = ParametersList;
 DashboardComponent.FullscreenButton = FullscreenToggle;
 DashboardComponent.ExportAsPdfButton = ExportAsPdfButton;
+DashboardComponent.SubscriptionsButton = DashboardSubscriptionsButton;
 DashboardComponent.InfoButton = DashboardInfoButton;
 DashboardComponent.RefreshPeriod = RefreshWidget;
 
