@@ -39,6 +39,7 @@ export function QueryEditorVisualization({
         isDirty
         isResultDirty={isResultDirty}
         isNativeEditorOpen={isNative}
+        isDirtyStateShownForError={!isNative}
         runQuestionQuery={onRunQuery}
         cancelQuery={onCancelQuery}
       />
