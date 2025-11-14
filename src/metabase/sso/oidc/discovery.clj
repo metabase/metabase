@@ -1,12 +1,12 @@
 (ns metabase.sso.oidc.discovery
   "OIDC discovery document fetching and caching.
-   
+
    Fetches and caches OpenID Connect discovery documents from provider issuers.
    Falls back to manual configuration when discovery is unavailable."
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]))
+   [metabase.util.log :as log]))
 
 (def ^:private discovery-cache
   "Cache of discovery documents by issuer URL.
@@ -59,10 +59,10 @@
 
 (defn discover-oidc-configuration
   "Fetch and cache the OIDC discovery document for the given issuer.
-   
+
    Parameters:
    - issuer: The issuer URL (e.g., \"https://accounts.google.com\")
-   
+
    Returns the discovery document map or nil if discovery fails.
    Results are cached per issuer to avoid repeated requests."
   [issuer]
@@ -78,12 +78,12 @@
 
 (defn- get-endpoint
   "Extract an endpoint from the discovery document or manual configuration.
-   
+
    Parameters:
    - config: Map containing either :discovery-document or manual endpoint configurations
    - discovery-key: Key in the discovery document (e.g., :authorization_endpoint)
    - manual-key: Key in manual configuration (e.g., :authorization-endpoint)
-   
+
    Returns the endpoint URL string or nil."
   [config discovery-key manual-key]
   (or (get-in config [:discovery-document discovery-key])
@@ -91,40 +91,40 @@
 
 (defn get-authorization-endpoint
   "Get the authorization endpoint from discovery document or manual config.
-   
+
    Parameters:
    - config: Map with either :discovery-document or :authorization-endpoint
-   
+
    Returns the authorization endpoint URL."
   [config]
   (get-endpoint config :authorization_endpoint :authorization-endpoint))
 
 (defn get-token-endpoint
   "Get the token endpoint from discovery document or manual config.
-   
+
    Parameters:
    - config: Map with either :discovery-document or :token-endpoint
-   
+
    Returns the token endpoint URL."
   [config]
   (get-endpoint config :token_endpoint :token-endpoint))
 
 (defn get-jwks-uri
   "Get the JWKS URI from discovery document or manual config.
-   
+
    Parameters:
    - config: Map with either :discovery-document or :jwks-uri
-   
+
    Returns the JWKS URI."
   [config]
   (get-endpoint config :jwks_uri :jwks-uri))
 
 (defn get-userinfo-endpoint
   "Get the userinfo endpoint from discovery document or manual config.
-   
+
    Parameters:
    - config: Map with either :discovery-document or :userinfo-endpoint
-   
+
    Returns the userinfo endpoint URL."
   [config]
   (get-endpoint config :userinfo_endpoint :userinfo-endpoint))
@@ -132,10 +132,10 @@
 (defn configuration-from-issuer
   "Build a configuration map from an issuer URL.
    Attempts discovery and returns a map with the discovery document.
-   
+
    Parameters:
    - issuer: The OIDC issuer URL
-   
+
    Returns a map with :discovery-document if discovery succeeds, otherwise nil."
   [issuer]
   (when-let [doc (discover-oidc-configuration issuer)]
@@ -143,20 +143,20 @@
 
 (defn configuration-from-manual
   "Build a configuration map from manually specified endpoints.
-   
+
    Parameters:
    - endpoints: Map with keys :authorization-endpoint, :token-endpoint, :jwks-uri, :userinfo-endpoint
-   
+
    Returns the endpoints map."
   [endpoints]
   endpoints)
 
 (defn validate-configuration
   "Validate that a configuration has all required endpoints.
-   
+
    Parameters:
    - config: Configuration map (from discovery or manual)
-   
+
    Returns true if all required endpoints are present, false otherwise."
   [config]
   (and (get-authorization-endpoint config)
