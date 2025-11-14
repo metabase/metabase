@@ -5,8 +5,6 @@
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.events.core :as events]
-   [metabase.notification.core :as notification]
    [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -159,7 +157,4 @@
               (sso/sync-group-memberships! user (group-names->ids group-names))
               (sso/sync-group-memberships! user
                                            (group-names->ids group-names)
-                                           (all-mapped-group-ids))))))
-      (notification/with-skip-sending-notification true
-        (events/publish-event! :event/user-invited {:object (assoc (t2/select-one :model/User (:id user))
-                                                                   :sso_source "jwt")})))))
+                                           (all-mapped-group-ids)))))))))

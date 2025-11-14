@@ -749,18 +749,14 @@
                                 (get-in response [:headers "Location"]))))))))))))))))
 
 (deftest create-new-saml-user-no-user-provisioning-test
-  #_(testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
-      (with-other-sso-types-disabled!
-        (with-saml-default-setup!
-          (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
-                        appearance.settings/site-name (constantly "test")]
-            (is
-             (thrown-with-msg?
-              clojure.lang.ExceptionInfo
-              #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
-              (#'saml.mt/fetch-or-create-user! {:first-name "Test"
-                                                :last-name  "user"
-                                                :email      "test1234@metabsae.com"}))))))))
+  (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
+                      appearance.settings/site-name (constantly "test")]
+          (let [req-options (saml-post-request-options (new-user-saml-test-response)
+                                                       default-redirect-uri)]
+            (client/client-real-response :post 401 "/auth/sso" req-options)))))))
 
 (deftest logout-should-delete-session-test-slo-enabled
   (testing "Successful SAML SLO logouts should delete the user's session, when saml-slo-enabled."
