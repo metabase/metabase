@@ -127,7 +127,7 @@ export function usePageTitleWithLoadingTime(
     isRunning?: boolean;
   },
 ) {
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [, setRefreshTrigger] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Calculate loading time to display
@@ -181,7 +181,4 @@ export function usePageTitleWithLoadingTime(
 
   // Use regular usePageTitle with the constructed title
   usePageTitle(finalTitle, { titleIndex: options?.titleIndex });
-
-  // Include refreshTrigger in dependency to force re-render
-  useEffect(() => {}, [refreshTrigger]);
 }
