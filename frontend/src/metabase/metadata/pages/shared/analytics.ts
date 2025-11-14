@@ -1,6 +1,6 @@
 import { trackSimpleEvent } from "metabase/lib/analytics";
 
-import type { MetadataEditAnalyticsDetail } from "./types";
+import type { MetadataEditAnalyticsDetail } from "../DataModelV1/types";
 
 export const trackMetadataChange = (detail: MetadataEditAnalyticsDetail) => {
   trackSimpleEvent({
