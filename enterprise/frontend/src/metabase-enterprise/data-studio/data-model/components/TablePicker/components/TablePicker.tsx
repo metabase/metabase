@@ -50,7 +50,7 @@ export function TablePicker({
     dataSource: null,
     ownerEmail: null,
     ownerUserId: null,
-    orphansOnly: null,
+    unusedOnly: null,
   });
   const [isOpen, { toggle, close }] = useDisclosure();
   const filtersCount = getFiltersCount(filters);

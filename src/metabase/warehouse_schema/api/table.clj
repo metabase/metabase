@@ -62,7 +62,7 @@
 (api.macros/defendpoint :get "/"
   "Get all `Tables`."
   [_
-   {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only]}
+   {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only]}
    :- [:map
        ;; conjunctive search terms
        [:term {:optional true} :string]
@@ -71,7 +71,8 @@
        [:data-source {:optional true} :string]
        [:owner-user-id {:optional true} [:maybe :int]]
        [:owner-email {:optional true} :string]
-       [:orphan-only {:optional true} [:maybe ms/BooleanValue]]]]
+       [:orphan-only {:optional true} [:maybe ms/BooleanValue]]
+       [:unused-only {:optional true} [:maybe ms/BooleanValue]]]]
   (let [like       (case (app-db/db-type) (:h2 :postgres) :ilike :like)
         pattern    (some-> term (str/replace "*" "%") (cond-> (not (str/ends-with? term "%")) (str "%")))
         empty-null (fn [x] (if (and (string? x) (str/blank? x)) nil x))
@@ -81,12 +82,13 @@
                      data-layer              (conj [:= :data_layer      (empty-null data-layer)])
                      data-source             (conj [:= :data_source     (empty-null data-source)])
                      owner-user-id           (conj [:= :owner_user_id   (empty-null owner-user-id)])
-                     owner-email             (conj [:= :owner_email     (empty-null owner-email)]))
+                     owner-email             (conj [:= :owner_email     (empty-null owner-email)])
+                     orphan-only             (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]]))
         ;; Use LEFT JOIN to efficiently filter orphaned tables
         ;; Exclude transforms as dependents since they produce tables
         query      (cond-> {:where    where
                             :order-by [[:name :asc]]}
-                     (and orphan-only (premium-features/has-feature? :dependencies))
+                     (and unused-only (premium-features/has-feature? :dependencies))
                      (assoc :left-join [[:dependency :d]
                                         [:and
                                          [:= :d.to_entity_type "table"]

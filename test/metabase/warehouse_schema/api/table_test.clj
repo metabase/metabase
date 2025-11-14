@@ -1493,9 +1493,9 @@
                                      {:visibility_type  "hidden"
                                       :data_layer "copper"})))))))
 
-(deftest orphan-only-filter-test
+(deftest unused-only-filter-test
   (mt/with-premium-features #{:dependencies}
-    (testing "GET /api/table?orphan_only=true"
+    (testing "GET /api/table?unused-only=true"
       (testing "filters tables that have no non-transform dependents"
         (mt/with-temp [:model/Database {db-id :id} {}
                        :model/Table {table-1-id :id} {:db_id db-id, :name "table_1", :active true}
@@ -1507,9 +1507,9 @@
                         (map :id)
                         set))))
 
-          (testing "both tables returned with orphan_only=false"
+          (testing "both tables returned with unused_only=false"
             (is (= #{table-1-id table-2-id}
-                   (->> (mt/user-http-request :crowberto :get 200 "table" :orphan-only false)
+                   (->> (mt/user-http-request :crowberto :get 200 "table" :unused-only false)
                         (filter #(= (:db_id %) db-id))
                         (map :id)
                         set))))
@@ -1520,12 +1520,48 @@
                                                            :type     :query
                                                            :query    {:source-table table-1-id}}}]
             (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
-            (testing "after creating card that depends on table-1, only table-2 is orphaned"
+            (testing "after creating card that depends on table-1, only table-2 is unuseded"
               (is (= #{table-2-id}
-                     (->> (mt/user-http-request :crowberto :get 200 "table" :orphan-only true)
+                     (->> (mt/user-http-request :crowberto :get 200 "table" :unused-only true)
                           (filter #(= (:db_id %) db-id))
                           (map :id)
                           set))))))))))
+
+(deftest orphan-only-filter-test
+  (testing "GET /api/table?orphan-only=true"
+    (testing "filters tables that have no owner"
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/User {user-id :id} {:email "owner@example.com"}
+                     :model/Table {table-1-id :id} {:db_id db-id
+                                                    :name "table_1"
+                                                    :active true
+                                                    :owner_user_id user-id
+                                                    :owner_email "owner@example.com"}
+                     :model/Table {table-2-id :id} {:db_id db-id
+                                                    :name "table_2"
+                                                    :active true
+                                                    :owner_user_id nil
+                                                    :owner_email nil}]
+        (testing "both tables returned without filter"
+          (is (= #{table-1-id table-2-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "table")
+                      (filter #(= (:db_id %) db-id))
+                      (map :id)
+                      set))))
+
+        (testing "both tables returned with orphan-only=false"
+          (is (= #{table-1-id table-2-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "table" :orphan-only false)
+                      (filter #(= (:db_id %) db-id))
+                      (map :id)
+                      set))))
+
+        (testing "only table-2 is returned with orphan-only=true"
+          (is (= #{table-2-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "table" :orphan-only true)
+                      (filter #(= (:db_id %) db-id))
+                      (map :id)
+                      set))))))))
 
 (deftest ^:parallel non-admins-cant-trigger-bulk-sync-test
   (testing "Non-admins should not be allowed to trigger sync"

@@ -242,7 +242,7 @@ export function getFiltersCount(filters: FilterState): number {
     ++count;
   }
 
-  if (filters.orphansOnly === true) {
+  if (filters.unusedOnly === true) {
     ++count;
   }
 
