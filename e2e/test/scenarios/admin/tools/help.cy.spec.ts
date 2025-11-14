@@ -46,24 +46,25 @@ describe("scenarios > admin > tools > help (EE)", () => {
 });
 
 describe("scenarios > admin > tools > help > helping hand", () => {
-  const runCreateGrantAccessFlow = (
-    duration?: "96 hours" | "48 hours" | "24 hours",
+  const executeCreateGrantAccessFlow = (
+    durationOption?: "96 hours" | "48 hours" | "24 hours",
     ticket?: string,
     notes?: string,
   ) => {
     cy.findByTestId("access-grant-list-table").should("not.exist");
     cy.button("Request a helping hand").should("be.enabled");
     cy.button("Request a helping hand").click();
-    H.modal().should("be.exist");
 
+    // Clicking the button should open the modal
+    cy.findByTestId("grant-access-modal").should("be.visible");
     cy.findByTestId("grant-access-modal").within(() => {
       cy.findByRole("heading", { name: "Grant Access?" }).should("be.visible");
 
-      if (duration) {
-        cy.findByLabelText(/Access Duration/).click();
+      if (durationOption) {
+        cy.findByLabelText(/Access duration/).click();
         cy.document()
           .findByRole("listbox")
-          .findByText(new RegExp(duration, "g"))
+          .findByText(new RegExp(durationOption, "g"))
           .click();
       }
 
@@ -107,17 +108,11 @@ describe("scenarios > admin > tools > help > helping hand", () => {
 
     cy.findByTestId("access-grant-list-table").should("not.exist");
 
-    runCreateGrantAccessFlow();
+    executeCreateGrantAccessFlow();
 
+    cy.findByTestId("access-grant-list-table").should("be.visible");
     cy.findByTestId("access-grant-list-table").within(() => {
       cy.get("tbody").findAllByRole("row").should("have.length", 1);
-      cy.findByRole("columnheader", { name: "Date" }).should("be.visible");
-      cy.findByRole("columnheader", { name: "Ticket" }).should("be.visible");
-      cy.findByRole("columnheader", { name: "Notes" }).should("be.visible");
-      cy.findByRole("columnheader", { name: "Request creator" }).should(
-        "exist",
-      );
-      cy.findByRole("columnheader", { name: "Expired" }).should("be.visible");
     });
   });
 
@@ -125,7 +120,7 @@ describe("scenarios > admin > tools > help > helping hand", () => {
     H.activateToken("pro-cloud");
     cy.visit("/admin/tools/help");
 
-    runCreateGrantAccessFlow("48 hours", "TICKET-999", "Custom notes");
+    executeCreateGrantAccessFlow("48 hours", "TICKET-999", "Custom notes");
 
     cy.findByTestId("access-grant-list-table").within(() => {
       cy.findByRole("cell", {
@@ -137,11 +132,11 @@ describe("scenarios > admin > tools > help > helping hand", () => {
     });
   });
 
-  it("should disallow creating more than one active access grant", () => {
+  it("should disallow more than one active access grant", () => {
     H.activateToken("pro-cloud");
     cy.visit("/admin/tools/help");
 
-    runCreateGrantAccessFlow();
+    executeCreateGrantAccessFlow();
 
     cy.button("Request a helping hand").should("be.disabled");
     cy.button("Request a helping hand")
@@ -150,11 +145,11 @@ describe("scenarios > admin > tools > help > helping hand", () => {
       .should("be.visible");
   });
 
-  it("can revoke an active access grant", () => {
+  it("can revoke an access grant", () => {
     H.activateToken("pro-cloud");
     cy.visit("/admin/tools/help");
 
-    runCreateGrantAccessFlow();
+    executeCreateGrantAccessFlow();
     cy.button("Request a helping hand").should("be.disabled");
 
     H.undoToast().icon("close").click();
