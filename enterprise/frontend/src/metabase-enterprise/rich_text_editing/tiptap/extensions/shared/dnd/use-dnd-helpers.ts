@@ -34,12 +34,25 @@ export const useDndHelpers = ({
           draggingNode.type.name === "supportingText") &&
         dragElRef.current
       ) {
-        // Check if this cardEmbed is in a flexContainer that already has 3 children
         const pos = getPos();
         if (pos) {
           const resolvedPos = editor.state.doc.resolve(pos);
           const { parent } = resolvedPos;
 
+          // For simplicity's sake, don't allow dragging supportingText from one group to another
+          if (draggingNode.type.name === "supportingText") {
+            if (
+              parent.type.name === "flexContainer" ||
+              parent.type.name === "resizeNode"
+            ) {
+              if (!parent.content.content.includes(draggingNode)) {
+                setDragState({ isDraggedOver: false, side: null });
+                return;
+              }
+            }
+          }
+
+          // Check if this cardEmbed is in a flexContainer that already has 3 children
           if (
             parent.type.name === "flexContainer" &&
             parent.content.childCount >= 3
