@@ -11,6 +11,7 @@
    [metabase.session.api :as api.session]
    [metabase.session.core :as session]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [f] (mt/with-premium-features #{:support-access-grants}
@@ -149,3 +150,19 @@
                     (is (some? session) "Session should exist in database")
                     (is (= "support@example.com" (:email (t2/select-one :model/User :id (:user_id session))))
                         "Session should be for support user")))))))))))
+
+(deftest forgot-password-support-user-disabled-test
+  (testing "POST /api/session/forgot_password - Support Users cannot reset passwords"
+    (with-redefs [api.session/forgot-password-impl
+                  (let [orig @#'api.session/forgot-password-impl]
+                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+      (mt/with-temp [:model/User user {:first_name "support"
+                                       :last_name "user"
+                                       :email "support@example.com"}
+                     :model/AuthIdentity _ {:user_id (:id user)
+                                            :provider "support-access-grant"}]
+        (let [my-url "abcdefghij"]
+          (mt/with-temporary-setting-values [site-url my-url]
+            (mt/with-fake-inbox
+              (mt/user-http-request user :post 204 "session/forgot_password" {:email (:email user)})
+              (is (not (t2/exists? :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))))))))))

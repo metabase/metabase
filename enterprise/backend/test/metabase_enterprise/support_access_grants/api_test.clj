@@ -9,14 +9,13 @@
 (use-fixtures :each (fn [f] (mt/with-premium-features #{:support-users}
                               (f))))
 
-;; Temporarily comment out until we create the real token
-#_(deftest api-requires-support-users-feature-test
-    (mt/with-model-cleanup [:model/SupportAccessGrantLog]
-      (mt/with-premium-features #{}
-        (is (=? {:message "Support Users is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"}
-                (mt/user-http-request :crowberto :post 402 "ee/support-access-grant"
-                                      {:ticket_number "SUPPORT-12345"
-                                       :grant_duration_minutes 240}))))))
+(deftest api-requires-support-users-feature-test
+  (mt/with-model-cleanup [:model/SupportAccessGrantLog]
+    (mt/with-premium-features #{}
+      (is (=? {:message "Support Users is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"}
+              (mt/user-http-request :crowberto :post 402 "ee/support-access-grant"
+                                    {:ticket_number "SUPPORT-12345"
+                                     :grant_duration_minutes 240}))))))
 
 (deftest create-grant-returns-grant-test
   (mt/with-model-cleanup [:model/SupportAccessGrantLog]
