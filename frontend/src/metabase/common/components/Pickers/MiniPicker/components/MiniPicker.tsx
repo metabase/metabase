@@ -1,25 +1,36 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { Popover } from "metabase/ui";
-import type { SearchModel } from "metabase-types/api";
+import { Box, Popover } from "metabase/ui";
 
 import { MiniPickerContext } from "../context";
-import type { MiniPickerFolderItem, MiniPickerItem } from "../types";
+import type {
+  MiniPickerFolderItem,
+  MiniPickerItem,
+  MiniPickerPickableItem,
+} from "../types";
 
 import { MiniPickerPane } from "./MiniPickerPane";
 
 type MiniPickerProps = {
   searchQuery?: string;
   clearSearchQuery: () => void;
-  value?: unknown;
-  onChange: (value: unknown) => void;
+  value?: MiniPickerPickableItem;
+  opened: boolean;
+  onChange: (value: MiniPickerPickableItem) => void;
   onClose: () => void;
-  models: SearchModel[];
+  models: MiniPickerPickableItem["model"][];
   browseAllComponent?: React.ReactNode;
 };
 
 export function MiniPicker({
-  searchQuery, value, onChange, onClose, models, clearSearchQuery, browseAllComponent
+  searchQuery,
+  value,
+  onChange,
+  opened,
+  onClose,
+  models,
+  clearSearchQuery,
+  browseAllComponent,
 }: MiniPickerProps) {
   const [path, setPath] = useState<MiniPickerFolderItem[]>([]);
   const [shouldBrowse, setShouldBrowse] = useState(false);
@@ -30,54 +41,67 @@ export function MiniPicker({
 
   const { isFolder, isHidden } = useMemo(() => {
     const modelSet = new Set(models);
-    const isFolder = (item: MiniPickerItem | unknown) => {
-      const hereBelowSet = Array.from(new Set([
-        ...(item?.here ?? []),
-        ...(item?.below ?? []),
-      ]));
-      return item.model === "collection" &&
-        (
-          hereBelowSet.some((i: SearchModel) => modelSet.has(i.model))
-        );
+    const isFolder = (
+      item: MiniPickerItem | unknown,
+    ): item is MiniPickerFolderItem => {
+      if (!item || typeof item !== "object" || !("model" in item)) {
+        return false;
+      }
+
+      if (!("here" in item) && !("below" in item)) {
+        return false;
+      }
+
+      const hereBelowSet = Array.from(
+        new Set([
+          ...("here" in item && Array.isArray(item.here) ? item.here : []),
+          ...("below" in item && Array.isArray(item.below) ? item.below : []),
+        ]),
+      );
+      return (
+        item.model === "collection" &&
+        hereBelowSet.some((hereBelowModel) => modelSet.has(hereBelowModel))
+      );
     };
 
-    const isHidden = (item: MiniPickerItem | unknown) => {
-      return "model" in item && !modelSet.has(item.model) && !isFolder(item);
+    const isHidden = (item: MiniPickerItem | unknown): item is unknown => {
+      if (!item || typeof item !== "object" || !("model" in item)) {
+        return false;
+      }
+
+      return !modelSet.has(item.model as any) && !isFolder(item);
     };
     return { isFolder, isHidden };
   }, [models]);
 
   return (
-    <MiniPickerContext.Provider value={{
-      path,
-      setPath,
-      onChange,
-      isFolder,
-      isHidden,
-      searchQuery,
-      clearSearchQuery,
-      setShouldBrowse,
-      canBrowse: !!browseAllComponent,
-    }}>
-      {shouldBrowse
-        ? browseAllComponent
-      :
-        <Popover
-          onClose={onClose}
-          closeOnClickOutside
-          closeOnEscape
-          opened
-          position="bottom-start"
-        >
+    <MiniPickerContext.Provider
+      value={{
+        path,
+        setPath,
+        onChange,
+        isFolder,
+        isHidden,
+        searchQuery,
+        clearSearchQuery,
+        setShouldBrowse,
+        models,
+        canBrowse: !!browseAllComponent,
+      }}
+    >
+      {shouldBrowse ? (
+        browseAllComponent
+      ) : (
+        <Popover opened={opened} onChange={onClose} position="bottom-start">
           <Popover.Target>
-            <div />
+            <Box h="100%" />
           </Popover.Target>
 
-          <Popover.Dropdown p="md" mt="md">
+          <Popover.Dropdown p="md" mt="sm">
             <MiniPickerPane />
           </Popover.Dropdown>
         </Popover>
-      }
+      )}
     </MiniPickerContext.Provider>
   );
 }

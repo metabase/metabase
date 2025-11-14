@@ -1,4 +1,3 @@
-import { set } from "js-cookie";
 import { type MouseEvent, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
@@ -10,6 +9,7 @@ import {
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
 import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
+import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import { METAKEY } from "metabase/lib/browser";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
@@ -17,7 +17,7 @@ import * as Urls from "metabase/lib/urls";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getIsEmbedding } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Input, TextInput, Tooltip } from "metabase/ui";
+import { TextInput, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { RecentCollectionItem, TableId } from "metabase-types/api";
@@ -174,6 +174,38 @@ function ModernDataPicker({
 
   return (
     <>
+      <MiniPicker
+        value={tableValue}
+        opened={isOpened}
+        onClose={() => setIsOpened(false)}
+        models={["table", "dataset", "metric", "card"]}
+        searchQuery={dataSourceSearchQuery}
+        clearSearchQuery={() => setDataSourceSearchQuery("")}
+        onChange={(value: MiniPickerPickableItem) => {
+          const id =
+            value.model === "table"
+              ? value.id
+              : getQuestionVirtualTableId(value.id);
+          onChange(id);
+          setDataSourceSearchQuery("");
+          setIsOpened(false);
+        }}
+        browseAllComponent={
+          isOpened && (
+            <DataPickerModal
+              title={title}
+              value={tableValue}
+              databaseId={canChangeDatabase ? undefined : databaseId}
+              models={modelList}
+              onChange={(i) => {
+                onChange(i);
+              }}
+              onClose={() => setIsOpened(false)}
+              shouldDisableItem={shouldDisableItem}
+            />
+          )
+        }
+      />
       <Tooltip
         label={t`${METAKEY}+click to open in new tab`}
         hidden={!table || isDisabled}
@@ -181,13 +213,15 @@ function ModernDataPicker({
       >
         <DataPickerTarget
           tableInfo={tableInfo}
+          showPlaceholder={isOpened}
           placeholder={
             <TextInput
               placeholder={placeholder}
               value={dataSourceSearchQuery}
-              onChange={(e) =>
-                setDataSourceSearchQuery(e.currentTarget.value)
-              }
+              size="sm"
+              onChange={(e) => setDataSourceSearchQuery(e.currentTarget.value)}
+              onClickCapture={(e) => e.stopPropagation()}
+              autoFocus={isOpened}
             />
           }
           isDisabled={isDisabled}
@@ -195,36 +229,6 @@ function ModernDataPicker({
           onAuxClick={handleAuxClick}
         />
       </Tooltip>
-      {isOpened && (
-        <MiniPicker
-          value={tableValue}
-          onClose={() => setIsOpened(false)}
-          models={["table", "dataset", "metric", "card"]}
-          searchQuery={dataSourceSearchQuery}
-          clearSearchQuery={() => setDataSourceSearchQuery("")}
-          onChange={(item: MiniPickerItem) => {
-            const id = item.model === "table"
-              ? item.id
-              : getQuestionVirtualTableId(item.id);
-            onChange(id);
-            setDataSourceSearchQuery("");
-            setIsOpened(false);
-          }}
-          browseAllComponent={
-            <DataPickerModal
-              title={title}
-              value={tableValue}
-              databaseId={canChangeDatabase ? undefined : databaseId}
-              models={modelList}
-              onChange={(i) => {
-                onChange(i)
-              }}
-              onClose={() => setIsOpened(false)}
-              shouldDisableItem={shouldDisableItem}
-            />
-          }
-        />
-      )}
     </>
   );
 }

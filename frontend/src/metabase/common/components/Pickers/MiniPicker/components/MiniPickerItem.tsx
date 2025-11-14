@@ -1,8 +1,21 @@
 import { getIcon } from "metabase/lib/icon";
 import { Icon, NavLink } from "metabase/ui";
-import type { SearchModel } from "metabase-types/api";
 
-export const MiniPickerItem = ({ model, name, onClick, isFolder, isHidden }: { model: SearchModel, name: string, onClick?: () => void, isFolder?: boolean, isHidden?: boolean }) => {
+import type { MiniPickerItem as MiniPickerItemType } from "../types";
+
+export const MiniPickerItem = ({
+  model,
+  name,
+  onClick,
+  isFolder,
+  isHidden,
+}: {
+  model: MiniPickerItemType["model"];
+  name: string;
+  onClick?: () => void;
+  isFolder?: boolean;
+  isHidden?: boolean;
+}) => {
   if (isHidden) {
     return null;
   }
@@ -15,4 +28,4 @@ export const MiniPickerItem = ({ model, name, onClick, isFolder, isHidden }: { m
       variant="mb-light"
     />
   );
-}
+};

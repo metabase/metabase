@@ -1,6 +1,9 @@
-import { createContext, useContext, useMemo, useState } from "react";
-
-import type { SearchModel } from "metabase-types/api";
+import {
+  type Dispatch,
+  type SetStateAction,
+  createContext,
+  useContext,
+} from "react";
 
 import type {
   MiniPickerFolderItem,
@@ -8,13 +11,14 @@ import type {
   MiniPickerPickableItem,
 } from "./types";
 
-interface MiniPickerContextValue {
+export interface MiniPickerContextValue {
   path: MiniPickerFolderItem[];
-  setPath: (path: MiniPickerFolderItem[]) => void;
+  setPath: Dispatch<SetStateAction<MiniPickerFolderItem[]>>;
   onChange: (value: MiniPickerPickableItem) => void;
   initialValue?: unknown;
-  isFolder: (item: MiniPickerItem | unknown) => boolean;
-  isHidden: (item: MiniPickerItem | unknown) => boolean;
+  isFolder: (item: MiniPickerItem | unknown) => item is MiniPickerFolderItem;
+  isHidden: (item: MiniPickerItem | unknown) => item is unknown;
+  models: MiniPickerPickableItem["model"][];
   searchQuery?: string;
   clearSearchQuery: () => void;
   canBrowse: boolean;

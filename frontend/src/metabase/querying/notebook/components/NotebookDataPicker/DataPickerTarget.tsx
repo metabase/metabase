@@ -10,6 +10,7 @@ import { NotebookCell } from "../NotebookCell";
 type DataPickerTargetProps = {
   tableInfo?: Lib.TableDisplayInfo;
   placeholder: React.ReactNode;
+  showPlaceholder?: boolean;
   isDisabled?: boolean;
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   onAuxClick?: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -21,6 +22,7 @@ export const DataPickerTarget = forwardRef(function DataPickerTarget(
     tableInfo,
     placeholder,
     isDisabled,
+    showPlaceholder,
     onClick,
     onAuxClick,
     getTableIcon = defaultGetTableIcon,
@@ -42,7 +44,9 @@ export const DataPickerTarget = forwardRef(function DataPickerTarget(
         {tableInfo && (
           <Icon name={getTableIcon(tableInfo)} style={{ flexShrink: 0 }} />
         )}
-        {tableInfo?.displayName ?? placeholder}
+        {showPlaceholder
+          ? placeholder
+          : (tableInfo?.displayName ?? placeholder)}
       </Flex>
     </UnstyledButton>
   );
