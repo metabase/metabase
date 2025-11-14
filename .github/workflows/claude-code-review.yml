@@ -31,30 +31,30 @@ jobs:
           # Make sure the value of GITHUB_TOKEN will not be persisted in repo's config
           persist-credentials: false
 
-      # Delete old reviews from the bot
-      - name: Delete old Claude PR reviews
+      # Dismiss old reviews from the bot
+      - name: Dismiss old Claude PR reviews
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         shell: bash
-        run: | # sh
-          # Get old review IDs from the bot
-          old_review_ids=$(gh api "/repos/$REPO/pulls/$PR_NUMBER/reviews" --jq '.[] | select(.user.login=="metabase-bot[bot]") | .id')
-          echo "Deleting reviews: $old_review_ids"
-          # Delete each review (this will delete all associated comments)
-          for id in $old_review_ids; do
-            gh api "/repos/$REPO/pulls/$PR_NUMBER/comments" \
-              --jq '.[] | select(.pull_request_review_id == $id) | .id' | \
-            while read comment_id; do
-              # Mark each thread as resolved
+        run: |
+          # Get old review IDs from the bot that are not dismissed
+          old_review_ids=$(gh api "/repos/$REPO/pulls/$PR_NUMBER/reviews" \
+            --jq '.[] | select(.user.login=="metabase-bot[bot]" and .state != "DISMISSED") | .id')
+
+          if [ -n "$old_review_ids" ]; then
+            echo "Dismissing reviews: $old_review_ids"
+            # Dismiss each review
+            for review_id in $old_review_ids; do
               gh api \
-                --method PATCH \
-                "/repos/$REPO/pulls/comments/$comment_id" \
-                -f body="" \
-                -F resolved=true 2>/dev/null || true
+                --method PUT \
+                "/repos/$REPO/pulls/$PR_NUMBER/reviews/$review_id/dismissals" \
+                -f message="Dismissing outdated review" 2>/dev/null || true
             done
-          done
+          else
+            echo "No reviews to dismiss"
+          fi
 
       - name: Generate GitHub App Token for Claude
         uses: actions/create-github-app-token@v1
