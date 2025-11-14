@@ -106,7 +106,9 @@
                                                          :password new-password})
         (let [updated-user (t2/select-one [:model/User :password] :id user-id)
               updated-pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")
-              updated-auth-identity (t2/select-one :model/AuthIdentity :id (:id auth-identity) :provider "support-access-grant")]
+              updated-auth-identity (t2/select-one :model/AuthIdentity :id (:id auth-identity) :provider "support-access-grant")
+              session (t2/select-one :model/Session :auth_identity_id (:id updated-auth-identity))]
+          (is (some? (:expires_at session)))
           (is (= grant-end (:expires_at updated-pw-auth-identity)))
           (is (= (get-in updated-pw-auth-identity [:credentials :password_hash]) (:password updated-user)))
           (is (some? (get-in updated-auth-identity [:credentials :consumed_at]))))))))

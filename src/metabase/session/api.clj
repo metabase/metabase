@@ -71,7 +71,7 @@
                                       :password password
                                       :device-info device-info})]
     (cond
-      (contains? {:invalid-credentials :server-error} (:error result)) nil
+      (contains? #{:invalid-credentials :server-error :authentication-expired} (:error result)) nil
       (:success? result) (:session result)
       :else (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
                                                      :status-code 401})))))
@@ -158,11 +158,14 @@
 
 (defn- password-reset-disabled?
   "Disable password reset for all users created with SSO logins, unless those Users were created with Google SSO
-  in which case disable reset for them as long as the Google SSO feature is enabled."
-  [sso-source]
-  (if (and (= sso-source :google) (not (sso/sso-enabled?)))
-    (sso/google-auth-enabled)
-    (some? sso-source)))
+  in which case disable reset for them as long as the Google SSO feature is enabled.
+
+  Disable password reset for any support users -- users with a auth-identity of type `support-access-request`."
+  [user-id sso-source]
+  (cond
+    (t2/exists? :model/AuthIdentity :user_id user-id :provider "support-access-grant") true
+    (and (= sso-source :google) (not (sso/sso-enabled?))) (sso/google-auth-enabled)
+    :else (some? sso-source)))
 
 (defn- forgot-password-impl
   [email]
@@ -173,7 +176,7 @@
                (t2/select-one [:model/User :id :sso_source :is_active]
                               :%lower.email
                               (u/lower-case-en email))]
-      (if (password-reset-disabled? sso-source)
+      (if (password-reset-disabled? user-id sso-source)
         ;; If user uses any SSO method to log in, no need to generate a reset token. Some cases for Google SSO
         ;; are exempted see `password-reset-allowed?`
         (messages/send-password-reset-email! email sso-source nil is-active?)

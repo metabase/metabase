@@ -13,7 +13,7 @@
             </h1>
 
             <p style="text-align: center; font-size: 15px; line-height: 165%; color: #656F76; margin: 0 0 32px 0;">
-              A support access grant has been created for your Metabase instance.
+              A support access grant has been created for a Metabase instance.
             </p>
 
             {{!-- Grant details --}}
@@ -25,7 +25,7 @@
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; font-weight: 700;">Expires:</td>
-                  <td style="padding: 8px 0;">{{format-date payload.event_info.grant_end_time "MMM d, yyyy 'at' h:mm a"}}</td>
+                  <td style="padding: 8px 0;">{{format-date payload.event_info.grant_end_time "MMM d, yyyy 'at' h:mm a"}} UTC</td>
                 </tr>
               </table>
 
