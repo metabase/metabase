@@ -6,10 +6,10 @@ import {
   cardApi,
   collectionApi,
   databaseApi,
-  useListCollectionItemsQuery,
 } from "metabase/api";
 import type { DispatchFn } from "metabase/lib/redux";
 import { useDispatch } from "metabase/lib/redux";
+import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import type { SchemaName } from "metabase-types/api";
 
 import type { DataPickerValue } from "../DataPicker";
@@ -159,18 +159,9 @@ async function getCollectionPathFromValue(
   return locationPath;
 }
 
-// FIXME: use /api/ee/library
+
 export const useGetLibraryCollection = () => {
-  const { data, isLoading } = useListCollectionItemsQuery({
-    id: "root",
-    models: ["collection"],
-  });
-
-  const libraryCollection = data?.data?.find(
-    // @ts-expect-error - 🤫
-    (item) => item.type === "library",
-  );
-
+  const { data: libraryCollection, isLoading } = useGetLibraryCollectionQuery();
   const hasStuff = libraryCollection && libraryCollection?.below?.length;
 
   return {
