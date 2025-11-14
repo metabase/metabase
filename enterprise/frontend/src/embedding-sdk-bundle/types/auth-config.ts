@@ -1,4 +1,4 @@
-import type { MetabaseFetchRequestTokenFn } from "embedding-sdk-bundle/types/refresh-token";
+import type { MetabaseFetchRequestTokenFn } from "metabase/embedding-sdk/types/refresh-token";
 
 /**
  * @inline
