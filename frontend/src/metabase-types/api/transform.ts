@@ -29,7 +29,7 @@ export type SuggestedTransform = Partial<Pick<Transform, "id">> &
 
 export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
 
-export type KeysetStrategy = {
+export type TransformSourceCheckpointStrategy = {
   type: "checkpoint";
   // For native queries
   "checkpoint-filter"?: string;
@@ -37,7 +37,7 @@ export type KeysetStrategy = {
   "checkpoint-filter-unique-key"?: string;
 };
 
-export type SourceIncrementalStrategy = KeysetStrategy;
+export type SourceIncrementalStrategy = TransformSourceCheckpointStrategy;
 
 export type PythonTransformSourceDraft = {
   type: "python";
@@ -62,7 +62,7 @@ export type QueryTransformSource = {
 
 export type TransformSource = QueryTransformSource | PythonTransformSource;
 
-export type AppendConfig = {
+export type TransformTargetAppendStrategy = {
   type: "append";
 };
 export type DraftTransformSource =
@@ -73,7 +73,7 @@ export type DraftTransform = Partial<
   Pick<Transform, "id" | "name" | "description" | "target">
 > & { source: DraftTransformSource };
 
-export type TargetIncrementalStrategy = AppendConfig;
+export type TargetIncrementalStrategy = TransformTargetAppendStrategy;
 
 export type TransformTargetType = "table" | "table-incremental";
 
@@ -238,4 +238,21 @@ export type GetPythonLibraryRequest = {
 export type UpdatePythonLibraryRequest = {
   path: string;
   source: string;
+};
+
+export type ExtractColumnsFromQueryRequest = {
+  query: DatasetQuery;
+};
+
+export type ExtractColumnsFromQueryResponse = {
+  columns: string[];
+};
+
+export type CheckQueryComplexityRequest = {
+  query: string;
+};
+
+export type CheckQueryComplexityResponse = {
+  is_simple: boolean;
+  reason: string;
 };

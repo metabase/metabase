@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import { FormSelect } from "metabase/forms";
+import type { SelectOption } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 type KeysetColumnSelectProps = {
@@ -20,7 +21,7 @@ export function KeysetColumnSelect({
   query,
   disabled,
 }: KeysetColumnSelectProps) {
-  const columnOptions = useMemo((): Array<{ value: string; label: string }> => {
+  const columnOptions = useMemo((): Array<SelectOption> => {
     if (!query) {
       return [];
     }
@@ -29,44 +30,34 @@ export function KeysetColumnSelect({
       // Use -1 to get the last stage
       const stageIndex = -1;
 
-      // Get returned columns and filterable columns
       const returnedColumns = Lib.returnedColumns(query, stageIndex);
       const filterableColumns = Lib.filterableColumns(query, stageIndex);
 
-      // Create a set of filterable column identifiers using display info
       const filterableIdentifiers = new Set(
         filterableColumns.map((col) => {
-          const info = Lib.displayInfo(query, stageIndex, col);
-          return `${info.table?.name ?? "no-table"}:${info.name}`;
+          return Lib.columnKey(col);
         }),
       );
 
-      // Filter returned columns to only those that are also filterable and numeric
       const numericFilterableColumns = returnedColumns.filter((column) => {
-        const info = Lib.displayInfo(query, stageIndex, column);
-        const identifier = `${info.table?.name ?? "no-table"}:${info.name}`;
         return (
-          filterableIdentifiers.has(identifier) &&
+          filterableIdentifiers.has(Lib.columnKey(column)) &&
           (Lib.isNumeric(column) || Lib.isTemporal(column))
         );
       });
 
       // Convert to select options with unique keys
       const seenKeys = new Set<string>();
-      const uniqueColumns: Array<{ value: string; label: string }> = [];
+      const uniqueColumns: Array<SelectOption> = [];
 
       numericFilterableColumns.forEach((column) => {
         const columnInfo = Lib.displayInfo(query, stageIndex, column);
-        const uniqueKey = Lib.columnUniqueKey(column);
+        const uniqueKey = Lib.columnKey(column);
 
-        // Only add if we haven't seen this key before
         if (!seenKeys.has(uniqueKey)) {
           seenKeys.add(uniqueKey);
 
-          // Use table name + column name for the label to handle duplicates
-          const label = columnInfo.table?.displayName
-            ? `${columnInfo.table.displayName} → ${columnInfo.displayName}`
-            : columnInfo.displayName;
+          const label = columnInfo.longDisplayName;
 
           uniqueColumns.push({ value: uniqueKey, label });
         }

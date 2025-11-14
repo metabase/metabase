@@ -48,13 +48,10 @@ export function TransformEditor({
 
   const handleQueryChange = (query: Lib.Query) => {
     const newSource: QueryTransformSource = {
+      ...source,
       type: "query",
       query: Lib.toJsQuery(query),
     };
-    if (source["source-incremental-strategy"]) {
-      newSource["source-incremental-strategy"] =
-        source["source-incremental-strategy"];
-    }
 
     onChangeSource(newSource);
   };

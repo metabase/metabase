@@ -1,7 +1,10 @@
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import type {
+  CheckQueryComplexityRequest,
+  CheckQueryComplexityResponse,
   CreateTransformRequest,
-  DatasetQuery,
+  ExtractColumnsFromQueryRequest,
+  ExtractColumnsFromQueryResponse,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,
@@ -191,8 +194,8 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [listTag("transform"), listTag("table")]),
     }),
     extractColumnsFromQuery: builder.mutation<
-      { columns: string[] },
-      { query: DatasetQuery }
+      ExtractColumnsFromQueryResponse,
+      ExtractColumnsFromQueryRequest
     >({
       query: (body) => ({
         method: "POST",
@@ -201,8 +204,8 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       }),
     }),
     checkQueryComplexity: builder.query<
-      { is_simple: boolean; reason: string },
-      string
+      CheckQueryComplexityResponse,
+      CheckQueryComplexityRequest
     >({
       query: (queryString) => ({
         method: "POST",

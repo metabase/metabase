@@ -9,6 +9,7 @@ import {
   useListDatabaseSchemasQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -87,6 +88,7 @@ function CreateTransformForm({
   onCreate,
   onClose,
 }: CreateTransformFormProps) {
+  const [sendToast] = useToast();
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
 
@@ -126,11 +128,16 @@ function CreateTransformForm({
       throw new Error("Database ID is required");
     }
     const request = getCreateRequest(source, values, databaseId);
-    const transform = await createTransform(request).unwrap();
-
-    trackTransformCreated({ transformId: transform.id });
-
-    onCreate(transform);
+    try {
+      const transform = await createTransform(request).unwrap();
+      trackTransformCreated({ transformId: transform.id });
+      onCreate(transform);
+    } catch (error) {
+      sendToast({
+        message: getErrorMessage(error, t`Failed to create transform`),
+        icon: "warning",
+      });
+    }
   };
 
   return (

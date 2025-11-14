@@ -4,14 +4,14 @@ import { useLatest } from "react-use";
 import { FormSelect, FormTextInput } from "metabase/forms";
 import { Loader } from "metabase/ui";
 import { useExtractColumnsFromQueryMutation } from "metabase-enterprise/api";
-import type { DatasetQuery } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 
 type NativeQueryColumnSelectProps = {
   name: string;
   label: string;
   description: string;
   placeholder: string;
-  query: DatasetQuery;
+  query: Lib.Query;
 };
 
 export function NativeQueryColumnSelect({
@@ -24,17 +24,23 @@ export function NativeQueryColumnSelect({
   const [columns, setColumns] = useState<string[] | null>(null);
   const [extractColumns, { isLoading }] = useExtractColumnsFromQueryMutation();
 
-  // Create a stable serialized version of the query for dependency tracking
-  const queryKey = useMemo(() => JSON.stringify(query), [query]);
   const queryRef = useLatest(query);
 
   useEffect(() => {
     let isCancelled = false;
+    if (
+      Lib.areLegacyQueriesEqual(
+        Lib.toLegacyQuery(queryRef.current),
+        Lib.toLegacyQuery(query),
+      )
+    ) {
+      return;
+    }
 
     const extract = async () => {
       try {
         const result = await extractColumns({
-          query: queryRef.current,
+          query: Lib.toJsQuery(query),
         }).unwrap();
 
         if (!isCancelled) {
@@ -54,7 +60,7 @@ export function NativeQueryColumnSelect({
     return () => {
       isCancelled = true;
     };
-  }, [queryKey, extractColumns, queryRef]);
+  }, [extractColumns, query, queryRef]);
 
   // If we successfully extracted columns, show a selector
   if (columns && columns.length > 0) {

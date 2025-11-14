@@ -20,7 +20,7 @@ import {
 import type { NewTransformValues } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { DatasetQuery, TransformSource } from "metabase-types/api";
+import type { TransformSource } from "metabase-types/api";
 
 export const IncrementalTransformSettings = ({
   source,
@@ -68,18 +68,11 @@ export const IncrementalTransformSettings = ({
   // Incremental transforms are only supported for single-table Python transforms
   const isPythonTransform = source.type === "python";
   const isMultiTablePythonTransform =
-    isPythonTransform &&
-    "source-tables" in source &&
-    Object.keys(source["source-tables"]).length > 1;
+    isPythonTransform && Object.keys(source["source-tables"]).length > 1;
 
   const [checkQueryComplexity, { data: complexity }] =
     useLazyCheckQueryComplexityQuery();
   const [showComplexityWarning, setShowComplexityWarning] = useState(false);
-  useEffect(() => {
-    return () => {
-      setShowComplexityWarning(false);
-    };
-  }, [checkOnMount, checkQueryComplexity]);
 
   const { transformType, query } = useMemo(() => {
     if (isMbqlQuery) {
@@ -88,8 +81,8 @@ export const IncrementalTransformSettings = ({
     if (isPythonTransform) {
       return { transformType: "python" as const, query: null };
     }
-    return { transformType: "native" as const, query: source.query };
-  }, [isMbqlQuery, isPythonTransform, libQuery, source]);
+    return { transformType: "native" as const, query: libQuery };
+  }, [isMbqlQuery, isPythonTransform, libQuery]);
 
   const hasCheckpointTag = useMemo(() => {
     if (!libQuery || transformType !== "native") {
@@ -139,11 +132,10 @@ export const IncrementalTransformSettings = ({
           if (
             e.target.checked &&
             transformType === "native" &&
-            libQuery &&
             !hasCheckpointTag
           ) {
             const complexity = await checkQueryComplexity(
-              Lib.rawNativeQuery(libQuery),
+              Lib.rawNativeQuery(query),
               true,
             ).unwrap();
             setShowComplexityWarning(complexity?.is_simple === false);
@@ -203,7 +195,7 @@ function TargetStrategyFields() {
 
 type SourceStrategyFieldsProps = {
   source: TransformSource;
-  query: Lib.Query | DatasetQuery | null;
+  query: Lib.Query | null;
   type: "query" | "native" | "python";
 };
 
@@ -235,7 +227,7 @@ function SourceStrategyFields({
               label={t`Source Filter Field`}
               placeholder={t`Select a field to filter on`}
               description={t`Which field from the source to use in the incremental filter`}
-              query={query as Lib.Query}
+              query={query}
             />
           )}
           {type === "native" && query && (
@@ -244,7 +236,7 @@ function SourceStrategyFields({
               label={t`Source Filter Field`}
               placeholder={t`e.g. id, created_at`}
               description={t`Column to use in the incremental filter`}
-              query={query as DatasetQuery}
+              query={query}
             />
           )}
           {type === "python" && "source-tables" in source && (

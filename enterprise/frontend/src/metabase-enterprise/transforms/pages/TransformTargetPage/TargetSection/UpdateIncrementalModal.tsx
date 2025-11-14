@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -72,6 +73,7 @@ function UpdateIncrementalForm({
   onUpdate,
   onClose,
 }: UpdateIncrementalFormProps) {
+  const [sendToast] = useToast();
   const [updateTransform] = useUpdateTransformMutation();
   const initialValues = useMemo(() => getInitialValues(transform), [transform]);
   const validationSchema = useMemo(() => getValidationSchema(), []);
@@ -120,13 +122,20 @@ function UpdateIncrementalForm({
           database: transform.target.database,
         };
 
-    await updateTransform({
-      id: transform.id,
-      source,
-      target,
-    });
+    try {
+      await updateTransform({
+        id: transform.id,
+        source,
+        target,
+      }).unwrap();
 
-    onUpdate();
+      onUpdate();
+    } catch (error) {
+      sendToast({
+        message: getErrorMessage(error, t`Failed to update transform`),
+        icon: "warning",
+      });
+    }
   };
 
   return (
