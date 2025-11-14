@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import type { TableId } from "metabase-types/api";
 
-import { useSelection } from "../../../contexts/SelectionContext";
+import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import {
   type NodeSelection,
   getSchemaChildrenTableIds,

@@ -17,11 +17,11 @@ import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
 import { ModelingSectionLayout } from "./app/pages/ModelingSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
+import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioModelingRoutes } from "./modeling/routes";
 import { getDataStudioModelRoutes } from "./models/routes";
-import { getDataStudioMetadataRoutes } from "./pages/DataModel/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
 
 export function getDataStudioRoutes(

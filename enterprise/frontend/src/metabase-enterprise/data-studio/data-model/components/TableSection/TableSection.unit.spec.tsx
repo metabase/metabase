@@ -4,7 +4,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import type { Table } from "metabase-types/api";
 import { createMockTable } from "metabase-types/api/mocks";
 
-import type { RouteParams } from "../../types";
+import type { RouteParams } from "../../pages/DataModel/types";
 
 import { TableSection } from "./TableSection";
 

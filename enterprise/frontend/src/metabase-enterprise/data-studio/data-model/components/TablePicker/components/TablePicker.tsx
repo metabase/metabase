@@ -16,8 +16,8 @@ import {
   rem,
 } from "metabase/ui";
 
-import { useSelection } from "../../../contexts/SelectionContext";
-import type { RouteParams } from "../../../types";
+import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
+import type { RouteParams } from "../../../pages/DataModel/types";
 import type { ChangeOptions, FilterState, TreePath } from "../types";
 import { getFiltersCount } from "../utils";
 

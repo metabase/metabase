@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { DataModelContext } from "metabase/metadata/pages/shared/DataModelContext";
 import { getLocation } from "metabase/selectors/routing";
 
-import type { RouteParams } from "../../types";
+import type { RouteParams } from "../../pages/DataModel/types";
 
 import { TablePicker } from "./components";
 import type { ChangeOptions, TreePath } from "./types";

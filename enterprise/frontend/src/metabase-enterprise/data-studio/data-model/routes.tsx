@@ -5,7 +5,7 @@ import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
 import { Route } from "metabase/hoc/Title";
 
-import { DataModel } from "./DataModel";
+import { DataModel } from "./pages/DataModel";
 
 export function getDataStudioMetadataRoutes() {
   return (

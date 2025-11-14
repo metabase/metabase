@@ -9,8 +9,8 @@ import { getUrl, parseRouteParams } from "metabase/metadata/pages/shared/utils";
 import { Box, Checkbox, Flex, Icon, Loader, Stack, Text } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
-import { useSelection } from "../../../contexts/SelectionContext";
-import type { RouteParams } from "../../../types";
+import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
+import type { RouteParams } from "../../../pages/DataModel/types";
 import type { FilterState } from "../types";
 
 import S from "./Results.module.css";

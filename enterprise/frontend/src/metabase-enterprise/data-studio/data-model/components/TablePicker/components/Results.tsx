@@ -20,7 +20,7 @@ import { getUrl } from "metabase/metadata/pages/shared/utils";
 import { Box, Checkbox, Flex, Icon, Skeleton, rem } from "metabase/ui";
 import type { UserId } from "metabase-types/api";
 
-import { useSelection } from "../../../contexts/SelectionContext";
+import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import { TYPE_ICONS } from "../constants";
 import type { FlatItem, TreePath } from "../types";
 import { hasChildren } from "../utils";

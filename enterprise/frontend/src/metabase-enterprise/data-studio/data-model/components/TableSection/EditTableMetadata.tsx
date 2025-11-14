@@ -18,7 +18,7 @@ import type {
   UserId,
 } from "metabase-types/api";
 
-import { useSelection } from "../../contexts/SelectionContext";
+import { useSelection } from "../../pages/DataModel/contexts/SelectionContext";
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 
 import S from "./TableMetadataSection.module.css";

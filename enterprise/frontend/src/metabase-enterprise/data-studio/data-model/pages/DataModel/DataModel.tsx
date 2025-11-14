@@ -16,7 +16,6 @@ import {
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 
-import S from "./DataModel.module.css";
 import {
   FieldSection,
   FieldValuesModal,
@@ -26,8 +25,10 @@ import {
   RouterTablePicker,
   SyncOptionsModal,
   TableSection,
-} from "./components";
-import { EditTableMetadata } from "./components/TableSection/EditTableMetadata";
+} from "../../components";
+import { EditTableMetadata } from "../../components/TableSection/EditTableMetadata";
+
+import S from "./DataModel.module.css";
 import { COLUMN_CONFIG } from "./constants";
 import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
 import type { RouteParams } from "./types";
