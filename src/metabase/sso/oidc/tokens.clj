@@ -78,10 +78,10 @@
 
 (defn validate-expiry
   "Validate that the token has not expired.
-   
+
    Parameters:
    - claims: Token claims map
-   
+
    Returns true if token is not expired, falseotherwise."
   [claims]
   (when-let [exp (:exp claims)]
@@ -90,22 +90,22 @@
 
 (defn validate-issuer
   "Validate that the token issuer matches expected issuer.
-   
+
    Parameters:
    - claims: Token claims map
    - expected-issuer: Expected issuer URL
-   
+
    Returns true if issuer matches, false otherwise."
   [claims expected-issuer]
   (= (:iss claims) expected-issuer))
 
 (defn validate-audience
   "Validate that the token audience includes the expected client ID.
-   
+
    Parameters:
    - claims: Token claims map
    - expected-audience: Expected client ID
-   
+
    Returns true if audience matches, false otherwise."
   [claims expected-audience]
   (let [aud (:aud claims)]
@@ -116,23 +116,23 @@
 
 (defn validate-nonce
   "Validate that the token nonce matches the expected nonce.
-   
+
    Parameters:
    - claims: Token claims map
    - expected-nonce: Expected nonce value
-   
+
    Returns true if nonce matches, false otherwise."
   [claims expected-nonce]
   (= (:nonce claims) expected-nonce))
 
 (defn validate-id-token
   "Validate an OIDC ID token.
-   
+
    Parameters:
    - token: JWT string
    - config: Map with :jwks-uri, :issuer-uri, :client-id
    - nonce: Expected nonce value (optional)
-   
+
    Returns a map with:
    - :valid? - boolean indicating if token is valid
    - :claims - the token claims if valid

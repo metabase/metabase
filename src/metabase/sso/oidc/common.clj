@@ -34,7 +34,7 @@
 
 (defn generate-authorization-url
   "Generate the authorization URL for OIDC flow.
-   
+
    Parameters:
    - authorization-endpoint: The authorization endpoint URL
    - client-id: OAuth client ID
@@ -42,7 +42,7 @@
    - scopes: Vector of scope strings (e.g., [\"openid\" \"email\" \"profile\"])
    - state: CSRF protection state token
    - nonce: Token validation nonce
-   
+
    Returns the complete authorization URL."
   [authorization-endpoint client-id redirect-uri scopes state nonce]
   (let [params {:response_type "code"
@@ -56,11 +56,11 @@
 
 (defn build-redirect-uri
   "Construct the redirect URI for OIDC callbacks.
-   
+
    Parameters:
    - base-url: The base URL of the application
    - provider-id: The provider ID (for multi-provider support)
-   
+
    Returns the complete callback URI."
   [base-url provider-id]
   (str base-url "/api/oidc/" provider-id "/callback"))
@@ -86,12 +86,12 @@
 
 (defn oidc-error
   "Create a structured error response for OIDC errors.
-   
+
    Parameters:
    - error-code: Error code (e.g., :invalid_request, :invalid_token)
    - message: Human-readable error message
    - details: Optional additional error details
-   
+
    Returns an error map."
   ([error-code message]
    (oidc-error error-code message nil))
@@ -102,10 +102,10 @@
 
 (defn parse-token-response
   "Parse the token endpoint response.
-   
+
    Parameters:
    - response-body: Token endpoint response body (map)
-   
+
    Returns a map with :id-token, :access-token, :refresh-token (if present)."
   [response-body]
   {:id-token (:id_token response-body)
@@ -115,10 +115,10 @@
 
 (defn validate-callback-params
   "Validate OIDC callback parameters.
-   
+
    Parameters:
    - params: Query parameters from callback request
-   
+
    Returns a map with:
    - :valid? - boolean indicating if params are valid
    - :code - authorization code if valid

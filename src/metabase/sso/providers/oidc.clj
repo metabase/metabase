@@ -21,12 +21,12 @@
 
 (defn- get-oidc-config
   "Extract OIDC configuration from the request.
-   
+
    Configuration can come from:
    1. :oidc-config key in request (for testing or direct calls)
    2. :metadata field of :auth-identity (for existing auth identities)
    3. Direct parameters in request
-   
+
    Returns a configuration map or nil."
   [request]
   (oidc.common/extract-oidc-config request))
@@ -52,11 +52,11 @@
 
 (defn- exchange-code-for-tokens
   "Exchange authorization code for tokens at the token endpoint.
-   
+
    Parameters:
    - code: Authorization code
    - config: OIDC configuration with token endpoint, client credentials, redirect URI
-   
+
    Returns token response map with :id-token, :access-token, etc."
   [code config]
   (let [enriched-config (enrich-config-with-discovery config)
@@ -114,7 +114,7 @@
 
 (methodical/defmethod auth-identity/authenticate :provider/oidc
   [_provider request]
-  (let [config #p (get-oidc-config #p request)]
+  (let [config (get-oidc-config request)]
     (cond
       ;; Configuration missing
       (not config)
@@ -162,6 +162,7 @@
                        :error :user-data-extraction-failed
                        :message "Failed to extract user email from token"}
                       {:success? true
+                       :claims claims
                        :user-data user-data
                        :provider-id (:provider-id user-data)}))))))))
 
