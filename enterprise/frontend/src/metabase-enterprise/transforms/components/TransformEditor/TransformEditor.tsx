@@ -47,7 +47,16 @@ export function TransformEditor({
   const uiOptions = useMemo(() => getEditorOptions(databases), [databases]);
 
   const handleQueryChange = (query: Lib.Query) => {
-    onChangeSource({ type: "query", query: Lib.toJsQuery(query) });
+    const newSource: QueryTransformSource = {
+      type: "query",
+      query: Lib.toJsQuery(query),
+    };
+    if (source["source-incremental-strategy"]) {
+      newSource["source-incremental-strategy"] =
+        source["source-incremental-strategy"];
+    }
+
+    onChangeSource(newSource);
   };
 
   return (

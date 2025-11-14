@@ -860,6 +860,13 @@
   {:exec-args {:only ["test/metabase/notification"
                       "test/metabase/channel"]}}
 
+  ;; test the transforms feature
+  ;;    clj -X:dev:ee:ee-dev:test:test/transforms
+  :test/transforms
+  {:exec-args {:only ["enterprise/backend/test/metabase_enterprise/transforms"
+                      "enterprise/backend/test/metabase_enterprise/transforms_python"]}}
+
+
   ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/mbql

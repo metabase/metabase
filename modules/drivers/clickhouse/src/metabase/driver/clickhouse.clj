@@ -329,6 +329,10 @@
         query (str/join " " (map first pieces))]
     (into [query] (mapcat rest) pieces)))
 
+(defmethod driver/compile-insert :clickhouse
+  [driver {:keys [query output-table]}]
+  (sql.qp/format-honeysql driver {:insert-into [output-table {:raw query}]}))
+
 (defmethod driver/create-schema-if-needed! :clickhouse
   [driver conn-spec schema]
   (let [sql [[(format "CREATE DATABASE IF NOT EXISTS `%s`;" schema)]]]

@@ -1,6 +1,7 @@
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import type {
   CreateTransformRequest,
+  DatasetQuery,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,
@@ -189,6 +190,26 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("transform"), listTag("table")]),
     }),
+    extractColumnsFromQuery: builder.mutation<
+      { columns: string[] },
+      { query: DatasetQuery }
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/transform/extract-columns",
+        body,
+      }),
+    }),
+    checkQueryComplexity: builder.query<
+      { is_simple: boolean; reason: string },
+      string
+    >({
+      query: (queryString) => ({
+        method: "POST",
+        url: "/api/ee/transform/is-simple-query",
+        body: { query: queryString },
+      }),
+    }),
   }),
 });
 
@@ -204,4 +225,6 @@ export const {
   useUpdateTransformMutation,
   useDeleteTransformMutation,
   useDeleteTransformTargetMutation,
+  useExtractColumnsFromQueryMutation,
+  useLazyCheckQueryComplexityQuery,
 } = transformApi;

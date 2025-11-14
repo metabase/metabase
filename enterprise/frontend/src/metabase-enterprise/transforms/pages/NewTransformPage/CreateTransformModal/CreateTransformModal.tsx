@@ -19,6 +19,7 @@ import {
 import * as Errors from "metabase/lib/errors";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
+import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
 import type {
   CreateTransformRequest,
   Transform,
@@ -26,15 +27,27 @@ import type {
 } from "metabase-types/api";
 
 import { trackTransformCreated } from "../../../analytics";
-import type { NewTransformValues } from "../types";
 
 import { SchemaFormSelect } from "./../../../components/SchemaFormSelect";
 
-const NEW_TRANSFORM_SCHEMA = Yup.object({
-  name: Yup.string().required(Errors.required),
-  targetName: Yup.string().required(Errors.required),
-  targetSchema: Yup.string().nullable(),
-});
+function getValidationSchema() {
+  return Yup.object({
+    name: Yup.string().required(Errors.required),
+    targetName: Yup.string().required(Errors.required),
+    targetSchema: Yup.string().nullable().defined(),
+    incremental: Yup.boolean().required(),
+    // For native queries, use checkpointFilter (plain string)
+    checkpointFilter: Yup.string().nullable(),
+    // For MBQL/Python queries, use checkpointFilterUniqueKey (prefixed format)
+    checkpointFilterUniqueKey: Yup.string().nullable(),
+    sourceStrategy: Yup.mixed<"checkpoint">().oneOf(["checkpoint"]).required(),
+    targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
+  });
+}
+
+export type NewTransformValues = Yup.InferType<
+  ReturnType<typeof getValidationSchema>
+>;
 
 type CreateTransformModalProps = {
   source: TransformSource;
@@ -102,6 +115,8 @@ function CreateTransformForm({
     [schemas, defaultValues],
   );
 
+  const validationSchema = useMemo(() => getValidationSchema(), []);
+
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -121,11 +136,11 @@ function CreateTransformForm({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={NEW_TRANSFORM_SCHEMA}
+      validationSchema={validationSchema}
       onSubmit={handleSubmit}
     >
       <Form>
-        <Stack gap="lg">
+        <Stack gap="lg" mt="sm">
           <FormTextInput
             name="name"
             label={t`Name`}
@@ -144,6 +159,7 @@ function CreateTransformForm({
             label={t`Table name`}
             placeholder={t`descriptive_name`}
           />
+          <IncrementalTransformSettings source={source} />
           <Group>
             <Box flex={1}>
               <FormErrorMessage />
@@ -166,22 +182,71 @@ function getInitialValues(
     targetName: "",
     targetSchema: schemas?.[0] || null,
     ...defaultValues,
+    checkpointFilter: null,
+    checkpointFilterUniqueKey: null,
+    incremental: false,
+    sourceStrategy: "checkpoint",
+    targetStrategy: "append",
   };
 }
 
 function getCreateRequest(
   source: TransformSource,
-  { name, targetName, targetSchema }: NewTransformValues,
+  {
+    name,
+    targetName,
+    targetSchema,
+    incremental,
+    checkpointFilter,
+    checkpointFilterUniqueKey,
+    sourceStrategy,
+    targetStrategy,
+  }: NewTransformValues,
   databaseId: number,
 ): CreateTransformRequest {
+  // Build the source with incremental strategy if enabled
+  let transformSource: TransformSource;
+  if (incremental) {
+    // For native queries, use checkpoint-filter (plain string)
+    // For MBQL/Python queries, use checkpoint-filter-unique-key (prefixed format)
+    const strategyFields = checkpointFilter
+      ? { "checkpoint-filter": checkpointFilter }
+      : checkpointFilterUniqueKey
+        ? { "checkpoint-filter-unique-key": checkpointFilterUniqueKey }
+        : {};
+
+    transformSource = {
+      ...source,
+      "source-incremental-strategy": {
+        type: sourceStrategy,
+        ...strategyFields,
+      },
+    };
+  } else {
+    transformSource = source;
+  }
+
+  // Build the target with incremental strategy if enabled
+  const transformTarget: CreateTransformRequest["target"] = incremental
+    ? {
+        type: "table-incremental",
+        name: targetName,
+        schema: targetSchema,
+        database: databaseId,
+        "target-incremental-strategy": {
+          type: targetStrategy,
+        },
+      }
+    : {
+        type: "table",
+        name: targetName,
+        schema: targetSchema ?? null,
+        database: databaseId,
+      };
+
   return {
-    name: name,
-    source,
-    target: {
-      type: "table",
-      name: targetName,
-      schema: targetSchema ?? null,
-      database: databaseId,
-    },
+    name,
+    source: transformSource,
+    target: transformTarget,
   };
 }
