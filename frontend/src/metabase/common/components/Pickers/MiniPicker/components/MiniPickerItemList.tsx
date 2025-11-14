@@ -260,7 +260,7 @@ function SearchItemList({ query }: { query: string }) {
   );
 }
 
-const MiniPickerListLoader = () => (
+export const MiniPickerListLoader = () => (
   <Box>
     <LoadingAndErrorWrapper loading />
   </Box>

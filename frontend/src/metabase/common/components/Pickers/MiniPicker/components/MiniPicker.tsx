@@ -1,20 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Box, Popover } from "metabase/ui";
 
+import type { DataPickerValue } from "../../DataPicker";
 import { MiniPickerContext } from "../context";
 import type {
   MiniPickerFolderItem,
   MiniPickerItem,
   MiniPickerPickableItem,
 } from "../types";
+import { useGetPathFromValue } from "../utils";
 
+import { MiniPickerListLoader } from "./MiniPickerItemList";
 import { MiniPickerPane } from "./MiniPickerPane";
 
 type MiniPickerProps = {
   searchQuery?: string;
   clearSearchQuery: () => void;
-  value?: MiniPickerPickableItem;
+  value?: DataPickerValue;
   opened: boolean;
   onChange: (value: MiniPickerPickableItem) => void;
   onClose: () => void;
@@ -32,12 +35,12 @@ export function MiniPicker({
   clearSearchQuery,
   browseAllComponent,
 }: MiniPickerProps) {
-  const [path, setPath] = useState<MiniPickerFolderItem[]>([]);
   const [shouldBrowse, setShouldBrowse] = useState(false);
 
-  useEffect(() => {
-    // TODO: get initial path based on value
-  }, [value]);
+  const [path, setPath, { isLoadingPath }] = useGetPathFromValue({
+    value,
+    opened,
+  });
 
   const { isFolder, isHidden } = useMemo(() => {
     const modelSet = new Set(models);
@@ -98,7 +101,7 @@ export function MiniPicker({
           </Popover.Target>
 
           <Popover.Dropdown p="md" mt="sm">
-            <MiniPickerPane />
+            {isLoadingPath ? <MiniPickerListLoader /> : <MiniPickerPane />}
           </Popover.Dropdown>
         </Popover>
       )}
