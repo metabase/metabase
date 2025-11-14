@@ -92,7 +92,8 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-10T10:03:00
       author: metamben
-      comment: Add index on segment.model_id
+      comment: Add index on segment.model_id (PostgreSQL and H2 only - MySQL auto-creates with FK)
+      dbms: postgresql,h2
       changes:
         - createIndex:
             tableName: segment
