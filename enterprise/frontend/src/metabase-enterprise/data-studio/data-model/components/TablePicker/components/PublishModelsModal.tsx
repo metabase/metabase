@@ -84,7 +84,7 @@ export function PublishModelsModal({
   if (!isOpen) {
     return null;
   }
-  if (showPublishInfo) {
+  if (showPublishInfo && !seenPublishModelsInfo) {
     return (
       <AcknowledgePublishModelsModal
         isOpen={true}
@@ -93,6 +93,7 @@ export function PublishModelsModal({
             ackSeenPublishModelsInfo();
           }
           setShowPublishInfo(false);
+          onClose?.();
         }}
       />
     );
