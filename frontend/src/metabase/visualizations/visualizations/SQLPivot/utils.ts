@@ -6,6 +6,41 @@ import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
 import { halfRoundToEven } from "../../shared/utils/scoring";
 
+// Helper function to parse score range filter (e.g., "0-78.6" -> {min: 0, max: 78.6})
+function parseScoreRange(rangeString: string | undefined): {
+  min: number;
+  max: number;
+} | null {
+  if (!rangeString || typeof rangeString !== "string") {
+    return null;
+  }
+
+  const trimmed = rangeString.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  // Match pattern: number-number (e.g., "0-78.6", "78.6-92.9")
+  const match = trimmed.match(/^(\d+\.?\d*)\s*-\s*(\d+\.?\d*)$/);
+  if (!match) {
+    return null; // Invalid format
+  }
+
+  const min = parseFloat(match[1]);
+  const max = parseFloat(match[2]);
+
+  if (isNaN(min) || isNaN(max)) {
+    return null;
+  }
+
+  // Ensure min <= max
+  if (min > max) {
+    return { min: max, max: min };
+  }
+
+  return { min, max };
+}
+
 export interface SQLPivotSettings {
   "sqlpivot.row_columns"?: string | string[];
   "sqlpivot.column_dimension"?: string;
@@ -14,8 +49,10 @@ export interface SQLPivotSettings {
   "sqlpivot.show_row_aggregation"?: boolean;
   "sqlpivot.show_column_aggregation"?: boolean;
   "sqlpivot.row_aggregation_sort"?: "default" | "asc" | "desc";
+  "sqlpivot.row_aggregation_position"?: "first" | "last";
   "sqlpivot.hidden_column_labels"?: string[];
   "sqlpivot.enable_color_coding"?: boolean;
+  "sqlpivot.score_range_filter"?: string;
 }
 
 export function isSQLPivotSensible(data: DatasetData): boolean {
@@ -211,6 +248,9 @@ export function transformSQLDataToPivot(
       settings["sqlpivot.show_column_aggregation"] || false;
     const rowAggregationSort =
       settings["sqlpivot.row_aggregation_sort"] || "default";
+    const rowAggregationPosition =
+      settings["sqlpivot.row_aggregation_position"] || "last";
+    const scoreRangeFilter = settings["sqlpivot.score_range_filter"];
     const result = transformToMatrixPivot(
       data,
       rowColumnIndexes,
@@ -219,6 +259,8 @@ export function transformSQLDataToPivot(
       showRowAggregation,
       showColumnAggregation,
       rowAggregationSort,
+      scoreRangeFilter,
+      rowAggregationPosition,
     );
     return validateTransformedData(result);
   }
@@ -464,6 +506,8 @@ function transformToMatrixPivot(
   showRowAggregation: boolean = false,
   _showColumnAggregation: boolean = false,
   rowAggregationSort: "default" | "asc" | "desc" = "default",
+  scoreRangeFilter?: string,
+  rowAggregationPosition: "first" | "last" = "last",
 ) {
   // Matrix pivot: Create hierarchical row structure with column values spread across columns
 
@@ -473,6 +517,12 @@ function transformToMatrixPivot(
     data.rows.map((row) => row[columnDimensionIndex]),
   ).sort();
 
+  // Parse score range filter (only applies to single-dimension pivots)
+  const scoreRange =
+    rowColumnIndexes.length === 1 && showRowAggregation
+      ? parseScoreRange(scoreRangeFilter)
+      : null;
+
   if (rowColumnIndexes.length === 1) {
     // Single row dimension - use simple matrix pivot
     const rowColumn = data.cols[rowColumnIndexes[0]];
@@ -481,32 +531,42 @@ function transformToMatrixPivot(
     );
 
     // Create new column structure: [Row Dimension, Col1, Col2, Col3, ...]
-    const newCols = [
-      rowColumn,
-      ...uniqueColumnValues.map((value) => ({
-        ...valueColumn,
-        name: `${columnDimensionColumn.name}_${value}`,
-        display_name: String(value ?? ""),
-        _dimension: {
-          value: value,
-          column: columnDimensionColumn,
-        },
-      })),
-    ];
+    const dataColumns = uniqueColumnValues.map((value) => ({
+      ...valueColumn,
+      name: `${columnDimensionColumn.name}_${value}`,
+      display_name: String(value ?? ""),
+      _dimension: {
+        value: value,
+        column: columnDimensionColumn,
+      },
+    }));
 
-    // Add row aggregation column if requested
-    if (showRowAggregation) {
-      newCols.push({
-        ...valueColumn,
-        name: "row_aggregation",
-        display_name: "Overall Score",
-      });
+    // Create row aggregation column if requested
+    const aggregationColumn = showRowAggregation
+      ? {
+          ...valueColumn,
+          name: "row_aggregation",
+          display_name: "Overall Score",
+        }
+      : null;
+
+    // Build columns array based on aggregation position
+    const newCols = [rowColumn];
+    if (showRowAggregation && rowAggregationPosition === "first") {
+      newCols.push(aggregationColumn!);
+      newCols.push(...dataColumns);
+    } else {
+      newCols.push(...dataColumns);
+      if (showRowAggregation) {
+        newCols.push(aggregationColumn!);
+      }
     }
 
     // Create matrix rows
     const matrixRows = uniqueRowValues.map((rowValue) => {
       const row = [rowValue];
       const rowValues: number[] = [];
+      const dataValues: any[] = [];
 
       // Fill in values for each column dimension
       uniqueColumnValues.forEach((columnValue) => {
@@ -517,7 +577,7 @@ function transformToMatrixPivot(
         );
 
         const cellValue = dataRow ? dataRow[valueColumnIndexes[0]] : null;
-        row.push(cellValue as any);
+        dataValues.push(cellValue);
 
         if (
           cellValue !== null &&
@@ -528,32 +588,60 @@ function transformToMatrixPivot(
         }
       });
 
-      // Add row aggregation if requested
+      // Calculate row aggregation if requested
+      let rowAggregation: any = null;
       if (showRowAggregation) {
         const matchingRows = data.rows.filter(
           (r) => r[rowColumnIndexes[0]] === rowValue,
         );
-        const rowAggregation = calculateRowAggregation(
-          data,
-          matchingRows,
-          rowValues,
-        );
-        row.push(rowAggregation as any);
+        rowAggregation = calculateRowAggregation(data, matchingRows, rowValues);
+      }
+
+      // Build row based on aggregation position
+      if (showRowAggregation && rowAggregationPosition === "first") {
+        row.push(rowAggregation);
+        row.push(...dataValues);
+      } else {
+        row.push(...dataValues);
+        if (showRowAggregation) {
+          row.push(rowAggregation);
+        }
       }
 
       return row;
     });
 
+    // Apply score range filtering if requested (only for single dimension + row aggregation)
+    let filteredRows = matrixRows;
+    if (scoreRange && showRowAggregation) {
+      // Find aggregation column index based on position
+      const aggregationColumnIndex =
+        rowAggregationPosition === "first" ? 1 : newCols.length - 1;
+      filteredRows = matrixRows.filter((row) => {
+        const scoreValue = row[aggregationColumnIndex];
+        if (scoreValue === null || scoreValue === undefined) {
+          return false; // Exclude rows with no score
+        }
+        const score = Number(scoreValue);
+        if (isNaN(score)) {
+          return false;
+        }
+        return score >= scoreRange.min && score <= scoreRange.max;
+      });
+    }
+
     // Apply sorting if requested
-    let sortedRows = matrixRows;
+    let sortedRows = filteredRows;
     if (
       showRowAggregation &&
       rowAggregationSort !== "default" &&
       (rowAggregationSort === "asc" || rowAggregationSort === "desc")
     ) {
-      const aggregationColumnIndex = newCols.length - 1; // Last column is aggregation
+      // Find aggregation column index based on position
+      const aggregationColumnIndex =
+        rowAggregationPosition === "first" ? 1 : newCols.length - 1;
       sortedRows = sortRowsByAggregation(
-        [...matrixRows],
+        [...filteredRows],
         rowAggregationSort,
         aggregationColumnIndex,
       );
@@ -570,30 +658,41 @@ function transformToMatrixPivot(
   const primaryRowColumn = data.cols[rowColumnIndexes[0]];
 
   // Create new column structure: [Primary Row Dimension, Col1, Col2, Col3, ...]
+  const dataColumns = uniqueColumnValues.map((value) => ({
+    ...valueColumn,
+    name: `${columnDimensionColumn.name}_${value}`,
+    display_name: String(value ?? ""),
+    _dimension: {
+      value: value,
+      column: columnDimensionColumn,
+    },
+  }));
+
+  // Create row aggregation column if requested
+  const aggregationColumn = showRowAggregation
+    ? {
+        ...valueColumn,
+        name: "row_aggregation",
+        display_name: "Row Avg",
+      }
+    : null;
+
+  // Build columns array based on aggregation position
   const newCols = [
     {
       ...primaryRowColumn,
       name: "row_hierarchy",
       display_name: "Category",
     },
-    ...uniqueColumnValues.map((value) => ({
-      ...valueColumn,
-      name: `${columnDimensionColumn.name}_${value}`,
-      display_name: String(value ?? ""),
-      _dimension: {
-        value: value,
-        column: columnDimensionColumn,
-      },
-    })),
   ];
-
-  // Add row aggregation column if requested
-  if (showRowAggregation) {
-    newCols.push({
-      ...valueColumn,
-      name: "row_aggregation",
-      display_name: "Row Avg",
-    });
+  if (showRowAggregation && rowAggregationPosition === "first") {
+    newCols.push(aggregationColumn!);
+    newCols.push(...dataColumns);
+  } else {
+    newCols.push(...dataColumns);
+    if (showRowAggregation) {
+      newCols.push(aggregationColumn!);
+    }
   }
 
   // Group data by primary dimension
@@ -612,6 +711,7 @@ function transformToMatrixPivot(
     // Add the main category row with column values
     const mainRowValues: number[] = [];
     const mainRow = [primaryValue];
+    const mainDataValues: any[] = [];
 
     // Calculate aggregated values for main category across all column dimensions
     uniqueColumnValues.forEach((columnValue) => {
@@ -637,16 +737,16 @@ function transformToMatrixPivot(
               )
             : null;
 
-        mainRow.push(average as any);
+        mainDataValues.push(average);
         if (average !== null) {
           mainRowValues.push(average);
         }
       } else {
-        mainRow.push(null);
+        mainDataValues.push(null);
       }
     });
 
-    // Add row aggregation for main row if requested
+    // Calculate row aggregation for main row if requested
     let mainRowAggregation: number | null = null;
     if (showRowAggregation) {
       const matchingRows = data.rows.filter(
@@ -657,7 +757,17 @@ function transformToMatrixPivot(
         matchingRows,
         mainRowValues,
       );
+    }
+
+    // Build main row based on aggregation position
+    if (showRowAggregation && rowAggregationPosition === "first") {
       mainRow.push(mainRowAggregation as any);
+      mainRow.push(...mainDataValues);
+    } else {
+      mainRow.push(...mainDataValues);
+      if (showRowAggregation) {
+        mainRow.push(mainRowAggregation as any);
+      }
     }
 
     // Collect sub-rows for this primary value
@@ -683,6 +793,7 @@ function transformToMatrixPivot(
       // Create sub-row with matrix values and proper indentation
       const subRow = [`\u00A0\u00A0\u00A0\u00A0${subLabel}`]; // Use non-breaking spaces for indentation
       const subRowValues: number[] = [];
+      const subDataValues: any[] = [];
 
       // Fill in values for each column dimension
       uniqueColumnValues.forEach((columnValue) => {
@@ -696,7 +807,7 @@ function transformToMatrixPivot(
         const cellValue = matchingRow
           ? matchingRow[valueColumnIndexes[0]]
           : null;
-        subRow.push(cellValue as any);
+        subDataValues.push(cellValue);
 
         if (
           cellValue !== null &&
@@ -707,19 +818,30 @@ function transformToMatrixPivot(
         }
       });
 
-      // Add row aggregation for sub-row if requested
+      // Calculate row aggregation for sub-row if requested
+      let subRowAggregation: any = null;
       if (showRowAggregation) {
         const matchingRows = subRows.filter((row) =>
           subDimensionIndexes.every(
             (colIndex, i) => row[colIndex] === subValues[i],
           ),
         );
-        const subRowAggregation = calculateRowAggregation(
+        subRowAggregation = calculateRowAggregation(
           data,
           matchingRows,
           subRowValues,
         );
-        subRow.push(subRowAggregation as any);
+      }
+
+      // Build sub-row based on aggregation position
+      if (showRowAggregation && rowAggregationPosition === "first") {
+        subRow.push(subRowAggregation);
+        subRow.push(...subDataValues);
+      } else {
+        subRow.push(...subDataValues);
+        if (showRowAggregation) {
+          subRow.push(subRowAggregation);
+        }
       }
 
       collectedSubRows.push(subRow);

@@ -165,6 +165,32 @@ export const SQL_PIVOT_SETTINGS = {
     },
   },
 
+  "sqlpivot.row_aggregation_position": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Overall score column position`;
+    },
+    get description() {
+      return t`Choose whether the overall score column appears first or last`;
+    },
+    widget: "select",
+    default: "last",
+    getProps: () => ({
+      options: [
+        { name: t`First (after row labels)`, value: "first" },
+        { name: t`Last (after all data columns)`, value: "last" },
+      ],
+    }),
+    getHidden: (series: any, settings: any) => {
+      return (
+        isColumnDimensionHidden(series, settings) ||
+        !settings["sqlpivot.show_row_aggregation"]
+      );
+    },
+  },
+
   "sqlpivot.show_column_aggregation": {
     get section() {
       return t`Display`;
@@ -237,5 +263,35 @@ export const SQL_PIVOT_SETTINGS = {
     widget: "toggle",
     inline: true,
     default: false,
+  },
+
+  "sqlpivot.score_range_filter": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Filter by score range`;
+    },
+    get description() {
+      return t`Show only rows with overall scores in the specified range (e.g., "0-78.6" or "78.6-92.9"). Leave empty to show all rows.`;
+    },
+    widget: "input",
+    default: "",
+    getHidden: (series: any, settings: any) => {
+      // Only show this setting when:
+      // 1. Column dimension is selected (matrix pivot)
+      // 2. Row aggregation is enabled
+      // 3. Single row dimension (not multi-dimensional)
+      const rowColumns = settings["sqlpivot.row_columns"];
+      const isSingleDimension =
+        (typeof rowColumns === "string" && rowColumns.length > 0) ||
+        (Array.isArray(rowColumns) && rowColumns.length === 1);
+
+      return (
+        isColumnDimensionHidden(series, settings) ||
+        !settings["sqlpivot.show_row_aggregation"] ||
+        !isSingleDimension
+      );
+    },
   },
 };
