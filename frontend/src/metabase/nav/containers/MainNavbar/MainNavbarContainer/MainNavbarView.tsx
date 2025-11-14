@@ -45,6 +45,7 @@ import { AddDataModal } from "./AddDataModal";
 import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
+import { LibraryCollectionSection } from "./LibraryCollectionSection";
 
 type Props = {
   isAdmin: boolean;
@@ -113,16 +114,19 @@ export function MainNavbarView({
     [isAtHomepageDashboard, onItemSelect],
   );
 
-  const [
+  const {
     regularCollections,
     trashCollection,
     examplesCollection,
     syncedCollections,
-  ] = useMemo(() => {
-    const synced = collections.filter(isSyncedCollection);
-    const library = collections.filter(isLibraryCollection);
+    libraryCollections,
+  } = useMemo(() => {
+    const syncedCollections = collections.filter(isSyncedCollection);
+    const libraryCollections = collections.filter(isLibraryCollection);
+    const trashCollection = collections.find(isRootTrashCollection);
+    const examplesCollection = collections.find(isExamplesCollection);
 
-    const normalCollections = collections.filter((c) => {
+    const regularCollections = collections.filter((c) => {
       const isNormalCollection =
         !isRootTrashCollection(c) && !isExamplesCollection(c);
       return (
@@ -130,25 +134,32 @@ export function MainNavbarView({
       );
     });
 
-    if (!showSyncGroup && synced.length > 0 && normalCollections.length > 0) {
-      const [root, ...rest] = normalCollections;
-      const reordered = [root, ...library, ...synced, ...rest];
+    const shouldMoveSyncedCollectionToTop =
+      !showSyncGroup &&
+      syncedCollections.length > 0 &&
+      regularCollections.length > 0;
 
-      return [
-        reordered,
-        collections.find(isRootTrashCollection),
-        collections.find(isExamplesCollection),
-        synced,
-      ];
+    const collectionsByCategory = {
+      trashCollection,
+      examplesCollection,
+      syncedCollections,
+      libraryCollections,
+    };
+
+    if (shouldMoveSyncedCollectionToTop) {
+      const [root, ...rest] = regularCollections;
+      const reordered = [root, ...syncedCollections, ...rest];
+
+      return {
+        ...collectionsByCategory,
+        regularCollections: reordered,
+      };
     }
 
-    const [root, ...rest] = normalCollections;
-    return [
-      [root, ...library, ...rest],
-      collections.find(isRootTrashCollection),
-      collections.find(isExamplesCollection),
-      synced,
-    ];
+    return {
+      ...collectionsByCategory,
+      regularCollections,
+    };
   }, [collections, showSyncGroup]);
 
   const isNewInstance = useSelector(getIsNewInstance);
@@ -221,6 +232,12 @@ export function MainNavbarView({
               syncedCollections={syncedCollections}
             />
           )}
+
+          <LibraryCollectionSection
+            libraryCollections={libraryCollections}
+            selectedId={collectionItem?.id}
+            onItemSelect={onItemSelect}
+          />
 
           <SidebarSection>
             <ErrorBoundary>
