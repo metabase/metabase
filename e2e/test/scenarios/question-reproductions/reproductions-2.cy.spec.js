@@ -497,7 +497,9 @@ describe("issue 30165", () => {
 
     cy.get("@dataset.all").should("have.length", 0);
     cy.get("@cardQuery.all").should("have.length", 0);
-    H.runButtonInOverlay().should("be.visible");
+    cy.findByTestId("query-builder-main")
+      .findByText("Here's where your results will appear")
+      .should("be.visible");
   });
 });
 
