@@ -1,6 +1,6 @@
-import { samlTokenStorage } from "embedding/auth-common";
 import { AUTH_TIMEOUT } from "embedding-sdk-bundle/errors";
-import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
+import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
+import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import { isWithinIframe } from "metabase/lib/dom";
 
 import { WAIT_FOR_SESSION_TOKEN_TIMEOUT } from "../constants";
