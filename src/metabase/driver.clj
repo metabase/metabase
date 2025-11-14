@@ -1171,7 +1171,7 @@
 
 (defmulti compile-insert
   "Compiles the sql for an insert statement (INSERT INTO ... SELECT), given a compiled inner sql query and a destination."
-  {:added "0.57.0", :arglists '([driver {:keys [query output-table]}])}
+  {:added "0.58.0", :arglists '([driver {:keys [query output-table]}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
