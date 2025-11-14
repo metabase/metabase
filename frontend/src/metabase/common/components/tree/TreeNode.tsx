@@ -77,7 +77,9 @@ const BaseTreeNode = React.forwardRef<HTMLLIElement, TreeNodeProps>(
           </IconContainer>
         )}
         <NameContainer data-testid="tree-item-name">{name}</NameContainer>
-        {rightSection?.(item)}
+        {rightSection && (
+          <div onClick={(e) => e.stopPropagation()}>{rightSection(item)}</div>
+        )}
       </TreeNodeRoot>
     );
   },
