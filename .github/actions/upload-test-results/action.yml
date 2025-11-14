@@ -54,5 +54,5 @@ runs:
         junit-paths: ${{ inputs.input-path }}
         variant: ${{ inputs.variant || inputs.output-name }}
         org-slug: metabase
-        dry-run: run
+        dry-run: true
         token: ${{ inputs.trunk-api-token }}
