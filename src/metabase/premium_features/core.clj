@@ -81,7 +81,8 @@
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?
-  offer-metabase-ai?
+  offer-metabase-ai-trial?
+  offer-metabase-ai-paid?
   premium-embedding-token
   site-uuid-for-premium-features-token-checks
   table-data-editing?

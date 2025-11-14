@@ -595,9 +595,11 @@ describe("SaveQuestionModal", () => {
       expect(
         await screen.findByLabelText(/Which tab should this go on/),
       ).toBeInTheDocument();
-      expect(
-        await screen.findByLabelText(/Which tab should this go on/),
-      ).toHaveValue("Foo Tab 1");
+      await waitFor(async () => {
+        expect(
+          await screen.findByLabelText(/Which tab should this go on/),
+        ).toHaveValue("Foo Tab 1");
+      });
     });
 
     it("should now show tab input if selected dashboard has no tabs", async () => {

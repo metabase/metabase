@@ -224,23 +224,34 @@ export const SmartLink = Node.create<{
 
   addPasteRules() {
     return [
-      nodePasteRule({
+      {
         find: /https?:\/\/[^\s]+/g,
-        type: this.type,
-        getAttributes: (match) => {
+        handler: ({ state, range, match }) => {
           const url = match[0];
+
+          // Check if the preceding characters are "](" which indicates the user is typing a markdown link
+          const start = range.from;
+          if (start >= 2) {
+            const textBefore = state.doc.textBetween(start - 2, start);
+            if (textBefore === "](") {
+              return;
+            }
+          }
+
           const parsedEntity = parseEntityUrl(url, this.options.siteUrl);
 
           if (parsedEntity) {
-            return {
-              entityId: parsedEntity.entityId,
-              model: parsedEntity.model,
-            };
+            state.tr.replaceRangeWith(
+              range.from,
+              range.to,
+              this.type.create({
+                entityId: parsedEntity.entityId,
+                model: parsedEntity.model,
+              }),
+            );
           }
-
-          return null; // Return null to prevent node creation
         },
-      }),
+      },
       nodePasteRule({
         find: new RegExp(METABSE_PROTOCOL_MD_LINK, "g"),
         type: this.type,
