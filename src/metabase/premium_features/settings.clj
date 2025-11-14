@@ -311,14 +311,9 @@
   "Should we allow users to use dependency tracking?"
   :dependencies)
 
-; uncomment this when the new feature can be defined in a token
-;(define-premium-feature ^{:added "0.57.1"} enable-support-users?
-;  "Should users be allowed to enable support users in-app?"
-;  :support-users)
-(defn enable-support-users?
-  "This is a temporary hack to make :support-users always enabled"
-  []
-  (is-hosted?))
+(define-premium-feature ^{:added "0.57.1"} enable-support-users?
+  "Should users be allowed to enable support users in-app?"
+  :support-users)
 
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
