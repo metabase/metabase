@@ -36,7 +36,17 @@ export const HandleEditorDrop = Extension.create({
             );
 
             if (cardEmbedInitialData) {
-              const { dropToParent } = cardEmbedInitialData;
+              const { dropToParent, draggedNode } = cardEmbedInitialData;
+
+              // SupportingText can only be dropped within a flexContainer
+              // Block drops on standalone nodes or outside flexContainer
+              if (
+                draggedNode.type.name === "supportingText" &&
+                dropToParent.type.name !== "flexContainer" &&
+                dropToParent.type.name !== "supportingText"
+              ) {
+                return true; // Block the drop
+              }
 
               // Dropping inside a flexContainer
               if (dropToParent.type.name === "flexContainer") {
