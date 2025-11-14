@@ -353,4 +353,3 @@
                     diff-seconds (t/as (t/duration expected-end grant-end-time) :seconds)]
                 (is (< (Math/abs ^long diff-seconds) 2)
                     "Grant end time should be approximately duration_minutes in the future")))))))))
-
