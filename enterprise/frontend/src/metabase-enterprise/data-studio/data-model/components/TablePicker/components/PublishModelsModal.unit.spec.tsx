@@ -60,6 +60,10 @@ function setup(
   setupRecentViewsAndSelectionsEndpoints([]);
   setupCollectionByIdEndpoint({ collections: [testCollection] });
   setupCollectionItemsEndpoint({
+    collection: createMockCollection({ id: "root" }),
+    collectionItems: [],
+  });
+  setupCollectionItemsEndpoint({
     collection: testCollection,
     collectionItems: [],
   });

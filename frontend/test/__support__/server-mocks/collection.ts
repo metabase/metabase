@@ -54,9 +54,6 @@ export function setupCollectionsEndpoints({
   fetchMock.get("path:/api/collection", collections, {
     name: "collection-list",
   });
-  fetchMock.get("path:/api/collection/root/items", collections, {
-    name: "collection-root-items",
-  });
 }
 
 function getCollectionVirtualSchemaURLs(collection: Collection) {
