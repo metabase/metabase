@@ -1,12 +1,15 @@
+import type { ButtonHTMLAttributes } from "react";
 import { t } from "ttag";
 
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useHasEmailSetup } from "metabase/common/hooks";
 import { toggleSharing } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
-import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import type { ActionIconProps } from "metabase/ui";
 
-export const DashboardSubscriptionsButton = () => {
-  const tooltipLabel = t`Subscriptions`;
+export const DashboardSubscriptionsButton = (
+  props: ActionIconProps & ButtonHTMLAttributes<HTMLButtonElement>,
+) => {
   const dispatch = useDispatch();
   const handleClick = () => dispatch(toggleSharing());
 
@@ -17,10 +20,11 @@ export const DashboardSubscriptionsButton = () => {
   }
 
   return (
-    <Tooltip label={tooltipLabel}>
-      <ActionIcon onClick={handleClick} aria-label={tooltipLabel}>
-        <Icon name="subscription" />
-      </ActionIcon>
-    </Tooltip>
+    <ToolbarButton
+      icon="subscription"
+      tooltipLabel={t`Subscriptions`}
+      onClick={handleClick}
+      {...props}
+    />
   );
 };
