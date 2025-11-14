@@ -14,7 +14,7 @@
    (let [expected-api-key (-> (t2/select-one :model/ApiKey :scope :scim) :key)]
      (if (and api-key expected-api-key)
        (u.password/verify-password api-key "" expected-api-key)
-       (mw.session/do-useless-hash)))))
+       (u.password/do-useless-hash)))))
 
 (def ^:private error-schema-uri "urn:ietf:params:scim:api:messages:2.0:Error")
 

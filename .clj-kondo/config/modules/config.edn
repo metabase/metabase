@@ -148,13 +148,16 @@
   api-keys
   {:team "UX West"
    :api  #{metabase.api-keys.api
-           metabase.api-keys.core
-           metabase.api-keys.schema}
+           metabase.api-keys.core}
    :uses #{api
            app-db
+           auth-identity
            events
+           initialization-status
            models
            permissions
+           premium-features
+           request
            users
            util}}
 
@@ -1157,18 +1160,16 @@
            metabase.server.streaming-response} ; TODO -- too many API namespaces
    :uses #{analytics
            api
-           api-keys
            app-db
            appearance
+           auth-identity
            config
            driver
            embedding
            initialization-status
            lib-be
-           premium-features
            query-processor
            request
-           session
            settings
            system
            util
@@ -1186,6 +1187,8 @@
            channel
            config
            events
+           initialization-status
+           premium-features
            request
            settings
            sso
