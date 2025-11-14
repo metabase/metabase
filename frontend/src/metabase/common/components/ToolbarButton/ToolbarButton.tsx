@@ -50,9 +50,8 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
       size="2rem"
       variant="viewHeader"
       aria-label={
-        typeof tooltipLabel === "string"
-          ? (tooltipLabel ?? ariaLabel)
-          : ariaLabel
+        ariaLabel ??
+        (typeof tooltipLabel === "string" ? tooltipLabel : undefined)
       }
       onClick={handleButtonClick}
       bg={hasBackground ? undefined : "transparent"}
