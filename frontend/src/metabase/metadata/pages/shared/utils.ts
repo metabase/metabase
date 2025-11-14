@@ -4,7 +4,7 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type { GetTableQueryMetadataRequest, TableId } from "metabase-types/api";
 
-import type { ParsedRouteParams, RouteParams } from "../DataModelV1/types";
+import type { ParsedRouteParams, RouteParams } from "./types";
 
 export function parseRouteParams(params: RouteParams): ParsedRouteParams {
   return {
