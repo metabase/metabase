@@ -184,7 +184,6 @@ const mainConfig = {
         },
       }
     : {}),
-  projectId: "ywjy9z",
   numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
   reporter: "cypress-multi-reporters",
   reporterOptions: {

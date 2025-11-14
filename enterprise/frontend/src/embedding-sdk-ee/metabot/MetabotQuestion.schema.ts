@@ -2,7 +2,7 @@ import * as Yup from "yup";
 
 import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 
-import type { MetabotQuestionProps } from "./types";
+import type { MetabotQuestionProps } from ".";
 
 const propsSchema: Yup.SchemaOf<MetabotQuestionProps> = Yup.object({
   height: Yup.mixed().optional(),
