@@ -8,6 +8,8 @@ import {
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
+import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
+import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import { METAKEY } from "metabase/lib/browser";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
@@ -15,8 +17,9 @@ import * as Urls from "metabase/lib/urls";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getIsEmbedding } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Tooltip } from "metabase/ui";
+import { TextInput, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { RecentCollectionItem, TableId } from "metabase-types/api";
 
 import {
@@ -140,6 +143,7 @@ function ModernDataPicker({
     table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
   const tableValue =
     table != null ? getDataPickerValue(query, stageIndex, table) : undefined;
+  const [dataSourceSearchQuery, setDataSourceSearchQuery] = useState("");
 
   const openDataSourceInNewTab = () => {
     const url = getUrl({ query, table, stageIndex });
@@ -170,6 +174,38 @@ function ModernDataPicker({
 
   return (
     <>
+      <MiniPicker
+        value={tableValue}
+        opened={isOpened}
+        onClose={() => setIsOpened(false)}
+        models={["table", "dataset", "metric", "card"]}
+        searchQuery={dataSourceSearchQuery}
+        clearSearchQuery={() => setDataSourceSearchQuery("")}
+        onChange={(value: MiniPickerPickableItem) => {
+          const id =
+            value.model === "table"
+              ? value.id
+              : getQuestionVirtualTableId(value.id);
+          onChange(id);
+          setDataSourceSearchQuery("");
+          setIsOpened(false);
+        }}
+        browseAllComponent={
+          isOpened && (
+            <DataPickerModal
+              title={title}
+              value={tableValue}
+              databaseId={canChangeDatabase ? undefined : databaseId}
+              models={modelList}
+              onChange={(i) => {
+                onChange(i);
+              }}
+              onClose={() => setIsOpened(false)}
+              shouldDisableItem={shouldDisableItem}
+            />
+          )
+        }
+      />
       <Tooltip
         label={t`${METAKEY}+click to open in new tab`}
         hidden={!table || isDisabled}
@@ -177,23 +213,22 @@ function ModernDataPicker({
       >
         <DataPickerTarget
           tableInfo={tableInfo}
-          placeholder={placeholder}
+          showPlaceholder={isOpened}
+          placeholder={
+            <TextInput
+              placeholder={placeholder}
+              value={dataSourceSearchQuery}
+              size="sm"
+              onChange={(e) => setDataSourceSearchQuery(e.currentTarget.value)}
+              onClickCapture={(e) => e.stopPropagation()}
+              autoFocus={isOpened}
+            />
+          }
           isDisabled={isDisabled}
           onClick={handleClick}
           onAuxClick={handleAuxClick}
         />
       </Tooltip>
-      {isOpened && (
-        <DataPickerModal
-          title={title}
-          value={tableValue}
-          databaseId={canChangeDatabase ? undefined : databaseId}
-          models={modelList}
-          onChange={onChange}
-          onClose={() => setIsOpened(false)}
-          shouldDisableItem={shouldDisableItem}
-        />
-      )}
     </>
   );
 }
