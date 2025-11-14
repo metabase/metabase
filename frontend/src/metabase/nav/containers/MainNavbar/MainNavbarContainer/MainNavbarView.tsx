@@ -24,7 +24,7 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type { Bookmark } from "metabase-types/api";
 
@@ -46,7 +46,6 @@ import { AddDataModal } from "./AddDataModal";
 import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
-import { LibraryCollectionSection } from "./LibraryCollectionSection";
 
 type Props = {
   isAdmin: boolean;
@@ -123,10 +122,8 @@ export function MainNavbarView({
     trashCollection,
     examplesCollection,
     syncedCollections,
-    libraryCollections,
   } = useMemo(() => {
     const syncedCollections = collections.filter(isSyncedCollection);
-    const libraryCollections = collections.filter(isLibraryCollection);
     const trashCollection = collections.find(isRootTrashCollection);
     const examplesCollection = collections.find(isExamplesCollection);
 
@@ -147,7 +144,6 @@ export function MainNavbarView({
       trashCollection,
       examplesCollection,
       syncedCollections,
-      libraryCollections,
     };
 
     if (shouldMoveSyncedCollectionToTop) {
@@ -237,11 +233,13 @@ export function MainNavbarView({
             />
           )}
 
-          <LibraryCollectionSection
-            libraryCollections={libraryCollections}
-            selectedId={collectionItem?.id}
-            onItemSelect={onItemSelect}
-          />
+          {PLUGIN_LIBRARY.isEnabled && (
+            <PLUGIN_LIBRARY.NavbarLibrarySection
+              collections={collections}
+              selectedId={collectionItem?.id}
+              onItemSelect={onItemSelect}
+            />
+          )}
 
           <SidebarSection>
             <ErrorBoundary>

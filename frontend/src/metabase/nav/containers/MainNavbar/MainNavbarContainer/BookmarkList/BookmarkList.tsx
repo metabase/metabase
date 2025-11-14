@@ -14,7 +14,6 @@ import { t } from "ttag";
 import CollapseSection from "metabase/common/components/CollapseSection";
 import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
-import CS from "metabase/css/core/index.css";
 import Bookmarks from "metabase/entities/bookmarks";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -158,7 +157,6 @@ const BookmarkList = ({
       initialState={initialState}
       iconPosition="right"
       iconSize={8}
-      headerClass={CS.mb1}
       onToggle={onToggle}
     >
       <DndContext

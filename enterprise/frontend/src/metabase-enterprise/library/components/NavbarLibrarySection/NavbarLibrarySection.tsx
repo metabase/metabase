@@ -2,23 +2,26 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { isLibraryCollection } from "metabase/collections/utils";
 import CollapseSection from "metabase/common/components/CollapseSection";
 import { Tree } from "metabase/common/components/tree";
 import { useUserSetting } from "metabase/common/hooks";
-import CS from "metabase/css/core/index.css";
-import type { CollectionTreeItem } from "metabase/entities/collections";
-
-import { SidebarHeading, SidebarSection } from "../MainNavbar.styled";
-import { SidebarCollectionLink } from "../SidebarItems";
+import { buildCollectionTree } from "metabase/entities/collections";
+import {
+  SidebarHeading,
+  SidebarSection,
+} from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
+import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
+import type { Collection } from "metabase-types/api";
 
 type LibraryCollectionSectionProps = {
-  libraryCollections: CollectionTreeItem[];
+  collections: Collection[];
   selectedId?: string | number;
   onItemSelect: () => void;
 };
 
-export function LibraryCollectionSection({
-  libraryCollections,
+export function NavbarLibrarySection({
+  collections,
   selectedId,
   onItemSelect,
 }: LibraryCollectionSectionProps) {
@@ -26,15 +29,19 @@ export function LibraryCollectionSection({
     "expand-library-in-nav",
   );
 
-  const libraryChildren = useMemo(() => {
-    if (libraryCollections.length === 0) {
+  const libraryTree = useMemo(() => {
+    const libraryCollection = collections.find(isLibraryCollection);
+    if (!libraryCollection) {
       return [];
     }
-    const rootLibrary = libraryCollections[0];
-    return rootLibrary.children || [];
-  }, [libraryCollections]);
+    const tree = buildCollectionTree([libraryCollection], () => true);
+    if (tree.length === 0) {
+      return [];
+    }
+    return tree[0].children || [];
+  }, [collections]);
 
-  if (libraryChildren.length === 0) {
+  if (libraryTree.length === 0) {
     return null;
   }
 
@@ -49,11 +56,10 @@ export function LibraryCollectionSection({
           initialState={expandLibrary ? "expanded" : "collapsed"}
           iconPosition="right"
           iconSize={8}
-          headerClass={CS.mb1}
           onToggle={setExpandLibrary}
         >
           <Tree
-            data={libraryChildren}
+            data={libraryTree}
             selectedId={selectedId}
             onSelect={onItemSelect}
             TreeNode={SidebarCollectionLink}
