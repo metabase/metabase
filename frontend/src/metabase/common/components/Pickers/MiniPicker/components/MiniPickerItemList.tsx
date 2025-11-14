@@ -19,8 +19,10 @@ import type {
   MiniPickerPickableItem,
   MiniPickerSchemaItem,
 } from "../types";
+import { useGetLibraryCollection } from "../utils";
 
 import { MiniPickerItem } from "./MiniPickerItem";
+// FIXME, should be an enterprise plugin
 
 // gotta virtualize in here, sometimes there's 65k tables
 export function MiniPickerItemList() {
@@ -50,6 +52,23 @@ export function MiniPickerItemList() {
 function RootItemList() {
   const { data: databases } = useListDatabasesQuery();
   const { setPath } = useMiniPickerContext();
+  const { data: libraryCollection, isLoading } = useGetLibraryCollection();
+
+  if (isLoading) {
+    return <MiniPickerListLoader />;
+  }
+
+  if (libraryCollection) {
+    return (
+      <CollectionItemList
+        parent={{
+          model: "collection",
+          id: libraryCollection.id,
+          name: libraryCollection.name,
+        }}
+      />
+    );
+  }
 
   return (
     <Stack gap="1px">

@@ -220,7 +220,10 @@ function ModernDataPicker({
               value={dataSourceSearchQuery}
               size="sm"
               onChange={(e) => setDataSourceSearchQuery(e.currentTarget.value)}
-              onClickCapture={(e) => e.stopPropagation()}
+              onClickCapture={(e) => {
+                e.stopPropagation();
+                setIsOpened(true);
+              }}
               autoFocus={isOpened}
             />
           }

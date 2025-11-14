@@ -2,7 +2,12 @@ import { useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
-import { cardApi, collectionApi, databaseApi } from "metabase/api";
+import {
+  cardApi,
+  collectionApi,
+  databaseApi,
+  useListCollectionItemsQuery,
+} from "metabase/api";
 import type { DispatchFn } from "metabase/lib/redux";
 import { useDispatch } from "metabase/lib/redux";
 import type { SchemaName } from "metabase-types/api";
@@ -10,7 +15,7 @@ import type { SchemaName } from "metabase-types/api";
 import type { DataPickerValue } from "../DataPicker";
 import type { TablePickerValue } from "../TablePicker";
 
-import type { MiniPickerFolderItem } from "./types";
+import type { MiniPickerCollectionItem, MiniPickerFolderItem } from "./types";
 
 export const getOurAnalytics = (): MiniPickerFolderItem => ({
   model: "collection",
@@ -23,9 +28,11 @@ export const getOurAnalytics = (): MiniPickerFolderItem => ({
 export function useGetPathFromValue({
   value,
   opened,
+  libraryCollection,
 }: {
   value?: DataPickerValue;
   opened: boolean;
+  libraryCollection?: MiniPickerCollectionItem;
 }) {
   const [path, setPath] = useState<MiniPickerFolderItem[]>([]);
   const [isLoadingPath, setIsLoadingPath] = useState(false);
@@ -37,11 +44,11 @@ export function useGetPathFromValue({
     }
     setIsLoadingPath(true);
 
-    getPathFromValue(value, dispatch).then((newPath) => {
+    getPathFromValue(value, dispatch, libraryCollection).then((newPath) => {
       setPath(newPath);
       setIsLoadingPath(false);
     });
-  }, [value, opened, dispatch]);
+  }, [value, opened, dispatch, libraryCollection]);
 
   return [path, setPath, { isLoadingPath }] as const;
 }
@@ -49,10 +56,11 @@ export function useGetPathFromValue({
 async function getPathFromValue(
   value: DataPickerValue,
   dispatch: DispatchFn,
+  libraryCollection?: MiniPickerCollectionItem,
 ): Promise<MiniPickerFolderItem[]> {
   return value?.model === "table"
     ? getTablePathFromValue(value, dispatch)
-    : getCollectionPathFromValue(value, dispatch);
+    : getCollectionPathFromValue(value, dispatch, libraryCollection);
 }
 
 async function getTablePathFromValue(
@@ -85,6 +93,7 @@ async function getTablePathFromValue(
 async function getCollectionPathFromValue(
   value: Exclude<DataPickerValue, TablePickerValue>,
   dispatch: DispatchFn,
+  libraryCollection?: MiniPickerCollectionItem,
 ): Promise<MiniPickerFolderItem[]> {
   const card = await dispatch(
     cardApi.endpoints.getCard.initiate({ id: value.id }),
@@ -104,6 +113,12 @@ async function getCollectionPathFromValue(
     ...(location?.split("/") ?? []),
     card?.collection_id,
   ].filter(Boolean);
+
+  // FIXME: enterprise plugin
+  if (collectionIds.includes(String(libraryCollection?.id))) {
+    collectionIds.shift(); // pretend the library is at the top level
+    locationPath.shift();
+  }
 
   for (let i = 0; i < collectionIds.length; i++) {
     const collectionId = collectionIds[i];
@@ -143,3 +158,32 @@ async function getCollectionPathFromValue(
 
   return locationPath;
 }
+
+// FIXME: use /api/ee/library
+export const useGetLibraryCollection = () => {
+  const { data, isLoading } = useListCollectionItemsQuery({
+    id: "root",
+    models: ["collection"],
+  });
+
+  const libraryCollection = data?.data?.find(
+    // @ts-expect-error - 🤫
+    (item) => item.type === "library",
+  );
+
+  const hasStuff = libraryCollection && libraryCollection?.below?.length;
+
+  return {
+    isLoading,
+    data: hasStuff
+      ? ({
+          id: libraryCollection.id,
+          name: libraryCollection.name,
+          model: "collection",
+          can_write: libraryCollection.can_write,
+          here: libraryCollection.here,
+          below: libraryCollection.below,
+        } as MiniPickerCollectionItem)
+      : undefined,
+  };
+};

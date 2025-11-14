@@ -9,7 +9,7 @@ import type {
   MiniPickerItem,
   MiniPickerPickableItem,
 } from "../types";
-import { useGetPathFromValue } from "../utils";
+import { useGetLibraryCollection, useGetPathFromValue } from "../utils";
 
 import { MiniPickerListLoader } from "./MiniPickerItemList";
 import { MiniPickerPane } from "./MiniPickerPane";
@@ -36,10 +36,12 @@ export function MiniPicker({
   browseAllComponent,
 }: MiniPickerProps) {
   const [shouldBrowse, setShouldBrowse] = useState(false);
+  const { data: libraryCollection } = useGetLibraryCollection();
 
   const [path, setPath, { isLoadingPath }] = useGetPathFromValue({
     value,
     opened,
+    libraryCollection,
   });
 
   const { isFolder, isHidden } = useMemo(() => {
