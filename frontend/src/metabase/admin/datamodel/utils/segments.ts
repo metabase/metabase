@@ -22,7 +22,7 @@ export function getSegmentQuery(
   }
 
   const metadataProvider = Lib.metadataProvider(databaseId, metadata);
-  return Lib.fromJsQuery(metadataProvider, query as any);
+  return Lib.fromJsQuery(metadataProvider, query);
 }
 
 export function getSegmentQueryDefinition(query: Lib.Query) {
