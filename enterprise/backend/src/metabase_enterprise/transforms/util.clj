@@ -155,7 +155,7 @@
   ([database target {:keys [create?]}]
    (when-let [table (or (target-table (:id database) target)
                         (when create?
-                          (sync/create-table! database (select-keys target [:schema :name :data_source]))))]
+                          (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority]))))]
      (sync/sync-table! table)
      table)))
 
