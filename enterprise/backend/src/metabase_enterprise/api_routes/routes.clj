@@ -130,7 +130,7 @@
    "/library"                      (premium-handler metabase-enterprise.library.api/routes :data-studio)
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
-   "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
+   "/metabot-v3"                   (premium-handler #'metabase-enterprise.metabot-v3.api/routes :metabot-v3)
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)

@@ -1,73 +1,88 @@
 (ns metabase-enterprise.metabot-v3.api.slackbot
   "`/api/ee/metabot-v3/slack` routes"
   (:require
-   [buddy.core.codecs :as codecs]
-   [buddy.core.mac :as mac]
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase.api.macros :as api.macros]
    [metabase.permissions.core :as perms]
-   [metabase.system.core :as system]))
+   [metabase.system.core :as system]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
-;; ------------------ VALIDATING INCOMING SLACK REQUEST --------------------
-
-(defn- hmac-sha256
-  "Generate HMAC-SHA256 signature"
-  [key message]
-  (-> (mac/hash message {:key key :alg :hmac+sha256})
-      codecs/bytes->hex))
-
-(defn- verify-slack-signature
-  "Verify that the request came from Slack using signature verification"
-  [request-body timestamp slack-signature]
-  (if-let [signing-secret (metabot.settings/metabot-slack-signing-secret)]
-    (let [message (str "v0:" timestamp ":" request-body)
-          computed-signature (hmac-sha256 signing-secret message)
-          expected-signature (str "v0=" computed-signature)]
-      (= expected-signature slack-signature))
-    false))
-
-(defn- verify-request-timestamp
-  "Verify request timestamp to prevent replay attacks"
-  [timestamp]
-  (let [current-time (quot (System/currentTimeMillis) 1000)
-        request-time (Long/parseLong timestamp)
-        time-diff (Math/abs (- current-time request-time))]
-    ;; Allow 5 minutes tolerance
-    (<= time-diff 300)))
-
-(defn- verify-slack-request
-  "Verify that the request came from Slack"
-  [{:keys [headers body]}]
-  (let [slack-signature (get headers "x-slack-signature")
-        timestamp (get headers "x-slack-request-timestamp")
-        raw-body (if (string? body) body (str body))]
-    (and slack-signature
-         timestamp
-         (verify-request-timestamp timestamp)
-         (verify-slack-signature raw-body timestamp slack-signature))))
-
 ;; ------------------ SLACK CLIENT --------------------
 
-(comment
-  (hmac-sha256 (metabot.settings/metabot-slack-signing-secret) (str "v0:" "timestamp" ":" "request-body")))
-
-(defn send-message
-  "Send a Slack message"
-  [client channel text]
+(defn send-slack-req
+  "POST to Slack API"
+  [client endpoint payload]
   (try
-    (http/post "https://slack.com/api/chat.postMessage"
-               {:headers {"Authorization" (str "Bearer " (:bot-token client))}
-                :content-type :json
-                :form-params {:channel channel :text text}})
+    (let [res (http/post (str "https://slack.com/api" endpoint)
+                         {:headers {"Authorization" (str "Bearer " (:bot-token client))}
+                          :content-type "application/json; charset=utf-8"
+                          :body (json/encode payload)})]
+      ;; TODO: better error handling
+      (if (> (:status res) 299)
+        (throw res)
+        (json/decode (:body res) true)))
     (catch Exception e
       (println "Error sending message to Slack:" (.getMessage e))
       nil)))
 
-;; ---------------- MANFIEST ENDPOINT ---------------
+;; TODO: bad name, would like to consolidate w/ above function
+(defn fetch-slack-req
+  "GET from Slack API"
+  [client endpoint params]
+  (try
+    (let [res (http/get (str "https://slack.com/api" endpoint)
+                        {:headers {"Authorization" (str "Bearer " (:bot-token client))}
+                         :query-params params})]
+      ;; TODO: better error handling
+      (if (> (:status res) 299)
+        (throw res)
+        (json/decode (:body res) true)))
+    (catch Exception e
+      (println "Error sending message to Slack:" (.getMessage e))
+      nil)))
+
+;; TODO: would be nice if each of these endpoints defined their required scopes
+;; and then this was aggregated into the manifest definition somehow...
+
+(defn post-message
+  "Send a Slack message"
+  [client message]
+  (send-slack-req client "/chat.postMessage" message))
+
+(defn delete-message
+  "Remove a Slack message"
+  [client message]
+  (send-slack-req client "/chat.delete" (select-keys message [:channel :ts])))
+
+(defn fetch-thread
+  "Fetch an entire full Slack thread"
+  [client message]
+  (fetch-slack-req client "/conversations.replies" (select-keys message [:channel :ts])))
+
+;; -------------------- UTILS ------------------------
+
+(defn thread->history
+  "Convert a Slack thread to an ai-service history object"
+  [thread]
+  (for [msg (:messages thread) :when (:text msg)]
+    {:role (if (:bot_id msg) "assistant" "user")
+     :content (:text msg)}))
+
+(comment
+  (def client {:bot-token (metabot.settings/metabot-slack-bot-token)})
+
+  (def message (post-message client {:channel "XXXXXXXXXXX" :text "_Thinking..._"}))
+  (delete-message client message)
+  (select-keys message [:channel :ts])
+
+  (def thread (fetch-thread client message))
+  (def history (thread->history thread)))
+
+;; -------------------- API ---------------------------
 
 (defn- slackbot-manifest [base-url]
   {"display_information" {"name" "Metabot"
@@ -110,6 +125,14 @@
   (perms/check-has-application-permission :setting)
   (slackbot-manifest (system/site-url)))
 
+;; ------------------------- VALIDATION ------------------------------------------
+
+(defn assert-valid-slack-req
+  "Asserts that incoming Slack request has a valid signature."
+  [request]
+  (when-not (:slack/validated? request)
+    (throw (ex-info (str (tru "Slack request signature is not valid.")) {:status 401, :body "Invalid request signature."}))))
+
 ;; ------------------------- EVENT HANDLING ENDPOINT ------------------------------
 
 (defn- handle-url-verification
@@ -138,55 +161,28 @@
 
 (defn- process-user-message
   "Resond to an incoming user slack message"
-  [event]
-  (let [client {:bot-token (metabot.settings/metabot-slack-bot-token)}]
-    (send-message client (:channel event) "Hello from Clojure")))
+  [client event]
+  (post-message client {:channel (:channel event) :message "Hello from Clojure"}))
 
 (defn- handle-event-callback
   "Respond to an event_callback request (docs: TODO)"
   [payload]
-  (let [event (:event payload)]
+  (let [client {:bot-token (metabot.settings/metabot-slack-bot-token)}
+        event (:event payload)]
     (when (user-message? event)
       ;; we must respond to slack w/ a 200 within 3 seconds
       ;; otherwise slack will retry their request
-      (future (process-user-message event)))
+      (future (process-user-message client event)))
     ack-msg))
 
-;; TODO: add auth middleware
 (api.macros/defendpoint :post "/events"
   "Respond to activities in Slack"
-  [_route-params
-   _query-params
-   body
-   {{x-slack-signature "x-slack-signature"
-     x-slack-request-timestamp "x-slack-request-timestamp"} :headers
-    :as request}]
-  ;; Try to get the preserved raw body, fallback to reconstructing JSON
-  (let [raw-body (or (:body request)
-                     (json/generate-string body))]
-
-    (println "DEBUG: Headers:" (:headers request))
-    (println "DEBUG: Body type:" (type body))
-    (println "DEBUG: Using preserved raw body?" (boolean (:body request)))
-    (println "DEBUG: Raw body:" raw-body)
-    (let [verification-result (and x-slack-signature
-                                   x-slack-request-timestamp
-                                   (try
-                                     (verify-slack-request {:headers {"x-slack-signature" x-slack-signature
-                                                                      "x-slack-request-timestamp" x-slack-request-timestamp}
-                                                            :body raw-body})
-                                     (catch Exception e
-                                       (println "Signature verification failed:" (.getMessage e))
-                                       false)))]
-      (if verification-result
-        (when body
-          (case (:type body)
-            "url_verification" (handle-url-verification body)
-            "event_callback" (handle-event-callback body)
-            ack-msg))
-        {:status 401
-         :headers {"Content-Type" "text/plain"}
-         :body "Unauthorized: Missing or invalid signature"}))))
+  [_route-params _query-params body request]
+  (assert-valid-slack-req request)
+  (case (:type body)
+    "url_verification" (handle-url-verification body)
+    "event_callback" (handle-event-callback body)
+    ack-msg))
 
 ;; ----------------------- ROUTES --------------------------
 

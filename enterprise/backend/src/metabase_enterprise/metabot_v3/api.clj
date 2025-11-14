@@ -14,7 +14,6 @@
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.app-db.core :as app-db]
    [metabase.premium-features.core :as premium-features]

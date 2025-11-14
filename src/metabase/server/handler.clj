@@ -73,10 +73,8 @@
         #'mw.log/log-api-call                        ; log info about the request, db call counts etc.
         #'mw.browser-cookie/ensure-browser-id-cookie ; add cookie to identify browser; add `:browser-id` to the request
         #'mw.security/add-security-headers           ; Add HTTP headers to API responses to prevent them from being cached
-        ;; HERE <--- middleware can add validated-slack property to request
-        ;; two middlewares, one for assigning slack info, another for validating it
-        ;; defenterprise macro could let me set a middleware here only for ee (always runs, but only checks in ee)
         #'mw.json/wrap-json-body                     ; extracts json POST/PUT body and makes it available on request
+        #'mw.auth/verify-slack-request               ; looks for requests from slack and assocs a :slack/validated? on the request if valid
         #'mw.offset-paging/handle-paging             ; binds per-request parameters to handle paging
         #'mw.json/wrap-streamed-json-response        ; middleware to automatically serialize suitable objects as JSON in responses
         #'mw.mp-cache/wrap-metadata-provider-cache   ; initializes the Lib-BE metadata provider cache
