@@ -645,11 +645,11 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("o");
     H.openNavigationSidebar();
     H.navigationSidebar()
-      .findByRole("tab", { name: /bookmarks/i })
+      .findByRole("section", { name: /bookmarks/i })
       .should("contain.text", "Test Dashboard");
     cy.realPress("o");
     H.navigationSidebar()
-      .findByRole("tab", { name: /bookmarks/i })
+      .findByRole("section", { name: /bookmarks/i })
       .should("not.exist");
 
     cy.realPress("e");

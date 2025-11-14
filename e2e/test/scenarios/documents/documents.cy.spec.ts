@@ -101,7 +101,7 @@ H.describeWithSnowplowEE("documents", () => {
     });
 
     H.navigationSidebar()
-      .findByRole("tab", { name: "Bookmarks" })
+      .findByRole("section", { name: "Bookmarks" })
       .findByText("Test Document")
       .click();
 
