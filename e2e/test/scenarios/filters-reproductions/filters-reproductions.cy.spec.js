@@ -68,7 +68,7 @@ describe("issue 16621", () => {
   });
 });
 
-describe("issue 18770", { tags: "@flaky" }, () => {
+describe("issue 18770", () => {
   const questionDetails = {
     name: "18770",
     query: {

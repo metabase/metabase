@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -106,7 +107,7 @@
                   :perms/download-results      :one-million-rows
                   :perms/manage-table-metadata :no
                   :perms/manage-database       :no}}}
-               (data-perms/data-permissions-graph :group-id all-users-group-id :db-id db-id))))
+               (data-perms.graph/data-permissions-graph :group-id all-users-group-id :db-id db-id))))
 
         ;; A new group starts with the same perms as All Users
         (is (partial=
@@ -117,7 +118,7 @@
                 :perms/download-results      :one-million-rows
                 :perms/manage-table-metadata :no
                 :perms/manage-database       :no}}}
-             (data-perms/data-permissions-graph :group-id group-id :db-id db-id)))
+             (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id)))
 
         (testing "A new table has appropriate defaults, when perms are already set granularly for the DB"
           (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :no)
@@ -145,7 +146,7 @@
                                                    table-id-2 :yes
                                                    table-id-3 :no}}
                     :perms/manage-database       :no}}}
-                 (data-perms/data-permissions-graph :group-id group-id :db-id db-id)))))))))
+                 (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id)))))))))
 
 (deftest cleanup-permissions-after-delete-table-test
   (mt/with-temp

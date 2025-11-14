@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { InteractiveDashboard } from "embedding-sdk-bundle/components/public/dashboard";
 import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
-import type { MetabaseDataPointObject } from "embedding-sdk-package";
+import type { MetabaseDataPointObject } from "embedding-sdk-bundle/types";
 
 export default {
   title: "EmbeddingSDK/Map Question Click Actions",
