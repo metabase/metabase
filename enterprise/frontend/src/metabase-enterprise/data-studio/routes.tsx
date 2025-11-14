@@ -32,7 +32,14 @@ export function getDataStudioRoutes(
   CanAccessTransforms: ComponentType,
 ) {
   return (
-    <Route component={CanAccessDataStudio}>
+    <Route
+      component={CanAccessDataStudio}
+      onEnter={(_state, replace) => {
+        if (!canAccessDataStudio(store.getState())) {
+          replace(Urls.unauthorized());
+        }
+      }}
+    >
       <Route path="data-studio" component={DataStudioLayout}>
         <IndexRoute
           onEnter={(_state, replace) => {
@@ -77,9 +84,6 @@ export function getDataStudioRoutes(
 }
 
 function getIndexPath(state: State) {
-  if (!canAccessDataStudio(state)) {
-    return Urls.unauthorized();
-  }
   if (PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state)) {
     return Urls.dataStudioData();
   }
