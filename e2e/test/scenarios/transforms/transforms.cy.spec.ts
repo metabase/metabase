@@ -1299,7 +1299,7 @@ LIMIT
       getRunButton().should("have.text", "Running now…");
       getRunStatus().should("have.text", "Run in progress…");
 
-      H.DataStudio.Transforms.sidebar().findByText("Runs").click();
+      H.DataStudio.runsButton().click();
       getContentTable().within(() => {
         cy.findByText("In progress").should("be.visible");
         cy.findByLabelText("Cancel run").click();
@@ -1421,7 +1421,7 @@ LIMIT
 
         cy.log("reverting the changes should be possible");
         H.PythonEditor.clear().type("# oops");
-        getLibraryEditorHeader().findByText("Revert").click();
+        getLibraryEditorHeader().findByText("Cancel").click();
         H.PythonEditor.value().should(
           "eq",
           dedent`
@@ -1746,7 +1746,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         .findByText("Last ran a few seconds ago successfully.")
         .should("be.visible");
 
-      H.DataStudio.Jobs.sidebar().findByText("Runs").click();
+      H.DataStudio.runsButton().click();
       getContentTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("Success").should("be.visible");
@@ -2194,7 +2194,7 @@ describe("scenarios > admin > transforms > runs", () => {
     }
 
     createInitialData();
-    H.DataStudio.Transforms.sidebar().findByText("Runs").click();
+    H.DataStudio.runsButton().click();
     testTransformFilter();
     testStatusFilter();
     testTagFilter();
