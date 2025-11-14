@@ -232,7 +232,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- test-drivers []
-  (disj (mt/normal-drivers-with-feature :transforms/table) :redshift))
+  (disj (mt/normal-drivers-with-feature :transforms/table) :redshift :clickhouse))
 
 (deftest create-incremental-transform-test
   (testing "Creating an incremental transform with checkpoint strategy"
@@ -477,3 +477,78 @@
                                 checkpoint (get-checkpoint-value (:id transform))]
                             (is (= 18 row-count) "Should append 2 new rows (16 + 2 = 18)")
                             (is (some? checkpoint) "Checkpoint should be updated")))))))))))))))
+
+(deftest ^:postgres-only native-query-with-temporal-checkpoint-test
+  (testing "Native query with temporal checkpoint"
+    ;; we test only in postgres because it's easy to cast to ::timestamp
+    (mt/test-drivers [:postgres]
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [target-table "native_temporal_cast"]
+            (let [checkpoint-config (get checkpoint-configs :temporal)
+                  {:keys [expected-initial-checkpoint expected-second-checkpoint field-name]} checkpoint-config
+                  schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+                  timestamp-sql (first (sql/format (sql.qp/current-datetime-honeysql-form driver/*driver*)))
+                  query (format "SELECT *, %s AS load_timestamp FROM %s [[WHERE %s > {{checkpoint}}::timestamp]] ORDER BY %s LIMIT 10"
+                                timestamp-sql
+                                (if schema
+                                  (sql.u/quote-name driver/*driver* :table schema "transforms_products")
+                                  "transforms_products")
+                                field-name
+                                field-name)
+                  transform-payload {:name "Native With Temporal Cast"
+                                     :source {:type "query"
+                                              :query {:database (mt/id)
+                                                      :type :native
+                                                      :native {:query query
+                                                               :template-tags {"checkpoint" {:id "checkpoint"
+                                                                                             :name "checkpoint"
+                                                                                             :display-name "Checkpoint"
+                                                                                             :type :text
+                                                                                             :required false}}}}
+                                              :source-incremental-strategy {:type "checkpoint"
+                                                                            :checkpoint-filter field-name}}
+                                     :target {:type "table-incremental"
+                                              :schema schema
+                                              :name target-table
+                                              :database (mt/id)
+                                              :target-incremental-strategy {:type "append"}}}]
+              (mt/with-temp [:model/Transform transform transform-payload]
+                (testing "First run processes first batch"
+                  (transforms.i/execute! transform {:run-method :manual})
+                  (transforms.tu/wait-for-table target-table 10000)
+                  (let [row-count (get-table-row-count target-table)
+                        distinct-timestamps (get-distinct-timestamp-count target-table)
+                        checkpoint (get-checkpoint-value (:id transform))]
+                    (is (= 10 row-count) "First run should process the first 10 products")
+                    (is (= 1 distinct-timestamps) "All rows should have the same timestamp from first run")
+                    (is (compare-checkpoint-values :temporal expected-initial-checkpoint checkpoint)
+                        (format "Checkpoint should be MAX(%s) from first 10 rows" field-name))))
+
+                (testing "Second run processes remaining data"
+                  (transforms.i/execute! transform {:run-method :manual})
+                  (let [row-count (get-table-row-count target-table)
+                        distinct-timestamps (get-distinct-timestamp-count target-table)
+                        checkpoint (get-checkpoint-value (:id transform))]
+                    (is (= 16 row-count) "Second run should add remaining 6 rows")
+                    (is (= 2 distinct-timestamps) "Should have 2 distinct timestamps (one per incremental run)")
+                    (is (compare-checkpoint-values :temporal expected-second-checkpoint checkpoint)
+                        (format "Checkpoint should be MAX(%s) from all 16 rows" field-name))))
+
+                (testing "Third run without new data adds nothing"
+                  (transforms.i/execute! transform {:run-method :manual})
+                  (let [row-count (get-table-row-count target-table)]
+                    (is (= 16 row-count) "Should still have 16 rows, no new data")))
+
+                (testing "After inserting new data, incremental run appends only new rows"
+                  (with-insert-test-products!
+                    [{:name "New Temporal Product"
+                      :category "Electronics"
+                      :price 299.99
+                      :created-at "2024-01-21T10:00:00"}]
+
+                    (transforms.i/execute! transform {:run-method :manual})
+                    (let [row-count (get-table-row-count target-table)
+                          checkpoint (get-checkpoint-value (:id transform))]
+                      (is (= 17 row-count) "Should append 1 new row (16 + 1 = 17)")
+                      (is (some? checkpoint) "Checkpoint should be updated"))))))))))))
