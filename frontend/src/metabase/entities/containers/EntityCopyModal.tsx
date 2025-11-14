@@ -2,6 +2,7 @@ import { dissoc } from "icepick";
 import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import {
   CopyDashboardFormConnected,
   type CopyDashboardFormProperties,
@@ -48,11 +49,14 @@ const EntityCopyModal = ({
     name: resolvedObject.name + " - " + t`Duplicate`,
   };
 
+  useEscapeToCloseModal(onClose);
+
   return (
     <Modal
       title={title || t`Duplicate "${resolvedObject.name}"`}
       opened
       onClose={onClose}
+      closeOnEscape={false}
     >
       {entityType === "dashboards" && (
         <CopyDashboardFormConnected
