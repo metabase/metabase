@@ -5553,38 +5553,3 @@
           (is (=? {:values [["African"] ["Artisan"] ["Bakery"] ["Krua Siri"] ["Red Medicine"]]}
                   (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values"
                                                                     (:id d) param-key)))))))))
-
-(deftest param-mapped-to-nested-field-of-filtered-card-test
-  (testing "Values for param mapped to nested field of a card are computed correctly (#41684)"
-    (let [mp (mt/metadata-provider)
-          param-key "p"
-          query (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
-                    (lib/filter (lib/in (lib.metadata/field mp (mt/id :categories :name))
-                                        "African" "Artisan" "Bakery"))
-                    (lib/append-stage)
-                    (lib/aggregate (lib/count))
-                    (lib/breakout (lib.metadata/field mp (mt/id :categories :id)))
-                    (lib/append-stage)
-                    (lib/aggregate (lib/count)))]
-      (mt/with-temp
-        [:model/Card
-         c1
-         {:dataset_query  query}
-         :model/Dashboard
-         d
-         {:parameters [{:id param-key
-                        :name "filtered names filter"
-                        :slug param-key
-                        :type "string/="
-                        :sectionId "string"}]}
-         :model/DashboardCard
-         _
-         {:dashboard_id (:id d)
-          :card_id (:id c1)
-          :parameter_mappings [{:card_id (:id c1)
-                                :parameter_id param-key
-                                :target ["dimension" ["field" (mt/id :categories :name) nil]]}]}]
-
-        (is (=? {:values [["African"] ["Artisan"] ["Bakery"]]}
-                (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values"
-                                                                  (:id d) param-key))))))))

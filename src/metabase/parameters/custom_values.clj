@@ -74,8 +74,8 @@
   (when-some [mp (-> card :dataset_query :lib/metadata)]
     (let [card (lib.metadata/card mp (:id card))
           full-query (lib/card->underlying-query mp card)]
-      (loop [query full-query
-             stage-number (lib/canonical-stage-index full-query -1)]
+      (loop [stage-number (lib/canonical-stage-index full-query -1)
+             query full-query]
         ;; (1) Append stage. The searched column may be part of summaries. Further transformations will add
         ;; filters and breakouts. A new stage ensures those operations are not conflated with existing summaries.
         ;; (2) visible-columns. Visible columns are used because ref may come from implicit join.
