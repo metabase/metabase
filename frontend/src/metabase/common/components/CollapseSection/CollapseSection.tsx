@@ -80,7 +80,7 @@ const CollapseSection = ({
   );
 
   return (
-    <div className={className} {...props}>
+    <div className={className} role="tab" {...props}>
       <HeaderContainer
         className={headerClass}
         onClick={toggle}
@@ -91,7 +91,7 @@ const CollapseSection = ({
       >
         <HeaderContent>
           {iconPosition === "left" && HeaderIcon}
-          <Header>{header}</Header>
+          <Header role="heading">{header}</Header>
           {iconPosition === "right" && HeaderIcon}
         </HeaderContent>
         {rightAction && (
