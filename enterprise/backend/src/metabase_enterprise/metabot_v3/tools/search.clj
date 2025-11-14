@@ -126,7 +126,8 @@
    Items appearing in multiple result lists are boosted in the final ranking.
    May return more results than requested limit."
   [search-fn search-engine all-queries]
-  (if (<= (count all-queries) 1)
+  ;; Zero queries case is handled nicely by the >1 branch
+  (if (= 1 (count all-queries))
     (search-fn (first all-queries) search-engine)
     ;; Create futures for parallel execution
     (let [futures      (mapv #(future (search-fn % search-engine)) all-queries)

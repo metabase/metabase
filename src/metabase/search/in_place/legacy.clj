@@ -33,7 +33,8 @@
 
 (defmethod search.engine/disjunction :search.engine/in-place [_ terms]
   ;; The default composition is disjunction with this engine.
-  (str/join " " terms))
+  (when (seq terms)
+    (str/join " " terms)))
 
 (defn search-model->revision-model
   "Return the appropriate revision model given a search model."
