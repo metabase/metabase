@@ -31,7 +31,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       H.getSimpleEmbedIframeContent()
         .findByText("Orders")
         .should("be.visible")
-        .click();
+        .click({ force: true });
 
       cy.log("should show question view");
       H.getSimpleEmbedIframeContent()
