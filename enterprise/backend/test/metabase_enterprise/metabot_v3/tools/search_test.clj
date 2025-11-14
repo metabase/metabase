@@ -433,7 +433,7 @@
   `(do ~@body (with-semantic-search-if-available! ~@body)))
 
 (deftest non-semantic-keywords-test
-  (testing "search returns only exact matches for keyword terms when {:non-semantic-keywords? true}\n"
+  (testing "search returns only exact matches for keyword terms when {:split-semantic-terms true}\n"
     (mt/with-test-user :rasta
       (with-and-without-semantic-search!
         (search.tu/with-temp-index-table
@@ -448,8 +448,8 @@
                            :model/Dashboard {id-5 :id} {:name "baseline"}]
               (when semantic-support?
                 (semantic.tu/index-all!))
-              (doseq [join-with-or? [false true]]
-                (testing (str "{join-with-or? " join-with-or? "}\n")
+              (doseq [unified-disjunct-querying [false true]]
+                (testing (str "{unified-disjunct-querying " unified-disjunct-querying "}\n")
                   (let [base-query   {:term-queries     ["combative" "quarrelsome" "baseline"]
                                       :semantic-queries (if semantic-support?
                                                           ;; TODO (Chris 2025-11-14) disabled semantic search for now,
@@ -457,11 +457,11 @@
                                                           #_["unrealistic" "adjunct"] []
                                                           ["quixotic" "ancillary"])}
                         test-entity? (comp #{id-1 id-2 id-3 id-4 id-5} :id)
-                        query        (fn [join-with-or?]
+                        query        (fn [unified-disjunct-querying]
                                        (->> (search/search (assoc base-query
                                                                   :experimental-opts
-                                                                  {:join-with-or?          join-with-or?
-                                                                   :non-semantic-keywords? true}))
+                                                                  {:unified-disjunct-querying unified-disjunct-querying
+                                                                   :split-semantic-terms      true}))
                                             (filter test-entity?)
                                             (map :name)))]
                     (testing (if semantic-support?
@@ -469,4 +469,4 @@
                                "Exact matches are returned for both keyword and semantic terms")
                       ;; See above: temporarily disabling semantic search until we can fix it over-matching.
                       (is (= (if semantic-support? #{"baseline"} #{"quixotic" "ancillary" "baseline"})
-                             (set (query join-with-or?)))))))))))))))
+                             (set (query unified-disjunct-querying)))))))))))))))

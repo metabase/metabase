@@ -1040,18 +1040,23 @@
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 
+(def ^:private experimental-flags [:unified_disjunct_querying :separate_disjunct_querying])
+
 (mr/def ::search-arguments
   [:and
-   [:map
-    [:term_queries        {:optional true} [:maybe [:sequential :string]]]
-    [:semantic_queries    {:optional true} [:maybe [:sequential :string]]]
-    [:entity_types        {:optional true} [:maybe [:sequential [:enum "table" "model" "question" "dashboard" "metric" "database" "transform"]]]]
-    [:database_id         {:optional true} [:maybe :int]]
-    [:created_at          {:optional true} [:maybe ms/NonBlankString]]
-    [:last_edited_at      {:optional true} [:maybe ms/NonBlankString]]
-    [:search_native_query {:optional true, :default false} [:maybe :boolean]]
-    [:limit               {:optional true, :default 50} [:and :int [:fn #(<= 1 % 100)]]]
-    [:weights             {:optional true} [:map-of :keyword number?]]]
+   (into
+    [:map
+     [:term_queries        {:optional true} [:maybe [:sequential :string]]]
+     [:semantic_queries    {:optional true} [:maybe [:sequential :string]]]
+     [:entity_types        {:optional true} [:maybe [:sequential [:enum "table" "model" "question" "dashboard" "metric" "database" "transform"]]]]
+     [:database_id         {:optional true} [:maybe :int]]
+     [:created_at          {:optional true} [:maybe ms/NonBlankString]]
+     [:last_edited_at      {:optional true} [:maybe ms/NonBlankString]]
+     [:search_native_query {:optional true, :default false} [:maybe :boolean]]
+     [:limit               {:optional true, :default 50} [:and :int [:fn #(<= 1 % 100)]]]
+     [:weights             {:optional true} [:map-of :keyword number?]]]
+    (for [f experimental-flags]
+      [f {:optional true} [:maybe :boolean]]))
    [:map {:encode/tool-api-request
           #(update-keys % (comp keyword u/->kebab-case-en))}]])
 
@@ -1088,6 +1093,9 @@
   (try
     (let [options (mc/encode ::search-arguments
                              arguments (mtx/transformer {:name :tool-api-request}))
+          options (-> (apply dissoc options experimental-flags)
+                      (assoc :experimental-opts (zipmap (map u/kebab->snake experimental-flags)
+                                                        (map options experimental-flags))))
           metabot-id (:metabot-v3/metabot-id request)
           results (metabot-v3.tools.search/search
                    (assoc options :metabot-id metabot-id))
