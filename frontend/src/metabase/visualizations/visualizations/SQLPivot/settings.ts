@@ -138,6 +138,33 @@ export const SQL_PIVOT_SETTINGS = {
     getHidden: isColumnDimensionHidden,
   },
 
+  "sqlpivot.row_aggregation_sort": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Sort by row aggregation`;
+    },
+    get description() {
+      return t`Sort rows by their aggregated score`;
+    },
+    widget: "select",
+    default: "default",
+    getProps: () => ({
+      options: [
+        { name: t`Default order`, value: "default" },
+        { name: t`Ascending`, value: "asc" },
+        { name: t`Descending`, value: "desc" },
+      ],
+    }),
+    getHidden: (series: any, settings: any) => {
+      return (
+        isColumnDimensionHidden(series, settings) ||
+        !settings["sqlpivot.show_row_aggregation"]
+      );
+    },
+  },
+
   "sqlpivot.show_column_aggregation": {
     get section() {
       return t`Display`;

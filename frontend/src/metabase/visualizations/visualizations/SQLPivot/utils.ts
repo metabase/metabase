@@ -13,6 +13,7 @@ export interface SQLPivotSettings {
   "sqlpivot.transpose"?: boolean;
   "sqlpivot.show_row_aggregation"?: boolean;
   "sqlpivot.show_column_aggregation"?: boolean;
+  "sqlpivot.row_aggregation_sort"?: "default" | "asc" | "desc";
   "sqlpivot.hidden_column_labels"?: string[];
   "sqlpivot.enable_color_coding"?: boolean;
 }
@@ -208,6 +209,8 @@ export function transformSQLDataToPivot(
       settings["sqlpivot.show_row_aggregation"] || false;
     const showColumnAggregation =
       settings["sqlpivot.show_column_aggregation"] || false;
+    const rowAggregationSort =
+      settings["sqlpivot.row_aggregation_sort"] || "default";
     const result = transformToMatrixPivot(
       data,
       rowColumnIndexes,
@@ -215,6 +218,7 @@ export function transformSQLDataToPivot(
       valueColumnIndexes,
       showRowAggregation,
       showColumnAggregation,
+      rowAggregationSort,
     );
     return validateTransformedData(result);
   }
@@ -404,6 +408,54 @@ function transformToTransposedPivot(
   };
 }
 
+// Helper function to compare two numeric values for sorting
+function compareNumericValues(
+  aValue: any,
+  bValue: any,
+  sortDirection: "asc" | "desc",
+): number {
+  // Handle null/undefined values - push them to the end
+  if (aValue === null || aValue === undefined) {
+    return 1;
+  }
+  if (bValue === null || bValue === undefined) {
+    return -1;
+  }
+
+  const aNum = Number(aValue);
+  const bNum = Number(bValue);
+
+  // Handle NaN values
+  if (isNaN(aNum)) {
+    return 1;
+  }
+  if (isNaN(bNum)) {
+    return -1;
+  }
+
+  // Sort based on direction
+  if (sortDirection === "asc") {
+    return aNum - bNum;
+  } else {
+    return bNum - aNum;
+  }
+}
+
+// Helper function to sort rows by the aggregation column
+function sortRowsByAggregation(
+  rows: any[][],
+  sortDirection: "asc" | "desc",
+  aggregationColumnIndex: number,
+) {
+  return rows.sort((a, b) =>
+    compareNumericValues(
+      a[aggregationColumnIndex],
+      b[aggregationColumnIndex],
+      sortDirection,
+    ),
+  );
+}
+
 function transformToMatrixPivot(
   data: DatasetData,
   rowColumnIndexes: number[],
@@ -411,6 +463,7 @@ function transformToMatrixPivot(
   valueColumnIndexes: number[],
   showRowAggregation: boolean = false,
   _showColumnAggregation: boolean = false,
+  rowAggregationSort: "default" | "asc" | "desc" = "default",
 ) {
   // Matrix pivot: Create hierarchical row structure with column values spread across columns
 
@@ -491,9 +544,24 @@ function transformToMatrixPivot(
       return row;
     });
 
+    // Apply sorting if requested
+    let sortedRows = matrixRows;
+    if (
+      showRowAggregation &&
+      rowAggregationSort !== "default" &&
+      (rowAggregationSort === "asc" || rowAggregationSort === "desc")
+    ) {
+      const aggregationColumnIndex = newCols.length - 1; // Last column is aggregation
+      sortedRows = sortRowsByAggregation(
+        [...matrixRows],
+        rowAggregationSort,
+        aggregationColumnIndex,
+      );
+    }
+
     return {
       cols: newCols,
-      rows: matrixRows,
+      rows: sortedRows,
       results_timezone: data.results_timezone,
     };
   }
@@ -532,7 +600,13 @@ function transformToMatrixPivot(
   const primaryValues = _.uniq(
     data.rows.map((row) => row[rowColumnIndexes[0]]),
   );
-  const hierarchicalRows: any[] = [];
+
+  // Create row groups (main row + sub-rows) to maintain hierarchy when sorting
+  const rowGroups: Array<{
+    mainRow: any[];
+    subRows: any[];
+    mainRowAggregation: number | null;
+  }> = [];
 
   primaryValues.forEach((primaryValue) => {
     // Add the main category row with column values
@@ -573,11 +647,12 @@ function transformToMatrixPivot(
     });
 
     // Add row aggregation for main row if requested
+    let mainRowAggregation: number | null = null;
     if (showRowAggregation) {
       const matchingRows = data.rows.filter(
         (r) => r[rowColumnIndexes[0]] === primaryValue,
       );
-      const mainRowAggregation = calculateRowAggregation(
+      mainRowAggregation = calculateRowAggregation(
         data,
         matchingRows,
         mainRowValues,
@@ -585,7 +660,8 @@ function transformToMatrixPivot(
       mainRow.push(mainRowAggregation as any);
     }
 
-    hierarchicalRows.push(mainRow);
+    // Collect sub-rows for this primary value
+    const collectedSubRows: any[] = [];
 
     // Get all sub-combinations for this primary value
     const subRows = data.rows.filter(
@@ -646,8 +722,38 @@ function transformToMatrixPivot(
         subRow.push(subRowAggregation as any);
       }
 
-      hierarchicalRows.push(subRow);
+      collectedSubRows.push(subRow);
     });
+
+    // Add this row group to the collection
+    rowGroups.push({
+      mainRow,
+      subRows: collectedSubRows,
+      mainRowAggregation,
+    });
+  });
+
+  // Sort row groups if requested
+  let sortedRowGroups = rowGroups;
+  if (
+    showRowAggregation &&
+    rowAggregationSort !== "default" &&
+    (rowAggregationSort === "asc" || rowAggregationSort === "desc")
+  ) {
+    sortedRowGroups = [...rowGroups].sort((a, b) =>
+      compareNumericValues(
+        a.mainRowAggregation,
+        b.mainRowAggregation,
+        rowAggregationSort,
+      ),
+    );
+  }
+
+  // Flatten row groups back into hierarchical rows
+  const hierarchicalRows: any[] = [];
+  sortedRowGroups.forEach((group) => {
+    hierarchicalRows.push(group.mainRow);
+    hierarchicalRows.push(...group.subRows);
   });
 
   return {
