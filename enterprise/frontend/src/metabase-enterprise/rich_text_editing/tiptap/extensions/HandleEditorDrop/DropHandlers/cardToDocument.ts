@@ -56,7 +56,17 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
         const remainingChild = newChildren[0];
         const remainingCardEmbed = extractCardEmbed(remainingChild);
 
-        if (remainingCardEmbed) {
+        if (remainingCardEmbed?.type.name === "supportingText") {
+          // Only a SupportingText is left, remove the entire FlexContainer and its wrapper
+          const containerResolvedPos = view.state.doc.resolve(flexContainerPos);
+          const containerParent = containerResolvedPos.parent;
+          const wrapperPos = containerResolvedPos.before();
+          replaceWith(
+            wrapperPos,
+            wrapperPos + containerParent.nodeSize,
+            Fragment.empty,
+          );
+        } else if (remainingCardEmbed) {
           const wrappedRemainingCard =
             view.state.schema.nodes.resizeNode.create(
               {
@@ -86,16 +96,6 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
               wrappedRemainingCard,
             );
           }
-        } else {
-          // Only a SupportingText is left, remove the entire FlexContainer and its wrapper
-          const containerResolvedPos = view.state.doc.resolve(flexContainerPos);
-          const containerParent = containerResolvedPos.parent;
-          const wrapperPos = containerResolvedPos.before();
-          replaceWith(
-            wrapperPos,
-            wrapperPos + containerParent.nodeSize,
-            Fragment.empty,
-          );
         }
       } else if (newChildren.length > 1) {
         // Multiple cards left, keep as FlexContainer
