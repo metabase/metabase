@@ -21,7 +21,7 @@ import {
   PreviewSection,
   type PreviewType,
   SyncOptionsModal,
-} from "../DataModel/components";
+} from "../shared";
 
 import S from "./DataModel.module.css";
 import { RouterTablePicker, SegmentsLink, TableSection } from "./components";

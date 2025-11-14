@@ -412,10 +412,10 @@
     (mt/with-temp [:model/Table {t1 :id :as table1} {}
                    :model/Table {t2 :id :as table2} {}
                    :model/Card  {c1 :id} {:type :model :published_table_id t1}
-                   :model/Card  {c2 :id} {:type :model :published_table_id t1 :archived true}
+                   :model/Card  {_c2 :id} {:type :model :published_table_id t1 :archived true}
                    :model/Card  {c3 :id} {:type :model :published_table_id t1}
-                   :model/Card  {c4 :id} {:type :model :published_table_id t2 :archived_directly true}
-                   :model/Card  {c5 :id} {:type :metric :published_table_id t2}]
+                   :model/Card  {_c4 :id} {:type :model :published_table_id t2 :archived_directly true}
+                   :model/Card  {_c5 :id} {:type :metric :published_table_id t2}]
       (is (= {t1 [c1 c3], t2 []}
              (->> (t2/hydrate [table1 table2] :published_models)
                   (u/index-by :id (comp (partial mapv :id) :published_models))))))))

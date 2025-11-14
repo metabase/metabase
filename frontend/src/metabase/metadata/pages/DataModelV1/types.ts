@@ -15,7 +15,7 @@ export type RouteParams = {
 
 export type ParsedRouteParams = {
   databaseId: DatabaseId | undefined;
-  fieldId: FieldId | undefined;
+  fieldId?: FieldId;
   schemaName: SchemaName | undefined;
   tableId: TableId | undefined;
 };

@@ -27,7 +27,7 @@
 
 (def ^:private data-sources
   "Valid values for data source"
-  #{:unknown :ingested :metabase-transform :transform :source-data :uploaded-data})
+  #{:unknown :ingested :metabase-transform :transform :source-data :upload})
 
 (def data-layers
   "Valid values for `Table.data_layer`.
@@ -127,7 +127,7 @@
   [table]
   (dissoc table :is_defective_duplicate :unique_table_helper))
 
-(defn sync-visibility-fields
+(defn- sync-visibility-fields
   "Sync visibility_type and data_layer fields, ensuring only one is updated at a time.
   Returns updated changes map with both fields in sync for rollback compatibility."
   [{:keys [visibility_type data_layer] :as changes}

@@ -19,6 +19,7 @@ import {
 import { capitalize } from "metabase/lib/formatting";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { openDiagnostics } from "metabase/redux/app";
 import { setOpenModal } from "metabase/redux/ui";
 import {
@@ -36,6 +37,7 @@ import { useHelpLink } from "./useHelpLink";
 const mapStateToProps = (state: State) => ({
   adminItems: getAdminPaths(state),
   canAccessOnboardingPage: getCanAccessOnboardingPage(state),
+  canAccessDataStudio: PLUGIN_DATA_STUDIO.canAccessDataStudio(state),
   isNewInstance: getIsNewInstance(state),
 });
 
@@ -47,6 +49,7 @@ const mapDispatchToProps = {
 interface ProfileLinkProps {
   adminItems: AdminPath[];
   canAccessOnboardingPage: boolean;
+  canAccessDataStudio: boolean;
   isNewInstance: boolean;
   onOpenDiagnostics: () => void;
   onLogout: () => void;
@@ -64,6 +67,7 @@ interface MenuItem {
 function ProfileLinkInner({
   adminItems,
   canAccessOnboardingPage,
+  canAccessDataStudio,
   isNewInstance,
   onLogout,
   onOpenDiagnostics,
@@ -85,53 +89,47 @@ function ProfileLinkInner({
 
   const generateOptionsForUser = (): MenuItem[] => {
     const showAdminSettingsItem = adminItems?.length > 0;
-
     // If the instance is not new, we remove the link from the sidebar automatically and show it here instead!
     const showOnboardingLink = !isNewInstance && canAccessOnboardingPage;
 
-    return [
-      {
-        title: t`Account settings`,
+    const menuItems: MenuItem[] = [];
+    menuItems.push({
+      title: t`Account settings`,
+      icon: null,
+      link: Urls.accountSettings(),
+    });
+    if (showAdminSettingsItem) {
+      menuItems.push({
+        title: t`Admin settings`,
         icon: null,
-        link: Urls.accountSettings(),
-      },
-      ...(showAdminSettingsItem
-        ? [
-            {
-              title: t`Admin settings`,
-              icon: null,
-              link: "/admin",
-            },
-          ]
-        : []),
-      {
+        link: "/admin",
+      });
+    }
+    if (canAccessDataStudio) {
+      menuItems.push({
         title: t`Data studio`,
         icon: null,
         link: Urls.dataStudio(),
-      },
-      {
-        separator: true,
-      },
-      ...(helpLink.visible
-        ? [
-            {
-              title: t`Help`,
-              icon: null,
-              link: helpLink.href,
-              externalLink: true,
-            },
-          ]
-        : []),
-      ...(showOnboardingLink
-        ? [
-            {
-              // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances
-              title: t`How to use Metabase`,
-              icon: null,
-              link: "/getting-started",
-            },
-          ]
-        : []),
+      });
+    }
+    menuItems.push({ separator: true });
+    if (helpLink.visible) {
+      menuItems.push({
+        title: t`Help`,
+        icon: null,
+        link: helpLink.href,
+        externalLink: true,
+      });
+    }
+    if (showOnboardingLink) {
+      menuItems.push({
+        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances
+        title: t`How to use Metabase`,
+        icon: null,
+        link: "/getting-started",
+      });
+    }
+    menuItems.push(
       {
         title: t`Keyboard shortcuts`,
         icon: null,
@@ -158,13 +156,14 @@ function ProfileLinkInner({
         icon: null,
         action: () => onLogout(),
       },
-    ];
+    );
+
+    return menuItems;
   };
 
   // show trademark if application name is not whitelabeled
   const isWhiteLabeling = useSelector(getIsWhiteLabeling);
   const showTrademark = !isWhiteLabeling;
-
   const menuItems = generateOptionsForUser();
 
   return (

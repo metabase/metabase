@@ -95,20 +95,10 @@ export function isSyncedCollection(collection: Partial<Collection>): boolean {
   return PLUGIN_COLLECTIONS.isSyncedCollection(collection);
 }
 
-export function isLibraryCollectionType(
-  type: CollectionType | undefined,
-): boolean {
-  return (
-    type === "library" ||
-    type === "library-models" ||
-    type === "library-metrics"
-  );
-}
-
 export function isLibraryCollection(
   collection: Pick<Collection, "type">,
 ): boolean {
-  return isLibraryCollectionType(collection.type);
+  return PLUGIN_LIBRARY.getLibraryCollectionType(collection.type) != null;
 }
 
 export function isExamplesCollection(collection: Collection): boolean {
@@ -230,27 +220,19 @@ export function canCopyItem(item: CollectionItem) {
 
 export function canPlaceEntityInCollection(
   entityType: EntityType,
-  collectionType: Collection["type"],
+  collectionType: CollectionType | null | undefined,
 ): boolean {
   return PLUGIN_LIBRARY.canPlaceEntityInCollection(entityType, collectionType);
 }
 
 export function canPlaceEntityInCollectionOrDescendants(
   entityType: EntityType,
-  collectionType: Collection["type"],
+  collectionType: CollectionType | null | undefined,
 ): boolean {
-  if (canPlaceEntityInCollection(entityType, collectionType)) {
-    return true;
-  }
-
-  if (collectionType === "library") {
-    return (
-      canPlaceEntityInCollection(entityType, "library-models") ||
-      canPlaceEntityInCollection(entityType, "library-metrics")
-    );
-  }
-
-  return false;
+  return PLUGIN_LIBRARY.canPlaceEntityInCollectionOrDescendants(
+    entityType,
+    collectionType,
+  );
 }
 
 export function isPreviewShown(item: CollectionItem) {

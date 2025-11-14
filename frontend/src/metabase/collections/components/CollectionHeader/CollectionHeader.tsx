@@ -50,6 +50,7 @@ const CollectionHeader = ({
   const showUploadButton =
     collection.can_write && (canUpload || !uploadsEnabled);
   const showTimelinesButton = !isInstanceAnalytics;
+  const showCollectionMenu = !isInstanceAnalytics && !isSemanticLayer;
 
   return (
     <HeaderRoot>
@@ -84,7 +85,7 @@ const CollectionHeader = ({
             collection={collection}
             onUpdateCollection={onUpdateCollection}
           />
-          {isInstanceAnalytics && (
+          {showCollectionMenu && (
             <CollectionMenu
               collection={collection}
               isAdmin={isAdmin}

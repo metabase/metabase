@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import {
   PaneHeader,
   PaneHeaderInput,
-} from "metabase/data-studio/components/PaneHeader";
+} from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";

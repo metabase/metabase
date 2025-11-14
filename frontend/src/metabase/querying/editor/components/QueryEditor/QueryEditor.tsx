@@ -13,8 +13,8 @@ import {
   NativeQueryPreviewSidebarToggle,
 } from "./NativeQueryPreviewSidebar";
 import { NativeQuerySidebar } from "./NativeQuerySidebar";
-import { QuerySection } from "./QuerySection";
-import { VisualizationSection } from "./VisualizationSection";
+import { QueryEditorBody } from "./QueryEditorBody";
+import { QueryEditorVisualization } from "./QueryEditorVisualization";
 
 type QueryEditorProps = {
   query: Lib.Query;
@@ -82,8 +82,8 @@ export function QueryEditor({
   return (
     <>
       <Flex flex={1} h="100%" mih={0}>
-        <Flex flex="2 1 0" direction="column" pos="relative">
-          <QuerySection
+        <Flex flex="2 1 0" miw={0} direction="column" pos="relative">
+          <QueryEditorBody
             question={question}
             proposedQuestion={proposedQuestion}
             modalSnippet={uiState.modalSnippet}
@@ -109,7 +109,7 @@ export function QueryEditor({
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
           />
-          <VisualizationSection
+          <QueryEditorVisualization
             question={question}
             result={result}
             rawSeries={rawSeries}

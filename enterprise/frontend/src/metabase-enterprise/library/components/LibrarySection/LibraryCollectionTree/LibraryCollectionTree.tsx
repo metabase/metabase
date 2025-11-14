@@ -4,14 +4,14 @@ import { push } from "react-router-redux";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { getAllExpandableIds } from "metabase/common/components/tree/utils";
-import { ModelingSidebarTreeNode } from "metabase/data-studio/pages/ModelingSectionLayout/ModelingSidebar/ModelingSidebarTreeNode";
-import { CreateCardMenu } from "metabase/data-studio/pages/ModelingSectionLayout/ModelingSidebar/ModelingSidebarView/CreateCardMenu";
 import { buildCollectionTree } from "metabase/entities/collections";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { ModelingSidebarTreeNode } from "metabase-enterprise/data-studio/app/pages/ModelingSectionLayout/ModelingSidebar/ModelingSidebarTreeNode";
+import { CreateCardMenu } from "metabase-enterprise/data-studio/app/pages/ModelingSectionLayout/ModelingSidebar/ModelingSidebarView/CreateCardMenu";
 import type { Collection, CollectionId } from "metabase-types/api";
 
-import { getWritableLibraryCollection } from "./utils";
+import { getWritableCollection } from "./utils";
 
 type LibraryCollectionTreeProps = {
   rootCollection: Collection;
@@ -32,12 +32,12 @@ export function LibraryCollectionTree({
   );
 
   const modelCollection = useMemo(
-    () => getWritableLibraryCollection(rootCollection, "library-models"),
+    () => getWritableCollection(rootCollection, "library-models"),
     [rootCollection],
   );
 
   const metricCollection = useMemo(
-    () => getWritableLibraryCollection(rootCollection, "library-metrics"),
+    () => getWritableCollection(rootCollection, "library-metrics"),
     [rootCollection],
   );
 

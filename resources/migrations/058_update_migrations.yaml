@@ -39,19 +39,6 @@ databaseChangeLog:
             columnName: embedding_type
 
   - changeSet:
-      id: v58.2025-11-06T21:49:38
-      author: nvoxland
-      comment: Some collections only allow certain types of content.
-      changes:
-        - addColumn:
-            tableName: collection
-            columns:
-              - column:
-                  name: allowed_content
-                  type: varchar(500)
-                  remarks: JSON map of the types of items that can be added to this card
-
-  - changeSet:
       id: v58.2025-11-10T14:39:00
       author: wotbrew
       comment: Add published_table_id to report_card
@@ -68,6 +55,18 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-11-10T14:39:01
+      author: wotbrew
+      comment: Add index for report_card.published_table_id
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_published_table_id
+            columns:
+              - column:
+                  name: published_table_id
+
+  - changeSet:
+      id: v58.2025-11-10T14:39:02
       author: wotbrew
       comment: Add foreign key report_card(published_table_id) to metabase_table(id)
       changes:

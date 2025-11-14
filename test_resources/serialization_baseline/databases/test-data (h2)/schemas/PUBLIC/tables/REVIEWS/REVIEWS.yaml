@@ -24,7 +24,6 @@ archived_at: null
 data_authority: unconfigured
 data_layer: null
 data_source: null
-data_update_frequency: null
 database_require_filter: null
 deactivated_at: null
 is_writable: null

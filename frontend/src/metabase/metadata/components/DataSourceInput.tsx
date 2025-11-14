@@ -50,6 +50,6 @@ function getData(showMetabaseTransform?: boolean) {
       : undefined,
     { value: "transform" as const, label: t`Transform` },
     { value: "source-data" as const, label: t`Source data` },
-    { value: "uploaded-data" as const, label: t`Uploaded data` },
+    { value: "upload" as const, label: t`Uploaded data` },
   ].filter((option) => option != null);
 }

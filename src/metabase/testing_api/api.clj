@@ -114,8 +114,8 @@
         ;;
         ;; Important! This needs to happen AFTER we unlock the app DB, otherwise migrations will hang for the evil ones
         ;; that are initializing Quartz and opening new connections to do stuff on different threads.
-        ;; TODO investigate: when config/is-dev?
-        (mdb/migrate! (mdb/app-db) :up))))
+        (when config/is-dev?
+          (mdb/migrate! (mdb/app-db) :up)))))
   :ok)
 
 (api.macros/defendpoint :post "/restore/:name"

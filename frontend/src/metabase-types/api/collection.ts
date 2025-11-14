@@ -39,11 +39,6 @@ export type CollectionType =
   | "library-metrics"
   | null;
 
-export type LibraryCollectionType = Extract<
-  CollectionType,
-  "library" | "library-models" | "library-metrics"
->;
-
 export type LastEditInfo = Pick<
   UserInfo,
   "id" | "email" | "first_name" | "last_name"

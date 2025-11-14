@@ -29,7 +29,7 @@ export type TableDataSource =
   | "transform"
   | "metabase-transform"
   | "source-data"
-  | "uploaded-data";
+  | "upload";
 
 export type TableFieldOrder = "database" | "alphabetical" | "custom" | "smart";
 

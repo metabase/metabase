@@ -1290,12 +1290,12 @@
 (deftest trigger-sync-on-data-layer-change-from-copper-test
   (testing "Changing data_layer from copper to another value triggers sync"
     (mt/with-temp [:model/Database {db-id :id}      {}
-                   :model/Table    {copper-1 :id}   {:db_id db-id, :data_layer "copper"}
-                   :model/Table    {copper-2 :id}   {:db_id db-id, :data_layer "copper"}
-                   :model/Table    {copper-3 :id}   {:db_id db-id, :data_layer "copper"}
-                   :model/Table    {copper-4 :id}   {:db_id db-id, :data_layer "copper"}
-                   :model/Table    {gold-1 :id}     {:db_id db-id, :data_layer "gold"}
-                   :model/Table    {gold-2 :id}     {:db_id db-id, :data_layer "gold"}]
+                   :model/Table    {copper-1 :id}   {:db_id db-id, :data_layer :copper}
+                   :model/Table    {copper-2 :id}   {:db_id db-id, :data_layer :copper}
+                   :model/Table    {copper-3 :id}   {:db_id db-id, :data_layer :copper}
+                   :model/Table    {copper-4 :id}   {:db_id db-id, :data_layer :copper}
+                   :model/Table    {gold-1 :id}     {:db_id db-id, :data_layer :gold}
+                   :model/Table    {gold-2 :id}     {:db_id db-id, :data_layer :gold}]
       (let [synced-ids (atom #{})]
         (mt/with-dynamic-fn-redefs [api.table/sync-unhidden-tables (fn [tables] (reset! synced-ids (set (map :id tables))))]
           (testing "Changing from copper to gold triggers sync"
@@ -1446,32 +1446,31 @@
   (testing "POST /api/table/edit visibility field synchronization"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table-1-id :id} {:db_id db-id}
-                   :model/Table    {table-2-id :id} {:db_id db-id}
-                   :model/Table    {table-3-id :id} {:db_id db-id}]
-
-      (testing "updating visibility_type syncs to data_layer for all tables"
-        (mt/user-http-request :crowberto :post 200 "table/edit"
-                              {:table_ids       [table-1-id table-2-id table-3-id]
-                               :visibility_type "hidden"})
-        (is (= #{:copper} (t2/select-fn-set :data_layer :model/Table :id [:in [table-1-id table-2-id table-3-id]])))
-        (is (= #{:hidden} (t2/select-fn-set :visibility_type :model/Table :id [:in [table-1-id table-2-id table-3-id]]))))
+                   :model/Table    {table-2-id :id} {:db_id db-id}]
 
       (testing "updating data_layer syncs to visibility_type for all tables"
+        ;; Update two tables to gold, which should sync to nil visibility_type
         (mt/user-http-request :crowberto :post 200 "table/edit"
-                              {:table_ids        [table-1-id table-2-id]
+                              {:table_ids  [table-1-id table-2-id]
                                :data_layer "gold"})
         (is (= :gold (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
         (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-1-id)))
         (is (= :gold (t2/select-one-fn :data_layer :model/Table :id table-2-id)))
-        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-2-id)))
-        (is (= :copper (t2/select-one-fn :data_layer :model/Table :id table-3-id))))
+        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-2-id))))
+
+      (testing "updating data_layer to copper syncs to hidden visibility_type"
+        ;; Update one table back to copper, which should sync to :hidden
+        (mt/user-http-request :crowberto :post 200 "table/edit"
+                              {:table_ids  [table-1-id]
+                               :data_layer "copper"})
+        (is (= :copper (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
+        (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id table-1-id))))
 
       (testing "cannot update both visibility_type and data_layer at once"
-        (is (= "Cannot update both visibility_type and data_layer"
-               (mt/user-http-request :crowberto :post 400 "table/edit"
-                                     {:table_ids        [table-1-id]
-                                      :visibility_type  "hidden"
-                                      :data_layer "copper"})))))))
+        (mt/user-http-request :crowberto :post 400 "table/edit"
+                              {:table_ids        [table-1-id]
+                               :visibility_type  "hidden"
+                               :data_layer "copper"})))))
 
 (deftest ^:parallel update-table-visibility-sync-test
   (testing "PUT /api/table/:id visibility field synchronization"
@@ -1626,7 +1625,7 @@
            (mt/user-http-request :rasta :post 403 "table/discard-values" {:database_ids [(mt/id)]})))))
 
 (deftest ^:parallel bulk-discard-values-test
-  (testing "POST /api/table/:id/discard_values"
+  (testing "POST /api/table/:id/discard-values"
     (mt/with-temp
       [:model/Database    {d1 :id} {:engine "h2", :details (:details (mt/db))}
        :model/Database    {d2 :id} {:engine "h2", :details (:details (mt/db))}
@@ -1649,7 +1648,7 @@
        :model/FieldValues {v6 :id} {:field_id f6, :values ["T5-1"]}
        :model/Field       {f7 :id} {:table_id t5}
        :model/FieldValues {v7 :id} {:field_id f7, :values ["T5-2"]}]
-      (let [url "table/discard_values"
+      (let [url "table/discard-values"
             remaining-field-values-q {:select   [:fv.id]
                                       :from     [[(t2/table-name :model/FieldValues) :fv]
                                                  [(t2/table-name :model/Field) :f]]

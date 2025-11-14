@@ -1,8 +1,8 @@
-import type { Collection, LibraryCollectionType } from "metabase-types/api";
+import type { Collection, CollectionType } from "metabase-types/api";
 
-export function getWritableLibraryCollection(
+export function getWritableCollection(
   rootCollection: Collection,
-  type: LibraryCollectionType,
+  type: CollectionType,
 ) {
   const collection = rootCollection.children?.find(
     (collection) => collection.type === type,

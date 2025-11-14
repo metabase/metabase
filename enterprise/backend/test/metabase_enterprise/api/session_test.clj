@@ -19,6 +19,7 @@
                               :dashboard-subscription-filters
                               :disable-password-login
                               :database-auth-providers
+                              :data-studio
                               :development-mode
                               :documents
                               :email-allow-list
@@ -37,12 +38,12 @@
                               :offer-metabase-ai
                               :offer-metabase-ai-tiered
                               :official-collections
+                              :library
                               :query-reference-validation
                               :remote-sync
                               :sandboxes
                               :scim
                               :semantic-search
-                              :library
                               :serialization
                               :session-timeout-config
                               :snippet-collections
@@ -68,6 +69,7 @@
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true
+            :data_studio                    true
             :development_mode               true
             :documents                      true
             :email_allow_list               true
@@ -84,12 +86,12 @@
             :offer_metabase_ai              true
             :offer_metabase_ai_tiered       true
             :official_collections           true
+            :library                        true
             :query_reference_validation     true
             :remote_sync                    true
             :sandboxes                      true
             :scim                           true
             :semantic_search                true
-            :semantic_layer                 true
             :serialization                  true
             :session_timeout_config         true
             :snippet_collections            true
