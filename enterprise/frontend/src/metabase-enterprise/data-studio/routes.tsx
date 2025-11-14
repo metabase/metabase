@@ -23,6 +23,7 @@ import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioModelingRoutes } from "./modeling/routes";
 import { getDataStudioModelRoutes } from "./models/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
+import { canAccessDataStudio } from "./utils";
 
 export function getDataStudioRoutes(
   store: Store<State>,
@@ -76,6 +77,9 @@ export function getDataStudioRoutes(
 }
 
 function getIndexPath(state: State) {
+  if (!canAccessDataStudio(state)) {
+    return Urls.unauthorized();
+  }
   if (PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state)) {
     return Urls.dataStudioData();
   }
