@@ -36,7 +36,6 @@ const derivedOptions = {
   BUILD_JAR: userOptions.BACKEND_PORT === 4000,
   START_BACKEND: userOptions.BACKEND_PORT === 4000,
   CYPRESS_IS_EMBEDDING_SDK: String(userOptions.TEST_SUITE === "component"),
-  MB_SNOWPLOW_AVAILABLE: userOptions.START_CONTAINERS,
   MB_SNOWPLOW_URL: "http://localhost:9090",
 };
 

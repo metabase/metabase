@@ -147,7 +147,6 @@ Tests that depend on Snowplow expect a running server. This is enabled by defaul
 
 ```
 docker-compose -f ./snowplow/docker-compose.yml up -d
-export MB_SNOWPLOW_AVAILABLE=true
 export MB_SNOWPLOW_URL=http://localhost:9090
 ```
 

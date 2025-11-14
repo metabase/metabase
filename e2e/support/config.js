@@ -25,7 +25,6 @@ const cypressSplit = require("cypress-split");
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 const isCI = process.env["CYPRESS_CI"] === "true";
 
-const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
 const isQaDatabase = process.env["QA_DB_ENABLED"] === "true";
@@ -136,7 +135,6 @@ const defaultConfig = {
     config.env.grepFilterSpecs = true;
 
     config.env.IS_ENTERPRISE = isEnterprise;
-    config.env.HAS_SNOWPLOW_MICRO = hasSnowplowMicro;
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
 
     require("@cypress/grep/src/plugin")(config);
