@@ -165,6 +165,32 @@ export const SQL_PIVOT_SETTINGS = {
     },
   },
 
+  "sqlpivot.row_aggregation_position": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Overall score column position`;
+    },
+    get description() {
+      return t`Choose whether the overall score column appears first or last`;
+    },
+    widget: "select",
+    default: "last",
+    getProps: () => ({
+      options: [
+        { name: t`First (after row labels)`, value: "first" },
+        { name: t`Last (after all data columns)`, value: "last" },
+      ],
+    }),
+    getHidden: (series: any, settings: any) => {
+      return (
+        isColumnDimensionHidden(series, settings) ||
+        !settings["sqlpivot.show_row_aggregation"]
+      );
+    },
+  },
+
   "sqlpivot.show_column_aggregation": {
     get section() {
       return t`Display`;
