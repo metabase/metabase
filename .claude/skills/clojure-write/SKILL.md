@@ -5,9 +5,9 @@ description: Guide Clojure and ClojureScript development using REPL-driven workf
 
 # Clojure Development Skill
 
-@./../\_shared/development-workflow.md
-@./../\_shared/clojure-style-guide.md
-@./../\_shared/clojure-commands.md
+@./../_shared/development-workflow.md
+@./../_shared/clojure-style-guide.md
+@./../_shared/clojure-commands.md
 
 ## REPL-Driven Development Workflow
 
@@ -43,7 +43,7 @@ description: Guide Clojure and ClojureScript development using REPL-driven workf
 2. Evaluate the file's namespace and make sure it loads correctly with:
 
 ```
-mage -repl --namespace metabase.app-db.connection
+./bin/mage -repl --namespace metabase.app-db.connection
 ```
 
 3. Call functions in the namespace with test inputs, and observe that the outputs are correct

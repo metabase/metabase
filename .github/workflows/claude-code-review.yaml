@@ -81,9 +81,10 @@ jobs:
 
             Review this pull request for compliance with project coding standards and conventions.
 
-            Use the appropriate review skills based on the file types changed:
+            **Use the appropriate review skill based on the file types changed:**
             - Use clojure-review for Clojure/ClojureScript files
             - Use typescript-review for TypeScript/JavaScript files
+            - Follow the review guidelines and checklists in each skill
 
             DO NOT post any comments confirming that something is correct - only post comments for style violations or concerns.
 

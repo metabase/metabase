@@ -6,7 +6,7 @@ allowed-tools: Read, Grep, Bash, Glob
 
 # Documentation Review Skill
 
-@./../\_shared/metabase-style-guide.md
+@./../_shared/metabase-style-guide.md
 
 ## Review mode detection
 
