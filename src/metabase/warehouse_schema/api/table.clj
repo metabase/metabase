@@ -73,11 +73,13 @@
        [:owner-email {:optional true} :string]
        [:orphan-only {:optional true} [:maybe ms/BooleanValue]]
        [:unused-only {:optional true} [:maybe ms/BooleanValue]]]]
-  (let [like       (case (app-db/db-type) (:h2 :postgres) :ilike :like)
-        pattern    (some-> term (str/replace "*" "%") (cond-> (not (str/ends-with? term "%")) (str "%")))
+  (let [pattern    (some-> term (str/replace "*" "%") (cond-> (not (str/ends-with? term "%")) (str "%")))
         empty-null (fn [x] (if (and (string? x) (str/blank? x)) nil x))
+        like       (case (app-db/db-type)
+                     (:h2 :postgres) [:ilike :name pattern]
+                     [:raw [:like :name pattern] " COLLATE " [:inline "utf8mb4_unicode_ci"]])
         where      (cond-> [:and [:= :active true]]
-                     (not (str/blank? term)) (conj [like :name pattern])
+                     (not (str/blank? term)) (conj like)
                      visibility-type         (conj [:= :visibility_type (empty-null visibility-type)])
                      data-layer              (conj [:= :data_layer      (empty-null data-layer)])
                      data-source             (conj [:= :data_source     (empty-null data-source)])
