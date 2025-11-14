@@ -20,17 +20,17 @@ import { TransformDependenciesPage } from "./pages/TransformDependenciesPage";
 import { TransformEmptyPage } from "./pages/TransformEmptyPage";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
 import { TransformRunPage } from "./pages/TransformRunPage";
+import { TransformSidebarLayout } from "./pages/TransformSidebarLayout";
 import { TransformTargetPage } from "./pages/TransformTargetPage";
-import { TransformsSidebarLayout } from "./pages/TransformsPageLayout/TransformsSidebarLayout";
-import { TransformsTopNavLayout } from "./pages/TransformsPageLayout/TransformsTopNavLayout";
+import { TransformTopNavLayout } from "./pages/TransformTopNavLayout";
 
 export function getDataStudioTransformRoutes() {
   return (
     <>
-      <Route path="runs" component={TransformsTopNavLayout}>
+      <Route path="runs" component={TransformTopNavLayout}>
         <IndexRoute component={RunListPage} />
       </Route>
-      <Route component={TransformsSidebarLayout}>
+      <Route component={TransformSidebarLayout}>
         <IndexRoute component={TransformEmptyPage} />
         <Route path="jobs" component={JobEmptyPage} />
         <Route path="jobs/new" component={NewJobPage} />

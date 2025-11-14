@@ -5,6 +5,7 @@ import { getAdminPaths } from "metabase/admin/app/selectors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import { MetabaseReduxContext } from "metabase/lib/redux";
 import {
+  PLUGIN_DATA_STUDIO,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
@@ -81,6 +82,16 @@ const UserCanAccessOnboarding = connectedReduxRedirect<Props, State>({
   context: MetabaseReduxContext,
 });
 
+const UserCanAccessDataStudio = connectedReduxRedirect<Props, State>({
+  wrapperDisplayName: "UserCanAccessDataStudio",
+  redirectPath: "/unauthorized",
+  allowRedirectBack: false,
+  authenticatedSelector: (state) =>
+    PLUGIN_DATA_STUDIO.canAccessDataStudio(state),
+  redirectAction: routerActions.replace,
+  context: MetabaseReduxContext,
+});
+
 const UserCanAccessDataModel = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserCanAccessDataModel",
   redirectPath: "/unauthorized",
@@ -117,6 +128,10 @@ export const CanAccessSettings = MetabaseIsSetup(
 );
 
 export const CanAccessOnboarding = UserCanAccessOnboarding(
+  ({ children }) => children,
+);
+
+export const CanAccessDataStudio = UserCanAccessDataStudio(
   ({ children }) => children,
 );
 

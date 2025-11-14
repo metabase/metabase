@@ -1,16 +1,16 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import * as Urls from "metabase/lib/urls";
+import { useMetadataToasts } from "metabase/metadata/hooks";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import {
   PaneHeader,
   PaneHeaderInput,
   type PaneHeaderTab,
   PaneHeaderTabs,
-} from "metabase/data-studio/components/PaneHeader";
-import * as Urls from "metabase/lib/urls";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { useUpdateTransformMutation } from "metabase-enterprise/api";
+} from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import type { Transform, TransformId } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";

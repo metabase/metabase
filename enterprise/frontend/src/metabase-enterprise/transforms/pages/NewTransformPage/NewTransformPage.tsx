@@ -11,17 +11,17 @@ import {
 } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import {
-  PaneHeader,
-  PaneHeaderActions,
-  PaneHeaderInput,
-} from "metabase/data-studio/components/PaneHeader";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Center, Stack } from "metabase/ui";
+import {
+  PaneHeader,
+  PaneHeaderActions,
+  PaneHeaderInput,
+} from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import * as Lib from "metabase-lib";
 import type {
   Database,
@@ -45,16 +45,11 @@ import {
 } from "./utils";
 
 type NewTransformPageProps = {
-  initialName?: string;
   initialSource: DraftTransformSource;
   route: Route;
 };
 
-function NewTransformPage({
-  initialName = t`New transform`,
-  initialSource,
-  route,
-}: NewTransformPageProps) {
+function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
   const {
     data: databases,
     isLoading,
@@ -71,7 +66,6 @@ function NewTransformPage({
 
   return (
     <NewTransformPageBody
-      initialName={initialName}
       initialSource={initialSource}
       databases={databases.data}
       route={route}
@@ -80,14 +74,12 @@ function NewTransformPage({
 }
 
 type NewTransformPageBodyProps = {
-  initialName: string;
   initialSource: DraftTransformSource;
   databases: Database[];
   route: Route;
 };
 
 function NewTransformPageBody({
-  initialName,
   initialSource,
   databases,
   route,
@@ -101,7 +93,7 @@ function NewTransformPageBody({
     acceptProposed,
     rejectProposed,
   } = useSourceState({ initialSource });
-  const [name, setName] = useState(suggestedTransform?.name ?? initialName);
+  const [name, setName] = useState(suggestedTransform?.name ?? "");
   const [uiState, setUiState] = useState(getInitialUiState);
   const metadata = useSelector(getMetadata);
   const [isModalOpened, { open: openModal, close: closeModal }] =
@@ -137,7 +129,9 @@ function NewTransformPageBody({
           title={
             <PaneHeaderInput
               initialValue={name}
+              placeholder={t`New transform`}
               maxLength={NAME_MAX_LENGTH}
+              isOptional
               onChange={setName}
             />
           }

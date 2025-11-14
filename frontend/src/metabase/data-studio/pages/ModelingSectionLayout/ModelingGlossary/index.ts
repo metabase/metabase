@@ -1,1 +1,0 @@
-export { ModelingGlossary } from "./ModelingGlossary";

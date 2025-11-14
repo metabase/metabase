@@ -166,7 +166,7 @@
                                                                         :type     library-collection-type
                                                                         :location "/"})
         base-location (str "/" (:id library) "/")
-        models        (t2/insert-returning-instance! :model/Collection {:name     "Models"
+        models        (t2/insert-returning-instance! :model/Collection {:name     "Data"
                                                                         :type     library-models-collection-type
                                                                         :location base-location})
         metrics       (t2/insert-returning-instance! :model/Collection {:name     "Metrics"
@@ -378,9 +378,9 @@
   true)
 
 (defenterprise check-library-update
-  "Checks that a collection of type `:library` only contains allowed content."
+  "Checks that a collection of type `:library` only contains allowed changes."
   metabase-enterprise.library.validation
-  [collection-id]
+  [_collection]
   true)
 
 ;; This function is defined later after children-location is available
