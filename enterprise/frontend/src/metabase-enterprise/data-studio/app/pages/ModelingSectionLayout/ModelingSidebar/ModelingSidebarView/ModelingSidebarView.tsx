@@ -33,7 +33,13 @@ export function ModelingSidebarView({
   hasNativeWrite,
 }: ModelingSidebarViewProps) {
   return (
-    <Box w={320} h="100%" bg="bg-white" className={S.sidebar}>
+    <Box
+      w={320}
+      h="100%"
+      bg="bg-white"
+      className={S.sidebar}
+      data-testid="modeling-sidebar"
+    >
       <Stack gap={0}>
         {PLUGIN_LIBRARY.isEnabled && (
           <Box className={S.section} p="md">
@@ -46,7 +52,7 @@ export function ModelingSidebarView({
           </Box>
         )}
 
-        <Box className={S.section} p="md">
+        <Box className={S.section} p="md" data-testid="collections-section">
           <CollectionsSection
             collections={collections}
             selectedCollectionId={selectedCollectionId}
@@ -56,12 +62,12 @@ export function ModelingSidebarView({
         </Box>
 
         {hasNativeWrite && (
-          <Box className={S.section} p="md">
+          <Box className={S.section} p="md" data-testid="snippets-section">
             <SnippetsSection selectedSnippetId={selectedSnippetId} />
           </Box>
         )}
 
-        <Box p="md">
+        <Box p="md" data-testid="glossary-section">
           <ModelingSidebarSection
             icon="book_open"
             title={t`Glossary`}

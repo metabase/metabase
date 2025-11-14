@@ -82,7 +82,14 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
 
   return (
     <>
-      <Stack pos="relative" w="100%" h="100%" bg="bg-white" gap={0}>
+      <Stack
+        pos="relative"
+        w="100%"
+        h="100%"
+        bg="bg-white"
+        gap={0}
+        data-testid="new-snippet-page"
+      >
         <PaneHeader
           title={
             <PaneHeaderInput
