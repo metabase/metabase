@@ -155,22 +155,17 @@
   ([database target {:keys [create?]}]
    (when-let [table (or (target-table (:id database) target)
                         (when create?
-                          (sync/create-table! database (select-keys target [:schema :name]))))]
+                          (sync/create-table! database (select-keys target [:schema :name :data_source]))))]
      (sync/sync-table! table)
      table)))
 
 (defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
   [database target]
-  (when-let [table (sync-table! database target {:create? true})]
-    (when-not (= {:active         true
-                  :data_authority :computed
-                  ;; todo orphaned source if no longer target (detect target change?)
-                  :data_source    :metabase-transform}
-                 (select-keys table [:active :data_authority :data_source]))
-      (t2/update! :model/Table (:id table) {:active         true
-                                            :data_authority :computed
-                                            :data_source    :metabase-transform}))))
+  (sync-table! database (assoc target
+                               :data_authority :computed
+                               :data_source :metabase-transform)
+               {:create? true}))
 
 (defn deactivate-table!
   "Deactivate table for `target` in `database` in the app db."
