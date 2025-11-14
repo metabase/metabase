@@ -1,7 +1,7 @@
 import type { FocusEvent } from "react";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { dataLayerColors } from "metabase/lib/colors";
 import { Group, Icon, Select, SelectItem, type SelectProps } from "metabase/ui";
 import type { TableDataLayer } from "metabase-types/api";
 
@@ -9,6 +9,8 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   value: TableDataLayer | null;
   onChange: (value: TableDataLayer | null) => void;
 }
+
+const dataLayers = ["copper", "bronze", "silver", "gold"] as const;
 
 export const LayerInput = ({
   comboboxProps,
@@ -34,12 +36,14 @@ export const LayerInput = ({
         position: "bottom-start",
         ...comboboxProps,
       }}
-      data={[
-        { value: "copper", label: t`Copper` },
-        { value: "bronze", label: t`Bronze` },
-        { value: "silver", label: t`Silver` },
-        { value: "gold", label: t`Gold` },
-      ]}
+      data={
+        [
+          { value: "copper", label: t`Copper` },
+          { value: "bronze", label: t`Bronze` },
+          { value: "silver", label: t`Silver` },
+          { value: "gold", label: t`Gold` },
+        ] satisfies Array<{ value: TableDataLayer; label: string }>
+      }
       label={t`Visibility type`}
       renderOption={(item) => {
         const selected = item.option.value === value;
@@ -65,22 +69,13 @@ export const LayerInput = ({
   );
 };
 
-// TODO: remove `string | ` part.
-function getColor(value: string | TableDataLayer): string {
-  return match(value)
-    .with("copper", () => {
-      return "#B87333";
-    })
-    .with("bronze", () => {
-      return "#CD7F32";
-    })
-    .with("silver", () => {
-      return "#C0C0C0";
-    })
-    .with("gold", () => {
-      return "#FFD700";
-    })
-    .otherwise(() => {
-      return "#B87333";
-    });
+function isDataLayer(value: string): value is TableDataLayer {
+  return dataLayers.some((layer) => layer === value);
+}
+
+function getColor(value: TableDataLayer | string): string {
+  if (isDataLayer(value)) {
+    return dataLayerColors[value];
+  }
+  return dataLayerColors.default;
 }

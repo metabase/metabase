@@ -548,12 +548,6 @@
   [_
    _
    body :- ::table-selectors]
-  ;; todo this obviously will not do
-  ;; a. can checks/events/sync be batched
-  ;; b. sync is flakey
-  ;; idea: flag dirty / ready for sync
-  ;;       job comes along and actually performs sync
-  ;;       promise is nothing is done apart from the dirty/queueing with the call (incl authz/event until batchy batchy)
   (api/check-superuser)
   (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})
         db-ids (sort (set (map :db_id tables)))]
