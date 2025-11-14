@@ -38,19 +38,19 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         shell: bash
-        run: |
+        run: | # sh
           # Get old review IDs from the bot
           old_review_ids=$(gh api "/repos/$REPO/pulls/$PR_NUMBER/reviews" --jq '.[] | select(.user.login=="metabase-bot[bot]") | .id')
           echo "Deleting reviews: $old_review_ids"
           # Delete each review (this will delete all associated comments)
           for id in $old_review_ids; do
-            gh api "/repos/$OWNER/$REPO/pulls/$PR_NUMBER/comments" \
+            gh api "/repos/$REPO/pulls/$PR_NUMBER/comments" \
               --jq '.[] | select(.pull_request_review_id == $id) | .id' | \
             while read comment_id; do
               # Mark each thread as resolved
               gh api \
                 --method PATCH \
-                "/repos/$OWNER/$REPO/pulls/comments/$comment_id" \
+                "/repos/$REPO/pulls/comments/$comment_id" \
                 -f body="" \
                 -F resolved=true 2>/dev/null || true
             done
