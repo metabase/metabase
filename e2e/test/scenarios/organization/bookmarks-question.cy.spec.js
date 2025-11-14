@@ -54,7 +54,7 @@ H.describeWithSnowplow("scenarios > question > bookmarks", () => {
     H.undoToastList().icon("close").click();
 
     H.navigationSidebar().within(() => {
-      cy.findByLabelText(/Bookmarks/)
+      cy.findByRole("section", { name: "Bookmarks" })
         .icon("model")
         .should("exist");
     });
@@ -67,7 +67,7 @@ H.describeWithSnowplow("scenarios > question > bookmarks", () => {
     H.openNavigationSidebar();
     cy.log("Should not find bookmark");
     H.navigationSidebar().within(() => {
-      cy.findByLabelText(/Bookmarks/)
+      cy.findByRole("section", { name: "Bookmarks" })
         .icon("model")
         .should("not.exist");
     });
