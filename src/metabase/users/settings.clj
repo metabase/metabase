@@ -77,6 +77,14 @@
   :type       :boolean
   :default    true)
 
+(defsetting expand-collections-in-nav
+  (deferred-tru "User preference for whether the ''Collections'' section of the nav is expanded.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
+
 (defsetting expand-library-in-nav
   (deferred-tru "User preference for whether the ''Library'' section of the nav is expanded.")
   :user-local :only
