@@ -1,3 +1,4 @@
+import { set } from "js-cookie";
 import { type MouseEvent, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
@@ -8,6 +9,7 @@ import {
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
+import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
 import { METAKEY } from "metabase/lib/browser";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
@@ -15,8 +17,9 @@ import * as Urls from "metabase/lib/urls";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getIsEmbedding } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Tooltip } from "metabase/ui";
+import { Input, TextInput, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { RecentCollectionItem, TableId } from "metabase-types/api";
 
 import {
@@ -140,6 +143,7 @@ function ModernDataPicker({
     table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
   const tableValue =
     table != null ? getDataPickerValue(query, stageIndex, table) : undefined;
+  const [dataSourceSearchQuery, setDataSourceSearchQuery] = useState("");
 
   const openDataSourceInNewTab = () => {
     const url = getUrl({ query, table, stageIndex });
@@ -177,21 +181,48 @@ function ModernDataPicker({
       >
         <DataPickerTarget
           tableInfo={tableInfo}
-          placeholder={placeholder}
+          placeholder={
+            <TextInput
+              placeholder={placeholder}
+              value={dataSourceSearchQuery}
+              onChange={(e) =>
+                setDataSourceSearchQuery(e.currentTarget.value)
+              }
+            />
+          }
           isDisabled={isDisabled}
           onClick={handleClick}
           onAuxClick={handleAuxClick}
         />
       </Tooltip>
       {isOpened && (
-        <DataPickerModal
-          title={title}
+        <MiniPicker
           value={tableValue}
-          databaseId={canChangeDatabase ? undefined : databaseId}
-          models={modelList}
-          onChange={onChange}
           onClose={() => setIsOpened(false)}
-          shouldDisableItem={shouldDisableItem}
+          models={["table", "dataset", "metric", "card"]}
+          searchQuery={dataSourceSearchQuery}
+          clearSearchQuery={() => setDataSourceSearchQuery("")}
+          onChange={(item: MiniPickerItem) => {
+            const id = item.model === "table"
+              ? item.id
+              : getQuestionVirtualTableId(item.id);
+            onChange(id);
+            setDataSourceSearchQuery("");
+            setIsOpened(false);
+          }}
+          browseAllComponent={
+            <DataPickerModal
+              title={title}
+              value={tableValue}
+              databaseId={canChangeDatabase ? undefined : databaseId}
+              models={modelList}
+              onChange={(i) => {
+                onChange(i)
+              }}
+              onClose={() => setIsOpened(false)}
+              shouldDisableItem={shouldDisableItem}
+            />
+          }
         />
       )}
     </>

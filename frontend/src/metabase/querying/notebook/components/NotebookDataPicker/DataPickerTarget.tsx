@@ -1,3 +1,4 @@
+import type React from "react";
 import { type MouseEvent, type Ref, forwardRef } from "react";
 
 import type { IconName } from "metabase/ui";
@@ -8,7 +9,7 @@ import { NotebookCell } from "../NotebookCell";
 
 type DataPickerTargetProps = {
   tableInfo?: Lib.TableDisplayInfo;
-  placeholder: string;
+  placeholder: React.ReactNode;
   isDisabled?: boolean;
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   onAuxClick?: (event: MouseEvent<HTMLButtonElement>) => void;

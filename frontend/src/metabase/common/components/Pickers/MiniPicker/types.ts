@@ -1,0 +1,55 @@
+import type {
+  CollectionId,
+  CollectionItem, DatabaseId, SchemaName, TableId
+} from "metabase-types/api";
+
+export type MiniPickerCollectionItem = Pick<
+  CollectionItem,
+  "id" | "name" | "model" | "here" | "below"
+> & {
+  id: CollectionItem["id"] | CollectionId ;
+};
+
+export type MiniPickerPickableCollectionItem = MiniPickerCollectionItem & {
+  // maz says this will never happen, but
+  // if this is used outside the data picker, this should be generic
+  model: Omit<CollectionItem["model"], "collection" | "dashboard" | "document">;
+};
+
+export type MiniPickerSchemaItem = {
+  model: "schema";
+  id: SchemaName;
+  dbId: DatabaseId;
+  name: SchemaName;
+}
+
+export type MiniPickerTableItem = {
+  model: "table";
+  id: TableId;
+  display_name: string;
+  name: string;
+}
+
+export type MiniPickerDatabaseItem = {
+  model: "database";
+  id: DatabaseId;
+  name: string;
+}
+
+// this includes all possible item types that can be shown in the mini picker
+export type MiniPickerItem =
+  | MiniPickerCollectionItem
+  | MiniPickerSchemaItem
+  | MiniPickerTableItem
+  | MiniPickerDatabaseItem;
+
+// this is only the intermediate/folder types that cannot ultimately be picked
+export type MiniPickerFolderItem =
+  | MiniPickerDatabaseItem
+  | MiniPickerSchemaItem
+  | MiniPickerCollectionItem & { model: "collection" };
+
+// this omits intermediate/folder types that cannot ultimately be picked
+export type MiniPickerPickableItem =
+  | MiniPickerPickableCollectionItem
+  | MiniPickerTableItem;
