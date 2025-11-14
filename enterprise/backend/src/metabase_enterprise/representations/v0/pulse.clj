@@ -17,11 +17,10 @@
   "Export a PulseCard Toucan entity to representation format."
   [t2-pulse-card]
   (u/remove-nils
-   {:card_id (:card_id t2-pulse-card)
+   {:card (v0-common/->ref (:card_id t2-pulse-card) :question)
     :position (:position t2-pulse-card)
     :include_csv (:include_csv t2-pulse-card)
-    :include_xls (:include_xls t2-pulse-card)
-    :dashboard_card_id (:dashboard_card_id t2-pulse-card)}))
+    :include_xls (:include_xls t2-pulse-card)}))
 
 (defn- export-pulse-channel
   "Export a PulseChannel Toucan entity to representation format."
@@ -46,8 +45,6 @@
       :version :v0
       :name (format "pulse-%s" (:id t2-pulse))
       :display_name (:name t2-pulse)
-      :collection_id (:collection_id t2-pulse)
-      :dashboard_id (:dashboard_id t2-pulse)
       :skip_if_empty (:skip_if_empty t2-pulse)
       :archived (:archived t2-pulse)
       :parameters (:parameters t2-pulse)
@@ -56,13 +53,20 @@
 
 (defn- yaml->pulse-card
   "Convert a pulse card from the representation format to Toucan-compatible data."
-  [card-data _ref-index]
-  (u/remove-nils
-   {:card_id (:card_id card-data)
-    :position (:position card-data)
-    :include_csv (or (:include_csv card-data) false)
-    :include_xls (or (:include_xls card-data) false)
-    :dashboard_card_id (:dashboard_card_id card-data)}))
+  [card-data ref-index]
+  (let [card-ref (:card card-data)
+        card-id (-> ref-index
+                    (v0-common/lookup-entity card-ref)
+                    (v0-common/ensure-correct-type :question)
+                    (or (lookup/lookup-by-name :model/Card card-ref))
+                    (or (lookup/lookup-by-id :model/Card card-ref))
+                    :id
+                    (v0-common/ensure-not-nil))]
+    (u/remove-nils
+     {:card_id card-id
+      :position (:position card-data)
+      :include_csv (or (:include_csv card-data) false)
+      :include_xls (or (:include_xls card-data) false)})))
 
 (defn- yaml->pulse-channel
   "Convert a pulse channel from the representation format to Toucan-compatible data."
@@ -80,12 +84,10 @@
 (defn yaml->toucan
   "Convert a v0 pulse representation to Toucan-compatible data."
   [{display-name :display_name
-    :keys [collection_id dashboard_id skip_if_empty archived parameters cards channels] :as _representation}
+    :keys [skip_if_empty archived parameters cards channels] :as _representation}
    ref-index]
   (u/remove-nils
    {:name display-name
-    :collection_id collection_id
-    :dashboard_id dashboard_id
     :skip_if_empty (or skip_if_empty false)
     :archived (or archived false)
     :parameters (or parameters [])

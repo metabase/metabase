@@ -53,7 +53,8 @@
         (is (= 1 (count (:channels exported))))
         (let [exported-card (first (:cards exported))
               exported-channel (first (:channels exported))]
-          (is (= (:id card) (:card_id exported-card)))
+          (is (string? (:card exported-card)))
+          (is (clojure.string/starts-with? (:card exported-card) "ref:question-"))
           (is (= 0 (:position exported-card)))
           (is (= "email" (:channel_type exported-channel)))
           (is (true? (:enabled exported-channel)))
@@ -107,11 +108,9 @@
                                                      :schedule_hour 10
                                                      :details {:channel "#general"}}]
     (let [exported (export/export-entity pulse)]
-      (testing "exported dashboard subscription has dashboard reference"
+      (testing "exported dashboard subscription"
         (is (= :pulse (:type exported)))
-        (is (= (:id dashboard) (:dashboard_id exported)))
         (is (= 1 (count (:cards exported))))
-        (is (= (:id dashboard-card) (:dashboard_card_id (first (:cards exported)))))
         (is (= 1 (count (:channels exported))))
         (let [exported-channel (first (:channels exported))]
           (is (= "slack" (:channel_type exported-channel)))
