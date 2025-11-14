@@ -278,7 +278,7 @@ describe("scenarios > admin > datamodel > segments", () => {
     });
   });
 
-  H.describeWithSnowplow("x-ray", () => {
+  describe("x-ray", () => {
     afterEach(() => {
       H.expectNoBadSnowplowEvents();
     });

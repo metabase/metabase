@@ -19,7 +19,7 @@ describe("scenarios > home > homepage", () => {
     cy.intercept("POST", "/api/card/*/query").as("getQuestionQuery");
   });
 
-  H.describeWithSnowplow("after setup", () => {
+  describe("after setup", () => {
     afterEach(() => {
       H.expectNoBadSnowplowEvents();
     });
@@ -630,7 +630,7 @@ describe("scenarios > home > custom homepage", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > setup", () => {
+describe("scenarios > setup", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
