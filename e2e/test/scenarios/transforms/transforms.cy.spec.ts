@@ -1421,7 +1421,7 @@ LIMIT
 
         cy.log("reverting the changes should be possible");
         H.PythonEditor.clear().type("# oops");
-        getLibraryEditorHeader().findByText("Cancel").click();
+        getLibraryEditorHeader().findByText("Revert").click();
         H.PythonEditor.value().should(
           "eq",
           dedent`
@@ -1458,7 +1458,7 @@ LIMIT
         `,
         );
 
-        getQueryEditor().findByText("Import common library").click();
+        getQueryEditor().findByLabelText("Import common library").click();
         H.PythonEditor.value().should("contain", "import common");
 
         cy.findByTestId("python-data-picker")
