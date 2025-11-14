@@ -292,14 +292,17 @@
   "Wrap a compiled native query with checkpoint filtering for native queries without explicit checkpoint tags.
 
   Generates SQL that wraps the original query as a subquery and filters by `checkpoint_filter > (checkpoint_query)`. "
-  [query driver {:keys [checkpoint-filter]} {checkpoint-query :query :as checkpoint}]
-  (if (and checkpoint-query checkpoint-filter (next-checkpoint-value checkpoint))
-    (let [honeysql-query {:select [:*]
-                          :from [[[:raw (str "(" query ")")] :subquery]]
-                          :where [:> (h2x/identifier :field checkpoint-filter)
-                                  [:raw (str "(" (:query (qp.compile/compile checkpoint-query)) ")")]]}]
-      (first (sql.qp/format-honeysql driver honeysql-query)))
-    query))
+  [query driver {:keys [source-incremental-strategy] :as source} {checkpoint-query :query :as checkpoint}]
+  (let [{:keys [checkpoint-filter]} source-incremental-strategy]
+    (if (and (lib.query/native? (:query source))
+             (not (get-in (:query source) [:stages 0 :template-tags "checkpoint"]))
+             (next-checkpoint-value checkpoint))
+      (let [honeysql-query {:select [:*]
+                            :from [[[:raw (str "(" query ")")] :subquery]]
+                            :where [:> (h2x/identifier :field checkpoint-filter)
+                                    [:raw (str "(" (:query (qp.compile/compile checkpoint-query)) ")")]]}]
+        (first (sql.qp/format-honeysql driver honeysql-query)))
+      query)))
 
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."
@@ -314,7 +317,7 @@
           massage-sql-query
           qp.compile/compile-with-inline-parameters
           :query
-          (post-process-incremental-query driver source-incremental-strategy checkpoint)))))
+          (post-process-incremental-query driver source checkpoint)))))
 
 (defn required-database-features
   "Returns the database features necessary to execute `transform`."
