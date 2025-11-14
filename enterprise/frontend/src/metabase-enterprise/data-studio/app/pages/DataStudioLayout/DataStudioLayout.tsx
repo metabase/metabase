@@ -140,11 +140,10 @@ function DataStudioTab({ label, icon, to, isSelected }: DataStudioTabProps) {
         className={cx(S.tab, { [S.selected]: isSelected })}
         component={ForwardRefLink}
         to={to}
-        display="block"
         p="0.75rem"
         bdrs="md"
       >
-        <FixedSizeIcon name={icon} />
+        <FixedSizeIcon name={icon} display="block" />
       </Box>
     </Tooltip>
   );
