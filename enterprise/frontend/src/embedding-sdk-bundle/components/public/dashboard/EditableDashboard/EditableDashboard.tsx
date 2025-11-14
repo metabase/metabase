@@ -29,8 +29,15 @@ export const EditableDashboardInner = (props: EditableDashboardProps) => {
     isEditing
       ? DASHBOARD_EDITING_ACTIONS
       : downloadsEnabled.pdf
-        ? [DASHBOARD_ACTION.EDIT_DASHBOARD, DASHBOARD_ACTION.DOWNLOAD_PDF]
-        : [DASHBOARD_ACTION.EDIT_DASHBOARD];
+        ? [
+            DASHBOARD_ACTION.EDIT_DASHBOARD,
+            DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
+            DASHBOARD_ACTION.DOWNLOAD_PDF,
+          ]
+        : [
+            DASHBOARD_ACTION.EDIT_DASHBOARD,
+            DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
+          ];
 
   const getClickActionMode: SdkDashboardInnerProps["getClickActionMode"] = ({
     question,

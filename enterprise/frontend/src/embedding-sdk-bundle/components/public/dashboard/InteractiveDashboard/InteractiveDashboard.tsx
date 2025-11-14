@@ -4,7 +4,10 @@ import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getPlugins } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
-import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
+import {
+  DASHBOARD_ACTION,
+  type DashboardActionValue,
+} from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { isQuestionCard } from "metabase/dashboard/utils";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
@@ -44,7 +47,12 @@ const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
       {...props}
       getClickActionMode={getClickActionMode}
       dashboardActions={({ downloadsEnabled }) => {
-        return downloadsEnabled.pdf ? [DASHBOARD_ACTION.DOWNLOAD_PDF] : [];
+        const baseActions: DashboardActionValue[] = [
+          DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
+        ];
+        return baseActions.concat(
+          downloadsEnabled.pdf ? [DASHBOARD_ACTION.DOWNLOAD_PDF] : [],
+        );
       }}
       dashcardMenu={({ dashcard, result, downloadsEnabled }) =>
         downloadsEnabled?.results &&
