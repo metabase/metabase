@@ -45,14 +45,11 @@ export function NavbarLibrarySection({
     return null;
   }
 
-  const headerId = "headingForLibrarySectionOfSidebar";
-
   return (
     <SidebarSection>
       <ErrorBoundary>
         <CollapseSection
-          aria-labelledby={headerId}
-          header={<SidebarHeading id={headerId}>{t`Library`}</SidebarHeading>}
+          header={<SidebarHeading>{t`Library`}</SidebarHeading>}
           initialState={expandLibrary ? "expanded" : "collapsed"}
           iconPosition="right"
           iconSize={8}

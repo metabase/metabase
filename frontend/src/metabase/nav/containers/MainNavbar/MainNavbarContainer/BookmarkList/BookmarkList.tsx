@@ -148,12 +148,9 @@ const BookmarkList = ({
 
   const bookmarkIds = bookmarks.map((b) => b.id);
 
-  const headerId = "headingForBookmarksSectionOfSidebar";
-
   return (
     <CollapseSection
-      aria-labelledby={headerId}
-      header={<SidebarHeading id={headerId}>{t`Bookmarks`}</SidebarHeading>}
+      header={<SidebarHeading>{t`Bookmarks`}</SidebarHeading>}
       initialState={initialState}
       iconPosition="right"
       iconSize={8}

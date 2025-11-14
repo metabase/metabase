@@ -43,7 +43,8 @@ const CollapseSection = ({
   ...props
 }: CollapseSectionProps) => {
   const [isExpanded, setIsExpanded] = useState(initialState === "expanded");
-  const contentId = useId();
+  const buttonId = useId();
+  const regionId = useId();
 
   const toggle = useCallback(() => {
     const nextState = !isExpanded;
@@ -80,14 +81,20 @@ const CollapseSection = ({
   );
 
   return (
-    <div className={className} role="section" {...props}>
+    <div
+      className={className}
+      role="section"
+      aria-labelledby={buttonId}
+      {...props}
+    >
       <HeaderContainer
+        id={buttonId}
         className={headerClass}
-        onClick={toggle}
-        onKeyDown={onKeyDown}
         hasRightAction={!!rightAction}
         aria-expanded={isExpanded}
-        aria-controls={contentId}
+        aria-controls={regionId}
+        onKeyDown={onKeyDown}
+        onClick={toggle}
       >
         <HeaderContent>
           {iconPosition === "left" && HeaderIcon}
@@ -99,7 +106,12 @@ const CollapseSection = ({
         )}
       </HeaderContainer>
       {isExpanded && (
-        <div id={contentId} className={bodyClass}>
+        <div
+          id={regionId}
+          role="region"
+          aria-labelledby={buttonId}
+          className={bodyClass}
+        >
           {children}
         </div>
       )}
