@@ -67,6 +67,18 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
+      id: v58.2025-11-10T14:39:02
+      author: wotbrew
+      comment: Add index for report_card.published_table_id
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_published_table_id
+            columns:
+              - column:
+                  name: published_table_id
+
+  - changeSet:
       id: v58.2025-11-12T11:57:00
       author: wotbrew
       comment: Add data_source column to metabase_table
