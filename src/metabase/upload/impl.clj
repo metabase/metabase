@@ -538,7 +538,7 @@
                                                   :display_name display-name})
         _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true
                                                                 :data_authority :authoritative
-                                                                :data_source "upload"
+                                                                :data_source :upload
                                                                 :is_writable true})
         _sync             (scan-and-sync-table! db table)
         _set_names        (set-display-names! (:id table) columns)
