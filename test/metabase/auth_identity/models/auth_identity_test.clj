@@ -1,7 +1,6 @@
 (ns metabase.auth-identity.models.auth-identity-test
   (:require
    [clojure.test :refer :all]
-   [java-time.api :as t]
    [metabase.test :as mt]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))

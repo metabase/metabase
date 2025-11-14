@@ -6,12 +6,10 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.support-access-grants.core :as grants]
-   [metabase-enterprise.support-access-grants.provider :as sag.provider]
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.session.core :as session]
    [metabase.test :as mt]
-   [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [f] (mt/with-premium-features #{:support-access-grants} (f))))
