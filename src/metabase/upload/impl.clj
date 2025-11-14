@@ -678,9 +678,9 @@
     - the schema of the CSV file does not match the schema of the table
 
     Note that we do not require the column ordering to be consistent between the header and the table schema."
-  [old-column-names new-column-names raw-header]
-  (let [[extra missing _both] (data/diff (set new-column-names) (set old-column-names))]
-    ;; check for duplicates in the original column names (before de-duplication in the column names)
+  [existing-column-names upload-column-names raw-header]
+  (let [[extra missing _both] (data/diff (set upload-column-names) (set existing-column-names))]
+    ;; We use lossy normalization for column names then *force* uniqueness, so this must use the original header.
     (when (some #(< 1 %) (vals (frequencies raw-header)))
       (throw (ex-info (tru "The CSV file contains duplicate column names.")
                       {:status-code 422})))
@@ -786,17 +786,12 @@
                                    auto-pk?
                                    without-auto-pk-columns)
               name->field        (m/index-by :name (t2/select :model/Field :table_id (:id table) :active true))
-              ;; Gotcha: If there are long names that have the same lossily-escaped-and-truncated representation AND
-              ;;         these columns appear in a different order to previous uploads, we will deduplicate the column
-              ;;         names based on their order in the latest files, and will match up incorrectly with the existing
-              ;;         fields. Previously we simply skipped deduplication on upload to avoid the ambiguity, see
-              ;;         https://github.com/metabase/metabase/issues/44926#issuecomment-3524373073.
-              ;;
-              ;;         In retrospect, I think it's better to risk this edge-case-within-an-edge-case, since we can
-              ;;         still explain the issue easily to customers, who can then manually reorder their CSV columns.
-              ;;
-              ;;         If we wanted to further polish this, we could look for matches on the display name as well,
-              ;;         to do smart re-ordering.
+              ;; Gotcha: Long column names, which get sanitized and truncated to the same string, will be match to the
+              ;; database columns based on their order. If their order in the new upload differs from that in previous
+              ;; uploads, they will be matched incorrectly.
+              ;; We accept this edge case (customers can reorder CSV columns to fix) rather than rejecting uploads
+              ;; with ambiguous column names even when the order is consistent (see #44926/#issuecomment-3524373073).
+              ;; Future ideal: match on display names for smart re-ordering.
               column-names       (map name (derive-column-names driver header))
               display-names      (for [h header] (normalize-display-name h))
               create-auto-pk?    (and
