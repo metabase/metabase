@@ -23,7 +23,7 @@
    (java.sql Connection)
    (java.util ArrayList List Map)
    (javax.sql DataSource)
-   (liquibase Contexts LabelExpression Liquibase RuntimeEnvironment Scope Scope$Attr Scope$ScopedRunner)
+   (liquibase Contexts LabelExpression Liquibase RuntimeEnvironment Scope Scope$Attr Scope$ScopedRunner UpdateSummaryOutputEnum)
    (liquibase.change.custom CustomChangeWrapper)
    (liquibase.changelog ChangeLogIterator ChangeSet ChangeSet$ExecType)
    (liquibase.changelog.filter AlreadyRanChangeSetFilter ChangeSetFilter ChangeSetFilterResult DbmsChangeSetFilter IgnoreChangeSetFilter)
@@ -136,6 +136,7 @@
              ;; trigger creation of liquibase's databasechangelog tables if needed, without updating any checksums
              ;; we need to do this until https://github.com/liquibase/liquibase/issues/5537 is fixed
              (.checkLiquibaseTables liquibase false (.getDatabaseChangeLog liquibase) nil nil)
+             (.setShowSummaryOutput liquibase UpdateSummaryOutputEnum/LOG)
              (f liquibase))]
     (binding [t2.conn/*current-connectable* conn-or-data-source]
       (if (instance? Connection conn-or-data-source)
