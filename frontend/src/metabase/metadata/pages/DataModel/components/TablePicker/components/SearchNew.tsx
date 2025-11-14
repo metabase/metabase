@@ -44,9 +44,10 @@ export function SearchNew({
         : (filters.dataSource ?? undefined),
     "owner-user-id":
       filters.ownerUserId === "unknown"
-        ? null
+        ? undefined
         : (filters.ownerUserId ?? undefined),
     "owner-email": filters.ownerEmail ?? undefined,
+    "orphan-only": filters.ownerUserId === "unknown" ? true : undefined,
     "unused-only": filters.unusedOnly === true ? true : undefined,
   });
 
