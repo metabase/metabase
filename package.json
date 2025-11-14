@@ -496,7 +496,7 @@
     "type-check": "yarn clean:cljs && yarn build:cljs && yarn type-check-pure",
     "type-check-pure": "NODE_OPTIONS=--max-old-space-size=8192 tsc --noEmit",
     "types:generate": "openapi-ts -f ./frontend/build/openapi/openapi-ts.config.ts",
-    "types:generate:watch": "npx chokidar 'resources/openapi/openapi.json' --initial -c 'openapi-ts -f ./frontend/build/openapi/openapi-ts.config.ts'",
+    "types:generate:watch": "npx chokidar 'resources/openapi/openapi.json' --initial -c 'openapi-ts -f ./frontend/build/openapi/openapi-ts.config.ts' --debounce 1000",
     "validate-e2e-filenames": "node e2e/validate-e2e-test-files.js",
     "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done",
     "generate:expression-parser": "lezer-generator frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer -o frontend/src/metabase/querying/expressions/tokenizer/lezer.js",
