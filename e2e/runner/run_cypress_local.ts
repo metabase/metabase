@@ -20,19 +20,16 @@ let tempSampleDBDir: string | null = null;
 const userOptions = {
   TEST_SUITE: "e2e", // e2e | component
   MB_EDITION: "ee", // ee | oss
-  START_CONTAINERS: true,
-  STOP_CONTAINERS: false,
   BACKEND_PORT: 4000,
   OPEN_UI: true,
   SHOW_BACKEND_LOGS: false,
   GENERATE_SNAPSHOTS: true,
-  QUIET: false,
+  QA_DB_ENABLED: true,
   TZ: "UTC",
   ...booleanify(process.env),
 };
 
 const derivedOptions = {
-  QA_DB_ENABLED: userOptions.START_CONTAINERS,
   BUILD_JAR: userOptions.BACKEND_PORT === 4000,
   START_BACKEND: userOptions.BACKEND_PORT === 4000,
   CYPRESS_IS_EMBEDDING_SDK: String(userOptions.TEST_SUITE === "component"),
@@ -63,8 +60,6 @@ if (options.MB_EDITION === "ee" && missingTokens.length > 0) {
 printBold(`Running Cypress with options:
   - TEST_SUITE         : ${options.TEST_SUITE}
   - MB_EDITION         : ${options.MB_EDITION}
-  - START_CONTAINERS   : ${options.START_CONTAINERS}
-  - STOP_CONTAINERS    : ${options.STOP_CONTAINERS}
   - BUILD_JAR          : ${options.BUILD_JAR}
   - GENERATE_SNAPSHOTS : ${options.GENERATE_SNAPSHOTS}
   - BACKEND_PORT       : ${options.BACKEND_PORT}
@@ -75,10 +70,8 @@ printBold(`Running Cypress with options:
 `);
 
 const init = async () => {
-  if (options.START_CONTAINERS) {
-    printBold("⏳ Starting containers");
-    shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml up -d");
-  }
+  printBold("⏳ Starting containers");
+  shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml up -d");
 
   if (options.BUILD_JAR) {
     printBold("⏳ Building backend");
@@ -174,10 +167,8 @@ const cleanup = async (exitCode: string | number = SUCCESS_EXIT_CODE) => {
     }
   }
 
-  if (options.STOP_CONTAINERS) {
-    printBold("⏳ Stopping containers");
-    shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml down");
-  }
+  printBold(`⚠️ If you wish to stop the supporting services run the following command:
+    docker compose -f ./e2e/test/scenarios/docker-compose.yml down`);
 
   typeof exitCode === "number"
     ? process.exit(exitCode)
