@@ -36,6 +36,10 @@
   [_]
   (maybe-throw-user-provisioning (sso-settings/jwt-user-provisioning-enabled?)))
 
+(defmethod check-user-provisioning :slack-connect
+  [_]
+  (maybe-throw-user-provisioning (sso-settings/slack-connect-user-provisioning-enabled?)))
+
 (defn relative-uri?
   "Checks that given `uri` is not an absolute (so no scheme and no host)."
   [uri]
