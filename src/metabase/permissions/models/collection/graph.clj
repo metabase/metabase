@@ -50,13 +50,19 @@
    :groups group-perms})
 
 (defn- modify-instance-analytics-for-admins
-  "In the graph, override the instance analytics collection within the admin group to read."
-  [graph]
+  "In the graph, override the instance analytics collection within the admin group to read.
+
+  Only applies the override if:
+  - No group filter was specified (group-ids is nil), OR
+  - The admin group ID is explicitly included in group-ids"
+  [graph group-ids]
   (let [admin-group-id (:id (perms-group/admin))
-        audit-collection-id (:id (audit/default-audit-collection))]
-    (if (nil? audit-collection-id)
-      graph
-      (assoc-in graph [:groups admin-group-id audit-collection-id] :read))))
+        audit-collection-id (:id (audit/default-audit-collection))
+        should-apply? (or (nil? group-ids)
+                         (contains? group-ids admin-group-id))]
+    (if (and should-apply? (some? audit-collection-id))
+      (assoc-in graph [:groups admin-group-id audit-collection-id] :read)
+      graph)))
 
 (mu/defn graph :- PermissionsGraph
   "Fetch a sparse graph representing the current permissions status for groups and collections with permissions.
@@ -180,7 +186,7 @@
                                 :else :none)))
                   {(u/the-id (perms-group/admin)) {:root :write}})
           collection-permission-graph
-          modify-instance-analytics-for-admins))))
+          (modify-instance-analytics-for-admins group-ids)))))
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 

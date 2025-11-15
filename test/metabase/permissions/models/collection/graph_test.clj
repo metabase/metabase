@@ -94,6 +94,34 @@
                   :groups {(u/the-id (perms-group/admin)) {:root :write, :COLLECTION :read}}}
                  (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection])))))))))
 
+(deftest audit-collections-all-users-permissions-test
+  (testing "Can change All Users group permissions on audit collection (#65867)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}]
+        (with-redefs [audit/default-audit-collection (constantly collection)]
+          (let [all-users-id (u/the-id (perms-group/all-users))
+                admin-id (u/the-id (perms-group/admin))]
+            (testing "Initially, only admin has access"
+              (is (= {:revision 0
+                      :groups {admin-id {:root :write, :COLLECTION :read}}}
+                     (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection])))))
+            (testing "Grant All Users read access to audit collection"
+              (binding [*current-user-id* (mt/user->id :crowberto)]
+                (let [initial-graph (graph :collections [collection])]
+                  (graph/update-graph! (assoc-in initial-graph [:groups all-users-id (u/the-id collection)] :read))))
+              (is (= {:revision 1
+                      :groups {admin-id {:root :write, :COLLECTION :read}
+                               all-users-id {:COLLECTION :read}}}
+                     (replace-collection-ids collection (graph :collections [collection])))))
+            (testing "Revoke All Users access (set to :none)"
+              (binding [*current-user-id* (mt/user->id :crowberto)]
+                (let [current-graph (graph :collections [collection])]
+                  (graph/update-graph! (assoc-in current-graph [:groups all-users-id (u/the-id collection)] :none))))
+              (is (= {:revision 2
+                      :groups {admin-id {:root :write, :COLLECTION :read}}}
+                     (replace-collection-ids collection (graph :collections [collection])))
+                  "All Users should have no access after revoking permissions"))))))))
+
 (deftest read-perms-test
   (testing "make sure read perms show up correctly"
     (mt/with-non-admin-groups-no-root-collection-perms
