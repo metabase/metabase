@@ -2,7 +2,7 @@ const cypress = require("cypress");
 
 const { BACKEND_PORT } = require("./constants/backend-port");
 const { FAILURE_EXIT_CODE } = require("./constants/exit-code");
-const { parseArguments, args } = require("./cypress-runner-utils");
+const { parseArguments } = require("./cypress-runner-utils");
 const {
   HOST_APP_SETUP_CONFIGS,
 } = require("./embedding-sdk/host-apps/constants/host-app-setup-configs");
@@ -32,7 +32,6 @@ const getEmbeddingSdkAppE2eConfig = async ({
       env,
     },
     testingType: "e2e",
-    openMode: args["--open"] || process.env.OPEN_UI === "true",
   };
 
   const userArgs = await parseArguments(args);
@@ -79,7 +78,6 @@ const configs = {
         baseUrl: getHost(),
       },
       testingType: "e2e",
-      openMode: args["--open"] || process.env.OPEN_UI === "true",
     };
 
     const userArgs = await parseArguments(args);
@@ -95,6 +93,7 @@ const configs = {
   ...getHostAppE2eConfig("next-15-pages-router-host-app-e2e"),
   ...getHostAppE2eConfig("angular-20-host-app-e2e"),
   snapshot: async () => {
+    process.env.OPEN_UI = false;
 
     const snapshotConfig = {
       configFile: "e2e/support/cypress-snapshots.config.js",
@@ -102,7 +101,6 @@ const configs = {
         baseUrl: getHost(),
       },
       testingType: "e2e",
-      openMode: false,
     };
 
     return snapshotConfig;
@@ -115,7 +113,6 @@ const configs = {
         baseUrl: getHost(),
       },
       testingType: "component",
-      openMode: args["--open"] || process.env.OPEN_UI === "true",
     };
 
     const userArgs = await parseArguments(args);
@@ -140,9 +137,9 @@ const runCypress = async (suite = "e2e", exitFunction) => {
   const config = await configs[suite]();
 
   try {
-    const { status, message, totalFailed, failures } = config.openMode
-      ? await cypress.open(config)
-      : await cypress.run(config);
+    const { status, message, totalFailed, failures } = process.env.OPEN_UI
+      ? await cypress.open(runOptions)
+      : await cypress.run(runOptions);
 
     // At least one test failed
     if (totalFailed > 0) {
