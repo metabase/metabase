@@ -85,6 +85,7 @@ import type {
   GroupPermissions,
   GroupsPermissions,
   ModelCacheRefreshStatus,
+  NativeQuerySnippet,
   ParameterId,
   Pulse,
   PythonTransformSourceDraft,
@@ -356,12 +357,18 @@ export type SnippetCollectionPermissionsModalProps = {
   onClose: () => void;
 };
 
+export type MoveSnippetModalProps = {
+  snippet: NativeQuerySnippet;
+  onClose: () => void;
+};
+
 export type SnippetFoldersPlugin = {
   isEnabled: boolean;
   CollectionPickerModal: ComponentType<SnippetCollectionPickerModalProps>;
   CollectionFormModal: ComponentType<SnippetFormModalProps>;
   CollectionMenu: ComponentType<SnippetCollectionMenuProps>;
   CollectionPermissionsModal: ComponentType<SnippetCollectionPermissionsModalProps>;
+  MoveSnippetModal: ComponentType<MoveSnippetModalProps>;
 };
 
 export const PLUGIN_SNIPPET_FOLDERS: SnippetFoldersPlugin = {
@@ -374,6 +381,7 @@ export const PLUGIN_SNIPPET_FOLDERS: SnippetFoldersPlugin = {
     PluginPlaceholder as ComponentType<SnippetCollectionMenuProps>,
   CollectionPermissionsModal:
     PluginPlaceholder as ComponentType<SnippetCollectionPermissionsModalProps>,
+  MoveSnippetModal: PluginPlaceholder as ComponentType<MoveSnippetModalProps>,
 };
 
 interface PluginDashboardSubscriptionParametersSectionOverride {

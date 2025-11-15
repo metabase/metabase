@@ -97,7 +97,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
               placeholder={t`New SQL snippet`}
               maxLength={SNIPPET_NAME_MAX_LENGTH}
               isOptional
-              onChange={setName}
+              onContentChange={setName}
             />
           }
           actions={
@@ -118,6 +118,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
               extensions={extensions}
               height="100%"
               className={S.editor}
+              data-testid="snippet-editor"
               basicSetup={{
                 lineNumbers: true,
                 foldGutter: true,

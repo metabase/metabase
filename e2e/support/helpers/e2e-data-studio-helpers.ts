@@ -1,3 +1,5 @@
+import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
+
 const modelingSidebar = () => cy.findByTestId("modeling-sidebar");
 const collectionsSection = () => cy.findByTestId("collections-section");
 const snippetsSection = () => cy.findByTestId("snippets-section");
@@ -36,6 +38,11 @@ export const DataStudio = {
     collectionsTree: () => collectionsSection().findByRole("tree"),
     snippetsSection,
     snippetsTree: () => snippetsSection().findByRole("tree"),
+    snippetsTreeItem: (name: string) =>
+      snippetsSection()
+        .findByRole("tree")
+        .findByText(name)
+        .closest("[role='menuitem']"),
     glossarySection,
     glossaryLink: () => glossarySection().findByText("Glossary"),
     createCardMenuButton: () =>
@@ -52,6 +59,6 @@ export const DataStudio = {
     descriptionInput: () => cy.findByPlaceholderText("No description"),
     saveButton: () => cy.findByRole("button", { name: "Save" }),
     cancelButton: () => cy.findByRole("button", { name: "Cancel" }),
-    editor: () => cy.get(".cm-editor"),
+    editor: codeMirrorHelpers("snippet-editor", {}),
   },
 };

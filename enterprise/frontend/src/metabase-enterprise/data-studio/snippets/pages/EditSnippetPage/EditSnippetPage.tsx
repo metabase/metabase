@@ -125,6 +125,7 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
               extensions={extensions}
               height="100%"
               className={S.editor}
+              data-testid="snippet-editor"
               basicSetup={{
                 lineNumbers: true,
                 foldGutter: true,

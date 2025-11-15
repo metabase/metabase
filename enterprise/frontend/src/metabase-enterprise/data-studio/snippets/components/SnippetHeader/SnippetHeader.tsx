@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import type { NativeQuerySnippet } from "metabase-types/api";
@@ -14,6 +16,7 @@ import {
   type PaneHeaderTab,
   PaneHeaderTabs,
 } from "../../../common/components/PaneHeader";
+import { SnippetMoreMenu } from "../SnippetMoreMenu";
 
 const SNIPPET_NAME_MAX_LENGTH = 254;
 
@@ -23,9 +26,16 @@ type SnippetHeaderProps = {
 };
 
 export function SnippetHeader({ snippet, actions }: SnippetHeaderProps) {
+  const dispatch = useDispatch();
+
+  const handleDelete = () => {
+    dispatch(push(Urls.dataStudioModeling()));
+  };
+
   return (
     <PaneHeader
       title={<SnippetNameInput snippet={snippet} />}
+      menu={<SnippetMoreMenu snippet={snippet} onDelete={handleDelete} />}
       tabs={<SnippetTabs snippet={snippet} />}
       actions={actions}
       data-testid="snippet-header"

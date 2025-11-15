@@ -26,6 +26,7 @@ export { createQuestionAndAddToDashboard } from "./createQuestionAndAddToDashboa
 export { createQuestionAndDashboard } from "./createQuestionAndDashboard";
 export { createReaction } from "./createReaction";
 export { createSnippet } from "./createSnippet";
+export { createSnippetFolder } from "./createSnippetFolder";
 export { createTimeline } from "./createTimeline";
 export { createTimelineEvent } from "./createTimelineEvent";
 export { createTimelineWithEvents } from "./createTimelineWithEvents";
