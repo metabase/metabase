@@ -1,5 +1,5 @@
 import { getIcon } from "metabase/lib/icon";
-import { Icon, NavLink } from "metabase/ui";
+import { Box, Icon, NavLink } from "metabase/ui";
 
 import type { MiniPickerItem as MiniPickerItemType } from "../types";
 
@@ -20,12 +20,14 @@ export const MiniPickerItem = ({
     return null;
   }
   return (
-    <NavLink
-      leftSection={<Icon {...getIcon({ model })} />}
-      rightSection={isFolder ? <Icon name="chevronright" /> : undefined}
-      label={name}
-      onClick={onClick}
-      variant="mb-light"
-    />
+    <Box px="sm">
+      <NavLink
+        leftSection={<Icon {...getIcon({ model })} />}
+        rightSection={isFolder ? <Icon name="chevronright" /> : undefined}
+        label={name}
+        onClick={onClick}
+        variant="mb-light"
+      />
+    </Box>
   );
 };

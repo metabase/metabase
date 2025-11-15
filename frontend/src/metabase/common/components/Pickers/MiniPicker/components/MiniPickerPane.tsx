@@ -13,7 +13,7 @@ export function MiniPickerPane() {
 
   return (
     <Stack gap="sm" mah="30rem" w="20rem">
-      {!isRoot && <MiniPickerHeader />}
+      {!isRoot && !searchQuery && <MiniPickerHeader />}
       <MiniPickerItemList />
       {(isRoot || searchQuery) && <MiniPickerFooter />}
       {/* <pre>{JSON.stringify(path, null, 2)} </pre> */}

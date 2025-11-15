@@ -11,7 +11,7 @@ export function MiniPickerFooter() {
     return null;
   }
   return (
-    <Box pb="sm">
+    <Box px="sm">
       <Divider />
       <NavLink
         mt="sm"

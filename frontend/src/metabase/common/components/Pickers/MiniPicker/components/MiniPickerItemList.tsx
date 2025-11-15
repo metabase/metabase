@@ -9,6 +9,7 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { Box, Stack, Text } from "metabase/ui";
 import type { SchemaName, SearchModel } from "metabase-types/api";
 
@@ -22,9 +23,7 @@ import type {
 import { useGetLibraryCollection } from "../utils";
 
 import { MiniPickerItem } from "./MiniPickerItem";
-// FIXME, should be an enterprise plugin
 
-// gotta virtualize in here, sometimes there's 65k tables
 export function MiniPickerItemList() {
   const { path, searchQuery } = useMiniPickerContext();
 
@@ -52,6 +51,7 @@ export function MiniPickerItemList() {
 function RootItemList() {
   const { data: databases } = useListDatabasesQuery();
   const { setPath } = useMiniPickerContext();
+  // FIXME, should be an enterprise plugin
   const { data: libraryCollection, isLoading } = useGetLibraryCollection();
 
   if (isLoading) {
@@ -71,7 +71,7 @@ function RootItemList() {
   }
 
   return (
-    <Stack gap="1px">
+    <ItemList>
       {databases?.data?.map((db) => (
         <MiniPickerItem
           key={db.id}
@@ -97,7 +97,7 @@ function RootItemList() {
           ]);
         }}
       />
-    </Stack>
+    </ItemList>
   );
 }
 
@@ -137,7 +137,7 @@ function DatabaseItemList({
 
   if (schemas?.length && schemas.length > 1 && parent.model === "database") {
     return (
-      <Stack gap="1px">
+      <ItemList>
         {schemas.map((schema) => (
           <MiniPickerItem
             key={schema}
@@ -157,7 +157,7 @@ function DatabaseItemList({
             }}
           />
         ))}
-      </Stack>
+      </ItemList>
     );
   }
 
@@ -172,7 +172,7 @@ function DatabaseItemList({
         : tablesData;
 
     return (
-      <Stack gap="1px">
+      <ItemList>
         {tables?.map((table) => (
           <MiniPickerItem
             key={table.id}
@@ -187,7 +187,7 @@ function DatabaseItemList({
             }}
           />
         ))}
-      </Stack>
+      </ItemList>
     );
   }
 }
@@ -209,7 +209,7 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
 
   if (items?.data?.length) {
     return (
-      <Stack gap="1px">
+      <ItemList>
         {items.data.map((item) => (
           <MiniPickerItem
             key={`${item.model}-${item.id}`}
@@ -237,7 +237,7 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
             }}
           />
         ))}
-      </Stack>
+      </ItemList>
     );
   }
 }
@@ -256,11 +256,11 @@ function SearchItemList({ query }: { query: string }) {
     | undefined;
 
   return (
-    <Stack gap="1px">
+    <ItemList>
       <Box>
         {isLoading && <MiniPickerListLoader />}
         {!isLoading && searchResults?.length === 0 && (
-          <Text>{t`No search results`}</Text>
+          <Text p="sm">{t`No search results`}</Text>
         )}
       </Box>
       {searchResults?.map((item) => {
@@ -275,7 +275,7 @@ function SearchItemList({ query }: { query: string }) {
           />
         );
       })}
-    </Stack>
+    </ItemList>
   );
 }
 
@@ -284,3 +284,7 @@ export const MiniPickerListLoader = () => (
     <LoadingAndErrorWrapper loading />
   </Box>
 );
+
+const ItemList = ({ children }: { children: React.ReactNode[] }) => {
+  return <VirtualizedList>{children}</VirtualizedList>;
+};
