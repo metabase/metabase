@@ -148,12 +148,12 @@ jobs:
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         env:
           GREP: ${{ github.event.inputs.grep }}
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js ${{ needs.determine-suite.outputs.suite }} \
           --spec '${{ github.event.inputs.spec }}' \
           --env burn=${{ github.event.inputs.burn_in }} \
-          --config-file e2e/support/cypress-stress-test.config.js \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+          --config-file e2e/support/cypress-stress-test.config.js
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4

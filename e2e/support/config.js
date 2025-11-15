@@ -157,6 +157,7 @@ const defaultConfig = {
 
     return config;
   },
+  browser: process.env.CYPRESS_BROWSER ?? "chrome",
   supportFile: "e2e/support/cypress.js",
   chromeWebSecurity: false,
   modifyObstructiveCode: false,
