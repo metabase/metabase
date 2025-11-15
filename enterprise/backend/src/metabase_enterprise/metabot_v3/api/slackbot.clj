@@ -27,7 +27,9 @@
 (defn fetch-thread
   "Fetch an entire full Slack thread"
   [client message]
-  (slack-get client "/conversations.replies" (select-keys message [:channel :ts])))
+  (-> (slack-get client "/conversations.replies" (select-keys message [:channel :ts]))
+      :body
+      (json/decode true)))
 
 (defn slack-post
   "POST to slack"
@@ -40,7 +42,9 @@
 (defn post-message
   "Send a Slack message"
   [client message]
-  (slack-post client "/chat.postMessage" message))
+  (-> (slack-post client "/chat.postMessage" message)
+      :body
+      (json/decode true)))
 
 (defn delete-message
   "Remove a Slack message"
@@ -188,14 +192,14 @@
   [client event]
   (let [prompt (:text event)
         thread (fetch-thread client message)
+        message-ctx {:channel (:channel event) :thread_ts (or (:thread_ts event) (:ts event))}
+        thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
         ;; TODO: removing binding w/ something that converst the current user to an internal user
         answer (binding [api/*current-user* (t2/select-one :model/User :is_superuser true)
                          api/*current-user-id* (:id (t2/select-one :model/User :is_superuser true))]
                  (make-ai-request (str (random-uuid)) prompt thread))]
-    (println prompt thread answer)
-    (post-message client {:channel (:channel event)
-                          :text answer
-                          :thread_ts (or (:thread_ts event) (:ts event))})))
+    (delete-message client thinking-message)
+    (post-message client (merge message-ctx {:text answer}))))
 
 (defn- handle-event-callback
   "Respond to an event_callback request (docs: TODO)"
