@@ -121,8 +121,10 @@ const runCypress = async (suite = "e2e", { exitFunction, cliArguments }) => {
   const userArgs = await parseArguments(cliArguments);
   const runOptions = { ...config, ...userArgs };
 
+  const openMode = process.env.OPEN_UI === "true";
+
   try {
-    const { status, message, totalFailed, failures } = process.env.OPEN_UI
+    const { status, message, totalFailed, failures } = openMode
       ? await cypress.open(runOptions)
       : await cypress.run(runOptions);
 
