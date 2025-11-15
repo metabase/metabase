@@ -1627,6 +1627,39 @@
              (mt/rows
               (qp/process-query (query))))))))
 
+(deftest fk-remaps-are-marked-correctly-test
+  (testing "when a selected column is the target of an external (FK) remapping, it is not marked as remapped (#65726)"
+    ;; Eg. COUNT of orders by Products->Title with Orders.PRODUCT_ID mapped to Products->Title.
+    ;; There's no remapping need there: the breakout is actually on the title field already.
+    ;; TODO: (Braden 2025-11-13) I think remappings and breakouts are pretty janky - the Right Thing is to walk
+    ;; backward from all "selected" fields in the last stage to originals, and include any remaps they have.
+    (met/with-gtaps! {:gtaps {:orders {:remappings {"user_id" ["variable" [:field (mt/id :orders :user_id) nil]]}}},
+                      :attributes {"user_id" 1}}
+      (let [mp (lib.tu/remap-metadata-provider
+                (mt/metadata-provider)
+                (mt/id :orders :product_id)
+                (mt/id :products :title))]
+        (qp.store/with-metadata-provider mp
+          (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (lib.metadata/field mp (mt/id :products :title)))
+                          (lib/limit 5))]
+            (testing "Query should complete successfully with normal processing"
+              (let [result (qp/process-query query)]
+                (is (= :completed (:status result)))
+                (is (=? [{:name "TITLE"
+                          :id   (mt/id :products :title)
+                          :lib/original-fk-field-id (mt/id :orders :product_id)
+                          :remapped_from (symbol "nil #_\"key is not present.\"")}
+                         {:name "count"}]
+                        (mt/cols result)))
+                (is (= [["Awesome Bronze Plate" 1]
+                        ["Awesome Concrete Shoes" 1]
+                        ["Ergonomic Silk Table" 1]
+                        ["Fantastic Wool Shirt" 1]
+                        ["Mediocre Rubber Shoes" 1]]
+                       (mt/rows result)))))))))))
+
 (deftest datetime-extraction-to-int-test
   (testing "Downloading CSV/XLSX for query with COUNT grouped by day of month should work for sandboxed users (#UXW-660)"
     (met/with-gtaps! {:gtaps {:orders {:remappings {"user_id" ["variable" [:field (mt/id :orders :user_id) nil]]}}},
