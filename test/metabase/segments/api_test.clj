@@ -86,7 +86,7 @@
   (mt/with-temp [:model/Database {database-id :id} {}
                  :model/Table    {:keys [id]} {:db_id database-id}]
     (doseq [[format-name definition-fn] {"MBQL4" mbql4-segment-definition
-                                         "pMBQL" pmbql-segment-definition}]
+                                         "pMBQL" (partial pmbql-segment-definition id)}]
       (testing format-name
         (is (= {:name                    "A Segment"
                 :description             "I did it!"
@@ -107,9 +107,7 @@
                                           :caveats                 nil
                                           :points_of_interest      nil
                                           :table_id                id
-                                          :definition (if (= format-name "pMBQL")
-                                                        (definition-fn id 10 20)
-                                                        (definition-fn 10 20))})
+                                          :definition              (definition-fn 10 20)})
                    segment-response
                    (update :definition map?))))))))
 
@@ -149,7 +147,7 @@
                    :model/Segment {:keys [id]} {:table_id table-id
                                                 :definition (mbql4-segment-definition 2 "cans")}]
       (doseq [[format-name eq-fn] [["MBQL4" mbql4-segment-definition]
-                                   ["pMBQL" pmbql-segment-definition]]]
+                                   ["pMBQL" (partial pmbql-segment-definition table-id)]]]
         (testing format-name
           (is (= {:name                    "Costa Rica"
                   :description             nil
@@ -173,9 +171,7 @@
                        :points_of_interest      nil
                        :table_id                456
                        :revision_message        "I got me some revisions"
-                       :definition (if (= format-name "pMBQL")
-                                     (eq-fn table-id 2 "cans")
-                                     (eq-fn 2 "cans"))})
+                       :definition              (eq-fn 2 "cans")})
                      segment-response
                      (update :definition map?)))))))))
 
@@ -269,13 +265,11 @@
     (mt/with-temp [:model/Database {database-id :id} {}
                    :model/Table {table-id :id} {:db_id database-id}]
       (doseq [[format-name definition-fn] {"MBQL4" mbql4-segment-definition
-                                           "pMBQL" pmbql-segment-definition}]
+                                           "pMBQL" (partial pmbql-segment-definition table-id)}]
         (testing format-name
           (mt/with-temp [:model/Segment {:keys [id]} {:creator_id (mt/user->id :crowberto)
                                                       :table_id   table-id
-                                                      :definition (if (= format-name "pMBQL")
-                                                                    (definition-fn table-id 2 "cans")
-                                                                    (definition-fn 2 "cans"))}]
+                                                      :definition (definition-fn 2 "cans")}]
             (mt/with-full-data-perms-for-all-users!
               (is (= {:name                    "Toucans in the rainforest"
                       :description             "Lookin' for a blueberry"
