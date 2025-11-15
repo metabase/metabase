@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import * as Urls from "metabase/lib/urls";
 import { Box, Group, Icon, Stack, Text } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
@@ -26,7 +27,7 @@ export function TableModels({ table }: Props) {
                 key={model.id}
                 className={S.modelItem}
                 component={Link}
-                to={`/model/${model.id}`}
+                to={Urls.dataStudioModel(model.id)}
               >
                 <Group gap={8} wrap="nowrap" align="flex-start">
                   <Icon name="model" size={16} c="brand" />

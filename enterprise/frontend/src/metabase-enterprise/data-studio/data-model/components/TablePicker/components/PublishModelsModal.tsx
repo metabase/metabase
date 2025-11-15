@@ -125,10 +125,10 @@ export function PublishModelsModal({
 
 function getLink(response: PublishModelsResponse) {
   if (response.created_count === 1) {
-    return urls.model(response.models[0]); // link to model
+    return urls.dataStudioModel(response.models[0].id);
   }
 
-  return urls.collection(response.target_collection);
+  return urls.dataStudioCollection(response.target_collection.id);
 }
 
 function AcknowledgePublishModelsModal({
