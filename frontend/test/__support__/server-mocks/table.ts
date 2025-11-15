@@ -15,21 +15,6 @@ export function setupTableEndpoints(
     {},
     { name: `table-${table.id}-put` },
   );
-  fetchMock.post(
-    `path:/api/table/${table.id}/rescan_values`,
-    {},
-    { name: `table-${table.id}-rescan-values` },
-  );
-  fetchMock.post(
-    `path:/api/table/${table.id}/sync_schema`,
-    {},
-    { name: `table-${table.id}-sync-schema` },
-  );
-  fetchMock.post(
-    `path:/api/table/${table.id}/discard_values`,
-    {},
-    { name: `table-${table.id}-discard-values` },
-  );
   setupTableQueryMetadataEndpoint(table);
   table.fields?.forEach((field) => setupFieldEndpoints({ ...field, table }));
 }
@@ -41,6 +26,25 @@ export function setupTableQueryMetadataEndpoint(table: Table) {
 export function setupTablesEndpoints(tables: Table[]) {
   fetchMock.get("path:/api/table", tables);
   tables.forEach((table) => setupTableEndpoints(table));
+  setupTablesBulkEndpoints();
+}
+
+export function setupTablesBulkEndpoints() {
+  fetchMock.post(
+    "path:/api/table/rescan-values",
+    {},
+    { name: "tables-rescan-values" },
+  );
+  fetchMock.post(
+    "path:/api/table/sync-schema",
+    {},
+    { name: "tables-sync-schema" },
+  );
+  fetchMock.post(
+    "path:/api/table/discard-values",
+    {},
+    { name: "tables-discard-values" },
+  );
 }
 
 export function setupUploadManagementEndpoint(tables: Table[]) {
