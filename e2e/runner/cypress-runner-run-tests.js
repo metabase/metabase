@@ -12,7 +12,7 @@ const {
 
 const getHost = (port = BACKEND_PORT) => `http://localhost:${port}`;
 
-const getEmbeddingSdkAppE2eConfig = async ({
+const getEmbeddingSdkAppE2eConfig = ({
   baseUrl,
   env,
   project,
@@ -23,7 +23,7 @@ const getEmbeddingSdkAppE2eConfig = async ({
     ...env,
   };
 
-  const defaultConfig = {
+  return {
     project,
     configFile: "e2e/support/cypress.config.js",
     config: {
@@ -33,14 +33,10 @@ const getEmbeddingSdkAppE2eConfig = async ({
     },
     testingType: "e2e",
   };
-
-  const userArgs = await parseArguments(args);
-
-  return Object.assign({}, defaultConfig, userArgs);
 };
 
 const getSampleAppE2eConfig = (suite) => ({
-  [suite]: async () => {
+  [suite]: () => {
     const { appName, env } = SAMPLE_APP_SETUP_CONFIGS[suite];
     const { CLIENT_PORT } = env;
 
@@ -55,7 +51,7 @@ const getSampleAppE2eConfig = (suite) => ({
 });
 
 const getHostAppE2eConfig = (suite) => ({
-  [suite]: async () => {
+  [suite]: () => {
     const { appName, env } = HOST_APP_SETUP_CONFIGS[suite];
 
     return getEmbeddingSdkAppE2eConfig({
@@ -71,19 +67,14 @@ const getHostAppE2eConfig = (suite) => ({
 
 // This is a map of all possible Cypress configurations we can run.
 const configs = {
-  e2e: async () => {
-    const defaultConfig = {
+  e2e: () => {
+    return {
       configFile: "e2e/support/cypress.config.js",
       config: {
         baseUrl: getHost(),
       },
       testingType: "e2e",
     };
-
-    const userArgs = await parseArguments(args);
-
-    const finalConfig = Object.assign({}, defaultConfig, userArgs);
-    return finalConfig;
   },
   ...getSampleAppE2eConfig("metabase-nodejs-react-sdk-embedding-sample-e2e"),
   ...getSampleAppE2eConfig("metabase-nextjs-sdk-embedding-sample-e2e"),
@@ -92,41 +83,33 @@ const configs = {
   ...getHostAppE2eConfig("next-15-app-router-host-app-e2e"),
   ...getHostAppE2eConfig("next-15-pages-router-host-app-e2e"),
   ...getHostAppE2eConfig("angular-20-host-app-e2e"),
-  snapshot: async () => {
+  snapshot: () => {
     process.env.OPEN_UI = false;
 
-    const snapshotConfig = {
+    return {
       configFile: "e2e/support/cypress-snapshots.config.js",
       config: {
         baseUrl: getHost(),
       },
       testingType: "e2e",
     };
-
-    return snapshotConfig;
   },
-  component: async () => {
-
-    const sdkComponentConfig = {
+  component: () => {
+    return {
       configFile: "e2e/support/cypress-embedding-sdk-component-test.config.js",
       config: {
         baseUrl: getHost(),
       },
       testingType: "component",
     };
-
-    const userArgs = await parseArguments(args);
-
-    const finalConfig = Object.assign({}, sdkComponentConfig, userArgs);
-    return finalConfig;
   },
 };
 
 /**
- * This simply runs cypress through the javascript API rather than the CLI, and
- * lets us conditionally load a config file and some other options along with it.
+ * This simply runs cypress through the Cypress Module API rather than the CLI.
+ * See: https://docs.cypress.io/app/references/module-api
  */
-const runCypress = async (suite = "e2e", exitFunction) => {
+const runCypress = async (suite = "e2e", { exitFunction, cliArguments }) => {
   if (!configs[suite]) {
     console.error(
       `Invalid suite: ${suite}, try one of: ${Object.keys(configs)}`,
@@ -134,7 +117,9 @@ const runCypress = async (suite = "e2e", exitFunction) => {
     await exitFunction(FAILURE_EXIT_CODE);
   }
 
-  const config = await configs[suite]();
+  const config = configs[suite]();
+  const userArgs = await parseArguments(cliArguments);
+  const runOptions = { ...config, ...userArgs };
 
   try {
     const { status, message, totalFailed, failures } = process.env.OPEN_UI

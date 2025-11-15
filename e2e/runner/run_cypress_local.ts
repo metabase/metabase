@@ -75,6 +75,8 @@ printBold(`Running Cypress with options:
 `);
 
 const init = async () => {
+  const cliArguments = process.argv.slice(2);
+
   if (options.START_CONTAINERS) {
     printBold("⏳ Starting containers");
     shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml up -d");
@@ -122,7 +124,7 @@ const init = async () => {
     shell("rm -f e2e/support/cypress_sample_instance_data.json");
 
     printBold("⏳ Generating snapshots");
-    await runCypress("snapshot", cleanup);
+    await runCypress("snapshot", { exitFunction: cleanup, cliArguments: [] });
   } else {
     printBold("Skipping snapshot generation, beware of stale snapshot caches");
     shell("echo 'Existing snapshots:' && ls -1 e2e/snapshots");
@@ -151,7 +153,7 @@ const init = async () => {
   }
 
   printBold("⏳ Starting Cypress");
-  await runCypress(options.TEST_SUITE, cleanup);
+  await runCypress(options.TEST_SUITE, { exitFunction: cleanup, cliArguments });
 };
 
 const cleanup = async (exitCode: string | number = SUCCESS_EXIT_CODE) => {

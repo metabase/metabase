@@ -4,6 +4,7 @@ const runCypress = require("./cypress-runner-run-tests");
 const { printBold } = require("./cypress-runner-utils");
 
 const modeOrTestSuite = process.argv?.[2]?.trim();
+const cliArguments = process.argv.slice(3);
 
 const availableModes = ["start", "snapshot"];
 const availableTestSuites = [
@@ -33,7 +34,7 @@ const startServer = async () => {
 
 const runTests = async (testSuite) => {
   printBold(`Running ${testSuite} Cypress Tests`);
-  await runCypress(testSuite, process.exit);
+  await runCypress(testSuite, { exitFunction: process.exit, cliArguments });
 };
 
 if (modeOrTestSuite === "start") {
