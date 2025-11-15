@@ -2,85 +2,103 @@
   "`/api/ee/metabot-v3/slack` routes"
   (:require
    [clj-http.client :as http]
+   [clojure.core.async :as a]
+   [metabase-enterprise.metabot-v3.api :as metabot-v3.api]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.permissions.core :as perms]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 ;; ------------------ SLACK CLIENT --------------------
 
-(defn send-slack-req
-  "POST to Slack API"
-  [client endpoint payload]
-  (try
-    (let [res (http/post (str "https://slack.com/api" endpoint)
-                         {:headers {"Authorization" (str "Bearer " (:bot-token client))}
-                          :content-type "application/json; charset=utf-8"
-                          :body (json/encode payload)})]
-      ;; TODO: better error handling
-      (if (> (:status res) 299)
-        (throw res)
-        (json/decode (:body res) true)))
-    (catch Exception e
-      (println "Error sending message to Slack:" (.getMessage e))
-      nil)))
-
-;; TODO: bad name, would like to consolidate w/ above function
-(defn fetch-slack-req
-  "GET from Slack API"
+(defn slack-get
+  "GET from slack"
   [client endpoint params]
-  (try
-    (let [res (http/get (str "https://slack.com/api" endpoint)
-                        {:headers {"Authorization" (str "Bearer " (:bot-token client))}
-                         :query-params params})]
-      ;; TODO: better error handling
-      (if (> (:status res) 299)
-        (throw res)
-        (json/decode (:body res) true)))
-    (catch Exception e
-      (println "Error sending message to Slack:" (.getMessage e))
-      nil)))
-
-;; TODO: would be nice if each of these endpoints defined their required scopes
-;; and then this was aggregated into the manifest definition somehow...
-
-(defn post-message
-  "Send a Slack message"
-  [client message]
-  (send-slack-req client "/chat.postMessage" message))
-
-(defn delete-message
-  "Remove a Slack message"
-  [client message]
-  (send-slack-req client "/chat.delete" (select-keys message [:channel :ts])))
+  (http/get (str "https://slack.com/api" endpoint)
+            {:headers {"Authorization" (str "Bearer " (:bot-token client))}
+             :query-params params}))
 
 (defn fetch-thread
   "Fetch an entire full Slack thread"
   [client message]
-  (fetch-slack-req client "/conversations.replies" (select-keys message [:channel :ts])))
+  (slack-get client "/conversations.replies" (select-keys message [:channel :ts])))
 
-;; -------------------- UTILS ------------------------
+(defn slack-post
+  "POST to slack"
+  [client endpoint payload]
+  (http/post (str "https://slack.com/api" endpoint)
+             {:headers {"Authorization" (str "Bearer " (:bot-token client))}
+              :content-type "application/json; charset=utf-8"
+              :body (json/encode payload)}))
+
+(defn post-message
+  "Send a Slack message"
+  [client message]
+  (slack-post client "/chat.postMessage" message))
+
+(defn delete-message
+  "Remove a Slack message"
+  [client message]
+  (slack-post client "/chat.delete" (select-keys message [:channel :ts])))
+
+;; -------------------- AI ---------------------------
 
 (defn thread->history
   "Convert a Slack thread to an ai-service history object"
   [thread]
-  (for [msg (:messages thread) :when (:text msg)]
-    {:role (if (:bot_id msg) "assistant" "user")
-     :content (:text msg)}))
+  (->> (:messages thread)
+       (filter :text)
+       (mapv #(hash-map :role (if (:bot_id %) :assistant :user)
+                        :content (:text %)))))
+
+(defn make-ai-request
+  "Make an AI request and aggregate the streamed response text"
+  [conversation_id prompt thread]
+  (let [response-stream (metabot-v3.api/streaming-request {:context         {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
+                                                                             :capabilities []}
+                                                           :message         prompt
+                                                           :history         (thread->history thread)
+                                                           :profile_id      "slackbot"
+                                                           :conversation_id conversation_id
+                                                           :state           {}})
+        ;; TODO: gross code, need some help on cleaning this up
+        baos (java.io.ByteArrayOutputStream.)
+        streaming-fn (.-f response-stream)
+        _ (streaming-fn baos (a/chan))
+        full-response (.toString baos)]
+    (->> (clojure.string/split-lines full-response)
+         (filter #(clojure.string/starts-with? % "0:"))
+         (map #(-> %
+                   (subs 2) ; remove "0:"
+                   (clojure.string/trim)
+                   (json/decode))) ; decode JSON to handle Unicode escapes
+         (clojure.string/join ""))))
+
+;; -------------------- UTILS ------------------------
 
 (comment
   (def client {:bot-token (metabot.settings/metabot-slack-bot-token)})
 
-  (def message (post-message client {:channel "XXXXXXXXXXX" :text "_Thinking..._"}))
+  (def message (post-message client {:channel "XXXXXXXXXXX" :text "_Thinking..._" :thread_ts "XXXXXXXXXXXXXXXXX"}))
   (delete-message client message)
   (select-keys message [:channel :ts])
 
   (def thread (fetch-thread client message))
-  (def history (thread->history thread)))
+  (def history (thread->history thread))
+
+  (def user (t2/select-one :model/User :is_superuser true))
+  (def response-stream
+    (binding [api/*current-user* (t2/select-one :model/User :is_superuser true)
+              api/*current-user-id* (:id (t2/select-one :model/User :is_superuser true))]
+      (make-ai-request (str (random-uuid)) "hi metabot!" thread)))
+  (println response-stream)
+  (post-message client {:channel "XXXXXXXXXXX" :text response-stream :thread_ts (:ts thread)}))
 
 ;; -------------------- API ---------------------------
 
@@ -93,6 +111,7 @@
                            "messages_tab_read_only_enabled" false}
                "bot_user" {"display_name" "Metabot"
                            "always_online" false}
+               "assistant_view" {"assistant_description" "Your AI-powered data assistant"}
                "slash_commands" [{"command" "/metabot"
                                   "url" (str base-url "/api/ee/metabot-v3/slack/commands")
                                   "description" "Issue a Metabot command"
@@ -110,13 +129,18 @@
    "settings" {"event_subscriptions" {"request_url" (str base-url "/api/ee/metabot-v3/slack/events")
                                       "bot_events" ["app_home_opened"
                                                     "message.channels"
-                                                    "message.im"]}
+                                                    "message.im"
+                                                    "assistant_thread_started"
+                                                    "assistant_thread_context_changed"]}
 
                "interactivity" {"is_enabled" true
                                 "request_url" (str base-url "/api/ee/metabot-v3/slack/interactive")}
                "org_deploy_enabled" true
                "socket_mode_enabled" false
                "token_rotation_enabled" false}})
+
+(comment
+  (json/encode (slackbot-manifest "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")))
 
 ;; TODO: add auth middleware + check that user has admin settings access
 (api.macros/defendpoint :get "/manifest"
@@ -162,16 +186,27 @@
 (defn- process-user-message
   "Resond to an incoming user slack message"
   [client event]
-  (post-message client {:channel (:channel event) :message "Hello from Clojure"}))
+  (let [prompt (:text event)
+        thread (fetch-thread client message)
+        ;; TODO: removing binding w/ something that converst the current user to an internal user
+        answer (binding [api/*current-user* (t2/select-one :model/User :is_superuser true)
+                         api/*current-user-id* (:id (t2/select-one :model/User :is_superuser true))]
+                 (make-ai-request (str (random-uuid)) prompt thread))]
+    (println prompt thread answer)
+    (post-message client {:channel (:channel event)
+                          :text answer
+                          :thread_ts (or (:thread_ts event) (:ts event))})))
 
 (defn- handle-event-callback
   "Respond to an event_callback request (docs: TODO)"
   [payload]
   (let [client {:bot-token (metabot.settings/metabot-slack-bot-token)}
         event (:event payload)]
+    (println event)
     (when (user-message? event)
       ;; we must respond to slack w/ a 200 within 3 seconds
       ;; otherwise slack will retry their request
+
       (future (process-user-message client event)))
     ack-msg))
 

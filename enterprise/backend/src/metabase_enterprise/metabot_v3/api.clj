@@ -115,7 +115,7 @@
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."
   (handlers/routes
-   ;; TODO: seems to already be done in the route definitions? (api.macros/ns-handler *ns* +auth)
+   (api.macros/ns-handler *ns*)
    (handlers/route-map-handler
     {"/metabot" metabase-enterprise.metabot-v3.api.metabot/routes
      "/document" metabase-enterprise.metabot-v3.api.document/routes
