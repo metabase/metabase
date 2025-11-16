@@ -19,7 +19,7 @@
 (defn- fallback-engine
   "Find the highest priority search engine available for fallback."
   []
-  (u/seek #(not= :search.engine/semantic %) (search.engine/supported-engines)))
+  (u/seek #(not (isa? % :search.engine/semantic)) (search.engine/supported-engines)))
 
 (defn- index-active? [pgvector index-metadata]
   (boolean (semantic.index-metadata/get-active-index-state pgvector index-metadata)))
