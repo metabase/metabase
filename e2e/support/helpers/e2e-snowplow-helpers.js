@@ -102,6 +102,7 @@ export const expectNoBadSnowplowEvents = () => {
 };
 
 const sendSnowplowRequest = (url) => {
+  cy.log("Send a Snowplow micro request");
   return cy.request({
     url: `${SNOWPLOW_URL}/${url}`,
     json: true,
