@@ -8,6 +8,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.core :as appdb]
+   [metabase.search.core :as search.core]
    [metabase.search.engine :as search.engine]
    [metabase.search.in-place.legacy :as in-place.legacy]
    [metabase.search.in-place.scoring :as in-place.scoring]
@@ -81,8 +82,19 @@
                     (is (not @semantic-called?) "Semantic search should not be called when overridden")
                     (is (not @appdb-called?) "AppDB search should not be called when overridden")))))))))))
 
-(def ^:private search-context
-  {:search-string "test" :search-engine :search.engine/semantic})
+(def ^:private search-context-input
+  {:search-string         "test"
+   :search-engine         "semantic"
+   ;; suppress warnings
+   :current-user-id       (mt/user->id :crowberto)
+   :is-superuser?         true
+   :is-impersonated-user? false
+   :is-sandboxed-user?    false
+   :current-user-perms    #{"/"}
+   :model-ancestors?      false
+   :models                nil})
+
+(def ^:private search-context (search.core/search-context search-context-input))
 
 (defn- with-search-engine-mocks!
   "Sets up search engine mocks for the semantic & appdb backends for testing fallback behavior.
@@ -223,3 +235,23 @@
             (testing ":search-string is empty"
               (let [results (semantic.core/results (assoc search-ctx :search-string ""))]
                 (is (= fallback-results results))))))))))
+
+;; TODO (Chris, 2025-11-14) It's gross that we test this with mocking, but in-line with the rest of the test suite.
+;;      Ideally we would do more back box testing, and use actual embedding snapshots taken from a real model.
+(deftest test-engine-variant-to-hybrid-mode-mapping
+  (testing "search engine variants correctly map to hybrid mode flag"
+    (mt/with-premium-features #{:semantic-search}
+      (mt/with-dynamic-fn-redefs [semantic.pgvector-api/query
+                                  (fn [_pgvector _index-metadata search-ctx]
+                                    {:results [(make-card-result 1 (str (:semantic-hybrid-mode? search-ctx)))]
+                                     :raw-count 1})]
+        (doseq [[engine hybrid?] {nil               true
+                                  "semantic"        true
+                                  "semantic-hybrid" true
+                                  "semantic-only"   false
+                                  "semantic-future" true}]
+          (testing (str engine " => " hybrid? " mode")
+            (let [results (semantic.core/results
+                           (search.core/search-context
+                            (assoc search-context-input :search-engine engine)))]
+              (is (= (str hybrid?) (:name (first results)))))))))))
