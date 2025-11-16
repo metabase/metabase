@@ -81,7 +81,8 @@
 (defmethod mi/can-read? :model/Segment
   ([instance]
    (if-let [model-id (:model_id instance)]
-     ;; TODO(BT 2025-11-11) Should this be :model instead of :card?
+     ;; TODO (tamas 2025-11-11) Should this be :model instead of :card?
+
      (if-let [card (:card instance)]
        (mi/can-read? card)
        (mi/can-read? :model/Card model-id))
@@ -141,7 +142,7 @@
   [segment read-or-write]
   (if-let [model-id (:model_id segment)]
     ;; Model-based segment: delegate to card permissions
-     ;; TODO(BT 2025-11-11) Should this be :model instead of :card?
+    ;; TODO (tamas 2025-11-11) Should this be :model instead of :card?
     (let [card (or (:card segment)
                    (t2/select-one :model/Card :id model-id))]
       (mi/perms-objects-set card read-or-write))
@@ -149,19 +150,6 @@
     (let [table (or (:table segment)
                     (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
       (mi/perms-objects-set table read-or-write))))
-
-(defn- maybe-migrated-segment-definition
-  [segment]
-  (try
-    (migrated-segment-definition segment)
-    (catch Throwable e
-      (log/error e "Error upgrading segment definition:" (ex-message e))
-      nil)))
-
-(t2/define-after-select :model/Segment
-  [{:keys [definition] :as segment}]
-  (cond-> segment
-    (some? definition) (assoc :definition (maybe-migrated-segment-definition segment))))
 
 (defn- maybe-migrated-segment-definition
   [segment]

@@ -112,8 +112,8 @@
                 :show_in_getting_started false
                 :caveats                 nil
                 :points_of_interest      nil
-                :table_id id
-                :model_id nil
+                :table_id                id
+                :model_id                nil
                 :creator_id              (mt/user->id :crowberto)
                 :creator                 (user-details (mt/fetch-user :crowberto))
                 :entity_id               true
@@ -291,8 +291,8 @@
                   :show_in_getting_started false
                   :caveats                 nil
                   :points_of_interest      nil
-                  :table_id table-id
-                  :model_id nil
+                  :table_id                table-id
+                  :model_id                nil
                   :creator_id              (mt/user->id :rasta)
                   :creator                 (user-details (mt/fetch-user :rasta))
                   :entity_id               true
@@ -375,8 +375,8 @@
                  :show_in_getting_started false
                  :caveats                 nil
                  :points_of_interest      nil
-                 :table_id table-id
-                 :model_id nil
+                 :table_id                table-id
+                 :model_id                nil
                  :creator_id              (mt/user->id :rasta)
                  :creator                 (user-details (mt/fetch-user :rasta))
                  :created_at              true
@@ -417,8 +417,8 @@
                       :show_in_getting_started false
                       :caveats                 nil
                       :points_of_interest      nil
-                      :table_id table-id
-                      :model_id nil
+                      :table_id                table-id
+                      :model_id                nil
                       :creator_id              (mt/user->id :crowberto)
                       :creator                 (user-details (mt/fetch-user :crowberto))
                       :created_at              true
