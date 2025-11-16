@@ -29,6 +29,9 @@ const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
 const isQaDatabase = process.env["QA_DB_ENABLED"] === "true";
 
+const HOST = process.env.MB_JETTY_HOST || "localhost";
+const BACKEND_PORT = process.env.MB_JETTY_PORT || 4000;
+
 // docs say that tsconfig paths should handle aliases, but they don't
 const assetsResolverPlugin = {
   name: "assetsResolver",
@@ -157,6 +160,7 @@ const defaultConfig = {
 
     return config;
   },
+  baseUrl: `http://${HOST}:${BACKEND_PORT}`,
   defaultBrowser: process.env.CYPRESS_BROWSER ?? "chrome",
   supportFile: "e2e/support/cypress.js",
   chromeWebSecurity: false,

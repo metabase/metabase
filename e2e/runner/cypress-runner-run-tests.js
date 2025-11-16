@@ -70,9 +70,6 @@ const configs = {
   e2e: () => {
     return {
       configFile: "e2e/support/cypress.config.js",
-      config: {
-        baseUrl: getHost(),
-      },
       testingType: "e2e",
     };
   },
@@ -88,18 +85,12 @@ const configs = {
 
     return {
       configFile: "e2e/support/cypress-snapshots.config.js",
-      config: {
-        baseUrl: getHost(),
-      },
       testingType: "e2e",
     };
   },
   component: () => {
     return {
       configFile: "e2e/support/cypress-embedding-sdk-component-test.config.js",
-      config: {
-        baseUrl: getHost(),
-      },
       testingType: "component",
     };
   },
