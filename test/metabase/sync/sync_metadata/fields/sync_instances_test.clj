@@ -1,4 +1,4 @@
-(ns metabase.sync.sync-metadata.fields.sync-instances-test
+(ns ^:mb/driver-tests metabase.sync.sync-metadata.fields.sync-instances-test
   (:require
    [clojure.test :refer :all]
    [metabase.sync.sync-metadata :as sync-metadata]

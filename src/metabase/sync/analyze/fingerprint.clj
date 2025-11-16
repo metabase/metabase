@@ -189,8 +189,13 @@
   "Return a sequences of Fields belonging to `table` for which we should generate (and save) fingerprints.
    This should include NEW fields that are active and visible."
   [table :- i/TableInstance]
-  (seq (t2/select :model/Field
-                  (honeysql-for-fields-that-need-fingerprint-updating table))))
+  ;; TODO (11/9/2025 lbrdnk): Database fetching in following expressions should be optimized (e.g. passed down from
+  ;;                          upper layers).
+  (let [database (table/database table)
+        driver (driver.u/database->driver database)]
+    (seq (t2/select :model/Field
+                    (cond-> (honeysql-for-fields-that-need-fingerprint-updating table)
+                      (driver/should-sync-active-subset? driver) (update :where conj [:= :active_subset true]))))))
 
 (mu/defn fingerprint-table!
   "Generate and save fingerprints for all the Fields in `table` that have not been previously analyzed."

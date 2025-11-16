@@ -3,12 +3,15 @@
   (:require
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (mu/defn- clear-field-values-for-field!
@@ -51,7 +54,14 @@
 
 (defn- table->fields-to-scan
   [table]
-  (t2/select :model/Field :table_id (u/the-id table), :active true, :visibility_type "normal"))
+  (let [database (table/database table)
+        driver (driver.u/database->driver database)]
+    (t2/select :model/Field (cond-> {:where [:and
+                                             [:= :table_id (u/the-id table)]
+                                             [:= :active true]
+                                             [:= :visibility_type "normal"]]}
+                              (driver/should-sync-active-subset? driver) (update :where conj
+                                                                                 [:= :active_subset true])))))
 
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`."

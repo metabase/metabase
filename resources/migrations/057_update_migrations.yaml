@@ -2459,6 +2459,20 @@ databaseChangeLog:
             constraintName: fk_transform_ref_creator_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: v57.2025-11-07T11:32:41
+      author: lbrdnk
+      comment: Add active_subset column to metabase_field
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: active_subset
+                  remarks: Is this field path of the active subset (see the driver/should-sync-active-subset?)
+                  type: ${boolean.type}
+                  defaultValue: null
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
