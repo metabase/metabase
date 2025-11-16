@@ -21,6 +21,7 @@
   currently still allowed for backwards-compatibility purposes -- currently the FE client will just parrot back the
   `:widget-type` in some cases. In these cases, the backend is just supposed to infer the actual type of the parameter
   value."
+  (:refer-clojure :exclude [get-in])
   (:require
    #?@(:clj
        ([flatland.ordered.map :as ordered-map]))
@@ -28,7 +29,8 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [get-in]]))
 
 (defn- variadic-opts-first
   "Some clauses, like `:contains`, have optional `options` last in their binary form, and required options first in
