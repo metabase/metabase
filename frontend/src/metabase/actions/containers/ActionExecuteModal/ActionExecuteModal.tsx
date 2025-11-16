@@ -86,20 +86,18 @@ export const ActionExecuteModal = ({
   const isLoading =
     isLoadingAction || (isLoadingInitialValues && !hasPrefetchedValues);
 
-  const loadedAction = action ? checkNotNull(action) : null;
-
   return (
     <Modal
       opened={opened}
       onClose={onClose}
-      title={loadedAction?.name}
+      title={action?.name}
       data-testid="action-execute-modal"
     >
       {error || isLoading ? (
         <LoadingAndErrorWrapper error={error} loading={isLoading} />
       ) : (
         <ActionParametersInputForm
-          action={loadedAction!}
+          action={checkNotNull(action)}
           initialValues={initialValues}
           onCancel={onClose}
           onSubmit={handleSubmit}
