@@ -1,31 +1,18 @@
 (ns metabase.revisions.impl.segment
   (:require
    [medley.core :as m]
-   [metabase.lib.options :as lib.options]
-   [metabase.lib.util :as lib.util]
-   [metabase.lib.walk :as lib.walk]
-   [metabase.revisions.models.revision :as revision]
-   [metabase.util.malli :as mu]))
+   [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.revisions.models.revision :as revision]))
 
 (defmethod revision/serialize-instance :model/Segment
   [_model _id instance]
   (dissoc instance :created_at :updated_at))
 
-(defn- remove-uuids-from-query
-  "Recursively removes :lib/uuid properties from a query structure"
-  [query]
-  (mu/disable-enforcement
-    (lib.walk/walk-clauses query
-                           (fn [_query _path-type _path clause]
-                             (cond-> clause
-                               (lib.util/clause? clause)
-                               (lib.options/update-options dissoc :lib/uuid))))))
-
 (defn- normalize-segment
   [segment]
   (-> segment
       (select-keys [:name :description :definition])
-      (update :definition remove-uuids-from-query)))
+      (update :definition lib.schema.util/remove-lib-uuids)))
 
 (defmethod revision/diff-map :model/Segment
   [model segment1 segment2]

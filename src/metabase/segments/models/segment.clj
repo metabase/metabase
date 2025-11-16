@@ -163,6 +163,19 @@
   (cond-> segment
     (some? definition) (assoc :definition (maybe-migrated-segment-definition segment))))
 
+(defn- maybe-migrated-segment-definition
+  [segment]
+  (try
+    (migrated-segment-definition segment)
+    (catch Throwable e
+      (log/error e "Error upgrading segment definition:" (ex-message e))
+      nil)))
+
+(t2/define-after-select :model/Segment
+  [{:keys [definition] :as segment}]
+  (cond-> segment
+    (some? definition) (assoc :definition (maybe-migrated-segment-definition segment))))
+
 (mu/defn- definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Segment's definition."
   [{:keys [definition], :as _segment} :- (ms/InstanceOf :model/Segment)]
