@@ -600,13 +600,12 @@
   Returns semantic search results with keyword_rank set to NULL so the same
   scorers can be used regardless of search mode."
   [index embedding search-context]
-  (let [semantic-results (semantic-search-query index embedding search-context)]
-    {:with [[:semantic_results semantic-results]]
-     :select (into common-search-columns
-                   [[:semantic_rank :semantic_rank]
-                    [[:inline 0] :keyword_rank]])
-     :from [[:semantic_results]]
-     :limit (semantic-settings/semantic-search-results-limit)}))
+  {:with   [[:semantic_results (semantic-search-query index embedding search-context)]]
+   :select (into common-search-columns
+                 [[:semantic_rank :semantic_rank]
+                  [[:inline 0] :keyword_rank]])
+   :from   [[:semantic_results]]
+   :limit  (semantic-settings/semantic-search-results-limit)})
 
 (defn- scored-search-query
   "Build a search query with additional `scorers`.

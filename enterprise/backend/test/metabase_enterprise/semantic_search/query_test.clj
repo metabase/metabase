@@ -33,11 +33,9 @@
       (mt/as-admin
         (semantic.tu/with-test-db! {:mode :mock-indexed}
           (testing "Search for 'breed' - keyword in native query only"
-           ;; "breed" appears in Dog Training Guide's native query ("GROUP BY breed")
-           ;; but gets default embedding [0.01 0.02 0.03 0.04] when searched,
-           ;; which is semantically distant from Dog Training Guide's embedding [0.12 -0.34 0.56 -0.78].
-           ;; The cosine distance exceeds the 0.7 threshold, so vector search filters it out.
-           ;; However, keyword search matches it via the native query text.
+           ;; The term "breed" appears in Dog Training Guide's native query ("GROUP BY breed"), but its embedding
+           ;; exceeds the distance threshold to the corresponding document's vector.
+           ;; Hybrid search, however, matches it via the native query text.
             (let [search-string    "breed"
                   hybrid-results   (semantic.tu/query-index {:search-string         search-string
                                                              :semantic-hybrid-mode? true
