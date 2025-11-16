@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.limit
   "Middleware that handles limiting the maximum number of rows returned by a query."
-  (:refer-clojure :exclude [empty?])
+  (:refer-clojure :exclude [empty? get-in])
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -9,7 +9,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [empty?]]
+   [metabase.util.performance :refer [empty? get-in]]
    [potemkin :as p]))
 
 ;;; provided as a convenience since this var used to live here. Prefer using directly from `qp.settings` going forward.

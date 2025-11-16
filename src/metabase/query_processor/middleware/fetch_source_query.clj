@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.fetch-source-query
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [some get-in])
   (:require
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -20,7 +20,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some]]
+   [metabase.util.performance :refer [some get-in]]
    [weavejester.dependency :as dep]))
 
 ;;; TODO -- consider whether [[normalize-card-query]] should be moved into [[metabase.lib.card]], seems like it would

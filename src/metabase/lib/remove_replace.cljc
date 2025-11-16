@@ -1,5 +1,5 @@
 (ns metabase.lib.remove-replace
-  (:refer-clojure :exclude [every? mapv run! some empty? not-empty #?(:clj for)])
+  (:refer-clojure :exclude [every? mapv run! some empty? not-empty get-in #?(:clj for)])
   (:require
    [clojure.set :as set]
    [medley.core :as m]
@@ -23,7 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [every? mapv run! some empty? not-empty #?(:clj for)]]))
+   [metabase.util.performance :as perf :refer [every? mapv run! some empty? not-empty get-in #?(:clj for)]]))
 
 (defn- stage-paths
   [query stage-number]

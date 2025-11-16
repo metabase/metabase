@@ -1,5 +1,5 @@
 (ns metabase.driver.bigquery-cloud-sdk
-  (:refer-clojure :exclude [mapv some empty? not-empty])
+  (:refer-clojure :exclude [mapv some empty? not-empty get-in])
   (:require
    [clojure.core.async :as a]
    [clojure.set :as set]
@@ -24,7 +24,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv some empty? not-empty]]
+   [metabase.util.performance :refer [mapv some empty? not-empty get-in]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import

@@ -1,5 +1,6 @@
 (ns metabase.lib-be.metadata.jvm
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
+  (:refer-clojure :exclude [get-in])
   (:require
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
@@ -17,7 +18,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as u.memo]
-   [metabase.util.performance :as perf]
+   [metabase.util.performance :as perf :refer [get-in]]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
    [methodical.core :as methodical]
    [potemkin :as p]
