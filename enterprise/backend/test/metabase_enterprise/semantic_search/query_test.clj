@@ -18,12 +18,12 @@
         (semantic.tu/with-test-db! {:mode :mock-indexed}
           (semantic.tu/with-only-semantic-weights
             (testing "Dog-related query finds dog content"
-              (let [results (-> (semantic.tu/query-index {:search-string "puppy"})
+              (let [results (-> (semantic.tu/query-index {:search-string "puppy", :semantic-hybrid-mode? false})
                                 semantic.tu/filter-for-mock-embeddings)]
                 (is (= "Dog Training Guide" (-> results first :name)))))
 
             (testing "Bird-related query finds bird content"
-              (let [results (-> (semantic.tu/query-index {:search-string "avian"})
+              (let [results (-> (semantic.tu/query-index {:search-string "avian", :semantic-hybrid-mode? false})
                                 semantic.tu/filter-for-mock-embeddings)]
                 (is (= "Bird Watching Tips" (-> results first :name)))))))))))
 

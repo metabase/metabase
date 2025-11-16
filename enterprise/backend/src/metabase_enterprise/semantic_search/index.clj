@@ -604,7 +604,7 @@
     {:with [[:semantic_results semantic-results]]
      :select (into common-search-columns
                    [[:semantic_rank :semantic_rank]
-                    [[:inline nil] :keyword_rank]])
+                    [[:inline 0] :keyword_rank]])
      :from [[:semantic_results]]
      :limit (semantic-settings/semantic-search-results-limit)}))
 
@@ -616,7 +616,7 @@
   ;; The purpose of this query is just to project the coalesced hybrid columns with standard names so the scorers know
   ;; what to call them (e.g. :model rather than [:coalesced :v.model :t.model]). Likewise, the :search_index alias
   ;; allows us to re-use scoring expressions between the appdb and semantic backends without adjusting column names.
-  (let [hybrid? (:semantic-hybrid-mode? search-context)
+  (let [hybrid? (:semantic-hybrid-mode? search-context true)
         base-query (if hybrid?
                      (hybrid-search-query index embedding search-context)
                      (wrapped-semantic-search-query index embedding search-context))
