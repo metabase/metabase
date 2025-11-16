@@ -27,6 +27,33 @@
                                 semantic.tu/filter-for-mock-embeddings)]
                 (is (= "Bird Watching Tips" (-> results first :name)))))))))))
 
+(deftest hybrid-vs-semantic-only-test
+  (testing "Hybrid search includes keyword matches that semantic-only misses"
+    (mt/with-premium-features #{:semantic-search}
+      (mt/as-admin
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
+          (testing "Search for 'breed' - keyword in native query only"
+           ;; "breed" appears in Dog Training Guide's native query ("GROUP BY breed")
+           ;; but gets default embedding [0.01 0.02 0.03 0.04] when searched,
+           ;; which is semantically distant from Dog Training Guide's embedding [0.12 -0.34 0.56 -0.78].
+           ;; The cosine distance exceeds the 0.7 threshold, so vector search filters it out.
+           ;; However, keyword search matches it via the native query text.
+            (let [search-string    "breed"
+                  hybrid-results   (semantic.tu/query-index {:search-string         search-string
+                                                             :semantic-hybrid-mode? true
+                                                             :search-native-query   true})
+                  semantic-results (semantic.tu/query-index {:search-string         search-string
+                                                             :semantic-hybrid-mode? false
+                                                             :search-native-query   true})]
+
+              (testing "Hybrid mode finds result via keyword match in native query"
+                (is (some #(= "Dog Training Guide" (:name %)) hybrid-results)
+                    "Dog Training Guide should be found via keyword match in hybrid mode"))
+
+              (testing "Semantic-only mode misses keyword-only match"
+                (is (not-any? #(= "Dog Training Guide" (:name %)) semantic-results)
+                    "Dog Training Guide should NOT be found in semantic-only mode (vector distance too large)")))))))))
+
 (defn- index-of-name
   "Return the index of the item with :name `name` in `coll`"
   [coll name]
