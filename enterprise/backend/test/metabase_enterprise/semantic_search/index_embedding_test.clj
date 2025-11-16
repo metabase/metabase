@@ -10,7 +10,7 @@
 (def ^:private test-long-model-name "some-really-really-really-really-really-long-model-name-that-will-exceed-the-limit")
 (def ^:private test-vector-dimensions 1024)
 
-;; Postgres truncates indentifier names to 63 bytes (+ 1 byte for a terminating NULL). Ensure that names do not exceed the limit
+;; Postgres truncates identifier names to 63 bytes (+ 1 byte for a terminating NULL). Ensure that names do not exceed the limit
 (deftest ^:parallel index-embedding-name-length-test
   (mt/with-premium-features #{:semantic-search}
     (testing "Truncates if name would be longer than the 63 byte Postgres limit"
