@@ -239,6 +239,109 @@ export const saveDashboardPdf = async ({
       node.style.height = `${contentHeight}px`;
       node.style.backgroundColor = backgroundColor;
 
+      // Fix gauge chart text sizing in PDF exports
+      // Problem: Gauge charts use SVG with a viewBox coordinate system.
+      // When the browser scales the viewBox to fit the pixel width, text gets
+      // magnified. html2canvas then captures this magnified text, making it
+      // look too large in the PDF. We fix this in two steps:
+      try {
+        const svgs = Array.from(node.querySelectorAll("svg"));
+        svgs.forEach((svg) => {
+          const textNodes = Array.from(
+            svg.querySelectorAll("text"),
+          ) as SVGTextElement[];
+
+          // Step 1: Compute how much the browser scaled the SVG
+          // Example: If viewBox width is 203px but SVG renders at 519px,
+          // the scale factor is 519/203 = 2.55x
+          const vb = (svg as SVGSVGElement).viewBox?.baseVal;
+          const clientW =
+            (svg as SVGSVGElement).clientWidth ||
+            ((svg as any).width?.baseVal?.value as number | undefined) ||
+            0;
+          const scale =
+            vb && vb.width > 0 && clientW > 0 ? clientW / vb.width : 1;
+
+          // Step 2: Reverse the scaling on all text elements
+          // If text was scaled 2.55x by the browser, divide its size by 2.55
+          // to get back to the original intended size
+          if (scale !== 1 && scale > 0) {
+            textNodes.forEach((t) => {
+              const currentSize = parseFloat(
+                getComputedStyle(t).fontSize || "0",
+              );
+              if (currentSize > 0) {
+                t.style.fontSize = `${currentSize / scale}px`;
+              }
+            });
+          }
+
+          // Step 3: Special handling for gauge charts
+          // Gauge charts have a large center value (the main number) and smaller
+          // tick labels around the arc. After de-scaling, these might be too small
+          // or have the wrong size ratio. We detect gauge charts by looking for:
+          // - Bold text with middle anchor (the center value)
+          // - Other text elements (the tick labels)
+          const centerTexts = textNodes.filter((t) => {
+            const cs = getComputedStyle(t);
+            const isBold = parseInt(cs.fontWeight || "400", 10) >= 700;
+            // Check both attribute and computed style for text-anchor
+            // because different browsers/implementations may set it differently
+            const isMiddle =
+              t.getAttribute("text-anchor") === "middle" ||
+              (cs as any).textAnchor === "middle";
+            return isBold && isMiddle;
+          });
+
+          const otherTexts = textNodes.filter((t) => !centerTexts.includes(t));
+
+          // Only proceed if we found both center and tick labels (confirms it's a gauge)
+          if (centerTexts.length > 0 && otherTexts.length > 0) {
+            const getSize = (t: SVGTextElement) =>
+              parseFloat(getComputedStyle(t).fontSize || "0");
+
+            const centerSizes = centerTexts.map(getSize).filter((n) => n > 0);
+            const otherSizes = otherTexts.map(getSize).filter((n) => n > 0);
+
+            if (centerSizes.length > 0 && otherSizes.length > 0) {
+              // Calculate average sizes after de-scaling
+              const avgCenter =
+                centerSizes.reduce((a, b) => a + b, 0) / centerSizes.length;
+              const avgOther =
+                otherSizes.reduce((a, b) => a + b, 0) / otherSizes.length;
+              const currentRatio = avgCenter / avgOther;
+
+              // Decide if we need to fix the sizing:
+              // - Ratio < 2.0: Center and ticks are too similar in size
+              // - avgOther < 3: Tick labels are too small to read
+              // - avgCenter < 6: Center value is too small to read
+              const needsScaling =
+                currentRatio < 2.0 || avgOther < 3 || avgCenter < 6;
+
+              if (needsScaling) {
+                // Set absolute target sizes based on gauge design spec:
+                // Center should be 0.7em = 11.2px (assuming 16px base)
+                // Ticks should be 0.28em = 4.48px
+                // This gives us a 2.5:1 ratio which is visually correct
+                const targetCenterSize = 11.2;
+                const targetTickSize = 4.48;
+
+                centerTexts.forEach((t) => {
+                  t.style.fontSize = `${targetCenterSize}px`;
+                });
+
+                otherTexts.forEach((t) => {
+                  t.style.fontSize = `${targetTickSize}px`;
+                });
+              }
+            }
+          }
+        });
+      } catch {
+        // If anything fails, silently continue - better to have
+        // slightly wrong text sizing than to break the entire PDF export
+      }
+
       // Handle all dashboard card containers and their children
       const dashboardCards = node.querySelectorAll("[data-dashcard-key]");
       dashboardCards.forEach((card) => {
