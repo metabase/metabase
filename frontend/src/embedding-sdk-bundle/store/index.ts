@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-imports */
 import { type Reducer, combineReducers } from "@reduxjs/toolkit";
 import { useContext } from "react";
 
