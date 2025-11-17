@@ -19,13 +19,13 @@ import { MetabaseReduxProvider, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { MetabotProvider } from "metabase-enterprise/metabot/context";
 import { initializePlugins } from "sdk-ee-plugins";
 
 import { SCOPED_CSS_RESET } from "../../private/PublicComponentStylesWrapper";
 import { SdkFontsGlobalStyles } from "../../private/SdkGlobalFontsStyles";
 import { PortalContainer } from "../../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../../private/SdkUsageProblem";
+import { METABOT_SDK_EE_PLUGIN } from "../MetabotQuestion/MetabotQuestion";
 
 type ComponentProviderInternalProps = ComponentProviderProps & {
   reduxStore: SdkStore;
@@ -154,14 +154,14 @@ export const ComponentProvider = memo(function ComponentProvider({
 
   return (
     <MetabaseReduxProvider store={reduxStoreRef.current!}>
-      <MetabotProvider>
+      <METABOT_SDK_EE_PLUGIN.MetabotProvider>
         <ComponentProviderInternal
           {...props}
           reduxStore={reduxStoreRef.current!}
         >
           {children}
         </ComponentProviderInternal>
-      </MetabotProvider>
+      </METABOT_SDK_EE_PLUGIN.MetabotProvider>
     </MetabaseReduxProvider>
   );
 });
