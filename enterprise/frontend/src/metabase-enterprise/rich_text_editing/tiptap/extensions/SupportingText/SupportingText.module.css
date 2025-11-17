@@ -3,11 +3,7 @@
   position: relative;
   border-radius: var(--mantine-radius-md);
   overflow: hidden;
-  background-color: color-mix(
-    in srgb,
-    var(--mb-color-background-inverse) 5%,
-    transparent
-  );
+  background-color: var(--mb-color-background-light);
   border: 1px solid transparent;
   transition:
     background-color 150ms,
@@ -16,8 +12,8 @@
   &:hover {
     background-color: color-mix(
       in srgb,
-      var(--mb-color-background-inverse) 7%,
-      transparent
+      var(--mb-color-background-inverse) 2%,
+      var(--mb-color-background-light)
     );
   }
 
