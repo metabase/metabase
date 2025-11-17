@@ -201,6 +201,7 @@
    :skip []
    :transform {:created_at (serdes/date)
                :table_id (serdes/fk :model/Table)
+               :model_id (serdes/fk :model/Card)
                :creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import serdes/import-mbql}}})
 
