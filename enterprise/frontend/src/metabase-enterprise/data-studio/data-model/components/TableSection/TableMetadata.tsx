@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useId } from "react";
 import { t } from "ttag";
 
 import Link from "metabase/common/components/Link";
@@ -91,12 +92,13 @@ function MetadataRow({
   label: string;
   value: string | number | null | undefined | ReactNode;
 }) {
+  const id = useId();
   return (
     <Group justify="space-between">
-      <Text size="md" c="text-primary">
+      <Text size="md" c="text-primary" id={id}>
         {label}
       </Text>
-      <Text size="md" c="text-primary">
+      <Text size="md" c="text-primary" aria-labelledby={id}>
         {value}
       </Text>
     </Group>
