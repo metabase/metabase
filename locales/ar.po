@@ -31663,16 +31663,16 @@ msgid "The location of your git repository, e.g. https://github.com/acme-inco/me
 msgstr "موقع مستودع git الخاص بك، على سبيل المثال https://github.com/acme-inco/metabase.git"
 
 #: metabase_enterprise/remote_sync/settings.clj:46
-msgid "Git synchronization type - :development or :production"
-msgstr "نوع مزامنة Git - :development أو :production"
+msgid "Git synchronization type - :read-write or :read-only"
+msgstr "نوع مزامنة Git - :read-write أو :read-only"
 
 #: metabase_enterprise/remote_sync/settings.clj:62
-msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production."
-msgstr "هل سيتم الاستيراد تلقائيًا من مستودع git البعيد؟ ينطبق هذا فقط إذا كان نوع المزامنة عن بُعد هو :production."
+msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only."
+msgstr "هل سيتم الاستيراد تلقائيًا من مستودع git البعيد؟ ينطبق هذا فقط إذا كان نوع المزامنة عن بُعد هو :read-only."
 
 #: metabase_enterprise/remote_sync/settings.clj:70
-msgid "If remote-sync-type is :production and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
-msgstr "إذا كان نوع المزامنة عن بُعد هو :production وقيمة المزامنة عن بُعد التلقائية للاستيراد صحيحة، فهذا هو معدل البحث عن التحديثات للاستيراد (بالدقائق). القيمة الافتراضية هي 5."
+msgid "If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
+msgstr "إذا كان نوع المزامنة عن بُعد هو :read-only وقيمة المزامنة عن بُعد التلقائية للاستيراد صحيحة، فهذا هو معدل البحث عن التحديثات للاستيراد (بالدقائق). القيمة الافتراضية هي 5."
 
 #: metabase_enterprise/remote_sync/settings.clj:78
 msgid "The maximum amount of time a remote sync task will be given to complete"
