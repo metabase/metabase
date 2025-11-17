@@ -543,7 +543,9 @@
     (set/difference all-modules module-deps)))
 
 (defn- simulate-rename
-  "Create a new version of `deps` as they would appear if you renamed namespace(s)."
+  "Create a new version of `deps` as they would appear if you renamed namespace(s).
+
+    (simulate-rename (dependencies) '{metabase.users.api metabase.users-rest.api})"
   ([deps old-namespace new-namespace]
    (for [dep deps]
      (-> dep
@@ -564,21 +566,12 @@
 
 (defn dependencies-eliminated-by-renaming-namespaces
   "Calculate the set of dependencies of `module` (both explicit and transient) that would be eliminated by renaming
-  `old-namespaces->new-namespaces`."
+  `old-namespaces->new-namespaces`.
+
+    (dependencies-eliminated-by-renaming-namespaces 'users '{metabase.users.api metabase.users-rest.api})"
   [module old-namespace->new-namespace]
   (let [deps            (dependencies)
         old-module-deps (into (sorted-set) (keys (all-module-deps-paths deps module)))
         new-deps        (simulate-rename deps old-namespace->new-namespace)
         new-module-deps (into (sorted-set) (keys (all-module-deps-paths new-deps module)))]
     (set/difference old-module-deps new-module-deps)))
-
-(defn api-namespace-renames
-  "Build a map of a namespace renames for use with [[dependencies-eliminated-by-renaming-namespaces]] that would
-  simulate splitting moving every `.api` namespace into a `-rest` module."
-  []
-  (into (sorted-map)
-        (comp (map :namespace)
-              (keep (fn [a-namespace]
-                      (when-let [[_match prefix suffix] (re-find #"(^metabase(?:-enterprise)?\.[^.]+)(?<!-rest)(\.api.*$)" (name a-namespace))]
-                        [a-namespace (symbol (str prefix "-rest" suffix))]))))
-        (dependencies)))

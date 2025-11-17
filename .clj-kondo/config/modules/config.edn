@@ -1284,7 +1284,6 @@
            api
            appearance
            auth-identity
-           config
            events
            request
            settings
@@ -1447,8 +1446,7 @@
 
   users
   {:team "UX West"
-   :api  #{metabase.users.core
-           metabase.users.init
+   :api  #{metabase.users.init
            metabase.users.models.user
            metabase.users.models.user-parameter-value
            metabase.users.schema
@@ -1473,8 +1471,6 @@
            api
            appearance
            auth-identity
-           batch-processing
-           channel
            collections
            config
            events
@@ -1482,9 +1478,6 @@
            permissions
            premium-features
            request
-           session
-           settings
-           setup
            sso
            users
            util
