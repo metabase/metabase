@@ -1,3 +1,4 @@
+import type React from "react";
 import { type MouseEvent, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
@@ -17,7 +18,7 @@ import * as Urls from "metabase/lib/urls";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getIsEmbedding } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
-import { TextInput, Tooltip } from "metabase/ui";
+import { Icon, TextInput, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { RecentCollectionItem, TableId } from "metabase-types/api";
@@ -47,6 +48,7 @@ export interface NotebookDataPickerProps {
   shouldDisableItem?: (
     item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
   ) => boolean;
+  cellComponent?: ({ children }: { children: React.ReactNode }) => JSX.Element;
 }
 
 export function NotebookDataPicker({
@@ -60,6 +62,7 @@ export function NotebookDataPicker({
   isDisabled,
   onChange,
   shouldDisableItem,
+  cellComponent,
 }: NotebookDataPickerProps) {
   const store = useStore();
   const dispatch = useDispatch();
@@ -102,6 +105,7 @@ export function NotebookDataPicker({
         isDisabled={isDisabled}
         onChange={handleChange}
         shouldDisableItem={shouldDisableItem}
+        cellComponent={cellComponent}
       />
     );
   }
@@ -120,6 +124,7 @@ type ModernDataPickerProps = {
   shouldDisableItem?: (
     item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
   ) => boolean;
+  cellComponent?: ({ children }: { children: React.ReactNode }) => JSX.Element;
 };
 
 function ModernDataPicker({
@@ -133,6 +138,7 @@ function ModernDataPicker({
   isDisabled,
   onChange,
   shouldDisableItem,
+  cellComponent,
 }: ModernDataPickerProps) {
   const [isOpened, setIsOpened] = useState(!table);
   const context = useNotebookContext();
@@ -172,6 +178,8 @@ function ModernDataPicker({
     }
   };
 
+  const Cell = cellComponent ?? (({ children }) => <>{children}</>);
+
   return (
     <>
       <MiniPicker
@@ -206,32 +214,40 @@ function ModernDataPicker({
           )
         }
       />
-      <Tooltip
-        label={t`${METAKEY}+click to open in new tab`}
-        hidden={!table || isDisabled}
-        events={{ hover: true, focus: false, touch: false }}
-      >
-        <DataPickerTarget
-          tableInfo={tableInfo}
-          showPlaceholder={isOpened}
-          placeholder={
-            <TextInput
-              placeholder={placeholder}
-              value={dataSourceSearchQuery}
-              size="sm"
-              onChange={(e) => setDataSourceSearchQuery(e.currentTarget.value)}
-              onClickCapture={(e) => {
-                e.stopPropagation();
-                setIsOpened(true);
-              }}
-              autoFocus={isOpened}
-            />
-          }
-          isDisabled={isDisabled}
-          onClick={handleClick}
-          onAuxClick={handleAuxClick}
+      {isOpened || !table ? (
+        <TextInput
+          placeholder={t`Search for tables and and more...`}
+          value={dataSourceSearchQuery}
+          variant="unstyled"
+          styles={{
+            input: { background: "transparent ", border: "none", p: 0 },
+          }}
+          leftSection={<Icon name="search" />}
+          onChange={(e) => setDataSourceSearchQuery(e.currentTarget.value)}
+          onClickCapture={(e) => {
+            e.stopPropagation();
+            setIsOpened(true);
+          }}
+          miw="20rem"
+          autoFocus={isOpened}
         />
-      </Tooltip>
+      ) : (
+        <Tooltip
+          label={t`${METAKEY}+click to open in new tab`}
+          hidden={!table || isDisabled}
+          events={{ hover: true, focus: false, touch: false }}
+        >
+          <Cell>
+            <DataPickerTarget
+              tableInfo={tableInfo}
+              placeholder={placeholder}
+              isDisabled={isDisabled}
+              onClick={handleClick}
+              onAuxClick={handleAuxClick}
+            />
+          </Cell>
+        </Tooltip>
+      )}
     </>
   );
 }

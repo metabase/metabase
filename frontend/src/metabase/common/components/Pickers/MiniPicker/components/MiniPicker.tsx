@@ -99,10 +99,10 @@ export function MiniPicker({
       ) : (
         <Popover opened={opened} onChange={onClose} position="bottom-start">
           <Popover.Target>
-            <Box h="100%" />
+            <Box />
           </Popover.Target>
 
-          <Popover.Dropdown mt="sm" py="sm" data-testid="mini-picker">
+          <Popover.Dropdown mt="md" py="sm" data-testid="mini-picker">
             {isLoadingPath ? <MiniPickerListLoader /> : <MiniPickerPane />}
           </Popover.Dropdown>
         </Popover>

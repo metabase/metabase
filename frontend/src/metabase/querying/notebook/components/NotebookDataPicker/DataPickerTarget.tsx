@@ -1,5 +1,6 @@
 import type React from "react";
 import { type MouseEvent, type Ref, forwardRef } from "react";
+import { t } from "ttag";
 
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
@@ -9,8 +10,7 @@ import { NotebookCell } from "../NotebookCell";
 
 type DataPickerTargetProps = {
   tableInfo?: Lib.TableDisplayInfo;
-  placeholder: React.ReactNode;
-  showPlaceholder?: boolean;
+  placeholder?: React.ReactNode;
   isDisabled?: boolean;
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   onAuxClick?: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -20,9 +20,8 @@ type DataPickerTargetProps = {
 export const DataPickerTarget = forwardRef(function DataPickerTarget(
   {
     tableInfo,
-    placeholder,
+    placeholder = t`Select data`,
     isDisabled,
-    showPlaceholder,
     onClick,
     onAuxClick,
     getTableIcon = defaultGetTableIcon,
@@ -44,9 +43,7 @@ export const DataPickerTarget = forwardRef(function DataPickerTarget(
         {tableInfo && (
           <Icon name={getTableIcon(tableInfo)} style={{ flexShrink: 0 }} />
         )}
-        {showPlaceholder
-          ? placeholder
-          : (tableInfo?.displayName ?? placeholder)}
+        {tableInfo?.displayName ?? placeholder}
       </Flex>
     </UnstyledButton>
   );

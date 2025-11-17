@@ -260,7 +260,7 @@ function SearchItemList({ query }: { query: string }) {
       <Box>
         {isLoading && <MiniPickerListLoader />}
         {!isLoading && searchResults?.length === 0 && (
-          <Text p="sm">{t`No search results`}</Text>
+          <Text px="md" py="sm" c="text-medium">{t`No search results`}</Text>
         )}
       </Box>
       {searchResults?.map((item) => {

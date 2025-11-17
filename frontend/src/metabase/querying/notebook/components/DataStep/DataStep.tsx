@@ -1,3 +1,4 @@
+import type React from "react";
 import { type CSSProperties, useMemo } from "react";
 import { t } from "ttag";
 
@@ -52,35 +53,38 @@ export const DataStep = ({
 
   return (
     <NotebookCell color={color}>
-      <NotebookCellItem
-        color={color}
-        inactive={!table}
-        right={
-          canSelectTableColumns && (
-            <DataFieldPopover
-              query={query}
-              stageIndex={stageIndex}
-              updateQuery={updateQuery}
-            />
-          )
-        }
-        containerStyle={{ padding: 0 }}
-        rightContainerStyle={{ width: 37, padding: 0 }}
-        data-testid="data-step-cell"
-        disabled={readOnly}
-      >
-        <NotebookDataPicker
-          query={query}
-          stageIndex={stageIndex}
-          table={table}
-          title={t`Pick your starting data`}
-          canChangeDatabase
-          hasMetrics
-          isDisabled={readOnly}
-          onChange={handleTableChange}
-          {...dataPickerOptions}
-        />
-      </NotebookCellItem>
+      <NotebookDataPicker
+        query={query}
+        stageIndex={stageIndex}
+        table={table}
+        title={t`Pick your starting data`}
+        canChangeDatabase
+        hasMetrics
+        isDisabled={readOnly}
+        onChange={handleTableChange}
+        cellComponent={({ children }: { children: React.ReactNode }) => (
+          <NotebookCellItem
+            color={color}
+            inactive={!table}
+            right={
+              canSelectTableColumns && (
+                <DataFieldPopover
+                  query={query}
+                  stageIndex={stageIndex}
+                  updateQuery={updateQuery}
+                />
+              )
+            }
+            containerStyle={{ padding: 0 }}
+            rightContainerStyle={{ width: 37, padding: 0 }}
+            data-testid="data-step-cell"
+            disabled={readOnly}
+          >
+            {children}
+          </NotebookCellItem>
+        )}
+        {...dataPickerOptions}
+      />
     </NotebookCell>
   );
 };

@@ -34,32 +34,35 @@ export function JoinTablePicker({
   const isDisabled = isReadOnly;
 
   return (
-    <NotebookCellItem
-      inactive={!table}
-      readOnly={isReadOnly}
-      disabled={isDisabled}
-      color={color}
-      right={
-        table != null && !isReadOnly ? (
-          <JoinTableColumnPicker columnPicker={columnPicker} />
-        ) : null
-      }
-      containerStyle={CONTAINER_STYLE}
-      rightContainerStyle={RIGHT_CONTAINER_STYLE}
-      aria-label={t`Right table`}
-    >
-      <NotebookDataPicker
-        title={t`Pick data to join`}
-        query={query}
-        stageIndex={stageIndex}
-        table={table}
-        placeholder={t`Pick data…`}
-        canChangeDatabase={false}
-        hasMetrics={false}
-        isDisabled={isDisabled}
-        onChange={onChange}
-      />
-    </NotebookCellItem>
+    <NotebookDataPicker
+      title={t`Pick data to join`}
+      query={query}
+      stageIndex={stageIndex}
+      table={table}
+      placeholder={t`Pick data…`}
+      canChangeDatabase={false}
+      hasMetrics={false}
+      isDisabled={isDisabled}
+      onChange={onChange}
+      cellComponent={({ children }: { children: React.ReactNode }) => (
+        <NotebookCellItem
+          inactive={!table}
+          readOnly={isReadOnly}
+          disabled={isDisabled}
+          color={color}
+          right={
+            table != null && !isReadOnly ? (
+              <JoinTableColumnPicker columnPicker={columnPicker} />
+            ) : null
+          }
+          containerStyle={CONTAINER_STYLE}
+          rightContainerStyle={RIGHT_CONTAINER_STYLE}
+          aria-label={t`Right table`}
+        >
+          {children}
+        </NotebookCellItem>
+      )}
+    />
   );
 }
 
