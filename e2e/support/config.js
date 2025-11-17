@@ -4,6 +4,8 @@ import path from "node:path";
 import cypressOnFix from "cypress-on-fix";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
+import { BACKEND_HOST, BACKEND_PORT } from "../runner/constants/backend-port";
+
 import * as ciTasks from "./ci_tasks";
 import { collectFailingTests } from "./collectFailedTests";
 import {
@@ -26,9 +28,6 @@ const isEnterprise = process.env["MB_EDITION"] === "ee";
 const isCI = process.env["CYPRESS_CI"] === "true";
 
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
-
-const HOST = process.env.MB_JETTY_HOST || "localhost";
-const BACKEND_PORT = process.env.MB_JETTY_PORT || 4000;
 
 // docs say that tsconfig paths should handle aliases, but they don't
 const assetsResolverPlugin = {
@@ -154,7 +153,7 @@ const defaultConfig = {
 
     return config;
   },
-  baseUrl: `http://${HOST}:${BACKEND_PORT}`,
+  baseUrl: `http://${BACKEND_HOST}:${BACKEND_PORT}`,
   defaultBrowser: process.env.CYPRESS_BROWSER ?? "chrome",
   supportFile: "e2e/support/cypress.js",
   chromeWebSecurity: false,
