@@ -102,7 +102,12 @@ export function MiniPicker({
             <Box />
           </Popover.Target>
 
-          <Popover.Dropdown mt="md" py="sm" data-testid="mini-picker">
+          <Popover.Dropdown
+            mt="xl"
+            ml="-1rem"
+            py="sm"
+            data-testid="mini-picker"
+          >
             {isLoadingPath ? <MiniPickerListLoader /> : <MiniPickerPane />}
           </Popover.Dropdown>
         </Popover>
