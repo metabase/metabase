@@ -280,7 +280,7 @@
       ;; native query with explicit checkpoint filter
       (if (get-in query [:stages 0 :template-tags "checkpoint"])
         (update query :parameters conj
-                {:type :text
+                {:type (if (number? checkpoint-value) :number :text)
                  :target [:variable [:template-tag "checkpoint"]]
                  :value checkpoint-value})
         query)
