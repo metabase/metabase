@@ -181,10 +181,6 @@
                       {:status-code 400})))
 
     ;; Prevent changing data_source to/from metabase-transform
-    ;; TODO DS 2025-11-13
-    ;;  this is as generic hook, but the policy is not (it only applies to update instructions via API calls)
-    ;;  - the transform target activation needs to set the data_source
-    ;;  - when a table is no longer a target we ought to be able to unset it
     (when (contains? changes :data_source)
       (let [original-data-source (:data_source original-table)
             new-data-source      (:data_source changes)]
@@ -192,8 +188,7 @@
                    (not= new-data-source :metabase-transform))
           (throw (ex-info "Cannot change data_source from metabase-transform"
                           {:status-code 400})))
-        (when (and (some? original-data-source)             ;; DS: this is wrong (See above note)
-                   (not= original-data-source :metabase-transform)
+        (when (and (not= original-data-source :metabase-transform)
                    (= new-data-source :metabase-transform))
           (throw (ex-info "Cannot set data_source to metabase-transform"
                           {:status-code 400})))))
