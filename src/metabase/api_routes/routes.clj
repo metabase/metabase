@@ -5,7 +5,7 @@
    [metabase.activity-feed.api]
    [metabase.analytics.api]
    [metabase.api-keys.api]
-   [metabase.api.docs :as api.docs]
+   [metabase.api.docs]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
@@ -145,7 +145,7 @@
    "/dashboard"            (+auth 'metabase.dashboards.api)
    "/database"             (+auth 'metabase.warehouses.api)
    "/dataset"              (+auth 'metabase.query-processor.api)
-   "/docs"                 (api.docs/make-routes #'routes)
+   "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/eid-translation"      'metabase.eid-translation.api
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding.api/embedding-routes)
