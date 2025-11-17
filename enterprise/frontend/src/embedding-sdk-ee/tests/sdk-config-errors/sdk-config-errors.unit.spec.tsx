@@ -16,8 +16,8 @@ import {
   type JwtMockConfig,
   MOCK_INSTANCE_URL,
   setupMockJwtEndpoints,
-} from "../../../../../../frontend/src/embedding-sdk-bundle/test/mocks/sso";
-import { setupSdkState } from "../../../../../../frontend/src/embedding-sdk-bundle/test/server-mocks/sdk-init";
+} from "embedding-sdk-bundle/test/mocks/sso";
+import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import { setupEmbeddingSdkEnterprisePlugins } from "../support";
 
 const defaultAuthConfig = defineMetabaseAuthConfig({

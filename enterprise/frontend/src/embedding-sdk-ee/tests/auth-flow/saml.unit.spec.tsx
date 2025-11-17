@@ -13,7 +13,7 @@ import {
   MOCK_SESSION_TOKEN_ID,
   setupMockSamlEndpoints,
   setupSamlPopup,
-} from "../../../../../../frontend/src/embedding-sdk-bundle/test/mocks/sso";
+} from "embedding-sdk-bundle/test/mocks/sso";
 import { setupEmbeddingSdkEnterprisePlugins } from "../support";
 
 import { setup as baseSetup } from "./setup";

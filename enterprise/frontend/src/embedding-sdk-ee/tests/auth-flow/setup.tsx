@@ -8,6 +8,12 @@ import {
 import { renderWithProviders } from "__support__/ui";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
+import { MOCK_INSTANCE_URL } from "embedding-sdk-bundle/test/mocks/sso";
+import {
+  createMockLoginStatusState,
+  createMockSdkState,
+} from "embedding-sdk-bundle/test/mocks/state";
+import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import {
   createMockCard,
@@ -17,13 +23,6 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-
-import { MOCK_INSTANCE_URL } from "../../../../../../frontend/src/embedding-sdk-bundle/test/mocks/sso";
-import {
-  createMockLoginStatusState,
-  createMockSdkState,
-} from "../../../../../../frontend/src/embedding-sdk-bundle/test/mocks/state";
-import { setupSdkState } from "../../../../../../frontend/src/embedding-sdk-bundle/test/server-mocks/sdk-init";
 
 const MOCK_DB = createSampleDatabase();
 
