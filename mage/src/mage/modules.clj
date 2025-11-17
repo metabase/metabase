@@ -93,19 +93,27 @@
   (let [unaffected (unaffected-modules deps modules)]
     (contains? unaffected 'driver)))
 
+(defn- print-updated-and-unaffected-modules [deps updated]
+  (let [unaffected (unaffected-modules deps updated)]
+    (println "These modules have changed:" (pr-str updated))
+    (println)
+    (println)
+    (println "These are all the modules are unaffected by these changes:" (pr-str unaffected))
+    (println)
+    (println)
+    (println "(By unaffected, this means these modules do not have a direct or indirect dependency on the modules that have been changed.)")
+    (println)
+    (println)
+    (println "Driver tests" (if (skip-driver-tests? deps updated)
+                              "CAN be skipped."
+                              "MUST be run."))))
+
 (defn cli-print-affected-modules
   [[git-ref, :as _command-line-args]]
   (let [deps       (dependencies)
         updated    (updated-modules git-ref)
-        affected   (affected-modules deps updated)
-        unaffected (unaffected-modules deps updated)]
-    (println "These modules have changed:" (pr-str updated))
-    (println)
-    (println)
-    (println "These modules are unaffected by this change:" (pr-str unaffected))
-    (println)
-    (println)
-    (println "Driver tests" (if (skip-driver-tests? deps updated) "CAN" "CAN NOT") "be skipped.")
+        affected   (affected-modules deps updated)]
+    (print-updated-and-unaffected-modules deps updated)
     (println)
     (println)
     (println "You can run tests for these modules and all downstream modules as follows:")
@@ -141,22 +149,19 @@
         files))
 
 (defn cli-can-skip-driver-tests
-  "Exits with zero status code if we can skip driver tests, nonzero if we cannot."
+  "Exits with zero status code if we can skip driver tests, nonzero if we cannot.
+
+  Invoke this from the CLI with
+
+    ./bin/mage can-skip-driver-tests [git-ref]"
   [[git-ref, :as _command-line-args]]
   (let [deps          (dependencies)
         git-ref       (or git-ref "master")
         updated-files (remove-non-driver-test-namespaces (u/updated-files git-ref))
         updated       (updated-files->updated-modules updated-files)
-        unaffected    (unaffected-modules deps updated)
         skip-tests?   (skip-driver-tests? deps updated)]
     ;; Not strictly necessary, but people looking at CI will appreciate having this extra info.
-    (println "These modules have changed:" (pr-str updated))
-    (println)
-    (println)
-    (println "These modules are unaffected by this change:" (pr-str unaffected))
-    (println)
-    (println)
-    (println "Driver tests" (if skip-tests? "CAN" "CAN NOT") "be skipped.")
+    (print-updated-and-unaffected-modules deps updated)
     (System/exit ^Long (cond
                          (not skip-tests?)                             1
                          (changes-important-file-for-drivers? git-ref) 1
