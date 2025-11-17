@@ -1234,7 +1234,10 @@ describe("scenarios > dashboard > parameters", () => {
         H.editDashboard();
       });
 
-      H.findDashCardAction(H.getDashboardCard(0), "Duplicate").click();
+      H.getDashboardCard(0)
+        .realHover({ scrollBehavior: "bottom" })
+        .findByLabelText("Duplicate")
+        .click();
 
       H.getDashboardCard(2).within(() => {
         cy.findByDisplayValue("Heading Text").should("exist");
