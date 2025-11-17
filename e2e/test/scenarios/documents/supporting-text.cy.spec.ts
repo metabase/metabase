@@ -430,4 +430,29 @@ describe("documents supporting text", () => {
         });
       });
   });
+
+  it("should remove supporting text when the last chart in its group is removed", () => {
+    H.createDocument({
+      name: "Supporting Text auto-cleanup",
+      document: DOCUMENT_WITH_THREE_CARDS_AND_COLUMNS,
+      collection_id: null,
+      alias: "document",
+      idAlias: "documentId",
+    });
+    H.visitDocument("@documentId");
+
+    H.openDocumentCardMenu("Orders");
+    H.popover().findByText("Add supporting text").click();
+    cy.realType("Lorem ipsum");
+
+    const targetCardTitle = "Orders, Count, Grouped by Created At (year)";
+
+    cy.log("One card remaining in group, supportingText should exist");
+    H.dragAndDropCardOnAnotherCard("Orders", targetCardTitle);
+    H.documentContent().findByText("Lorem ipsum").should("exist");
+
+    cy.log("No cards remaining in group, supportingText should not exist");
+    H.dragAndDropCardOnAnotherCard("Orders, Count", targetCardTitle);
+    H.documentContent().findByText("Lorem ipsum").should("not.exist");
+  });
 });
