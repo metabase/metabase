@@ -464,7 +464,7 @@ describe("command palette", () => {
   });
 });
 
-H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
+describe("shortcuts", { tags: ["@actions"] }, () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();

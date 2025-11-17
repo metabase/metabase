@@ -17,6 +17,9 @@ import {
 
 import { setup as baseSetup } from "./setup";
 
+// Activates the plugins needed for the tests before any SDK code
+import "metabase-enterprise/sdk-plugins";
+
 const setup = ({
   authConfig,
   locale,

@@ -14,7 +14,7 @@ import type { Document } from "metabase-types/api";
 
 const { H } = cy;
 
-H.describeWithSnowplowEE("documents", () => {
+describe("documents", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

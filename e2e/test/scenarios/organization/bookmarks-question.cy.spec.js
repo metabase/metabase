@@ -6,7 +6,7 @@ import {
 
 import { toggleQuestionBookmarkStatus } from "./helpers/bookmark-helpers";
 
-H.describeWithSnowplow("scenarios > question > bookmarks", () => {
+describe("scenarios > question > bookmarks", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();

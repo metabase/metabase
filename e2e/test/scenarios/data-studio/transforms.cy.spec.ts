@@ -20,7 +20,7 @@ const TARGET_SCHEMA = "Schema A";
 const TARGET_SCHEMA_2 = "Schema B";
 const CUSTOM_SCHEMA = "custom_schema";
 
-H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
+describe("scenarios > admin > transforms", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
@@ -1722,7 +1722,7 @@ describe("scenarios > admin > transforms > jobs", () => {
     });
   });
 
-  H.describeWithSnowplowEE("runs", () => {
+  describe("runs", () => {
     beforeEach(() => {
       H.resetSnowplow();
     });

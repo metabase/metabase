@@ -1,5 +1,9 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
@@ -7,7 +11,7 @@ import {
   createMockParameter,
 } from "metabase-types/api/mocks";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const viewports = [
   [768, 800],
@@ -64,7 +68,9 @@ describe("metabase#31587", () => {
 });
 
 describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
-  const TEST_TABLE = "PRODUCTS";
+  const { ALL_USERS_GROUP } = USER_GROUPS;
+
+  const TEST_TABLE = "scoreboard_actions";
 
   const ID_ACTION_PARAMETER = createMockActionParameter({
     id: "86981cc2-2589-44b5-b559-2c8bbf5bb36a",
@@ -87,24 +93,17 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
     parameters: [ID_DASHBOARD_PARAMETER],
   };
 
-  const MODEL_DETAILS = {
-    name: "Products model",
-    query: { "source-table": PRODUCTS_ID },
-    database: SAMPLE_DB_ID,
-    type: "model",
-  };
-
   const EXPECTED_UPDATED_VALUE = 999;
 
   const QUERY_ACTION = {
     name: "Query action",
     type: "query",
     parameters: [ID_ACTION_PARAMETER],
-    database_id: SAMPLE_DB_ID,
+    database_id: WRITABLE_DB_ID,
     dataset_query: {
       type: "native",
       native: {
-        query: `UPDATE ${TEST_TABLE} SET PRICE = ${EXPECTED_UPDATED_VALUE} WHERE ID = {{ ${ID_ACTION_PARAMETER.slug} }}`,
+        query: `UPDATE ${TEST_TABLE} SET SCORE = ${EXPECTED_UPDATED_VALUE} WHERE ID = {{ ${ID_ACTION_PARAMETER.slug} }}`,
         "template-tags": {
           [ID_ACTION_PARAMETER.slug]: {
             id: ID_ACTION_PARAMETER.id,
@@ -114,7 +113,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
           },
         },
       },
-      database: SAMPLE_DB_ID,
+      database: WRITABLE_DB_ID,
     },
     visualization_settings: {
       fields: {
@@ -128,69 +127,103 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
     },
   };
 
-  function setupDashboard() {
-    H.createDashboard(DASHBOARD_DETAILS).then(
-      ({ body: { id: dashboardId } }) => {
-        cy.wrap(dashboardId).as("dashboardId");
+  function setupWritableDB() {
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: {
+        [WRITABLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "query-builder-and-native",
+        },
+      },
+    });
+
+    H.resyncDatabase({
+      dbId: WRITABLE_DB_ID,
+      tableName: TEST_TABLE,
+    });
+
+    H.createModelFromTableName({
+      tableName: TEST_TABLE,
+      idAlias: "modelId",
+    });
+
+    H.setActionsEnabledForDB(WRITABLE_DB_ID, true);
+  }
+
+  function setupDashboardAndAction() {
+    let fieldId;
+    H.getTable({ databaseId: WRITABLE_DB_ID, name: TEST_TABLE }).then(
+      (table) => {
+        fieldId = table.fields.find((field) => field.name === "id").id;
       },
     );
 
-    cy.then(function () {
-      H.updateDashboardCards({
-        dashboard_id: this.dashboardId,
-        cards: [
-          {
-            id: H.getNextUnsavedDashboardCardId(),
-            card_id: this.modelId,
-            // Map dashboard parameter to PRODUCTS.ID
-            parameter_mappings: [
-              {
-                parameter_id: ID_DASHBOARD_PARAMETER.id,
-                card_id: this.modelId,
-                target: ["dimension", ["field-id", PRODUCTS.ID, null]],
-              },
-            ],
-          },
-          H.getActionCardDetails({
-            label: QUERY_ACTION.name,
-            action_id: this.actionId,
-            // Map action's ID parameter to dashboard parameter
-            parameter_mappings: [
-              {
-                parameter_id: ID_DASHBOARD_PARAMETER.id,
-                target: [
-                  "variable",
-                  ["template-tag", ID_DASHBOARD_PARAMETER.slug],
+    cy.get("@modelId").then((modelId) => {
+      H.createImplicitActions({ modelId });
+
+      H.createAction({ ...QUERY_ACTION, model_id: modelId }).then(
+        ({ body: { id: actionId } }) => {
+          cy.wrap(actionId).as("actionId");
+
+          H.createDashboard(DASHBOARD_DETAILS).then(
+            ({ body: { id: dashboardId } }) => {
+              cy.wrap(dashboardId).as("dashboardId");
+
+              H.updateDashboardCards({
+                dashboard_id: dashboardId,
+                cards: [
+                  {
+                    id: H.getNextUnsavedDashboardCardId(),
+                    card_id: modelId,
+                    // Map dashboard parameter to PRODUCTS.ID
+                    parameter_mappings: [
+                      {
+                        parameter_id: ID_DASHBOARD_PARAMETER.id,
+                        card_id: modelId,
+                        target: ["dimension", ["field-id", fieldId, null]],
+                      },
+                    ],
+                  },
+                  H.getActionCardDetails({
+                    label: QUERY_ACTION.name,
+                    action_id: actionId,
+                    // Map action's ID parameter to dashboard parameter
+                    parameter_mappings: [
+                      {
+                        parameter_id: ID_DASHBOARD_PARAMETER.id,
+                        target: [
+                          "variable",
+                          ["template-tag", ID_DASHBOARD_PARAMETER.slug],
+                        ],
+                      },
+                    ],
+                  }),
                 ],
-              },
-            ],
-          }),
-        ],
-      });
+              });
+            },
+          );
+        },
+      );
     });
   }
 
   beforeEach(() => {
-    H.restore();
+    cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
+    cy.intercept("POST", "/api/action/*/execute").as("executeAction");
+    cy.intercept("GET", "/api/action/*/execute?parameters=*").as(
+      "prefetchValues",
+    );
+
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: TEST_TABLE });
+
     cy.signInAsAdmin();
-    H.createQuestion(MODEL_DETAILS, {
-      wrapId: true,
-      idAlias: "modelId",
-    });
-    H.setActionsEnabledForDB(SAMPLE_DB_ID, true);
+    setupWritableDB();
+
+    setupDashboardAndAction();
   });
 
   it("can submit query action linked with dashboard parameters (metabase#32974)", () => {
-    cy.get("@modelId").then((modelId) => {
-      H.createAction({ ...QUERY_ACTION, model_id: modelId }).then(
-        ({ body: { id: actionId } }) => {
-          cy.wrap(actionId).as("actionId");
-        },
-      );
-    });
-
-    setupDashboard();
-
     H.visitDashboard("@dashboardId", { params: { id: 1 } });
 
     cy.log("Execute action");

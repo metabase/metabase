@@ -63,7 +63,7 @@ const assertAcceptRejectUI = (opts: { visible: boolean }) => {
   rejectSuggestionBtn().should(should);
 };
 
-H.describeWithSnowplowEE(
+describe(
   "scenarios > metabot > transforms codegen",
   { viewportWidth: 1600, viewportHeight: 1200 },
   () => {
