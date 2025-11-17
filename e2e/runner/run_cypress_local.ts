@@ -2,6 +2,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
+import { BACKEND_PORT } from "./constants/backend-port";
 import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./constants/exit-code";
 import runCypress from "./cypress-node-js-runner";
 import CypressBackend from "./cypress-runner-backend";
@@ -25,7 +26,7 @@ const userOptions = {
   MB_EDITION: "ee", // ee | oss
   START_CONTAINERS: true,
   STOP_CONTAINERS: false,
-  BACKEND_PORT: 4000,
+  BACKEND_PORT: BACKEND_PORT, // override with MB_JETTY_PORT in your env
   OPEN_UI: true,
   SHOW_BACKEND_LOGS: false,
   GENERATE_SNAPSHOTS: true,
