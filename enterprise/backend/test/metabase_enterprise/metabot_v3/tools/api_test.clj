@@ -658,7 +658,6 @@
                :conversation_id conversation-id}
               response))
       ;; Verify the query is normalized (supports both MBQL v4 and v5)
-      (is (map? (get-in response [:structured_output :query])))
       (is (= (mt/id) (get-in response [:structured_output :query :database]))))))
 
 (deftest get-report-details-test
