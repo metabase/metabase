@@ -6,7 +6,7 @@ inputs:
   apply-patches:
     description: "Whether to patch frontend dependencies with patch-package."
     required: true
-    default: 'true'
+    default: "true"
 runs:
   using: "composite"
   steps:
@@ -15,6 +15,8 @@ runs:
       with:
         node-version: ${{ inputs.node-version }} # this overrides, if present
         node-version-file: ".nvmrc"
+
+    - uses: google/wireit@setup-github-actions-caching/v2
 
     - name: Get cache keys
       uses: ./.github/actions/get-cache-keys
