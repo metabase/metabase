@@ -82,7 +82,7 @@
                     (is (not @semantic-called?) "Semantic search should not be called when overridden")
                     (is (not @appdb-called?) "AppDB search should not be called when overridden")))))))))))
 
-;; This is behind a delay as we need the db to be initialized before we can determine the admin user id.
+;; Behind a delay as we need the db to be initialized before we can determine the admin user id.
 (def ^:private search-context-input-delay
   (delay
     {:search-string         "test"
@@ -96,8 +96,7 @@
      :model-ancestors?      false
      :models                nil}))
 
-;; This is behind a delay as there are feature flag checks in this normalization function, and those trigger db
-;; initialization, which we don't want in a top-level form. It's a pity this code mixes concerns like that.
+;; Behind a delay as we need the db to be initialized before we can build the input, and do feature flag validation
 (def ^:private search-context-delay (delay (search.core/search-context @search-context-input-delay)))
 
 (defn- with-search-engine-mocks!
