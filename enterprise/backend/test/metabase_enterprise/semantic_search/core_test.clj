@@ -94,7 +94,9 @@
    :model-ancestors?      false
    :models                nil})
 
-(def ^:private search-context (search.core/search-context search-context-input))
+;; This is behind a delay as there are feature flag checks in this normalization function, and those trigger db
+;; initialization, which we don't want in a top-level form. It's a pity this code mixes concerns like that.
+(def ^:private search-context-delay (delay (search.core/search-context search-context-input)))
 
 (defn- with-search-engine-mocks!
   "Sets up search engine mocks for the semantic & appdb backends for testing fallback behavior.
@@ -137,10 +139,10 @@
                                 (make-card-result 2 "fallback-card-2")
                                 (make-card-result 3 "fallback-card-3")
                                 (make-card-result 4 "fallback-dashboard" :model "dashboard")]
-              search-ctx       search-context
-              metrics (atom {:metabase-search/semantic-fallback-results-usage 0
-                             :metabase-search/semantic-fallback-triggered 0
-                             :metabase-search/semantic-results-before-fallback 0})]
+              search-ctx       @search-context-delay
+              metrics          (atom {:metabase-search/semantic-fallback-results-usage  0
+                                      :metabase-search/semantic-fallback-triggered      0
+                                      :metabase-search/semantic-results-before-fallback 0})]
           (with-redefs [analytics/inc! (fn [metric & _args]
                                          (case metric
                                            :metabase-search/semantic-fallback-triggered
@@ -179,7 +181,7 @@
     (mt/with-premium-features #{:semantic-search}
       (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3]
         (let [semantic-result (make-card-result 1 "semantic-card" :score 0.9)
-              search-ctx      search-context]
+              search-ctx      @search-context-delay]
           (with-search-engine-mocks! [semantic-result] (fn [_] (throw (ex-info "Fallback fail" {})))
             (fn []
               (let [results (into [] (semantic.core/results search-ctx))]
@@ -193,7 +195,7 @@
                                 (make-card-result 2 "semantic-card-2" :score 0.8)
                                 (make-card-result 3 "semantic-card-3" :score 0.7)
                                 (make-card-result 4 "semantic-card-4" :score 0.6)]
-              search-ctx       search-context
+              search-ctx       @search-context-delay
               fallback-fn      (fn [ctx] (throw (ex-info "Should not call fallback engine" {:engine (:search-engine ctx)})))]
           (with-search-engine-mocks! semantic-results fallback-fn
             (fn []
@@ -210,7 +212,7 @@
         (let [semantic-result  (make-card-result 1 "semantic-card" :score 0.9)
               fallback-results (for [i (range 2 10)]
                                  (make-card-result i (str "fallback-card-" i)))
-              search-ctx       search-context]
+              search-ctx       @search-context-delay]
           (with-search-engine-mocks! [semantic-result] fallback-results
             (fn []
               (let [results (semantic.core/results search-ctx)]
@@ -226,7 +228,7 @@
     (mt/with-premium-features #{:semantic-search}
       (let [semantic-results {:results [] :raw-count 0}
             fallback-results [(make-card-result 1 "fallback-card-1")]
-            search-ctx       search-context]
+            search-ctx       @search-context-delay]
         (with-search-engine-mocks! semantic-results fallback-results
           (fn []
             (testing ":search-string is nil"
