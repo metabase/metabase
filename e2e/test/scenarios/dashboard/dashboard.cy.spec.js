@@ -1359,7 +1359,7 @@ describe("scenarios > dashboard", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > dashboard", () => {
+describe("scenarios > dashboard", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/activity/recents?*").as("recentViews");
     H.resetSnowplow();
