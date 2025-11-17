@@ -79,9 +79,9 @@ async function getTablePathFromValue(
 
   const [dbs, schemas] = await Promise.all([dbReq, schemaReq]);
   const db = dbs.data.find((db) => db.id === value.db_id);
-  const schema: SchemaName | undefined = schemas.find(
+  const schema: SchemaName | undefined = schemas?.length > 1 ? schemas.find(
     (sch) => sch === value.schema,
-  );
+  ): undefined;
   return [
     ...(db ? [{ id: db.id, name: db.name, model: "database" as const }] : []),
     ...(db && schema
