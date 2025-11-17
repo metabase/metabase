@@ -52,6 +52,7 @@ export * from "./e2e-token-helpers";
 export * from "./e2e-transform-helpers";
 export * from "./e2e-ui-elements-helpers";
 export * from "./e2e-ui-elements-overflow-helpers";
+export * from "./e2e-ui-select";
 export * from "./e2e-upload-helpers";
 export * from "./e2e-users-helpers";
 export * from "./e2e-visual-tests-helpers";

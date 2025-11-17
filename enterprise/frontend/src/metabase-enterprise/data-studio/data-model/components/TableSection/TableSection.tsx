@@ -203,6 +203,7 @@ const TableSectionBase = ({
                   flexGrow: 0,
                   width: 40,
                 }}
+                aria-label={t`Dependency graph`}
               />
             </Box>
           </Tooltip>
