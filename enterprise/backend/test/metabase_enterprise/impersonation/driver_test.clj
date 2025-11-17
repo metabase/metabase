@@ -210,10 +210,17 @@
   [driver {:keys [details]}]
   (assoc details :role (impersonation-default-user driver)))
 
-(doseq [driver [:postgres :snowflake]]
-  (defmethod impersonation-details driver
-    [_driver {:keys [details]}]
-    details))
+(defmethod impersonation-details :snowflake
+  [driver {:keys [details]}]
+  (let [priv-key (tx/db-test-env-var-or-throw driver :private-key)]
+    (merge (dissoc details :private-key-id)
+           {:private-key-options "uploaded"
+            :private-key-value (mt/priv-key->base64-uri priv-key)
+            :use-password false})))
+
+(defmethod impersonation-details :postgres
+  [_driver {:keys [details]}]
+  details)
 
 (deftest conn-impersonation-simple-test
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
