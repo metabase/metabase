@@ -109,7 +109,7 @@ export const DEFAULT_DASHCARDS: DashboardCard[] = [
   textDashcard2,
 ];
 
-export interface SetupSdkDashboardOptions {
+export interface SetupSdkDashboardOptions extends NotificationChannelSetup {
   props?: Partial<SdkDashboardProps>;
   providerProps?: Partial<MetabaseProviderProps>;
   isLocaleLoading?: boolean;
@@ -117,6 +117,11 @@ export interface SetupSdkDashboardOptions {
   dashboardName?: string;
   dataPickerProps?: EditableDashboardProps["dataPickerProps"];
   dashcards?: DashboardCard[];
+}
+
+interface NotificationChannelSetup {
+  isEmailConfigured?: boolean;
+  isSlackConfigured?: boolean;
 }
 
 jest.mock("metabase/common/hooks/use-locale", () => ({
@@ -131,6 +136,8 @@ export const setupSdkDashboard = async ({
   dashboardName = "Dashboard",
   dataPickerProps,
   dashcards = DEFAULT_DASHCARDS,
+  isEmailConfigured = false,
+  isSlackConfigured = false,
 }: SetupSdkDashboardOptions) => {
   const useLocaleMock = useLocale as jest.Mock;
   useLocaleMock.mockReturnValue({ isLocaleLoading });
@@ -174,7 +181,10 @@ export const setupSdkDashboard = async ({
 
   setupAlertsEndpoints(tableCard, []);
 
-  setupNotificationChannelsEndpoints({});
+  setupNotificationChannelsEndpoints({
+    email: { configured: isEmailConfigured },
+    slack: { configured: isSlackConfigured },
+  } as any);
 
   setupDatabasesEndpoints([createMockDatabase()]);
 
