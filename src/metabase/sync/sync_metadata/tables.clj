@@ -141,9 +141,11 @@
            :display_name            (or (:display_name table)
                                         (humanization/name->human-readable-name (:name table)))
            :name                    (:name table)
-           :is_writable             (:is_writable table)
-           :data_source             (:data_source table)
-           :data_authority          (:data_authority table)}
+           :is_writable             (:is_writable table)}
+          (when (:data_source table)
+            {:data_source (:data_source table)})
+          (when (:data_authority table)
+            {:data_authority (:data_authority table)})
           (when (:is_sample database)
             {:data_authority :ingested
              :data_source    :ingested}))))
