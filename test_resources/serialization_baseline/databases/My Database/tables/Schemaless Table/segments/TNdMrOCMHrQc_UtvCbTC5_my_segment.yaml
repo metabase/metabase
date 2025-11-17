@@ -28,6 +28,7 @@ table_id:
 - My Database
 - null
 - Schemaless Table
+model_id: null
 serdes/meta:
 - id: TNdMrOCMHrQc_UtvCbTC5
   label: my_segment
