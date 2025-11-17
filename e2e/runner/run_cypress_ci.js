@@ -1,6 +1,6 @@
 const { FAILURE_EXIT_CODE } = require("./constants/exit-code");
+const runCypress = require("./cypress-node-js-runner");
 const CypressBackend = require("./cypress-runner-backend");
-const runCypress = require("./cypress-runner-run-tests");
 const { parseArguments, printBold } = require("./cypress-runner-utils");
 const { resolveSdkE2EConfig } = require("./resolve-sdk-e2e-config");
 

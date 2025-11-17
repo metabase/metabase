@@ -3,8 +3,8 @@ import os from "os";
 import path from "path";
 
 import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./constants/exit-code";
+import runCypress from "./cypress-node-js-runner";
 import CypressBackend from "./cypress-runner-backend";
-import runCypress from "./cypress-runner-run-tests";
 import {
   booleanify,
   parseArguments,
