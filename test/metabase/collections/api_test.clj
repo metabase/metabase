@@ -7,6 +7,7 @@
    [metabase.collections.api :as api.collection]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
+   [metabase.collections.test-helpers :refer [without-library]]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -532,6 +533,32 @@
                               (ids-to-keep collection-id))
                       (select-keys collection [:name :children]))))
                 (mt/user-http-request :rasta :get 200 "collection/tree"))))))))
+
+(defn- flatten-tree-types
+  "Extract all collection types from a tree structure, including nested children."
+  [collections]
+  (mapcat (fn [collection]
+            (cons (:type collection)
+                  (when-let [children (:children collection)]
+                    (flatten-tree-types children))))
+          collections))
+
+(deftest collection-tree-library-test
+  (testing "GET /api/collection/tree"
+    (without-library
+     (let [_ (collection/create-library-collection!)]
+       (testing "By default it does not include library items"
+         (let [response (mt/user-http-request :rasta :get 200 "collection/tree")
+               all-types (flatten-tree-types response)]
+           (is (not-any? #{collection/library-collection-type} all-types))
+           (is (not-any? #{collection/library-metrics-collection-type} all-types))
+           (is (not-any? #{collection/library-models-collection-type} all-types))))
+       (testing "Can choose to include include library items"
+         (let [response (mt/user-http-request :rasta :get 200 "collection/tree" :include-library true)
+               all-types (flatten-tree-types response)]
+           (is (some #{collection/library-collection-type} all-types))
+           (is (some #{collection/library-metrics-collection-type} all-types))
+           (is (some #{collection/library-models-collection-type} all-types))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /collection/:id                                               |
@@ -1542,6 +1569,19 @@
                           (remove-non-test-items &ids)
                           remove-non-personal-collections
                           mt/boolean-ids-and-timestamps)))))))
+
+(deftest collection-root-items-library-test
+  (testing "GET /api/collection/root/items"
+    (without-library
+     (let [_ (collection/create-library-collection!)]
+       (testing "By default it does not include library items"
+         (let [response (mt/user-http-request :rasta :get 200 "collection/root/items")
+               all-types (map :type (:data response))]
+           (is (not-any? #{collection/library-collection-type} all-types))))
+       (testing "Can choose to include include library items"
+         (let [response (mt/user-http-request :rasta :get 200 "collection/root/items" :include_library true)
+               all-types (map :type (:data response))]
+           (is (some #{collection/library-collection-type} all-types))))))))
 
 (deftest dashboard-question-candidates-simple-test
   (testing "GET /api/collection/:id/dashboard-question-candidates"
