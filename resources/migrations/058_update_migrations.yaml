@@ -38,85 +38,6 @@ databaseChangeLog:
             tableName: report_card
             columnName: embedding_type
 
-  - changeSet:
-      id: v58.2025-11-10T10:00:00
-      author: metamben
-      comment: Make segment.table_id nullable to support segments on models
-      changes:
-        - dropNotNullConstraint:
-            tableName: segment
-            columnName: table_id
-            columnDataType: int
-      rollback:
-        - addNotNullConstraint:
-            tableName: segment
-            columnName: table_id
-            columnDataType: int
-
-  - changeSet:
-      id: v58.2025-11-10T10:01:00
-      author: metamben
-      comment: Add segment.model_id column for segments on models
-      changes:
-        - addColumn:
-            tableName: segment
-            columns:
-              - column:
-                  name: model_id
-                  type: int
-                  remarks: Reference to the model (report_card) this segment is based on
-                  constraints:
-                    nullable: true
-      rollback:
-        - dropColumn:
-            tableName: segment
-            columnName: model_id
-
-  - changeSet:
-      id: v58.2025-11-10T10:02:00
-      author: metamben
-      comment: Add foreign key constraint for segment.model_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: segment
-            baseColumnNames: model_id
-            referencedTableName: report_card
-            referencedColumnNames: id
-            constraintName: fk_segment_ref_model_id
-            onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: segment
-            constraintName: fk_segment_ref_model_id
-
-  - changeSet:
-      id: v58.2025-11-10T10:03:00
-      author: metamben
-      comment: Add index on segment.model_id (PostgreSQL and H2 only - MySQL auto-creates with FK)
-      dbms: postgresql,h2
-      changes:
-        - createIndex:
-            tableName: segment
-            indexName: idx_segment_model_id
-            columns:
-              - column:
-                  name: model_id
-      rollback:
-        - dropIndex:
-            tableName: segment
-            indexName: idx_segment_model_id
-
-  - changeSet:
-      id: v58.2025-11-10T10:04:00
-      author: metamben
-      comment: Add CHECK constraint to ensure exactly one of table_id or model_id is set
-      changes:
-        - sql:
-            sql: ALTER TABLE segment ADD CONSTRAINT segment_table_xor_model CHECK ((table_id IS NULL) != (model_id IS NULL))
-      rollback:
-        - sql:
-            sql: ALTER TABLE segment DROP CONSTRAINT segment_table_xor_model
-
       id: v58.2025-11-04T23:09:49
       author: edpaget
       comment: Create auth_identity table for multi-authentication support
@@ -578,6 +499,85 @@ databaseChangeLog:
         - dropForeignKeyConstraint:
             baseTableName: core_session
             constraintName: fk_session_auth_identity
+
+  - changeSet:
+      id: v58.2025-11-13T10:00:00
+      author: metamben
+      comment: Make segment.table_id nullable to support segments on models
+      changes:
+        - dropNotNullConstraint:
+            tableName: segment
+            columnName: table_id
+            columnDataType: int
+      rollback:
+        - addNotNullConstraint:
+            tableName: segment
+            columnName: table_id
+            columnDataType: int
+
+  - changeSet:
+      id: v58.2025-11-13T10:01:00
+      author: metamben
+      comment: Add segment.model_id column for segments on models
+      changes:
+        - addColumn:
+            tableName: segment
+            columns:
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: Reference to the model (report_card) this segment is based on
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: segment
+            columnName: model_id
+
+  - changeSet:
+      id: v58.2025-11-13T10:02:00
+      author: metamben
+      comment: Add foreign key constraint for segment.model_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: segment
+            baseColumnNames: model_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_segment_ref_model_id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: segment
+            constraintName: fk_segment_ref_model_id
+
+  - changeSet:
+      id: v58.2025-11-13T10:03:00
+      author: metamben
+      comment: Add index on segment.model_id (PostgreSQL and H2 only - MySQL auto-creates with FK)
+      dbms: postgresql,h2
+      changes:
+        - createIndex:
+            tableName: segment
+            indexName: idx_segment_model_id
+            columns:
+              - column:
+                  name: model_id
+      rollback:
+        - dropIndex:
+            tableName: segment
+            indexName: idx_segment_model_id
+
+  - changeSet:
+      id: v58.2025-11-13T10:04:00
+      author: metamben
+      comment: Add CHECK constraint to ensure exactly one of table_id or model_id is set
+      changes:
+        - sql:
+            sql: ALTER TABLE segment ADD CONSTRAINT segment_table_xor_model CHECK ((table_id IS NULL) != (model_id IS NULL))
+      rollback:
+        - sql:
+            sql: ALTER TABLE segment DROP CONSTRAINT segment_table_xor_model
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
