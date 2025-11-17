@@ -15,7 +15,7 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
     originalPos,
     view,
     cameFromFlexContainer,
-    cardEmbedNode,
+    draggedNode,
     dropPos,
   } = payload;
   let diffSize = 0;
@@ -141,7 +141,7 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
           height: RESIZE_NODE_DEFAULT_HEIGHT,
           minHeight: RESIZE_NODE_MIN_HEIGHT,
         },
-        [cardEmbedNode],
+        [draggedNode],
       );
 
       // Calculate adjusted drop position if the FlexContainer operations affected positions
@@ -166,10 +166,10 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
         height: RESIZE_NODE_DEFAULT_HEIGHT,
         minHeight: RESIZE_NODE_MIN_HEIGHT,
       },
-      [cardEmbedNode],
+      [draggedNode],
     );
 
-    const nodeToRemove = originalParent || cardEmbedNode;
+    const nodeToRemove = originalParent || draggedNode;
 
     // Remove the original node from its position
     // Find the actual node to remove (could be the cardEmbed itself or its resizeNode wrapper)

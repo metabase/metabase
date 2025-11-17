@@ -78,7 +78,6 @@ export const getTargetCardEmbedNode = (e: DragEvent, view: EditorView) => {
 
 export interface DroppedCardEmbedNodeData {
   draggedNode: Node;
-  cardEmbedNode: Node; // Deprecated: use draggedNode instead
   originalPos: number;
   originalParent: Node;
   cameFromFlexContainer: boolean;
@@ -130,7 +129,6 @@ export const getDroppedCardEmbedNodeData = (
 
         return {
           draggedNode,
-          cardEmbedNode: draggedNode, // Backward compatibility
           originalPos,
           originalParent,
           cameFromFlexContainer,
