@@ -13,6 +13,11 @@ import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
 
 const TARGET_ASPECT_RATIO = 21 / 17;
 
+// SVG text sizing constants for PDF export
+// Convert em units to px using this base font size for optimal PDF readability
+const BASE_FONT_SIZE_PX = 16;
+const DATA_ATTR_ORIGINAL_FONT_SIZE_EM = "data-original-font-size-em";
+
 interface DashCardBounds {
   top: number;
   bottom: number;
@@ -227,7 +232,42 @@ export const saveDashboardPdf = async ({
     backgroundColor = "white"; // Fallback to white if the color is invalid
   }
 
+  // Extract em values from SVG text elements BEFORE html2canvas processes them
+  // html2canvas inlines all styles to pixels, so we need to capture em values now
+  try {
+    const svgs = Array.from(gridNode.querySelectorAll("svg"));
+
+    svgs.forEach((svg) => {
+      const textNodes = Array.from(
+        svg.querySelectorAll("text"),
+      ) as SVGTextElement[];
+
+      if (textNodes.length === 0) {
+        return;
+      }
+
+      textNodes.forEach((t) => {
+        const styleAttr = t.getAttribute("style");
+
+        if (styleAttr) {
+          // Look for font-size with em units in the style attribute
+          const emMatch = styleAttr.match(/font-size:\s*([\d.]+)em/);
+
+          if (emMatch) {
+            const emValue = emMatch[1];
+            // Store the em value as a data attribute so we can access it in onclone
+            t.setAttribute(DATA_ATTR_ORIGINAL_FONT_SIZE_EM, emValue);
+          }
+        }
+      });
+    });
+  } catch (error) {
+    console.error("Error extracting em values from SVG text:", error);
+  }
+
   const { default: html2canvas } = await import("html2canvas-pro");
+
+  // Capture the canvas
   const image = await html2canvas(gridNode, {
     height: contentHeight,
     width: contentWidth,
@@ -238,6 +278,40 @@ export const saveDashboardPdf = async ({
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.style.height = `${contentHeight}px`;
       node.style.backgroundColor = backgroundColor;
+
+      // Apply converted em to px values for SVG text elements
+      // We stored the original em values before html2canvas inlined everything
+      try {
+        const svgs = Array.from(node.querySelectorAll("svg"));
+
+        svgs.forEach((svg) => {
+          const textNodes = Array.from(
+            svg.querySelectorAll("text"),
+          ) as SVGTextElement[];
+
+          if (textNodes.length === 0) {
+            return;
+          }
+
+          textNodes.forEach((t) => {
+            // Read the em value we stored earlier (before html2canvas inlined styles)
+            const emValueStr = t.getAttribute(DATA_ATTR_ORIGINAL_FONT_SIZE_EM);
+
+            if (emValueStr) {
+              const emValue = parseFloat(emValueStr);
+              const pxValue = emValue * BASE_FONT_SIZE_PX;
+
+              // Apply the converted px value
+              t.style.fontSize = `${pxValue}px`;
+            }
+          });
+        });
+      } catch (error) {
+        console.error(
+          "Error applying em to px conversion for SVG text:",
+          error,
+        );
+      }
 
       // Handle all dashboard card containers and their children
       const dashboardCards = node.querySelectorAll("[data-dashcard-key]");
@@ -265,6 +339,21 @@ export const saveDashboardPdf = async ({
       }
     },
   });
+
+  // Clean up the data attributes we added for em conversion
+  try {
+    const svgs = Array.from(gridNode.querySelectorAll("svg"));
+    svgs.forEach((svg) => {
+      const textNodes = Array.from(
+        svg.querySelectorAll(`text[${DATA_ATTR_ORIGINAL_FONT_SIZE_EM}]`),
+      );
+      textNodes.forEach((t) => {
+        t.removeAttribute(DATA_ATTR_ORIGINAL_FONT_SIZE_EM);
+      });
+    });
+  } catch (error) {
+    console.error("Error cleaning up SVG text data attributes:", error);
+  }
 
   const { default: jspdf } = await import("jspdf");
 
