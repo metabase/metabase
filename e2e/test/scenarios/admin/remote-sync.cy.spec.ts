@@ -10,7 +10,7 @@ const LOCAL_GIT_URL = "file://" + H.LOCAL_GIT_PATH + "/.git";
 
 const REMOTE_QUESTION_NAME = "Remote Sync Test Question";
 
-H.describeWithSnowplowEE("Remote Sync", () => {
+describe("Remote Sync", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

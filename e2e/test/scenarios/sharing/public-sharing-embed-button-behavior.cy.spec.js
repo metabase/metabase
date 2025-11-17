@@ -262,7 +262,7 @@ describe("#39152 sharing an unsaved question", () => {
 });
 
 ["dashboard", "question"].forEach((resource) => {
-  H.describeWithSnowplow(`public ${resource} sharing snowplow events`, () => {
+  describe(`public ${resource} sharing snowplow events`, () => {
     beforeEach(() => {
       H.restore();
       H.resetSnowplow();

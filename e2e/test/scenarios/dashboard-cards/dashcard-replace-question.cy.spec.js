@@ -100,7 +100,7 @@ function getDashboardCards(mappedQuestionId) {
   ];
 }
 
-H.describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
+describe("scenarios > dashboard cards > replace question", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
