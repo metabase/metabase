@@ -7,7 +7,7 @@ import { waitForRequest } from "__support__/utils";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
-import { defineMetabaseAuthConfig } from "embedding-sdk-package/lib/public/define-metabase-auth-config";
+import { defineMetabaseAuthConfig } from "embedding-sdk-shared/lib/define-metabase-auth-config";
 
 import {
   MOCK_INSTANCE_URL,
