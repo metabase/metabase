@@ -28,8 +28,8 @@
   (letfn [(actions-for [models]
             (if (seq models)
               (t2/hydrate (actions/select-actions models
-                                                         :model_id [:in (map :id models)]
-                                                         :archived false)
+                                                  :model_id [:in (map :id models)]
+                                                  :archived false)
                           :creator)
               []))]
     ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.

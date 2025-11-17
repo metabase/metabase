@@ -1609,8 +1609,8 @@
            sync
            upload
            util
-           warehouses
            warehouse-schema
+           warehouses
            enterprise/advanced-permissions}}
 
 
