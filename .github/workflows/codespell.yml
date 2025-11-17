@@ -7,7 +7,6 @@ on:
       - 'release-**'
   pull_request:
 
-
 jobs:
   codespell:
     runs-on: ubuntu-latest
@@ -15,12 +14,6 @@ jobs:
       - uses: actions/checkout@v3
       - uses: codespell-project/actions-codespell@v1
         with:
+          # keep this list in sync with the list in `mage/src/mage/codespell.yml`
           path: >-
-            dev
             docs
-            e2e
-            enterprise
-            frontend
-            modules/drivers
-          # src
-          # test

@@ -6,12 +6,13 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private codespell-dirs
-  ["dev"
+  "Keep these in sync with the list of directories in `.github/workflows/codespell.yml`."
+  [#_"dev"
    "docs"
-   "e2e"
-   "enterprise"
-   "frontend"
-   "modules/drivers"
+   #_"e2e"
+   #_"enterprise"
+   #_"frontend"
+   #_"modules/drivers"
    #_"src"
    #_"test"])
 
