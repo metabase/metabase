@@ -257,21 +257,24 @@
 
 (defn- set-up-tabs
   [dashboard-id tab-representations ref-index]
-  (t2/insert! :model/DashboardTab (for [[pos tab-rep] (map vector (range) tab-representations)]
-                                    {:dashboard_id dashboard-id
-                                     :name (:name tab-rep)
-                                     :position pos}))
-  (t2/insert! :model/DashboardCard (for [tab-rep tab-representations
-                                         dashcard-rep (:cards tab-rep)]
-                                     {:size_x (:width dashcard-rep)
-                                      :size_y (:height dashcard-rep)
-                                      :row    (:row dashcard-rep)
-                                      :col    (:column dashcard-rep)
-                                      :card_id (some->> (:card dashcard-rep)
-                                                        (v0-common/lookup-entity ref-index))
-                                      :dashboard_id dashboard-id
-                                      :parameter_mappings (:parameter_mappings dashcard-rep)
-                                      :visualization_settings ()})))
+  (let [tab-instances (t2/insert-returning-instances! :model/DashboardTab
+                                                      (for [[pos tab-rep] (map vector (range) tab-representations)]
+                                                        {:dashboard_id dashboard-id
+                                                         :name (:name tab-rep)
+                                                         :position pos}))]
+    (t2/insert! :model/DashboardCard
+                (for [[tab-rep tab-inst] (map vector tab-representations tab-instances)
+                      dashcard-rep (:cards tab-rep)]
+                  {:size_x (:width dashcard-rep)
+                   :size_y (:height dashcard-rep)
+                   :row    (:row dashcard-rep)
+                   :col    (:column dashcard-rep)
+                   :card_id (some->> (:card dashcard-rep)
+                                     (v0-common/lookup-entity ref-index))
+                   :dashboard_id dashboard-id
+                   :dashboard_tab_id (:id tab-inst)
+                   :parameter_mappings (:parameter_mappings dashcard-rep)
+                   :visualization_settings ()}))))
 
 (defn insert!
   [representation ref-index]
@@ -285,7 +288,16 @@
       )))
 
 (defn update!
-  [representation id ref-index])
+  [representation id ref-index]
+  (let [representation (rep-read/parse representation)]
+    (assert (= :dashboard (:type representation)))
+    (let [toucan (yaml->toucan representation ref-index)]
+      (t2/update! :model/Dashboard id (dissoc toucan :entity_id))
+      (t2/delete! :model/DashboardTab :dashboard_id id)
+      (t2/delete! :model/DashboardCard :dashboard_id id)
+      (set-up-tabs id (:tabs representation) ref-index)
+      ;;todo (eric 2025-11-10): hydrate?
+      )))
 
 ;; -- Export --
 
@@ -327,7 +339,8 @@
   (let [dashboard-ref (v0-common/entity->ref t2-dashboard)
 
         ;; Fetch related tabs and cards
-        tabs (t2/select :model/DashboardTab :dashboard_id (:id t2-dashboard) {:order-by [[:position :asc]]})
+        tabs (t2/select :model/DashboardTab :dashboard_id (:id t2-dashboard)
+                        {:order-by [[:position :asc]]})
         dashcards (t2/select :model/DashboardCard :dashboard_id (:id t2-dashboard)
                              {:order-by [[:row :asc] [:col :asc]]})
         cards-by-tab (group-by :dashboard_tab_id dashcards)]
