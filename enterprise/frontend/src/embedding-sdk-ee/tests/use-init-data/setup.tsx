@@ -1,7 +1,7 @@
 /* eslint-disable i18next/no-literal-string */
 
-import { setupEmbeddingSdkEnterprisePlugins } from "__support__/enterprise";
 import { renderWithProviders } from "__support__/ui";
+import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
 import {
   sdkReducers,
   useSdkSelector,
@@ -27,9 +27,9 @@ import type {
   MetabaseAuthConfig,
 } from "embedding-sdk-bundle/types";
 
-import { useInitDataInternal } from "../use-init-data-internal";
+import { setupEmbeddingSdkEnterprisePlugins } from "../support";
 
-jest.mock("embedding/auth-common/saml-token-storage", () => {
+jest.mock("metabase/embedding-sdk/lib/saml-token-storage", () => {
   let token: any = null;
   return {
     samlTokenStorage: {

@@ -1,6 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
 
-import { setupEmbeddingSdkEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
@@ -17,8 +16,9 @@ import {
   type JwtMockConfig,
   MOCK_INSTANCE_URL,
   setupMockJwtEndpoints,
-} from "../mocks/sso";
-import { setupSdkState } from "../server-mocks/sdk-init";
+} from "../../../../../../frontend/src/embedding-sdk-bundle/test/mocks/sso";
+import { setupSdkState } from "../../../../../../frontend/src/embedding-sdk-bundle/test/server-mocks/sdk-init";
+import { setupEmbeddingSdkEnterprisePlugins } from "../support";
 
 const defaultAuthConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: MOCK_INSTANCE_URL,

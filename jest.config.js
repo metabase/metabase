@@ -129,6 +129,7 @@ const config = {
       testMatch: [
         "<rootDir>/frontend/src/embedding-sdk-{bundle,shared}/**/*.unit.spec.{js,jsx,ts,tsx}",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-package/**/*.unit.spec.{js,jsx,ts,tsx}",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-ee/**/*.unit.spec.{js,jsx,ts,tsx}",
       ],
 
       setupFiles: [
@@ -148,7 +149,7 @@ const config = {
       testPathIgnorePatterns: [
         ...(baseConfig.testPathIgnorePatterns || []),
         "<rootDir>/frontend/src/embedding-sdk-package/",
-        "<rootDir>/frontend/src/embedding-sdk-bundle/",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-ee/",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-shared/",
       ],
     },

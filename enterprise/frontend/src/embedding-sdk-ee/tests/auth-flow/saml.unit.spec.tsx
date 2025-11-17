@@ -1,7 +1,6 @@
 import { screen } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
-import { setupEmbeddingSdkEnterprisePlugins } from "__support__/enterprise";
 import { waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
@@ -14,7 +13,8 @@ import {
   MOCK_SESSION_TOKEN_ID,
   setupMockSamlEndpoints,
   setupSamlPopup,
-} from "../mocks/sso";
+} from "../../../../../../frontend/src/embedding-sdk-bundle/test/mocks/sso";
+import { setupEmbeddingSdkEnterprisePlugins } from "../support";
 
 import { setup as baseSetup } from "./setup";
 

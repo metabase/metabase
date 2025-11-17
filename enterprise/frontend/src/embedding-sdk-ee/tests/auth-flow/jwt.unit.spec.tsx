@@ -1,7 +1,6 @@
 import { screen } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
-import { setupEmbeddingSdkEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCurrentUserEndpoint,
   setupPropertiesEndpoints,
@@ -20,7 +19,8 @@ import {
   MOCK_SESSION_TOKEN_ID,
   MOCK_VALID_JWT_RESPONSE,
   setupMockJwtEndpoints,
-} from "../mocks/sso";
+} from "../../../../../../frontend/src/embedding-sdk-bundle/test/mocks/sso";
+import { setupEmbeddingSdkEnterprisePlugins } from "../support";
 
 import { setup as baseSetup } from "./setup";
 

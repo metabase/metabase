@@ -1,13 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEmbeddingSdkEnterprisePlugins } from "__support__/enterprise";
 import { screen } from "__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import {
   type JwtMockConfig,
   setupMockJwtEndpoints,
 } from "embedding-sdk-bundle/test/mocks/sso";
+
+import { setupEmbeddingSdkEnterprisePlugins } from "../support";
 
 import { type MetabaseConfigProps, TestComponent, setup } from "./setup";
 

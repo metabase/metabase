@@ -1,8 +1,11 @@
-import { setupEmbeddingSdkEnterprisePlugins } from "__support__/enterprise";
 import { waitForRequest } from "__support__/utils";
-import { defineMetabaseAuthConfig } from "embedding-sdk-shared/lib/define-metabase-auth-config";
+import {
+  MOCK_API_KEY,
+  MOCK_INSTANCE_URL,
+} from "embedding-sdk-bundle/test/mocks/sso";
+import { defineMetabaseAuthConfig } from "embedding-sdk-package/lib/public/define-metabase-auth-config";
 
-import { MOCK_API_KEY, MOCK_INSTANCE_URL } from "../mocks/sso";
+import { setupEmbeddingSdkEnterprisePlugins } from "../support";
 
 import { setup } from "./setup";
 

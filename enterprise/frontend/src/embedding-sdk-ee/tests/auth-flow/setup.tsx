@@ -18,9 +18,12 @@ import {
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import { MOCK_INSTANCE_URL } from "../mocks/sso";
-import { createMockLoginStatusState, createMockSdkState } from "../mocks/state";
-import { setupSdkState } from "../server-mocks/sdk-init";
+import { MOCK_INSTANCE_URL } from "../../../../../../frontend/src/embedding-sdk-bundle/test/mocks/sso";
+import {
+  createMockLoginStatusState,
+  createMockSdkState,
+} from "../../../../../../frontend/src/embedding-sdk-bundle/test/mocks/state";
+import { setupSdkState } from "../../../../../../frontend/src/embedding-sdk-bundle/test/server-mocks/sdk-init";
 
 const MOCK_DB = createSampleDatabase();
 
