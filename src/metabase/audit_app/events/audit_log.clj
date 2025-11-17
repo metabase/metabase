@@ -328,11 +328,13 @@
 (derive :event/table-data-edit :event/action-v2-execute)
 
 (methodical/defmethod events/publish-event! ::action-v2-event
-  [_topic event]
+  [topic event]
   (let [table-data-edit-events #{:data-grid.row/create :data-grid.row/update :data-grid.row/delete :data-editing/undo :data-editing/redo}]
-    (when (contains? table-data-edit-events
-                     (when-let [event (get-in event [:details :action])]
-                       (when (or (string? event) (keyword? event))
-                         (keyword event))))
-      (when-let [table-id (get-in event [:details :scope :table_id])]
-        (audit-log/record-event! :event/table-data-edit (merge event {:model :model/Table :model-id table-id}))))))
+    (if-let [table-id
+             (and (contains? table-data-edit-events
+                             (when-let [event (get-in event [:details :action])]
+                               (when (or (string? event) (keyword? event))
+                                 (keyword event))))
+                  (get-in event [:details :scope :table_id]))]
+      (audit-log/record-event! :event/table-data-edit (merge event {:model :model/Table :model-id table-id}))
+      (audit-log/record-event! topic event))))
