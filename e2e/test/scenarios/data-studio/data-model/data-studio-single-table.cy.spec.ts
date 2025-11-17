@@ -21,8 +21,6 @@ interface PublishModelResponse {
 
 describe("Table editing", () => {
   beforeEach(() => {
-    H.restore("mysql-8");
-    cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
     cy.intercept("GET", "/api/database?*").as("databases");
@@ -43,6 +41,8 @@ describe("Table editing", () => {
   });
 
   it("should display metadata information", { tags: ["@external"] }, () => {
+    H.restore("mysql-8");
+    cy.signInAsAdmin();
     H.DataModel.visit();
     TablePicker.getDatabase("QA MySQL8").click();
     TablePicker.getTable("Orders").click();
@@ -58,6 +58,11 @@ describe("Table editing", () => {
       cy.findByLabelText("Est. row count").should("not.exist");
       cy.findByLabelText("Dependencies").should("have.text", "0");
       cy.findByLabelText("Dependents").should("have.text", "0");
+
+      cy.findByRole("link", { name: "Dependency graph" }).click();
+      cy.findByRole("heading", { name: "Dependency graph" }).should(
+        "be.visible",
+      );
     });
   });
 
@@ -65,6 +70,8 @@ describe("Table editing", () => {
     "should publish single table to a collection",
     { tags: ["@external"] },
     () => {
+      cy.signInAsAdmin();
+      H.restore("mysql-8");
       H.DataModel.visit();
       TablePicker.getDatabase("QA MySQL8").click();
       TablePicker.getTable("Orders").click();
@@ -114,4 +121,42 @@ describe("Table editing", () => {
       });
     },
   );
+
+  it("should allow to edit attributes", { tags: ["@external"] }, () => {
+    cy.signInAsAdmin();
+    H.restore("postgres-12");
+    H.DataModel.visit();
+    TablePicker.getDatabase("QA Postgres12").click();
+    TablePicker.getTable("Orders").click();
+
+    H.selectHasValue("Owner", "No one").click();
+    H.selectDropdown().contains("Bobby Tables").click();
+    H.undoToastListContainer()
+      .findByText("Table owner updated")
+      .should("be.visible");
+
+    H.selectHasValue("Visibility type", "Copper").click();
+    H.selectDropdown().contains("Gold").click();
+    H.undoToastListContainer()
+      .findByText("Table layer updated")
+      .should("be.visible");
+
+    H.selectHasValue("Entity type", "Transaction").click();
+    H.selectDropdown().contains("Person").click();
+    H.undoToastListContainer()
+      .findByText("Entity type updated")
+      .should("be.visible");
+
+    H.selectHasValue("Source", "Unknown").click();
+    H.selectDropdown().contains("Ingested").click();
+    H.undoToastListContainer()
+      .findByText("Table data source updated")
+      .should("be.visible");
+
+    cy.reload();
+    H.selectHasValue("Owner", "Bobby Tables");
+    H.selectHasValue("Visibility type", "Gold");
+    H.selectHasValue("Entity type", "Person");
+    H.selectHasValue("Source", "Ingested");
+  });
 });
