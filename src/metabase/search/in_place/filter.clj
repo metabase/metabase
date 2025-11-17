@@ -265,6 +265,28 @@
     [_filter model query display-types]
     (sql.helpers/where query [:in (search.config/column-with-model-alias model :display) display-types])))
 
+;; Collection filter - filters by collection and all descendants
+(doseq [model ["card" "dataset" "metric" "dashboard" "action" "collection" "document"]]
+  (defmethod build-optional-filter-query [:collection model]
+    [_filter model query collection-id]
+    (let [collection-col (search.config/column-with-model-alias model :collection_id)]
+      ;; Join with collection table if not already joined to get location for descendant filtering
+      ;; Filter by direct match (collection_id = ?) OR descendants (collection.location LIKE '/collection_id/%')
+      (cond-> query
+        (not (joined-with-table? query :left-join :collection))
+        (sql.helpers/left-join :collection [:= collection-col :collection.id])
+        true
+        (sql.helpers/where [:or
+                            [:= collection-col collection-id]
+                            [:like :collection.location (str "/" collection-id "/%")]])))))
+
+;; Tables and databases don't belong to collections
+(doseq [model ["table" "database"]]
+  (defmethod build-optional-filter-query [:collection model]
+    [_filter _model query _collection-id]
+    ;; These models don't have collection_id, so they never match
+    (sql.helpers/where query false-clause)))
+
 (defn- feature->supported-models
   "Return A map of filter to its support models.
 
