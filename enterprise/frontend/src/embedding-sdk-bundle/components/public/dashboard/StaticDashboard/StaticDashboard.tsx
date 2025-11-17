@@ -1,14 +1,14 @@
+import _ from "underscore";
+
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
-import {
-  DASHBOARD_ACTION,
-  type DashboardActionValue,
-} from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
+import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { isQuestionCard } from "metabase/dashboard/utils";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 import { StaticQuestionSdkMode } from "../../StaticQuestion/mode";
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
+import { concatActionIf } from "../actionButtonUtils";
 
 import { staticDashboardSchema } from "./StaticDashboard.schema";
 
@@ -35,13 +35,14 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
     <SdkDashboard
       {...props}
       getClickActionMode={getClickActionMode}
-      dashboardActions={({ downloadsEnabled }) => {
-        const baseActions: DashboardActionValue[] = [
-          DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
-        ];
-        return baseActions.concat(
-          downloadsEnabled.pdf ? [DASHBOARD_ACTION.DOWNLOAD_PDF] : [],
-        );
+      dashboardActions={({ downloadsEnabled, withSubscriptions }) => {
+        return _.compose(
+          concatActionIf(DASHBOARD_ACTION.DOWNLOAD_PDF, downloadsEnabled.pdf),
+          concatActionIf(
+            DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
+            withSubscriptions,
+          ),
+        )([]);
       }}
       navigateToNewCardFromDashboard={null}
       dashcardMenu={({ dashcard, result }) =>

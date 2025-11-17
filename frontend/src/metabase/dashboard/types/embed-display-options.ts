@@ -30,4 +30,6 @@ export type EmbedDisplayParams = {
   getClickActionMode: ClickActionModeGetter | undefined;
   downloadsEnabled: EmbedResourceDownloadOptions;
   withFooter: boolean;
+  // Move this to a new type in EMB-1025
+  withSubscriptions: boolean;
 };

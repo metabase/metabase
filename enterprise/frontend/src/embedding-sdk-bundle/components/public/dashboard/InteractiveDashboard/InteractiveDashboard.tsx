@@ -1,13 +1,11 @@
 import { useCallback, useMemo } from "react";
+import _ from "underscore";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getPlugins } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
-import {
-  DASHBOARD_ACTION,
-  type DashboardActionValue,
-} from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
+import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { isQuestionCard } from "metabase/dashboard/utils";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
@@ -15,6 +13,7 @@ import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/Em
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
+import { concatActionIf } from "../actionButtonUtils";
 
 import { interactiveDashboardSchema } from "./InteractiveDashboard.schema";
 
@@ -46,13 +45,14 @@ const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
     <SdkDashboard
       {...props}
       getClickActionMode={getClickActionMode}
-      dashboardActions={({ downloadsEnabled }) => {
-        const baseActions: DashboardActionValue[] = [
-          DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
-        ];
-        return baseActions.concat(
-          downloadsEnabled.pdf ? [DASHBOARD_ACTION.DOWNLOAD_PDF] : [],
-        );
+      dashboardActions={({ downloadsEnabled, withSubscriptions }) => {
+        return _.compose(
+          concatActionIf(DASHBOARD_ACTION.DOWNLOAD_PDF, downloadsEnabled.pdf),
+          concatActionIf(
+            DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
+            withSubscriptions,
+          ),
+        )([]);
       }}
       dashcardMenu={({ dashcard, result, downloadsEnabled }) =>
         downloadsEnabled?.results &&
