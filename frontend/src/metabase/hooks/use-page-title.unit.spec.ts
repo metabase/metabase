@@ -1,144 +1,219 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 
-import { usePageTitle } from "./use-page-title";
+import { usePageTitle, usePageTitleWithLoadingTime } from "./use-page-title";
 
-describe("usePageTitle", () => {
-  beforeEach(() => {
-    document.title = "";
-  });
+describe("usePageTitle hooks", () => {
+  describe("usePageTitle", () => {
+    beforeEach(() => {
+      document.title = "";
+    });
 
-  it("should set a simple title", async () => {
-    renderHook(() => usePageTitle("Test Page"));
-    await waitFor(() => {
-      expect(document.title).toBe("Test Page");
+    it("should set a simple title", async () => {
+      renderHook(() => usePageTitle("Test Page"));
+      await waitFor(() => {
+        expect(document.title).toBe("Test Page");
+      });
+    });
+
+    it("should update title when value changes", async () => {
+      const { rerender } = renderHook(({ title }) => usePageTitle(title), {
+        initialProps: { title: "First Title" },
+      });
+
+      await waitFor(() => {
+        expect(document.title).toBe("First Title");
+      });
+
+      rerender({ title: "Second Title" });
+      await waitFor(() => {
+        expect(document.title).toBe("Second Title");
+      });
+    });
+
+    it("should stack titles with separator", async () => {
+      const { unmount: unmount1 } = renderHook(() =>
+        usePageTitle("Metabase", { titleIndex: 0 }),
+      );
+      const { unmount: unmount2 } = renderHook(() =>
+        usePageTitle("Admin", { titleIndex: 0 }),
+      );
+      const { unmount: unmount3 } = renderHook(() =>
+        usePageTitle("Databases", { titleIndex: 1 }),
+      );
+
+      await waitFor(() => {
+        expect(document.title).toBe("Databases · Admin · Metabase");
+      });
+
+      // Cleanup
+      unmount3();
+      unmount2();
+      unmount1();
+    });
+
+    it("should respect titleIndex ordering", async () => {
+      const { unmount: unmount1 } = renderHook(() =>
+        usePageTitle("Root", { titleIndex: 0 }),
+      );
+      const { unmount: unmount2 } = renderHook(() =>
+        usePageTitle("Parent", { titleIndex: 0 }),
+      );
+      const { unmount: unmount3 } = renderHook(() =>
+        usePageTitle("Child", { titleIndex: 1 }),
+      );
+
+      // After sort by titleIndex and reverse:
+      // titleIndex 0: Root, Parent
+      // titleIndex 1: Child
+      // Result after reverse: Child · Parent · Root
+      await waitFor(() => {
+        expect(document.title).toBe("Child · Parent · Root");
+      });
+
+      unmount3();
+      unmount2();
+      unmount1();
+    });
+
+    it("should clean up title on unmount", async () => {
+      const { unmount: unmount1 } = renderHook(() => usePageTitle("Keep This"));
+      const { unmount: unmount2 } = renderHook(() =>
+        usePageTitle("Remove This"),
+      );
+
+      await waitFor(() => {
+        expect(document.title).toBe("Remove This · Keep This");
+      });
+
+      unmount2();
+      await waitFor(() => {
+        expect(document.title).toBe("Keep This");
+      });
+
+      unmount1();
+      await waitFor(() => {
+        expect(document.title).toBe("");
+      });
+    });
+
+    it("should filter out empty titles", async () => {
+      const { unmount: unmount1 } = renderHook(() => usePageTitle("Valid"));
+      const { unmount: unmount2 } = renderHook(() => usePageTitle(""));
+
+      // Empty title should be filtered out
+      await waitFor(() => {
+        expect(document.title).toBe("Valid");
+      });
+
+      unmount2();
+      unmount1();
     });
   });
 
-  it("should update title when value changes", async () => {
-    const { rerender } = renderHook(({ title }) => usePageTitle(title), {
-      initialProps: { title: "First Title" },
+  describe("usePageTitleWithLoadingTime", () => {
+    beforeEach(() => {
+      document.title = "";
     });
 
-    await waitFor(() => {
-      expect(document.title).toBe("First Title");
+    it("should set title without loading time when not running", async () => {
+      renderHook(() =>
+        usePageTitleWithLoadingTime("Dashboard", {
+          startTime: performance.now(),
+          isRunning: false,
+        }),
+      );
+
+      await waitFor(() => {
+        expect(document.title).toBe("Dashboard");
+      });
     });
 
-    rerender({ title: "Second Title" });
-    await waitFor(() => {
-      expect(document.title).toBe("Second Title");
-    });
-  });
+    it("should set title without loading time when startTime is null", async () => {
+      renderHook(() =>
+        usePageTitleWithLoadingTime("Dashboard", {
+          startTime: null,
+          isRunning: true,
+        }),
+      );
 
-  it("should stack titles with separator", async () => {
-    const { unmount: unmount1 } = renderHook(() =>
-      usePageTitle("Metabase", { titleIndex: 0 }),
-    );
-    const { unmount: unmount2 } = renderHook(() =>
-      usePageTitle("Admin", { titleIndex: 0 }),
-    );
-    const { unmount: unmount3 } = renderHook(() =>
-      usePageTitle("Databases", { titleIndex: 1 }),
-    );
-
-    await waitFor(() => {
-      expect(document.title).toBe("Databases · Admin · Metabase");
+      await waitFor(() => {
+        expect(document.title).toBe("Dashboard");
+      });
     });
 
-    // Cleanup
-    unmount3();
-    unmount2();
-    unmount1();
-  });
+    it("should not show loading time before 10 seconds", async () => {
+      const startTime = performance.now();
 
-  it("should respect titleIndex ordering", async () => {
-    const { unmount: unmount1 } = renderHook(() =>
-      usePageTitle("Root", { titleIndex: 0 }),
-    );
-    const { unmount: unmount2 } = renderHook(() =>
-      usePageTitle("Parent", { titleIndex: 0 }),
-    );
-    const { unmount: unmount3 } = renderHook(() =>
-      usePageTitle("Child", { titleIndex: 1 }),
-    );
+      renderHook(() =>
+        usePageTitleWithLoadingTime("Dashboard", {
+          startTime,
+          isRunning: true,
+        }),
+      );
 
-    // After sort by titleIndex and reverse:
-    // titleIndex 0: Root, Parent
-    // titleIndex 1: Child
-    // Result after reverse: Child · Parent · Root
-    await waitFor(() => {
-      expect(document.title).toBe("Child · Parent · Root");
+      await waitFor(() => {
+        expect(document.title).toBe("Dashboard");
+      });
     });
 
-    unmount3();
-    unmount2();
-    unmount1();
-  });
+    it("should format time as MM:SS", async () => {
+      // Start time 75 seconds ago (1:15)
+      const startTime = performance.now() - 75000;
 
-  it("should clean up title on unmount", async () => {
-    const { unmount: unmount1 } = renderHook(() => usePageTitle("Keep This"));
-    const { unmount: unmount2 } = renderHook(() => usePageTitle("Remove This"));
+      renderHook(() =>
+        usePageTitleWithLoadingTime("Dashboard", {
+          startTime,
+          isRunning: true,
+        }),
+      );
 
-    await waitFor(() => {
-      expect(document.title).toBe("Remove This · Keep This");
+      await waitFor(() => {
+        expect(document.title).toBe("01:15 Dashboard");
+      });
     });
 
-    unmount2();
-    await waitFor(() => {
-      expect(document.title).toBe("Keep This");
+    it("should stop showing loading time when isRunning becomes false", async () => {
+      const startTime = performance.now() - 60000;
+
+      const { rerender } = renderHook(
+        ({ isRunning }) =>
+          usePageTitleWithLoadingTime("Dashboard", {
+            startTime,
+            isRunning,
+          }),
+        { initialProps: { isRunning: true } },
+      );
+
+      await waitFor(() => {
+        expect(document.title).toBe("01:00 Dashboard");
+      });
+
+      rerender({ isRunning: false });
+
+      await waitFor(() => {
+        expect(document.title).toBe("Dashboard");
+      });
     });
 
-    unmount1();
-    await waitFor(() => {
-      expect(document.title).toBe("");
-    });
-  });
+    it("should respect titleIndex option", async () => {
+      const { unmount: unmount1 } = renderHook(() =>
+        usePageTitle("Metabase", { titleIndex: 0 }),
+      );
 
-  it("should handle function titles", async () => {
-    const getTitleFn = () => "Function Title";
-    renderHook(() => usePageTitle(getTitleFn));
-    await waitFor(() => {
-      expect(document.title).toBe("Function Title");
-    });
-  });
+      const { unmount: unmount2 } = renderHook(() =>
+        usePageTitleWithLoadingTime("Dashboard", {
+          titleIndex: 1,
+          startTime: performance.now() - 120000, // 2 minutes ago
+          isRunning: true,
+        }),
+      );
 
-  it("should filter out empty titles", async () => {
-    const { unmount: unmount1 } = renderHook(() => usePageTitle("Valid"));
-    const { unmount: unmount2 } = renderHook(() => usePageTitle(""));
+      await waitFor(() => {
+        expect(document.title).toBe("02:00 Dashboard · Metabase");
+      });
 
-    // Empty title should be filtered out
-    await waitFor(() => {
-      expect(document.title).toBe("Valid");
-    });
-
-    unmount2();
-    unmount1();
-  });
-
-  it("should handle async refresh", async () => {
-    let resolvePromise: () => void;
-    const refreshPromise = new Promise<void>((resolve) => {
-      resolvePromise = resolve;
-    });
-
-    let titleValue = "Initial";
-    const getTitleFn = () => titleValue;
-
-    renderHook(() => usePageTitle(getTitleFn, { refresh: refreshPromise }));
-
-    await waitFor(() => {
-      expect(document.title).toBe("Initial");
-    });
-
-    // Update title value and resolve promise
-    titleValue = "Updated";
-    await act(async () => {
-      resolvePromise!();
-      // Wait for promise to resolve
-      await refreshPromise;
-    });
-
-    await waitFor(() => {
-      expect(document.title).toBe("Updated");
+      unmount2();
+      unmount1();
     });
   });
 });
