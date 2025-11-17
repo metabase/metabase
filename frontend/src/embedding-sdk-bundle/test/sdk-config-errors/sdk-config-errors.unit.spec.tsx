@@ -1,8 +1,6 @@
-// Activates the plugins needed for the tests before any SDK code
-import "metabase-enterprise/sdk-plugins";
-
 import { render, screen, waitFor } from "@testing-library/react";
 
+import { setupEmbeddingSdkEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
@@ -32,6 +30,8 @@ const setup = async (
   config: MetabaseAuthConfig,
   jwtProviderResponse?: JwtMockConfig["providerResponse"],
 ) => {
+  setupEmbeddingSdkEnterprisePlugins();
+
   const { jwtProviderMock } = setupMockJwtEndpoints({
     providerResponse: jwtProviderResponse,
   });

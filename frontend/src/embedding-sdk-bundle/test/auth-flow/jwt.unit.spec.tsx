@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+import { setupEmbeddingSdkEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCurrentUserEndpoint,
   setupPropertiesEndpoints,
@@ -23,9 +24,6 @@ import {
 
 import { setup as baseSetup } from "./setup";
 
-// Activates the plugins needed for the tests before any SDK code
-import "metabase-enterprise/sdk-plugins";
-
 const setup = ({
   authConfig,
   locale,
@@ -39,6 +37,10 @@ const setup = ({
 };
 
 describe("Auth Flow - JWT", () => {
+  beforeEach(() => {
+    setupEmbeddingSdkEnterprisePlugins();
+  });
+
   it("should initialize the auth flow only once, not on rerenders", async () => {
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: MOCK_INSTANCE_URL,

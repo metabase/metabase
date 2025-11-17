@@ -1,8 +1,6 @@
 /* eslint-disable i18next/no-literal-string */
 
-// Activates the plugins needed for the tests before any SDK code
-import "metabase-enterprise/sdk-plugins";
-
+import { setupEmbeddingSdkEnterprisePlugins } from "__support__/enterprise";
 import { renderWithProviders } from "__support__/ui";
 import {
   sdkReducers,
@@ -85,6 +83,7 @@ export const TestComponent = ({ config }: { config: MetabaseConfigProps }) => {
 };
 
 export const setup = (config: MetabaseConfigProps = {}) => {
+  setupEmbeddingSdkEnterprisePlugins();
   const popupMock = setupSamlPopup();
 
   const { state } = setupSdkState({

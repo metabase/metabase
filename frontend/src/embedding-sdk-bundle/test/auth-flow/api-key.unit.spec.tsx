@@ -1,3 +1,4 @@
+import { setupEmbeddingSdkEnterprisePlugins } from "__support__/enterprise";
 import { waitForRequest } from "__support__/utils";
 import { defineMetabaseAuthConfig } from "embedding-sdk-package/lib/public/define-metabase-auth-config";
 
@@ -5,10 +6,11 @@ import { MOCK_API_KEY, MOCK_INSTANCE_URL } from "../mocks/sso";
 
 import { setup } from "./setup";
 
-// Activates the plugins needed for the tests before any SDK code
-import "metabase-enterprise/sdk-plugins";
-
 describe("Auth Flow - API Key", () => {
+  beforeEach(() => {
+    setupEmbeddingSdkEnterprisePlugins();
+  });
+
   it("should send the api key as 'X-Api-Key' header", async () => {
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: MOCK_INSTANCE_URL,

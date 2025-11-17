@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+import { setupEmbeddingSdkEnterprisePlugins } from "__support__/enterprise";
 import { waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
@@ -17,13 +18,11 @@ import {
 
 import { setup as baseSetup } from "./setup";
 
-// Activates the plugins needed for the tests before any SDK code
-import "metabase-enterprise/sdk-plugins";
-
 const setup = ({
   authConfig,
   locale,
 }: Pick<MetabaseProviderProps, "authConfig" | "locale">) => {
+  setupEmbeddingSdkEnterprisePlugins();
   const popup = setupSamlPopup();
   setupMockSamlEndpoints();
   return {

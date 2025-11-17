@@ -1,14 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupEmbeddingSdkEnterprisePlugins } from "__support__/enterprise";
 import { screen } from "__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import {
   type JwtMockConfig,
   setupMockJwtEndpoints,
 } from "embedding-sdk-bundle/test/mocks/sso";
-
-import "metabase-enterprise/sdk-plugins";
 
 import { type MetabaseConfigProps, TestComponent, setup } from "./setup";
 
@@ -27,6 +26,10 @@ const setupJwt = ({
 };
 
 describe("useInitData - JWT authentication", () => {
+  beforeEach(() => {
+    setupEmbeddingSdkEnterprisePlugins();
+  });
+
   afterEach(() => {
     jest.restoreAllMocks();
   });
