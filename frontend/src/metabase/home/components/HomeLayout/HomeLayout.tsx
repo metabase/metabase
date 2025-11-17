@@ -2,15 +2,18 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api/database";
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { EmbeddingHubHomePage } from "metabase/embedding/embedding-hub";
 import { useSelector } from "metabase/lib/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
-import { Tooltip } from "metabase/ui";
+import { Box, Loader, Tooltip } from "metabase/ui";
 
 import { CustomHomePageModal } from "../CustomHomePageModal";
+import { HomeBlueprintContent } from "../HomeBlueprintContent/HomeBlueprintContent";
+import { hasAvailableBlueprints } from "../HomeBlueprintContent/utils";
 import { HomeGreeting } from "../HomeGreeting";
 
 import {
@@ -33,12 +36,41 @@ export const HomeLayout = ({ children }: HomeLayoutProps): ReactNode => {
   const embeddingHomepage = useSetting("embedding-homepage");
   const isSimpleEmbeddingAvailable = useHasTokenFeature("embedding_simple");
 
+  const { data: databases } = useListDatabasesQuery();
+
   if (
     embeddingHomepage === "visible" &&
     user?.is_superuser &&
     isSimpleEmbeddingAvailable
   ) {
     return <EmbeddingHubHomePage />;
+  }
+
+  let content = <Loader size="sm" />;
+  if (databases && hasAvailableBlueprints(databases.data)) {
+    content = <HomeBlueprintContent databases={databases.data} />;
+  } else {
+    content = (
+      <>
+        <HomeGreeting />
+        {isAdmin && (
+          <Tooltip label={t`Pick a dashboard to serve as the homepage`}>
+            <LayoutEditButton
+              icon="pencil"
+              borderless
+              onClick={() => setShowModal(true)}
+            >
+              {t`Customize`}
+            </LayoutEditButton>
+          </Tooltip>
+        )}
+        <LayoutBody>{children}</LayoutBody>
+        <CustomHomePageModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+        />
+      </>
+    );
   }
 
   return (
@@ -52,23 +84,7 @@ export const HomeLayout = ({ children }: HomeLayoutProps): ReactNode => {
             backgroundImageSrc={landingPageIllustration.src}
           />
         ))}
-      <HomeGreeting />
-      {isAdmin && (
-        <Tooltip label={t`Pick a dashboard to serve as the homepage`}>
-          <LayoutEditButton
-            icon="pencil"
-            borderless
-            onClick={() => setShowModal(true)}
-          >
-            {t`Customize`}
-          </LayoutEditButton>
-        </Tooltip>
-      )}
-      <LayoutBody>{children}</LayoutBody>
-      <CustomHomePageModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-      />
+      <Box>{content}</Box>
     </LayoutRoot>
   );
 };

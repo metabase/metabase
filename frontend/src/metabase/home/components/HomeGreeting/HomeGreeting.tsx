@@ -13,11 +13,18 @@ import { getHasMetabotLogo } from "../../selectors";
 
 import S from "./HomeGreeting.module.css";
 
-export const HomeGreeting = (): JSX.Element => {
+export const HomeGreeting = ({
+  messageOverride,
+}: {
+  messageOverride?: string;
+}): JSX.Element => {
   const user = useSelector(getUser);
   const showLogo = useSelector(getHasMetabotLogo);
   const name = user?.first_name;
-  const message = useMemo(() => getMessage(name), [name]);
+  const message = useMemo(
+    () => messageOverride ?? getMessage(name),
+    [name, messageOverride],
+  );
 
   return (
     <div className={S.greetingRoot}>

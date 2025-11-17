@@ -1,0 +1,88 @@
+name: '[trend] Total $ of Weighted Open Pipeline Expected  Close Date This Q'
+display: smartscalar
+query_type: query
+database_id: <<db>>
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: <<db>>
+  query:
+    aggregation:
+    - - aggregation-options
+      - - sum
+        - - /
+          - - '*'
+            - - field
+              - - <<db>>
+                - <<destination_schema>>
+                - <<target.opportunity>>
+                - amount
+              - base-type: type/Decimal
+            - - field
+              - - <<db>>
+                - <<destination_schema>>
+                - <<target.opportunity>>
+                - probability
+              - base-type: type/Float
+          - 100
+      - name: Weighted Pipeline
+        display-name: Weighted Pipeline
+    - - aggregation-options
+      - - sum
+        - - field
+          - - <<db>>
+            - <<destination_schema>>
+            - <<target.opportunity>>
+            - amount
+          - base-type: type/Decimal
+      - name: Total Pipeline
+        display-name: Total Pipeline
+    breakout:
+    - - field
+      - - <<db>>
+        - <<destination_schema>>
+        - <<target.opportunity>>
+        - close_date
+      - base-type: type/Date
+        temporal-unit: quarter
+    filter:
+    - and
+    - - =
+      - - field
+        - - <<db>>
+          - <<destination_schema>>
+          - <<target.opportunity>>
+          - status
+        - base-type: type/Text
+      - open
+    - - time-interval
+      - - field
+        - - <<db>>
+          - <<destination_schema>>
+          - <<target.opportunity>>
+          - close_date
+        - base-type: type/Date
+      - 0
+      - quarter
+    source-table:
+    - <<db>>
+    - <<destination_schema>>
+    - <<target.opportunity>>
+  type: query
+visualization_settings:
+  column_settings:
+    '["name","Total Pipeline"]':
+      decimals: 0
+      number_style: currency
+  scalar.comparisons:
+  - column: Weighted Pipeline
+    id: b0c7512a-ed65-8d2c-632e-9ca78f73c1b3
+    label: Weighted Pipeline
+    type: anotherColumn
+  scalar.field: Total Pipeline
+card_schema: 22
+type: question

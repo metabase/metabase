@@ -1,0 +1,148 @@
+name: '[trend] Total #  of Open Deals Expected  Close Date This Q'
+display: smartscalar
+query_type: query
+database_id: <<db>>
+table_id:
+- <<db>>
+- <<destination_schema>>
+- <<target.opportunity>>
+dataset_query:
+  database: <<db>>
+  query:
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - - <<db>>
+        - <<destination_schema>>
+        - <<target.opportunity>>
+        - close_date
+      - base-type: type/Date
+        temporal-unit: quarter
+    expressions:
+      Close At Quarter:
+      - case
+      - - - - not-empty
+            - - field
+              - - <<db>>
+                - <<destination_schema>>
+                - <<target.opportunity>>
+                - close_date
+              - base-type: type/Date
+          - - date
+            - - concat
+              - - get-year
+                - - field
+                  - - <<db>>
+                    - <<destination_schema>>
+                    - <<target.opportunity>>
+                    - close_date
+                  - base-type: type/Date
+              - '-'
+              - - case
+                - - - - between
+                      - - get-month
+                        - - field
+                          - - <<db>>
+                            - <<destination_schema>>
+                            - <<target.opportunity>>
+                            - close_date
+                          - base-type: type/Date
+                      - 1
+                      - 3
+                    - 1
+                - default:
+                  - case
+                  - - - - between
+                        - - get-month
+                          - - field
+                            - - <<db>>
+                              - <<destination_schema>>
+                              - <<target.opportunity>>
+                              - close_date
+                            - base-type: type/Date
+                        - 4
+                        - 6
+                      - 4
+                  - default:
+                    - case
+                    - - - - between
+                          - - get-month
+                            - - field
+                              - - <<db>>
+                                - <<destination_schema>>
+                                - <<target.opportunity>>
+                                - close_date
+                              - base-type: type/Date
+                          - 7
+                          - 9
+                        - 7
+                    - default:
+                      - case
+                      - - - - between
+                            - - get-month
+                              - - field
+                                - - <<db>>
+                                  - <<destination_schema>>
+                                  - <<target.opportunity>>
+                                  - close_date
+                                - base-type: type/Date
+                            - 10
+                            - 12
+                          - 10
+              - '-01'
+      Closed at day of quater:
+      - datetime-diff
+      - - expression
+        - Close At Quarter
+        - base-type: type/Date
+      - - field
+        - - <<db>>
+          - <<destination_schema>>
+          - <<target.opportunity>>
+          - close_date
+        - base-type: type/Date
+      - day
+      Days Since Begin of Q:
+      - datetime-diff
+      - - relative-datetime
+        - 0
+        - quarter
+      - - now
+      - day
+    filter:
+    - and
+    - - =
+      - - field
+        - - <<db>>
+          - <<destination_schema>>
+          - <<target.opportunity>>
+          - status
+        - base-type: type/Text
+      - open
+    - - time-interval
+      - - field
+        - - <<db>>
+          - <<destination_schema>>
+          - <<target.opportunity>>
+          - close_date
+        - base-type: type/Date
+      - -1
+      - quarter
+      - include-current: true
+    - - <=
+      - - expression
+        - Closed at day of quater
+        - base-type: type/Integer
+      - - expression
+        - Days Since Begin of Q
+        - base-type: type/Integer
+    source-table:
+    - <<db>>
+    - <<destination_schema>>
+    - <<target.opportunity>>
+  type: query
+visualization_settings:
+  column_settings: null
+card_schema: 22
+type: question
