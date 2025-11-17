@@ -692,10 +692,18 @@
             result       (cond-> result
                            (not (temporal-type result))
                            (with-temporal-type (temporal-type field-clause)))]
-        (if (and (driver-api/json-field? stored-field)
-                 (or (::sql.qp/forced-alias opts)
-                     (= source-table driver-api/qp.add.source)))
+        (cond
+          ;; When ::forced-alias is set (used in ORDER BY), return a raw keyword with the escaped alias name
+          ;; instead of a quoted identifier. BigQuery ORDER BY clauses reference column aliases without quotes.
+          ;; See https://github.com/metabase/metabase/issues/65893
+          (::sql.qp/forced-alias opts)
+          (keyword (driver/escape-alias driver source-alias))
+
+          (and (driver-api/json-field? stored-field)
+               (= source-table driver-api/qp.add.source))
           (keyword source-alias)
+
+          :else
           result)))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :relative-datetime]

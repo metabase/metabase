@@ -1210,6 +1210,28 @@
           (is (not (str/includes? sql-query name-with-spaces))
               (format "Query `%s' should not contain `%s'" sql-query name-with-spaces)))))))
 
+(deftest ^:parallel custom-expression-with-space-in-order-by-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (mt/dataset test-data
+      (testing "Custom expressions with spaces should work when sorted (#65893)"
+        (let [name-with-spaces "space space"
+              sql-query (-> (mt/mbql-query orders
+                              {:aggregation [[:aggregation-options
+                                              [:distinct $id]
+                                              {:name name-with-spaces
+                                               :display-name name-with-spaces}]]
+                               :breakout    [!month.created_at]
+                               :order-by    [[:asc [:aggregation 0]]]
+                               :limit       10})
+                            qp.compile/compile
+                            :query)]
+          (testing "SQL should not contain backtick-quoted original name with spaces in ORDER BY"
+            (is (not (re-find #"ORDER BY.*`space space`" sql-query))
+                (format "Query should not contain backtick-quoted 'space space' in ORDER BY: %s" sql-query)))
+          (testing "SQL should use escaped alias (space_space) in ORDER BY"
+            (is (re-find #"ORDER BY\s+space_space" sql-query)
+                (format "Query should contain unescaped 'space_space' in ORDER BY: %s" sql-query))))))))
+
 (deftest ^:parallel parse-bigquery-bignumeric-correctly-test
   (mt/test-driver :bigquery-cloud-sdk
     (let [query (mt/native-query {:query (str/join \newline
