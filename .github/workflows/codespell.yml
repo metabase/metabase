@@ -1,0 +1,26 @@
+name: Codespell
+
+on:
+  push:
+    branches:
+      - 'master'
+      - 'release-**'
+  pull_request:
+
+
+jobs:
+  codespell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: codespell-project/actions-codespell@v1
+        with:
+          path: >-
+            dev
+            docs
+            e2e
+            enterprise
+            frontend
+            modules/drivers
+          # src
+          # test
