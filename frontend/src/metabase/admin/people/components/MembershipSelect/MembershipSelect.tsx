@@ -88,7 +88,7 @@ export const MembershipSelect = ({
       // prevent clicks on the confirm modal from closing this popover
       closeOnClickOutside={!isConfirmModalOpen}
       onChange={togglePopover}
-      position="bottom-end"
+      position="bottom-start"
     >
       <Popover.Target>
         <Flex
