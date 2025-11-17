@@ -128,7 +128,7 @@
                   (map #(select-keys % [:name :display_name :id :entity_type]))
                   set))))))
 
-(deftest ^:parallel list-table-test-2
+(deftest list-table-test-2
   (testing "GET /api/table"
     (testing "Schema is \"\" rather than nil, if not set"
       (mt/with-temp [:model/Database {database-id :id} {}
@@ -1438,7 +1438,7 @@
             query-meta-url        #(format "table/%d/query_metadata" %)
             list-published-models #(:published_models (mt/user-http-request %1 :get 200 (query-meta-url %2)))]
         (testing "admin sees both models"
-          (is (= [model1 model2] (map :id (list-published-models :crowberto (mt/id :venues))))))
+          (is (= #{model1 model2} (set (map :id (list-published-models :crowberto (mt/id :venues)))))))
         (testing "no published models"
           (is (nil? (list-published-models :crowberto (mt/id :users)))))
         (testing "non admin does not see published models"
