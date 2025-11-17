@@ -32,7 +32,10 @@ import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
 import { useListCommentsQuery } from "metabase-enterprise/api";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
 import { navigateToCardFromDocument } from "metabase-enterprise/documents/actions";
-import { trackDocumentReplaceCard } from "metabase-enterprise/documents/analytics";
+import {
+  trackDocumentAddSupportingText,
+  trackDocumentReplaceCard,
+} from "metabase-enterprise/documents/analytics";
 import { getUnresolvedComments } from "metabase-enterprise/documents/components/Editor/CommentsMenu";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase-enterprise/documents/components/Editor/constants";
 import { MAX_GROUP_SIZE } from "metabase-enterprise/documents/constants";
@@ -446,6 +449,7 @@ export const CardEmbedComponent = memo(
             tr.insert(match.start, supportingText);
             editor.view.dispatch(tr);
             editor.commands.focus(match.start + 1);
+            trackDocumentAddSupportingText(document);
             return;
           }
           const flexContainer =
@@ -463,6 +467,7 @@ export const CardEmbedComponent = memo(
 
           editor.view.dispatch(tr);
           editor.commands.focus(match.start + 2);
+          trackDocumentAddSupportingText(document);
         };
 
     const displayName = name || card?.name;
