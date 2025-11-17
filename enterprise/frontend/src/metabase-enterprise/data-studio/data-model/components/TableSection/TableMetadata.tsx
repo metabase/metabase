@@ -13,7 +13,7 @@ interface Props {
   table: Table;
 }
 
-export function TableMetadataInfo({ table }: Props) {
+export function TableMetadata({ table }: Props) {
   const formattedDate = new Date(table.updated_at).toLocaleString();
   const formatNumber = useNumberFormatter();
   const isDependenciesEnabled = PLUGIN_DEPENDENCIES.isEnabled;

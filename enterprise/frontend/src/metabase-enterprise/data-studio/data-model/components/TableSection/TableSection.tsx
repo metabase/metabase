@@ -31,9 +31,9 @@ import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 
+import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableFieldList } from "./TableFieldList";
-import { TableMetadataInfo } from "./TableMetadataInfo";
-import { TableMetadataSettings } from "./TableMetadataSection";
+import { TableMetadata } from "./TableMetadata";
 import { TableModels } from "./TableModels";
 import S from "./TableSection.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
@@ -212,12 +212,12 @@ const TableSectionBase = ({
       </Box>
 
       <Box px="lg">
-        <TableMetadataSettings table={table} />
+        <TableAttributesEditSingle table={table} />
       </Box>
 
       <Box px="lg">
         <TableSectionGroup title={t`Metadata`}>
-          <TableMetadataInfo table={table} />
+          <TableMetadata table={table} />
         </TableSectionGroup>
       </Box>
 

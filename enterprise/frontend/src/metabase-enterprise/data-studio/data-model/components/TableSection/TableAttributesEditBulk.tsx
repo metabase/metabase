@@ -21,10 +21,10 @@ import type {
 import { useSelection } from "../../pages/DataModel/contexts/SelectionContext";
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 
-import S from "./TableMetadataSection.module.css";
+import S from "./TableAttributes.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
 
-export function EditTableMetadata() {
+export function TableAttributesEditBulk() {
   const {
     selectedTables,
     selectedSchemas,

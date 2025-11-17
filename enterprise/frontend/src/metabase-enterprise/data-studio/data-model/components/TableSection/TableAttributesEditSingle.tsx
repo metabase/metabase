@@ -18,14 +18,14 @@ import type {
   UserId,
 } from "metabase-types/api";
 
-import S from "./TableMetadataSection.module.css";
+import S from "./TableAttributes.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
 
 interface Props {
   table: Table;
 }
 
-export function TableMetadataSettings({ table }: Props) {
+export function TableAttributesEditSingle({ table }: Props) {
   const [updateTable] = useUpdateTableMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();

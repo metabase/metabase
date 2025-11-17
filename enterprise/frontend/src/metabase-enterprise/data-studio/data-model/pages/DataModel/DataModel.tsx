@@ -26,7 +26,7 @@ import {
   SyncOptionsModal,
   TableSection,
 } from "../../components";
-import { EditTableMetadata } from "../../components/TableSection/EditTableMetadata";
+import { TableAttributesEditBulk } from "../../components/TableSection/TableAttributesEditBulk";
 
 import S from "./DataModel.module.css";
 import { COLUMN_CONFIG } from "./constants";
@@ -172,7 +172,7 @@ function DataModelContent({ params }: Props) {
             maw={COLUMN_CONFIG.table.max}
             miw={COLUMN_CONFIG.table.min}
           >
-            <EditTableMetadata />
+            <TableAttributesEditBulk />
           </Stack>
         )}
         {showTableDetailsSection && (
