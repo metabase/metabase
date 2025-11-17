@@ -157,7 +157,7 @@ export function TablePickerResults({
   };
 
   return (
-    <>
+    <Box className={S.root}>
       <Flex className={S.header} gap="sm" justify="flex-end">
         <Box className={cx(S.headerCell, S.ownerColumn)}>{t`Owner`}</Box>
         <Box className={cx(S.headerCell, S.rowsColumn)}>{t`Rows`}</Box>
@@ -193,7 +193,7 @@ export function TablePickerResults({
           })}
         </Box>
       </Box>
-    </>
+    </Box>
   );
 }
 

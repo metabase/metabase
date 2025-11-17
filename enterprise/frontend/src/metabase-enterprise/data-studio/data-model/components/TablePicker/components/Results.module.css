@@ -1,8 +1,10 @@
-.header {
+.root {
   --owner-column-width: 140px;
   --rows-column-width: 80px;
   --published-column-width: 80px;
+}
 
+.header {
   display: flex;
   align-items: center;
   padding-left: var(--mantine-spacing-md);
@@ -20,10 +22,6 @@
 }
 
 .results {
-  --owner-column-width: 140px;
-  --rows-column-width: 80px;
-  --published-column-width: 80px;
-
   position: relative;
   overflow: auto;
   flex: 1;
