@@ -163,3 +163,6 @@ CLAUDE.local.md
 
 /logs
 /.clojure-mcp
+
+# wireit cache
+.wireit
