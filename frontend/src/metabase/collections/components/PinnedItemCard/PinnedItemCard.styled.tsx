@@ -40,7 +40,7 @@ export const Title = styled.div`
   font-weight: bold;
   font-size: 1rem;
   line-height: 1.5rem;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   transition: color 0.2s ease;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -48,7 +48,7 @@ export const Title = styled.div`
 `;
 
 export const Description = styled(MarkdownPreview)`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;
 
 export const Body = styled.div`

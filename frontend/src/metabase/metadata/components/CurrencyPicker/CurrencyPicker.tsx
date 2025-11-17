@@ -60,7 +60,7 @@ export const CurrencyPicker = ({
               <span>{item.option.label}</span>
 
               <Text
-                c="text-light"
+                c="text-disabled"
                 className={S.symbol}
                 flex="0 0 auto"
                 lh="1rem"
@@ -75,7 +75,7 @@ export const CurrencyPicker = ({
         <Flex align="center" gap="xs" pos="relative">
           <Text
             bg="var(--input-bg)"
-            c="text-light"
+            c="text-disabled"
             pos="absolute"
             px="sm"
             right="100%"

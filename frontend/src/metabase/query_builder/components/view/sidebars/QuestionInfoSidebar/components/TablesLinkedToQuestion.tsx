@@ -30,7 +30,7 @@ export const TablesLinkedToQuestion = () => {
   return (
     <Stack gap="sm">
       {!filtered.length && (
-        <Text lh={1} color="text-medium">
+        <Text lh={1} color="text-secondary">
           {question.type() === "model"
             ? t`This model is not linked to any tables.`
             : t`This question is not linked to any tables.`}
@@ -39,7 +39,7 @@ export const TablesLinkedToQuestion = () => {
       {filtered.map(({ href, name, iconProps }) => (
         <Link to={href} key={href} variant="brand">
           <Flex gap="sm" lh="1.25rem">
-            {iconProps ? <Icon mt={2} c="text-dark" {...iconProps} /> : null}
+            {iconProps ? <Icon mt={2} c="text-primary" {...iconProps} /> : null}
             {name}
           </Flex>
         </Link>

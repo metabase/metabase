@@ -21,12 +21,12 @@ export const SectionContainer = styled.div`
 `;
 
 export const SectionTitle = styled.div`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-weight: 700;
 `;
 
 export const SectionDescription = styled.div`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   margin-top: 0.5rem;
 `;
 

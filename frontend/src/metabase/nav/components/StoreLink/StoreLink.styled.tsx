@@ -17,11 +17,11 @@ export const StoreIconWrapper = styled.div`
   height: 40px;
   border-radius: 6px;
   cursor: pointer;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   transition: all 300ms ease-in-out;
 
   &:hover {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: ${() => darken("filter")};
   }
 

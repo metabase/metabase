@@ -4,7 +4,7 @@
   cursor: pointer;
   padding: 0.5rem;
   border-radius: 0.375rem;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   &:hover {
     background-color: var(--mb-color-background-hover);

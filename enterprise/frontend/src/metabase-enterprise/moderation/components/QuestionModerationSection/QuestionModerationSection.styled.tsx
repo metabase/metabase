@@ -17,7 +17,7 @@ export const VerifyButton = styled((props: ButtonProps) => (
   padding: 8px;
 
   &:disabled {
-    color: var(--mb-color-text-medium);
+    color: var(--mb-color-text-secondary);
   }
 
   position: relative;

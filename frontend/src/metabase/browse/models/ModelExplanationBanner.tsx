@@ -35,7 +35,7 @@ export const ModelExplanationBanner = () => {
 
   return (
     <Paper
-      color="text-dark"
+      color="text-primary"
       bg="transparent"
       shadow="0"
       radius="0.25rem"

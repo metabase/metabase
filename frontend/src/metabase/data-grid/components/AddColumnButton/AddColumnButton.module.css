@@ -3,7 +3,7 @@
   align-items: center;
   justify-content: center;
   z-index: 5;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   width: 36px;
   height: 36px;
   box-sizing: content-box;

@@ -22,7 +22,7 @@ const getHeaderBackground = (theme: Theme) =>
   )}, ${alpha(
     theme.fn.themeColor("border"),
     0.5,
-  )} 1px, var(--mb-color-bg-white) 1px, var(--mb-color-bg-white) 100%)`;
+  )} 1px, var(--mb-color-background-primary) 1px, var(--mb-color-background-primary) 100%)`;
 
 export const PermissionsTableRoot = styled.table`
   border-collapse: collapse;
@@ -103,7 +103,7 @@ export const HintIcon = styled(
     );
   }),
 )`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
   margin-left: 0.375rem;
   cursor: pointer;
 `;

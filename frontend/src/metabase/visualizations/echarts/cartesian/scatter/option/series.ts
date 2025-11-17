@@ -69,7 +69,7 @@ export function buildEChartsScatterSeries(
     itemStyle: {
       color: seriesModel.color,
       opacity: CHART_STYLE.opacity.scatter,
-      borderColor: renderingContext.getColor("bg-white"),
+      borderColor: renderingContext.getColor("background-primary"),
       borderWidth: 1,
     },
     emphasis: {

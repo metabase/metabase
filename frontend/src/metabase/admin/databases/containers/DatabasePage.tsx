@@ -65,7 +65,7 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
     <Flex
       direction="row"
       h="100%"
-      style={{ backgroundColor: "var(--mb-color-bg-light)" }}
+      style={{ backgroundColor: "var(--mb-color-background-secondary)" }}
     >
       <Box h="100%" w="100%" component={ScrollArea}>
         <Box

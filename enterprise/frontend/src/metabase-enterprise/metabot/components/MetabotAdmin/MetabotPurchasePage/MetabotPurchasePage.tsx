@@ -130,7 +130,7 @@ export function MetabotPurchasePage(): ReactElement {
                     <Text maw="35rem">{t`Additional amount for the add-on will be added to your next billing period invoice. You can cancel the add-on anytime in Metabase Store.`}</Text>
 
                     <Card
-                      bg="var(--mb-color-bg-light)"
+                      bg="var(--mb-color-background-secondary)"
                       p={12}
                       radius="md"
                       shadow="none"

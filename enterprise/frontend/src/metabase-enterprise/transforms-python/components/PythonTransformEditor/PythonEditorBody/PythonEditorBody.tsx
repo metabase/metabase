@@ -46,7 +46,7 @@ export function PythonEditorBody({
 }: PythonEditorBodyProps) {
   return (
     <MaybeResizableBox resizable={withDebugger}>
-      <Flex h="100%" align="end" bg="bg-light" pos="relative">
+      <Flex h="100%" align="end" bg="background-secondary" pos="relative">
         <PythonEditor
           value={source}
           proposedValue={proposedSource}

@@ -33,7 +33,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
         flexBasis: 0,
       }}
       bg={active ? "var(--mb-color-background-hover)" : undefined}
-      c="var(--mb-color-text-dark)"
+      c="var(--mb-color-text-primary)"
       aria-label={item.name}
       aria-disabled={item.disabled ? true : false}
       wrap="nowrap"
@@ -72,8 +72,8 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
               flex="0 0 auto"
               c={
                 active
-                  ? "var(--mb-color-text-medium)"
-                  : "var(--mb-color-text-light)"
+                  ? "var(--mb-color-text-secondary)"
+                  : "var(--mb-color-text-disabled)"
               }
               fz="0.75rem"
               lh="1rem"
@@ -91,8 +91,8 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
           <Text
             c={
               active
-                ? "var(--mb-color-text-medium)"
-                : "var(--mb-color-text-light)"
+                ? "var(--mb-color-text-secondary)"
+                : "var(--mb-color-text-disabled)"
             }
             component="span"
             lh="1rem"

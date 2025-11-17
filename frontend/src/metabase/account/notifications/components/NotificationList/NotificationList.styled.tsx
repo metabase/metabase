@@ -22,7 +22,7 @@ export const NotificationSection = styled.div`
 `;
 
 export const NotificationIcon = styled(Icon)`
-  color: var(--mb-color-bg-dark);
+  color: var(--mb-color-background-tertiary-inverse);
   width: 3.25rem;
   height: 3.25rem;
   margin-top: 4.875rem;

@@ -1,6 +1,6 @@
 .DashboardBody {
   flex: 1 0 auto;
-  background-color: var(--mb-color-bg-secondary);
+  background-color: var(--mb-color-background-secondary);
 
   &.isEditingOrSharing {
     flex-basis: 0;
@@ -27,7 +27,7 @@
   }
 
   &:not(.isEmbeddingSdk) {
-    background-color: var(--mb-color-background);
+    background-color: var(--mb-color-background-primary);
   }
 
   &.isFullscreen {

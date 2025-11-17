@@ -52,19 +52,19 @@ export const EnableEmbeddedAnalyticsCard = () => {
   return (
     <Card p="md" mb="md">
       <Stack gap={0}>
-        <Text fz="md" c="text-dark">
+        <Text fz="md" c="text-primary">
           {t`Enable Embedded Analytics JS to get started.`}
         </Text>
 
         <Group gap="xs">
-          <Text size="sm" c="text-medium">
+          <Text size="sm" c="text-secondary">
             {t`By continuing, you agree to the fair usage conditions.`}
           </Text>
 
           <HoverCard position="right-start" withArrow>
             <HoverCard.Target>
               <Box>
-                <Icon name="info" size={14} c="text-medium" />
+                <Icon name="info" size={14} c="text-secondary" />
               </Box>
             </HoverCard.Target>
 

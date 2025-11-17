@@ -28,7 +28,7 @@ export const ResultTitle = styled(Anchor)<
   line-height: unset;
   font-weight: 700;
   font-size: ${({ theme }) => theme.fontSizes.md};
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   &:hover,
   &:focus-visible,

@@ -60,7 +60,7 @@ function EmptyState() {
         <Box maw="3rem" mb="0.75rem">
           <img src={EmptyCodeResult} alt="Code prompt icon" />
         </Box>
-        <Text c="text-medium">
+        <Text c="text-secondary">
           {c("{0} refers to the keyboard shortcut")
             .jt`To run your code, click on the Run button or type ${(
             <b key="shortcut">({keyboardShortcut})</b>
@@ -148,7 +148,13 @@ function ExecutionLogs({
 
   return (
     <Section title={label}>
-      <Box p="sm" bg="bg-light" mah="150px" bdrs="xs" className={S.logs}>
+      <Box
+        p="sm"
+        bg="background-secondary"
+        mah="150px"
+        bdrs="xs"
+        className={S.logs}
+      >
         {content}
       </Box>
     </Section>

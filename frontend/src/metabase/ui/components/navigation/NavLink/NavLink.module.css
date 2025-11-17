@@ -7,7 +7,7 @@
     }
 
     &[data-active] {
-      color: var(--mb-color-text-white);
+      color: var(--mb-color-text-primary-inverse);
 
       &,
       &:hover {
@@ -15,11 +15,11 @@
       }
 
       .NavLinkLabel {
-        color: var(--mb-color-text-white);
+        color: var(--mb-color-text-primary-inverse);
       }
 
       .NavLinkChevron {
-        color: var(--mb-color-text-white);
+        color: var(--mb-color-text-primary-inverse);
       }
     }
 
@@ -42,7 +42,7 @@
         color: var(--mb-color-text-primary);
       }
 
-      background-color: var(--mb-color-bg-medium);
+      background-color: var(--mb-color-background-tertiary);
     }
   }
 
@@ -79,7 +79,7 @@
 }
 
 .NavLinkChevron {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .NavLinkSection {

@@ -5,5 +5,5 @@
 /* double classname for specifity */
 .dangerItem.dangerItem:hover {
   background-color: var(--mb-color-error);
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
 }

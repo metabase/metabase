@@ -160,7 +160,7 @@ export function JoinComplete({
                 }
                 onRemove={() => handleRemoveCondition(index)}
               />
-              {!isLast && <Text color="text-dark">{t`and`}</Text>}
+              {!isLast && <Text color="text-primary">{t`and`}</Text>}
               {isLast && !isReadOnly && !isAddingNewCondition && (
                 <NotebookCellAdd
                   color={color}

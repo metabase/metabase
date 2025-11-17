@@ -34,13 +34,13 @@ export const SearchInputContainer = styled.div<{
   ${({ isActive }) => {
     if (isActive) {
       return css`
-        background-color: var(--mb-color-bg-medium);
+        background-color: var(--mb-color-background-tertiary);
       `;
     }
     return css`
-      background-color: var(--mb-color-bg-white);
+      background-color: var(--mb-color-background-primary);
       &:hover {
-        background-color: var(--mb-color-bg-light);
+        background-color: var(--mb-color-background-secondary);
       }
     `;
   }}
@@ -81,7 +81,7 @@ export const SearchInput = styled.input<{
 }>`
   background-color: transparent;
   border: none;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-weight: 700;
   font-size: 0.875rem;
   flex-basis: 0;
@@ -92,7 +92,7 @@ export const SearchInput = styled.input<{
   }
 
   &::placeholder {
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
   }
 
   ${breakpointMinSmall} {
@@ -142,11 +142,11 @@ export const CloseSearchButton = styled.button`
   justify-content: center;
   width: 3rem;
   height: 100%;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
   cursor: pointer;
 
   &:hover {
-    color: var(--mb-color-text-medium);
+    color: var(--mb-color-text-secondary);
   }
 `;
 
@@ -154,7 +154,7 @@ export const SearchResultsFloatingContainer = styled.div`
   position: absolute;
   left: 0;
   right: 0;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   ${breakpointMaxSmall} {
     top: ${APP_BAR_HEIGHT};

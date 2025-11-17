@@ -138,7 +138,7 @@ export function NotebookStep({
                 component={NotebookActionButton}
                 icon="play"
                 title={t`Preview`}
-                color={c("text-light")}
+                color={c("text-disabled")}
                 onClick={openPreview}
                 data-testid="step-preview-button"
               />

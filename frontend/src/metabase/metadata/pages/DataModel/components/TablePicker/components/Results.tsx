@@ -231,7 +231,7 @@ export function Results({
                       <Icon
                         name="chevronright"
                         size={10}
-                        color="var(--mb-color-text-light)"
+                        color="var(--mb-color-text-disabled)"
                         className={cx(S.chevron, {
                           [S.expanded]: isExpanded,
                         })}

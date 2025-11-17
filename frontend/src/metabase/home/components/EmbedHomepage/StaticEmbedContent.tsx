@@ -24,7 +24,7 @@ export const StaticEmbedContent = ({
       fw="bold"
       mb="sm"
       size="lg"
-      color="text-medium"
+      color="text-secondary"
       id="static-embed-title"
     >{t`Static embedding`}</Text>
     <Text mb="md">

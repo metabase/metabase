@@ -104,8 +104,8 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
   return (
     <Card
       aria-label={field.display_name}
-      bg={active ? "brand-light" : "bg-white"}
-      c="text-medium"
+      bg={active ? "brand-light" : "background-primary"}
+      c="text-secondary"
       className={cx(S.card, {
         [S.active]: active,
       })}
@@ -133,7 +133,7 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
       >
         <Group
           align="center"
-          c="text-light"
+          c="text-disabled"
           flex="0 0 auto"
           gap={0}
           maw="100%"

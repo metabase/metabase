@@ -52,7 +52,7 @@ export type SearchResultsProps = {
 export const SearchLoadingSpinner = () => (
   <Stack p="xl" align="center">
     <Loader size="lg" data-testid="loading-indicator" />
-    <Text size="xl" color="text-light">
+    <Text size="xl" color="text-disabled">
       {t`Loading…`}
     </Text>
   </Stack>

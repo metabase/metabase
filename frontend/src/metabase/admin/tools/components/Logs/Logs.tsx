@@ -85,7 +85,7 @@ const LogsBase = ({
                     query.length > 0 ? (
                       <Button
                         aria-label={t`Clear`}
-                        c="text-dark"
+                        c="text-primary"
                         leftSection={<Icon name="close" />}
                         size="xs"
                         variant="subtle"

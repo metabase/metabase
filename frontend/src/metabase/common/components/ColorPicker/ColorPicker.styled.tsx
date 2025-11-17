@@ -53,7 +53,7 @@ export const HueContainer = styled.div`
 `;
 
 const ControlsPointer = styled.div`
-  border: 2px solid var(--mb-color-bg-white);
+  border: 2px solid var(--mb-color-background-primary);
   border-radius: 50%;
   pointer-events: none;
 `;

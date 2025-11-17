@@ -133,7 +133,7 @@ const SortPopover = ({
       query={query}
       stageIndex={stageIndex}
       columnGroups={columnGroups}
-      color="text-dark"
+      color="text-primary"
       checkIsColumnSelected={(item) => checkColumnSelected(item, orderByIndex)}
       onSelect={(column: Lib.ColumnMetadata) => {
         const isUpdate = orderBy != null;

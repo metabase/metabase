@@ -36,7 +36,7 @@ const ColorRangeToggle = ({
         p="sm"
         size="lg"
       >
-        <Icon c="text-medium" name="compare" />
+        <Icon c="text-secondary" name="compare" />
       </ActionIcon>
     )}
   </Flex>

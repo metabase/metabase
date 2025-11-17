@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
 }
 
 .header {
@@ -10,7 +10,7 @@
   align-items: flex-start;
   justify-content: space-between;
   padding: 1rem 0;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   gap: 1rem;
   max-width: 900px;
   margin: 0 auto;
@@ -80,7 +80,7 @@
 .sidebar {
   width: 360px;
   flex-shrink: 0;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   border-left: 1px solid var(--mb-color-border);
   overflow-y: auto;
 }
@@ -93,7 +93,7 @@
 }
 
 .cardEmbed:hover {
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--mb-color-background-tertiary);
 }
 
 .highlighted {

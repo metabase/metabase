@@ -27,7 +27,7 @@
   width: 100%;
   padding: 0.5rem 0;
   line-height: 1.7;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);
   min-height: 1.7em;
   white-space: pre-wrap;
@@ -43,7 +43,7 @@
 }
 
 .content :global(.is-empty:first-child:before) {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
   content: attr(data-placeholder);
   height: 0;
   pointer-events: none;

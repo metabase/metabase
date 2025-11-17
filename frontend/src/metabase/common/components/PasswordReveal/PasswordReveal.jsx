@@ -13,7 +13,7 @@ const styles = {
   input: {
     fontSize: "1.2rem",
     letterSpacing: "2",
-    color: color("text-dark"),
+    color: color("text-primary"),
     outline: "none",
   },
 };

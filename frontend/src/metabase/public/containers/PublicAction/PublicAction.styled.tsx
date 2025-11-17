@@ -39,7 +39,7 @@ const titleStyle = css`
   font-weight: 700;
   font-size: 1.125rem;
   line-height: 1.375rem;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 `;
 
 export const FormTitle = styled.h1`

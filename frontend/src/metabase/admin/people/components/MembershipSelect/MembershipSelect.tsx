@@ -100,7 +100,7 @@ export const MembershipSelect = ({
             groups={groups}
             selectedGroupIds={selectedGroupIds}
           />
-          <Icon c="text-light" name="chevrondown" size={10} />
+          <Icon c="text-disabled" name="chevrondown" size={10} />
         </Flex>
       </Popover.Target>
       <Popover.Dropdown>

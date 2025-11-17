@@ -47,7 +47,7 @@ export const DashboardSelector = ({
 
   if (error) {
     return (
-      <Group bg="bg-light" p="1rem">
+      <Group bg="background-secondary" p="1rem">
         <Icon name="warning" />
         {t`Error loading dashboard.`}
         {"  "}

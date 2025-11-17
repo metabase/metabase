@@ -6,7 +6,7 @@ import { breakpointMinSmall } from "metabase/styled-components/theme";
 export const LayoutRoot = styled.div`
   position: relative;
   min-height: 100vh;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
 `;
 
 export const LayoutBody = styled.div`
@@ -23,7 +23,7 @@ export const LayoutCard = styled.div`
   width: 100%;
   margin-top: 1.5rem;
   padding: 2.5rem 1.5rem;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   box-shadow: 0 1px 15px var(--mb-color-shadow);
   border-radius: 6px;
 

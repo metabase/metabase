@@ -46,7 +46,7 @@ const BillingInfoError = () => {
       <SettingHeader id="billing" title={t`Billing`} />
       <Box mt="1rem" data-testid="billing-info-error">
         <Alert variant="error" icon="warning">
-          <Text c="text-medium">
+          <Text c="text-secondary">
             {t`An error occurred while fetching information about your billing.`}
             <br />
             <strong>{t`Need help?`}</strong>{" "}

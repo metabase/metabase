@@ -137,7 +137,7 @@
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: 700;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   padding-left: 0.5rem;
   padding-right: 0.25rem;
 }
@@ -156,7 +156,7 @@
   }
 
   &:hover {
-    background-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-background-secondary);
   }
 }
 
@@ -185,13 +185,13 @@
 }
 
 .ViewRunButtonWithTooltip {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   &:hover {
     color: var(--mb-color-brand);
 
     &.isDirty {
-      color: var(--mb-color-text-white);
+      color: var(--mb-color-text-primary-inverse);
     }
   }
 }
@@ -222,7 +222,7 @@
 
     &:hover {
       color: var(--mb-color-brand);
-      background-color: var(--mb-color-bg-medium);
+      background-color: var(--mb-color-background-tertiary);
     }
   }
 }

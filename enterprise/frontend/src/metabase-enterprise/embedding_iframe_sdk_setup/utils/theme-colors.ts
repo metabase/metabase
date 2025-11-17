@@ -13,12 +13,12 @@ export const getConfigurableThemeColors = () =>
     {
       name: t`Text color`,
       key: "text-primary",
-      originalColorKey: "text-dark",
+      originalColorKey: "text-primary",
     },
     {
       name: t`Background color`,
       key: "background",
-      originalColorKey: "bg-white",
+      originalColorKey: "background-primary",
     },
   ] as const satisfies {
     name: string;

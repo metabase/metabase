@@ -88,7 +88,7 @@ export const ExportSettingsWidget = ({
         onChange={onChangeFormat}
         styles={{
           root: {
-            backgroundColor: "var(--mb-color-background-light)",
+            backgroundColor: "var(--mb-color-background-secondary)",
           },
         }}
       />

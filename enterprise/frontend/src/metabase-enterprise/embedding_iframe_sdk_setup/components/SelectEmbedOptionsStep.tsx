@@ -119,7 +119,7 @@ const ParametersSection = () => {
         {t`Parameters`}
       </Text>
 
-      <Text size="sm" c="text-medium" mb="lg">
+      <Text size="sm" c="text-secondary" mb="lg">
         {experience === "dashboard"
           ? t`Set default values and control visibility`
           : t`Set default values`}

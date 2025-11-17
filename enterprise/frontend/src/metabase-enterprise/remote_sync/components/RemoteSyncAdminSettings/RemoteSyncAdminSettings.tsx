@@ -204,7 +204,7 @@ export const RemoteSyncAdminSettings = () => {
               >{t`Enabled`}</Badge>
             )}
           </Flex>
-          <Text c="text-dark" size="sm" mb="md" maw="40rem" lh="1.5rem">
+          <Text c="text-primary" size="sm" mb="md" maw="40rem" lh="1.5rem">
             {t`Keep your dashboards, questions, and collections safely backed up in Git.`}
           </Text>
 
@@ -219,7 +219,7 @@ export const RemoteSyncAdminSettings = () => {
               <Form disabled={!dirty}>
                 <Stack gap="md">
                   {!isRemoteSyncEnabled && (
-                    <Text c="text-medium" size="sm">
+                    <Text c="text-secondary" size="sm">
                       {jt`Need help setting this up? Check out our ${(
                         <ExternalLink key="link" href={docsUrl}>
                           {t`setup guide`}

@@ -34,7 +34,7 @@ export const useInvalidateTarget = (
             icon: "warning",
             message: e.data.message,
             toastColor: "error",
-            dismissIconColor: "var(--mb-color-text-white)",
+            dismissIconColor: "var(--mb-color-text-primary-inverse)",
           }),
         );
       }
