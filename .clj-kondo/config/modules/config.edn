@@ -1893,7 +1893,8 @@
            metabase-enterprise.metabot-v3.core
            metabase-enterprise.metabot-v3.init
            metabase-enterprise.metabot-v3.tools.api}
-   :uses #{api
+   :uses #{activity-feed
+           api
            app-db
            audit-app
            collections
