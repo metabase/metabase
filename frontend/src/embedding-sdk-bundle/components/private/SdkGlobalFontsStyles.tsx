@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports -- We sometimes need css-in-js in the SDK
 import { Global, css } from "@emotion/react";
 import { useMemo } from "react";
 
