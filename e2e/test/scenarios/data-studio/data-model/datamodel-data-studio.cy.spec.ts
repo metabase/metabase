@@ -66,7 +66,7 @@ describe("scenarios > data studio > datamodel", () => {
       it("should allow to navigate tables", { tags: ["@external"] }, () => {
         H.restore("mysql-8");
         cy.signInAsAdmin();
-        H.activateToken("bleeding-edge");
+
         H.DataModel.visit();
 
         TablePicker.getDatabase("QA MySQL8").click();
@@ -91,7 +91,7 @@ describe("scenarios > data studio > datamodel", () => {
       it("should allow searching for tables", { tags: ["@external"] }, () => {
         H.restore("mysql-8");
         cy.signInAsAdmin();
-        H.activateToken("bleeding-edge");
+
         H.DataModel.visit();
 
         TablePicker.getSearchInput().type("rEvIeWs");
@@ -107,10 +107,10 @@ describe("scenarios > data studio > datamodel", () => {
         });
       });
 
-      it("should restore previously selected table when expanding the tree (SEM-435)", () => {
+      it("should restore previously selected table when expanding the tree", () => {
         H.restore("mysql-8");
         cy.signInAsAdmin();
-        H.activateToken("bleeding-edge");
+
         H.DataModel.visit({
           databaseId: MYSQL_DB_ID,
           schemaId: MYSQL_DB_SCHEMA_ID,
@@ -194,7 +194,7 @@ describe("scenarios > data studio > datamodel", () => {
         beforeEach(() => {
           H.restore("postgres-writable");
           cy.signInAsAdmin();
-          H.activateToken("bleeding-edge");
+
           H.resetTestTable({ type: "postgres", table: "multi_schema" });
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });
         });
@@ -202,7 +202,7 @@ describe("scenarios > data studio > datamodel", () => {
         it("should allow to navigate databases, schemas, and tables", () => {
           H.DataModel.visit();
 
-          cy.location("pathname").should("eq", "/data-studio/data/database");
+          cy.location("pathname").should("eq", "/data-studio/data");
           TablePicker.getDatabases().should("have.length", 2);
           TablePicker.getSchemas().should("have.length", 0);
           TablePicker.getTables().should("have.length", 0);
@@ -252,10 +252,7 @@ describe("scenarios > data studio > datamodel", () => {
               `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
-          cy.location("pathname").should(
-            "not.eq",
-            `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Wild`,
-          );
+
           TablePicker.getDatabases().should("have.length", 2);
           TablePicker.getSchemas().should("have.length", 2);
           TablePicker.getTables().should("have.length", 3);
@@ -272,12 +269,14 @@ describe("scenarios > data studio > datamodel", () => {
 
           cy.log("close schema");
           TablePicker.getSchema("Wild").click();
+          TablePicker.getSchema("Wild").click();
           TablePicker.getDatabases().should("have.length", 2);
           TablePicker.getSchemas().should("have.length", 2);
           TablePicker.getTables().should("have.length", 1);
           TablePicker.getTable("Birds").should("not.exist");
 
           cy.log("close database");
+          TablePicker.getDatabase("Writable Postgres12").click();
           TablePicker.getDatabase("Writable Postgres12").click();
           TablePicker.getDatabases().should("have.length", 2);
           TablePicker.getSchemas().should("have.length", 0);
@@ -319,12 +318,12 @@ describe("scenarios > data studio > datamodel", () => {
         it("should allow to search for tables", () => {
           H.DataModel.visit();
 
-          TablePicker.getSearchInput().type("rd");
+          TablePicker.getSearchInput().type("b");
           TablePicker.getTables().should("have.length", 2);
-          TablePicker.getTable("Orders").should("be.visible");
+          TablePicker.getTable("Bookmark Ordering").should("be.visible");
           TablePicker.getTable("Birds").should("be.visible");
 
-          TablePicker.getSearchInput().clear().type("rds");
+          TablePicker.getSearchInput().clear().type("bi");
           TablePicker.getTables().should("have.length", 1);
           TablePicker.getTable("Birds").should("be.visible").click();
 
@@ -340,7 +339,7 @@ describe("scenarios > data studio > datamodel", () => {
           TablePicker.getTables().should("have.length", 2);
         });
 
-        it("should restore previously selected table when expanding the tree (SEM-435)", () => {
+        it("should restore previously selected table when expanding the tree", () => {
           H.DataModel.visit();
 
           TablePicker.getDatabase("Writable Postgres12").click();
@@ -348,16 +347,22 @@ describe("scenarios > data studio > datamodel", () => {
           TablePicker.getTable("Animals").click();
           TablePicker.getSchema("Wild").click();
           TablePicker.getTable("Birds").click();
-
-          TablePicker.getDatabase("Writable Postgres12").click();
-          TablePicker.getDatabase("Writable Postgres12").click();
-
-          TableSection.getNameInput().should("have.value", "Birds");
           TablePicker.getTable("Birds").should(
             "have.attr",
             "aria-selected",
             "true",
           );
+          TablePicker.getTable("Birds").find('input[type="checkbox"]').check();
+          TablePicker.getTable("Birds").should(
+            "not.have.attr",
+            "aria-selected",
+            "true",
+          );
+
+          TablePicker.getDatabase("Writable Postgres12").click();
+          TablePicker.getDatabase("Writable Postgres12").click();
+
+          TableSection.getNameInput().should("have.value", "Birds");
         });
       },
     );
