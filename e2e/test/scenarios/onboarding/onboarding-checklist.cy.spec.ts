@@ -72,7 +72,7 @@ describe("Inaccessible Onboarding checklist", () => {
   });
 });
 
-H.describeWithSnowplow("Onboarding checklist events", () => {
+describe("Onboarding checklist events", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

@@ -44,7 +44,7 @@
   (assert (not (:qp/compiled query)) "This query has already been compiled!")
   (if (lib/native-only-query? query)
     (set/rename-keys (lib/query-stage query -1) {:native :query})
-    (driver/mbql->native driver/*driver* (lib/->legacy-MBQL query))))
+    (driver/mbql->native driver/*driver* query)))
 
 (mu/defn compile-preprocessed :- ::compiled
   "Compile an already-preprocessed query, if needed. Returns just the resulting 'inner' native query.

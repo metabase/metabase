@@ -71,6 +71,11 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
               theme={
                 resolvedColorScheme === "dark" ? "filled_black" : "outline"
               }
+              // This is needed to ensure that no white border shows up around the
+              // login button in dark mode (UXW-2138)
+              containerProps={{
+                style: { colorScheme: "light" },
+              }}
             />
           </GoogleOAuthProvider>
           <Checkbox

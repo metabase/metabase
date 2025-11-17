@@ -716,7 +716,7 @@ describe("scenarios > dashboard > tabs", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > dashboard > tabs", () => {
+describe("scenarios > dashboard > tabs", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
