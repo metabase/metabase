@@ -2315,7 +2315,10 @@ describe("scenarios > dashboard > parameters", () => {
       H.selectDashboardFilter(H.getDashboardCard(0), "Count");
       H.dashboardParameterSidebar().button("Done").click();
 
-      H.findDashCardAction(H.getDashboardCard(0), "Duplicate").click();
+      H.getDashboardCard(0)
+        .realHover({ scrollBehavior: "bottom" })
+        .findByLabelText("Duplicate")
+        .click();
 
       H.getDashboardCard(1).within(() => {
         cy.findByTestId("chart-container").should("exist");
