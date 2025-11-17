@@ -7,6 +7,7 @@ import {
   useUpdateTableMutation,
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
+import * as Urls from "metabase/lib/urls";
 import { dependencyGraph } from "metabase/lib/urls/dependencies";
 import {
   FieldOrderPicker,
@@ -308,13 +309,21 @@ const TableSectionBase = ({
 };
 
 function TableLink({ table }: { table: Table }) {
+  const url =
+    Urls.modelToUrl({
+      id: Number(table.id),
+      name: table.name,
+      model: "table",
+      database: { id: table.db_id },
+    }) ?? "#";
+
   return (
     <Tooltip label={t`Go to this table`} position="top">
       <Box>
         {/* wrapping with a Box because Tooltip does not work for <Button component={Link} /> */}
         <Button
           component={Link}
-          to={getQueryBuilderUrl(table)}
+          to={url}
           aria-label={t`Go to this table`}
           leftSection={<Icon name="external" size={16} />}
           style={{
@@ -324,10 +333,6 @@ function TableLink({ table }: { table: Table }) {
       </Box>
     </Tooltip>
   );
-}
-
-function getQueryBuilderUrl(table: Table) {
-  return `/question#?db=${table.db_id}&table=${table.id}`;
 }
 
 export const TableSection = memo(TableSectionBase);
