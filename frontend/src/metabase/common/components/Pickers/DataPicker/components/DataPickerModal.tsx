@@ -32,7 +32,6 @@ import {
   createQuestionPickerItemSelectHandler,
   createShouldShowItem,
   getRecentItemDatabaseId,
-  isCollectionItem,
   isTableItem,
   isValueItem,
 } from "../utils";
@@ -68,7 +67,9 @@ const options: DataPickerModalOptions = {
   hasConfirmButtons: false,
   showPersonalCollections: true,
   showRootCollection: true,
-  hasRecents: true,
+  showLibrary: true,
+  showDatabases: true,
+  hasRecents: false,
 };
 
 export const DataPickerModal = ({
@@ -210,14 +211,19 @@ export const DataPickerModal = ({
     if (shouldShowCollectionsTab) {
       computedTabs.push({
         id: "questions-tab",
-        displayName: t`Collections`,
-        models: ["card" as const, "dataset" as const, "metric" as const],
-        folderModels: ["collection" as const, "dashboard" as const],
+        displayName: t`Data`,
+        models: [
+          "card" as const,
+          "dataset" as const,
+          "metric" as const,
+          "table" as const,
+        ],
+        folderModels: ["collection", "dashboard", "schema", "database"],
         icon: "folder",
         extraButtons: [filterButton],
         render: ({ onItemSelect }) => (
           <QuestionPicker
-            initialValue={isCollectionItem(value) ? value : undefined}
+            initialValue={value}
             models={QUESTION_PICKER_MODELS}
             options={options}
             path={questionsPath}
@@ -244,7 +250,7 @@ export const DataPickerModal = ({
       recentFilter={recentFilter}
       searchParams={searchParams}
       selectedItem={value ?? null}
-      tabs={tabs}
+      tabs={tabs.slice(1, 2)} // FIXME: for testing
       title={title}
       onClose={onClose}
       onItemSelect={handleItemSelect}

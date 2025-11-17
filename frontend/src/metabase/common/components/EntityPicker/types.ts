@@ -80,6 +80,7 @@ export type ListProps<
   shouldDisableItem?: (item: Item) => boolean;
   shouldShowItem?: (item: Item) => boolean;
   entity?: "collection" | "dashboard";
+  refresh?: () => void;
 };
 
 export type FilterItemsInPersonalCollection = "only" | "exclude";

@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import {
   skipToken,
   useGetCollectionQuery,
   useListCollectionItemsQuery,
+  useListCollectionsTreeQuery,
 } from "metabase/api";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
@@ -42,6 +44,10 @@ export const useRootCollectionPickerItems = (
         : skipToken,
     );
 
+  const { data: libraryCollection } = useGetLibraryCollection({
+    skip: !options.showLibrary,
+  });
+
   const {
     data: personalCollectionItems,
     isLoading: isLoadingPersonalCollectionItems,
@@ -64,6 +70,27 @@ export const useRootCollectionPickerItems = (
 
   const items = useMemo(() => {
     const collectionItems: CollectionPickerItem[] = [];
+
+    if (options.showLibrary && libraryCollection) {
+      collectionItems.push({
+        ...libraryCollection,
+        model: "collection",
+        here: ["collection"],
+        below: ["collection", "card"],
+      });
+    }
+
+    if (options.showDatabases) {
+      collectionItems.push({
+        id: "databases",
+        name: t`Databases`,
+        model: "collection",
+        can_write: true,
+        location: "/",
+        here: ["collection"],
+        below: ["card"],
+      });
+    }
 
     if (options.showRootCollection || options.namespace === "snippets") {
       if (rootCollection && !rootCollectionError) {
@@ -117,6 +144,7 @@ export const useRootCollectionPickerItems = (
     options,
     rootCollectionError,
     totalPersonalCollectionItems,
+    libraryCollection,
   ]);
 
   const isLoading =
@@ -180,4 +208,28 @@ export const useEnsureCollectionSelected = ({
       setIsEnabled(false); // ensure this effect runs only once
     }
   }, [isEnabled, defaultCollectionItem, onInit]);
+};
+
+const useGetLibraryCollection = ({ skip = false }: { skip?: boolean }) => {
+  const { data, isLoading } = useListCollectionsTreeQuery(
+    skip ? skipToken : undefined,
+  );
+
+  const libraryCollection = data?.find(
+    (item) => item.type === "semantic-layer",
+  );
+
+  return {
+    isLoading,
+    data: libraryCollection
+      ? (_.pick(libraryCollection, [
+          "id",
+          "name",
+          "description",
+          "can_write",
+          "type",
+          "location",
+        ]) as CollectionPickerItem)
+      : undefined,
+  };
 };
