@@ -10,6 +10,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -70,9 +71,11 @@
                                        :present #{:description :caveats :points_of_interest}
                                        :non-nil #{:archived :definition :name :show_in_getting_started})
         new-def    (when-let [def (:definition clean-body)]
-                     (cond->> def
-                       (not= :mbql-version/mbql5 (lib/normalized-mbql-version def))
-                       (mbql.normalize/normalize ::mbql.s/MBQLQuery)))
+                     (u/prog1 (cond->> def
+                                (not= :mbql-version/mbql5 (lib/normalized-mbql-version def))
+                                (mbql.normalize/normalize ::mbql.s/MBQLQuery))
+                       (api/check-400 (lib/normalized-mbql-version <>)
+                                      (tru "Segment definition must be an MBQL query"))))
         new-body   (merge
                     (dissoc clean-body :revision_message)
                     (when new-def {:definition new-def}))

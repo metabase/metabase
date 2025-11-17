@@ -104,8 +104,8 @@
 (deftest create-segment-test
   (mt/with-temp [:model/Database {database-id :id} {}
                  :model/Table    {:keys [id]} {:db_id database-id}]
-    (doseq [[format-name definition-fn] {"MBQL4" mbql4-segment-definition
-                                         "pMBQL" (partial pmbql-segment-definition id)}]
+    (doseq [[format-name def-fn] {"MBQL4" mbql4-segment-definition
+                                  "pMBQL" (partial pmbql-segment-definition id)}]
       (testing format-name
         (is (= {:name                    "A Segment"
                 :description             "I did it!"
@@ -128,7 +128,7 @@
                                           :caveats                 nil
                                           :points_of_interest      nil
                                           :table_id                id
-                                          :definition              (definition-fn 10 20)})
+                                          :definition              (def-fn 10 20)})
                    segment-response
                    (update :definition map?))))))))
 
@@ -283,36 +283,43 @@
                    :model/Table    {table-id :id} {:db_id database-id}
                    :model/Segment {:keys [id]} {:table_id table-id
                                                 :definition (mbql4-segment-definition 2 "cans")}]
-      (doseq [[format-name eq-fn] [["MBQL4" mbql4-segment-definition]
-                                   ["pMBQL" (partial pmbql-segment-definition table-id)]]]
-        (testing format-name
-          (is (= {:name                    "Costa Rica"
-                  :description             nil
-                  :show_in_getting_started false
-                  :caveats                 nil
-                  :points_of_interest      nil
-                  :table_id                table-id
-                  :model_id                nil
-                  :creator_id              (mt/user->id :rasta)
-                  :creator                 (user-details (mt/fetch-user :rasta))
-                  :entity_id               true
-                  :created_at              true
-                  :updated_at              true
-                  :archived                false
-                  :definition true}
-                 (-> (mt/user-http-request
-                      :crowberto :put 200 (format "segment/%d" id)
-                      {:id                      id
-                       :name                    "Costa Rica"
-                       :description             nil
-                       :show_in_getting_started false
-                       :caveats                 nil
-                       :points_of_interest      nil
-                       :table_id                456
-                       :revision_message        "I got me some revisions"
-                       :definition              (eq-fn 2 "cans")})
-                     segment-response
-                     (update :definition map?)))))))))
+      (doseq [[format-name def-fn] {"MBQL4" mbql4-segment-definition
+                                    "pMBQL" (partial pmbql-segment-definition table-id)}]
+        (letfn [(request [expected-response-code]
+                  (mt/user-http-request
+                   :crowberto :put expected-response-code (format "segment/%d" id)
+                   {:id                      id
+                    :name                    "Costa Rica"
+                    :description             nil
+                    :show_in_getting_started false
+                    :caveats                 nil
+                    :points_of_interest      nil
+                    :table_id                456
+                    :revision_message        "I got me some revisions"
+                    :definition              (def-fn 2 "cans")}))]
+          (testing format-name
+            (case format-name
+              "pMBQL"
+              (is (= {:name                    "Costa Rica"
+                      :description             nil
+                      :show_in_getting_started false
+                      :caveats                 nil
+                      :points_of_interest      nil
+                      :table_id                table-id
+                      :model_id                nil
+                      :creator_id              (mt/user->id :rasta)
+                      :creator                 (user-details (mt/fetch-user :rasta))
+                      :entity_id               true
+                      :created_at              true
+                      :updated_at              true
+                      :archived                false
+                      :definition true}
+                     (-> (request 200)
+                         segment-response
+                         (update :definition map?))))
+              "MBQL4"
+              (is (= "Segment definition must be an MBQL query"
+                     (request 400))))))))))
 
 (deftest partial-update-test
   (testing "PUT /api/segment/:id"
@@ -321,8 +328,7 @@
         ;; just make sure API call doesn't barf
         (is (some? (mt/user-http-request :crowberto :put 200 (str "segment/" (u/the-id segment))
                                          {:name             "Cool name"
-                                          :revision_message "WOW HOW COOL"
-                                          :definition       {}})))))))
+                                          :revision_message "WOW HOW COOL"})))))))
 
 (deftest archive-test
   (testing "PUT /api/segment/:id"
@@ -405,12 +411,12 @@
   (testing "GET /api/segment/:id"
     (mt/with-temp [:model/Database {database-id :id} {}
                    :model/Table {table-id :id} {:db_id database-id}]
-      (doseq [[format-name definition-fn] {"MBQL4" mbql4-segment-definition
-                                           "pMBQL" (partial pmbql-segment-definition table-id)}]
+      (doseq [[format-name def-fn] {"MBQL4" mbql4-segment-definition
+                                    "pMBQL" (partial pmbql-segment-definition table-id)}]
         (testing format-name
           (mt/with-temp [:model/Segment {:keys [id]} {:creator_id (mt/user->id :crowberto)
                                                       :table_id   table-id
-                                                      :definition (definition-fn 2 "cans")}]
+                                                      :definition (def-fn 2 "cans")}]
             (mt/with-full-data-perms-for-all-users!
               (is (= {:name                    "Toucans in the rainforest"
                       :description             "Lookin' for a blueberry"

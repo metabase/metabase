@@ -111,8 +111,7 @@
             existing-model-id (:model_id segment)]
         (when (seq new-definition)
           (when-not (lib/normalized-mbql-version new-definition)
-            (throw (ex-info (tru "Segment definition must be an MBQL query")
-                            {:definition new-definition})))
+            (throw (UnsupportedOperationException. (tru "Segment definition must be an MBQL query"))))
           ;; Normalize and extract source
           (let [normalized-def (lib-be/normalize-query new-definition)
                 new-source-table-id (lib/source-table-id normalized-def)
