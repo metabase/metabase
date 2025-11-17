@@ -1,5 +1,5 @@
 (ns metabase.glossary.api
-  "API endpoints for managing glossary entries."
+  "REST API endpoints for managing glossary entries."
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
