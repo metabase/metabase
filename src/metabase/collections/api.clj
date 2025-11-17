@@ -193,7 +193,10 @@
   subtree (below).
 
   TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at
-  some point in the future."
+  some point in the future.
+
+  When `shallow` is true, takes an optional `collection-id` and returns only the requested collection (or
+  the root, if `collection-id` is `nil`)."
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections
            namespace shallow collection-id]} :- [:map
