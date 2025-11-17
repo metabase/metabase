@@ -4,11 +4,17 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 10 * * 1-5' # every weekday at 5am US eastern time
+  pull_request:
+    types: [labeled, synchronize]
 
 jobs:
   be-linter-cloverage:
     # don't run this workflow on a cron for forks
-    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    if: |
+      ${{
+        (github.event_name != 'schedule' || github.repository == 'metabase/metabase') &&
+        (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-cloverage'))
+      }}
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     strategy:
@@ -132,7 +138,11 @@ jobs:
 
   be-linter-cloverage-enterprise:
     # don't run this workflow on a cron for forks
-    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    if: |
+      ${{
+        (github.event_name != 'schedule' || github.repository == 'metabase/metabase') &&
+        (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-cloverage'))
+      }}
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     strategy:
