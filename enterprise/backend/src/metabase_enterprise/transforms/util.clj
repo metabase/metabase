@@ -162,10 +162,13 @@
 (defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
   [database target]
-  (sync-table! database (assoc target
-                               :data_authority :computed
-                               :data_source :metabase-transform)
-               {:create? true}))
+  (when-let [table (sync-table! database (assoc target
+                                                :data_authority :computed
+                                                :data_source :metabase-transform)
+                                {:create? true})]
+    (when-not (:active table)
+      (t2/update! :model/Table (:id table) {:active true}))
+    table))
 
 (defn deactivate-table!
   "Deactivate table for `target` in `database` in the app db."
