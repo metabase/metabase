@@ -36,8 +36,8 @@ const startServer = async () => {
 };
 
 const runTests = async (config, cliArguments = []) => {
-  const userArgument = await parseArguments(cliArguments);
-  await runCypress({ ...config, ...userArgument }, process.exit);
+  const userOverrides = await parseArguments(cliArguments);
+  await runCypress({ ...config, ...userOverrides }, process.exit);
 };
 
 // Custom "modes"

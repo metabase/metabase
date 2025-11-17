@@ -79,7 +79,7 @@ printBold(`Running Cypress with options:
 
 const init = async () => {
   const cliArguments = process.argv.slice(2);
-  const userArgument = await parseArguments(cliArguments);
+  const userOverrides = await parseArguments(cliArguments);
 
   if (options.START_CONTAINERS) {
     printBold("⏳ Starting containers");
@@ -183,7 +183,7 @@ const init = async () => {
     const config = { configFile: "e2e/support/cypress.config.js" };
 
     printBold("⏳ Starting Cypress");
-    await runCypress({ ...config, ...userArgument }, cleanup);
+    await runCypress({ ...config, ...userOverrides }, cleanup);
   }
 };
 
