@@ -9,7 +9,7 @@ import {
 } from "metabase/common/components/Pickers/CollectionPicker";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import { useDispatch } from "metabase/lib/redux";
-import * as urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Checkbox, Group, Modal, Text, rem } from "metabase/ui";
 import type {
@@ -84,6 +84,7 @@ export function PublishModelsModal({
   if (!isOpen) {
     return null;
   }
+
   if (showPublishInfo && !seenPublishModelsInfo) {
     return (
       <AcknowledgePublishModelsModal
@@ -125,10 +126,10 @@ export function PublishModelsModal({
 
 function getLink(response: PublishModelsResponse) {
   if (response.created_count === 1) {
-    return urls.dataStudioModel(response.models[0].id);
+    return Urls.dataStudioModel(response.models[0].id);
   }
 
-  return urls.dataStudioCollection(response.target_collection.id);
+  return Urls.dataStudioCollection(response.target_collection.id);
 }
 
 function AcknowledgePublishModelsModal({
@@ -139,6 +140,7 @@ function AcknowledgePublishModelsModal({
   handleClose: ({ acknowledged }: { acknowledged: boolean }) => void;
 }) {
   const [isAcknowledged, setIsAcknowledged] = useState(false);
+
   return (
     <Modal
       opened={isOpen}
