@@ -8,7 +8,7 @@ import "embedding-sdk-bundle";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 
-import { USERS } from "../../../../../e2e/support/cypress_data";
+import { USERS } from "../../../../e2e/support/cypress_data";
 
 import { storybookThemes } from "./storybook-themes";
 const METABASE_INSTANCE_URL =
