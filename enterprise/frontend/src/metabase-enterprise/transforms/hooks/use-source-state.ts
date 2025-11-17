@@ -45,16 +45,12 @@ function normalizeSource(
   const { isNative } = Lib.queryDisplayInfo(query);
 
   if (isNative) {
-    const nativeQuery = question.legacyNativeQuery();
-    if (nativeQuery) {
-      const queryText = nativeQuery.queryText();
-      // For native queries, ensure template tags are processed
-      const updatedQuery = nativeQuery.setQueryText(queryText);
-      return {
-        type: "query",
-        query: updatedQuery.datasetQuery(),
-      };
-    }
+    const updatedQuery = Lib.withNativeQuery(query, Lib.rawNativeQuery(query));
+    return {
+      type: "query",
+      // question.setQuery ensures template tags get processed
+      query: question.setQuery(updatedQuery).datasetQuery(),
+    };
   }
 
   return source;
