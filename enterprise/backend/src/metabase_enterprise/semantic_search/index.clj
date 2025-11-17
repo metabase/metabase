@@ -790,7 +790,7 @@
             embedding-time-ms (u/since-ms timer)
 
             db-timer (u/start-timer)
-            weights (search.config/weights (:context search-context))
+            weights (search.config/weights search-context)
             scorers (scoring/semantic-scorers (:table-name index) search-context)
             query (scored-search-query index embedding search-context scorers)
             xform (comp (map decode-metadata)

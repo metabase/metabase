@@ -8,7 +8,7 @@
    [hiccup.util]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
-   [metabase.core.initialization-status :as init-status]
+   [metabase.initialization-status.core :as init-status]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
    [metabase.util.embed :as embed]

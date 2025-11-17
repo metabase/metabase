@@ -188,27 +188,30 @@
 ;; This gets called *a lot* during a search request, so we'll almost certainly need to optimize it. Maybe just TTL.
 (defn weights
   "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
-  [context]
-  (let [context   (or context :default)
-        overrides (search.settings/experimental-search-weight-overrides)]
-    (if (= :all context)
-      (merge-with merge static-weights overrides)
-      (merge (get static-weights :default)
-             ;; Not sure which of the next two should have precedence, arguments for both "¯\_(ツ)_/¯"
-             (get overrides :default)
-             (get static-weights context)
-             (get overrides context)))))
+  ([]
+   (weights {}))
+  ([{request-overrides :weights, :keys [context]}]
+   (let [context          (or context :default)
+         system-overrides (search.settings/experimental-search-weight-overrides)]
+     (if (= :all context)
+       (merge-with merge static-weights system-overrides)
+       (merge (get static-weights :default)
+              ;; Not sure which of the next two should have precedence, arguments for both "¯\_(ツ)_/¯"
+              (get system-overrides :default)
+              (get static-weights context)
+              (get system-overrides context)
+              request-overrides)))))
 
 (defn weight
   "The relative strength the corresponding score has in influencing the total score."
-  [context scorer-key]
-  (get (weights context) scorer-key (when-not (namespace scorer-key) 0)))
+  [search-ctx scorer-key]
+  (get (weights search-ctx) scorer-key (when-not (namespace scorer-key) 0)))
 
 (defn scorer-param
   "Get a nested parameter scoped to the given scorer"
-  [context scorer-key param-key]
+  [search-ctx scorer-key param-key]
   (let [flat-key (keyword (name scorer-key) (name param-key))]
-    (weight context flat-key)))
+    (weight search-ctx flat-key)))
 
 (defn model->alias
   "Given a model string returns the model alias"
@@ -249,6 +252,7 @@
    ;; TODO this is optional only for tests, clean those up!
    [:search-engine      {:optional true} keyword?]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
+   [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]
    ;;
    ;; optional
    ;;

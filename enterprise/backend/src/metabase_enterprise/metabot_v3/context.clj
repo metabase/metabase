@@ -5,6 +5,8 @@
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -65,9 +67,11 @@
                      "transform" (-> item :source :query)
                      "adhoc" (-> item :query)
                      (-> item :query))]
-    (when (and (#{:native "native"} (:type query))
-               (:database query))
-      query)))
+    ;; Draft transforms might not have a database yet. Check this before attempting to normalize the query.
+    (when (:database query)
+      (when-let [normalized-query (lib-be/normalize-query query)]
+        (when (lib/native-only-query? normalized-query)
+          normalized-query)))))
 
 (defn- database-tables-for-context
   "Get database tables formatted for metabot context. Only includes tables used in the query, formatted for API output.

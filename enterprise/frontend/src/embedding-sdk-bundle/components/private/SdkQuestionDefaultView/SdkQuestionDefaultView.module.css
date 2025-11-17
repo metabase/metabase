@@ -1,5 +1,19 @@
 .Container {
   display: grid;
+  grid-template: 1fr / 1fr;
+  grid-template-areas: "Main";
+}
+
+.Container:has(.TopBar) {
+  display: grid;
+  grid-template: auto 1fr / 1fr;
+  grid-template-areas:
+    "TopBar"
+    "Main";
+}
+
+.Container:has(.TopBar):has(.MidBar) {
+  display: grid;
   grid-template: auto auto 1fr / 1fr;
   grid-template-areas:
     "TopBar"
@@ -9,6 +23,14 @@
 
 .TopBar {
   grid-area: TopBar;
+}
+
+.TopBar:empty {
+  display: none;
+}
+
+.BackButtonWrapper:empty {
+  display: none;
 }
 
 .MidBar {
