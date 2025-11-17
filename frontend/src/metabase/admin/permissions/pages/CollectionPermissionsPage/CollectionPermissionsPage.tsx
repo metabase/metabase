@@ -7,8 +7,13 @@ import _ from "underscore";
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
 import Collections from "metabase/entities/collections";
 import Groups from "metabase/entities/groups";
-import { connect } from "metabase/lib/redux";
-import type { Collection, CollectionId, GroupId } from "metabase-types/api";
+import { connect, useSelector } from "metabase/lib/redux";
+import type {
+  Collection,
+  CollectionId,
+  CollectionPermissions,
+  GroupId,
+} from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import {
@@ -59,6 +64,7 @@ type UpdateCollectionPermissionParams = {
   collection: Collection;
   value: unknown;
   shouldPropagate: boolean;
+  originalPermissionsState: CollectionPermissions;
 };
 
 type CollectionPermissionsPageProps = {
@@ -92,6 +98,10 @@ function CollectionsPermissionsPageView({
   initialize,
   route,
 }: CollectionPermissionsPageProps) {
+  const originalPermissionsState = useSelector(
+    ({ admin }) => admin.permissions.originalCollectionPermissions,
+  );
+
   useEffect(() => {
     initialize();
   }, [initialize]);
@@ -108,9 +118,10 @@ function CollectionsPermissionsPageView({
         collection,
         value,
         shouldPropagate: toggleState,
+        originalPermissionsState,
       });
     },
-    [collection, updateCollectionPermission],
+    [collection, updateCollectionPermission, originalPermissionsState],
   );
 
   return (

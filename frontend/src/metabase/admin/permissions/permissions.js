@@ -1,4 +1,4 @@
-import { assocIn, merge } from "icepick";
+import { assocIn, getIn, merge } from "icepick";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -437,19 +437,30 @@ const collectionPermissions = handleActions(
     },
     [UPDATE_COLLECTION_PERMISSION]: {
       next: (state, { payload }) => {
-        const { groupId, collection, value, shouldPropagate } = payload;
-        let newPermissions = assocIn(state, [groupId, collection.id], value);
+        const {
+          collection,
+          groupId,
+          originalPermissionsState,
+          shouldPropagate,
+          value,
+        } = payload;
+        let newPermissionsState = assocIn(
+          state,
+          [groupId, collection.id],
+          value,
+        );
 
-        if (shouldPropagate) {
-          for (const descendent of getDecendentCollections(collection)) {
-            newPermissions = assocIn(
-              newPermissions,
-              [groupId, descendent.id],
-              value,
-            );
-          }
+        for (const descendent of getDecendentCollections(collection)) {
+          newPermissionsState = assocIn(
+            newPermissionsState,
+            [groupId, descendent.id],
+            shouldPropagate
+              ? value
+              : getIn(originalPermissionsState, [groupId, descendent.id]),
+          );
         }
-        return newPermissions;
+
+        return newPermissionsState;
       },
     },
     [SAVE_COLLECTION_PERMISSIONS]: {
