@@ -38,6 +38,7 @@ databaseChangeLog:
             tableName: report_card
             columnName: embedding_type
 
+  - changeSet:
       id: v58.2025-11-04T23:09:49
       author: edpaget
       comment: Create auth_identity table for multi-authentication support
