@@ -100,6 +100,12 @@
                 [:email                       ms/Email]
                 [:first_name {:optional true} [:maybe :string]]]]]]])
 
+(mr/def :event/user-invitation-reminder
+  [:map {:closed true}
+   [:object [:map
+             [:id    pos-int?]
+             [:email ms/Email]]]])
+
 ;; segment events
 
 (mr/def ::segment

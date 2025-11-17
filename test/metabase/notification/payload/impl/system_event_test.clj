@@ -22,6 +22,10 @@
                                                               :invite_method "email")
                                               :details {:invitor invitor}}))
 
+(defn- publish-user-invitation-reminder-event!
+  [user]
+  (events/publish-event! :event/user-invitation-reminder {:object (select-keys user [:id :email])}))
+
 (deftest system-event-e2e-test
   (testing "a system event that sends to an email channel with a custom template to an user recipient"
     (notification.tu/with-notification-testing-setup!
@@ -222,3 +226,36 @@
     (mt/with-temporary-setting-values
       [admin-email "it@metabase.com"]
       (check (conj admin-emails "it@metabase.com") []))))
+
+(deftest user-invitation-reminder-event-send-email-test
+  (testing "publish an :user-invitation-reminder event will send an email"
+    (is (= {:channel/email 1}
+           (update-vals (notification.tu/with-captured-channel-send!
+                          (publish-user-invitation-reminder-event! (t2/select-one :model/User)))
+                        count)))))
+
+(deftest user-invitation-reminder-email-content-test
+  (testing "user invitation reminder email content"
+    (let [email (mt/with-temporary-setting-values
+                  [site-url  "https://metabase.com"]
+                  (-> (notification.tu/with-captured-channel-send!
+                        (publish-user-invitation-reminder-event! (t2/select-one :model/User :email "crowberto@metabase.com")))
+                      :channel/email first))
+          regexes [#"A teammate wants you to join them on Metabase"
+                   #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join now</a>"]]
+      (is (= {:recipients     #{"crowberto@metabase.com"}
+              :message-type   :attachments
+              :subject        "Reminder: A teammate is waiting for you to join Metabase"
+              :message        [(zipmap (map str regexes) (repeat true))]
+              :recipient-type :cc}
+             (apply mt/summarize-multipart-single-email email regexes))))
+
+    (testing "subject is translated"
+      (mt/with-mock-i18n-bundles! {"es" {:messages {"Reminder: A teammate is waiting for you to join {0}"
+                                                    "Recordatorio: Un compañero está esperando que te unas a {0}"}}}
+        (mt/with-temporary-setting-values [site-locale "es"]
+          (let [email (-> (notification.tu/with-captured-channel-send!
+                            (publish-user-invitation-reminder-event! (t2/select-one :model/User :email "crowberto@metabase.com")))
+                          :channel/email first)]
+            (is (= "Recordatorio: Un compañero está esperando que te unas a Metabase"
+                   (:subject email)))))))))
