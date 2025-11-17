@@ -158,9 +158,11 @@ describe("usePageTitle hooks", () => {
     });
 
     it("should respect titleIndex option", async () => {
-      renderHook(() => usePageTitle("Metabase", { titleIndex: 0 }));
+      const { unmount: unmount1 } = renderHook(() =>
+        usePageTitle("Metabase", { titleIndex: 0 }),
+      );
 
-      renderHook(() =>
+      const { unmount: unmount2 } = renderHook(() =>
         usePageTitleWithLoadingTime("Dashboard", {
           titleIndex: 1,
           startTime: performance.now() - 120000, // 2 minutes ago
@@ -171,6 +173,9 @@ describe("usePageTitle hooks", () => {
       await waitFor(() => {
         expect(document.title).toBe("02:00 Dashboard · Metabase");
       });
+
+      unmount2();
+      unmount1();
     });
   });
 });

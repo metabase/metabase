@@ -8,11 +8,11 @@ type TitleEntry = {
   titleIndex: number;
 };
 
-const titleStack: TitleEntry[] = [];
+const titleMap = new Map<string, TitleEntry>();
 const SEPARATOR = " · ";
 
 const updateDocumentTitle = _.debounce(() => {
-  document.title = titleStack
+  document.title = Array.from(titleMap.values())
     .sort((a, b) => a.titleIndex - b.titleIndex)
     .map((entry) => entry.title)
     .filter((title) => title)
@@ -40,17 +40,12 @@ export function usePageTitle(
   useEffect(() => {
     const id = idRef.current;
 
-    // Add to stack
-    titleStack.push({ id, title, titleIndex });
+    titleMap.set(id, { id, title, titleIndex });
     updateDocumentTitle();
 
-    // Cleanup on unmount
     return () => {
-      const index = titleStack.findIndex((e) => e.id === id);
-      if (index !== -1) {
-        titleStack.splice(index, 1);
-        updateDocumentTitle();
-      }
+      titleMap.delete(id);
+      updateDocumentTitle();
     };
   }, [title, titleIndex]);
 }
