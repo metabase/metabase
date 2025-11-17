@@ -3,7 +3,7 @@ import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type {
   CreateDashboardValues,
   MetabaseDashboard,
-} from "embedding-sdk-package";
+} from "embedding-sdk-bundle/types";
 import { createDashboard as createDashboardMutation } from "metabase/api/dashboard";
 
 export const createDashboard =
