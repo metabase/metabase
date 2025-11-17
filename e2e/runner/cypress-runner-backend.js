@@ -18,7 +18,6 @@ const CypressBackend = {
     const server = {
       dbFile: generateTempDbPath(),
       host: `http://localhost:${port}`,
-      port,
     };
 
     this.server = server;
