@@ -12,14 +12,7 @@ const baseRestrictedConfig = {
     },
     {
       group: ["cljs/metabase.lib*"],
-    },
-    {
-      group: ["/embedding-sdk"],
-    },
-    {
-      group: ["/embedding-sdk-bundle"],
-    },
-  ],
+    },],
   paths: [
     {
       name: "react-redux",
