@@ -89,12 +89,14 @@ export function PublishModelsModal({
     return (
       <AcknowledgePublishModelsModal
         isOpen={true}
-        handleClose={({ acknowledged }) => {
+        handleSubmit={({ acknowledged }) => {
           if (acknowledged) {
             ackSeenPublishModelsInfo();
           }
           setShowPublishInfo(false);
-          onClose?.();
+        }}
+        handleClose={() => {
+          handleClose();
         }}
       />
     );
@@ -134,10 +136,12 @@ function getLink(response: PublishModelsResponse) {
 
 function AcknowledgePublishModelsModal({
   isOpen,
+  handleSubmit,
   handleClose,
 }: {
   isOpen: boolean;
-  handleClose: ({ acknowledged }: { acknowledged: boolean }) => void;
+  handleSubmit: ({ acknowledged }: { acknowledged: boolean }) => void;
+  handleClose: () => void;
 }) {
   const [isAcknowledged, setIsAcknowledged] = useState(false);
 
@@ -147,7 +151,7 @@ function AcknowledgePublishModelsModal({
       padding="xl"
       size={rem(512)}
       title={t`What publishing a table does`}
-      onClose={() => handleClose({ acknowledged: isAcknowledged })}
+      onClose={() => handleClose()}
     >
       <Text pt="sm">
         {t`Publishing a table means we'll create a model based on it and save it in the collection you choose so that it’s easy for your end users to find it.`}
@@ -164,7 +168,7 @@ function AcknowledgePublishModelsModal({
           />
         </Box>
         <Button
-          onClick={() => handleClose({ acknowledged: isAcknowledged })}
+          onClick={() => handleSubmit({ acknowledged: isAcknowledged })}
           variant="filled"
         >{t`Got it`}</Button>
       </Group>
