@@ -29,6 +29,7 @@ export function NativeQueryColumnSelect({
   useEffect(() => {
     let isCancelled = false;
     if (
+      columns &&
       Lib.areLegacyQueriesEqual(
         Lib.toLegacyQuery(queryRef.current),
         Lib.toLegacyQuery(query),
@@ -60,7 +61,7 @@ export function NativeQueryColumnSelect({
     return () => {
       isCancelled = true;
     };
-  }, [extractColumns, query, queryRef]);
+  }, [extractColumns, query, queryRef, columns]);
 
   // If we successfully extracted columns, show a selector
   if (columns && columns.length > 0) {
