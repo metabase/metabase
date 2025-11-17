@@ -71,7 +71,7 @@ export function usePageTitleWithLoadingTime(
   },
 ) {
   const [, setRefreshTrigger] = useState(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { startTime, isRunning } = options || {};
 
   useEffect(() => {
