@@ -212,7 +212,7 @@
                                       :table_id (mt/id :venues)
                                       :database_id (mt/id)
                                       :dataset_query (mt/mbql-query venues)}
-                   :model/Segment segment {:model_id (:id model)
+                   :model/Segment segment {:card_id (:id model)
                                            :table_id nil
                                            :definition (pmbql-model-segment-definition
                                                         (:id model) (mt/id :venues :price) 10)}]

@@ -118,7 +118,7 @@
   (filter-visible
    (if (t2/instance-of? :model/Card table-or-model)
      (t2/select :model/Segment
-                :model_id (:id table-or-model)
+                :card_id (:id table-or-model)
                 :archived false)
      (t2/select :model/Segment
                 :table_id (:id table-or-model)
@@ -256,8 +256,8 @@
 
 (defmethod related :model/Segment
   [segment]
-  (let [source (if-let [model-id (:model_id segment)]
-                 (t2/select-one :model/Card :id model-id)
+  (let [source (if-let [card-id (:card_id segment)]
+                 (t2/select-one :model/Card :id card-id)
                  (t2/select-one :model/Table :id (:table_id segment)))]
     {:table       source
      :metrics     (metrics-for-table-or-model source)

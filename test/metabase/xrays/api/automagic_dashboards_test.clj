@@ -156,7 +156,7 @@
                                                              venues-price-field (lib.metadata/field metadata-provider (mt/id :venues :price))
                                                              query (lib/filter (lib/query metadata-provider model-card)
                                                                                (lib/> venues-price-field 10))]
-                                                         {:model_id   (:id model)
+                                                         {:card_id (:id model)
                                                           :table_id   nil
                                                           :definition query})]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)

@@ -131,10 +131,10 @@
         (let [card (lib.metadata/card mp (:id model))
               query (lib/query mp card)
               price (lib.metadata/field mp (mt/id :venues :price))]
-          (mt/with-temp [:model/Segment segment1 {:model_id (:id model)
+          (mt/with-temp [:model/Segment segment1 {:card_id (:id model)
                                                   :table_id nil
                                                   :definition (lib/filter query (lib/> price 10))}
-                         :model/Segment segment2 {:model_id (:id model)
+                         :model/Segment segment2 {:card_id (:id model)
                                                   :table_id nil
                                                   :definition (lib/filter query (lib/> price 100))}
                          :model/Card metric {:source_card_id (mt/id :venues)
@@ -154,7 +154,7 @@
                        :segments [{:archived false,
                                    :definition map?
                                    :id (:id segment2)
-                                   :model_id (:id model)}]}
+                                   :card_id (:id model)}]}
                       related-result)))))))))
 
 (deftest ^:parallel related-tables-test

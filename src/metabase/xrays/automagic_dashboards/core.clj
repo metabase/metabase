@@ -197,10 +197,10 @@
 
 (mu/defmethod ->root :model/Segment :- ::ads/root
   [segment :- [:map [:definition ::segments.schema/segment]]]
-  (let [source (if-let [model-id (:model_id segment)]
-                 (t2/select-one :model/Card :id model-id)
+  (let [source (if-let [card-id (:card_id segment)]
+                 (t2/select-one :model/Card :id card-id)
                  (t2/select-one :model/Table :id (:table_id segment)))
-        database (if (:model_id segment)
+        database (if (:card_id segment)
                    (:database_id source)
                    (:db_id source))
         source-name ((some-fn :display_name :name) source)]

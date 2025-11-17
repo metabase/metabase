@@ -21,17 +21,17 @@
   "Create a new `Segment`."
   [_route-params
    _query-params
-   {:keys [name description table_id model_id definition], :as body}
+   {:keys [name description table_id card_id definition], :as body}
    :- [:and
        [:map
         [:name        ms/NonBlankString]
         [:table_id {:optional true} [:maybe ms/PositiveInt]]
-        [:model_id {:optional true} [:maybe ms/PositiveInt]]
+        [:card_id {:optional true} [:maybe ms/PositiveInt]]
         [:definition  ms/Map]
         [:description {:optional true} [:maybe :string]]]
-       [:fn {:error/message "Must provide exactly one of :table_id or :model_id"}
-        (fn [{:keys [table_id model_id]}]
-          (not= (nil? table_id) (nil? model_id)))]]]
+       [:fn {:error/message "Must provide exactly one of :table_id or :card_id"}
+        (fn [{:keys [table_id card_id]}]
+          (not= (nil? table_id) (nil? card_id)))]]]
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (api/create-check :model/Segment body)
   (let [segment (api/check-500
@@ -41,7 +41,7 @@
                                                              :description description
                                                              :definition definition}
                                                             (m/assoc-some :table_id table_id)
-                                                            (m/assoc-some :model_id model_id)))))]
+                                                            (m/assoc-some :card_id card_id)))))]
     (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
     (t2/hydrate segment :creator)))
 

@@ -42,12 +42,12 @@
     (lib/filter query (lib/= field value))))
 
 ;; Helper function for creating model-based pMBQL definitions
-(defn- model-segment-definition
-  "Create an MBQL5 segment definition for a model (card with dataset=true)"
-  [model-id field-id value]
-  (let [table-id (t2/select-one-fn :table_id :model/Card :id model-id)
+(defn- card-segment-definition
+  "Create an MBQL5 segment definition for a card (card with dataset=true)"
+  [card-id field-id value]
+  (let [table-id (t2/select-one-fn :table_id :model/Card :id card-id)
         metadata-provider (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))
-        card (lib.metadata/card metadata-provider model-id)
+        card (lib.metadata/card metadata-provider card-id)
         query (lib/query metadata-provider card)
         field (lib.metadata/field metadata-provider field-id)]
     (lib/filter query (lib/= field value))))
@@ -80,7 +80,7 @@
 
     (is (=? {:specific-errors
              {:definition ["missing required key, received: nil"],
-              :malli/error ["Must provide exactly one of :table_id or :model_id, received: {:name \"abc\"}"]},
+              :malli/error ["Must provide exactly one of :table_id or :card_id, received: {:name \"abc\"}"]},
              :errors {:definition "Value must be a map."}}
             (mt/user-http-request :crowberto :post 400 "segment" {:name "abc"})))
 
@@ -132,87 +132,87 @@
                    segment-response
                    (update :definition map?))))))))
 
-(deftest ^:parallel create-segment-with-model-id-test
-  (testing "POST /api/segment with model_id"
-    (testing "Can create a segment based on a model"
+(deftest ^:parallel create-segment-with-card-id-test
+  (testing "POST /api/segment with card_id"
+    (testing "Can create a segment based on a card"
       (mt/with-temp [:model/Database {database-id :id} {}
                      :model/Table {table-id :id} {:db_id database-id}
-                     :model/Card {model-id :id} {:table_id table-id
-                                                 :type :model
-                                                 :database_id database-id}]
+                     :model/Card {card-id :id} {:table_id table-id
+                                                :type :model
+                                                :database_id database-id}]
         (let [result (mt/user-http-request :crowberto :post 200 "segment"
-                                           {:name "Model Segment"
-                                            :description "A segment on a model"
-                                            :model_id model-id
-                                            :definition (model-segment-definition model-id 10 20)})]
-          (is (=? {:name "Model Segment"
-                   :description "A segment on a model"
+                                           {:name "Card Segment"
+                                            :description "A segment on a card"
+                                            :card_id card-id
+                                            :definition (card-segment-definition card-id 10 20)})]
+          (is (=? {:name "Card Segment"
+                   :description "A segment on a card"
                    :creator_id (mt/user->id :crowberto)
                    :archived false
                    :definition map?
                    :id pos-int?}
                   result))
-          ;; Verify the segment was created with model_id and not table_id
-          (is (=? {:model_id model-id
+          ;; Verify the segment was created with card_id and not table_id
+          (is (=? {:card_id card-id
                    :table_id nil}
                   (t2/select-one :model/Segment :id (:id result)))))))))
 
 (deftest ^:parallel create-segment-xor-both-test
-  (testing "POST /api/segment with both table_id and model_id should fail"
+  (testing "POST /api/segment with both table_id and card_id should fail"
     (mt/with-temp [:model/Database {database-id :id} {}
                    :model/Table {table-id :id} {:db_id database-id}
-                   :model/Card {model-id :id} {:table_id table-id
-                                               :type :model
-                                               :database_id database-id}]
+                   :model/Card {card-id :id} {:table_id table-id
+                                              :type :model
+                                              :database_id database-id}]
       (let [response (mt/user-http-request :crowberto :post 400 "segment"
                                            {:name "Bad Segment"
                                             :table_id table-id
-                                            :model_id model-id
+                                            :card_id card-id
                                             :definition {}})]
         (is (seq (:specific-errors response)))
         (is (re-find #"Must provide exactly one" (first (:specific-errors response))))))))
 
 (deftest ^:parallel create-segment-xor-neither-test
-  (testing "POST /api/segment with neither table_id nor model_id should fail"
+  (testing "POST /api/segment with neither table_id nor card_id should fail"
     (let [response (mt/user-http-request :crowberto :post 400 "segment"
                                          {:name "Bad Segment"
                                           :definition {}})]
       (is (seq (:specific-errors response)))
       (is (re-find #"Must provide exactly one" (first (:specific-errors response)))))))
 
-(deftest ^:parallel create-segment-with-model-id-permissions-test
-  (testing "POST /api/segment with model_id"
+(deftest ^:parallel create-segment-with-card-id-permissions-test
+  (testing "POST /api/segment with card_id"
     (mt/with-temp [:model/Database {database-id :id} {}
                    :model/Table {table-id :id} {:db_id database-id}
-                   :model/Card {model-id :id} {:table_id table-id
-                                               :type :model
-                                               :database_id database-id}]
-      (testing "Superuser can create segment on model"
-        (is (=? {:name "Model Segment"
-                 :model_id model-id
+                   :model/Card {card-id :id} {:table_id table-id
+                                              :type :model
+                                              :database_id database-id}]
+      (testing "Superuser can create segment on card"
+        (is (=? {:name "Card Segment"
+                 :card_id card-id
                  :id pos-int?}
                 (mt/user-http-request :crowberto :post 200 "segment"
-                                      {:name "Model Segment"
-                                       :model_id model-id
-                                       :definition (model-segment-definition model-id 10 20)}))))
-      (testing "Non-superuser cannot create segment on model"
+                                      {:name "Card Segment"
+                                       :card_id card-id
+                                       :definition (card-segment-definition card-id 10 20)}))))
+      (testing "Non-superuser cannot create segment on card"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "segment"
-                                     {:name "Model Segment"
-                                      :model_id model-id
+                                     {:name "Card Segment"
+                                      :card_id card-id
                                       :definition {}})))))))
 
-(deftest fetch-segment-with-model-id-test
-  (testing "GET /api/segment/:id for segment created with model_id"
+(deftest fetch-segment-with-card-id-test
+  (testing "GET /api/segment/:id for segment created with card_id"
     (mt/with-temp [:model/Database {database-id :id} {}
                    :model/Table {table-id :id} {:db_id database-id}
-                   :model/Card {model-id :id} {:table_id table-id
-                                               :type :model
-                                               :database_id database-id}
+                   :model/Card {card-id :id} {:table_id table-id
+                                              :type :model
+                                              :database_id database-id}
                    :model/Segment {segment-id :id} {:creator_id (mt/user->id :crowberto)
                                                     :table_id nil
-                                                    :model_id model-id
-                                                    :definition (model-segment-definition model-id 2 "cans")}]
+                                                    :card_id card-id
+                                                    :definition (card-segment-definition card-id 2 "cans")}]
       (mt/with-full-data-perms-for-all-users!
         (is (=? {:name "Toucans in the rainforest"
                  :description "Lookin' for a blueberry"
@@ -220,24 +220,24 @@
                  :archived false
                  :definition map?}
                 (mt/user-http-request :rasta :get 200 (format "segment/%d" segment-id))))
-        ;; Verify model_id is present in the database
-        (is (=? {:model_id model-id
+        ;; Verify card_id is present in the database
+        (is (=? {:card_id card-id
                  :table_id nil}
                 (t2/select-one :model/Segment :id segment-id)))))))
 
-(deftest fetch-segment-with-model-id-permissions-test
-  (testing "GET /api/segment/:id for segment based on model"
+(deftest fetch-segment-with-card-id-permissions-test
+  (testing "GET /api/segment/:id for segment based on card"
     (testing "Requires read perms for the Card (not the Table)"
       (mt/with-temp [:model/Database db {}
                      :model/Table table {:db_id (u/the-id db)}
                      :model/Collection {coll-id :id} {} ; Create collection for testing permissions
-                     :model/Card model {:table_id (u/the-id table)
-                                        :type :model
-                                        :database_id (u/the-id db)
-                                        :collection_id coll-id}
+                     :model/Card card {:table_id (u/the-id table)
+                                       :type :model
+                                       :database_id (u/the-id db)
+                                       :collection_id coll-id}
                      :model/Segment segment {:table_id nil
-                                             :model_id (u/the-id model)
-                                             :definition (model-segment-definition (u/the-id model) 2 "cans")}]
+                                             :card_id (u/the-id card)
+                                             :definition (card-segment-definition (u/the-id card) 2 "cans")}]
         ;; Remove permissions for all users from the collection
         (perms/revoke-collection-permissions! (perms/all-users-group) coll-id)
         (testing "User without card permissions cannot read segment"
@@ -306,7 +306,7 @@
                       :caveats                 nil
                       :points_of_interest      nil
                       :table_id                table-id
-                      :model_id                nil
+                      :card_id nil
                       :creator_id              (mt/user->id :rasta)
                       :creator                 (user-details (mt/fetch-user :rasta))
                       :entity_id               true
@@ -382,7 +382,7 @@
                  :caveats                 nil
                  :points_of_interest      nil
                  :table_id                table-id
-                 :model_id                nil
+                 :card_id nil
                  :creator_id              (mt/user->id :rasta)
                  :creator                 (user-details (mt/fetch-user :rasta))
                  :created_at              true
@@ -424,7 +424,7 @@
                       :caveats                 nil
                       :points_of_interest      nil
                       :table_id                table-id
-                      :model_id                nil
+                      :card_id nil
                       :creator_id              (mt/user->id :crowberto)
                       :creator                 (user-details (mt/fetch-user :crowberto))
                       :created_at              true

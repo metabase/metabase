@@ -102,17 +102,17 @@
                      Exception
                      #"You cannot change the source table/model of a Segment"
                      (t2/update! :model/Segment id {:definition different-table-query})))))
-            (testing "updating definition with source-card (model) instead of source-table should fail"
-              (mt/with-temp [:model/Card model {:type :model
-                                                :database_id (mt/id)
-                                                :dataset_query (mt/mbql-query venues)}]
-                (let [model-card (lib.metadata/card metadata-provider (:id model))
-                      model-query (lib/filter (lib/query metadata-provider model-card)
-                                              (lib/= venues-price-field 1))]
+            (testing "updating definition with source-card instead of source-table should fail"
+              (mt/with-temp [:model/Card card {:type :model
+                                               :database_id (mt/id)
+                                               :dataset_query (mt/mbql-query venues)}]
+                (let [card-meta (lib.metadata/card metadata-provider (:id card))
+                      card-query (lib/filter (lib/query metadata-provider card-meta)
+                                             (lib/= venues-price-field 1))]
                   (is (thrown-with-msg?
                        Exception
                        #"You cannot change the source table/model of a Segment"
-                       (t2/update! :model/Segment id {:definition model-query}))))))
+                       (t2/update! :model/Segment id {:definition card-query}))))))
 
             (testing "updating other fields should still work"
               (is (= 1 (t2/update! :model/Segment id
@@ -125,7 +125,7 @@
           (let [model-card (lib.metadata/card metadata-provider (:id model))
                 initial-model-query (lib/filter (lib/query metadata-provider model-card)
                                                 (lib/= venues-price-field 4))]
-            (mt/with-temp [:model/Segment {:keys [id]} {:model_id (:id model)
+            (mt/with-temp [:model/Segment {:keys [id]} {:card_id (:id model)
                                                         :table_id nil
                                                         :definition initial-model-query}]
               (testing "updating definition with same source model should succeed"

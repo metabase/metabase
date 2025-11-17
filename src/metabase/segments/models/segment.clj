@@ -80,12 +80,10 @@
 
 (defmethod mi/can-read? :model/Segment
   ([instance]
-   (if-let [model-id (:model_id instance)]
-     ;; TODO (tamas 2025-11-11) Should this be :model instead of :card?
-
+   (if-let [card-id (:card_id instance)]
      (if-let [card (:card instance)]
        (mi/can-read? card)
-       (mi/can-read? :model/Card model-id))
+       (mi/can-read? :model/Card card-id))
      (let [table (or (:table instance)
                      (:table (t2/hydrate instance :table)))]
        (perms/user-has-permission-for-table?
@@ -103,12 +101,12 @@
       (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
     (when (contains? changes :table_id)
       (throw (UnsupportedOperationException. (tru "You cannot update the table_id of a Segment."))))
-    (when (contains? changes :model_id)
-      (throw (UnsupportedOperationException. (tru "You cannot update the model_id of a Segment."))))
+    (when (contains? changes :card_id)
+      (throw (UnsupportedOperationException. (tru "You cannot update the card_id of a Segment."))))
     (when (contains? changes :definition)
       (let [new-definition (:definition changes)
             existing-table-id (:table_id segment)
-            existing-model-id (:model_id segment)]
+            existing-card-id (:card_id segment)]
         (when (seq new-definition)
           (when-not (lib/normalized-mbql-version new-definition)
             (throw (UnsupportedOperationException. (tru "Segment definition must be an MBQL query"))))
@@ -117,16 +115,16 @@
                 new-source-table-id (lib/source-table-id normalized-def)
                 new-source-card-id (lib/source-card-id normalized-def)]
             (when (or (and existing-table-id (not= existing-table-id new-source-table-id))
-                      (and existing-model-id (not= existing-model-id new-source-card-id))
+                      (and existing-card-id (not= existing-card-id new-source-card-id))
                       (and existing-table-id new-source-card-id)
-                      (and existing-model-id new-source-table-id))
+                      (and existing-card-id new-source-table-id))
               (throw (UnsupportedOperationException. (tru "You cannot change the source table/model of a Segment.")))))))))
   segment)
 
 (defn- migrated-segment-definition
-  [{:keys [definition table_id model_id]}]
-  (if model_id
-    ;; Model-based segment: definition is always MBQL5, just validate
+  [{:keys [definition table_id card_id]}]
+  (if card_id
+    ;; Card-based segment: definition is always MBQL5, just validate
     (normalize-segment-definition definition)
     ;; Table-based segment: may need MBQL4→MBQL5 conversion
     (let [database-id (t2/select-one-fn :db_id :model/Table :id table_id)]
@@ -139,11 +137,10 @@
 
 (defmethod mi/perms-objects-set :model/Segment
   [segment read-or-write]
-  (if-let [model-id (:model_id segment)]
-    ;; Model-based segment: delegate to card permissions
-    ;; TODO (tamas 2025-11-11) Should this be :model instead of :card?
+  (if-let [card-id (:card_id segment)]
+    ;; Card-based segment: delegate to card permissions
     (let [card (or (:card segment)
-                   (t2/select-one :model/Card :id model-id))]
+                   (t2/select-one :model/Card :id card-id))]
       (mi/perms-objects-set card read-or-write))
     ;; Table-based segment: delegate to table permissions (existing behavior)
     (let [table (or (:table segment)
@@ -201,7 +198,7 @@
    :skip []
    :transform {:created_at (serdes/date)
                :table_id (serdes/fk :model/Table)
-               :model_id (serdes/fk :model/Card)
+               :card_id (serdes/fk :model/Card)
                :creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import serdes/import-mbql}}})
 

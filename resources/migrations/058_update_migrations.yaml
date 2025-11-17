@@ -504,7 +504,7 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-13T10:00:00
       author: metamben
-      comment: Make segment.table_id nullable to support segments on models
+      comment: Make segment.table_id nullable to support segments on cards
       changes:
         - dropNotNullConstraint:
             tableName: segment
@@ -519,63 +519,63 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-13T10:01:00
       author: metamben
-      comment: Add segment.model_id column for segments on models
+      comment: Add segment.card_id column for segments on cards
       changes:
         - addColumn:
             tableName: segment
             columns:
               - column:
-                  name: model_id
+                  name: card_id
                   type: int
-                  remarks: Reference to the model (report_card) this segment is based on
+                  remarks: Reference to the card (report_card) this segment is based on
                   constraints:
                     nullable: true
       rollback:
         - dropColumn:
             tableName: segment
-            columnName: model_id
+            columnName: card_id
 
   - changeSet:
       id: v58.2025-11-13T10:02:00
       author: metamben
-      comment: Add foreign key constraint for segment.model_id
+      comment: Add foreign key constraint for segment.card_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: segment
-            baseColumnNames: model_id
+            baseColumnNames: card_id
             referencedTableName: report_card
             referencedColumnNames: id
-            constraintName: fk_segment_ref_model_id
+            constraintName: fk_segment_ref_card_id
             onDelete: CASCADE
       rollback:
         - dropForeignKeyConstraint:
             baseTableName: segment
-            constraintName: fk_segment_ref_model_id
+            constraintName: fk_segment_ref_card_id
 
   - changeSet:
       id: v58.2025-11-13T10:03:00
       author: metamben
-      comment: Add index on segment.model_id (PostgreSQL and H2 only - MySQL auto-creates with FK)
+      comment: Add index on segment.card_id (PostgreSQL and H2 only - MySQL auto-creates with FK)
       dbms: postgresql,h2
       changes:
         - createIndex:
             tableName: segment
-            indexName: idx_segment_model_id
+            indexName: idx_segment_card_id
             columns:
               - column:
-                  name: model_id
+                  name: card_id
       rollback:
         - dropIndex:
             tableName: segment
-            indexName: idx_segment_model_id
+            indexName: idx_segment_card_id
 
   - changeSet:
       id: v58.2025-11-13T10:04:00
       author: metamben
-      comment: Add CHECK constraint to ensure exactly one of table_id or model_id is set
+      comment: Add CHECK constraint to ensure exactly one of table_id or card_id is set
       changes:
         - sql:
-            sql: ALTER TABLE segment ADD CONSTRAINT segment_table_xor_model CHECK ((table_id IS NULL) != (model_id IS NULL))
+            sql: ALTER TABLE segment ADD CONSTRAINT segment_table_xor_model CHECK ((table_id IS NULL) != (card_id IS NULL))
       rollback:
         - sql:
             sql: ALTER TABLE segment DROP CONSTRAINT segment_table_xor_model
