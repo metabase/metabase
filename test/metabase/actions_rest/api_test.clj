@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.actions.api-test
+(ns ^:mb/driver-tests metabase.actions-rest.api-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
