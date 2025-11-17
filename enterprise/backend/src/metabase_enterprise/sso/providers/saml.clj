@@ -5,16 +5,13 @@
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.events.core :as events]
-   [metabase.notification.core :as notification]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [saml20-clj.core :as saml]
-   [toucan2.core :as t2]))
+   [saml20-clj.core :as saml]))
 
 (set! *warn-on-reflection* true)
 
@@ -195,7 +192,4 @@
         (when-let [group-names (:group-names saml-data)]
           (sso/sync-group-memberships! user
                                        (group-names->ids group-names)
-                                       (all-mapped-group-ids))))
-      (notification/with-skip-sending-notification true
-        (events/publish-event! :event/user-invited {:object (assoc (t2/select-one :model/User (:id user))
-                                                                   :sso_source "saml")})))))
+                                       (all-mapped-group-ids)))))))

@@ -53,6 +53,8 @@
   (:require
    [java-time.api :as t]
    [metabase.auth-identity.session :as auth-session]
+   [metabase.events.core :as events]
+   [metabase.notification.core :as notification]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -341,7 +343,10 @@
       (t2/insert-returning-instance! [:model/User :id :last_login :is_active]
                                      (select-keys user-data (sso-user-fields)))
       (t2/insert! :model/AuthIdentity (cond-> {:user_id (:id <>) :provider (name provider)}
-                                        (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))))
+                                        (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
+      (notification/with-skip-sending-notification true
+        (events/publish-event! :event/user-invited {:object (assoc (t2/select-one :model/User (:id <>))
+                                                                   :sso_source (name provider))})))))
 
 (methodical/defmethod login! ::create-user-if-not-exists
   [provider request]

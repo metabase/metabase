@@ -204,6 +204,7 @@
            events
            login-history
            models
+           notification
            premium-features
            request
            util}}
@@ -2070,8 +2071,6 @@
            auth-identity
            channel
            embedding
-           events
-           notification
            premium-features
            request
            session
