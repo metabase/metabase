@@ -10,6 +10,7 @@ import type {
 import {
   ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY_PIE,
+  SCALAR_CARD,
 } from "e2e/support/test-visualizer-data";
 import type { DictionaryArray } from "metabase-types/api";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -132,6 +133,11 @@ describe("scenarios > content translation > static embedding > dashboards", () =
           msgid: "A breakdown of products by category",
           msgstr: "Une répartition des produits par catégorie",
         },
+        {
+          locale: "fr",
+          msgid: "Landing page",
+          msgstr: "La page d'atterrissage (ಠ_ಠ)",
+        },
       ]);
 
       cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -141,6 +147,11 @@ describe("scenarios > content translation > static embedding > dashboards", () =
 
       H.createQuestion(ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY, {
         idAlias: "productsCountByCreatedAtQuestionId",
+        wrapId: true,
+      });
+
+      H.createNativeQuestion(SCALAR_CARD.LANDING_PAGE_VIEWS, {
+        idAlias: "landingPageViewsScalarQuestionId",
         wrapId: true,
       });
 
@@ -165,6 +176,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
         H.openQuestionsSidebar();
 
         H.sidebar().findByText(PRODUCTS_COUNT_BY_CATEGORY_PIE.name).click();
+        H.sidebar().findByText(SCALAR_CARD.LANDING_PAGE_VIEWS.name).click(); // metabase#65085
         H.saveDashboard();
 
         H.openStaticEmbeddingModal({
@@ -186,9 +198,11 @@ describe("scenarios > content translation > static embedding > dashboards", () =
 
         cy.wait("@dashboard");
         cy.wait("@cardQuery");
+        cy.wait("@cardQuery");
 
-        // Check that the title is translated
+        // Check that the titles are translated
         cy.findByText("Produits par catégorie (Camembert)").should("exist");
+        cy.findByText("La page d'atterrissage (ಠ_ಠ)").should("exist");
 
         H.getDashboardCard(0).realHover().icon("info").realHover();
         H.tooltip().within(() => {
