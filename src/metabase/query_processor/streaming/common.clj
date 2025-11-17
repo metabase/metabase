@@ -11,10 +11,15 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.performance :as perf :refer [mapv select-keys not-empty]])
+   [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf :refer [mapv select-keys not-empty]]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2])
   (:import
    (clojure.lang ISeq)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (defn export-filename-timestamp
   "Generates the current timestamp as a string to use in export filenames."
@@ -112,6 +117,22 @@
 ;; Forward declaration for viz-settings-for-col since we need to use it before its definition
 (declare viz-settings-for-col)
 
+(defn- lookup-content-translation
+  "Look up a translation for the given string in the given locale from the content_translation table.
+   Returns the translated string if found, otherwise returns the original string."
+  [original-string locale]
+  (when (and (string? original-string) (string? locale))
+    (try
+      (if-let [translation (t2/select-one-fn :msgstr :model/ContentTranslation
+                                             :locale locale
+                                             :msgid original-string)]
+        translation
+        original-string)
+      (catch Exception e
+        (log/debugf "Error looking up content translation for '%s' in locale '%s': %s"
+                    original-string locale (.getMessage e))
+        original-string))))
+
 (defn column-titles
   "Generates the column titles that should be used in the export, taking into account viz settings."
   [ordered-cols viz-settings format-rows?]
@@ -121,10 +142,16 @@
                               (= (::mb.viz/number-style merged-settings) "currency"))
           column-title    (or (when format-rows? (not-empty (::mb.viz/column-title merged-settings)))
                               (:display_name col)
-                              (:name col))]
+                              (:name col))
+          ;; Translate the column title using content translations (static embedding translations)
+          translated-title (if (and (string? column-title)
+                                     ;; Only try to translate if we have a user locale context
+                                    i18n/*user-locale*)
+                             (lookup-content-translation column-title (str i18n/*user-locale*))
+                             column-title)]
       (if (and is-currency? (::mb.viz/currency-in-header merged-settings true))
-        (str column-title " (" (currency-identifier merged-settings) ")")
-        column-title))))
+        (str translated-title " (" (currency-identifier merged-settings) ")")
+        translated-title))))
 
 (defn normalize-keys
   "Update map keys to remove namespaces from keywords and convert from snake to kebab case."

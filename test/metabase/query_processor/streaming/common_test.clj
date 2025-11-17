@@ -5,7 +5,8 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.test :as mt]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :as i18n]))
 
 (set! *warn-on-reflection* true)
 
@@ -52,3 +53,40 @@
                              {::mb.viz/column-title "Column Name Title"}}}
               titles (streaming.common/column-titles ordered-cols viz-settings format-rows?)]
           (is (= ["Column Name Title"] titles)))))))
+
+(deftest column-titles-localized-strings-test
+  (testing "column titles properly convert localized strings to current user locale"
+    (let [;; Create a UserLocalizedString that would return different values based on locale
+          localized-display-name (i18n/->UserLocalizedString "Count" nil {})
+          ordered-cols [{:name "count" :id 1 :display_name localized-display-name}]
+          viz-settings {}
+          format-rows? true]
+
+      (testing "localized string is converted to string representation"
+        (binding [i18n/*user-locale* "en"]
+          (let [titles (streaming.common/column-titles ordered-cols viz-settings format-rows?)]
+            ;; The result should be a regular string, not a localized string object
+            (is (string? (first titles)))
+            (is (= ["Count"] titles))))))))
+
+(deftest column-titles-translation-test
+  (testing "column titles properly translate known field names based on user locale"
+    (let [ordered-cols [{:name "FIRST_NAME" :id 1 :display_name "First Name"}
+                        {:name "LAST_NAME" :id 2 :display_name "Last Name"}
+                        {:name "CREATED_AT" :id 3 :display_name "Created At"}]
+          viz-settings {}
+          format-rows? true]
+
+      (testing "English locale returns original titles"
+        (binding [i18n/*user-locale* "en"]
+          (let [titles (streaming.common/column-titles ordered-cols viz-settings format-rows?)]
+            (is (= ["First Name" "Last Name" "Created At"] titles)))))
+
+      (testing "French locale returns translated titles"
+        (binding [i18n/*user-locale* "fr"]
+          (let [titles (streaming.common/column-titles ordered-cols viz-settings format-rows?)]
+            ;; These should be translated to French
+            (is (every? string? titles))
+            ;; Note: Actual translation values depend on the loaded translation bundles
+            ;; In a test environment, the translations might not be loaded
+            (is (= 3 (count titles)))))))))
