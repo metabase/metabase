@@ -1201,6 +1201,7 @@
            app-db
            audit-app
            config
+           database-routing
            driver
            events
            lib
