@@ -31073,16 +31073,16 @@ msgid "The location of your git repository, e.g. https://github.com/acme-inco/me
 msgstr "Git 저장소의 위치(예: https://github.com/acme-inco/metabase.git)"
 
 #: metabase_enterprise/remote_sync/settings.clj:46
-msgid "Git synchronization type - :development or :production"
-msgstr "Git 동기화 유형 - :development 또는 :production"
+msgid "Git synchronization type - :read-write or :read-only"
+msgstr "Git 동기화 유형 - :read-write 또는 :read-only"
 
 #: metabase_enterprise/remote_sync/settings.clj:62
-msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production."
-msgstr "원격 git 저장소에서 자동으로 가져올지 여부입니다. remote-sync-type이 :production인 경우에만 적용됩니다."
+msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only."
+msgstr "원격 git 저장소에서 자동으로 가져올지 여부입니다. remote-sync-type이 :read-only인 경우에만 적용됩니다."
 
 #: metabase_enterprise/remote_sync/settings.clj:70
-msgid "If remote-sync-type is :production and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
-msgstr "remote-sync-type이 :production이고 remote-sync-auto-import가 true인 경우, 가져올 업데이트를 확인하는 간격(분)입니다. 기본값은 5입니다."
+msgid "If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
+msgstr "remote-sync-type이 :read-only이고 remote-sync-auto-import가 true인 경우, 가져올 업데이트를 확인하는 간격(분)입니다. 기본값은 5입니다."
 
 #: metabase_enterprise/remote_sync/settings.clj:78
 msgid "The maximum amount of time a remote sync task will be given to complete"

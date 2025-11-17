@@ -31191,16 +31191,16 @@ msgid "The location of your git repository, e.g. https://github.com/acme-inco/me
 msgstr "Vendndodhja e depos suaj git, p.sh. https://github.com/acme-inco/metabase.git"
 
 #: metabase_enterprise/remote_sync/settings.clj:46
-msgid "Git synchronization type - :development or :production"
-msgstr "Lloji i sinkronizimit Git - :development ose :production"
+msgid "Git synchronization type - :read-write or :read-only"
+msgstr "Lloji i sinkronizimit Git - :read-write ose :read-only"
 
 #: metabase_enterprise/remote_sync/settings.clj:62
-msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production."
-msgstr "Nëse do të importohet automatikisht nga depoja e largët git. Vlen vetëm nëse remote-sync-type është :production."
+msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only."
+msgstr "Nëse do të importohet automatikisht nga depoja e largët git. Vlen vetëm nëse remote-sync-type është :read-only."
 
 #: metabase_enterprise/remote_sync/settings.clj:70
-msgid "If remote-sync-type is :production and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
-msgstr "Nëse remote-sync-type është :production dhe remote-sync-auto-import është true, shpejtësia (në minuta) me të cilën duhet të kontrollohet për përditësime për t'u importuar. Vlera parazgjedhur është 5."
+msgid "If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
+msgstr "Nëse remote-sync-type është :read-only dhe remote-sync-auto-import është true, shpejtësia (në minuta) me të cilën duhet të kontrollohet për përditësime për t'u importuar. Vlera parazgjedhur është 5."
 
 #: metabase_enterprise/remote_sync/settings.clj:78
 msgid "The maximum amount of time a remote sync task will be given to complete"
