@@ -82,21 +82,23 @@
                     (is (not @semantic-called?) "Semantic search should not be called when overridden")
                     (is (not @appdb-called?) "AppDB search should not be called when overridden")))))))))))
 
-(def ^:private search-context-input
-  {:search-string         "test"
-   :search-engine         "semantic"
-   ;; suppress warnings
-   :current-user-id       (mt/user->id :crowberto)
-   :is-superuser?         true
-   :is-impersonated-user? false
-   :is-sandboxed-user?    false
-   :current-user-perms    #{"/"}
-   :model-ancestors?      false
-   :models                nil})
+;; This is behind a delay as we need the db to be initialized before we can determine the admin user id.
+(def ^:private search-context-input-delay
+  (delay
+    {:search-string         "test"
+     :search-engine         "semantic"
+    ;; suppress warnings
+     :current-user-id       (mt/user->id :crowberto)
+     :is-superuser?         true
+     :is-impersonated-user? false
+     :is-sandboxed-user?    false
+     :current-user-perms    #{"/"}
+     :model-ancestors?      false
+     :models                nil}))
 
 ;; This is behind a delay as there are feature flag checks in this normalization function, and those trigger db
 ;; initialization, which we don't want in a top-level form. It's a pity this code mixes concerns like that.
-(def ^:private search-context-delay (delay (search.core/search-context search-context-input)))
+(def ^:private search-context-delay (delay (search.core/search-context @search-context-input-delay)))
 
 (defn- with-search-engine-mocks!
   "Sets up search engine mocks for the semantic & appdb backends for testing fallback behavior.
@@ -255,5 +257,5 @@
           (testing (str engine " => " hybrid? " mode")
             (let [results (semantic.core/results
                            (search.core/search-context
-                            (assoc search-context-input :search-engine engine)))]
+                            (assoc @search-context-input-delay :search-engine engine)))]
               (is (= (str hybrid?) (:name (first results)))))))))))
