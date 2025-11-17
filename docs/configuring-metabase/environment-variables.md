@@ -1329,7 +1329,7 @@ Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS.
 - Default: `false`
 - [Configuration file name](./config-file.md): `remote-sync-auto-import`
 
-Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production.
+Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only.
 
 ### `MB_REMOTE_SYNC_AUTO_IMPORT_RATE`
 
@@ -1337,7 +1337,7 @@ Whether to automatically import from the remote git repository. Only applies if 
 - Default: `5`
 - [Configuration file name](./config-file.md): `remote-sync-auto-import-rate`
 
-If remote-sync-type is :production and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
+If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
 
 ### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
 

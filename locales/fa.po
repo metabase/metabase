@@ -31187,16 +31187,16 @@ msgid "The location of your git repository, e.g. https://github.com/acme-inco/me
 msgstr "محل مخزن گیت شما، مثلاً https://github.com/acme-inco/metabase.git"
 
 #: metabase_enterprise/remote_sync/settings.clj:46
-msgid "Git synchronization type - :development or :production"
-msgstr "نوع همگام‌سازی گیت - :development یا :production"
+msgid "Git synchronization type - :read-write or :read-only"
+msgstr "نوع همگام‌سازی گیت - :read-write یا :read-only"
 
 #: metabase_enterprise/remote_sync/settings.clj:62
-msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production."
-msgstr "اینکه آیا به طور خودکار از مخزن گیت ریموت وارد شود یا خیر. فقط در صورتی اعمال می‌شود که remote-sync-type برابر با :production باشد."
+msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only."
+msgstr "اینکه آیا به طور خودکار از مخزن گیت ریموت وارد شود یا خیر. فقط در صورتی اعمال می‌شود که remote-sync-type برابر با :read-only باشد."
 
 #: metabase_enterprise/remote_sync/settings.clj:70
-msgid "If remote-sync-type is :production and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
-msgstr "اگر remote-sync-type برابر با :production باشد و remote-sync-auto-import برابر با true باشد، نرخ (به دقیقه) برای بررسی به‌روزرسانی‌ها جهت وارد کردن. مقدار پیش‌فرض ۵ است."
+msgid "If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
+msgstr "اگر remote-sync-type برابر با :read-only باشد و remote-sync-auto-import برابر با true باشد، نرخ (به دقیقه) برای بررسی به‌روزرسانی‌ها جهت وارد کردن. مقدار پیش‌فرض ۵ است."
 
 #: metabase_enterprise/remote_sync/settings.clj:78
 msgid "The maximum amount of time a remote sync task will be given to complete"

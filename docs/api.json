@@ -20144,7 +20144,7 @@
                   },
                   "remote-sync-type" : {
                     "type" : "string",
-                    "enum" : [ "production", "development" ]
+                    "enum" : [ "read-only", "read-write" ]
                   },
                   "remote-sync-url" : {
                     "type" : "string"
