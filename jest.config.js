@@ -147,8 +147,8 @@ const config = {
       displayName: "core",
       testPathIgnorePatterns: [
         ...(baseConfig.testPathIgnorePatterns || []),
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-package/",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/",
+        "<rootDir>/frontend/src/embedding-sdk-package/",
+        "<rootDir>/frontend/src/embedding-sdk-bundle/",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-shared/",
       ],
     },
