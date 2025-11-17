@@ -1,7 +1,7 @@
 const { H } = cy;
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-H.describeWithSnowplow("scenarios > models > revision history", () => {
+describe("scenarios > models > revision history", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();

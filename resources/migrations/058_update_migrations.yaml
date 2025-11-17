@@ -117,6 +117,468 @@ databaseChangeLog:
         - sql:
             sql: ALTER TABLE segment DROP CONSTRAINT segment_table_xor_model
 
+      id: v58.2025-11-04T23:09:49
+      author: edpaget
+      comment: Create auth_identity table for multi-authentication support
+      changes:
+        - createTable:
+            tableName: auth_identity
+            remarks: Stores authentication credentials for users. A user can have multiple auth identities.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Integer primary key
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: Foreign key to core_user
+                  constraints:
+                    nullable: false
+              - column:
+                  name: provider
+                  type: varchar(50)
+                  remarks: Authentication provider type (password, google, ldap, saml, jwt, support)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: credentials
+                  type: ${text.type}
+                  remarks: JSON object containing provider-specific credentials
+                  constraints:
+                    nullable: true
+              - column:
+                  name: metadata
+                  type: ${text.type}
+                  remarks: JSON object containing provider-specific metadata
+                  constraints:
+                    nullable: true
+              - column:
+                  name: provider_id
+                  type: varchar(255)
+                  remarks: Provider-specific identifier (email for password/Google, DN for LDAP, subject for SAML/JWT)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: last_used_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of last successful authentication
+                  constraints:
+                    nullable: true
+              - column:
+                  name: expires_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this authentication method expires (null = never expires)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this identity was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this identity was last updated
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: auth_identity
+
+  - changeSet:
+      id: v58.2025-11-04T23:09:58
+      author: edpaget
+      comment: Add user_id index to auth_identity table
+      changes:
+        - createIndex:
+            tableName: auth_identity
+            indexName: idx_auth_identity_user_id
+            columns:
+              - column:
+                  name: user_id
+      rollback:
+        - dropIndex:
+            tableName: auth_identity
+            indexName: idx_auth_identity_user_id
+
+  - changeSet:
+      id: v58.2025-11-04T23:10:00
+      author: edpaget
+      comment: Add provider index to auth_identity table
+      changes:
+        - createIndex:
+            tableName: auth_identity
+            indexName: idx_auth_identity_provider
+            columns:
+              - column:
+                  name: provider
+      rollback:
+        - dropIndex:
+            tableName: auth_identity
+            indexName: idx_auth_identity_provider
+
+  - changeSet:
+      id: v58.2025-11-04T23:10:01
+      author: edpaget
+      comment: Add unique constraint to auth_identity table
+      changes:
+        - addUniqueConstraint:
+            tableName: auth_identity
+            columnNames: user_id, provider
+            constraintName: unique_auth_identity_user_provider
+      rollback:
+        - dropUniqueConstraint:
+            tableName: auth_identity
+            constraintName: unique_auth_identity_user_provider
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:00
+      author: edpaget
+      comment: Add index on provider_id for efficient lookups
+      changes:
+        - createIndex:
+            tableName: auth_identity
+            indexName: idx_auth_identity_provider_id
+            columns:
+              - column:
+                  name: provider_id
+      rollback:
+        - dropIndex:
+            tableName: auth_identity
+            indexName: idx_auth_identity_provider_id
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:01
+      author: edpaget
+      comment: Add composite index on (provider, provider_id) for efficient lookups
+      changes:
+        - createIndex:
+            tableName: auth_identity
+            indexName: idx_auth_identity_provider_provider_id
+            columns:
+              - column:
+                  name: provider
+              - column:
+                  name: provider_id
+      rollback:
+        - dropIndex:
+            tableName: auth_identity
+            indexName: idx_auth_identity_provider_provider_id
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:02
+      author: edpaget
+      comment: Add foreign key constraint from auth_identity to core_user
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: auth_identity
+            baseColumnNames: user_id
+            constraintName: fk_auth_identity_core_user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: auth_identity
+            constraintName: fk_auth_identity_core_user_id
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:03
+      author: edpaget
+      comment: Migrate password authentication to auth_identity table
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'password',
+                email,
+                json_build_object('password_hash', password, 'password_salt', password_salt)::text,
+                NULL,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE password IS NOT NULL
+              ON CONFLICT (user_id, provider) DO NOTHING;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'password',
+                email,
+                json_object('password_hash', password, 'password_salt', password_salt),
+                NULL,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE password IS NOT NULL;
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'password',
+                email,
+                CONCAT('{"password_hash":"', password, '","password_salt":"', password_salt, '"}'),
+                NULL,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE password IS NOT NULL
+                AND NOT EXISTS (
+                  SELECT 1 FROM auth_identity ai
+                  WHERE ai.user_id = core_user.id AND ai.provider = 'password'
+                );
+      rollback:
+        - sql: DELETE FROM auth_identity WHERE provider = 'password';
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:04
+      author: edpaget
+      comment: Migrate LDAP authentication to auth_identity table
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'ldap',
+                email,
+                NULL,
+                json_build_object('login_attributes', login_attributes)::text,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'ldap'
+              ON CONFLICT (user_id, provider) DO NOTHING;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'ldap',
+                email,
+                NULL,
+                json_object('login_attributes', login_attributes),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'ldap';
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'ldap',
+                email,
+                NULL,
+                CONCAT('{"login_attributes":', COALESCE(login_attributes, 'null'), '}'),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'ldap'
+                AND NOT EXISTS (
+                  SELECT 1 FROM auth_identity ai
+                  WHERE ai.user_id = core_user.id AND ai.provider = 'ldap'
+                );
+      rollback:
+        - sql: DELETE FROM auth_identity WHERE provider = 'ldap';
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:05
+      author: edpaget
+      comment: Migrate Google SSO authentication to auth_identity table
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'google',
+                email,
+                NULL,
+                json_build_object('sso_source', 'google', 'login_attributes', login_attributes)::text,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'google'
+              ON CONFLICT (user_id, provider) DO NOTHING;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'google',
+                email,
+                NULL,
+                json_object('sso_source', 'google', 'login_attributes', login_attributes),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'google';
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'google',
+                email,
+                NULL,
+                CONCAT('{"sso_source":"google","login_attributes":', COALESCE(login_attributes, 'null'), '}'),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'google'
+                AND NOT EXISTS (
+                  SELECT 1 FROM auth_identity ai
+                  WHERE ai.user_id = core_user.id AND ai.provider = 'google'
+                );
+      rollback:
+        - sql: DELETE FROM auth_identity WHERE provider = 'google';
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:06
+      author: edpaget
+      comment: Migrate SAML and JWT authentication to auth_identity table
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                sso_source,
+                email,
+                NULL,
+                json_build_object('sso_source', sso_source, 'login_attributes', login_attributes, 'jwt_attributes', jwt_attributes)::text,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source IN ('saml', 'jwt')
+              ON CONFLICT (user_id, provider) DO NOTHING;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                sso_source,
+                email,
+                NULL,
+                json_object('sso_source', sso_source, 'login_attributes', login_attributes, 'jwt_attributes', jwt_attributes),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source IN ('saml', 'jwt');
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                sso_source,
+                email,
+                NULL,
+                CONCAT('{"sso_source":"', sso_source, '","login_attributes":', COALESCE(login_attributes, 'null'), ',"jwt_attributes":', COALESCE(jwt_attributes, 'null'), '}'),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source IN ('saml', 'jwt')
+                AND NOT EXISTS (
+                  SELECT 1 FROM auth_identity ai
+                  WHERE ai.user_id = core_user.id AND ai.provider = core_user.sso_source
+                );
+      rollback:
+        - sql: DELETE FROM auth_identity WHERE provider IN ('saml', 'jwt');
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:07
+      author: edpaget
+      comment: Add auth_identity_id columns to core_session table
+      changes:
+        - addColumn:
+            tableName: core_session
+            columns:
+              - column:
+                  name: auth_identity_id
+                  type: int
+                  remarks: Foreign key to auth_identity - tracks which auth method was used for login
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: core_session
+            columnName: auth_identity_id
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:08
+      author: edpaget
+      comment: Add expires_at columns to core_session table
+      changes:
+        - addColumn:
+            tableName: core_session
+            columns:
+               - column:
+                  name: expires_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this session expires (from auth_identity or calculated)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: core_session
+            columnName: expires_at
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:09
+      author: edpaget
+      comment: Add index on core_session.auth_identity_id
+      changes:
+        - createIndex:
+            tableName: core_session
+            indexName: idx_core_session_auth_identity_id
+            columns:
+              - column:
+                  name: auth_identity_id
+      rollback:
+        - dropIndex:
+            tableName: core_session
+            indexName: idx_core_session_auth_identity_id
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:10
+      author: edpaget
+      comment: Add foreign key constraint from core_session to auth_identity
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: core_session
+            baseColumnNames: auth_identity_id
+            constraintName: fk_session_auth_identity
+            referencedTableName: auth_identity
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: core_session
+            constraintName: fk_session_auth_identity
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
