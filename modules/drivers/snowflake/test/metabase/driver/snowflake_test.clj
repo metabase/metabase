@@ -23,10 +23,10 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.compile :as qp.compile]
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.secrets.core :as secret]
    [metabase.sync.core :as sync]
@@ -1321,60 +1321,83 @@
 
 (deftest snowflake-string-filter-tests
   (mt/test-driver :snowflake
-    (testing "contains"
-      (let [metadata-provider (mt/metadata-provider)
-            products (lib.metadata/table metadata-provider (mt/id :products))
-            products-category (lib.metadata/field metadata-provider (mt/id :products :category))
-            products-name (lib.metadata/field metadata-provider (mt/id :products :title))
-            products-id (lib.metadata/field metadata-provider (mt/id :products :id))
-            query (-> (lib/query metadata-provider products)
-                      (lib/filter (lib/contains products-category "get" {:case-sensitive false}))
-                      (lib/fields [products-id products-name products-category])
-                      (lib/order-by products-id :asc)
-                      (lib/limit 3))]
-        (testing "returns correct rows"
-          (is (= [[1 "Rustic Paper Wallet" "Gizmo"]
-                  [2 "Small Marble Shoes" "Doohickey"]
-                  [3 "Synergistic Granite Chair" "Doohickey"]]
-                 (mt/rows (qp/process-query query)))))
-        (testing "generates correct SQL"
-          (is (str/includes? (:query (qp.compile/compile-with-inline-parameters query))
-                             "CONTAINS(LOWER(\"PUBLIC\".\"PRODUCTS\".\"CATEGORY\"), LOWER('get')")))))
-    (testing "starts-with"
-      (let [metadata-provider (mt/metadata-provider)
-            products (lib.metadata/table metadata-provider (mt/id :products))
-            products-category (lib.metadata/field metadata-provider (mt/id :products :category))
-            products-name (lib.metadata/field metadata-provider (mt/id :products :title))
-            products-id (lib.metadata/field metadata-provider (mt/id :products :id))
-            query (-> (lib/query metadata-provider products)
-                      (lib/filter (lib/starts-with products-category "Gad" {:case-sensitive false}))
-                      (lib/fields [products-id products-name products-category])
-                      (lib/order-by products-id :asc)
-                      (lib/limit 3))]
-        (testing "returns correct rows"
-          (is (= [[5 "Enormous Marble Wallet" "Gadget"]
-                  [11 "Ergonomic Silk Coat" "Gadget"]
-                  [16 "Fantastic Wool Shirt" "Gadget"]]
-                 (mt/rows (qp/process-query query)))))
-        (testing "generates correct SQL"
-          (is (str/includes? (:query (qp.compile/compile-with-inline-parameters query))
-                             "STARTSWITH(LOWER(\"PUBLIC\".\"PRODUCTS\".\"CATEGORY\"), LOWER('Gad')")))))
-    (testing "ends-with"
-      (let [metadata-provider (mt/metadata-provider)
-            products (lib.metadata/table metadata-provider (mt/id :products))
-            products-category (lib.metadata/field metadata-provider (mt/id :products :category))
-            products-name (lib.metadata/field metadata-provider (mt/id :products :title))
-            products-id (lib.metadata/field metadata-provider (mt/id :products :id))
-            query (-> (lib/query metadata-provider products)
-                      (lib/filter (lib/ends-with products-category "mo" {:case-sensitive false}))
-                      (lib/fields [products-id products-name products-category])
-                      (lib/order-by products-id :asc)
-                      (lib/limit 3))]
-        (testing "returns correct rows"
-          (is (= [[1 "Rustic Paper Wallet" "Gizmo"]
-                  [4 "Rustic Concrete Bench" "Gizmo"]
-                  [13 "Aerodynamic Linen Coat" "Gizmo"]]
-                 (mt/rows (qp/process-query query)))))
-        (testing "generates correct SQL"
-          (is (str/includes? (:query (qp.compile/compile-with-inline-parameters query))
-                             "ENDSWITH(LOWER(\"PUBLIC\".\"PRODUCTS\".\"CATEGORY\"), LOWER('mo')")))))))
+    (let [metadata-provider (mt/metadata-provider)
+          products (lib.metadata/table metadata-provider (mt/id :products))
+          products-category (lib.metadata/field metadata-provider (mt/id :products :category))
+          products-name (lib.metadata/field metadata-provider (mt/id :products :title))
+          products-id (lib.metadata/field metadata-provider (mt/id :products :id))
+          filter-query (fn [filter]
+                         (-> (lib/query metadata-provider products)
+                             (lib/filter filter)
+                             (lib/order-by products-id :asc)
+                             (lib/limit 3)
+                             (lib/with-fields [products-id products-name products-category])))]
+      (doseq [[msg filter exp-filter exp-rows] [["case insensitive contains has rows"
+                                                 (-> (lib/contains products-category "GET")
+                                                     (lib.options/update-options assoc :case-sensitive false))
+                                                 "CONTAINS(LOWER(\"PUBLIC\".\"products\".\"category\"), 'get')"
+                                                 [[5 "Enormous Marble Wallet" "Gadget"]
+                                                  [9 "Practical Bronze Computer" "Widget"]
+                                                  [11 "Ergonomic Silk Coat" "Gadget"]]]
+
+                                                ["case sensitive contains has rows"
+                                                 (-> (lib/contains products-category "Gad")
+                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 "CONTAINS(\"PUBLIC\".\"products\".\"category\", 'Gad')"
+                                                 [[5 "Enormous Marble Wallet" "Gadget"]
+                                                  [11 "Ergonomic Silk Coat" "Gadget"]
+                                                  [16 "Incredible Bronze Pants" "Gadget"]]]
+
+                                                ["case sensitive contains with no rows"
+                                                 (-> (lib/contains products-category "gad")
+                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 "CONTAINS(\"PUBLIC\".\"products\".\"category\", 'gad')"
+                                                 []]
+
+                                                ["case insensitive starts with has rows"
+                                                 (-> (lib/starts-with products-category "GAD")
+                                                     (lib.options/update-options assoc :case-sensitive false))
+                                                 "STARTSWITH(LOWER(\"PUBLIC\".\"products\".\"category\"), 'gad')"
+                                                 [[5 "Enormous Marble Wallet" "Gadget"]
+                                                  [11 "Ergonomic Silk Coat" "Gadget"]
+                                                  [16 "Incredible Bronze Pants" "Gadget"]]]
+
+                                                ["case sensitive starts with has rows"
+                                                 (-> (lib/starts-with products-category "Gad")
+                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 "STARTSWITH(\"PUBLIC\".\"products\".\"category\", 'Gad')"
+                                                 [[5 "Enormous Marble Wallet" "Gadget"]
+                                                  [11 "Ergonomic Silk Coat" "Gadget"]
+                                                  [16 "Incredible Bronze Pants" "Gadget"]]]
+
+                                                ["case sensitive starts with has no rows"
+                                                 (-> (lib/starts-with products-category "gad")
+                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 "STARTSWITH(\"PUBLIC\".\"products\".\"category\", 'gad')"
+                                                 []]
+
+                                                ["case insensitive ends with has rows"
+                                                 (-> (lib/ends-with products-category "GET")
+                                                     (lib.options/update-options assoc :case-sensitive false))
+                                                 "ENDSWITH(LOWER(\"PUBLIC\".\"products\".\"category\"), 'get')"
+                                                 [[5 "Enormous Marble Wallet" "Gadget"]
+                                                  [9 "Practical Bronze Computer" "Widget"]
+                                                  [11 "Ergonomic Silk Coat" "Gadget"]]]
+
+                                                ["case sensitive ends with has rows"
+                                                 (-> (lib/ends-with products-category "get")
+                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 "ENDSWITH(\"PUBLIC\".\"products\".\"category\", 'get')"
+                                                 [[5 "Enormous Marble Wallet" "Gadget"]
+                                                  [9 "Practical Bronze Computer" "Widget"]
+                                                  [11 "Ergonomic Silk Coat" "Gadget"]]]
+
+                                                ["case sensitive ends with has no rows"
+                                                 (-> (lib/ends-with products-category "GET")
+                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 "ENDSWITH(\"PUBLIC\".\"products\".\"category\", 'GET')"
+                                                 []]]]
+        (testing msg
+          (let [result (qp/process-query (filter-query filter))]
+            (is (= exp-rows (mt/rows result)))
+            (is (str/includes? (-> result :data :native_form :query) exp-filter))))))))
