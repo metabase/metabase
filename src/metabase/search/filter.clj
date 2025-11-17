@@ -1,8 +1,6 @@
 (ns metabase.search.filter
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [metabase.api.common :as api]
-   [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.search.config :as search.config]

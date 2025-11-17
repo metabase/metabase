@@ -1883,14 +1883,13 @@
                 "Card should not be found in search results after database deletion")))))))
 
 (deftest collection-filter-test
-  "Test filtering search results by collection and sub-collections"
   (mt/with-temp
     [:model/Collection {parent-coll :id}      {:name "Parent Collection"
                                                :location "/"}
      :model/Collection {child-coll :id}       {:name "Child Collection"
                                                :location (collection/location-path parent-coll)}
-     :model/Collection {grandchild-coll :id :as gc}  {:name "Grandchild Collection"
-                                                      :location (collection/location-path parent-coll child-coll)}
+     :model/Collection {grandchild-coll :id}  {:name "Grandchild Collection"
+                                               :location (collection/location-path parent-coll child-coll)}
      :model/Card       {parent-card :id}      {:collection_id parent-coll :name "Parent Card"}
      :model/Card       {child-card :id}       {:collection_id child-coll :name "Child Card"}
      :model/Card       {grandchild-card :id}  {:collection_id grandchild-coll :name "Grandchild Card"}
@@ -1920,7 +1919,6 @@
         (is (not (some #{other-card} (map :id (:data results)))))))))
 
 (deftest collection-filter-with-search-string-test
-  "Test collection filter combined with search query"
   (mt/with-temp
     [:model/Collection {coll-1 :id}  {:name "Collection 1"}
      :model/Collection _             {:name "Collection 2"}
