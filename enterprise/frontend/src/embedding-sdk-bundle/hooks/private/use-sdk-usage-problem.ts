@@ -5,9 +5,9 @@ import { getSdkUsageProblem } from "embedding-sdk-bundle/lib/usage-problem";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setUsageProblem } from "embedding-sdk-bundle/store/reducer";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
-import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-package";
 import { useSetting } from "metabase/common/hooks";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import { getTokenFeature } from "metabase/setup/selectors";
 
 export function useSdkUsageProblem({

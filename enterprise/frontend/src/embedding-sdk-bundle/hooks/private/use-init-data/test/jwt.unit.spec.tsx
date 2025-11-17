@@ -8,6 +8,8 @@ import {
   setupMockJwtEndpoints,
 } from "embedding-sdk-bundle/test/mocks/sso";
 
+import "metabase-enterprise/sdk-plugins";
+
 import { type MetabaseConfigProps, TestComponent, setup } from "./setup";
 
 const setupJwt = ({

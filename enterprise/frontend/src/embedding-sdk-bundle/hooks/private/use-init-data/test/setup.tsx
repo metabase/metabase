@@ -1,5 +1,8 @@
 /* eslint-disable i18next/no-literal-string */
 
+// Activates the plugins needed for the tests before any SDK code
+import "metabase-enterprise/sdk-plugins";
+
 import { renderWithProviders } from "__support__/ui";
 import {
   sdkReducers,

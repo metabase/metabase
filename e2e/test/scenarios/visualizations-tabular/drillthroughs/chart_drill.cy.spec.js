@@ -855,7 +855,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  H.describeWithSnowplow("chart click actions analytics", () => {
+  describe("chart click actions analytics", () => {
     beforeEach(() => {
       H.resetSnowplow();
       H.restore();

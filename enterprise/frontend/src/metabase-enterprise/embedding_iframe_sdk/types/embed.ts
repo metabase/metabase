@@ -2,10 +2,6 @@ import type { MetabaseError } from "embedding-sdk-bundle/errors";
 import type { MetabaseErrorCode } from "embedding-sdk-bundle/errors/error-code";
 import type { MetabaseAuthMethod } from "embedding-sdk-bundle/types";
 import type {
-  MetabaseEmbeddingSessionToken,
-  MetabaseFetchRequestTokenFn,
-} from "embedding-sdk-bundle/types/refresh-token";
-import type {
   CollectionBrowserListColumns,
   EmbeddingEntityType,
   EntityTypeFilterKeys,
@@ -13,6 +9,10 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk-package";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import type {
+  MetabaseEmbeddingSessionToken,
+  MetabaseFetchRequestTokenFn,
+} from "metabase/embedding-sdk/types/refresh-token";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
 

@@ -1730,7 +1730,7 @@ describe("issue 39771", () => {
   });
 });
 
-describe("issue 45063", { tags: "@flaky" }, () => {
+describe("issue 45063", () => {
   function createGuiQuestion({ sourceTableId }) {
     const questionDetails = {
       name: "Question",
@@ -1955,7 +1955,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
       });
     });
 
-    it("should work with models", { tags: "@flaky" }, () => {
+    it("should work with models", () => {
       createGuiModel({ sourceTableId: ORDERS_ID });
       verifyRemappedFilter({
         visitCard: () => cy.get("@modelId").then(H.visitModel),

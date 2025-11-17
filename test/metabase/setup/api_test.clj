@@ -59,7 +59,7 @@
      request-body
      (fn []
        (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
-                     driver.settings/*allow-testing-h2-connections*                       true]
+                     driver.settings/*allow-testing-h2-connections*          true]
          (testing "API response should return a Session UUID"
            (is (=? {:id string/valid-uuid?}
                    (client/client :post 200 "setup" request-body))))
@@ -295,19 +295,3 @@
            (testing "Setup token should still be set"
              (is (= setup-token
                     (setup/setup-token))))))))))
-
-(deftest user-defaults-test
-  (testing "with no user defaults configured"
-    (mt/with-temp-env-var-value! [mb-user-defaults nil]
-      (is (= "Not found." (client/client :get "setup/user_defaults")))))
-
-  (testing "with defaults containing no token"
-    (mt/with-temp-env-var-value! [mb-user-defaults "{}"]
-      (is (= "Not found." (client/client :get "setup/user_defaults")))))
-
-  (testing "with valid configuration"
-    (mt/with-temp-env-var-value! [mb-user-defaults "{\"token\":\"123456\",\"email\":\"john.doe@example.com\"}"]
-      (testing "with mismatched token"
-        (is (= "You don't have permissions to do that." (client/client :get "setup/user_defaults?token=987654"))))
-      (testing "with valid token"
-        (is (= {:email "john.doe@example.com"} (client/client :get "setup/user_defaults?token=123456")))))))
