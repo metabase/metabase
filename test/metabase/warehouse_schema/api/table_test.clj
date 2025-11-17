@@ -1241,10 +1241,13 @@
                                                                     :data_layer   "copper"}))))
 
       (testing "simple happy path updating with db ids"
-        (mt/user-http-request :crowberto :post 200 "table/edit" {:database_ids [clojure jvm]
-                                                                 :data_layer   "copper"})
-
-        (is (= #{:copper} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]]))))
+        (mt/user-http-request :crowberto :post 200 "table/edit" {:database_ids   [clojure jvm]
+                                                                 :data_layer     "copper"
+                                                                 :data_authority "authoritative"
+                                                                 :data_source    "ingested"})
+        (is (= #{:copper} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
+        (is (= #{:authoritative} (t2/select-fn-set :data_authority :model/Table :db_id [:in [clojure jvm]])))
+        (is (= #{:ingested} (t2/select-fn-set :data_source :model/Table :db_id [:in [clojure jvm]]))))
 
       (testing "updating with all selectors"
         (mt/user-http-request :crowberto :post 200 "table/edit" {:database_ids  [clojure]

@@ -25,7 +25,7 @@
   Deprecated and will eventually be replaced by data-layer"
   #{:hidden :technical :cruft})
 
-(def ^:private data-sources
+(def data-sources
   "Valid values for data source"
   #{:unknown :ingested :metabase-transform :transform :source-data :upload})
 

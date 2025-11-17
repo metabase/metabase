@@ -268,7 +268,14 @@
       (seq table_ids)    (conj [:in :id    (sort table_ids)])
       (seq schema_ids)   (conj (into [:or] (map schema-expr) (sort schema_ids))))))
 
-(mr/def ::data-layers (into [:enum {:decode/string keyword}] table/data-layers))
+(mr/def ::data-layers
+  (into [:enum {:decode/string keyword}] table/data-layers))
+
+(mr/def ::data-sources
+  (into [:enum {:decode/string keyword}] table/data-sources))
+
+(mr/def ::data-authorities
+  (into [:enum {:decode/string keyword}] table/writable-data-authority-types))
 
 (defn- maybe-sync-unhidden-tables!
   [existing-tables {:keys [data_layer] :as body}]
@@ -284,8 +291,8 @@
    :- [:merge
        ::table-selectors
        [:map {:closed true}
-        [:data_authority {:optional true} [:maybe :string]]
-        [:data_source {:optional true} [:maybe :string]]
+        [:data_authority {:optional true} [:maybe ::data-authorities]]
+        [:data_source {:optional true} [:maybe ::data-sources]]
         [:data_layer {:optional true} [:maybe ::data-layers]]
         [:entity_type {:optional true} [:maybe :string]]
         [:owner_email {:optional true} [:maybe :string]]
