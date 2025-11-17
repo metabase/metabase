@@ -8,16 +8,16 @@ import { waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
-import { defineMetabaseAuthConfig } from "embedding-sdk-shared/lib/define-metabase-auth-config";
-import { createMockCard } from "metabase-types/api/mocks";
-
 import {
   type JwtMockConfig,
   MOCK_INSTANCE_URL,
   setupMockJwtEndpoints,
 } from "embedding-sdk-bundle/test/mocks/sso";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
+import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
+import { defineMetabaseAuthConfig } from "embedding-sdk-shared/lib/define-metabase-auth-config";
+import { createMockCard } from "metabase-types/api/mocks";
+
 import { setupEmbeddingSdkEnterprisePlugins } from "../support";
 
 const defaultAuthConfig = defineMetabaseAuthConfig({

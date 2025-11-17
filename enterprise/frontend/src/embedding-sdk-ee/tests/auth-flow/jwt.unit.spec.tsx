@@ -9,10 +9,6 @@ import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
-import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
-import { defineMetabaseAuthConfig } from "embedding-sdk-shared/lib/define-metabase-auth-config";
-import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
-
 import {
   MOCK_INSTANCE_URL,
   MOCK_JWT_PROVIDER_URI,
@@ -20,6 +16,10 @@ import {
   MOCK_VALID_JWT_RESPONSE,
   setupMockJwtEndpoints,
 } from "embedding-sdk-bundle/test/mocks/sso";
+import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
+import { defineMetabaseAuthConfig } from "embedding-sdk-shared/lib/define-metabase-auth-config";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+
 import { setupEmbeddingSdkEnterprisePlugins } from "../support";
 
 import { setup as baseSetup } from "./setup";
