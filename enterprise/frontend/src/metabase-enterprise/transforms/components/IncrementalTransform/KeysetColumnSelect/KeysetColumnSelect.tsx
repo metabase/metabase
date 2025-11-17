@@ -45,7 +45,10 @@ export function KeysetColumnSelect({
       const numericFilterableColumns = returnedColumns.filter((column) => {
         const info = Lib.displayInfo(query, stageIndex, column);
         const identifier = `${info.table?.name ?? "no-table"}:${info.name}`;
-        return filterableIdentifiers.has(identifier) && Lib.isNumeric(column);
+        return (
+          filterableIdentifiers.has(identifier) &&
+          (Lib.isNumeric(column) || Lib.isTemporal(column))
+        );
       });
 
       // Convert to select options with unique keys

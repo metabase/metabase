@@ -6,6 +6,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.schema.common :as schema.common]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -16,7 +17,7 @@
   [:map
    [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table :table-incremental]]
    [:conn-spec :any]
-   [:query :string]
+   [:query ::qp.compile/compiled]
    [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
 
 (mr/def ::transform-opts

@@ -242,8 +242,8 @@ function SourceStrategyFields({
             <NativeQueryColumnSelect
               name="checkpointFilter"
               label={t`Source Filter Field`}
-              placeholder={t`e.g. id`}
-              description={t`Numeric column to use in the incremental filter`}
+              placeholder={t`e.g. id, created_at`}
+              description={t`Column to use in the incremental filter`}
               query={query as DatasetQuery}
             />
           )}

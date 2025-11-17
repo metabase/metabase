@@ -4,11 +4,13 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.58.0
+
+- Added `metabase.driver/compile-insert` to implement incremental transforms.
+
 ## Metabase 0.57.0
 
 - `driver/field-reference-mlv2` is now deprecated, and is no longer used. Please remove your implementations.
-
-- Added `metabase.driver/compile-insert` to implement incremental transforms.
 
 - The key `metabase.driver-api.core/qp.add.nfc-path` is now more consistently populated; other `qp.add.*` keys no
   longer include parent column names for drivers like MongoDB -- use `qp.add.nfc-path` instead to qualify the

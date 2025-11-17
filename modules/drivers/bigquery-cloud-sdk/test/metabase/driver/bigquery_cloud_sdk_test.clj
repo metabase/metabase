@@ -1351,9 +1351,9 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "compile-transform creates CREATE OR REPLACE TABLE"
       (is (= ["CREATE OR REPLACE TABLE `PRODUCTS_COPY` AS SELECT * FROM products"]
-             (driver/compile-transform :bigquery-cloud-sdk {:query "SELECT * FROM products"
+             (driver/compile-transform :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
                                                             :output-table :PRODUCTS_COPY}))))
     (testing "compile-insert generates INSERT INTO"
       (is (= ["INSERT INTO `PRODUCTS_COPY` SELECT * FROM products"]
-             (driver/compile-insert :bigquery-cloud-sdk {:query "SELECT * FROM products"
+             (driver/compile-insert :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
                                                          :output-table :PRODUCTS_COPY}))))))

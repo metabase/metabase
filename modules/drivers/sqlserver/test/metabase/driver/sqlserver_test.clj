@@ -776,9 +776,9 @@
   (mt/test-driver :sqlserver
     (testing "compile-transform creates SELECT INTO"
       (is (= ["SELECT * INTO [PRODUCTS_COPY] FROM products"]
-             (driver/compile-transform :sqlserver {:query "SELECT * FROM products"
+             (driver/compile-transform :sqlserver {:query {:query "SELECT * FROM products"}
                                                    :output-table "PRODUCTS_COPY"}))))
     (testing "compile-insert generates INSERT INTO"
       (is (= ["INSERT INTO [PRODUCTS_COPY] SELECT * FROM products"]
-             (driver/compile-insert :sqlserver {:query "SELECT * FROM products"
+             (driver/compile-insert :sqlserver {:query {:query "SELECT * FROM products"}
                                                 :output-table "PRODUCTS_COPY"}))))))
