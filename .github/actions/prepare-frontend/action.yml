@@ -16,8 +16,6 @@ runs:
         node-version: ${{ inputs.node-version }} # this overrides, if present
         node-version-file: ".nvmrc"
 
-    - uses: google/wireit@setup-github-actions-caching/v2
-
     - name: Get cache keys
       uses: ./.github/actions/get-cache-keys
       id: get-cache-keys
