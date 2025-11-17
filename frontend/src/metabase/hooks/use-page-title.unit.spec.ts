@@ -31,48 +31,13 @@ describe("usePageTitle hooks", () => {
     });
 
     it("should stack titles with separator", async () => {
-      const { unmount: unmount1 } = renderHook(() =>
-        usePageTitle("Metabase", { titleIndex: 0 }),
-      );
-      const { unmount: unmount2 } = renderHook(() =>
-        usePageTitle("Admin", { titleIndex: 0 }),
-      );
-      const { unmount: unmount3 } = renderHook(() =>
-        usePageTitle("Databases", { titleIndex: 1 }),
-      );
+      renderHook(() => usePageTitle("Metabase", { titleIndex: 0 }));
+      renderHook(() => usePageTitle("Admin", { titleIndex: 0 }));
+      renderHook(() => usePageTitle("Databases", { titleIndex: 1 }));
 
       await waitFor(() => {
         expect(document.title).toBe("Databases · Admin · Metabase");
       });
-
-      // Cleanup
-      unmount3();
-      unmount2();
-      unmount1();
-    });
-
-    it("should respect titleIndex ordering", async () => {
-      const { unmount: unmount1 } = renderHook(() =>
-        usePageTitle("Root", { titleIndex: 0 }),
-      );
-      const { unmount: unmount2 } = renderHook(() =>
-        usePageTitle("Parent", { titleIndex: 0 }),
-      );
-      const { unmount: unmount3 } = renderHook(() =>
-        usePageTitle("Child", { titleIndex: 1 }),
-      );
-
-      // After sort by titleIndex and reverse:
-      // titleIndex 0: Root, Parent
-      // titleIndex 1: Child
-      // Result after reverse: Child · Parent · Root
-      await waitFor(() => {
-        expect(document.title).toBe("Child · Parent · Root");
-      });
-
-      unmount3();
-      unmount2();
-      unmount1();
     });
 
     it("should clean up title on unmount", async () => {
@@ -97,16 +62,13 @@ describe("usePageTitle hooks", () => {
     });
 
     it("should filter out empty titles", async () => {
-      const { unmount: unmount1 } = renderHook(() => usePageTitle("Valid"));
-      const { unmount: unmount2 } = renderHook(() => usePageTitle(""));
+      renderHook(() => usePageTitle("Valid"));
+      renderHook(() => usePageTitle(""));
 
       // Empty title should be filtered out
       await waitFor(() => {
         expect(document.title).toBe("Valid");
       });
-
-      unmount2();
-      unmount1();
     });
   });
 
@@ -196,11 +158,9 @@ describe("usePageTitle hooks", () => {
     });
 
     it("should respect titleIndex option", async () => {
-      const { unmount: unmount1 } = renderHook(() =>
-        usePageTitle("Metabase", { titleIndex: 0 }),
-      );
+      renderHook(() => usePageTitle("Metabase", { titleIndex: 0 }));
 
-      const { unmount: unmount2 } = renderHook(() =>
+      renderHook(() =>
         usePageTitleWithLoadingTime("Dashboard", {
           titleIndex: 1,
           startTime: performance.now() - 120000, // 2 minutes ago
@@ -211,9 +171,6 @@ describe("usePageTitle hooks", () => {
       await waitFor(() => {
         expect(document.title).toBe("02:00 Dashboard · Metabase");
       });
-
-      unmount2();
-      unmount1();
     });
   });
 });

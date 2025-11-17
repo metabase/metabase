@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import { useEffect, useRef, useState } from "react";
-import * as _ from "underscore";
+import _ from "underscore";
 
 type TitleEntry = {
   id: string;
@@ -26,7 +26,7 @@ let nextId = 0;
  * Hook to set the page title with support for hierarchical stacking.
  *
  * Multiple components can set titles simultaneously, and they will be combined
- * with " · " separator. Lower titleIndex values appear first after reversal.
+ * with " · " separator. Higher index titles appear first.
  */
 export function usePageTitle(
   title: string,
@@ -75,8 +75,6 @@ export function usePageTitleWithLoadingTime(
   const { startTime, isRunning } = options || {};
 
   useEffect(() => {
-    const { startTime, isRunning } = options || {};
-
     if (startTime != null && isRunning) {
       intervalRef.current = setInterval(() => {
         setRefreshTrigger((prev) => prev + 1);
@@ -92,7 +90,7 @@ export function usePageTitleWithLoadingTime(
         intervalRef.current = null;
       }
     };
-  }, [options]);
+  }, [startTime, isRunning]);
 
   const getLoadingTime = () => {
     if (startTime == null || !isRunning) {
