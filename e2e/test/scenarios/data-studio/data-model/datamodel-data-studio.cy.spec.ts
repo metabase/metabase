@@ -6,15 +6,17 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { H } = cy;
+const { TablePicker, TableSection } = H.DataModel;
+
 const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
 const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
-const { TablePicker, TableSection } = H.DataModel;
-const DATA_STUDIO_BASE_PATH = "/data-studio/data";
-const visitAdminDataModel = H.DataModel.visit;
 
-H.DataModel.visit = (options = {}) =>
-  visitAdminDataModel({ ...options, basePath: DATA_STUDIO_BASE_PATH });
+function visitDataStudioDataModel(
+  options?: Parameters<typeof H.DataModel.visit>[0],
+) {
+  H.DataModel.visit({ ...options, basePath: "/data-studio/data" });
+}
 
 describe("scenarios > data studio > datamodel", () => {
   beforeEach(() => {
@@ -45,7 +47,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow to navigate databases, schemas, and tables", () => {
-        H.DataModel.visit();
+        visitDataStudioDataModel();
 
         cy.get("main")
           .findByText("No connected databases")
@@ -67,7 +69,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.restore("mysql-8");
         cy.signInAsAdmin();
 
-        H.DataModel.visit();
+        visitDataStudioDataModel();
 
         TablePicker.getDatabase("QA MySQL8").click();
         TablePicker.getTables().should("have.length", 4);
@@ -92,7 +94,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.restore("mysql-8");
         cy.signInAsAdmin();
 
-        H.DataModel.visit();
+        visitDataStudioDataModel();
 
         TablePicker.getSearchInput().type("rEvIeWs");
         TablePicker.getTables().should("have.length", 2);
@@ -111,7 +113,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.restore("mysql-8");
         cy.signInAsAdmin();
 
-        H.DataModel.visit({
+        visitDataStudioDataModel({
           databaseId: MYSQL_DB_ID,
           schemaId: MYSQL_DB_SCHEMA_ID,
         });
@@ -136,7 +138,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("1 database, 1 schema", () => {
       it("should allow to navigate databases, schemas, and tables", () => {
-        H.DataModel.visit();
+        visitDataStudioDataModel();
 
         cy.log("should auto-open the only schema in the only database");
         cy.location("pathname").should(
@@ -166,7 +168,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow to search for tables", () => {
-        H.DataModel.visit();
+        visitDataStudioDataModel();
 
         TablePicker.getSearchInput().type("or");
         TablePicker.getTables().should("have.length", 1);
@@ -200,7 +202,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to navigate databases, schemas, and tables", () => {
-          H.DataModel.visit();
+          visitDataStudioDataModel();
 
           cy.location("pathname").should("eq", "/data-studio/data");
           TablePicker.getDatabases().should("have.length", 2);
@@ -316,7 +318,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to search for tables", () => {
-          H.DataModel.visit();
+          visitDataStudioDataModel();
 
           TablePicker.getSearchInput().type("b");
           TablePicker.getTables().should("have.length", 2);
@@ -340,7 +342,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should restore previously selected table when expanding the tree", () => {
-          H.DataModel.visit();
+          visitDataStudioDataModel();
 
           TablePicker.getDatabase("Writable Postgres12").click();
           TablePicker.getSchema("Domestic").click();
