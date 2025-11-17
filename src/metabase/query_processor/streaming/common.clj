@@ -144,11 +144,14 @@
                               (:display_name col)
                               (:name col))
           ;; Translate the column title using content translations (static embedding translations)
-          translated-title (if (and (string? column-title)
+          translated-title (if (and column-title
                                      ;; Only try to translate if we have a user locale context
                                     i18n/*user-locale*)
-                             (lookup-content-translation column-title (str i18n/*user-locale*))
-                             column-title)]
+                             (let [;; Convert to string first (handles both regular strings and UserLocalizedString objects)
+                                   string-title (str column-title)]
+                               (lookup-content-translation string-title (str i18n/*user-locale*)))
+                             ;; If no locale context, still convert to string to handle UserLocalizedString objects
+                             (str column-title))]
       (if (and is-currency? (::mb.viz/currency-in-header merged-settings true))
         (str translated-title " (" (currency-identifier merged-settings) ")")
         translated-title))))
