@@ -2974,7 +2974,7 @@ describe("scenarios > dashboard > parameters", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
+describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();

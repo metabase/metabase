@@ -3,13 +3,15 @@ import { HttpResponse, http } from "msw";
 import type { ComponentProps } from "react";
 
 import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
+import { MetabotQuestion } from "embedding-sdk-package";
 import {
   MOCK_AD_HOC_QUESTION_ID,
   mockStreamResponse,
 } from "embedding-sdk-shared/test/mocks/mock-metabot-response";
 import { Flex, Stack } from "metabase/ui";
 
-import { MetabotQuestion } from "./MetabotQuestion";
+// side effect to activate the plugin
+import "./MetabotQuestion";
 
 type MetabotQuestionProps = ComponentProps<typeof MetabotQuestion>;
 

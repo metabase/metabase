@@ -1080,6 +1080,7 @@
            config
            dashboards
            events
+           lib
            models
            queries
            query-permissions
@@ -1179,7 +1180,7 @@
    :api  #{metabase.session.api
            metabase.session.core
            metabase.session.init
-           metabase.session.settings} ; TODO -- shouldn't be exposed as an API namespace
+           metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
            app-db
            auth-identity
