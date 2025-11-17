@@ -27,29 +27,6 @@ let nextId = 0;
  *
  * Multiple components can set titles simultaneously, and they will be combined
  * with " · " separator. Lower titleIndex values appear first after reversal.
- *
- * @param title - The title string
- * @param options - Configuration options
- * @param options.titleIndex - Priority for stacking (default: 0). Controls order in the final title.
- *
- * @example
- * // Simple static title
- * usePageTitle("Search");
- * // Result: "Search"
- *
- * @example
- * // Hierarchical stacking
- * // Component A:
- * usePageTitle("Metabase", { titleIndex: 0 });
- * // Component B:
- * usePageTitle("Admin", { titleIndex: 0 });
- * // Component C:
- * usePageTitle("Databases", { titleIndex: 1 });
- * // Result: "Databases · Admin · Metabase"
- *
- * @example
- * // Dynamic title
- * usePageTitle(dashboard?.name || "Loading...", { titleIndex: 1 });
  */
 export function usePageTitle(
   title: string,
@@ -84,29 +61,13 @@ const SECONDS_UNTIL_DISPLAY = 10;
  * Hook to set page title with optional loading time display.
  *
  * Displays the loading time in MM:SS format in the page title. Updates every 100ms.
- *
- *
- * @param title - The base title string
- * @param options - Configuration options
- * @param options.titleIndex - Priority for stacking (default: 0)
- * @param options.startTime - Timestamp when loading started
- * @param options.isRunning - Whether the loading operation is currently running
- *
- * @example
- * // In a dashboard component
- * const { loadingStartTime, isRunning } = useDashboardContext();
- * usePageTitleWithLoadingTime("My Dashboard", {
- *   titleIndex: 1,
- *   startTime: loadingStartTime,
- *   isRunning
- * });
  */
 export function usePageTitleWithLoadingTime(
   title: string,
-  options?: {
+  options: {
     titleIndex?: number;
-    startTime?: number | null;
-    isRunning?: boolean;
+    startTime: number | null;
+    isRunning: boolean;
   },
 ) {
   const [, setRefreshTrigger] = useState(0);
