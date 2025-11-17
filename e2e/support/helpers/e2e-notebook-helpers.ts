@@ -3,6 +3,7 @@ import type { CyHttpMessages } from "cypress/types/net-stubbing";
 import {
   entityPickerModal,
   entityPickerModalTab,
+  miniPicker,
   popover,
   shouldDisplayTabs,
 } from "e2e/support/helpers/e2e-ui-elements-helpers";
@@ -177,8 +178,8 @@ export function joinTable(
   lhsColumnName?: string,
   rhsColumnName?: string,
 ) {
-  entityPickerModal().within(() => {
-    entityPickerModalTab("Tables").click();
+  miniPicker().within(() => {
+    cy.realType(tableName);
     cy.findByText(tableName).click();
   });
 
