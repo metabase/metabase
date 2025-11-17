@@ -4,13 +4,13 @@ import { FilterPill } from "metabase/querying/filters/components/FilterPanel/Fil
 import { getMetadata } from "metabase/selectors/metadata";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { StructuredQuery, TableId } from "metabase-types/api";
+import type { DatasetQuery, TableId } from "metabase-types/api";
 
 const STAGE_INDEX = -1;
 
 type QueryDefinitionProps = {
   className?: string;
-  definition: StructuredQuery;
+  definition: DatasetQuery;
   tableId: TableId;
 };
 

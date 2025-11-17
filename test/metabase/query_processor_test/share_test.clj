@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -94,12 +95,13 @@
 (deftest ^:parallel segment-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Share containing a Segment"
-      (let [mp (lib.tu/mock-metadata-provider
-                (mt/metadata-provider)
+      (let [mp (mt/metadata-provider)
+            mp (lib.tu/mock-metadata-provider
+                mp
                 {:segments [{:id         1
                              :table-id   (mt/id :venues)
-                             :definition {:source-table (mt/id :venues)
-                                          :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]})]
+                             :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                             (lib/filter (lib/< (lib.metadata/field mp (mt/id :venues :price)) 4)))}]})]
         (is (= [[0.94]]
                (mt/formatted-rows
                 [2.0]
