@@ -51,29 +51,34 @@
   (atom {:executing? false
          :needs-regen? false}))
 
+(def ^:private debounce-delay-ms
+  "Delay in milliseconds before starting regeneration to allow multiple rapid requests to coalesce."
+  200)
+
 (defn request-spec-regeneration!
-  "Request OpenAPI spec regeneration. Multiple rapid requests are coalesced into one execution."
+  "Request OpenAPI spec regeneration. Multiple rapid requests are coalesced into one execution.
+  Uses a debounce delay to batch requests that arrive in quick succession (e.g., when re-evaling a file with multiple endpoints)."
   [routes]
-  ;; Mark that we need regeneration
   (swap! openapi-regen-state assoc :needs-regen? true)
 
-  ;; Only start execution if not already running
   (when-not (:executing? @openapi-regen-state)
     (swap! openapi-regen-state assoc :executing? true)
     (future
       (try
-        (when (:needs-regen? @openapi-regen-state)
-          (swap! openapi-regen-state assoc :needs-regen? false)
-          (log/info "Regenerating OpenAPI specification...")
-          (write-openapi-spec-to-file! routes)
-          (log/info "OpenAPI specification regenerated successfully"))
+        ;; Wait for debounce period to let multiple requests coalesce
+        (Thread/sleep ^Long debounce-delay-ms)
+        (loop []
+          (when (:needs-regen? @openapi-regen-state)
+            (swap! openapi-regen-state assoc :needs-regen? false)
+            (log/info "Regenerating OpenAPI specification...")
+            (write-openapi-spec-to-file! routes)
+            (log/info "OpenAPI specification regenerated successfully")
+            ;; Check if more requests came in while we were working
+            (recur)))
         (catch Throwable e
           (log/error e "Error regenerating OpenAPI specification"))
         (finally
-          (swap! openapi-regen-state assoc :executing? false)
-          ;; Recursively handle any requests that came in during execution
-          (when (:needs-regen? @openapi-regen-state)
-            (request-spec-regeneration! routes)))))))
+          (swap! openapi-regen-state assoc :executing? false))))))
 
 (defn- read-openapi-spec-from-file
   "Read the OpenAPI specification from the local file.
