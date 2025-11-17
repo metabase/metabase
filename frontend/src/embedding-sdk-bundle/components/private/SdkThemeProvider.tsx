@@ -6,14 +6,13 @@ import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { getEmbeddingThemeOverride } from "embedding-sdk-bundle/lib/theme";
 import type { MetabaseTheme } from "embedding-sdk-bundle/types/ui";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
+import { useSetting } from "metabase/common/hooks";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import { useSelector } from "metabase/lib/redux";
-import { getSettings } from "metabase/selectors/settings";
 import { getFont } from "metabase/styled-components/selectors";
 import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
-import { getApplicationColors } from "metabase-enterprise/settings/selectors";
 
 interface Props {
   theme?: MetabaseTheme;
@@ -22,9 +21,7 @@ interface Props {
 
 export const SdkThemeProvider = ({ theme, children }: Props) => {
   const font = useSelector(getFont);
-  const appColors = useSelector((state) =>
-    getApplicationColors(getSettings(state)),
-  );
+  const appColors = useSetting("application-colors");
 
   const themeOverride = useMemo(() => {
     // !! Mutate the global colors object to apply the new colors.
