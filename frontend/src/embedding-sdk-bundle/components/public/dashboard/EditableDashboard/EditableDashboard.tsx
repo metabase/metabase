@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { DASHBOARD_EDITING_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
@@ -10,6 +12,7 @@ import {
   type SdkDashboardInnerProps,
   type SdkDashboardProps,
 } from "../SdkDashboard";
+import { concatActionIf } from "../actionButtonUtils";
 
 import { editableDashboardSchema } from "./EditableDashboard.schema";
 
@@ -25,19 +28,17 @@ export const EditableDashboardInner = (props: EditableDashboardProps) => {
   const dashboardActions: SdkDashboardInnerProps["dashboardActions"] = ({
     isEditing,
     downloadsEnabled,
+    withSubscriptions,
   }) =>
     isEditing
       ? DASHBOARD_EDITING_ACTIONS
-      : downloadsEnabled.pdf
-        ? [
-            DASHBOARD_ACTION.EDIT_DASHBOARD,
+      : _.compose(
+          concatActionIf(DASHBOARD_ACTION.DOWNLOAD_PDF, downloadsEnabled.pdf),
+          concatActionIf(
             DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
-            DASHBOARD_ACTION.DOWNLOAD_PDF,
-          ]
-        : [
-            DASHBOARD_ACTION.EDIT_DASHBOARD,
-            DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
-          ];
+            withSubscriptions,
+          ),
+        )([DASHBOARD_ACTION.EDIT_DASHBOARD]);
 
   const getClickActionMode: SdkDashboardInnerProps["getClickActionMode"] = ({
     question,

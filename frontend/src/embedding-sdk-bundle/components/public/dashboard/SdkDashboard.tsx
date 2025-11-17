@@ -26,8 +26,12 @@ import {
 } from "embedding-sdk-bundle/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
-import type { DashboardEventHandlersProps } from "embedding-sdk-bundle/types/dashboard";
+import type {
+  DashboardEventHandlersProps,
+  SdkDashboardId,
+} from "embedding-sdk-bundle/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
+import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import { useConfirmation } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
@@ -44,6 +48,7 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { useSelector } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
@@ -92,9 +97,30 @@ export type SdkDashboardProps = PropsWithChildren<
      * Props of a question component when drilled from the dashboard to a question level.
      */
     drillThroughQuestionProps?: DrillThroughQuestionProps;
+
+    /**
+     * The ID of the dashboard.
+     *  <br/>
+     * This is either:
+     *  <br/>
+     *  - the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
+     *  <br/>
+     *  - the string ID found in the `entity_id` key of the dashboard object when using the API directly or using the SDK Collection Browser to return data
+     */
+    dashboardId: SdkDashboardId;
+
+    /**
+     * Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
+     * <br/>
+     * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
+     * <br/>
+     * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
+     */
+    initialParameters?: ParameterValues;
   } & SdkDashboardDisplayProps &
     DashboardEventHandlersProps &
-    EditableDashboardOwnProps
+    EditableDashboardOwnProps &
+    CommonStylingProps
 >;
 
 type RenderMode = "dashboard" | "question" | "queryBuilder";
@@ -128,6 +154,7 @@ const SdkDashboardInner = ({
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
+  withSubscriptions = false,
   hiddenParameters = [],
   drillThroughQuestionHeight,
   plugins,
@@ -158,12 +185,11 @@ const SdkDashboardInner = ({
   const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumbs();
 
   const { displayOptions } = useSdkDashboardParams({
-    dashboardId,
     withDownloads,
+    withSubscriptions,
     withTitle,
     withCardTitle,
     hiddenParameters,
-    initialParameters,
   });
 
   const {
@@ -295,6 +321,7 @@ const SdkDashboardInner = ({
         }
       }}
       downloadsEnabled={displayOptions.downloadsEnabled}
+      withSubscriptions={displayOptions.withSubscriptions}
       background={displayOptions.background}
       bordered={displayOptions.bordered}
       hideParameters={displayOptions.hideParameters}
