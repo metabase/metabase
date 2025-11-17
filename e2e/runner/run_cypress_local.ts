@@ -65,17 +65,18 @@ if (options.MB_EDITION === "ee" && missingTokens.length > 0) {
 }
 
 printBold(`Running Cypress with options:
-  - SDK_TEST_SUITE     : ${options.SDK_TEST_SUITE}
-  - MB_EDITION         : ${options.MB_EDITION}
-  - START_CONTAINERS   : ${options.START_CONTAINERS}
-  - STOP_CONTAINERS    : ${options.STOP_CONTAINERS}
-  - BUILD_JAR          : ${options.BUILD_JAR}
-  - GENERATE_SNAPSHOTS : ${options.GENERATE_SNAPSHOTS}
-  - BACKEND_PORT       : ${options.BACKEND_PORT}
-  - START_BACKEND      : ${options.START_BACKEND}
-  - OPEN_UI            : ${options.OPEN_UI}
-  - SHOW_BACKEND_LOGS  : ${options.SHOW_BACKEND_LOGS}
-  - TZ                 : ${options.TZ}
+  - CYPRESS_TESTING_TYPE : ${options.CYPRESS_TESTING_TYPE}
+  - SDK_TEST_SUITE       : ${options.SDK_TEST_SUITE}
+  - MB_EDITION           : ${options.MB_EDITION}
+  - START_CONTAINERS     : ${options.START_CONTAINERS}
+  - STOP_CONTAINERS      : ${options.STOP_CONTAINERS}
+  - BUILD_JAR            : ${options.BUILD_JAR}
+  - GENERATE_SNAPSHOTS   : ${options.GENERATE_SNAPSHOTS}
+  - BACKEND_PORT         : ${options.BACKEND_PORT}
+  - START_BACKEND        : ${options.START_BACKEND}
+  - OPEN_UI              : ${options.OPEN_UI}
+  - SHOW_BACKEND_LOGS    : ${options.SHOW_BACKEND_LOGS}
+  - TZ                   : ${options.TZ}
 `);
 
 const init = async () => {
