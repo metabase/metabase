@@ -1,7 +1,8 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import type { WithRouterProps } from "react-router";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
+import { useLocation } from "react-use";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
@@ -21,6 +22,7 @@ import { getCurrentOpenModalState } from "metabase/selectors/ui";
 import type { WritebackAction } from "metabase-types/api";
 
 export const NewModals = withRouter((props: WithRouterProps) => {
+  const { pathname } = useLocation();
   const { id: currentNewModalId, props: currentNewModalProps } = useSelector(
     getCurrentOpenModalState<SdkIframeEmbedSetupModalProps>,
   );
@@ -40,6 +42,11 @@ export const NewModals = withRouter((props: WithRouterProps) => {
   const handleModalClose = useCallback(() => {
     dispatch(closeModal());
   }, [dispatch]);
+
+  useEffect(() => {
+    // Hide the modals on location change
+    handleModalClose();
+  }, [handleModalClose, pathname]);
 
   useRegisterShortcut(
     [

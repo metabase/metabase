@@ -26,8 +26,8 @@
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.parameters.dashboard :as parameters.dashboard]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -5442,114 +5442,3 @@
                                                                               })]
     (is (partial= {:name       "Test Dashboard"
                    :creator_id (mt/user->id :crowberto)} response))))
-
-(deftest param-mapped-SAME-fields-filtered-cards-test
-  (testing "Values for param mapped to _same_ field in _different_ cards containing filters are computed correctly (#41684)"
-    (let [mp (mt/metadata-provider)
-          param-key "p"
-          base-queries [(-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
-                            (lib/filter (lib/in (lib.metadata/field mp (mt/id :categories :name))
-                                                "African" "Artisan" "Bakery")))
-
-                        (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
-                            (lib/filter (lib/in (lib.metadata/field mp (mt/id :categories :name))
-                                                "African" "Artisan")))]
-          tests [{:test-case "single level queries"
-                  :queries base-queries
-                  :expectations [["African"] ["Artisan"] ["Bakery"]]}
-
-                 {:test-case "nested filters"
-                  :queries (mapv (fn [query]
-                                   ;; dummy stage
-                                   (-> (lib/append-stage query)
-                                       (lib/expression "e" (lib/concat (lib.metadata/field mp (mt/id :categories :name))
-                                                                       "XXX"))))
-                                 base-queries)
-                  :expectations [["African"] ["Artisan"] ["Bakery"]]}]]
-      (doseq [{:keys [test-case queries expectations]} tests]
-        (mt/with-temp
-          [:model/Card
-           c1
-           {:dataset_query (queries 0)}
-
-           :model/Card
-           c2
-           {:dataset_query (queries 1)}
-
-           :model/Dashboard
-           d
-           {:parameters [{:id param-key
-                          :name "filtered names filter"
-                          :slug param-key
-                          :type "string/="
-                          :sectionId "string"}]}
-
-           :model/DashboardCard
-           _
-           {:dashboard_id (:id d)
-            :card_id (:id c1)
-            :parameter_mappings [{:card_id (:id c1)
-                                  :parameter_id param-key
-                                  :target ["dimension" ["field" (mt/id :categories :name) nil]]}]}
-
-           :model/DashboardCard
-           _
-           {:dashboard_id (:id d)
-            :card_id (:id c2)
-            :parameter_mappings [{:card_id (:id c2)
-                                  :parameter_id param-key
-                                  :target ["dimension" ["field" (mt/id :categories :name) nil]]}]}]
-
-          (testing test-case
-            (is (=? {:values expectations}
-                    (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values"
-                                                                      (:id d) param-key))))))))))
-
-(deftest param-mapped-DIFFERENT-fields-filtered-cards-test
-  (testing "Values for param mapped to different fields in cards containing filters are computed correctly (#41684)"
-    (let [mp (mt/metadata-provider)
-          param-key "p"]
-      (mt/with-temp
-        [:model/Card
-         c1
-         {:dataset_query  (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
-                              (lib/filter (lib/in (lib.metadata/field mp (mt/id :categories :name))
-                                                  "African" "Artisan" "Bakery")))}
-
-         :model/Card
-         c2
-         {:dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                             (lib/filter (lib/in (lib.metadata/field mp (mt/id :venues :name))
-                                                 "Red Medicine" "Krua Siri"))
-                             (lib/append-stage)
-                             (lib/expression "e" (lib/concat (lib.metadata/field mp (mt/id :categories :name))
-                                                             "XXX")))}
-
-         :model/Dashboard
-         d
-         {:parameters [{:id param-key
-                        :name "filtered names filter"
-                        :slug param-key
-                        :type "string/="
-                        :sectionId "string"}]}
-
-         :model/DashboardCard
-         _
-         {:dashboard_id (:id d)
-          :card_id (:id c1)
-          :parameter_mappings [{:card_id (:id c1)
-                                :parameter_id param-key
-                                :target ["dimension" ["field" (mt/id :categories :name) nil]]}]}
-
-         :model/DashboardCard
-         _
-         {:dashboard_id (:id d)
-          :card_id (:id c2)
-          :parameter_mappings [{:card_id (:id c2)
-                                :parameter_id param-key
-                                :target ["dimension" ["field" (mt/id :venues :name) nil]]}]}]
-
-        (testing "Param mapped to different fields with different filters"
-          (is (=? {:values [["African"] ["Artisan"] ["Bakery"] ["Krua Siri"] ["Red Medicine"]]}
-                  (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values"
-                                                                    (:id d) param-key)))))))))

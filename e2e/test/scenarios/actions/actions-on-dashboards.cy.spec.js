@@ -32,7 +32,7 @@ const MODEL_NAME = "Test Action Model";
         );
       });
 
-      H.describeWithSnowplow("adding and executing actions", () => {
+      describe("adding and executing actions", () => {
         beforeEach(() => {
           H.resetSnowplow();
           H.restore(`${dialect}-writable`);

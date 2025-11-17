@@ -2318,6 +2318,10 @@ describe("scenarios > dashboard > parameters", () => {
       H.findDashCardAction(H.getDashboardCard(0), "Duplicate").click();
 
       H.getDashboardCard(1).within(() => {
+        cy.findByTestId("chart-container").should("exist");
+      });
+
+      H.getDashboardCard(1).within(() => {
         H.filterWidget({ isEditing: true })
           .contains("Category 1")
           .should("exist")
@@ -2970,7 +2974,7 @@ describe("scenarios > dashboard > parameters", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
+describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();

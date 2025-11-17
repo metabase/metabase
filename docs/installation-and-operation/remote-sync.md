@@ -9,31 +9,9 @@ description: Version control your dashboards, questions, and models with Git. Sy
 
 ## Overview
 
-Remote Sync lets you develop analytics content in a development Metabase and automatically deploy it to a read-only production instance through Git.
+Remote Sync lets you develop analytics content in a collection in a development Metabase and automatically deploy it to a read-only production Metabase through Git.
 
-You work with Remote Sync through special collections called "synced collections". Content in these collections is automatically versioned and can be pushed to or pulled from your Git repository directly from the Metabase UI.
-
-### Key concepts
-
-**Development and Production modes**: Remote Sync has two configuration modes that determine how a Metabase instance interacts with your Git repository:
-
-- **Development mode**: For creating and editing content. You can push changes to Git, pull changes from others, create branches, and work on feature branches. Multiple Metabase instances can be in Development mode, each working on different branches.
-- **Production mode**: For serving approved, read-only content to users. Production instances only pull changes from Git (typically from your main branch) and don't allow direct editing of synced content. You can set up auto-sync to automatically pull approved changes every five minutes.
-
-**Synced collections**: Special collections that are tracked in Git. When you connect a Metabase instance in Development mode, it creates a "Library" collection by default. Everything inside a synced collection is versioned and synchronized with your Git repository.
-
-**Serialized YAML files**: Remote Sync stores your Metabase content as YAML files in your Git repository. Each dashboard, question, model, and document is represented as a YAML file that can be reviewed in pull requests and versioned like code. For more details on the YAML format and command-line workflows, see [serialization](./serialization.md).
-
-**Branch-based workflow**: In Development mode, you can create branches, switch between them, and commit changes—all from the Metabase UI. This enables feature-branch workflows where you develop on a branch, open a pull request for review, and merge to production.
-
-### Why use Remote Sync?
-
-Remote Sync is designed for teams that want to maintain a **read-only production environment** where analytics content is created by a centralized team and deployed through a controlled process.
-
-- **Read-only production**: Users in production can view and use dashboards, but cannot create or edit content. All content creation happens in development.
-- **Version control for new content**: Add new dashboards, questions, and models to production through Git, with full version history.
-- **Peer review**: Use pull requests to review new content before it goes live in production.
-- **Controlled deployment**: Choose when new content appears in production by controlling when you merge to your main branch.
+**Remote Sync only syncs your dashboards, questions, and models—not your data or query results.** What gets stored in Git are [YAML files](./serialization.md#example-of-a-serialized-question) describing your analytics content. Your actual data stays in your databases and never goes to GitHub.
 
 ### How Remote Sync works
 
@@ -45,14 +23,22 @@ Here's a basic remote-sync workflow:
 4. Merge the PR to production.
 5. Your **Metabase configured in Production mode** automatically pulls in the changes.
 
-We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-to-production workflow](#an-example-dev-to-production-workflow), and [branch management](#branch-management) and some other odds and ends.
+We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-to-production workflow](#an-example-dev-to-production-workflow), [branch management](#branch-management), and some other odds and ends.
 
-### Remote Sync vs. Serialization
+### Key concepts
 
-Remote Sync uses the same underlying serialization format as the [Metabase CLI serialization feature](./serialization.md), but serves a different purpose:
+**Remote sync has two modes for different roles**:
 
-- **Remote Sync**: Designed for adding new content to a read-only production environment through a Git-based workflow. Best when you want a centralized team creating content in development and deploying it to production automatically.
-- **Serialization**: Command-line tool for exporting and importing Metabase content. Best for migrating existing content, complex multi-environment setups, and scenarios requiring full control over what gets exported and imported.
+- **Development mode**: Create and edit content. You can [push](#pushing-changes-to-git) and [pull](#pulling-changes-from-git) changes to and from your repository. Multiple Metabase instances can connect in Development mode, each working on [different branches](#branch-management).
+- **Production mode**: Serves read-only content to users. Production instances only [pull](#pulling-changes-from-git) changes (typically from your main branch) and don't allow direct editing of synced content. You can set up [auto-sync](#pulling-changes-automatically) to automatically pull approved changes every five minutes.
+
+**Only the synced collection is tracked**: Each Metabase connected to Remote Sync has one special [collection that syncs with Git](#how-the-synced-collection-works-in-development-mode). When you connect in Development mode, Metabase creates a collection called "Synced Collection" (you can rename it). Everything inside this collection (including sub-collections) is versioned and synchronized with your repository.
+
+**The synced collection must be self-contained**: Everything a dashboard or question needs must be [inside the synced collection](#items-in-the-synced-collection-cant-depend-on-items-outside-of-it). Content outside the synced collection won't sync to your repository or appear in other Metabase instances.
+
+**Content is stored as [YAML files](./serialization.md#example-of-a-serialized-question)**: Remote Sync stores your content as YAML files in your Git repository. Each dashboard, question, model, and document becomes a YAML file that can be reviewed in pull requests and versioned like code.
+
+**Remote Sync excludes table metadata**: Column types, descriptions, and visibility settings don't sync. If you need to version table metadata, use [serialization](./serialization.md) instead.
 
 ## Setting up Remote Sync
 
@@ -60,51 +46,32 @@ You'll need to be an admin to set up Remote Sync.
 
 1. [Set up a repository to store your content](#1-set-up-a-repository-to-store-your-content)
 2. [Create a personal access token for development](#2-create-a-personal-access-token-for-development)
-3. [Understand Development and Production modes](#3-understand-development-and-production-modes)
-4. [Connect your development Metabase to your repository](#4-connect-your-development-metabase-to-your-repository)
-5. [Add an item to your synced collection](#5-add-an-item-to-your-synced-collection)
-6. [Push your changes to your repository](#6-push-your-changes-to-your-repository)
-7. [Create a personal access token for production](#7-create-a-personal-access-token-for-production)
-8. [Connect your production Metabase to your repository](#8-connect-your-production-metabase-to-your-repository)
+3. [Connect your development Metabase to your repository](#3-connect-your-development-metabase-to-your-repository)
+4. [Add an item to your synced collection](#4-add-an-item-to-your-synced-collection)
+5. [Push your changes to your repository](#5-push-your-changes-to-your-repository)
+6. [Create a personal access token for production](#6-create-a-personal-access-token-for-production)
+7. [Connect your production Metabase to your repository](#7-connect-your-production-metabase-to-your-repository)
 
-## 1. Set up a repository to store your content
+### 1. Set up a repository to store your content
 
 Before you connect Metabase to your Git repository, create a [new GitHub repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository). Initialize the repo with a README.md.
 
-## 2. Create a personal access token for development
+### 2. Create a personal access token for development
 
-GitHub offers two types of personal access tokens. We recommend the fine-grained token (not the classic) because you can limit their permissions to specific repositories.
+Create a [Github fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) for your repository with these permissions:
 
-1. Go to Settings > Developer settings > Personal access tokens > Fine-grained tokens.
-2. Click "Generate new token".
-3. Give it a descriptive name like "Metabase Remote Sync - Development".
-4. Select the specific repository you want Metabase to access.
-5. Add permissions:
-   - **Contents:** Read and write (it defaults to Read-only, so make sure to change this to Read and write for your development Metabase).
-   - **Metadata:** Read-only (required)
-6. Click "Generate token" and copy it immediately (you won't see it again). Store it somewhere safe; you'll need to paste it into your Metabase.
+- **Contents:** Read and write
+- **Metadata:** Read-only (required)
 
-For more, see GitHub's docs on [personal access tokens](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens).
+Copy the token immediately after generating it.
 
-## 3. Understand Development and Production modes
+### 3. Connect your development Metabase to your repository
 
-Remote Sync has two modes: Development and Production.
+![Development settings](./images/development-settings.png)
 
-**Development mode** is where you create and edit content. You can have multiple development instances for different teams, projects, or workflows. Each connects to the same repository but can work on different branches. Development mode has:
+You can put any Metabase into development mode. We also offer [Development instances](./development-instance.md) that you can use for Remote Sync or any other kind of development.
 
-- **Bidirectional sync:** Push changes to Git and pull changes from others.
-- **Full editing:** Create and modify dashboards, questions, and documents in the UI in your synced collection.
-- **Branch management:** Create, switch between, and work on different branches.
-
-**Production mode** is read-only and designed for your live environment. Production Metabases:
-
-- **Pull changes only:** Automatically or manually pull approved content from Git.
-- **Read-only content:** Users can view and use synced content but can't edit it.
-- **Auto-sync option:** Automatically pull changes from your main branch every five minutes.
-
-You can use any Metabase instance in Development mode. Metabase also offers [Development instances](./development-instance.md) for testing, which allow you to test with multiple users without paying per user account. You can use these Development instances in Remote Sync's Development mode (but not in Production mode, as they're intended for testing, not live production use).
-
-## 4. Connect your development Metabase to your repository
+In the Metabase instance that you use for development:
 
 1. Go to **Admin settings** > **Settings** > **Remote sync**.
 
@@ -116,59 +83,62 @@ You can use any Metabase instance in Development mode. Metabase also offers [Dev
 
 4. Add your access token:
 
-   - Paste the personal access token you created earlier. Make sure the token has [read and write permissions](#2-create-a-personal-access-token-for-development). Metabase encrypts your token before storing it.
+   - Paste the personal access token (PAT) you created earlier. Make sure the token has [read and write permissions](#2-create-a-personal-access-token-for-development). Metabase encrypts your token before storing it.
 
 5. Save and test the connection:
 
-   - Click "Save changes". Metabase will check whether it can reach your repository. If the connection fails, make sure your token has the appropriate permissions and hasn't expired. You may also have incorrectly copied and pasted the PAT, in which case you'll need to generate a new token.
+   - Click "Save changes". Metabase will check whether it can reach your repository. If the connection fails, make sure your token has the appropriate permissions and hasn't expired. If you copied the token incorrectly, generate a new one.
 
-## 5. Add an item to your synced collection
+### 4. Add an item to your synced collection
 
-When you first connect in Development mode, Metabase automatically creates a special collection called "Library" that's synced with your Git repository. This is a **synced collection**—any content you add to it will be tracked in Git and can be pushed to your repository.
+When you first connect in Development mode, Metabase automatically creates a **synced collection** called "Synced Collection"—any content you add to it will be tracked in Git and can be pushed to your repository.
 
-You can rename the Library collection if you want, and you can add sub-collections within it to organize your content.
+You can rename the Synced Collection if you want, and you can add sub-collections within it to organize your content.
 
-1. (Optional) Create a new branch for your work:
+1. Navigate to the "Synced Collection" in your Synced Collections section (look for it in the left sidebar).
 
-   - Click the branch dropdown in the synced collections section.
-   - Type a name for your new branch (e.g., `feature/my-dashboard`).
-   - Press Enter to create the branch.
+2. Create or move content into the Synced Collection:
+   - **Create new content:** Click "New" and choose a dashboard, question, or document. Save it to the Synced Collection.
+   - **Move existing content:** Drag and drop items from other collections into the Synced Collection, or use the move option in the item's menu.
 
-   This is useful if you want to work on changes without affecting the main branch. For more details, see [Branch management](#branch-management).
+Remember that the synced collection must be [self-contained](#items-in-the-synced-collection-cant-depend-on-items-outside-of-it).
 
-2. Navigate to the "Library" collection in your synced collections section (look for it in the left sidebar).
+### 5. Push your changes to your repository
 
-3. Create or move content into the Library collection:
-   - **Create new content:** Click "New" and choose a dashboard, question, or document. Save it to the Library collection.
-   - **Move existing content:** Drag and drop items from other collections into the Library collection, or use the move option in the item's menu.
+![Push your changes](./images/push-changes.png)
 
-[Items in synced collections can't depend on items outside of synced collections](#items-in-synced-collections-cant-depend-on-items-outside-of-the-synced-collection). For example, if you try to add a question that references a model, make sure the model is also in a synced collection.
+Once you've added content, you'll see a yellow dot on your Synced Collection indicating uncommitted changes.
 
-## 6. Push your changes to your repository
-
-Once you've added content, you'll see a yellow dot on your Library collection indicating uncommitted changes.
-
-1. Click the up arrow (push) icon next to the Library collection in the left sidebar.
+1. Click the up arrow (push) icon next to the Synced Collection in the left sidebar.
 
 2. Enter a commit message describing your changes (e.g., "Added dashboard on mammoth populations").
 
 3. Click "Continue" to commit and push your changes to your repository.
 
-Check your repository—you should see the collection with your content in it.
+Check your repository — you should see the collection.
 
-## 7. Create a personal access token for production
+**About branches:** By default, you're pushing to your repository's main branch. However, you can choose which branch to push your development work to, allowing you to open pull requests for review before merging to the branch that your production Metabase pulls from. See [Branch management](#branch-management) for details on creating and switching branches.
 
-Now that you have content in your repository, you can set up your production Metabase to pull that content.
+### 6. Create a personal access token for production
 
-[Create a personal access token](#2-create-a-personal-access-token-for-development) following the same steps as before, but add Contents permissions to the token that are **Read-only** (NOT write), as you only want your production Metabase reading from the repo. (Contents permissions require Metadata permissions, which GitHub will add automatically).
+Create a [GitHub fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) for your repository with these permissions:
 
-## 8. Connect your production Metabase to your repository
+- **Contents:** Read-only
+- **Metadata:** Read-only (required)
+
+Copy the token immediately after generating it — you'll need to paste it into your production Metabase.
+
+### 7. Connect your production Metabase to your repository
+
+![Production settings](./images/production-settings.png)
+
+In your production Metabase instance:
 
 1. Go to **Admin settings** > **Settings** > **Remote sync**.
 
 2. Enter your repository URL:
 
-   - Use the same repository as your development Metabase, for example, `https://github.com/your-org/your-repo.git`.
+   - Use the same repository as your development Metabase, for example, `https://github.com/your-org/your-repo`.
 
 3. Select **Production mode**.
 
@@ -180,13 +150,15 @@ Now that you have content in your repository, you can set up your production Met
 
    - Click "Save changes". Metabase will verify it can reach your repository. If the connection fails, verify your token has the appropriate permissions and hasn't expired.
 
-6. Pull changes and/or enable auto-sync (optional):
-   - Pull changes to sync from your repo.
-   - Toggle on "Auto-sync with Git" to automatically pull changes from your main branch every five minutes.
+6. Sync your content:
+   - Click "Pull changes" to immediately sync content from your repository.
+   - To keep your production instance automatically updated, toggle on "Auto-sync with Git". Metabase will pull changes from your main branch every five minutes.
 
-In Production mode, synced collections appear in the regular collections list with a special icon to indicate that they're versioned and read-only.
+In Production mode, the synced collection appears in the regular collections list with a special icon to indicate it's versioned and read-only.
 
-At this point, you should be all set up. Exit Admin settings, then reload your browser. You should see your synced Library collection in your production Metabase.
+![Production Metabase](./images/production-view.png)
+
+At this point, you should be all set up. Exit Admin settings, then reload your browser. You should see your synced collection in your production Metabase.
 
 ## An example dev-to-production workflow
 
@@ -198,7 +170,7 @@ In your development Metabase, click the branch dropdown in the synced collection
 
 ### Step 2: Create content in your development Metabase
 
-Create a dashboard called "Megafauna Analytics" and add some questions. The questions should be saved to the dashboard or to the synced collection. Save the dashboard to the synced collection.
+Create a dashboard called "Megafauna Analytics" and add some questions. Save the questions either to the dashboard itself or to the synced collection. Save the dashboard to the synced collection.
 
 ### Step 3: Push to your development branch
 
@@ -219,63 +191,70 @@ In your Git repository:
 
 On your production Metabase instance:
 
-1. Within five minutes, the auto-sync process detects the new commits on `main` (you can also manually import the changes).
+1. Within five minutes, Auto-sync detects the new commits on `main` (you can also manually import the changes).
 2. The "Megafauna Analytics" dashboard appears in production with all its questions.
 3. The content is read-only for users (they can view and use it, but can't edit it).
 
-## How your synced collection works in Development mode
+## How the synced collection works in Development mode
 
-Synced collections are special collections that are tracked in Git. Content in synced collections is versioned and can be pushed to or pulled from your repository.
+- [The synced collection in the UI](#the-synced-collection-in-the-ui)
+- [Moving and deleting content in the synced collection](#moving-and-deleting-content-in-the-synced-collection)
+- [Items in the synced collection can't depend on items outside of it](#items-in-the-synced-collection-cant-depend-on-items-outside-of-it)
 
-- [Synced collections in the UI](#synced-collections-in-the-ui)
-- [Moving and deleting content in synced collections](#moving-and-deleting-content-in-synced-collections)
-- [Items in synced collections can't depend on items outside of the synced collection](#items-in-synced-collections-cant-depend-on-items-outside-of-the-synced-collection)
+### The synced collection in the UI
 
-### Synced collections in the UI
+When you first connect in Development mode, Metabase creates a synced collection called "Synced Collection". You can add items and sub-collections to it. The synced collection shows its current state with visual indicators: a yellow dot indicates unsynced local changes that need to be committed, and up/down arrows provide sync controls for pulling and pushing changes.
 
-When you first connect a Metabase to an initialized repository in Development mode, Metabase automatically creates a default synced collection called "Library". You can add items to that synced collection, including sub-collections.
+In Production mode, the synced collection appears in the regular collections list (not in a separate "Synced Collections" section) with a special icon to indicate it's versioned and read-only.
 
-In Development mode, your synced collection shows its current state with visual indicators:
+### Moving and deleting content in the synced collection
 
-- **Yellow dot:** You have unsynced local changes that need to be committed.
-- **Up/down arrows:** Sync controls for pulling and pushing changes.
+**Deletions sync to production:** When you remove content from the synced collection in Development mode and push that change, the content will also be removed from your Production instance when it syncs. This applies to moving content out of the synced collection or deleting it entirely.
 
-In Production mode, synced collections appear in the regular collections list (not in a separate "Synced Collections" section) with a special icon to indicate they're versioned and read-only.
+Content in other Metabases that depended on this item may break since the dependency will no longer be in the synced collection.
 
-### Moving and deleting content in synced collections
+### Items in the synced collection can't depend on items outside of it
 
-When you move content out of a synced collection, the UI may not immediately show the unpushed state. Refresh your browser to see the push indicator.
+For Remote Sync to work properly, the synced collection must be self-contained. Everything a dashboard or question needs must be inside the synced collection. This includes:
 
-**Deletions sync to production:** When you remove content from a synced collection in Development mode and push that change, the content will also be removed from your Production instance when it syncs. This applies to moving content out of the synced collection or deleting it entirely.
+- Questions that reference models
+- Dashboards with questions
+- Click behaviors linking to other content
+- Filters that pick values from other questions or models
+- @ mentions in documents
 
-Content in other Metabases that depended on this item may break since the dependency will no longer be in a synced collection.
+Exception: questions that reference snippets can't be synced, since snippets live outside collections.
 
-### Items in synced collections can't depend on items outside of the synced collection
+If you try to add a question that references a model, make sure the model is also in the synced collection.
 
-**Synced collections are self-contained.** Everything a dashboard or question needs must be inside the synced collection for Remote Sync to work properly. Metabase enforces these dependency constraints to ensure all content can be properly versioned and synced between instances.
+### Making sub-collections appear at the top level
 
-**If it's not in the collection, it won't sync**—and that includes metadata. The one critical exception: table metadata (column types, descriptions, etc.) doesn't sync at all, even when questions that depend on it do sync. See [table metadata limitations](#important-table-metadata-limitations) for details.
+If you're using Metabase for embedding, you might want synced content to appear at the top level of your navigation rather than nested under the Synced Collection. Since all synced content must be in sub-collections of the Synced Collection, you can use permissions to control how the collection hierarchy appears to different groups.
 
-For example:
+1. In your development Metabase, **Organize content in sub-collections of your Synced Collection**. For example, you might have `Synced Collection/Mammoth Statistics` and `Synced Collection/Giant Sloth Statistics`.
 
-- If a question references a model, both the question and the model must be in synced collections.
-- If a dashboard includes questions, those questions must be saved to either the dashboard itself or to the synced collection.
-- If a dashboard has click behaviors that link to other dashboards or questions, those linked items must be in synced collections.
-- If a document contains @ mentions of other items (questions, dashboards, models, etc.), those mentioned items must be in synced collections.
+2. In your production Metabase, **Set up permissions for embedded groups:** Groups should have:
+   - **No view access** to the Synced Collection itself
+   - **View access** to specific sub-collections within the Synced Collection
 
-Questions that depend on snippets can't be added to synced collections, as snippets aren't stored in collections and therefore can't be synced.
+For groups with these permissions, the sub-collections they can access will appear at the top level of navigation, as if they were root-level collections. They won't see the top-level Synced Collection that you have in your development Metabase.
 
-Items can reference other items in sub-collections that are also synced.
+What you see in Development mode:
 
-When you try to save an item with external dependencies to a synced collection, Metabase will show an error.
+```
+Collections
+└── Synced Collection
+    ├── Mammoth Statistics
+    ├── Giant Sloth Statistics
+```
 
-To resolve this:
+What embedding groups see in Production mode (with no access to Synced Collection, but access to Mammoth Statistics and Giant Sloth Statistics):
 
-1. Identify which items your content depends on.
-2. Move those dependencies into synced collections first.
-3. Then save your item to the synced collection.
-
-Alternatively, you can modify your content to use a different source data that's already in synced collections.
+```
+Collections
+├── Mammoth Statistics
+└── Giant Sloth Statistics
+```
 
 ## What Metabase syncs
 
@@ -297,17 +276,7 @@ Remote Sync uses the same serialization format as the [Metabase CLI serializatio
 - Snippets
 - Database connections
 - Personal collections
-- **Table metadata** (column types, descriptions, visibility settings, etc.)
-
-### Important: Table metadata limitations
-
-**Table metadata is not synced by Remote Sync.** This means any customizations you make to table metadata in your development instance—such as changing a column's display type from "Unix timestamp" to "Date", adding column descriptions, or adjusting visibility—will not automatically sync to production.
-
-If your questions or dashboards rely on customized table metadata, you must manually apply the same metadata changes in your production instance. Otherwise, content that works in development may not work correctly in production.
-
-**Why this matters:** If you have a question that displays a unixtime column as a date (because you changed the column type in development's table metadata), that question will sync to production, but the column will still appear as a unixtime in production unless you manually update the table metadata there as well.
-
-For more details on the serialization format and command-line workflows, see the [serialization documentation](./serialization.md).
+- Table metadata (column types, descriptions, visibility settings, etc.)
 
 ## Branch management
 
@@ -317,7 +286,7 @@ Branching is only available in Development mode.
 
 You can create branches in Metabase or directly in your Git repository. Branches created in Git will appear in the Metabase branch dropdown once Metabase syncs with your repository.
 
-We recommend pushing an initial commit to your main branch before creating branches. Creating a branch from an empty main branch can cause unexpected behavior.
+Before creating branches, push an initial commit to your main branch.
 
 To create a new branch in Metabase:
 
@@ -325,11 +294,11 @@ To create a new branch in Metabase:
 2. Type a name for the new branch in the search box.
 3. Press Enter to create the branch.
 
-The new branch starts from the current commit (not the latest remote).
+The new branch is created from your current commit (not the latest commit from the remote).
 
 ### Switching branches
 
-In the left sidebar under "SYNCED COLLECTIONS", you'll see a branch dropdown next to each synced collection name:
+In the left sidebar under "SYNCED COLLECTIONS", you'll see a branch dropdown next to the synced collection name:
 
 1. Click the branch dropdown to see available branches.
 2. Select a different branch to switch to it.
@@ -348,23 +317,19 @@ If you switch modes (from Development to Production or vice versa) with unpushed
 
 If changes don't appear after switching modes: Hard refresh your browser (Cmd/Ctrl + Shift + R).
 
-## Deleting branches
-
-Currently, you can only delete branches in GitHub or from the command line. Metabase will pick up the branch deletions on its next pull (though you may need to refresh your browser).
-
 ## Pushing changes to Git
 
-You can only push changes in a Metabase with Remote sync set to Development mode.
+You can only push changes in a Metabase with Remote Sync set to Development mode.
 
-### Committing your changes
+### Committing and pushing your changes
 
-When you make changes to items in a synced collection, a yellow dot appears on your synced collection (indicating uncommitted changes). To commit your changes:
+When you make changes to items in the synced collection, a yellow dot appears on your synced collection (indicating uncommitted changes). To commit and push your changes:
 
 1. Click the up arrow (push) icon next to the synced collection name in the left sidebar.
 2. Enter a descriptive commit message explaining your changes.
 3. Click "Continue" to push your changes to Git.
 
-If you see "Remote is ahead of local", that means someone else pushed to the branch from another Metabase in Development mode. Pull the latest changes before pushing again.
+If you see a message that "Remote is ahead of local", that means someone else pushed to the branch from another Metabase in Development mode. Pull the latest changes before pushing again.
 
 ## Pulling changes from Git
 
@@ -404,13 +369,36 @@ In Production mode, you can set Metabase to auto-sync changes from your main bra
 
 By default, Metabase will pull any changes (if any) from the branch you specify every five minutes. You can also manually sync as needed.
 
-## If you already have a repo with serialized Metabase data
+## Disabling Remote Sync
 
-You can just keep doing what you're doing.
+To disable Remote Sync, go to the Remote Sync settings page in Admin settings. 
 
-If you want to switch to this remote-sync setup, we still recommend you start with a new repo. In that case:
+To disable Remote Sync:
+
+1. Go to **Admin settings** > **Settings** > **Remote sync**.
+2. Click **Disable Remote Sync**.
+3. In the confirmation dialog, click **Disable**.
+
+- All remote sync settings are cleared, including the repository URL, access token, and branch information.
+- Your synced collection and its content remain in your Metabase (they're not deleted).
+- The synced collection becomes a regular collection that you can edit like any other collection.
+- You can re-enable Remote Sync later by reconnecting to a repository, but any changes you made to the collection after disabling can be overwritten if you enable sync again.
+
+## Migrating existing content to Remote Sync
+
+If you already have content in your Metabase, you can gradually adopt Remote Sync. Content that lives outside the synced collection remains unaffected—you can continue working with it normally while you migrate content into the synced collection over time.
+
+Make sure you move any dependencies (like models referenced by questions) into the synced collection, since [synced content must be self-contained](#key-concepts).
+
+### If you already have a repo with serialized Metabase data
+
+Keep doing what you're doing.
+
+If you want to switch fully to Remote Sync, we recommend starting with a new repo:
 
 1. Check out a new branch in your Metabase instance in Development mode.
 2. Import your data to your Metabase instance with the serialization command as you normally would.
 3. Move the content you want to sync into the synced collection.
 4. Push up your changes to the new repo.
+
+Remote Sync does NOT sync table metadata, so if you're importing and exporting your [table metadata](../data-modeling/metadata-editing.md), you should stick with serialization.

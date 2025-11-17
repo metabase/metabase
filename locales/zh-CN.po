@@ -31072,16 +31072,16 @@ msgid "The location of your git repository, e.g. https://github.com/acme-inco/me
 msgstr "您的 git 存储库的位置，例如 https://github.com/acme-inco/metabase.git"
 
 #: metabase_enterprise/remote_sync/settings.clj:46
-msgid "Git synchronization type - :development or :production"
-msgstr "Git 同步类型 - :development 或 :production"
+msgid "Git synchronization type - :read-write or :read-only"
+msgstr "Git 同步类型 - :read-write 或 :read-only"
 
 #: metabase_enterprise/remote_sync/settings.clj:62
-msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production."
-msgstr "是否自动从远程 git 仓库导入。仅当 remote-sync-type 为 :production 时有效。"
+msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only."
+msgstr "是否自动从远程 git 仓库导入。仅当 remote-sync-type 为 :read-only 时有效。"
 
 #: metabase_enterprise/remote_sync/settings.clj:70
-msgid "If remote-sync-type is :production and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
-msgstr "如果 remote-sync-type 为 :production 且 remote-sync-auto-import 为 true，则指定检查导入更新的频率（以分钟为单位）。默认为 5。"
+msgid "If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
+msgstr "如果 remote-sync-type 为 :read-only 且 remote-sync-auto-import 为 true，则指定检查导入更新的频率（以分钟为单位）。默认为 5。"
 
 #: metabase_enterprise/remote_sync/settings.clj:78
 msgid "The maximum amount of time a remote sync task will be given to complete"
