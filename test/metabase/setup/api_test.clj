@@ -59,7 +59,7 @@
      request-body
      (fn []
        (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
-                     driver.settings/*allow-testing-h2-connections*                       true]
+                     driver.settings/*allow-testing-h2-connections*          true]
          (testing "API response should return a Session UUID"
            (is (=? {:id string/valid-uuid?}
                    (client/client :post 200 "setup" request-body))))

@@ -444,41 +444,38 @@ describe(
   },
 );
 
-H.describeWithSnowplow(
-  "scenarios > notebook > native query preview sidebar tracking events",
-  () => {
-    beforeEach(() => {
-      H.resetSnowplow();
-      H.restore();
-      cy.signInAsAdmin();
-      H.enableTracking();
+describe("scenarios > notebook > native query preview sidebar tracking events", () => {
+  beforeEach(() => {
+    H.resetSnowplow();
+    H.restore();
+    cy.signInAsAdmin();
+    H.enableTracking();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
+  it("should track `notebook_native_preview_shown|hidden` events", () => {
+    cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
+    H.openReviewsTable({ mode: "notebook", limit: 1 });
+
+    cy.findByLabelText("View SQL").click();
+    cy.wait("@nativeDataset");
+    cy.findByTestId("native-query-preview-sidebar").should("exist");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "notebook_native_preview_shown",
     });
 
-    afterEach(() => {
-      H.expectNoBadSnowplowEvents();
+    cy.findByLabelText("Hide SQL").click();
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "notebook_native_preview_hidden",
     });
-
-    it("should track `notebook_native_preview_shown|hidden` events", () => {
-      cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
-      H.openReviewsTable({ mode: "notebook", limit: 1 });
-
-      cy.findByLabelText("View SQL").click();
-      cy.wait("@nativeDataset");
-      cy.findByTestId("native-query-preview-sidebar").should("exist");
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "notebook_native_preview_shown",
-      });
-
-      cy.findByLabelText("Hide SQL").click();
-      cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "notebook_native_preview_hidden",
-      });
-    });
-  },
-);
+  });
+});
 
 function convertToSql() {
   H.openNotebook();

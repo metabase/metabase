@@ -222,11 +222,13 @@ export const saveDashboardPdf = async ({
     headerHeight + parametersHeight + (includeBranding ? brandingHeight : 0);
   const contentHeight = gridNode.offsetHeight + verticalOffset;
 
-  let backgroundColor = Color(
-    getComputedStyle(document.documentElement)
-      .getPropertyValue("--mb-color-bg-dashboard")
-      .trim(),
-  ).hex();
+  const rawBackgroundColor = getComputedStyle(document.documentElement)
+    .getPropertyValue("--mb-color-bg-dashboard")
+    .trim();
+  let backgroundColor =
+    rawBackgroundColor === "transparent"
+      ? "transparent"
+      : Color(rawBackgroundColor).hex();
 
   if (!(await isValidColor(backgroundColor))) {
     backgroundColor = "white"; // Fallback to white if the color is invalid
