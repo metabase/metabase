@@ -34,24 +34,21 @@
             {:view-data :impersonated}}}
           {group-id-1
            {database-id-1
-            {:perms/view-data :unrestricted}}}
+            {:perms/view-data :blocked}}}
 
           {group-id-1
            {database-id-1
             {:view-data {"PUBLIC" {table-id-1 :sandboxed}}}}}
           {group-id-1
            {database-id-1
-            {:perms/view-data :unrestricted}}}
+            {:perms/view-data :blocked}}}
 
-          ;; Setting block permissions for the database also removes query access and download access
           {group-id-1
            {database-id-1
             {:view-data :blocked}}}
           {group-id-1
            {database-id-1
-            {:perms/view-data :blocked
-             :perms/create-queries :no
-             :perms/download-results :no}}})))))
+            {:perms/view-data :blocked}}})))))
 
 (deftest update-db-level-create-queries-permissions!-test
   (mt/with-premium-features #{:advanced-permissions :sandboxes}
@@ -68,7 +65,8 @@
                                        (data-perms.graph/data-permissions-graph :group-id group-id-1)))
           {group-id-1
            {database-id-1
-            {:create-queries :query-builder-and-native}}}
+            {:create-queries :query-builder-and-native
+             :view-data :unrestricted}}}
           {group-id-1
            {database-id-1
             {:perms/create-queries :query-builder-and-native
@@ -76,7 +74,8 @@
 
           {group-id-1
            {database-id-1
-            {:create-queries :query-builder}}}
+            {:create-queries :query-builder
+             :view-data :unrestricted}}}
           {group-id-1
            {database-id-1
             {:perms/create-queries :query-builder
@@ -91,7 +90,8 @@
 
           {group-id-1
            {database-id-1
-            {:create-queries {"PUBLIC" :query-builder}}}}
+            {:create-queries {"PUBLIC" :query-builder}
+             :view-data {"PUBLIC" :unrestricted}}}}
           {group-id-1
            {database-id-1
             {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}
@@ -106,7 +106,8 @@
 
           {group-id-1
            {database-id-1
-            {:create-queries {"PUBLIC" {table-id-1 :query-builder}}}}}
+            {:create-queries {"PUBLIC" {table-id-1 :query-builder}}
+             :view-data {"PUBLIC" {table-id-1 :unrestricted}}}}}
           {group-id-1
            {database-id-1
             {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}
@@ -179,15 +180,14 @@
                                ""
                                {table-id-3 :legacy-no-self-service}}}}}
 
-          ;; Setting block permissions for the database also sets :create-queries and :download-results to :no
           {group-id-1
            {database-id-1
-            {:view-data :blocked}}}
+            {:view-data :blocked
+             :create-queries :query-builder}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries :no
-             :perms/view-data :blocked
-             :perms/download-results :no}}})))))
+            {:perms/view-data :blocked
+             :perms/create-queries :query-builder}}})))))
 
 (deftest update-db-level-download-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
@@ -481,7 +481,8 @@
                                     :create-queries :query-builder}))))
               (testing "revoke schema perms"
                 (is (= nil
-                       (set-perms! {:view-data :blocked}))))
+                       (set-perms! {:view-data :blocked
+                                    :create-queries :no}))))
               (testing "disallow blocked data access + native querying"
                 (is (thrown-with-msg?
                      Exception

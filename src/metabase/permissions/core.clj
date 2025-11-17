@@ -44,6 +44,7 @@
   permissions-for-user
   prime-db-cache
   sandboxes-for-user
+  sandboxed-table?
   schema-permission-for-user
   set-database-permission!
   set-new-database-permissions!

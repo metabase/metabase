@@ -47,11 +47,6 @@
           (data-perms/set-database-permission! group-id database-id :perms/create-queries :query-builder)
           (is (= :query-builder (perm-value :perms/create-queries))))
 
-        (testing "`set-database-permission!` sets native query permissions to :no if data access is set to :blocked"
-          (data-perms/set-database-permission! group-id database-id :perms/view-data :blocked)
-          (is (= :blocked (perm-value :perms/view-data)))
-          (is (= :no (perm-value :perms/create-queries))))
-
         (testing "A database-level permission cannot be set to an invalid value"
           (is (thrown-with-msg?
                ExceptionInfo
@@ -125,6 +120,8 @@
 
         (testing "Setting block permissions at the database level clears table-level query query perms"
           (data-perms/set-database-permission! group-id database-id :perms/view-data :blocked)
+          (data-perms/set-database-permission! group-id database-id :perms/create-queries :no)
+          (data-perms/set-database-permission! group-id database-id :perms/download-results :no)
           (is (= :no (create-queries-perm-value nil)))
           (is (nil?  (create-queries-perm-value table-id-1)))
           (is (nil?  (create-queries-perm-value table-id-2)))
@@ -146,6 +143,8 @@
 
             ;; Now set view-data to :blocked for table-id-1 only
             (data-perms/set-table-permissions! group-id :perms/view-data {table-id-1 :blocked})
+            (data-perms/set-table-permissions! group-id :perms/create-queries {table-id-1 :no})
+            (data-perms/set-table-permissions! group-id :perms/download-results {table-id-1 :no})
 
             ;; Verify that create-queries and download-results are set to :no for table-id-1
             (is (= :no (create-queries-perm-value table-id-1)))

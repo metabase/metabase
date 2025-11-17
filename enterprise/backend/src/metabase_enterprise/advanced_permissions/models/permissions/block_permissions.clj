@@ -25,14 +25,24 @@
   ;; block.
   :feature :none
   [{database-id :database :as query}]
-  (let [{:keys [table-ids]} (query-perms/query->source-ids query)
-        table-permissions   (map (partial perms/table-permission-for-user api/*current-user-id*
-                                          :perms/view-data database-id)
-                                 table-ids)]
+  (let [{:keys [table-ids sandboxed-table-ids impersonated?]}
+        (query-perms/query->source-ids query)
+        sandboxed-table-permissions (zipmap sandboxed-table-ids (repeat :unrestricted))
+        other-table-permissions   (into {}
+                                        (map (fn [table-id]
+                                               [table-id
+                                                (perms/table-permission-for-user api/*current-user-id*
+                                                                                 :perms/view-data
+                                                                                 database-id
+                                                                                 table-id)])
+                                             ;; sandboxed tables are blocked by definition
+                                             (apply disj table-ids sandboxed-table-ids)))]
     ;; Make sure we don't have block permissions for the entire DB or individual tables referenced by the query.
     (or
+     impersonated?
      (not= :blocked (perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id))
-     (= #{:unrestricted} (set table-permissions))
+     (= #{:unrestricted} (set (concat (vals sandboxed-table-permissions)
+                                      (vals other-table-permissions))))
      (throw-block-permissions-exception))
 
     true))

@@ -142,6 +142,11 @@
   []
   @*sandboxes-for-user*)
 
+(defn sandboxed-table?
+  "Returns `true` if the table is in an enforced sandbox for this user."
+  [table-or-id]
+  (contains? (into #{} (map :table_id (sandboxes-for-user))) (u/the-id table-or-id)))
+
 (defmacro with-relevant-permissions-for-user
   "Populates the `*permissions-for-user*` and `*sandboxes-for-user*` dynamic vars for use by the cache-aware functions
   in this namespace."
@@ -574,18 +579,9 @@
         new-perm {:perm_type  perm-type
                   :group_id   group-id
                   :perm_value value
-                  :db_id      db-id}
-        recursive-calls (cond-> []
-                          (and (= perm-type :perms/create-queries) (not= value :no))
-                          (conj (build-database-permission group-or-id db-or-id :perms/view-data :unrestricted))
-
-                          (= [:perms/view-data :blocked] [perm-type value])
-                          (into [(build-database-permission group-or-id db-or-id :perms/create-queries :no)
-                                 (build-database-permission group-or-id db-or-id :perms/download-results :no)]))]
-    (apply merge-with concat
-           {:to-delete existing-perms
-            :to-insert [new-perm]}
-           recursive-calls)))
+                  :db_id      db-id}]
+    {:to-delete existing-perms
+     :to-insert [new-perm]}))
 
 (def ^:private permission-batch-size 1000)
 
@@ -718,28 +714,6 @@
             :schema_name schema}))
        table-perms))
 
-(declare build-table-permissions)
-
-(defn- build-recursive-table-calls
-  "Builds recursive calls for related permissions based on permission type and table permissions."
-  [group-or-id perm-type table-perms]
-  (cond-> []
-    (= perm-type :perms/create-queries)
-    (conj (build-table-permissions group-or-id :perms/view-data
-                                   (-> (filter (fn [[_ value]] (not= value :no)) table-perms)
-                                       keys
-                                       (zipmap (repeat :unrestricted)))))
-
-    (= :perms/view-data perm-type)
-    (into [(build-table-permissions group-or-id :perms/create-queries
-                                    (-> (filter (fn [[_ value]] (= value :blocked)) table-perms)
-                                        keys
-                                        (zipmap (repeat :no))))
-           (build-table-permissions group-or-id :perms/download-results
-                                    (-> (filter (fn [[_ value]] (= value :blocked)) table-perms)
-                                        keys
-                                        (zipmap (repeat :no))))])))
-
 (defn- handle-existing-db-permission
   "Handles the case where there's an existing database-level permission."
   [existing-db-perm values group-id perm-type db-id table-ids new-perms]
@@ -821,28 +795,26 @@
       (when (not= (count (set (map :db_id new-perms))) 1)
         (throw (ex-info (tru "All tables must belong to the same database.")
                         {:new-perms new-perms})))
-      (apply merge-with concat
-             (if-let [existing-db-perm (t2/select-one :model/DataPermissions
-                                                      {:where
-                                                       [:and
-                                                        [:= :perm_type (u/qualified-name perm-type)]
-                                                        [:= :group_id  group-id]
-                                                        [:= :db_id     db-id]
-                                                        [:= :table_id  nil]]})]
-               (handle-existing-db-permission existing-db-perm
-                                              values
-                                              group-id
-                                              perm-type
-                                              db-id
-                                              table-ids
-                                              new-perms)
-               (handle-no-db-permission group-id
-                                        db-id
-                                        perm-type
-                                        table-ids
-                                        values
-                                        new-perms))
-             (build-recursive-table-calls group-or-id perm-type table-perms)))))
+      (if-let [existing-db-perm (t2/select-one :model/DataPermissions
+                                               {:where
+                                                [:and
+                                                 [:= :perm_type (u/qualified-name perm-type)]
+                                                 [:= :group_id  group-id]
+                                                 [:= :db_id     db-id]
+                                                 [:= :table_id  nil]]})]
+        (handle-existing-db-permission existing-db-perm
+                                       values
+                                       group-id
+                                       perm-type
+                                       db-id
+                                       table-ids
+                                       new-perms)
+        (handle-no-db-permission group-id
+                                 db-id
+                                 perm-type
+                                 table-ids
+                                 values
+                                 new-perms)))))
 
 (mu/defn set-table-permissions!
   "Sets table permissions to specified values for a given group. If a permission value already exists for a specified group and table,

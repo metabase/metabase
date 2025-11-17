@@ -2003,6 +2003,8 @@
         (mt/with-no-data-perms-for-all-users!
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/create-queries :query-builder)
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t3) :perms/create-queries :query-builder)
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t3) :perms/view-data :unrestricted)
           (is (= ["t1" "t3"]
                  (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")))))))
 

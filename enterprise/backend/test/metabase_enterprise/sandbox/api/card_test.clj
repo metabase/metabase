@@ -105,12 +105,15 @@
   (mt/with-premium-features #{:advanced-permissions}
     (mt/with-temp [:model/User                       {user-id :id} {}
                    :model/PermissionsGroup           group         {}
+                   :model/Collection                 {coll-id :id} {}
                    :model/Card                       card          {:name "Some Name" :dataset_query {:database (mt/id),
                                                                                                       :type :query,
                                                                                                       :query {:source-table (mt/id :venues)
-                                                                                                              :limit 1}}}]
+                                                                                                              :limit 1}}
+                                                                    :collection_id coll-id}]
 
       (perms/add-user-to-group! user-id group)
+      (perms/grant-collection-read-permissions! group coll-id)
       (let [cases [[:unrestricted           :query-builder-and-native true]
                    [:unrestricted           :query-builder            true]
                    [:unrestricted           :no                       true]

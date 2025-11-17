@@ -113,7 +113,7 @@
      Add the table to the table-ids set. If there's no parent-source-card-id, also add it
      to the table-query-ids set, then continue the match."
   ([query]
-   (query->source-ids query nil false))
+   (assoc (query->source-ids query nil false) :impersonated? (boolean (:impersonation/role query))))
 
   ([query                 :- :map ; this works on either legacy or MBQL 5 but also on inner queries or other nested maps (it calls itself recursively)
     parent-source-card-id :- [:maybe ::lib.schema.id/card]
@@ -136,6 +136,7 @@
               (m :guard (every-pred map? :query-permissions/sandboxed-table))
               (merge-with merge-source-ids
                           {:table-ids #{(:query-permissions/sandboxed-table m)}}
+                          {:sandboxed-table-ids #{(:query-permissions/sandboxed-table m)}}
                           (when-not (or parent-source-card-id in-sandbox?)
                             {:table-query-ids #{(:query-permissions/sandboxed-table m)}})
                           (query->source-ids (dissoc m :query-permissions/sandboxed-table :native) parent-source-card-id true))
@@ -181,14 +182,8 @@
   (mi/perms-objects-set (card-instance source-card-id) :read))
 
 (defn- preprocess-query [query]
-  ;; ignore the current user for the purposes of calculating the permissions required to run the query. Don't want the
-  ;; preprocessing to fail because current user doesn't have permissions to run it when we're not trying to run it at
-  ;; all
-  (let [do-as-admin (requiring-resolve 'metabase.request.core/do-as-admin)
-        preprocess  (requiring-resolve 'metabase.query-processor.preprocess/preprocess)]
-    (do-as-admin
-     (^:once fn* []
-       (preprocess query)))))
+  (let [preprocess  (requiring-resolve 'metabase.query-processor.preprocess/preprocess)]
+    (preprocess query)))
 
 (defn- referenced-card-ids
   "Return the union of all the `:query-permissions/referenced-card-ids` sets anywhere in the query."
@@ -206,8 +201,9 @@
 (defn- native-query-perms
   [query]
   (merge
-   {:perms/create-queries :query-builder-and-native
-    :perms/view-data      :unrestricted}
+   {:perms/create-queries :query-builder-and-native}
+   (when-not (:impersonation/role query)
+     {:perms/view-data :unrestricted})
    (when-let [card-ids (referenced-card-ids query)]
      {:paths (into #{}
                    (mapcat (fn [card-id]
@@ -235,12 +231,13 @@
          ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
          (let [query                                                (cond-> query
                                                                       (not already-preprocessed?) preprocess-query)
-               {:keys [table-ids table-query-ids card-ids native?]} (query->source-ids query)]
+               {:keys [table-ids table-query-ids card-ids native? sandboxed-table-ids]} (query->source-ids query)
+               non-sandboxed-table-ids (apply disj table-ids sandboxed-table-ids)]
            (merge
             (when (seq card-ids)
               {:card-ids card-ids})
-            (when (seq table-ids)
-              {:perms/view-data (zipmap table-ids (repeat :unrestricted))})
+            (when (seq non-sandboxed-table-ids)
+              {:perms/view-data (zipmap non-sandboxed-table-ids (repeat :unrestricted))})
             (when (seq table-query-ids)
               {:perms/create-queries (zipmap table-query-ids (repeat :query-builder))})
             (when native?
@@ -334,13 +331,15 @@
   (let [field-ids (keep :id result-metadata)
         table-ids (into (set (keep (some-fn :table-id :table_id) result-metadata))
                         (when (seq field-ids)
-                          (t2/select-fn-set :table_id :model/Field :id [:in field-ids])))]
-    (run! #(when-not (perms/user-has-permission-for-table?
-                      api/*current-user-id*
-                      :perms/view-data
-                      :unrestricted
-                      database-id
-                      %)
+                          (t2/select-fn-set :table_id :model/Field :id [:in field-ids])))
+        sandboxed-tables (set (map :table_id (perms/sandboxes-for-user)))]
+    (run! #(when-not (or (perms/user-has-permission-for-table?
+                          api/*current-user-id*
+                          :perms/view-data
+                          :unrestricted
+                          database-id
+                          %)
+                         (contains? sandboxed-tables %))
              (throw (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." %)
                                      {database-id {:perms/view-data {% :unrestricted}}})))
           table-ids)))
@@ -389,8 +388,12 @@
   `throw-exceptions?` to `false`).
 
   If the [:gtap :query-permissions/perms] path is present in the query, these perms are implicitly granted to the current user."
-  [{{gtap-perms :gtaps} :query-permissions/perms, :as query} required-perms & {:keys [throw-exceptions?]
-                                                                               :or   {throw-exceptions? true}}]
+  [{{gtap-perms :gtaps} :query-permissions/perms,
+    impersonated? :impersonation/role
+    :as query}
+   required-perms
+   & {:keys [throw-exceptions?]
+      :or   {throw-exceptions? true}}]
   (try
     ;; Check any required v1 paths
     (when-let [paths (:paths required-perms)]
@@ -399,7 +402,7 @@
             (throw (perms-exception paths)))))
 
     ;; Check view-data and create-queries permissions, for individual tables or the entire DB:
-    (when (or (not (has-perm-for-query? query :perms/view-data required-perms))
+    (when (or (not (or impersonated? (has-perm-for-query? query :perms/view-data required-perms)))
               (not (has-perm-for-query? query :perms/create-queries required-perms)))
       (throw (perms-exception required-perms)))
 

@@ -648,7 +648,9 @@
 
         ;; No permissions for db3
         (data-perms/set-database-permission! pg1 db3-id :perms/view-data :blocked)
+        (data-perms/set-database-permission! pg1 db3-id :perms/create-queries :no)
         (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
+        (data-perms/set-database-permission! pg2 db3-id :perms/create-queries :no)
 
         (let [user-id (mt/user->id :rasta)
               fetch-visible-ids (fn [user-info permission-mapping column-field]
