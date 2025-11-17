@@ -25,12 +25,9 @@ const cypressSplit = require("cypress-split");
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 const isCI = process.env["CYPRESS_CI"] === "true";
 
-const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
 const isQaDatabase = process.env["QA_DB_ENABLED"] === "true";
-
-const isEmbeddingSdk = process.env.CYPRESS_IS_EMBEDDING_SDK === "true";
 
 // docs say that tsconfig paths should handle aliases, but they don't
 const assetsResolverPlugin = {
@@ -136,7 +133,6 @@ const defaultConfig = {
     config.env.grepFilterSpecs = true;
 
     config.env.IS_ENTERPRISE = isEnterprise;
-    config.env.HAS_SNOWPLOW_MICRO = hasSnowplowMicro;
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
 
     require("@cypress/grep/src/plugin")(config);
@@ -176,15 +172,6 @@ const defaultConfig = {
 
 const mainConfig = {
   ...defaultConfig,
-  ...(isEmbeddingSdk
-    ? {
-        chromeWebSecurity: true,
-        hosts: {
-          "my-site.local": "127.0.0.1",
-        },
-      }
-    : {}),
-  projectId: "ywjy9z",
   numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
   reporter: "cypress-multi-reporters",
   reporterOptions: {

@@ -1,6 +1,7 @@
 (ns metabase.notification.payload.impl.system-event
   (:require
    [metabase.appearance.core :as appearance]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.channel.email.messages :as messages]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.session.core :as session]
@@ -13,7 +14,7 @@
 (defn- join-url
   [user-id redirect]
   ;; TODO: the reset token should come from the event-info, not generated here!
-  (let [reset-token               (user/set-password-reset-token! user-id)
+  (let [reset-token               (auth-identity/create-password-reset! user-id)
         should-link-to-login-page (and (sso/sso-enabled?)
                                        (not (session/enable-password-login)))]
     (if should-link-to-login-page

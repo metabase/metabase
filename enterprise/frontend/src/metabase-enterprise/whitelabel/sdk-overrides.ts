@@ -1,25 +1,34 @@
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { MetabaseGlobalPluginsConfig } from "embedding-sdk-package";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { State } from "metabase-types/store";
-
-// Store the original selector functions to preserve Enterprise/OSS behavior
-const originalGetNoDataIllustration = PLUGIN_SELECTORS.getNoDataIllustration;
-const originalGetNoObjectIllustration =
-  PLUGIN_SELECTORS.getNoObjectIllustration;
 
 // Flag to ensure initialization happens only once
 let isInitialized = false;
+
+// For testing purposes - allows resetting initialization state
+export const resetInitialization = () => {
+  isInitialized = false;
+};
 
 /**
  * Initialize SDK plugins by overriding core plugin selectors to be SDK-aware.
  * This allows the SDK to provide custom implementations while maintaining
  * backward compatibility with Enterprise and OSS versions.
  */
-export const initializeSdkPlugins = () => {
+export const initializePlugin = () => {
+  if (!hasPremiumFeature("whitelabel")) {
+    return;
+  }
+
   if (isInitialized) {
     return;
   }
+  // Store the original selector functions to preserve Enterprise/OSS behavior
+  const originalGetNoDataIllustration = PLUGIN_SELECTORS.getNoDataIllustration;
+  const originalGetNoObjectIllustration =
+    PLUGIN_SELECTORS.getNoObjectIllustration;
 
   isInitialized = true;
 

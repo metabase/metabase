@@ -10,6 +10,7 @@
    [crypto.random :as crypto-random]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time.api :as t]
+   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding-rest.api.common :as api.embed.common]
@@ -762,6 +763,17 @@
         (test-query-results (client/client :get 202 (dashcard-url dashcard)))
         #_{:clj-kondo/ignore [:deprecated-var]}
         (test-query-results (client/client :get 202 (dashcard-url dashcard {} (dashcard->dash-eid dashcard))))))))
+
+(deftest running-card-as-logged-in-user-does-not-set-last-used-param-values
+  (testing "running the card does not set last used param values"
+    (with-embedding-enabled-and-new-secret-key!
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:venue_id "locked"}}}]
+        (is (=? {:status   "completed"
+                 :data     {:rows [[1]]}}
+                (mt/user-http-request :rasta :get 202 (dashcard-url dashcard {:params {:venue_id 100}}))))
+        (is (= {}
+               (binding [api/*current-user-id* (mt/user->id :rasta)]
+                 (:last_used_param_values (t2/hydrate (t2/select-one :model/Dashboard (:dashboard_id dashcard)) :last_used_param_values)))))))))
 
 (deftest downloading-csv-json-xlsx-results-from-the-dashcard-endpoint-shouldn-t-be-subject-to-the-default-query-constraints
   (testing (str "Downloading CSV/JSON/XLSX results from the dashcard endpoint shouldn't be subject to the default "

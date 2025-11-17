@@ -67,7 +67,7 @@ describe("browse > models", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > browse", () => {
+describe("scenarios > browse", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
@@ -210,7 +210,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
   });
 });
 
-H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
+describe("scenarios > browse (EE)", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();

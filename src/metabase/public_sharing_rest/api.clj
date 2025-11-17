@@ -285,7 +285,12 @@
     ;; current user perms; if this Dashcard is public you're by definition allowed to run it without a perms check
     ;; anyway
     (request/as-admin
-      (m/mapply qp.dashboard/process-query-for-dashcard options))))
+      ;; Even if we have a current user, we don't want this request associated with a particular user because it's
+      ;; public. This also prevents setting user-specific parameters (for example, if a logged in user is visiting a
+      ;; page that has locked parameters, we don't want them to get those same parameters next time they visit this
+      ;; dashboard in Metabase proper.)
+      (binding [api/*current-user-id* nil]
+        (m/mapply qp.dashboard/process-query-for-dashcard options)))))
 
 (api.macros/defendpoint :get "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
