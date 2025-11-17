@@ -754,8 +754,8 @@
                                             :last_name (mt/random-name)
                                             :email (mt/random-email)
                                             :source "setup"})]
-            (is (= [{:id (:id (perms-group/all-users))} {:id (:id (perms-group/admin))}]
-                   (:user_group_memberships resp)))
+            (is (=? [{:id (:id (perms-group/all-users))} {:id (:id (perms-group/admin))}]
+                    (:user_group_memberships resp)))
             (is (true? (:is_superuser resp)))))))))
 
 (deftest create-user-set-groups-test

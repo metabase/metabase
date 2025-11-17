@@ -4,13 +4,12 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
-   [metabase.session.models.session :as session]
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
-   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -50,10 +49,8 @@
                                                           :is_superuser true))
         user-id    (u/the-id new-user)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
-    (user/set-password! user-id password)
-    ;; then we create a session right away because we want our new user logged in to continue the setup process
-    (let [session (session/create-session! :password new-user device-info)]
-      ;; return user ID, session ID, and the Session object itself
+    (t2/update! :model/AuthIdentity :provider "password" :user_id user-id {:credentials {:plaintext_password password}})
+    (let [session (auth-identity/create-session-with-auth-tracking! new-user device-info :provider/password)]
       {:session-key (:key session), :user-id user-id, :session session})))
 
 (defn- setup-set-settings! [{:keys [email site-name site-locale]}]

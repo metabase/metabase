@@ -7,14 +7,13 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
-   [metabase.collections.models.collection :as collection]
-   [metabase.config.core :as config]
+   [metabase.auth-identity.core :as auth-identity]
+   [metabase.collections.models.collection :as collection]   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
-   [metabase.session.models.session :as session]
    [metabase.sso.core :as sso]
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
@@ -547,10 +546,10 @@
       (api/checkp (u.password/bcrypt-verify (str (:password_salt user) old_password) (:password user))
                   "old_password"
                   (tru "Invalid password")))
-    (user/set-password! id password)
+    (t2/update! :model/AuthIdentity :provider "password" :user_id id {:credentials {:plaintext_password password}})
     ;; after a successful password update go ahead and offer the client a new session that they can use
     (when (= id api/*current-user-id*)
-      (let [{session-key :key, :as session} (session/create-session! :password user (request/device-info request))
+      (let [{session-key :key, :as session} (auth-identity/create-session-with-auth-tracking! user (request/device-info request) :provider/password)
             response                        {:success    true
                                              :session_id (str session-key)}]
         (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))
