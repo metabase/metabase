@@ -88,11 +88,33 @@
 (deftest audit-collections-graph-test
   (testing "Check that the audit collection has :read for admins (sparse - no :none entries)."
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection collection {}]
+      (mt/with-temp [:model/Collection collection {:namespace "analytics"}]
         (with-redefs [audit/default-audit-collection (constantly collection)]
           (is (= {:revision 0
                   :groups {(u/the-id (perms-group/admin)) {:root :write, :COLLECTION :read}}}
                  (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection])))))))))
+
+(deftest cannot-set-readwrite-audit-permissions-for-non-admins-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection collection {:namespace "analytics"}]
+      (with-redefs [audit/default-audit-collection (constantly collection)]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Unable to make audit collections writable."
+             (graph/update-graph! {:revision 0 :groups {(u/the-id (perms-group/all-users)) {(u/the-id collection) :write}}})))
+        (is (= {:revision 0
+                :groups {(u/the-id (perms-group/admin)) {:root :write, :COLLECTION :read}}}
+               (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
+
+(deftest can-set-read-audit-permissions-for-non-admins-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection collection {:namespace "analytics"}]
+      (with-redefs [audit/default-audit-collection (constantly collection)]
+        (graph/update-graph! {:revision 0 :groups {(u/the-id (perms-group/all-users)) {(u/the-id collection) :read}}})
+        (is (= {:revision 0
+                :groups {(u/the-id (perms-group/all-users)) {:COLLECTION :read}
+                         (u/the-id (perms-group/admin)) {:root :write, :COLLECTION :read}}}
+               (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
 
 (deftest read-perms-test
   (testing "make sure read perms show up correctly"
