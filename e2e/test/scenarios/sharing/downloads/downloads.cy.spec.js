@@ -39,7 +39,7 @@ describe("scenarios > question > download", () => {
     cy.signInAsAdmin();
   });
 
-  H.describeWithSnowplow("[snowplow]", () => {
+  describe("[snowplow]", () => {
     beforeEach(() => {
       H.resetSnowplow();
       H.enableTracking();
@@ -492,7 +492,7 @@ describe("scenarios > dashboard > download pdf", () => {
   });
 });
 
-H.describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
+describe("[snowplow] scenarios > dashboard", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
