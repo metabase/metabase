@@ -27,8 +27,6 @@ const isCI = process.env["CYPRESS_CI"] === "true";
 
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
-const isQaDatabase = process.env["QA_DB_ENABLED"] === "true";
-
 const HOST = process.env.MB_JETTY_HOST || "localhost";
 const BACKEND_PORT = process.env.MB_JETTY_PORT || 4000;
 
@@ -126,10 +124,6 @@ const defaultConfig = {
      **                          CONFIG                                **
      ********************************************************************/
 
-    if (!isQaDatabase) {
-      config.excludeSpecPattern = "e2e/snapshot-creators/qa-db.cy.snap.js";
-    }
-
     // `grepIntegrationFolder` needs to point to the root!
     // See: https://github.com/cypress-io/cypress/issues/24452#issuecomment-1295377775
     config.env.grepIntegrationFolder = "../../";
@@ -209,12 +203,6 @@ const mainConfig = {
   },
 };
 
-const snapshotsConfig = {
-  ...defaultConfig,
-  specPattern: "e2e/snapshot-creators/**/*.cy.snap.js",
-  video: false,
-};
-
 const embeddingSdkComponentTestConfig = {
   ...defaultConfig,
   defaultCommandTimeout: 10000,
@@ -236,7 +224,7 @@ const embeddingSdkComponentTestConfig = {
 };
 
 module.exports = {
+  defaultConfig,
   mainConfig,
-  snapshotsConfig,
   embeddingSdkComponentTestConfig,
 };
