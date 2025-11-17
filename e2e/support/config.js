@@ -215,11 +215,6 @@ const snapshotsConfig = {
   video: false,
 };
 
-const stressTestConfig = {
-  ...defaultConfig,
-  retries: 0,
-};
-
 const embeddingSdkComponentTestConfig = {
   ...defaultConfig,
   defaultCommandTimeout: 10000,
@@ -243,6 +238,5 @@ const embeddingSdkComponentTestConfig = {
 module.exports = {
   mainConfig,
   snapshotsConfig,
-  stressTestConfig,
   embeddingSdkComponentTestConfig,
 };
