@@ -160,6 +160,46 @@ databaseChangeLog:
             constraintName: unique_auth_identity_user_provider
 
   - changeSet:
+      id: v58.2025-11-10T14:39:00
+      author: wotbrew
+      comment: Add published_table_id to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: published_table_id
+                  type: int
+                  remarks: The table id that is 'published' by this model
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-11-10T14:39:01
+      author: wotbrew
+      comment: Add index for report_card.published_table_id
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_published_table_id
+            columns:
+              - column:
+                  name: published_table_id
+
+  - changeSet:
+      id: v58.2025-11-10T14:39:02
+      author: wotbrew
+      comment: Add foreign key report_card(published_table_id) to metabase_table(id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: published_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_report_card_published_table
+            onDelete: SET NULL
+
+  - changeSet:
       id: v58.2025-11-12T00:00:00
       author: edpaget
       comment: Add index on provider_id for efficient lookups
@@ -500,45 +540,6 @@ databaseChangeLog:
         - dropForeignKeyConstraint:
             baseTableName: core_session
             constraintName: fk_session_auth_identity
-  - changeSet:
-      id: v58.2025-11-10T14:39:00
-      author: wotbrew
-      comment: Add published_table_id to report_card
-      changes:
-        - addColumn:
-            tableName: report_card
-            columns:
-              - column:
-                  name: published_table_id
-                  type: int
-                  remarks: The table id that is 'published' by this model
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v58.2025-11-10T14:39:01
-      author: wotbrew
-      comment: Add index for report_card.published_table_id
-      changes:
-        - createIndex:
-            tableName: report_card
-            indexName: idx_report_card_published_table_id
-            columns:
-              - column:
-                  name: published_table_id
-
-  - changeSet:
-      id: v58.2025-11-10T14:39:02
-      author: wotbrew
-      comment: Add foreign key report_card(published_table_id) to metabase_table(id)
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: report_card
-            baseColumnNames: published_table_id
-            referencedTableName: metabase_table
-            referencedColumnNames: id
-            constraintName: fk_report_card_published_table
-            onDelete: SET NULL
 
   - changeSet:
       id: v58.2025-11-12T11:57:00

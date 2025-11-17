@@ -155,7 +155,7 @@
   "Specifications for the optional search filters."
   (build-filters
    {:archived                {:type :single-value, :context-key :archived?}
-    :collection .            {:type :collection-hierarchy, :context-key :collection}
+    :collection-id           {:type :collection-hierarchy, :context-key :collection}
     ;; TODO dry this alias up with the index hydration code
     :created-at              {:type :date-range, :field "model_created_at"}
     :creator-id              {:type :list, :context-key :created-by}
