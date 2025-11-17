@@ -113,7 +113,7 @@
                 :caveats                 nil
                 :points_of_interest      nil
                 :table_id                id
-                :model_id                nil
+                :card_id                 nil
                 :creator_id              (mt/user->id :crowberto)
                 :creator                 (user-details (mt/fetch-user :crowberto))
                 :entity_id               true
