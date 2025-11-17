@@ -283,7 +283,18 @@
                          :values   [[1 "African"]
                                     [2 "American"]
                                     [3 "Artisan"]]}
-                        (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :venues :category_id))))))))))
+                        (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :venues :category_id))))))))
+
+    (testing "External remapping without has_field_values = list (#41999)"
+      (testing "String FK fields should work with remapping even when has_field_values is not 'list'"
+        (mt/with-column-remappings [venues.category_id categories.name]
+          ;; Explicitly set has_field_values to nil to mimic string FK fields
+          (mt/with-temp-vals-in-db :model/Field (mt/id :venues :category_id) {:has_field_values nil}
+            (is (partial= {:field_id (mt/id :venues :category_id)
+                           :values   [[1 "African"]
+                                      [2 "American"]
+                                      [3 "Artisan"]]}
+                          (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :venues :category_id)))))))))))
 
 (def ^:private list-field {:name "Field Test", :base_type :type/Integer, :has_field_values "list"})
 
