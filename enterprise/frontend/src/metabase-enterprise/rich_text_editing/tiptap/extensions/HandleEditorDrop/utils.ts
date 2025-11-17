@@ -148,7 +148,9 @@ export const cleanupFlexContainerNodes = (view: EditorView) => {
       const child = node.firstChild;
       if (child) {
         view.dispatch(
-          view.state.tr.replaceWith(pos, pos + node.nodeSize, child),
+          child.type.name === "supportingText"
+            ? view.state.tr.deleteRange(pos, pos + node.nodeSize)
+            : view.state.tr.replaceWith(pos, pos + node.nodeSize, child),
         );
       }
     }

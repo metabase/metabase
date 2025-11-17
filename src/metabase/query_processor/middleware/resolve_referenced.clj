@@ -49,7 +49,8 @@
    init-query :- ::lib.schema/query]
   (letfn [(card-subquery-graph [mp graph card-id]
             (let [card-query (fetch-card-query mp card-id)
-                  card-ids (lib/native-query-card-ids card-query)
+                  card-ids (concat (lib/native-query-card-ids card-query)
+                                   (lib/all-source-card-ids card-query))
                   snippet-ids (lib/native-query-snippet-ids card-query)]
               (subquery-graph* mp graph ::card card-id card-ids snippet-ids)))
           (snippet-subquery-graph [mp graph snippet-id]
