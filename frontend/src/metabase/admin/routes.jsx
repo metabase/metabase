@@ -191,6 +191,10 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
 
       {/* Backwards compatibility for embedding settings */}
       <Redirect
+        from="/admin/embedding/interactive"
+        to="/admin/embedding/modular"
+      />
+      <Redirect
         from="/admin/settings/embedding-in-other-applications"
         to="/admin/embedding/modular"
       />
