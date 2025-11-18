@@ -274,6 +274,7 @@ export const RemoteSyncAdminSettings = () => {
                           <FormTextInput
                             name={BRANCH_KEY}
                             label={t`Sync branch`}
+                            mr={0}
                             placeholder="main"
                             {...getEnvSettingProps(
                               settingDetails?.[BRANCH_KEY],
