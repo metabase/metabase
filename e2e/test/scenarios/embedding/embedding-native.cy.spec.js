@@ -385,10 +385,12 @@ describe("scenarios > embedding > native questions with default parameters", () 
     H.createNativeQuestion(questionDetailsWithDefaults, {
       visitQuestion: true,
       wrapId: true,
-    }).then(({ body: { id } }) => {
+    });
+
+    cy.get("@questionId").then((questionId) => {
       H.openLegacyStaticEmbeddingModal({
         resource: "question",
-        resourceId: id,
+        resourceId: questionId,
         activeTab: "parameters",
       });
     });

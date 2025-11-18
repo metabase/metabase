@@ -44,11 +44,13 @@ describe("scenarios > embedding > questions", () => {
         display: "scalar",
         enable_embedding: true,
       },
-      { visitQuestion: true },
-    ).then(({ body: { id } }) => {
+      { visitQuestion: true, wrapId: true },
+    );
+
+    cy.get("@questionId").then((questionId) => {
       H.openLegacyStaticEmbeddingModal({
         resource: "question",
-        resourceId: id,
+        resourceId: questionId,
         activeTab: "parameters",
       });
     });
