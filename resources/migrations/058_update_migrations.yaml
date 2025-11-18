@@ -610,7 +610,7 @@ databaseChangeLog:
             UPDATE metabase_table
             SET data_layer = CASE
               WHEN visibility_type IN ('hidden', 'retired', 'sensitive', 'technical', 'cruft') THEN 'copper'
-              ELSE 'gold'
+              ELSE 'bronze'
             END
       rollback:
         - sql: >-
