@@ -95,6 +95,7 @@
                  (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection])))))))))
 
 (deftest cannot-set-readwrite-audit-permissions-for-non-admins-test
+  (clear-graph-revisions!)
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp [:model/Collection collection {:namespace "analytics"}]
       (with-redefs [audit/default-audit-collection (constantly collection)]
@@ -107,6 +108,7 @@
                (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
 
 (deftest can-set-read-audit-permissions-for-non-admins-test
+  (clear-graph-revisions!)
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp [:model/Collection collection {:namespace "analytics"}]
       (with-redefs [audit/default-audit-collection (constantly collection)]
