@@ -7,7 +7,7 @@ import type {
   ExplorationEmbedOptions,
   MetabotEmbedOptions,
   QuestionEmbedOptions,
-} from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+} from "metabase/embedding/embedding_iframe_sdk/types/embed";
 
 import type {
   SdkIframeEmbedSetupExperience,

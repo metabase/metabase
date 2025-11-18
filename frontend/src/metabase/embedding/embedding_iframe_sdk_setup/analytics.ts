@@ -1,10 +1,10 @@
 import _ from "underscore";
 
-import { trackSimpleEvent } from "metabase/lib/analytics";
 import type {
   SdkIframeEmbedSettingKey,
   SdkIframeEmbedSettings,
-} from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+} from "metabase/embedding/embedding_iframe_sdk/types/embed";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 
 import type {
   SdkIframeEmbedSetupExperience,

@@ -4,12 +4,12 @@ import _ from "underscore";
 import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   type AllowedEmbedSettingKey,
-} from "metabase-enterprise/embedding_iframe_sdk/constants";
+} from "metabase/embedding/embedding_iframe_sdk/constants";
 import type {
   DashboardEmbedOptions,
   QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
-} from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+} from "metabase/embedding/embedding_iframe_sdk/types/embed";
 
 import type {
   SdkIframeDashboardEmbedSettings,

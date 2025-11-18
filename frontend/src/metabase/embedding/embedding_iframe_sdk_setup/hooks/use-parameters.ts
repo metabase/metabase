@@ -1,11 +1,11 @@
 import { useEffect, useMemo } from "react";
 import { useLatest } from "react-use";
 
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding_iframe_sdk_setup/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { SdkIframeEmbedSetupExperience } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 

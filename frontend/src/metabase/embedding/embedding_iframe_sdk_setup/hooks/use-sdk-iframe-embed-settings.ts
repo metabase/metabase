@@ -3,15 +3,15 @@ import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import { useUserSetting } from "metabase/common/hooks";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import {
   EMBED_FALLBACK_DASHBOARD_ID,
   USER_SETTINGS_DEBOUNCE_MS,
-} from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
+} from "metabase/embedding/embedding_iframe_sdk_setup/constants";
 import type {
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupSettings,
-} from "metabase-enterprise/embedding_iframe_sdk_setup/types";
+} from "metabase/embedding/embedding_iframe_sdk_setup/types";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 
 import { trackEmbedWizardOpened } from "../analytics";
 import {

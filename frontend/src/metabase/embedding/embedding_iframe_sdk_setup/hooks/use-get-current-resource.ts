@@ -3,11 +3,11 @@ import { useAsync } from "react-use";
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { fetchDashboard } from "metabase/dashboard/actions";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
-} from "metabase-enterprise/embedding_iframe_sdk_setup/types";
+} from "metabase/embedding/embedding_iframe_sdk_setup/types";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { Card, Dashboard } from "metabase-types/api";
 
 const getResource = ({
