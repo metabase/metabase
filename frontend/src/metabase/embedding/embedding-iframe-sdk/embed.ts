@@ -22,7 +22,6 @@ import type {
 import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
 
 // Import EE Iframe Embedding plugin
-// eslint-disable-next-line import/no-unresolved
 import "sdk-iframe-embedding-ee-plugins";
 
 const EMBEDDING_ROUTE = "embed/sdk/v1";
