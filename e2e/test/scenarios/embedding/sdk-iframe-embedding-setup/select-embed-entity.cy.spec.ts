@@ -141,7 +141,6 @@ describe(suiteTitle, () => {
     });
 
     cy.log("selected question should be shown in the preview");
-    cy.wait("@cardQuery");
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(SECOND_QUESTION_NAME).should("be.visible");
     });
@@ -212,7 +211,6 @@ describe(suiteTitle, () => {
       event_detail: "custom",
     });
 
-    cy.wait("@cardQuery");
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(FIRST_QUESTION_NAME).should("be.visible");
     });
