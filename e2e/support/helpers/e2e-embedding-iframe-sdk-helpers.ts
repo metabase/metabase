@@ -343,6 +343,4 @@ export const mockEmbedJsToDevServer = () => {
 
 export function openEmbedJsModal() {
   openSharingMenu("Embed");
-
-  cy.findByText("Embedded Analytics JS").click();
 }
