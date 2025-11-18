@@ -29,8 +29,7 @@ import {
   PLUGIN_REMOTE_SYNC,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
-import { getUserCanWriteToCollections } from "metabase/selectors/user";
-import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type { Bookmark } from "metabase-types/api";
 
 import {
@@ -251,15 +250,25 @@ export function MainNavbarView({
           <SidebarSection>
             <ErrorBoundary>
               <CollapseSection
-                header={
-                  <CollectionSectionHeading
-                    handleCreateNewCollection={handleCreateNewCollection}
-                  />
-                }
+                header={<SidebarHeading>{t`Collections`}</SidebarHeading>}
                 initialState={expandCollections ? "expanded" : "collapsed"}
                 iconPosition="right"
                 iconSize={8}
                 onToggle={setExpandCollections}
+                rightAction={
+                  <Tooltip label={t`Create a new collection`}>
+                    <ActionIcon
+                      aria-label={t`Create a new collection`}
+                      color="var(--mb-color-text-medium)"
+                      onClick={() => {
+                        trackNewCollectionFromNavInitiated();
+                        handleCreateNewCollection();
+                      }}
+                    >
+                      <Icon name="add" />
+                    </ActionIcon>
+                  </Tooltip>
+                }
                 role="section"
                 aria-label={t`Collections`}
               >
@@ -307,44 +316,13 @@ export function MainNavbarView({
               </ErrorBoundary>
             </TrashSidebarSection>
           )}
-        </div>
         <div>
           <WhatsNewNotification />
         </div>
+      </div>
       </SidebarContentRoot>
 
       <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />
     </ErrorBoundary>
-  );
-}
-
-interface CollectionSectionHeadingProps {
-  handleCreateNewCollection: () => void;
-}
-
-function CollectionSectionHeading({
-  handleCreateNewCollection,
-}: CollectionSectionHeadingProps) {
-  const canWriteToCollection = useSelector(getUserCanWriteToCollections);
-
-  return (
-    <Flex align="center" justify="space-between">
-      <SidebarHeading>{t`Collections`}</SidebarHeading>
-      {canWriteToCollection && (
-        <Tooltip label={t`Create a new collection`}>
-          <ActionIcon
-            data-testid="navbar-new-collection-button"
-            aria-label={t`Create a new collection`}
-            color="text-medium"
-            onClick={() => {
-              trackNewCollectionFromNavInitiated();
-              handleCreateNewCollection();
-            }}
-          >
-            <Icon name="add" />
-          </ActionIcon>
-        </Tooltip>
-      )}
-    </Flex>
   );
 }
