@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Box, Popover } from "metabase/ui";
 
 import type { DataPickerValue } from "../../DataPicker";
@@ -9,7 +10,7 @@ import type {
   MiniPickerItem,
   MiniPickerPickableItem,
 } from "../types";
-import { useGetLibraryCollection, useGetPathFromValue } from "../utils";
+import { useGetPathFromValue } from "../utils";
 
 import { MiniPickerListLoader } from "./MiniPickerItemList";
 import { MiniPickerPane } from "./MiniPickerPane";
@@ -36,7 +37,8 @@ export function MiniPicker({
   browseAllComponent,
 }: MiniPickerProps) {
   const [shouldBrowse, setShouldBrowse] = useState(false);
-  const { data: libraryCollection } = useGetLibraryCollection();
+  const { data: libraryCollection } =
+    PLUGIN_DATA_STUDIO.useGetLibraryCollection();
 
   const [path, setPath, { isLoadingPath }] = useGetPathFromValue({
     value,

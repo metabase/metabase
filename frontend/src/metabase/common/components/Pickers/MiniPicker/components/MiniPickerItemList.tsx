@@ -10,6 +10,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Box, Stack, Text } from "metabase/ui";
 import type { SchemaName, SearchModel } from "metabase-types/api";
 
@@ -20,7 +21,6 @@ import type {
   MiniPickerPickableItem,
   MiniPickerSchemaItem,
 } from "../types";
-import { useGetLibraryCollection } from "../utils";
 
 import { MiniPickerItem } from "./MiniPickerItem";
 
@@ -51,8 +51,8 @@ export function MiniPickerItemList() {
 function RootItemList() {
   const { data: databases } = useListDatabasesQuery();
   const { setPath } = useMiniPickerContext();
-  // FIXME, should be an enterprise plugin
-  const { data: libraryCollection, isLoading } = useGetLibraryCollection();
+  const { data: libraryCollection, isLoading } =
+    PLUGIN_DATA_STUDIO.useGetLibraryCollection();
 
   if (isLoading) {
     return <MiniPickerListLoader />;

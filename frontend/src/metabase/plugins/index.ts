@@ -36,6 +36,7 @@ import type {
   ModelFilterSettings,
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/common/components/Link";
+import type { MiniPickerCollectionItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
@@ -1197,10 +1198,15 @@ export type DataStudioPlugin = {
     CanAccessDataModel: ComponentType,
     CanAccessTransforms: ComponentType,
   ) => ReactNode;
+  useGetLibraryCollection: () => {
+    data: undefined | MiniPickerCollectionItem;
+    isLoading: boolean;
+  };
 };
 
 export const PLUGIN_DATA_STUDIO: DataStudioPlugin = {
   isEnabled: false,
   canAccessDataStudio: () => false,
   getDataStudioRoutes: () => null,
+  useGetLibraryCollection: () => ({ data: undefined, isLoading: false }),
 };

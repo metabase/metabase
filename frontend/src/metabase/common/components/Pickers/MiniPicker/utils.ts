@@ -1,18 +1,10 @@
 import { useState } from "react";
 import { useDeepCompareEffect } from "react-use";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import {
-  cardApi,
-  collectionApi,
-  databaseApi,
-  skipToken,
-  useListCollectionItemsQuery,
-} from "metabase/api";
+import { cardApi, collectionApi, databaseApi } from "metabase/api";
 import type { DispatchFn } from "metabase/lib/redux";
 import { useDispatch } from "metabase/lib/redux";
-import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import type { SchemaName } from "metabase-types/api";
 
 import type { DataPickerValue } from "../DataPicker";
@@ -82,9 +74,10 @@ async function getTablePathFromValue(
 
   const [dbs, schemas] = await Promise.all([dbReq, schemaReq]);
   const db = dbs.data.find((db) => db.id === value.db_id);
-  const schema: SchemaName | undefined = schemas?.length > 1 ? schemas.find(
-    (sch) => sch === value.schema,
-  ): undefined;
+  const schema: SchemaName | undefined =
+    schemas?.length > 1
+      ? schemas.find((sch) => sch === value.schema)
+      : undefined;
   return [
     ...(db ? [{ id: db.id, name: db.name, model: "database" as const }] : []),
     ...(db && schema
@@ -117,7 +110,6 @@ async function getCollectionPathFromValue(
     card?.collection_id,
   ].filter(Boolean);
 
-  // FIXME: enterprise plugin
   if (collectionIds.includes(String(libraryCollection?.id))) {
     collectionIds.shift(); // pretend the library is at the top level
     locationPath.shift();
@@ -161,33 +153,3 @@ async function getCollectionPathFromValue(
 
   return locationPath;
 }
-
-
-export const useGetLibraryCollection = () => {
-  const { data: libraryCollection, isLoading: isLoadingCollection } = useGetLibraryCollectionQuery();
-  const hasStuff = Boolean(libraryCollection && libraryCollection?.below?.length);
-  const { data: libraryItems, isLoading: isLoadingItems } = useListCollectionItemsQuery(
-    (libraryCollection && hasStuff) ? { id: libraryCollection.id } : skipToken,
-  );
-
-  const subcollectionsWithStuff = libraryItems?.data.filter((item) =>
-    item.model === "collection" &&
-    (item.here?.length || item.below?.length)
-  ) ?? [];
-
-  const showableLibrary = match({ subcollectionsWithStuff, hasStuff })
-    .when( // if there's only one subcollection with stuff, we want to go straight into it
-      ({ subcollectionsWithStuff }) => subcollectionsWithStuff?.length === 1,
-      () => subcollectionsWithStuff[0],
-    )
-    .with(
-      { hasStuff: true},
-      () => (libraryCollection as MiniPickerCollectionItem)
-  ).otherwise(() => undefined);
-
-
-  return {
-    isLoading: isLoadingCollection || isLoadingItems,
-    data: showableLibrary,
-  };
-};
