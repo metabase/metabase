@@ -1,0 +1,32 @@
+import type { SearchFilterComponent } from "metabase/search/types";
+import type { CollectionEssentials } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
+export type ModelFilterControlsProps = any;
+export type ModelFilterSettings = {
+  verified: boolean;
+};
+
+export type MetricFilterControlsProps = any;
+export type MetricFilterSettings = {
+  verified: boolean;
+};
+
+export const PLUGIN_CONTENT_VERIFICATION = {
+  contentVerificationEnabled: false,
+  VerifiedFilter: {} as SearchFilterComponent<"verified">,
+  sortCollectionsByVerification: (
+    _a: CollectionEssentials,
+    _b: CollectionEssentials,
+  ) => 0,
+
+  ModelFilterControls: (_props: ModelFilterControlsProps) => null,
+  getDefaultModelFilters: (_state: State): ModelFilterSettings => ({
+    verified: false,
+  }),
+
+  getDefaultMetricFilters: (_state: State): MetricFilterSettings => ({
+    verified: false,
+  }),
+  MetricFilterControls: (_props: MetricFilterControlsProps) => null,
+};

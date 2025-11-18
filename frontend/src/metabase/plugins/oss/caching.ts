@@ -1,0 +1,54 @@
+import type { ComponentType, Dispatch, SetStateAction } from "react";
+
+import {
+  getPerformanceTabMetadata,
+  strategies,
+} from "metabase/admin/performance/constants/complex";
+import type { ModelWithClearableCache } from "metabase/admin/performance/types";
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { StackProps } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
+import type { CacheableDashboard, CacheableModel } from "metabase-types/api";
+
+export type InvalidateNowButtonProps = {
+  targetId: number;
+  targetModel: ModelWithClearableCache;
+  targetName: string;
+};
+
+export type SidebarCacheSectionProps = {
+  item: CacheableDashboard | Question;
+  model: CacheableModel;
+  setPage: Dispatch<SetStateAction<"default" | "caching">>;
+};
+
+export type SidebarCacheFormProps = {
+  item: CacheableDashboard | Question;
+  model: CacheableModel;
+  onClose: () => void;
+} & StackProps;
+
+export type PreemptiveCachingSwitchProps = {
+  handleSwitchToggle: () => void;
+};
+
+export const PLUGIN_CACHING = {
+  isGranularCachingEnabled: () => false,
+  StrategyFormLauncherPanel: PluginPlaceholder as any,
+  GranularControlsExplanation: PluginPlaceholder as any,
+  SidebarCacheSection:
+    PluginPlaceholder as ComponentType<SidebarCacheSectionProps>,
+  SidebarCacheForm: PluginPlaceholder as ComponentType<
+    SidebarCacheFormProps & { onBack: () => void }
+  >,
+  InvalidateNowButton:
+    PluginPlaceholder as ComponentType<InvalidateNowButtonProps>,
+  hasQuestionCacheSection: (_question: Question) => false,
+  canOverrideRootStrategy: false,
+  strategies: strategies,
+  DashboardAndQuestionCachingTab: PluginPlaceholder as any,
+  StrategyEditorForQuestionsAndDashboards: PluginPlaceholder as any,
+  getTabMetadata: getPerformanceTabMetadata,
+  PreemptiveCachingSwitch:
+    PluginPlaceholder as ComponentType<PreemptiveCachingSwitchProps>,
+};
