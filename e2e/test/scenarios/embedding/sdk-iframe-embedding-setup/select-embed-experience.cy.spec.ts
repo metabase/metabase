@@ -193,6 +193,7 @@ describe(suiteTitle, () => {
     cy.visit(`/question/${ORDERS_QUESTION_ID}`);
 
     H.openEmbedJsModal();
+    H.embedModalEnableEmbedding();
 
     cy.get("#iframe-embed-container")
       .findByTestId("preview-loading-indicator", { timeout: 20_000 })
