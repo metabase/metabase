@@ -1,4 +1,6 @@
 import { mockEmbedJsToDevServer } from "e2e/support/helpers";
+import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
+import { enableSamlAuth } from "e2e/support/helpers/embedding-sdk-testing";
 
 import {
   codeBlock,
@@ -31,6 +33,63 @@ describe(suiteTitle, () => {
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
+  });
+
+  it("should select user session auth method by default", () => {
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Authentication").should("be.visible");
+
+      cy.findByLabelText("Unauthenticated")
+        .should("be.visible")
+        .should("be.checked");
+      cy.findByLabelText("Existing Metabase session")
+        .should("be.visible")
+        .should("not.be.checked");
+
+      cy.findByLabelText("Single sign-on (SSO)")
+        .should("be.visible")
+        .should("not.be.checked");
+    });
+  });
+
+  it("should disable SSO radio button when JWT and SAML are not configured", () => {
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Single sign-on (SSO)").should("be.disabled");
+    });
+  });
+
+  it("should enable SSO radio button when JWT is configured", () => {
+    enableJwtAuth();
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Single sign-on (SSO)").should("not.be.disabled");
+    });
+  });
+
+  it("should enable SSO radio button when SAML is configured", () => {
+    enableSamlAuth();
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Single sign-on (SSO)").should("not.be.disabled");
+    });
   });
 
   it("toggles drill-throughs for dashboards when non-authorized auth method is selected", () => {
