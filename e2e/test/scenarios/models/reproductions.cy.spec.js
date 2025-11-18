@@ -119,8 +119,8 @@ describe("issue 19737", () => {
     cy.findByText("Question").should("be.visible").click();
 
     // Open question picker (this is crucial) so the collection list are loaded.
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
       cy.findByText("First collection").click();
       cy.findByText(modelName);
     });
@@ -143,8 +143,8 @@ describe("issue 19737", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
       cy.findByText("First collection").should("not.exist");
       H.entityPickerModalLevel(1).should("exist");
       H.entityPickerModalLevel(2).should("not.exist");
@@ -803,7 +803,6 @@ describe("issue 25537", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/collection/*/items?*").as("getCollectionContent");
   });
 
   it("should be able to pick a saved model when using a non-english locale (metabase#25537)", () => {
@@ -811,9 +810,8 @@ describe("issue 25537", () => {
     H.createQuestion(questionDetails);
 
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Sammlungen").click();
-      cy.wait("@getCollectionContent");
+    H.miniPicker().within(() => {
+      cy.findByText("Unsere Analysen").click();
       cy.findByText(questionDetails.name).should("exist");
     });
   });
@@ -842,8 +840,8 @@ describe("issue 26091", () => {
     cy.visit("/");
 
     startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.saveQuestion("New model", undefined, {
@@ -853,8 +851,8 @@ describe("issue 26091", () => {
     turnIntoModel();
 
     startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("New model").should("be.visible");
       cy.findByText("Old model").should("be.visible");
       cy.findByText("Orders Model").should("be.visible");
@@ -921,8 +919,8 @@ describe("issue 28971", () => {
 
   it("should be able to filter a newly created model (metabase#28971)", () => {
     H.startNewModel();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     cy.findByTestId("run-button").click();
