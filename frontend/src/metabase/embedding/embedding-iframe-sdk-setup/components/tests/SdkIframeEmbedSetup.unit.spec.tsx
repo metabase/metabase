@@ -112,10 +112,8 @@ describe("Embed flow > forward and backward navigation", () => {
     expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
   });
-});
 
-describe("Embed flow > pre-selection via url parameter", () => {
-  it("pre-selects question when resource_type=question is in URL", async () => {
+  it("pre-selects question when resourceType: question is the initial state", async () => {
     const mockDatabase = createMockDatabase();
     const mockCard = createMockCard({ id: 456 });
 
