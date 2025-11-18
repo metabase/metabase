@@ -48,5 +48,5 @@
   ;; this seems to be the best way I could come up with to see if we're currently in the process of loading a namespace
   (when (seq @#'clojure.core/*pending-paths*)
     (throw (ex-info "Do not execute app DB queries as a side effect of loading a namespace (e.g., in a top-level `def`)."
-                    {:query compiled-query})))
+                    {:query compiled-query, :path (first @#'clojure.core/*pending-paths*)})))
   compiled-query)
