@@ -889,8 +889,8 @@ describe("issue 44071", () => {
   it("should be able to save questions based on another questions without collection access (metabase#44071)", () => {
     cy.visit("/");
     H.newButton("Question").click();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
       cy.findByText(/Personal Collection/).click();
       cy.findByText(questionDetails.name).click();
     });

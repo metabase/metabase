@@ -57,8 +57,9 @@ describe("scenarios > admin > transforms", () => {
         event_detail: "query",
       });
 
-      H.entityPickerModal().within(() => {
+      H.miniPicker().within(() => {
         cy.findByText(DB_NAME).click();
+        cy.findByText(TARGET_SCHEMA).click();
         cy.findByText(SOURCE_TABLE).click();
       });
       getQueryEditor().button("Save").click();
@@ -408,8 +409,9 @@ LIMIT
       H.popover().findByText("Query builder").click();
 
       cy.log("set the query");
-      H.entityPickerModal().within(() => {
+      H.miniPicker().within(() => {
         cy.findByText(DB_NAME).click();
+        cy.findByText(TARGET_SCHEMA).click();
         cy.findByText(SOURCE_TABLE).click();
       });
       getQueryEditor().button("Save").click();
@@ -429,8 +431,9 @@ LIMIT
       getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
 
-      H.entityPickerModal().within(() => {
+      H.miniPicker().within(() => {
         cy.findByText(DB_NAME).click();
+        cy.findByText(TARGET_SCHEMA).click();
         cy.findByText(SOURCE_TABLE).click();
       });
       getQueryEditor().button("Save").click();
@@ -478,8 +481,9 @@ LIMIT
       visitTransformListPage();
       getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
-      H.entityPickerModal().within(() => {
+      H.miniPicker().within(() => {
         cy.findByText(DB_NAME).click();
+        cy.findByText(TARGET_SCHEMA).click();
         cy.findByText(SOURCE_TABLE).click();
       });
       getQueryEditor().button("Save").click();
@@ -512,7 +516,9 @@ LIMIT
       visitTransformListPage();
       getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
+        H.entityPickerModalItem(0, "Databases").click();
         cy.findAllByTestId("picker-item")
           .contains("Sample Database")
           .should("have.attr", "data-disabled", "true");
@@ -538,8 +544,15 @@ LIMIT
       visitTransformListPage();
       getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
+
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
+        cy.findByText("Metric").should("have.attr", "data-disabled", "true");
+      });
+
+      H.miniPickerHeader().click();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        cy.findByText("Collections").click();
         cy.findAllByTestId("picker-item")
           .contains("Metric")
           .should("have.attr", "data-disabled", "true");
@@ -600,8 +613,9 @@ LIMIT
       H.popover().findByText("Query builder").click();
 
       cy.log("build a query with 1 aggregation and 2 breakouts");
-      H.entityPickerModal().within(() => {
+      H.miniPicker().within(() => {
         cy.findByText(DB_NAME).click();
+        cy.findByText(TARGET_SCHEMA).click();
         cy.findByText(SOURCE_TABLE).click();
       });
       H.getNotebookStep("summarize")
@@ -1568,7 +1582,7 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
     getTransformsSidebar().button("Create a transform").click();
     H.popover().findByText("Query builder").click();
 
-    H.entityPickerModal().within(() => {
+    H.miniPicker().within(() => {
       cy.findByText(DB_NAME).click();
       cy.findByText("Orders").click();
     });
