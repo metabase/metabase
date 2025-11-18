@@ -18,7 +18,7 @@ const SCRIPT_TAG_PATH = path.resolve(
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
 const SDK_BUNDLE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
+  __dirname + "/frontend/src/embedding-sdk-bundle";
 
 const OUT_FILE_NAME = "embed.js";
 const OUT_TEMP_PATH = path.resolve(BUILD_PATH, "tmp-embed-js");
