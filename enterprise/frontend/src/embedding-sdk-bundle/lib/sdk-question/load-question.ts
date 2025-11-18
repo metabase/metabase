@@ -26,15 +26,20 @@ export const loadQuestionSdk =
     Required<Pick<SdkQuestionState, "question">> &
       Pick<SdkQuestionState, "originalQuestion" | "parameterValues">
   > => {
-    const questionId = initQuestionId === "new" ? undefined : initQuestionId;
+    const isNewQuestion = initQuestionId === "new";
+    const questionId = isNewQuestion ? undefined : initQuestionId;
 
-    const { card, originalCard } = await resolveCards({
+    const { card: resolvedCard, originalCard } = await resolveCards({
       cardId: questionId ?? undefined,
       options,
       dispatch,
       getState,
       deserializedCard,
     });
+
+    const card = isNewQuestion
+      ? { ...resolvedCard, creationType: "custom_question" }
+      : resolvedCard;
 
     await dispatch(loadMetadataForCard(card));
     const metadata = getMetadata(getState());

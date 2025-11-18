@@ -1,11 +1,12 @@
 (ns metabase.segments.api
   "/api/segment endpoints."
   (:require
-   ;; TODO (Cam 10/1/25) -- update segments to persist MBQL 5
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -60,8 +61,10 @@
         clean-body (u/select-keys-when body
                                        :present #{:description :caveats :points_of_interest}
                                        :non-nil #{:archived :definition :name :show_in_getting_started})
-        ;; TODO (Cam 10/1/25) -- update segments to persist MBQL 5
-        new-def    (->> clean-body :definition #_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize-fragment [:query]))
+        new-def    (when-let [def (:definition clean-body)]
+                     (cond->> def
+                       (not= :mbql-version/mbql5 (lib/normalized-mbql-version def))
+                       (mbql.normalize/normalize ::mbql.s/MBQLQuery)))
         new-body   (merge
                     (dissoc clean-body :revision_message)
                     (when new-def {:definition new-def}))
@@ -90,6 +93,9 @@
             [:show_in_getting_started {:optional true} [:maybe :boolean]]]]
   (write-check-and-update-segment! id body))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :delete "/:id"
   "Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
   [{:keys [id]} :- [:map

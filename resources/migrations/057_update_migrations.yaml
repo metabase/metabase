@@ -2171,6 +2171,105 @@ databaseChangeLog:
             WHERE legacy_query IS NOT NULL;
 
   - changeSet:
+      id: v57.2025-10-09T00:00:00
+      author: jeff-bruemmer
+      comment: Add public_uuid column to document table for public sharing
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: document
+                columnName: public_uuid
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: public_uuid
+                  type: char(36)
+                  remarks: UUID for publicly-accessible version of this document
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-10-09T00:00:01
+      author: jeff-bruemmer
+      comment: Add made_public_by_id column to document table for public sharing
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: document
+                columnName: made_public_by_id
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: made_public_by_id
+                  type: int
+                  remarks: ID of the user who made this document public
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-10-09T00:00:02
+      author: jeff-bruemmer
+      comment: Add index on document.public_uuid
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: document
+                indexName: idx_document_public_uuid
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_public_uuid
+            unique: true
+            columns:
+              - column:
+                  name: public_uuid
+
+  - changeSet:
+      id: v57.2025-10-09T00:00:03
+      author: jeff-bruemmer
+      comment: Add foreign key constraint for document.made_public_by_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_document_made_public_by_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document
+            baseColumnNames: made_public_by_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_document_made_public_by_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-10-09T00:00:04
+      author: jeff-bruemmer
+      comment: Add index on document.made_public_by_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: document
+                indexName: idx_document_made_public_by_id
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_made_public_by_id
+            columns:
+              - column:
+                  name: made_public_by_id
+      rollback:
+        - empty
+
+  - changeSet:
       id: v57.2025-10-21T14:14:22
       author: wotbrew
       comment: Add column metabase_field.database_is_pk
@@ -2246,6 +2345,192 @@ databaseChangeLog:
             tableName: metabase_field
             columnName: database_default
 
+  - changeSet:
+      id: v57.2025-10-23T19:55:50
+      author: noahmoss
+      comment: Add source_type column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: source_type
+                  type: varchar(32)
+                  remarks: The type of transform ("python", "native", or "mbql")
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: transform
+            columnName: source_type
+
+  - changeSet:
+      id: v57.2025-10-23T19:56:00
+      author: noahmoss
+      comment: Backfill source_type column for existing transforms
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.BackfillTransformSourceType"
+
+  - changeSet:
+      id: v57.2025-10-23T19:57:00
+      author: noahmoss
+      comment: Make transform.source_type column NOT NULL
+      changes:
+        - addNotNullConstraint:
+            tableName: transform
+            columnName: source_type
+            columnDataType: varchar(32)
+      rollback:
+        - dropNotNullConstraint:
+            tableName: transform
+            columnName: source_type
+            columnDataType: varchar(32)
+
+  - changeSet:
+      id: v57.2025-10-27T19:01:00
+      author: qnkhuat
+      comment: Usage analytics; Add documents to content view
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v5/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v5/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v5/h2-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v3/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v4/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v3/h2-content.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-11-03T10:00:00
+      author: metamben
+      comment: Add creator_id column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: creator_id
+                  remarks: User who created this transform
+                  type: int
+                  defaultValue: 13371338
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-11-03T10:00:01
+      author: metamben
+      comment: Add index on transform.creator_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v57.2025-11-03T10:00:02
+      author: metamben
+      comment: Add foreign key constraint for transform.creator_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_transform_ref_creator_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-11-13T22:27:19
+      author: nvoxland
+      comment: Update old remote-sync settings
+      changes:
+        - sql:
+            dbms: mariadb,mysql
+            splitStatements: true
+            sql: |
+                UPDATE setting
+                SET value = 'read-write'
+                WHERE `key`='remote-sync-type' AND value='development';
+
+                UPDATE setting
+                SET value = 'read-only'
+                WHERE `key`='remote-sync-type' AND value='production';
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: |
+                UPDATE setting
+                SET value = 'read-write'
+                WHERE key='remote-sync-type' AND value='development';
+
+                UPDATE setting
+                SET value = 'read-only'
+                WHERE key='remote-sync-type' AND value='production';
+        - sql:
+            dbms: h2
+            splitStatements: true
+            sql: |
+                UPDATE setting
+                SET "VALUE" = 'read-write'
+                WHERE "KEY"='remote-sync-type' AND "VALUE"='development';
+
+                UPDATE setting
+                SET "VALUE" = 'read-only'
+                WHERE "KEY"='remote-sync-type' AND "VALUE"='production';
+      rollback:
+        - sql:
+            dbms: mariadb,mysql
+            splitStatements: true
+            sql: |
+              UPDATE setting
+              SET value = 'development'
+              WHERE `key`='remote-sync-type' AND value='read-write';
+
+              UPDATE setting
+              SET value = 'production'
+              WHERE `key`='remote-sync-type' AND value='read-only';
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: |
+              UPDATE setting
+              SET value = 'development'
+              WHERE key='remote-sync-type' AND value='read-write';
+
+              UPDATE setting
+              SET value = 'production'
+              WHERE key='remote-sync-type' AND value='read-only';
+        - sql:
+            dbms: h2
+            splitStatements: true
+            sql: |
+              UPDATE setting
+              SET "VALUE" = 'development'
+              WHERE "KEY"='remote-sync-type' AND "VALUE"='read-write';
+
+              UPDATE setting
+              SET "VALUE" = 'production'
+              WHERE "KEY"='remote-sync-type' AND "VALUE"='read-only';
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

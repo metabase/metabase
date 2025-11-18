@@ -8,9 +8,12 @@
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.api :as api.database]
+   [metabase.warehouses-rest.api :as api.database]
    [toucan2.core :as t2]))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :post "/destination-database"
   "Create new Destination Databases.
 

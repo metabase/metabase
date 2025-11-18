@@ -9,7 +9,7 @@ export const getContinueButtonText = (optionValue?: OptionValue) => {
     case "new-branch":
       return t`Push changes`;
     case "discard":
-      return t`Discard changes`;
+      return t`Delete unsynced changes`;
     default:
       return t`Continue`;
   }

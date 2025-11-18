@@ -105,8 +105,8 @@
   (let [is-crufty? (if (and (= sync-stage ::update)
                             (not (:is_attached_dwh database)))
                      ;; TODO: we should add an updated_by column to metabase_table in
-                     ;; [[metabase.warehouse-schema.api.table/update-table!*]] to track occasions where the table was
-                     ;; updated by an admin, and respect their choices during an update.
+                     ;; [[metabase.warehouse-schema-rest.api.table/update-table!*]] to track occasions where the table
+                     ;; was updated by an admin, and respect their choices during an update.
                      ;;
                      ;; This will fix the issue where a table is marked as visible, but cruftiness settings keep re-hiding it
                      ;; during update steps. This is also how we handled this before the addition of auto-cruft-tables.
@@ -205,7 +205,6 @@
   [table-metadata :- i/DatabaseMetadataTable
    metabase-table :- (ms/InstanceOf :model/Table)
    metabase-database :- (ms/InstanceOf :model/Database)]
-  (log/infof "Updating table metadata for %s" (sync-util/name-for-logging metabase-table))
   (let [old-table               (select-keys metabase-table keys-to-update)
         new-table               (-> (zipmap keys-to-update (repeat nil))
                                     (merge table-metadata
@@ -312,7 +311,7 @@
         ;; we're just using this as a cheap namespace
         suffix (str "__mbarchiv__" (.toEpochSecond (t/offset-date-time)))
         threshold-expr (apply
-                        (requiring-resolve 'metabase.driver.sql.query-processor/add-interval-honeysql-form)
+                        (requiring-resolve 'metabase.util.honey-sql-2/add-interval-honeysql-form)
                         (mdb/db-type) :%now archive-tables-threshold)
         tables-to-archive (t2/select :model/Table
                                      :db_id (u/the-id database)

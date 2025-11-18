@@ -48,8 +48,9 @@ const isDevMode = IS_DEV_MODE;
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
 
 // If you want to test metabase locally with a custom domain, either use
-// `metabase.local` or add your custom domain via the `MB_TEST_CUSTOM_DOMAINS`
-// environment variable so that rspack will allow requests from them.
+// `metabase.localhost` (anything .localhost should work out of the box) or add
+// your custom domain via the `MB_TEST_CUSTOM_DOMAINS` environment variable so
+// that rspack will allow requests from them.
 const TEST_CUSTOM_DOMAINS =
   process.env.MB_TEST_CUSTOM_DOMAINS?.split(",")
     .map((domain) => domain.trim())
@@ -235,7 +236,10 @@ const config = {
       // with ie11 point to the minified version
       icepick: __dirname + "/node_modules/icepick/icepick.min",
       // conditionally load either the EE plugins file or a empty file in the CE code tree
-      "ee-plugins": resolveEnterprisePathOrNoop("/plugins"),
+      "ee-plugins":
+        process.env.MB_EDITION === "ee"
+          ? ENTERPRISE_SRC_PATH + "/plugins"
+          : SRC_PATH + "/plugins/noop",
       "ee-overrides": resolveEnterprisePathOrNoop("/overrides"),
       embedding: EMBEDDING_SRC_PATH,
       "embedding-sdk-package": SDK_PACKAGE_SRC_PATH,
@@ -244,7 +248,10 @@ const config = {
       "sdk-iframe-embedding-ee-plugins": resolveEnterprisePathOrNoop(
         "/sdk-iframe-embedding-plugins",
       ),
-      "sdk-ee-plugins": resolveEnterprisePathOrNoop("/sdk-plugins"),
+      "sdk-ee-plugins":
+        process.env.MB_EDITION === "ee"
+          ? ENTERPRISE_SRC_PATH + "/sdk-plugins"
+          : SRC_PATH + "/plugins/noop",
       "sdk-specific-imports": SRC_PATH + "/lib/noop",
     },
     fallback: {
@@ -354,7 +361,7 @@ if (shouldEnableHotRefresh) {
     headers: {
       "Access-Control-Allow-Origin": "*",
     },
-    allowedHosts: ["localhost", "metabase.local", ...TEST_CUSTOM_DOMAINS],
+    allowedHosts: ["localhost", ...TEST_CUSTOM_DOMAINS],
     // tweak stats to make the output in the console more legible
     devMiddleware: {
       stats: { preset: "errors-warnings", timings: true },

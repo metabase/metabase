@@ -76,11 +76,13 @@ export default class LeafletMarkerPinMap extends LeafletMap {
     for (let i = 0; i < max; i++) {
       if (i >= wrappedPoints.length) {
         pinMarkerLayer.removeLayer(markers[i]); // remove excess markers
+        continue;
       }
+
+      const index =
+        wrappedPoints.length > points.length ? wrappedPoints[i][2] : i;
       if (i >= markers.length) {
         // create new markers for new points
-        const index = shouldGetWrappedPoints ? wrappedPoints[i][2] : i;
-
         const marker = this._createMarker(index);
         pinMarkerLayer.addLayer(marker);
         markers.push(marker);
@@ -91,6 +93,8 @@ export default class LeafletMarkerPinMap extends LeafletMap {
         // if any marker doesn't match the point, update it
         if (lng !== wrappedPoints[i][0] || lat !== wrappedPoints[i][1]) {
           markers[i].setLatLng(wrappedPoints[i].slice(0, 2));
+          // we need to re-attach the pointer events because the indexes might have changed from zooming
+          this._setupMarkerEvents(markers[i], index);
         }
       }
     }
@@ -98,6 +102,13 @@ export default class LeafletMarkerPinMap extends LeafletMap {
 
   _createMarker = (rowIndex) => {
     const marker = L.marker([0, 0], { icon: this.pinMarkerIcon });
+    return this._setupMarkerEvents(marker, rowIndex);
+  };
+
+  _setupMarkerEvents = (marker, rowIndex) => {
+    marker.off("mousemove");
+    marker.off("mouseout");
+    marker.off("click");
     marker.on("mousemove", () => {
       const { onHoverChange } = this.props;
       if (!onHoverChange) {

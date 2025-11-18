@@ -15,7 +15,7 @@
   (try
     {:structured_output
      (->> (api.transforms/get-transforms)
-          (into [] (comp (map #(select-keys % [:id :entity_id :name :description :source]))
+          (into [] (comp (map #(select-keys % [:id :entity_id :name :type :description :source]))
                          (filter #(or (transforms/python-transform? %)
                                       (transforms/native-query-transform? %))))))}
     (catch Exception e

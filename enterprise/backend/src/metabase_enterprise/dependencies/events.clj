@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -11,6 +12,23 @@
 ;; The below listens for inserts, updates and deletes of cards, snippets and transforms in order to keep the
 ;; dependency graph up to date. Transform *runs* are also a trigger, since the transform's output table may be created
 ;; or changed at that point.
+
+(defmacro ignore-errors
+  "Ignore errors.
+
+  In practice, we cannot reliably distinguish permanent and temporary errors, so in principle
+  every error should be retried a few times. Unfortunately that doesn't work, because updating the
+  dependency_analysis_version field itself is a trigger for new analysis, so the caller has no
+  way to give up and commit the new version after a few retries. We stop on every error until this
+  becomes a serious enough issue, at which point we will have to redesign version marking and
+  analysis triggering."
+  {:style/indent 0}
+  [& body]
+  `(try
+     ~@body
+     (catch Throwable e#
+       (log/error e# "Dependency calculation failed")
+       nil)))
 
 ;; ### Cards
 (derive ::card-deps :metabase/event)
@@ -21,7 +39,9 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
-      (models.dependency/replace-dependencies! :card (:id object) (deps.calculation/upstream-deps:card object))
+      (models.dependency/replace-dependencies! :card (:id object)
+                                               (ignore-errors
+                                                (deps.calculation/upstream-deps:card object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Card (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -43,7 +63,9 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
-      (models.dependency/replace-dependencies! :snippet (:id object) (deps.calculation/upstream-deps:snippet object))
+      (models.dependency/replace-dependencies! :snippet (:id object)
+                                               (ignore-errors
+                                                (deps.calculation/upstream-deps:snippet object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/NativeQuerySnippet (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -90,7 +112,9 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
-      (models.dependency/replace-dependencies! :transform (:id object) (deps.calculation/upstream-deps:transform object))
+      (models.dependency/replace-dependencies! :transform (:id object)
+                                               (ignore-errors
+                                                (deps.calculation/upstream-deps:transform object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Transform (:id object) {:dependency_analysis_version models.dependency/current-dependency-analysis-version}))
       (drop-outdated-target-dep! object))))
@@ -136,7 +160,9 @@
                               (t2/select-fn-set :card_id :model/DashboardCardSeries
                                                 :dashboardcard_id [:in (map :id dashcards)]))
             dashboard (assoc object :dashcards dashcards :series-card-ids series-card-ids)]
-        (models.dependency/replace-dependencies! :dashboard dashboard-id (deps.calculation/upstream-deps:dashboard dashboard)))
+        (models.dependency/replace-dependencies! :dashboard dashboard-id
+                                                 (ignore-errors
+                                                  (deps.calculation/upstream-deps:dashboard dashboard))))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Dashboard (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -158,7 +184,9 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
-      (models.dependency/replace-dependencies! :document (:id object) (deps.calculation/upstream-deps:document object))
+      (models.dependency/replace-dependencies! :document (:id object)
+                                               (ignore-errors
+                                                (deps.calculation/upstream-deps:document object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Document (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -180,7 +208,8 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
-      (models.dependency/replace-dependencies! :sandbox (:id object) (deps.calculation/upstream-deps:sandbox object))
+      (models.dependency/replace-dependencies! :sandbox (:id object) (ignore-errors
+                                                                      (deps.calculation/upstream-deps:sandbox object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Sandbox (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))

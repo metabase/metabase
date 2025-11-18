@@ -11,6 +11,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.events.core :as events]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -34,7 +35,12 @@
                               [:force {:optional true} :boolean]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (let [task-id (impl/async-import! (or branch (settings/remote-sync-branch)) force {})]
+  (let [branch-name (or branch (settings/remote-sync-branch))
+        {task-id :id :as task} (impl/async-import! branch-name force {})]
+    (events/publish-event! :event/remote-sync-import
+                           {:object task
+                            :details {:branch branch-name}
+                            :user-id api/*current-user-id*})
     {:status :success
      :task_id task-id
      :message (when-not task-id "No changes since last import")}))
@@ -75,11 +81,17 @@
                                        [:force {:optional true} :boolean]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (api/check-400 (= (settings/remote-sync-type) :development) "Exports are only allowed when remote-sync-type is set to 'development'")
-  {:message "Export task started"
-   :task_id (impl/async-export! (or branch (settings/remote-sync-branch))
-                                (or force false)
-                                (or message "Exported from Metabase"))})
+  (api/check-400 (= (settings/remote-sync-type) :read-write) "Exports are only allowed when remote-sync-type is set to 'read-write'")
+  (let [branch-name (or branch (settings/remote-sync-branch))
+        {task-id :id :as task} (impl/async-export! branch-name
+                                                   (or force false)
+                                                   (or message "Exported from Metabase"))]
+    (events/publish-event! :event/remote-sync-export
+                           {:object task
+                            :details {:branch branch-name}
+                            :user-id api/*current-user-id*})
+    {:message "Export task started"
+     :task_id task-id}))
 
 (api.macros/defendpoint :get "/current-task" :- [:maybe remote-sync.schema/SyncTask]
   "Get the current sync task"
@@ -103,17 +115,20 @@
    :- [:map
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]
-       [:remote-sync-type {:optional true} [:maybe [:enum :production :development]]]
+       [:remote-sync-type {:optional true} [:maybe [:enum :read-only :read-write]]]
        [:remote-sync-branch {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  (api/check-400 (not (and (remote-sync.object/dirty-global?) (= :production remote-sync-type)))
-                 "There are unsaved changes in the Remote Sync collection which will be overwritten switching to production mode.")
+  (api/check-400 (not (and (remote-sync.object/dirty-global?) (= :read-only remote-sync-type)))
+                 "There are unsaved changes in the Remote Sync collection which will be overwritten switching to read-only mode.")
   (try
     (settings/check-and-update-remote-settings! settings)
     (catch Exception e
       (throw (ex-info (or (ex-message e) "Invalid settings")
                       {:error       (ex-message e)
                        :status-code 400} e))))
+  (events/publish-event! :event/remote-sync-settings-update
+                         {:details {:remote-sync-type remote-sync-type}
+                          :user-id api/*current-user-id*})
   (let [task-id (impl/finish-remote-config!)]
     (if task-id
       {:success true
@@ -153,6 +168,10 @@
     (try
       (source.p/create-branch source name base-branch)
       (settings/remote-sync-branch! name)
+      (events/publish-event! :event/remote-sync-create-branch
+                             {:details {:branch_name name
+                                        :base_branch base-branch}
+                              :user-id api/*current-user-id*})
       {:status "success"
        :message (format "Branch '%s' created from '%s'" name base-branch)}
       (catch Exception e
@@ -168,14 +187,19 @@
                                                  [:new_branch ms/NonBlankString]
                                                  [:message ms/NonBlankString]]]
   (api/check-superuser)
-  (api/check-400 (= (settings/remote-sync-type) :development) "Stash is only allowed when remote-sync-type is set to 'development'")
+  (api/check-400 (= (settings/remote-sync-type) :read-write) "Stash is only allowed when remote-sync-type is set to 'read-write'")
   (let [source (source/source-from-settings)]
     (api/check-400 source  "Source not configured")
     (try
       (source.p/create-branch source new-branch (settings/remote-sync-branch))
-      {:status "success"
-       :message (str "Stashing to " new-branch)
-       :task_id (impl/async-export! new-branch false message)}
+      (let [{task-id :id :as task} (impl/async-export! new-branch false message)]
+        (events/publish-event! :event/remote-sync-stash
+                               {:object task
+                                :details {:branch new-branch}
+                                :user-id api/*current-user-id*})
+        {:status "success"
+         :message (str "Stashing to " new-branch)
+         :task_id task-id})
       (catch Exception e
         (throw (ex-info (format "Failed to stash changes to branch: %s" (ex-message e))
                         {:status-code 400}))))))

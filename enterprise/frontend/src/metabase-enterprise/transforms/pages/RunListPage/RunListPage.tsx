@@ -10,8 +10,9 @@ import {
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
-import { POLLING_INTERVAL } from "metabase-enterprise/transforms/constants";
 import type { TransformRun } from "metabase-types/api";
+
+import { POLLING_INTERVAL } from "../../constants";
 
 import { RunFilterList } from "./RunFilterList";
 import { RunList } from "./RunList";

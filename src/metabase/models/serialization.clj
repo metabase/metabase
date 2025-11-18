@@ -1111,12 +1111,15 @@
   [form]
   (mbql.normalize/is-clause? #{:field :field-id :fk-> :dimension :metric :segment} form))
 
+(defn- normalize [mbql]
+  (if-not (mbql-entity-reference? mbql)
+    mbql
+    (into [(keyword (first mbql))] (map normalize) (rest mbql))))
+
 (defn- mbql-id->fully-qualified-name
   [mbql]
   (-> mbql
-      ;; legacy usages -- do not use in new code
-      #_{:clj-kondo/ignore [:deprecated-var]}
-      mbql.normalize/normalize-tokens
+      normalize
       (lib.util.match/replace
         ;; `integer?` guard is here to make the operation idempotent
         [:field (id :guard integer?) opts]

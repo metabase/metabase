@@ -20,8 +20,9 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.lib.core :as lib]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
@@ -53,7 +54,12 @@
    (java.util Locale)
    (java.util.concurrent CountDownLatch TimeoutException)
    (org.eclipse.jetty.server Server)
-   (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
+   (org.quartz
+    CronTrigger
+    JobDetail
+    JobKey
+    Scheduler
+    Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
@@ -325,10 +331,7 @@
    (fn [_]
      {:name (str "Test Transform " (u/generate-nano-id))
       :source {:type  "query"
-               :query {:database (data/id)
-                       :type     "native"
-                       :native   {:query         "SELECT 1 as num"
-                                  :template-tags {}}}}
+               :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
       :target {:type "table"
                :name (str "test_table_" (u/generate-nano-id))}})
 
@@ -600,7 +603,7 @@
   The token-value binding will contain the random token that was set."
   [[token-value] & body]
   `(let [~token-value (premium-features.test-util/random-token)]
-     (with-redefs [metabase.premium-features.token-check/fetch-token-status
+     (with-redefs [metabase.premium-features.token-check/check-token
                    (constantly {:valid    true
                                 :status   "fake"
                                 :features ["test" "fixture"]
@@ -1548,6 +1551,16 @@
   "Encodes bytes in base64 and wraps with data-uri similar to mimic browser uploads."
   [^bytes bs]
   (str "data:application/octet-stream;base64," (u/encode-base64-bytes bs)))
+
+(defn format-env-key ^String [env-key]
+  (let [[_ header body footer]
+        (re-find #"(?s)(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
+    (str header (str/replace body #"\s+|\\n" "\n") footer)))
+
+(defn priv-key->base64-uri [priv-key]
+  (-> (format-env-key priv-key)
+      u/string-to-bytes
+      bytes->base64-data-uri))
 
 (defn works-after
   "Returns a function which works as `f` except that on the first `n` calls an

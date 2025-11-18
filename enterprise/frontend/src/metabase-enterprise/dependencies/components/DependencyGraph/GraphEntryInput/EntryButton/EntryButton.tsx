@@ -8,7 +8,7 @@ import { getNodeIcon, getNodeLabel } from "../../utils";
 
 type EntryButtonProps = {
   node: DependencyNode | null;
-  onEntryChange: (entry: DependencyEntry | null) => void;
+  onEntryChange: (entry: DependencyEntry | undefined) => void;
   onPickerOpen: () => void;
 };
 
@@ -19,7 +19,7 @@ export function EntryButton({
 }: EntryButtonProps) {
   const handleIconClick = (event: MouseEvent) => {
     event.stopPropagation();
-    onEntryChange(null);
+    onEntryChange(undefined);
   };
 
   return (

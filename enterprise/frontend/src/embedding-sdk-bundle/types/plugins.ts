@@ -38,6 +38,10 @@ export type MetabaseDashboardPluginsConfig = {
 export type MetabasePluginsConfig = {
   mapQuestionClickActions?: MetabaseClickActionPluginsConfig;
   dashboard?: MetabaseDashboardPluginsConfig;
+};
+
+export type MetabaseGlobalPluginsConfig = MetabasePluginsConfig & {
+  handleLink?: (url: string) => { handled: boolean };
   /**
    * Provides a custom illustration to display when there is no data.
    *

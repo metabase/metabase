@@ -213,8 +213,9 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       PR_NUMBER: ${{ github.event.pull_request.number || '' }}
       HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
-      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
-      CYPRESS_IS_EMBEDDING_SDK: "true"
+      MB_RUN_MODE: e2e
+      METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
       SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
@@ -343,8 +344,9 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       PR_NUMBER: ${{ github.event.pull_request.number || '' }}
       HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
-      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
-      CYPRESS_IS_EMBEDDING_SDK: "true"
+      MB_RUN_MODE: e2e
+      METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
       HOST_APP_ENVIRONMENT: ${{ matrix.environment }}

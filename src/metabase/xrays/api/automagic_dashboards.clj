@@ -220,6 +220,8 @@
             (update dashboard :dashcards normalize-dashcards))]
     (queries/batch-fetch-dashboard-metadata [(normalize-dashboard dashboard)])))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/query_metadata"
   "Return all metadata for an automagic dashboard for entity `entity` with id `id`."
   [{:keys [entity entity-id-or-query]} :- [:map
@@ -314,6 +316,8 @@
                                             :dashcard.background false
                                             :text.align_vertical :bottom}}])}))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/model_index/:model-index-id/primary_key/:pk-id"
   "Return an automagic dashboard for an entity detail specified by `entity`
   with id `id` and a primary key of `indexed-value`."

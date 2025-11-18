@@ -15,8 +15,8 @@ export const EMBED_FLOW_DERIVED_COLORS_CONFIG: EmbedFlowDerivedDefaultColorConfi
       dark: { source: "background", lighten: 0.2 },
     },
     "background-secondary": {
-      light: { source: "background", darken: 0.05 },
-      dark: { source: "background", lighten: 0.5 },
+      light: { source: "background", darken: 0.02 },
+      dark: { source: "background", darken: 0.2 },
     },
     "background-light": {
       light: { source: "background", darken: 0.02 },

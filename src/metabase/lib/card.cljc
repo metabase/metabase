@@ -1,8 +1,9 @@
 (ns metabase.lib.card
-  (:refer-clojure :exclude [mapv select-keys])
+  (:refer-clojure :exclude [mapv select-keys empty? not-empty])
   (:require
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.computed :as lib.computed]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -21,7 +22,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [mapv select-keys]]))
+   [metabase.util.performance :as perf :refer [mapv select-keys empty? not-empty]]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/card
   [_query _stage-number card-metadata _style]
@@ -102,7 +103,7 @@
         (merge (when card-id
                  {:lib/source :source/card, :lib/card-id card-id}))
         ;; :effective-type is required, but not always set, see e.g.,
-        ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
+        ;; [[metabase.warehouse-schema-rest.api.table/card-result-metadata->virtual-fields]]
         (u/assoc-default :effective-type (:base-type col))
         ;; add original display name IF not already present AND we have a value
         (->> (lib.normalize/normalize ::lib.schema.metadata/column)))))
@@ -251,18 +252,21 @@
    _stage-number :- :int
    card          :- ::lib.schema.metadata/card
    options       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
-  (mapv (fn [col]
-          (assoc col :lib/source :source/card, :lib/card-id (:id card)))
-        (if (= (:type card) :metric)
-          (let [metric-query (-> card
-                                 :dataset-query
-                                 (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
-            (lib.metadata.calculation/returned-columns
-             (assoc metric-query :lib/metadata (:lib/metadata query))
-             -1
-             (lib.util/query-stage metric-query -1)
-             options))
-          (card-returned-columns query card))))
+  (lib.computed/with-cache-sticky* query
+    [::returned-columns (:id card) (lib.metadata.calculation/cacheable-options options)]
+    (fn []
+      (mapv (fn [col]
+              (assoc col :lib/source :source/card, :lib/card-id (:id card)))
+            (if (= (:type card) :metric)
+              (let [metric-query (-> card
+                                     :dataset-query
+                                     (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
+                (lib.metadata.calculation/returned-columns
+                 (assoc metric-query :lib/metadata (:lib/metadata query))
+                 -1
+                 (lib.util/query-stage metric-query -1)
+                 options))
+              (card-returned-columns query card))))))
 
 (mu/defn source-card-type :- [:maybe ::lib.schema.metadata/card.type]
   "The type of the query's source-card, if it has one."

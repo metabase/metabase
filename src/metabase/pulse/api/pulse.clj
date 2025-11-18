@@ -75,6 +75,9 @@
                 (fn [channels]
                   (map #(dissoc % :recipients) channels))))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Fetch all dashboard subscriptions. By default, returns only subscriptions for which the current user has write
   permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.
@@ -232,6 +235,8 @@
   ;; return updated Pulse
   (models.pulse/retrieve-pulse id))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
@@ -273,6 +278,8 @@
        :context     :pulse
        :card-id     card-id}))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."
   [{:keys [id]} :- [:map
@@ -288,6 +295,8 @@
                                                               result
                                                               {:channel.render/include-title? true, :channel.render/include-buttons? true})]])}))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/preview_dashboard/:id"
   "Get HTML rendering of a Dashboard with `id`.
 
@@ -309,6 +318,8 @@
               [:body [:h2 (format "Backend Artifacts Preview for Dashboard %s" id)]
                (channel.render/render-dashboard-to-html id)]))})
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
   [{:keys [id]} :- [:map
@@ -331,6 +342,8 @@
 
 (def ^:private preview-card-width 400)
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/preview_card_png/:id"
   "Get PNG rendering of a Card with `id`. Optionally specify `width` as a query parameter."
   [{:keys [id]} :- [:map

@@ -1,8 +1,18 @@
 import { Fragment, useMemo } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
-import { Box, Divider, Group, Icon, Paper, Stack, Title } from "metabase/ui";
+import {
+  Box,
+  Divider,
+  Group,
+  Icon,
+  Paper,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import {
   buildCollectionMap,
   getCollectionPathSegments,
@@ -45,6 +55,14 @@ export const AllChangesView = ({
 
     return map;
   }, [collectionTree, collections]);
+
+  const hasRemovals = useMemo(() => {
+    return (
+      entities.findIndex((e) =>
+        ["removed", "delete"].includes(e.sync_status),
+      ) >= 0
+    );
+  }, [entities]);
 
   const groupedData = useMemo(() => {
     const byCollection = _.groupBy(entities, (e) => e.collection_id || 0);
@@ -150,6 +168,14 @@ export const AllChangesView = ({
           ))}
         </Stack>
       </Paper>
+      {hasRemovals && (
+        <Text
+          c="error"
+          fz="sm"
+          lh="sm"
+          mt="sm"
+        >{t`Other instances using this library may have items that depend on the items you're removing.`}</Text>
+      )}
     </Box>
   );
 };

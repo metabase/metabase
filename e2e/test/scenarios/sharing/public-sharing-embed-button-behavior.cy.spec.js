@@ -261,8 +261,55 @@ describe("#39152 sharing an unsaved question", () => {
   });
 });
 
-["dashboard", "question"].forEach((resource) => {
-  H.describeWithSnowplow(`public ${resource} sharing snowplow events`, () => {
+[
+  {
+    resource: "dashboard",
+    apiPath: "dashboard",
+  },
+  {
+    resource: "question",
+    apiPath: "card",
+  },
+].forEach(({ resource, apiPath }) => {
+  describe(`static modal behavior for ${resource}`, () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.enableTracking();
+
+      createResource(resource).then(({ body }) => {
+        cy.wrap(body.id).as("resourceId");
+      });
+    });
+
+    it("should set a proper embedding_type", () => {
+      cy.get("@resourceId").then((id) => {
+        visitResource(resource, id);
+      });
+
+      H.openStaticEmbeddingModal({ activeTab: "parameters" });
+
+      H.publishChanges(apiPath, ({ request, response }) => {
+        assert.deepEqual(request.body.embedding_type, "static-legacy");
+        assert.deepEqual(response.body.embedding_type, "static-legacy");
+      });
+
+      H.modal().button("Price").click();
+      H.popover().findByText("Editable").click();
+
+      H.publishChanges(apiPath, ({ request, response }) => {
+        assert.deepEqual(request.body.embedding_type, "static-legacy");
+        assert.deepEqual(response.body.embedding_type, "static-legacy");
+      });
+
+      H.unpublishChanges(apiPath, ({ request, response }) => {
+        assert.deepEqual(request.body.embedding_type, null);
+        assert.deepEqual(response.body.embedding_type, null);
+      });
+    });
+  });
+
+  describe(`public ${resource} sharing snowplow events`, () => {
     beforeEach(() => {
       H.restore();
       H.resetSnowplow();

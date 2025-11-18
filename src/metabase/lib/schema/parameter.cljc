@@ -95,7 +95,7 @@
    ;;
    ;; TODO FIXME -- actually, it turns out the the FE client passes parameter type `:category` for parameters in
    ;; public Cards. Who knows why! For now, we'll continue allowing it. But we should fix it soon. See
-   ;; [[metabase.public-sharing.api-test/execute-public-card-with-parameters-test]]
+   ;; [[metabase.public-sharing-rest.api-test/execute-public-card-with-parameters-test]]
    :id       {:allowed-for #{:id}}
    :category {:allowed-for #{:category #_FIXME :number :text :date :boolean}}
 
@@ -153,9 +153,10 @@
                                     ;; a lot of broken code in Actions was setting param types to invalid things like
                                     ;; `:type/Text`... fix it
                                     (when-let [param-type (lib.schema.common/normalize-keyword param-type)]
-                                      (if (= (namespace param-type) "type")
-                                        (keyword (u/lower-case-en (name param-type)))
-                                        param-type)))}]
+                                      (cond
+                                        (= (namespace param-type) "type") (keyword (u/lower-case-en (name param-type)))
+                                        (= param-type :category/=)        :category
+                                        :else                             param-type)))}]
         (keys types)))
 
 (mr/def ::widget-type
@@ -207,20 +208,11 @@
 ;;; update [[metabase.lib.convert]] to convert `:parameters` back and forth and add UUIDs and what not. But parameters
 ;;; is not ported to MLv2 yet, so conversion isn't implemented YET.
 
-(defn- normalize-legacy-ref [legacy-ref]
-  (if (pos-int? legacy-ref)
-    [:field legacy-ref nil]
-    ((#?(:clj requiring-resolve :cljs resolve) 'metabase.legacy-mbql.normalize/normalize-field-ref) legacy-ref)))
-
 (mr/def ::target.legacy-field-ref
-  [:ref
-   {:decode/normalize normalize-legacy-ref}
-   :metabase.legacy-mbql.schema/field])
+  [:ref :metabase.legacy-mbql.schema/field])
 
 (mr/def ::target.legacy-expression-ref
-  [:ref
-   {:decode/normalize normalize-legacy-ref}
-   :metabase.legacy-mbql.schema/expression])
+  [:ref :metabase.legacy-mbql.schema/expression])
 
 (mr/def ::dimension.target
   [:multi {:dispatch lib.schema.common/mbql-clause-tag

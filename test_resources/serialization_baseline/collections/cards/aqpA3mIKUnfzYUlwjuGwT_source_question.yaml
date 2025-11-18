@@ -13,6 +13,7 @@ database_id: My Database
 table_id: null
 enable_embedding: false
 embedding_params: null
+embedding_type: null
 made_public_by_id: null
 public_uuid: null
 parameters: []

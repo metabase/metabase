@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.source.ingestable :as ingestable]
+   [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.test.fixtures :as fixtures]
@@ -12,10 +13,10 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest ingestable-source-test
-  (testing "IngestableSource wraps a source and provides Ingestable interface"
+(deftest ingestable-snapshot-test
+  (testing "IngestableSnapshot wraps a snapshot and provides Ingestable interface"
     (let [mock-source (test-helpers/create-mock-source)
-          ingestable (ingestable/->IngestableSource mock-source (atom nil))]
+          ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil))]
 
       (testing "ingest-list returns list of serdes paths"
         (let [paths (serialization/ingest-list ingestable)]
@@ -31,7 +32,7 @@
           (is (contains? entity :serdes/meta) "Should have serdes/meta key")))
 
       (testing "cache is populated after first ingest-list call"
-        (let [ingestable (ingestable/->IngestableSource mock-source (atom nil))]
+        (let [ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil))]
           (is (nil? @(:cache ingestable)) "Cache should be empty initially")
           (serialization/ingest-list ingestable)
           (is (map? @(:cache ingestable)) "Cache should be populated after ingest-list")
@@ -40,7 +41,7 @@
 (deftest callback-ingestable-test
   (testing "CallbackIngestable wraps an ingestable and calls callback on ingest-one"
     (let [mock-source (test-helpers/create-mock-source)
-          base-ingestable (ingestable/->IngestableSource mock-source (atom nil))
+          base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil))
           calls (atom [])
           callback (fn [_ path] (swap! calls conj path))
           wrapped (ingestable/->CallbackIngestable base-ingestable callback)]
@@ -72,13 +73,13 @@
     (mt/with-model-cleanup [:model/User :model/RemoteSyncTask]
       (let [user (first (t2/insert-returning-instances! :model/User {:first_name "Test"
                                                                      :last_name "User"
-                                                                     :email "test@example.com"
+                                                                     :email "test2@example.com"
                                                                      :password "password123"}))
             task (first (t2/insert-returning-instances! :model/RemoteSyncTask {:sync_task_type "import"
                                                                                :initiated_by (:id user)}))
             task-id (:id task)
             mock-source (test-helpers/create-mock-source)
-            base-ingestable (ingestable/->IngestableSource mock-source (atom nil))
+            base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil))
             normalize 100]
 
         (testing "creates a CallbackIngestable"
@@ -123,7 +124,7 @@
 (deftest root-dependency-ingestable-test
   (testing "RootDependencyIngestable filters items based on root dependencies"
     (let [mock-source (test-helpers/create-mock-source)
-          base-ingestable (ingestable/->IngestableSource mock-source (atom nil))]
+          base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil))]
 
       (testing "with no root dependencies, returns empty list"
         (let [wrapped (ingestable/wrap-root-dep-ingestable [] base-ingestable)

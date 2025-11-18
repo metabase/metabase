@@ -1,6 +1,6 @@
 (ns metabase.query-processor.card
   "Code for running a query in the context of a specific Card."
-  (:refer-clojure :exclude [mapv select-keys])
+  (:refer-clojure :exclude [mapv select-keys not-empty])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -33,7 +33,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv select-keys]]
+   [metabase.util.performance :refer [mapv select-keys not-empty]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 

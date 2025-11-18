@@ -17,7 +17,7 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(defmacro ^:private with-scheduler-setup! [& body]
+(defmacro with-scheduler-setup! [& body]
   `(let [scheduler# (#'tu/in-memory-scheduler)]
      ;; need cross thread rebinding from with-redefs not a binding
      (with-redefs [task/scheduler (constantly scheduler#)]

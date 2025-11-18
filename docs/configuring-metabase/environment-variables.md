@@ -747,6 +747,14 @@ Keyword setting to control whitelabeling of the help link. Valid values are `:me
 
 Custom URL for the help link.
 
+### `MB_HIDE_STACKTRACES`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `hide-stacktraces`
+
+Prevent the exception middleware from including stacktraces in responses.
+
 ### `MB_HTTP_CHANNEL_HOST_STRATEGY`
 
 - Type: keyword
@@ -1246,6 +1254,15 @@ The base URL where dashboard notitification links will point to instead of the M
 
 The size of the thread pool used to send system event notifications.
 
+### `MB_NOTIFICATION_TEMP_FILE_SIZE_MAX_BYTES`
+
+- Type: integer
+- Default: `10485760`
+
+The maximum file size that will be created when storing notification query results on disk.
+  Note this is in BYTES. Default value is 10485760 which is `10 * 1024 * 1024`. To disable this size limit set the
+  value to 0.
+
 ### `MB_NOTIFICATION_THREAD_POOL_SIZE`
 
 - Type: integer
@@ -1305,6 +1322,30 @@ The absolute maximum time to keep any cached query results, in seconds.
 - [Configuration file name](./config-file.md): `redirect-all-requests-to-https`
 
 Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS.
+
+### `MB_REMOTE_SYNC_AUTO_IMPORT`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `remote-sync-auto-import`
+
+Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only.
+
+### `MB_REMOTE_SYNC_AUTO_IMPORT_RATE`
+
+- Type: integer
+- Default: `5`
+- [Configuration file name](./config-file.md): `remote-sync-auto-import-rate`
+
+If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
+
+### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
+
+- Type: integer
+- Default: `300000`
+- [Configuration file name](./config-file.md): `remote-sync-task-time-limit-ms`
+
+The maximum amount of time a remote sync task will be given to complete.
 
 ### `MB_REPORT_TIMEZONE`
 
@@ -1558,7 +1599,7 @@ Used for encrypting and checking whether SDK requests are signed.
 - Default: `null`
 
 When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.
-  Value must be a valid configured langauge option in your database such as 'english' or 'simple'.
+  Value must be a valid configured language option in your database such as 'english' or 'simple'.
 
 ### `MB_SEARCH_TYPEAHEAD_ENABLED`
 
@@ -1886,16 +1927,6 @@ Upload settings.
 
 Prefix for upload table names.
 
-### `MB_USE_TENANTS`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `use-tenants`
-
-Turn on the Tenants feature, allowing users to be assigned to a particular Tenant.
-
 ### `MB_USER_VISIBILITY`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -1950,7 +1981,7 @@ Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#m
 Type: integer<br>
 Default: `20`<br>
 
-Limits the number of rows Metabase will display in tables sent with dashboard subscriptions and alerts. Range: 1-100. To limit the total number of rows included in the file attachment for an email dashboard subscription, use [MB_UNAGGREGATED_QUERY_ROW_LIMIT](#mb_unaggregated_query_row_limit).
+Limits the number of rows Metabase will display in tables sent with dashboard subscriptions and alerts. Range: 1-100. To limit the total number of rows included in the file attachment for an email dashboard subscription, use [MB_ATTACHMENT_ROW_LIMIT](#mb_attachment_row_limit).
 
 ### `MB_AUDIT_MAX_RETENTION_DAYS`
 

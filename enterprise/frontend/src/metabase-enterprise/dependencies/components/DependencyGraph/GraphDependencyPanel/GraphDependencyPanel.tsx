@@ -6,7 +6,11 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { Box, Card } from "metabase/ui";
 import { useListNodeDependentsQuery } from "metabase-enterprise/api";
-import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
+import type {
+  DependencyEntry,
+  DependencyGroupType,
+  DependencyNode,
+} from "metabase-types/api";
 
 import { DEPENDENTS_SEARCH_THRESHOLD } from "../constants";
 
@@ -25,12 +29,14 @@ import {
 type GraphDependencyPanelProps = {
   node: DependencyNode;
   groupType: DependencyGroupType;
+  getGraphUrl: (entry: DependencyEntry) => string;
   onClose: () => void;
 };
 
 export function GraphDependencyPanel({
   node,
   groupType,
+  getGraphUrl,
   onClose,
 }: GraphDependencyPanelProps) {
   const {
@@ -83,7 +89,7 @@ export function GraphDependencyPanel({
           {t`Didn't find any results`}
         </Box>
       ) : (
-        <PanelBody nodes={visibleNodes} />
+        <PanelBody nodes={visibleNodes} getGraphUrl={getGraphUrl} />
       )}
     </Card>
   );

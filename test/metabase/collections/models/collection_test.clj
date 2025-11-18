@@ -2099,7 +2099,7 @@
                       (constantly #{dep-card-id})]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Model has non-remote-synced dependencies"
+               #"Uses content that is not remote synced."
                (collection/check-non-remote-synced-dependencies (t2/instance :model/Card {:id card-id})))
               "Should throw exception when dependencies exist"))))
 
@@ -2227,7 +2227,7 @@
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-card-id)})}]
         ;; This should throw an exception because the dependency (non-remote-synced-card) is not in a remote-synced collection
       (let [ex (is (thrown-with-msg? Exception
-                                     #"Model has non-remote-synced dependencies"
+                                     #"Uses content that is not remote synced."
                                      (collection/move-collection! coll (format "/%d/" parent-id) true))
                    "Should throw exception for non-remote-synced dependencies")
             ex-data (ex-data ex)]
@@ -2558,7 +2558,7 @@
                                                   :database_id (mt/id)
                                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Model has remote-synced dependents"
+                            #"Used by remote synced content."
                             (collection/check-remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id})))
           "Should throw exception when model has remote-synced dependents")
 
@@ -2596,7 +2596,7 @@
                                   :database_id (mt/id)
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Model has remote-synced dependents"
+                            #"Used by remote synced content."
                             (collection/check-remote-synced-dependents remote-synced-id (t2/instance :model/Collection {:id source-coll-id})))
           "Should throw exception when collection contains cards with remote-synced dependents"))))
 
@@ -2732,7 +2732,7 @@
         (let [ex (is (thrown? Exception
                               (collection/move-collection! child-remote-synced-collection (format "/%d/" regular-parent-id)))
                      "Should throw exception when moving collection with remote-synced dependents")]
-          (is (= "Model has remote-synced dependents" (ex-message ex))
+          (is (= "Used by remote synced content." (ex-message ex))
               "Exception should have correct message")
           (let [ex-data (ex-data ex)]
             (is (= 400 (:status-code ex-data))
@@ -2772,7 +2772,7 @@
         (let [ex (is (thrown? Exception
                               (collection/move-collection! child-remote-synced-collection (format "/%d/" regular-parent-id)))
                      "Should throw exception when moving collection with dashboard dependents")]
-          (is (= "Model has remote-synced dependents" (ex-message ex))
+          (is (= "Used by remote synced content." (ex-message ex))
               "Exception should have correct message")
           (let [ex-data (ex-data ex)]
             (is (= 400 (:status-code ex-data))
@@ -2880,7 +2880,7 @@
         (let [ex (is (thrown? Exception
                               (collection/move-collection! child-remote-synced-collection (format "/%d/" regular-parent-id)))
                      "Should throw exception when moving collection with nested dependents")]
-          (is (= "Model has remote-synced dependents" (ex-message ex))
+          (is (= "Used by remote synced content." (ex-message ex))
               "Exception should have correct message")
           (let [ex-data (ex-data ex)]
             (is (= 400 (:status-code ex-data))
@@ -3143,7 +3143,7 @@
                               (mt/with-current-user (mt/user->id :crowberto)
                                 (collection/archive-collection! child-coll)))
                      "Should throw exception when parent has dependents on child items")]
-          (is (= "Model has remote-synced dependents" (ex-message ex))
+          (is (= "Used by remote synced content." (ex-message ex))
               "Exception should have correct message")
           (let [ex-data (ex-data ex)]
             (is (= 400 (:status-code ex-data))
@@ -3250,7 +3250,7 @@
                               (mt/with-current-user (mt/user->id :crowberto)
                                 (collection/archive-collection! child-coll)))
                      "Should throw exception when parent dashboard depends on child items")]
-          (is (= "Model has remote-synced dependents" (ex-message ex))
+          (is (= "Used by remote synced content." (ex-message ex))
               "Exception should have correct message")))
 
       (testing "Collection is NOT archived when exception is thrown"

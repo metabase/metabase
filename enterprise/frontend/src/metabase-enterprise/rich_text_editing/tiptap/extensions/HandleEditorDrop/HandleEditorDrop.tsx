@@ -54,6 +54,10 @@ export const HandleEditorDrop = Extension.create({
                 return handleCardDropOnParagraph(cardEmbedInitialData);
               }
 
+              if (dropToParent.type.name === "supportingText") {
+                return true;
+              }
+
               // Check if dropping into document (not into another flexContainer or cardEmbed)
               if (
                 dropToParent.type.name !== "flexContainer" &&

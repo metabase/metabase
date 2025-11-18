@@ -32,7 +32,7 @@ const MODEL_NAME = "Test Action Model";
         );
       });
 
-      H.describeWithSnowplow("adding and executing actions", () => {
+      describe("adding and executing actions", () => {
         beforeEach(() => {
           H.resetSnowplow();
           H.restore(`${dialect}-writable`);
@@ -99,7 +99,10 @@ const MODEL_NAME = "Test Action Model";
           });
 
           // can't have this in the .within() because it needs access to document.body
-          reorderFields();
+          H.moveDnDKitListElement("drag-handle", {
+            startIndex: 1,
+            dropIndex: 0,
+          });
 
           cy.findByRole("dialog").within(() => {
             cy.findAllByText("Number").each((el) => {
@@ -124,7 +127,6 @@ const MODEL_NAME = "Test Action Model";
           addWidgetStringFilter("1");
 
           cy.findByRole("button", { name: "Update Score" }).click();
-
           cy.findByRole("dialog").within(() => {
             cy.findByLabelText("New Score").type("55");
             cy.button(ACTION_NAME).click();
@@ -440,7 +442,10 @@ const MODEL_NAME = "Test Action Model";
               );
             });
 
-            reorderFields();
+            H.moveDnDKitListElement("drag-handle", {
+              startIndex: 1,
+              dropIndex: 0,
+            });
 
             cy.findByRole("dialog").within(() => {
               cy.findAllByText("Number").each((el) => {
@@ -1351,10 +1356,6 @@ function openFieldSettings() {
 
 function toggleFieldVisibility() {
   cy.findByText("Show field").click();
-}
-
-function reorderFields() {
-  H.dragField(1, 0);
 }
 
 const clickHelper = (buttonName) => {

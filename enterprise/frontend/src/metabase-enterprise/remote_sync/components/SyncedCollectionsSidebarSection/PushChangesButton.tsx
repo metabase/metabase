@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import type { CollectionTreeItem } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView";
+import type { CollectionTreeItem } from "metabase/entities/collections";
 import { ActionIcon, Icon } from "metabase/ui";
 
 import { PushChangesModal } from "../PushChangesModal";
@@ -19,7 +19,7 @@ export const PushChangesButton = (props: PushChangesButtonProps) => {
     <>
       <ActionIcon
         aria-label={t`Push to Git`}
-        color="icon-secondary"
+        c="icon-secondary"
         h={24}
         onClick={openPush}
         px={0}

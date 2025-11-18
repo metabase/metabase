@@ -3,7 +3,12 @@
    [clojure.java.io :as io]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
+   [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase.activity-feed.core :as activity-feed]
+   [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -64,9 +69,11 @@
                      "transform" (-> item :source :query)
                      "adhoc" (-> item :query)
                      (-> item :query))]
-    (when (and (#{:native "native"} (:type query))
-               (:database query))
-      query)))
+    ;; Draft transforms might not have a database yet. Check this before attempting to normalize the query.
+    (when (:database query)
+      (when-let [normalized-query (lib-be/normalize-query query)]
+        (when (lib/native-only-query? normalized-query)
+          normalized-query)))))
 
 (defn- database-tables-for-context
   "Get database tables formatted for metabot context. Only includes tables used in the query, formatted for API output.
@@ -130,10 +137,54 @@
       (assoc context :user_is_viewing enhanced-viewing))
     context))
 
+(defn- annotate-transform-source-types
+  "Annotate transforms in context with source types if not already present (e.g. for draft transforms not yet saved)"
+  [context]
+  (if-let [user-viewing (get context :user_is_viewing)]
+    (let [annotated-viewing
+          (mapv (fn [item]
+                  (try
+                    (if (and (= (:type item) "transform")
+                             (not (:source_type item)))
+                      (let [transform (transforms.util/normalize-transform item)]
+                        (assoc transform
+                               :source_type (transforms.util/transform-source-type (:source transform))))
+                      item)
+                    (catch Exception e
+                      (log/error e "Error annotating transform source type for metabot context")
+                      item)))
+                user-viewing)]
+      (assoc context :user_is_viewing annotated-viewing))
+    context))
+
 (defn- add-backend-capabilities
   "Add backend capabilities to context, merging with any existing capabilities."
   [context]
   (update context :capabilities (fnil into #{}) (backend-metabot-capabilities)))
+
+(defn- add-recent-views
+  "Add user's recent views to the context since these have a higher likelihood of being relevant to a user's query.
+  Includes the 5 most recent items across cards, datasets, metrics, dashboards, and tables.
+  (Excludes collections and documents for now, which aren't searchable by Metabot.)"
+  [context]
+  (try
+    (let [recents (:recents (activity-feed/get-recents api/*current-user-id*
+                                                       [:views :selections]
+                                                       {:models [:card :dataset :metric :dashboard :table]}))
+          processed-recents (mapv (fn [item]
+                                    (let [item-type
+                                          (case (:model item)
+                                            :card "question"
+                                            :dataset "model"
+                                            (name (:model item)))]
+                                      (-> item
+                                          (select-keys [:id :name :description])
+                                          (assoc :type item-type))))
+                                  (take 5 recents))]
+      (assoc context :user_recently_viewed processed-recents))
+    (catch Exception e
+      (log/error e "Error adding recent views to metabot context")
+      context)))
 
 (defn- set-user-time
   [context {:keys [date-format] :or {date-format DateTimeFormatter/ISO_INSTANT}}]
@@ -151,5 +202,7 @@
     opts    :- [:maybe [:map-of :keyword :any]]]
    (-> context
        enhance-context-with-schema
+       annotate-transform-source-types
        add-backend-capabilities
+       add-recent-views
        (set-user-time opts))))

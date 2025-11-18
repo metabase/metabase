@@ -61,6 +61,9 @@
       (model-index/add-values! model-index)
       (t2/select-one :model/ModelIndex :id (:id model-index)))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Retrieve list of ModelIndex."
   [_route-params

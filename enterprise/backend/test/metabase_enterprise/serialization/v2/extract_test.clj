@@ -890,23 +890,22 @@
                         :creator_id ann-id
                         :table_id   no-schema-id
                         :definition {:source-table no-schema-id
-                                     :aggregation  [[:count]]
                                      :filter       [:< [:field field-id nil] 18]}}]
       (testing "segment"
         (let [ser (serdes/extract-one "Segment" {} (t2/select-one :model/Segment :id s1-id))]
           (is (=? {:serdes/meta [{:model "Segment" :id s1-eid :label "my_segment"}]
                    :table_id    ["My Database" nil "Schemaless Table"]
                    :creator_id  "ann@heart.band"
-                   :definition  {:source-table ["My Database" nil "Schemaless Table"]
-                                 :aggregation  [[:count]]
-                                 :filter       [:< [:field ["My Database" nil
-                                                            "Schemaless Table" "Some Field"]
-                                                    nil] 18]}
+                   :definition  {:database "My Database",
+                                 :type     :query,
+                                 :query    {:source-table ["My Database" nil "Schemaless Table"],
+                                            :filter       [:< [:field ["My Database" nil "Schemaless Table" "Some Field"] nil] 18]}}
                    :created_at  string?}
                   ser))
           (is (not (contains? ser :id)))
-          (testing "depend on the Table and any fields from the definition"
-            (is (= #{[{:model "Database" :id "My Database"}
+          (testing "depend on the Database, the Table and any fields from the definition"
+            (is (= #{[{:model "Database" :id "My Database"}]
+                     [{:model "Database" :id "My Database"}
                       {:model "Table" :id "Schemaless Table"}]
                      [{:model "Database" :id "My Database"}
                       {:model "Table" :id "Schemaless Table"}
@@ -1737,7 +1736,9 @@
                          :dashcards [(assoc dc2 :series nil)
                                      (assoc dc3 :series nil)]
                          :tabs nil)}
-                (set (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
+                (into #{} (map (fn [dashboard]
+                                 (update dashboard :dashcards #(sort-by :id %))))
+                      (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
         ;; 1 per dashboard/dashcard/series/tabs
         (is (= 4 (qc)))))))
 
@@ -2043,8 +2044,7 @@
                                       :id hourly-tag-eid}]
                        :name "hourly"
                        :built_in_type "hourly"
-                       :created_at string?
-                       :updated_at string?}
+                       :created_at string?}
                       ser))
               (is (not (contains? ser :id)))
               (is (empty? (serdes/dependencies ser)))))
@@ -2055,8 +2055,7 @@
                                       :id custom-tag-eid}]
                        :name "custom-etl"
                        :built_in_type nil
-                       :created_at string?
-                       :updated_at string?}
+                       :created_at string?}
                       ser))
               (is (not (contains? ser :id)))
               (is (empty? (serdes/dependencies ser)))))
@@ -2108,7 +2107,8 @@
                             :entity_id "2HzIFwJ6720JAx07UMavl"
                             :source {:query {:database db-id
                                              :type     "query"
-                                             :query    {:source-table table-id}}}
+                                             :query    {:source-table table-id}}
+                                     :type "query"}
                             :target {:database db-id
                                      :type "table"
                                      :schema "public"
@@ -2139,8 +2139,7 @@
                                       :id transform-eid}]
                        :name "Test Transform"
                        :description "A test transform for serialization"
-                       :created_at string?
-                       :updated_at string?}
+                       :created_at string?}
                       ser))
               (is (not (contains? ser :id))))
 
@@ -2235,8 +2234,7 @@
                        :description "Executes transforms tagged with 'hourly' every hour"
                        :schedule "0 0 * * * ? *"
                        :built_in_type "hourly"
-                       :created_at string?
-                       :updated_at string?}
+                       :created_at string?}
                       ser))
               (is (not (contains? ser :id)))
               (testing "job has associated tags"
@@ -2255,8 +2253,7 @@
                        :description "Custom data processing job"
                        :schedule "0 0 2 * * ? *"
                        :built_in_type nil
-                       :created_at string?
-                       :updated_at string?}
+                       :created_at string?}
                       ser))
               (is (not (contains? ser :id)))
               (testing "job has multiple associated tags in correct order"

@@ -30,7 +30,6 @@ export type GraphSelection = {
   id: DependencyId;
   type: DependencyType;
   groupType?: DependencyGroupType;
-  withInfo?: boolean;
 };
 
 export type GraphContextType = {

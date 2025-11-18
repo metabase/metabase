@@ -1,11 +1,14 @@
 (ns metabase-enterprise.metabot-v3.tools.search-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.search :as search]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search-core]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest reciprocal-rank-fusion-test
@@ -170,7 +173,7 @@
                   :name "Main Dashboard"
                   :description "Dashboard desc"
                   :verified false
-                  :collection {:name "Finance" :authority_level "official"}
+                  :collection {:id 10 :name "Finance" :authority_level "official"}
                   :updated_at "2024-01-03"
                   :created_at "2024-01-03"}
           expected {:id 3
@@ -178,7 +181,7 @@
                     :name "Main Dashboard"
                     :description "Dashboard desc"
                     :verified false
-                    :collection {:name "Finance" :authority_level "official"}
+                    :collection {:id 10 :name "Finance" :authority_level "official"}
                     :updated_at "2024-01-03"
                     :created_at "2024-01-03"}]
       (is (= expected (#'search/postprocess-search-result result)))))
@@ -189,7 +192,7 @@
                   :name "Q1"
                   :description "Question desc"
                   :moderated_status "verified"
-                  :collection {:name "Analytics" :authority_level nil}
+                  :collection {:id 11 :name "Analytics" :authority_level nil}
                   :updated_at "2024-01-04"
                   :created_at "2024-01-04"}
           expected {:id 4
@@ -198,7 +201,7 @@
                     :description "Question desc"
                     :database_id nil
                     :verified true
-                    :collection {:name "Analytics" :authority_level nil}
+                    :collection {:id 11 :name "Analytics" :authority_level nil}
                     :updated_at "2024-01-04"
                     :created_at "2024-01-04"}]
       (is (= expected (#'search/postprocess-search-result result)))))
@@ -344,3 +347,70 @@
           (search/search {:term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query nil}))))))
+
+(deftest other-user-collection-test
+  (testing "excludes entities from other users' collections"
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (let [admins-coll-id (t2/select-one-pk :model/Collection :personal_owner_id api/*current-user-id*)
+              others-coll-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))]
+          (mt/with-temp [:model/Collection {public-coll-id :id} {}
+                         :model/Dashboard  {dash-id-1 :id}      {:name "Our Dashboard",  :collection_id public-coll-id}
+                         :model/Dashboard  {dash-id-2 :id}      {:name "My Dashboard",   :collection_id admins-coll-id}
+                         :model/Dashboard  {dash-id-3 :id}      {:name "Your Dashboard", :collection_id others-coll-id}]
+            (let [test-dashboard-ids #{dash-id-1 dash-id-2 dash-id-3}]
+              (is (= #{"Our Dashboard" "My Dashboard"}
+                     (->> (search/search {:term-queries ["Dashboard"]})
+                          (filter (fn [{:keys [id type]}] (and (= "dashboard" type) (contains? test-dashboard-ids id))))
+                          (map :name)
+                          (set)))))))))))
+
+(deftest enrich-with-collection-descriptions-test
+  (mt/with-premium-features #{:content-verification}
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Collection {finance-coll-id :id} {:name "Finance Team"
+                                                                :description "Finance team collection"}
+                       :model/Collection {analytics-coll-id :id} {:name "Analytics"
+                                                                  :description "Analytics collection"}
+                       :model/Collection {no-desc-coll-id :id} {:name "No Description"}
+                       :model/Dashboard {dash-1-id :id} {:name "Finance Dashboard"
+                                                         :collection_id finance-coll-id}
+                       :model/Dashboard {dash-2-id :id} {:name "Analytics Dashboard"
+                                                         :collection_id analytics-coll-id}
+                       :model/Dashboard {dash-3-id :id} {:name "No Desc Dashboard"
+                                                         :collection_id no-desc-coll-id}]
+          (testing "search results include collection descriptions"
+            (let [results (search/search {:term-queries ["Dashboard"]})
+                  test-dashboard-ids #{dash-1-id dash-2-id dash-3-id}
+                  test-results (->> results
+                                    (filter (fn [{:keys [id type]}]
+                                              (and (= "dashboard" type)
+                                                   (contains? test-dashboard-ids id)))))]
+              (testing "includes collection descriptions when present"
+                (let [finance-dash (u/seek #(= dash-1-id (:id %)) test-results)
+                      analytics-dash (u/seek #(= dash-2-id (:id %)) test-results)]
+                  (is (= "Finance team collection" (get-in finance-dash [:collection :description])))
+                  (is (= "Analytics collection" (get-in analytics-dash [:collection :description])))))
+
+              (testing "handles nil collection descriptions"
+                (let [no-desc-dash (u/seek #(= dash-3-id (:id %)) test-results)]
+                  (is (nil? (get-in no-desc-dash [:collection :description])))
+                  (is (= "No Description" (get-in no-desc-dash [:collection :name]))))))))))))
+
+(deftest weight-override-test
+  (testing "weights can be overridden on a per-tool-call basis"
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Dashboard  {id-1 :id}    {:name "Regular Dash (sh1b0le#h)",    :collection_id coll-id}
+                       :model/Dashboard  {id-2 :id}    {:name "Bookmarked Dash (sh1b0le#h)", :collection_id coll-id}
+                       :model/DashboardBookmark _      {:dashboard_id id-2, :user_id api/*current-user-id*}]
+          (let [base-query   {:term-queries ["sh1b0le#h"], :entity-types ["dashboard"]}
+                test-entity? (comp #{id-1 id-2} :id)
+                query        (fn [& [weights]]
+                               (->> (search/search (assoc base-query :weights weights))
+                                    (filter test-entity?)
+                                    (map (comp first #(str/split % #"\s") :name))))]
+            (is (= ["Bookmarked" "Regular"] (query)))
+            (is (= ["Regular" "Bookmarked"] (query {:bookmarked -1})))))))))

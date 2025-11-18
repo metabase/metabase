@@ -9,12 +9,12 @@ const BASE_ENV = {
     process.env.MB_ALL_FEATURES_TOKEN ||
     process.env.ENTERPRISE_TOKEN ||
     "",
+  MB_RUN_MODE: process.env.MB_RUN_MODE ?? "",
+  METASTORE_DEV_SERVER_URL: process.env.METASTORE_DEV_SERVER_URL ?? "",
   MB_PORT: 4300,
   CLIENT_PORT: 4400,
   AUTH_PROVIDER_PORT: 4500,
 };
-
-console.log(typeof process.env.MB_ALL_FEATURES_TOKEN);
 
 if (!BASE_ENV.PREMIUM_EMBEDDING_TOKEN) {
   throw new Error(
