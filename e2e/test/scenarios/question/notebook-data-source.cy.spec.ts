@@ -426,15 +426,16 @@ describe("issue 28106", () => {
       H.startNewQuestion();
       cy.wait(["@getRootCollection", "@getTree"]);
 
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+        cy.findByText("Databases").click();
         cy.findByText("Writable Postgres12").click();
 
-        H.entityPickerModalLevel(1)
+        H.entityPickerModalLevel(2)
           .findByTestId("scroll-container")
           .as("schemasList");
 
-        H.entityPickerModalLevel(2).should("contain", "Animals");
+        H.entityPickerModalLevel(3).should("contain", "Animals");
 
         cy.get("@schemasList").scrollTo("bottom");
 
