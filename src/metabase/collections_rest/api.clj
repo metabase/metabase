@@ -99,19 +99,18 @@
                        (when exclude-other-user-collections
                          [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
                        (when-not include-library?
-                         [:or [:= nil :type]
-                          [:not-in :type [collection/library-collection-type
-                                          collection/library-models-collection-type
-                                          collection/library-metrics-collection-type]]])
+                         [:not-in :type [collection/library-collection-type
+                                         collection/library-models-collection-type
+                                         collection/library-metrics-collection-type]])
                        (perms/audit-namespace-clause :namespace namespace)
                        (collection/visible-collection-filter-clause
                         :id
-                        {:include-archived-items    (if archived
-                                                      :only
-                                                      :exclude)
+                        {:include-archived-items (if archived
+                                                   :only
+                                                   :exclude)
                          :include-trash-collection? true
-                         :permission-level          :read
-                         :archive-operation-id      nil})]
+                         :permission-level :read
+                         :archive-operation-id nil})]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
                           [[[:case
@@ -145,7 +144,7 @@
                         :namespace                      namespace
                         :shallow                        false
                         :personal-only                  personal-only
-                        :include-library?               true}) collections
+                        :include-library?                true}) collections
     ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
     (if (or archived personal-only)
       collections
@@ -218,7 +217,7 @@
                                              :namespace                      namespace
                                              :shallow                        shallow
                                              :collection-id                  collection-id
-                                             :include-library?               include-library})
+                                             :include-library?                include-library})
                         (t2/hydrate :can_write))]
     (if shallow
       (shallow-tree-from-collection-id collections)
@@ -654,10 +653,9 @@
         (when collection-type
           [:= :type collection-type])
         (when-not include-library?
-          [:or [:= nil :type]
-           [:not [:in :type [collection/library-collection-type
-                             collection/library-metrics-collection-type
-                             collection/library-models-collection-type]]]])
+          [:not [:in :type [collection/library-collection-type
+                            collection/library-metrics-collection-type
+                            collection/library-models-collection-type]]])
         (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
