@@ -18,7 +18,7 @@ export const useDndHelpers = ({
     side: "left" | "right" | null;
   }>({ isDraggedOver: false, side: null });
   const draggedOverTimeoutRef = useRef<number | undefined>();
-  const cardEmbedRef = useRef<HTMLDivElement | null>(null);
+  const dragElRef = useRef<HTMLDivElement | null>(null);
   const isMountedRef = useRef(false);
 
   const isBeingDragged = editor.view.draggingNode === node;
@@ -30,15 +30,29 @@ export const useDndHelpers = ({
       const draggingNode = editor.view.draggingNode;
       if (
         draggingNode &&
-        draggingNode.type.name === "cardEmbed" &&
-        cardEmbedRef.current
+        (draggingNode.type.name === "cardEmbed" ||
+          draggingNode.type.name === "supportingText") &&
+        dragElRef.current
       ) {
-        // Check if this cardEmbed is in a flexContainer that already has 3 children
         const pos = getPos();
         if (pos) {
           const resolvedPos = editor.state.doc.resolve(pos);
           const { parent } = resolvedPos;
 
+          // For simplicity's sake, don't allow dragging supportingText from one group to another
+          if (draggingNode.type.name === "supportingText") {
+            if (
+              parent.type.name === "flexContainer" ||
+              parent.type.name === "resizeNode"
+            ) {
+              if (!parent.content.content.includes(draggingNode)) {
+                setDragState({ isDraggedOver: false, side: null });
+                return;
+              }
+            }
+          }
+
+          // Check if this cardEmbed is in a flexContainer that already has 3 children
           if (
             parent.type.name === "flexContainer" &&
             parent.content.childCount >= 3
@@ -59,7 +73,7 @@ export const useDndHelpers = ({
           }
         }
 
-        const rect = cardEmbedRef.current?.getBoundingClientRect();
+        const rect = dragElRef.current?.getBoundingClientRect();
         const relativeX = e.clientX - rect.left;
         const nodeWidth = rect.width;
 
@@ -98,6 +112,6 @@ export const useDndHelpers = ({
     dragState,
     setDragState,
     handleDragOver,
-    cardEmbedRef,
+    dragElRef,
   };
 };
