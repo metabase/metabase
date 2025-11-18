@@ -16,6 +16,7 @@
    [metabase.test.data.env :as tx.env]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
+   [metabase.test.redefs]
    [metabase.util :as u]
    [metabase.util.date-2]
    [metabase.util.i18n.impl]
@@ -23,25 +24,6 @@
    [pjstadig.humane-test-output :as humane-test-output]))
 
 (set! *warn-on-reflection* true)
-
-;;; TODO -- consider whether we should just mode all of this stuff to [[user]] instead of doing it here
-
-(comment
-  metabase.core.bootstrap/keep-me
-  ;; make sure stuff like `=?` and what not are loaded
-  metabase.test-runner.assert-exprs/keep-me
-
-  ;; these are necessary so data_readers.clj functions can function
-  metabase.util.date-2/keep-me
-  metabase.util.i18n.impl/keep-me)
-
-;; Initialize Humane Test Output if it's not already initialized. Don't enable humane-test-output when running tests
-;; from the CLI, it breaks diffs.
-(when-not config/is-test?
-  (humane-test-output/activate!))
-
-;;; Same for https://github.com/camsaul/humane-are
-(humane-are/install!)
 
 ;;; Ignore any directories for drivers that are not in the [[tx.env/test-drivers]] (i.e., not in `DRIVERS`)
 ;;;
@@ -167,8 +149,9 @@
   (initialize-all-fixtures)
   (hawk/find-and-run-tests-repl (build-final-options options)))
 
-(defn find-and-run-tests-cli
-  "Entrypoint for `clojure -X:test`."
+(defn -find-and-run-tests-cli
+  "Implementation of the CLI entrypoint for `clojure -X:test`; called
+  by [[metabase.test-runner.bootstrap/find-and-run-tests-cli]]."
   [options]
   (initialize-all-fixtures)
   (hawk/find-and-run-tests-cli (build-final-options options)))

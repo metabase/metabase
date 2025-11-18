@@ -7,6 +7,7 @@
    [metabase.test.util.thread-local :as tu.thread-local]
    [methodical.core :as methodical]
    [toucan2.connection :as t2.connection]
+   [toucan2.pipeline :as t2.pipeline]
    [toucan2.tools.with-temp]))
 
 (def ^:dynamic ^:private *in-with-temp*
@@ -38,3 +39,14 @@
   (apply orig-with-redefs-fn args))
 
 (alter-var-root #'with-redefs-fn (constantly new-with-redefs-fn))
+
+;;;; Disallow executing app DB queries as a side-effect of loading a namespace
+
+(methodical/defmethod t2.pipeline/transduce-execute-with-connection :before :default
+  "Disallow executing app DB queries as a side effect of loading a namespace."
+  [_rf _conn _query-type _model compiled-query]
+  ;; this seems to be the best way I could come up with to see if we're currently in the process of loading a namespace
+  (when (seq @#'clojure.core/*pending-paths*)
+    (throw (ex-info "Do not execute app DB queries as a side effect of loading a namespace (e.g., in a top-level `def`)."
+                    {:query compiled-query})))
+  compiled-query)
