@@ -528,48 +528,6 @@ describe("issue 30610", () => {
   });
 });
 
-describe("issue 36669", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    cy.intercept("GET", "/api/search*").as("search");
-  });
-
-  it("should be able to change question data source to raw data after selecting saved question (metabase#36669)", () => {
-    const questionDetails = {
-      name: "Orders 36669",
-      query: {
-        "source-table": ORDERS_ID,
-        limit: 5,
-      },
-    };
-
-    H.createQuestion(questionDetails).then(() => {
-      H.startNewQuestion();
-    });
-
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
-      cy.findByPlaceholderText("Search this collection or everywhere…").type(
-        "Orders 36669",
-      );
-      cy.wait("@search");
-
-      cy.findByText("Everywhere").click();
-      cy.findByRole("tabpanel").findByText("Orders 36669").click();
-    });
-
-    H.getNotebookStep("data").findByText("Orders 36669").click();
-
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-
-      cy.log("verify Tables are listed");
-      cy.findByRole("tabpanel").should("contain", "Orders");
-    });
-  });
-});
-
 describe("issue 35290", () => {
   beforeEach(() => {
     H.restore();
@@ -641,9 +599,8 @@ describe("issue 43216", () => {
 
     cy.log("Create target question");
     H.newButton("Question").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
-      H.waitForLoaderToBeRemoved();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("Source question").click();
     });
     H.saveQuestion("Target question");
@@ -690,8 +647,9 @@ function removeSourceColumns() {
 
 function createAdHocQuestion(questionName) {
   H.startNewQuestion();
+  H.miniPickerBrowseAll().click();
   H.entityPickerModal().within(() => {
-    H.entityPickerModalTab("Collections").click();
+    cy.findByText("Our analytics").click();
     cy.findByText(questionName).click();
   });
   cy.findByTestId("fields-picker").click();
