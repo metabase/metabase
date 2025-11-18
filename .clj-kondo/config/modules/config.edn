@@ -2253,8 +2253,13 @@
 
   enterprise/workspaces
   {:team "Metabot"
-   :api  #{metabase-enterprise.workspaces.init}
-   :uses #{models}}}
+   :api  #{metabase-enterprise.workspaces.api
+           metabase-enterprise.workspaces.init}
+   :uses #{api
+           api-keys
+           models
+           request
+           util}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
