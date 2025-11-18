@@ -1,14 +1,17 @@
 import type { Node, ResolvedPos, Slice } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
 
-// Helper function to extract cardEmbed from resizeNode wrapper
-export const extractCardEmbed = (node: Node): Node | null => {
-  if (node.type.name === "cardEmbed") {
+// Helper function to extract cardEmbed or supportingText from resizeNode wrapper
+export const extractContainerSingleCardNode = (node: Node): Node | null => {
+  if (node.type.name === "cardEmbed" || node.type.name === "supportingText") {
     return node;
   }
   if (node.type.name === "resizeNode" && node.content.childCount === 1) {
     const child = node.content.child(0);
-    if (child.type.name === "cardEmbed") {
+    if (
+      child.type.name === "cardEmbed" ||
+      child.type.name === "supportingText"
+    ) {
       return child;
     }
   }
@@ -18,8 +21,14 @@ export const extractCardEmbed = (node: Node): Node | null => {
 export const getCardEmbedDropSide = (e: DragEvent): "left" | "right" | null => {
   const targetCardEmbedDOM =
     e.target instanceof Element ? e.target.closest(".node-cardEmbed") : null;
-  if (targetCardEmbedDOM) {
-    const rect = targetCardEmbedDOM.getBoundingClientRect();
+  const targetSupportingTextDOM =
+    e.target instanceof Element
+      ? e.target.closest(".node-supportingText")
+      : null;
+  const targetDOM = targetCardEmbedDOM || targetSupportingTextDOM;
+
+  if (targetDOM) {
+    const rect = targetDOM.getBoundingClientRect();
     const xPct = (e.clientX - rect.left) / rect.width;
 
     return xPct >= 0.5 ? "right" : "left";
@@ -31,13 +40,36 @@ export const getCardEmbedDropSide = (e: DragEvent): "left" | "right" | null => {
 export const getTargetCardEmbedNode = (e: DragEvent, view: EditorView) => {
   const targetCardEmbedDOM =
     e.target instanceof Element ? e.target.closest(".node-cardEmbed") : null;
+  const targetSupportingTextDOM =
+    e.target instanceof Element
+      ? e.target.closest(".node-supportingText")
+      : null;
+  const targetDOM = targetCardEmbedDOM || targetSupportingTextDOM;
 
-  if (targetCardEmbedDOM) {
-    const pos = view.posAtDOM(targetCardEmbedDOM, 0);
-    const targetCardEmbed = view.state.doc.nodeAt(pos);
+  if (targetDOM) {
+    const pos = view.posAtDOM(targetDOM, 0);
+    const resolvedPos = view.state.doc.resolve(pos);
 
-    if (targetCardEmbed) {
-      return extractCardEmbed(targetCardEmbed);
+    // For supportingText, posAtDOM returns a position inside the node (pointing to content)
+    // so we need to check the parent. For cardEmbed (atom), it returns the position before the node.
+    if (targetSupportingTextDOM) {
+      // Check if the parent is supportingText
+      if (resolvedPos.parent.type.name === "supportingText") {
+        return resolvedPos.parent;
+      }
+      // Otherwise search up the tree
+      for (let d = resolvedPos.depth; d > 0; d--) {
+        const node = resolvedPos.node(d);
+        if (node.type.name === "supportingText") {
+          return node;
+        }
+      }
+    } else if (targetCardEmbedDOM) {
+      // For cardEmbed, nodeAt works as expected
+      const targetNode = view.state.doc.nodeAt(pos);
+      if (targetNode) {
+        return extractContainerSingleCardNode(targetNode);
+      }
     }
   }
 
@@ -45,7 +77,7 @@ export const getTargetCardEmbedNode = (e: DragEvent, view: EditorView) => {
 };
 
 export interface DroppedCardEmbedNodeData {
-  cardEmbedNode: Node;
+  draggedNode: Node;
   originalPos: number;
   originalParent: Node;
   cameFromFlexContainer: boolean;
@@ -64,14 +96,14 @@ export const getDroppedCardEmbedNodeData = (
   slice: Slice,
   moved: boolean,
 ): DroppedCardEmbedNodeData | undefined => {
-  // Check if we're moving a cardEmbed node
+  // Check if we're moving a cardEmbed or supportingText node
   if (slice.content.childCount === 1) {
     const droppedNode = slice.content.child(0);
-    const cardEmbedNode = extractCardEmbed(droppedNode);
+    const draggedNode = extractContainerSingleCardNode(droppedNode);
 
-    // Dropping a "cardEmbed" node
-    if (cardEmbedNode && moved) {
-      const nodeParentResult = findNodeParentAndPos(view, cardEmbedNode);
+    // Dropping a "cardEmbed" or "supportingText" node
+    if (draggedNode && moved) {
+      const nodeParentResult = findNodeParentAndPos(view, draggedNode);
 
       if (!nodeParentResult) {
         return;
@@ -84,7 +116,7 @@ export const getDroppedCardEmbedNodeData = (
         ? (originalParent as Node).type.name === "flexContainer"
         : false;
 
-      // Find the position where the card was dropped
+      // Find the position where the node was dropped
       const coords = view.posAtCoords({
         left: event.clientX,
         top: event.clientY,
@@ -96,7 +128,7 @@ export const getDroppedCardEmbedNodeData = (
         const dropToParent = dropToParentPos.parent;
 
         return {
-          cardEmbedNode,
+          draggedNode,
           originalPos,
           originalParent,
           cameFromFlexContainer,
@@ -127,7 +159,10 @@ export const findNodeParentAndPos = (
       return false;
     }
 
-    if (extractCardEmbed(node) === nodeToFind && node !== nodeToFind) {
+    if (
+      extractContainerSingleCardNode(node) === nodeToFind &&
+      node !== nodeToFind
+    ) {
       parentPos = pos;
       parent = node;
       return false;

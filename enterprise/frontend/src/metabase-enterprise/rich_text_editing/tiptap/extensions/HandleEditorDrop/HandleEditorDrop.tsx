@@ -11,7 +11,7 @@ import { handleCardDropOnDocument } from "./DropHandlers/cardToDocument";
 import {
   type DroppedCardEmbedNodeData,
   cleanupFlexContainerNodes,
-  extractCardEmbed,
+  extractContainerSingleCardNode,
   getDroppedCardEmbedNodeData,
 } from "./utils";
 
@@ -29,16 +29,31 @@ export const HandleEditorDrop = Extension.create({
               slice,
               moved,
             );
+            view.dom.offsetParent?.classList.remove(
+              "dragging",
+              `dragging-${cardEmbedInitialData?.draggedNode.type.name}`,
+            );
 
             if (cardEmbedInitialData) {
-              const { dropToParent } = cardEmbedInitialData;
+              const { dropToParent, draggedNode } = cardEmbedInitialData;
+
+              // SupportingText can only be dropped within a flexContainer
+              // Block drops on standalone nodes or outside flexContainer
+              if (
+                draggedNode.type.name === "supportingText" &&
+                dropToParent.type.name !== "flexContainer" &&
+                dropToParent.type.name !== "supportingText"
+              ) {
+                return true; // Block the drop
+              }
 
               // Dropping inside a flexContainer
               if (dropToParent.type.name === "flexContainer") {
                 return handleCardDropToFlexContainer(cardEmbedInitialData);
               }
 
-              const targetCardEmbed = extractCardEmbed(dropToParent);
+              const targetCardEmbed =
+                extractContainerSingleCardNode(dropToParent);
               // Dropping on another cardEmbed
               if (
                 targetCardEmbed &&
@@ -50,12 +65,60 @@ export const HandleEditorDrop = Extension.create({
                 );
               }
 
-              if (dropToParent.type.name === "paragraph") {
-                return handleCardDropOnParagraph(cardEmbedInitialData);
-              }
+              // Check if dropping on a node inside supportingText (paragraph, heading, etc.)
+              // or directly on supportingText
+              if (
+                dropToParent.type.name === "paragraph" ||
+                dropToParent.type.name === "heading" ||
+                dropToParent.type.name === "supportingText"
+              ) {
+                const dropPos = view.state.doc.resolve(
+                  cardEmbedInitialData.dropPos,
+                );
+                let currentDepth = dropPos.depth;
+                let foundSupportingText = false;
+                let foundFlexContainer = false;
 
-              if (dropToParent.type.name === "supportingText") {
-                return true;
+                // Walk up the tree to check if we're inside a supportingText
+                while (currentDepth > 0) {
+                  const parentAtDepth = dropPos.node(currentDepth);
+
+                  if (
+                    parentAtDepth.type.name === "supportingText" &&
+                    !foundSupportingText
+                  ) {
+                    foundSupportingText = true;
+                  }
+
+                  if (parentAtDepth.type.name === "flexContainer") {
+                    foundFlexContainer = true;
+                    // If we found a supportingText inside a flexContainer,
+                    // handle this as a flexContainer drop (reordering)
+                    if (foundSupportingText) {
+                      const flexContainerPos = dropPos.before(currentDepth);
+                      const flexContainerResolvedPos =
+                        view.state.doc.resolve(flexContainerPos);
+                      cardEmbedInitialData.dropToParent = parentAtDepth;
+                      cardEmbedInitialData.dropToParentPos =
+                        flexContainerResolvedPos;
+                      return handleCardDropToFlexContainer(
+                        cardEmbedInitialData,
+                      );
+                    }
+                    break;
+                  }
+                  currentDepth--;
+                }
+
+                // If we're inside supportingText but not in a flexContainer, block the drop
+                if (foundSupportingText && !foundFlexContainer) {
+                  return true;
+                }
+
+                // Otherwise, if it's a paragraph not inside supportingText, handle normally
+                if (dropToParent.type.name === "paragraph") {
+                  return handleCardDropOnParagraph(cardEmbedInitialData);
+                }
               }
 
               // Check if dropping into document (not into another flexContainer or cardEmbed)
@@ -80,8 +143,13 @@ export const HandleEditorDrop = Extension.create({
               });
 
               if (maybePos) {
-                const { pos } = maybePos;
-                const node = view.state.doc.nodeAt(pos);
+                const { inside } = maybePos;
+                const node = view.state.doc.nodeAt(inside);
+
+                view.dom.offsetParent?.classList.add(
+                  "dragging",
+                  `dragging-${node?.type.name}`,
+                );
 
                 view.draggingNode = node;
                 return false;
