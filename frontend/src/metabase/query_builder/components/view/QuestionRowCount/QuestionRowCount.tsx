@@ -1,5 +1,6 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -77,7 +78,7 @@ function QuestionRowCount({
   className,
   onChangeLimit,
 }: QuestionRowCountProps) {
-  const [opened, setOpened] = useState(false);
+  const [opened, { close, toggle }] = useDisclosure(false);
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
   const formatNumber = useNumberFormatter();
   const message = useMemo(() => {
@@ -115,13 +116,9 @@ function QuestionRowCount({
   }
 
   return (
-    <Popover opened={opened} onChange={setOpened} position="bottom-start">
+    <Popover opened={opened} onClose={close} position="bottom-start">
       <Popover.Target>
-        <UnstyledButton
-          onClick={() => setOpened(!opened)}
-          id={POPOVER_ID}
-          aria-haspopup="dialog"
-        >
+        <UnstyledButton onClick={toggle} id={POPOVER_ID} aria-haspopup="dialog">
           <RowCountLabel
             className={className}
             data-testid="question-row-count"
@@ -137,7 +134,7 @@ function QuestionRowCount({
           className={CS.p2}
           limit={limit}
           onChangeLimit={handleLimitChange}
-          onClose={() => setOpened(false)}
+          onClose={close}
         />
       </Popover.Dropdown>
     </Popover>
