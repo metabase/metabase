@@ -28,6 +28,12 @@ runs:
           ~/.gitlibs
         key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
 
+    - name: Restore yarn global cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.cache/yarn
+        key: ${{ steps.get-cache-keys.outputs.yarn-cache-key }}
+
     - name: Restore node_modules cache
       uses: actions/cache/restore@v4
       id: node-modules-cache
