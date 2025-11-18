@@ -35,6 +35,7 @@ export function CreateCardMenu({
             size="compact-xs"
             variant="subtle"
             c="text-medium"
+            aria-label={t`Create model or metric`}
             leftSection={<FixedSizeIcon name="add" size={16} />}
             onClick={handleClick}
           />
