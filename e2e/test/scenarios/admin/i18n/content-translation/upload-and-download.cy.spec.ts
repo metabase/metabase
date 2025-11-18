@@ -52,7 +52,7 @@ describe("scenarios > admin > embedding > static embedding> content translation"
     describe("The translation download button", () => {
       it("downloads the stored translations", () => {
         uploadTranslationDictionaryViaAPI(germanFieldNames);
-        cy.visit("/admin/embedding/static");
+        cy.visit("/admin/embedding/modular");
         cy.findByTestId("content-translation-configuration")
           .button(/Get translation dictionary template/i)
           .click();
