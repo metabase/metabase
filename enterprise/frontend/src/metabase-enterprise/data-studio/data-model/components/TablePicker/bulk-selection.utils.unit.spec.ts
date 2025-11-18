@@ -564,7 +564,7 @@ describe("bulk-selection.utils", () => {
         createMockFlatItem(schema2),
       ];
       const selectedSchemas = new Set(["1:public", "1:private"]);
-      const selectedTables = new Set();
+      const selectedTables = new Set<TableId>();
 
       const result = areSchemasSelected(
         createMockFlatItem(database),
@@ -673,7 +673,7 @@ describe("bulk-selection.utils", () => {
         createMockFlatItem(table1, schema.key),
         createMockFlatItem(table2, schema.key),
       ];
-      const selectedTables = new Set();
+      const selectedTables = new Set<TableId>();
 
       const result = noManuallySelectedTables(
         createMockFlatItem(schema),
@@ -706,7 +706,7 @@ describe("bulk-selection.utils", () => {
 
     it("should return false when schema is undefined", () => {
       const flatItems: FlatItem[] = [];
-      const selectedTables = new Set();
+      const selectedTables = new Set<TableId>();
 
       const result = noManuallySelectedTables(
         undefined,
@@ -769,7 +769,7 @@ describe("bulk-selection.utils", () => {
       const schema1 = createMockSchemaNode(1, "public", [table1]);
       const schema2 = createMockSchemaNode(1, "private", [table2]);
       const database = createMockDatabaseNode(1, [schema1, schema2]);
-      const selectedTables = new Set();
+      const selectedTables = new Set<TableId>();
 
       const result = noManuallySelectedDatabaseChildrenTables(
         database,
