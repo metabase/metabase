@@ -1,13 +1,9 @@
-import {
-  connectToInstanceAuthSso,
-  jwtDefaultRefreshTokenFunction,
-  openSamlLoginPopup,
-  validateSession,
-} from "embedding/auth-common";
-import {
-  INVALID_AUTH_METHOD,
-  MetabaseError,
-} from "embedding-sdk-bundle/errors";
+import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-bundle/errors";
+import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
+import type {
+  EmbedAuthManager,
+  EmbedAuthManagerContext,
+} from "metabase/embedding/embedding-iframe-sdk/types/auth-manager";
 
 import { debouncedReportAnalytics } from "./analytics";
 import {
@@ -24,6 +20,10 @@ import type {
   SdkIframeEmbedTagMessage,
 } from "./types/embed";
 import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
+
+// Import EE Iframe Embedding plugin
+// eslint-disable-next-line import/no-unresolved
+import "sdk-iframe-embedding-ee-plugins";
 
 const EMBEDDING_ROUTE = "embed/sdk/v1";
 
@@ -137,7 +137,10 @@ function assertValidMetabaseConfigField(
   }
 }
 
-export abstract class MetabaseEmbedElement extends HTMLElement {
+export abstract class MetabaseEmbedElement
+  extends HTMLElement
+  implements EmbedAuthManagerContext
+{
   private _iframe: HTMLIFrameElement | null = null;
   protected abstract _componentName: string;
   protected abstract _attributeNames: readonly string[];
@@ -149,6 +152,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     SdkIframeEmbedEvent["type"],
     Set<SdkIframeEmbedEventHandler>
   > = new Map();
+  private _authManager: EmbedAuthManager | null = null;
 
   get globalSettings() {
     return (window as any).metabaseConfig || {};
@@ -261,6 +265,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     window.removeEventListener("message", this._handleMessage);
     this._isEmbedReady = false;
     this._eventHandlers.clear();
+    this._authManager = null;
 
     if (this._iframe) {
       this._iframe.remove();
@@ -328,6 +333,11 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
 
   private _setup() {
     this._validateEmbedSettings(this.properties);
+
+    // Initialize the auth manager
+    this._authManager = PLUGIN_EMBED_JS_EE.EmbedAuthManager
+      ? new PLUGIN_EMBED_JS_EE.EmbedAuthManager(this)
+      : null;
 
     this._iframe = document.createElement("iframe");
     this._iframe.src = `${this.globalSettings.instanceUrl}/${EMBEDDING_ROUTE}`;
@@ -443,73 +453,15 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
   }
 
   private async _authenticate() {
-    // If we are using an API key, we don't need to authenticate via SSO.
-    if (this.properties.apiKey) {
+    if (!this._authManager) {
+      this.sendMessage("metabase.embed.reportAuthenticationError", {
+        error: SSO_NOT_ALLOWED(),
+      });
+
       return;
     }
 
-    try {
-      const { method, sessionToken } = await this._getMetabaseSessionToken();
-      validateSession(sessionToken);
-
-      if (sessionToken) {
-        this.sendMessage("metabase.embed.submitSessionToken", {
-          authMethod: method,
-          sessionToken,
-        });
-      }
-    } catch (error) {
-      // if the error is an authentication error, show it to the iframe too
-      if (error instanceof MetabaseError) {
-        this.sendMessage("metabase.embed.reportAuthenticationError", {
-          error,
-        });
-      }
-    }
-  }
-
-  /**
-   * @returns {{ method: "saml" | "jwt", sessionToken: {jwt: string} }}
-   */
-  private async _getMetabaseSessionToken() {
-    const { instanceUrl, preferredAuthMethod, fetchRequestToken } =
-      this.properties;
-
-    const urlResponseJson = await connectToInstanceAuthSso(instanceUrl, {
-      headers: this._getAuthRequestHeader(),
-      preferredAuthMethod,
-    });
-
-    const { method, url: responseUrl, hash } = urlResponseJson || {};
-
-    if (method === "saml") {
-      const sessionToken = await openSamlLoginPopup(responseUrl);
-
-      return { method, sessionToken };
-    }
-
-    if (method === "jwt") {
-      const sessionToken = await jwtDefaultRefreshTokenFunction(
-        responseUrl,
-        instanceUrl,
-        this._getAuthRequestHeader(hash),
-        fetchRequestToken,
-      );
-
-      return { method, sessionToken };
-    }
-
-    throw INVALID_AUTH_METHOD({ method });
-  }
-
-  private _getAuthRequestHeader(hash?: string) {
-    return {
-      // eslint-disable-next-line no-literal-metabase-strings -- header name
-      "X-Metabase-Client": "embedding-simple",
-
-      // eslint-disable-next-line no-literal-metabase-strings -- header name
-      ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
-    };
+    await this._authManager.authenticate();
   }
 }
 
