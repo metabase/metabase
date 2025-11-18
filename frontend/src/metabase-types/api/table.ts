@@ -221,7 +221,7 @@ export interface PublishModelsRequest {
 export interface PublishModelsResponse {
   created_count: number;
   models: Card[];
-  target_collection: Collection;
+  target_collection: Collection | null;
 }
 
 export type TableData = {

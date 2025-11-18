@@ -23,6 +23,12 @@ interface Table {
   id: number;
 }
 
+interface PublishModelResponse {
+  models: {
+    id: number;
+  }[];
+}
+
 describe("syncing multiple tables", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
@@ -34,6 +40,7 @@ describe("syncing multiple tables", () => {
       "GET",
       `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true&include_editable_data_model=true`,
     ).as("getSchema");
+    cy.intercept("POST", "/api/table/publish-model").as("publishModel");
   });
 
   it("syncing multiple tables", () => {
@@ -87,6 +94,34 @@ describe("syncing multiple tables", () => {
         expect(response?.body.status).to.eq("ok");
       });
     });
+  });
+
+  it("publishing multiple tables", () => {
+    H.DataModel.visit();
+    TablePicker.getDatabase("Writable Postgres12").click();
+    TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
+    TablePicker.getTable("Feedback").find('input[type="checkbox"]').check();
+    cy.findByRole("button", { name: /Publish/ }).click();
+    cy.findByLabelText("Don’t show this to me again").check();
+    cy.findByRole("button", { name: /Got it/ }).click();
+
+    H.pickEntity({
+      tab: "Collections",
+      path: ["Our analytics"],
+    });
+    cy.findByRole("button", { name: /Publish here/ }).click();
+
+    cy.wait<PublishModelResponse>("@publishModel").then(({ response }) => {
+      cy.log(JSON.stringify(response, null, 2));
+      expect(response?.body.created_count).to.eq(2);
+    });
+
+    H.undoToast().within(() => {
+      cy.findByText("Published").should("be.visible");
+      cy.findByRole("button", { name: /See it/ }).click();
+    });
+
+    cy.url().should("include", "/data-studio/modeling/collections/root");
   });
 });
 
