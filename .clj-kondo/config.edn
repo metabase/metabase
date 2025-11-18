@@ -536,11 +536,11 @@
    metabase.channel.template.handlebars-test/with-temp-template!                                                             hooks.common/with-vec-first-binding
    metabase.classloader.core/require                                                                                         hooks.clojure.core.require/lint-require
    metabase.classloader.impl/require                                                                                         hooks.clojure.core.require/lint-require
-   metabase.collections.api-test/with-french-user-and-personal-collection!                                                   hooks.common/with-two-top-level-bindings
+   metabase.collections-rest.api-test/with-french-user-and-personal-collection!                                              hooks.common/with-two-top-level-bindings
    metabase.collections.models.collection-test/with-collection-hierarchy!                                                    hooks.common/let-one-with-optional-value
    metabase.collections.models.collection-test/with-personal-and-impersonal-collections                                      hooks.common/with-two-bindings
-   metabase.dashboards.api-test/with-chain-filter-fixtures                                                                   hooks.common/let-one-with-optional-value
-   metabase.dashboards.api-test/with-simple-dashboard-with-tabs                                                              hooks.common/with-one-binding
+   metabase.dashboards-rest.api-test/with-chain-filter-fixtures                                                              hooks.common/let-one-with-optional-value
+   metabase.dashboards-rest.api-test/with-simple-dashboard-with-tabs                                                         hooks.common/with-one-binding
    metabase.dashboards.models.dashboard-tab-test/with-dashtab-in-personal-collection                                         hooks.common/with-one-top-level-binding
    metabase.dashboards.models.dashboard-test/with-dash-in-collection!                                                        hooks.common/with-three-bindings
    metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
@@ -548,10 +548,10 @@
    metabase.driver.oracle-test/with-temp-user                                                                                hooks.common/let-one-with-optional-value
    metabase.driver/register!                                                                                                 hooks.metabase.driver/register!
    metabase.driver-api/defenterprise                                                                                         hooks.metabase.premium-features.defenterprise/defenterprise
-   metabase.embedding.api.embed-test/do-response-formats                                                                     hooks.common/with-two-bindings
-   metabase.embedding.api.embed-test/with-chain-filter-fixtures!                                                             hooks.common/let-one-with-optional-value
-   metabase.embedding.api.embed-test/with-temp-card                                                                          hooks.common/let-one-with-optional-value
-   metabase.embedding.api.embed-test/with-temp-dashcard                                                                      hooks.common/let-one-with-optional-value
+   metabase.embedding-rest.api.embed-test/do-response-formats                                                                hooks.common/with-two-bindings
+   metabase.embedding-rest.api.embed-test/with-chain-filter-fixtures!                                                        hooks.common/let-one-with-optional-value
+   metabase.embedding-rest.api.embed-test/with-temp-card                                                                     hooks.common/let-one-with-optional-value
+   metabase.embedding-rest.api.embed-test/with-temp-dashcard                                                                 hooks.common/let-one-with-optional-value
    metabase.legacy-mbql.schema.macros/defclause                                                                              hooks.metabase.legacy-mbql.schemas.macros/defclause
    metabase.legacy-mbql.schema.macros/defclause*                                                                             hooks.metabase.legacy-mbql.schemas.macros/defclause*
    metabase.legacy-mbql.schema.macros/one-of                                                                                 hooks.metabase.legacy-mbql.schemas.macros/one-of
@@ -571,10 +571,10 @@
    metabase.permissions.core/disable-perms-cache                                                                             hooks.common/do*
    metabase.premium-features.core/defenterprise                                                                              hooks.metabase.premium-features.defenterprise/defenterprise
    metabase.premium-features.defenterprise/defenterprise                                                                     hooks.metabase.premium-features.defenterprise/defenterprise
-   metabase.public-sharing.api-test/with-required-param-card!                                                                hooks.common/with-one-binding
-   metabase.public-sharing.api-test/with-temp-public-card                                                                    hooks.common/let-one-with-optional-value
-   metabase.public-sharing.api-test/with-temp-public-dashboard                                                               hooks.common/let-one-with-optional-value
-   metabase.public-sharing.api-test/with-temp-public-dashboard-and-card                                                      hooks.common/with-three-bindings
+   metabase.public-sharing-rest.api-test/with-required-param-card!                                                           hooks.common/with-one-binding
+   metabase.public-sharing-rest.api-test/with-temp-public-card                                                               hooks.common/let-one-with-optional-value
+   metabase.public-sharing-rest.api-test/with-temp-public-dashboard                                                          hooks.common/let-one-with-optional-value
+   metabase.public-sharing-rest.api-test/with-temp-public-dashboard-and-card                                                 hooks.common/with-three-bindings
    metabase.pulse.api.alert-test/with-alert-in-collection!                                                                   hooks.common/with-four-bindings
    metabase.pulse.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                           hooks.common/let-second
    metabase.pulse.models.pulse-test/with-dashboard-subscription-in-collection!                                               hooks.common/with-four-bindings
@@ -636,7 +636,7 @@
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
-   metabase.users.api-test/with-temp-user-email!                                                                             hooks.common/with-one-binding
+   metabase.users-rest.api-test/with-temp-user-email!                                                                        hooks.common/with-one-binding
    metabase.util.i18n/deferred-trs                                                                                           hooks.metabase.util.i18n/deferred-trs
    metabase.util.i18n/deferred-tru                                                                                           hooks.metabase.util.i18n/deferred-tru
    metabase.util.i18n/trs                                                                                                    hooks.metabase.util.i18n/trs
@@ -660,43 +660,43 @@
    metabase.xrays.api.automagic-dashboards-test/with-indexed-model!                                                          hooks.metabase.xrays.api.automagic-dashboards-test/with-indexed-model!}
 
   :macroexpand
-  {clojurewerkz.quartzite.jobs/build                                                       macros.quartz/build-job
-   clojurewerkz.quartzite.schedule.calendar-interval/build                                 macros.quartz/build-job
-   clojurewerkz.quartzite.schedule.cron/schedule                                           macros.quartz/schedule
-   clojurewerkz.quartzite.schedule.simple/schedule                                         macros.quartz/simple-schedule
-   clojurewerkz.quartzite.triggers/build                                                   macros.quartz/build-trigger
-   metabase-enterprise.database-routing.e2e-test/with-temp-dbs!                            macros.metabase-enterprise.database-routing.e2e-test/with-temp-dbs!
-   metabase-enterprise.impersonation.util-test/with-impersonations!                        macros.metabase-enterprise.impersonation.util-test/with-impersonations!
-   metabase-enterprise.query-reference-validation.api-test/with-test-setup!                macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup!
-   metabase-enterprise.sandbox.test-util/with-gtaps!                                       macros.metabase-enterprise.sandbox.test-util/with-gtaps!
-   metabase-enterprise.sandbox.test-util/with-gtaps-for-user!                              macros.metabase-enterprise.sandbox.test-util/with-gtaps!
-   metabase-enterprise.serialization.test-util/with-world                                  macros.metabase-enterprise.serialization.test-util/with-world
-   metabase-enterprise.test/with-gtaps!                                                    macros.metabase-enterprise.sandbox.test-util/with-gtaps!
-   metabase-enterprise.test/with-gtaps-for-user!                                           macros.metabase-enterprise.sandbox.test-util/with-gtaps!
-   metabase.collections.api-test/with-collection-hierarchy!                                macros.metabase.collections.api-test/with-collection-hierarchy!
-   metabase.collections.api-test/with-some-children-of-collection!                         macros.metabase.collections.api-test/with-some-children-of-collection!
-   metabase.embedding.api.embed-test/with-embedding-enabled-and-temp-card-referencing!     macros.metabase.embedding.api.embed-test/with-embedding-enabled-and-temp-card-referencing!
-   metabase.embedding.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing! macros.metabase.embedding.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing!
-   metabase.lib.common/defop                                                               macros.metabase.lib.common/defop
-   metabase.lib.filter/deffilter                                                           macros.metabase.lib.filter/deffilter
-   metabase.parameters.chain-filter-test/chain-filter                                      macros.metabase.parameters.chain-filter-test/chain-filter
-   metabase.parameters.chain-filter-test/chain-filter-search                               macros.metabase.parameters.chain-filter-test/chain-filter
-   metabase.public-sharing.api-test/with-sharing-enabled-and-temp-card-referencing!        macros.metabase.public-sharing.api-test/with-sharing-enabled-and-temp-card-referencing!
-   metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing!    macros.metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing!
-   metabase.queries.api.card-test/with-ordered-items                                       macros.metabase.queries.api.card-test/with-ordered-items
-   metabase.query-analysis.models.query-analysis-test/with-test-setup                      macros.metabase.query-analysis.models.query-analysis-test/with-test-setup
-   metabase.query-analysis.task.test-setup/with-test-setup!                                macros.metabase.query-analysis.task.test-setup/with-test-setup!
-   metabase.query-processor.streaming/streaming-response                                   macros.metabase.query-processor.streaming/streaming-response
-   metabase.server.statistics-handler-test/with-server                                     macros.metabase.server.statistics-handler-test/with-server
-   metabase.test.data.users/with-group-for-user                                            macros.metabase.test.data.users/with-group-for-user
-   metabase.test.util/with-temp-env-var-value!                                             macros.metabase.test.util/with-temp-env-var-value!
-   metabase.test.util/with-temporary-raw-setting-values                                    macros.metabase.test.util/with-temporary-raw-setting-values
-   metabase.test/with-group-for-user                                                       macros.metabase.test.data.users/with-group-for-user
-   metabase.test/with-temp-env-var-value!                                                  macros.metabase.test.util/with-temp-env-var-value!
-   metabase.test/with-temporary-raw-setting-values                                         macros.metabase.test.util/with-temporary-raw-setting-values
-   metabase.users.models.user-test/with-groups!                                            macros.metabase.users.models.user-test/with-groups!
-   metabase.util.namespaces/import-fn                                                      macros.metabase.util.namespaces/import-fn
-   metabase.xrays.related-test/with-world                                                  macros.metabase.xrays.related-test/with-world}}
+  {clojurewerkz.quartzite.jobs/build                                                            macros.quartz/build-job
+   clojurewerkz.quartzite.schedule.calendar-interval/build                                      macros.quartz/build-job
+   clojurewerkz.quartzite.schedule.cron/schedule                                                macros.quartz/schedule
+   clojurewerkz.quartzite.schedule.simple/schedule                                              macros.quartz/simple-schedule
+   clojurewerkz.quartzite.triggers/build                                                        macros.quartz/build-trigger
+   metabase-enterprise.database-routing.e2e-test/with-temp-dbs!                                 macros.metabase-enterprise.database-routing.e2e-test/with-temp-dbs!
+   metabase-enterprise.impersonation.util-test/with-impersonations!                             macros.metabase-enterprise.impersonation.util-test/with-impersonations!
+   metabase-enterprise.query-reference-validation.api-test/with-test-setup!                     macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup!
+   metabase-enterprise.sandbox.test-util/with-gtaps!                                            macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase-enterprise.sandbox.test-util/with-gtaps-for-user!                                   macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase-enterprise.serialization.test-util/with-world                                       macros.metabase-enterprise.serialization.test-util/with-world
+   metabase-enterprise.test/with-gtaps!                                                         macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase-enterprise.test/with-gtaps-for-user!                                                macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase.collections-rest.api-test/with-collection-hierarchy!                                macros.metabase.collections-rest.api-test/with-collection-hierarchy!
+   metabase.collections-rest.api-test/with-some-children-of-collection!                         macros.metabase.collections-rest.api-test/with-some-children-of-collection!
+   metabase.embedding-rest.api.embed-test/with-embedding-enabled-and-temp-card-referencing!     macros.metabase.embedding-rest.api.embed-test/with-embedding-enabled-and-temp-card-referencing!
+   metabase.embedding-rest.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing! macros.metabase.embedding-rest.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing!
+   metabase.lib.common/defop                                                                    macros.metabase.lib.common/defop
+   metabase.lib.filter/deffilter                                                                macros.metabase.lib.filter/deffilter
+   metabase.parameters.chain-filter-test/chain-filter                                           macros.metabase.parameters.chain-filter-test/chain-filter
+   metabase.parameters.chain-filter-test/chain-filter-search                                    macros.metabase.parameters.chain-filter-test/chain-filter
+   metabase.public-sharing-rest.api-test/with-sharing-enabled-and-temp-card-referencing!        macros.metabase.public-sharing-rest.api-test/with-sharing-enabled-and-temp-card-referencing!
+   metabase.public-sharing-rest.api-test/with-sharing-enabled-and-temp-dashcard-referencing!    macros.metabase.public-sharing-rest.api-test/with-sharing-enabled-and-temp-dashcard-referencing!
+   metabase.queries.api.card-test/with-ordered-items                                            macros.metabase.queries.api.card-test/with-ordered-items
+   metabase.query-analysis.models.query-analysis-test/with-test-setup                           macros.metabase.query-analysis.models.query-analysis-test/with-test-setup
+   metabase.query-analysis.task.test-setup/with-test-setup!                                     macros.metabase.query-analysis.task.test-setup/with-test-setup!
+   metabase.query-processor.streaming/streaming-response                                        macros.metabase.query-processor.streaming/streaming-response
+   metabase.server.statistics-handler-test/with-server                                          macros.metabase.server.statistics-handler-test/with-server
+   metabase.test.data.users/with-group-for-user                                                 macros.metabase.test.data.users/with-group-for-user
+   metabase.test.util/with-temp-env-var-value!                                                  macros.metabase.test.util/with-temp-env-var-value!
+   metabase.test.util/with-temporary-raw-setting-values                                         macros.metabase.test.util/with-temporary-raw-setting-values
+   metabase.test/with-group-for-user                                                            macros.metabase.test.data.users/with-group-for-user
+   metabase.test/with-temp-env-var-value!                                                       macros.metabase.test.util/with-temp-env-var-value!
+   metabase.test/with-temporary-raw-setting-values                                              macros.metabase.test.util/with-temporary-raw-setting-values
+   metabase.users.models.user-test/with-groups!                                                 macros.metabase.users.models.user-test/with-groups!
+   metabase.util.namespaces/import-fn                                                           macros.metabase.util.namespaces/import-fn
+   metabase.xrays.related-test/with-world                                                       macros.metabase.xrays.related-test/with-world}}
 
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}}}
