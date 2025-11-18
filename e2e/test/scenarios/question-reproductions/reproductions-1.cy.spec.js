@@ -129,9 +129,10 @@ describe("issue 9027", () => {
     cy.signInAsAdmin();
 
     H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
-      cy.findByText("Orders").should("exist");
+      H.entityPickerModalItem(0, "Our analytics").click();
+      H.entityPickerModalItem(1, "Orders").should("exist");
       cy.button("Close").click();
     });
 
@@ -159,8 +160,9 @@ describe("issue 9027", () => {
 
 function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
   H.startNewQuestion();
+  H.miniPickerBrowseAll().click();
   H.entityPickerModal().within(() => {
-    H.entityPickerModalTab("Collections").click();
+    H.entityPickerModalItem(0, "Our analytics").click();
     cy.findByText(questionName).should(exists ? "exist" : "not.exist");
     cy.button("Close").click();
   });
@@ -589,8 +591,8 @@ describe("issue 17514", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Join data").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Products").click();
       });
 
