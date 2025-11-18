@@ -8,97 +8,8 @@ on:
         type: string
 
 jobs:
-  files-changed:
-    name: "SDK e2e > Check which files changed"
-    runs-on: ubuntu-22.04
-    timeout-minutes: 3
-    outputs:
-      e2e_embedding_sdk: ${{ steps.changes.outputs.e2e_embedding_sdk }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Test which files changed
-        uses: dorny/paths-filter@v3.0.0
-        id: changes
-        with:
-          token: ${{ github.token }}
-          filters: .github/file-paths.yaml
-
-  # if this is a test on a release branch, we need to check the build requirements
-  get-build-requirements:
-    name: "SDK e2e > [Backport only] Get build requirements"
-    if: |
-      !cancelled() &&
-      contains(github.base_ref || github.ref, 'release-x')
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    outputs:
-      java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
-      node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
-      - name: Get build dependencies
-        uses: actions/github-script@v7
-        id: dependencies
-        with:
-          script: | # js
-            const {
-              getBuildRequirements,
-              getVersionFromReleaseBranch,
-            } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const targetBranchName = '${{ github.base_ref || github.ref }}';
-
-            const version = getVersionFromReleaseBranch(targetBranchName);
-            const requirements = getBuildRequirements(version);
-
-            return {
-              java_version: requirements.java,
-              node_version: requirements.node,
-            };
-
-  build-uberjar:
-    name: "SDK e2e > Build uberjar"
-    needs: [files-changed, get-build-requirements]
-    if: |
-      !cancelled() &&
-      needs.files-changed.outputs.e2e_embedding_sdk == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 25
-    env:
-      MB_EDITION: ee
-      INTERACTIVE: false
-      # make sure that builds on release branches get licenses, because we use them for releases
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-        with:
-          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
-
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
-
-      - name: Build uberjar with ./bin/build.sh
-        run: ./bin/build.sh
-
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-        with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar-sdk-tests
-
   e2e-tests:
     name: "SDK e2e > Run e2e tests (React ${{ matrix.react-version }})"
-    needs: [get-build-requirements, build-uberjar]
-    if: |
-      !cancelled() &&
-      needs.build-uberjar.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     strategy:
@@ -126,23 +37,20 @@ jobs:
       - name: Retrieve uberjar artifact for ee
         uses: actions/download-artifact@v4
         with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar-sdk-tests
+          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 
-      - name: Prepare JDK ${{ needs.get-build-requirements.outputs.java_version || 21 }}
+      - name: Prepare JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: ${{ needs.get-build-requirements.outputs.java_version || 21 }}
+          java-version: 21
           distribution: "temurin"
 
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
-
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
 
       - name: Retrieve Embedding SDK dist artifact
         uses: actions/download-artifact@v4
