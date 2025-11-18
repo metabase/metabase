@@ -122,6 +122,7 @@
              :description      (:description card)
              :entity_id        (:entity_id card)
              :metrics          (:metrics card)
+             :segments (:segments card)
              :type             card-type}
       (and (= card-type :metric)
            dataset-query)
@@ -187,7 +188,7 @@
                                                                   (keep (comp metadata-fields :id))
                                                                   (:result_metadata card))]))
                                          cards)
-          readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]
+          readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics :segments)]
       (for [card readable-cards]
         ;; a native model can have columns with keys as semantic types only if a user configured them
         (let [trust-semantic-keys? (and (= (:type card) :model)

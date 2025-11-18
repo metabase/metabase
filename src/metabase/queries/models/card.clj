@@ -329,6 +329,18 @@
                    (filter mi/can-read?)))
    :id))
 
+(methodical/defmethod t2/batched-hydrate [:model/Card :segments]
+  [_model k cards]
+  (mi/instances-with-hydrated-data
+   cards k
+   #(group-by :card_id
+              (->> (t2/select :model/Segment
+                              :card_id [:in (map :id cards)],
+                              :archived false,
+                              {:order-by [[:name :asc]]})
+                   (filter mi/can-read?)))
+   :id))
+
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (mu/defn populate-query-fields
