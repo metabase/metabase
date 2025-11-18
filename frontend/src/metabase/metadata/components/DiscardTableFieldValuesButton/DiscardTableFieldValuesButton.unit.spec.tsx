@@ -46,7 +46,7 @@ describe("DiscardTableFieldValuesButton", () => {
 
     await userEvent.click(button);
     const calls = fetchMock.callHistory.calls(
-      `path:/api/table/discard-values`,
+      `path:/api/ee/table/discard-values`,
       {
         method: "POST",
       },
@@ -72,9 +72,12 @@ describe("DiscardTableFieldValuesButton", () => {
     expect(button).toHaveTextContent("Discard cached field values");
 
     await userEvent.click(button);
-    let calls = fetchMock.callHistory.calls(`path:/api/table/discard-values`, {
-      method: "POST",
-    });
+    let calls = fetchMock.callHistory.calls(
+      `path:/api/ee/table/discard-values`,
+      {
+        method: "POST",
+      },
+    );
     expect(calls).toHaveLength(1);
     expect(JSON.parse(calls[0].options.body as string)).toEqual({
       table_ids: [table.id],
@@ -89,7 +92,7 @@ describe("DiscardTableFieldValuesButton", () => {
 
     expect(button).toHaveTextContent("Discard triggered!");
     await userEvent.click(button);
-    calls = fetchMock.callHistory.calls(`path:/api/table/discard-values`, {
+    calls = fetchMock.callHistory.calls(`path:/api/ee/table/discard-values`, {
       method: "POST",
     });
     expect(calls).toHaveLength(2);
@@ -122,7 +125,7 @@ describe("DiscardTableFieldValuesButton", () => {
 
     await userEvent.click(button);
     const calls = fetchMock.callHistory.calls(
-      `path:/api/table/discard-values`,
+      `path:/api/ee/table/discard-values`,
       {
         method: "POST",
       },

@@ -31,17 +31,17 @@ export function setupTablesEndpoints(tables: Table[]) {
 
 export function setupTablesBulkEndpoints() {
   fetchMock.post(
-    "path:/api/table/rescan-values",
+    "path:/api/ee/table/rescan-values",
     {},
     { name: "tables-rescan-values" },
   );
   fetchMock.post(
-    "path:/api/table/sync-schema",
+    "path:/api/ee/table/sync-schema",
     {},
     { name: "tables-sync-schema" },
   );
   fetchMock.post(
-    "path:/api/table/discard-values",
+    "path:/api/ee/table/discard-values",
     {},
     { name: "tables-discard-values" },
   );

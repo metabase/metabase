@@ -37,7 +37,7 @@ describe("Table editing", () => {
     cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
     cy.intercept("PUT", "/api/table").as("updateTables");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
-    cy.intercept("post", "/api/table/publish-model").as("publishModel");
+    cy.intercept("post", "/api/ee/table/publish-model").as("publishModel");
   });
 
   it("should display metadata information", { tags: ["@external"] }, () => {

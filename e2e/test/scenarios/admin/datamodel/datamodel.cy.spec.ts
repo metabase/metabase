@@ -3405,9 +3405,9 @@ describe("scenarios > admin > datamodel", () => {
       cy.intercept("POST", "/api/field/*/values", error);
       cy.intercept("POST", "/api/field/*/dimension", error);
       cy.intercept("PUT", "/api/table/*", error);
-      cy.intercept("POST", "/api/table/sync-schema", error);
-      cy.intercept("POST", "/api/table/rescan-values", error);
-      cy.intercept("POST", "/api/table/discard-values", error);
+      cy.intercept("POST", "/api/ee/table/sync-schema", error);
+      cy.intercept("POST", "/api/ee/table/rescan-values", error);
+      cy.intercept("POST", "/api/ee/table/discard-values", error);
     });
 
     it("shows toast errors and preview errors", () => {
