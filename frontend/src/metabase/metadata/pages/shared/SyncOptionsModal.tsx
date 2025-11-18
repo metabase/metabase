@@ -23,7 +23,7 @@ export const SyncOptionsModal = ({
   tableIds,
   onClose,
 }: Props) => {
-  const isSingleTable = // TODO use me for pluralization
+  const isSingleTable =
     (databaseIds == null || databaseIds.length === 0) &&
     (schemaIds == null || schemaIds.length === 0) &&
     tableIds != null &&
@@ -40,7 +40,9 @@ export const SyncOptionsModal = ({
       <Stack gap="xl" pt="lg">
         <Stack gap="md">
           <Stack gap="xs">
-            <Text fw="bold">{t`Re-sync schema`}</Text>
+            <Text fw="bold">
+              {isSingleTable ? t`Re-sync schema` : t`Re-sync schemas`}
+            </Text>
 
             <Text c="text-secondary" size="sm">
               {isSingleTable
