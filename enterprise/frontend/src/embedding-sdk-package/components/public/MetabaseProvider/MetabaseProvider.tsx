@@ -5,6 +5,7 @@ import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { ClientSideOnlyWrapper } from "embedding-sdk-package/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
 import { useLoadSdkBundle } from "embedding-sdk-package/hooks/private/use-load-sdk-bundle";
+import { usePreloadJwtAuth } from "embedding-sdk-package/hooks/private/use-preload-jwt-auth";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
@@ -30,6 +31,7 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
   props: Omit<MetabaseProviderProps, "children">,
 ) {
   useLoadSdkBundle(props.authConfig.metabaseInstanceUrl);
+  const isJwtPreloadReady = usePreloadJwtAuth(props.authConfig);
 
   const { isLoading } = useSdkLoadingState();
 
@@ -82,7 +84,7 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
   const metabaseProviderPropsStoreInitialized =
     loadingState === SdkLoadingState.Initialized;
 
-  if (!metabaseProviderPropsStoreInitialized || !reduxStore) {
+  if (!metabaseProviderPropsStoreInitialized || !reduxStore || !isJwtPreloadReady) {
     return null;
   }
 

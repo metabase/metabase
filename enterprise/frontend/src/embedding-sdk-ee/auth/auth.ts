@@ -2,7 +2,6 @@
 
 import type { AsyncThunkAction } from "@reduxjs/toolkit";
 
-import { EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION } from "build-configs/embedding-sdk/constants/versions";
 import {
   connectToInstanceAuthSso,
   jwtDefaultRefreshTokenFunction,
@@ -12,6 +11,7 @@ import {
 import * as MetabaseError from "embedding-sdk-bundle/errors";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import { PLUGIN_EMBEDDING_SDK_AUTH } from "embedding-sdk-bundle/store/auth";
+import { consumePreloadedJwtToken } from "embedding-sdk-bundle/store/auth/preloaded-jwt";
 import {
   getFetchRefreshTokenFn,
   getSessionTokenState,
@@ -21,7 +21,12 @@ import type {
   SdkStoreState,
 } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
-import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
+import { getSdkRequestHeaders } from "embedding-sdk-shared/lib/get-sdk-request-headers";
+import {
+  getPerfNow,
+  logPerfDuration,
+  logPerfEvent,
+} from "embedding-sdk-shared/lib/logging/perf-logger";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
@@ -76,13 +81,30 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
         }
       };
     try {
-      // verify that the session is actually valid before proceeding
-      await dispatch(
-        getOrRefreshSession({
+      let hasVerifiedSession = false;
+
+      if (preferredAuthMethod === "jwt") {
+        const preloadedSession = await consumePreloadedJwtToken({
           metabaseInstanceUrl,
           preferredAuthMethod,
-        }),
-      ).unwrap();
+        });
+
+        if (preloadedSession?.id) {
+          validateSession(preloadedSession);
+          api.sessionToken = preloadedSession.id;
+          hasVerifiedSession = true;
+        }
+      }
+
+      if (!hasVerifiedSession) {
+        // verify that the session is actually valid before proceeding
+        await dispatch(
+          getOrRefreshSession({
+            metabaseInstanceUrl,
+            preferredAuthMethod,
+          }),
+        ).unwrap();
+      }
     } catch (e) {
       // TODO: Fix this. For some reason the instanceof check keeps returning `false`. I'd rather not do this
       // but due to time constraints this is what we have to do to make sure tests pass.
@@ -119,22 +141,91 @@ const refreshTokenImpl = async (
   }: Pick<MetabaseAuthConfig, "metabaseInstanceUrl" | "preferredAuthMethod">,
   { getState }: { getState: () => unknown },
 ): Promise<MetabaseEmbeddingSessionToken | null> => {
+  const refreshStart = getPerfNow();
+  logPerfEvent("bundle-auth", "refresh token async start", {
+    instanceUrl: metabaseInstanceUrl,
+    preferredAuthMethod,
+  });
+
   const state = getState() as SdkStoreState;
 
-  if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding) {
-    return requestSessionTokenFromEmbedJs();
+  try {
+    if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding) {
+      logPerfEvent("bundle-auth", "delegate auth to embed.js", {
+        instanceUrl: metabaseInstanceUrl,
+      });
+      const embedStart = getPerfNow();
+      const sessionFromEmbed = await requestSessionTokenFromEmbedJs();
+      logPerfDuration("bundle-auth", "embed.js auth resolved", embedStart, {
+        instanceUrl: metabaseInstanceUrl,
+      });
+      validateSession(sessionFromEmbed);
+      logPerfDuration("bundle-auth", "refresh token resolved", refreshStart, {
+        instanceUrl: metabaseInstanceUrl,
+        source: "embed-js",
+      });
+      return sessionFromEmbed;
+    }
+
+    const customGetRefreshToken = getFetchRefreshTokenFn(state) ?? undefined;
+
+    if (preferredAuthMethod === "jwt") {
+      const preloadedStart = getPerfNow();
+      logPerfEvent("bundle-auth", "wait for preloaded jwt token", {
+        instanceUrl: metabaseInstanceUrl,
+      });
+      const preloadedJwtSession = await consumePreloadedJwtToken({
+        metabaseInstanceUrl,
+        preferredAuthMethod,
+      });
+
+      if (preloadedJwtSession) {
+        validateSession(preloadedJwtSession);
+        logPerfDuration(
+          "bundle-auth",
+          "preloaded jwt token ready",
+          preloadedStart,
+          {
+            instanceUrl: metabaseInstanceUrl,
+          },
+        );
+        logPerfDuration("bundle-auth", "refresh token resolved", refreshStart, {
+          instanceUrl: metabaseInstanceUrl,
+          source: "preloaded-jwt",
+        });
+        return preloadedJwtSession;
+      }
+
+      logPerfDuration(
+        "bundle-auth",
+        "preloaded jwt token unavailable",
+        preloadedStart,
+        {
+          instanceUrl: metabaseInstanceUrl,
+        },
+      );
+    }
+
+    const session = await getRefreshToken({
+      metabaseInstanceUrl,
+      preferredAuthMethod,
+      fetchRequestToken: customGetRefreshToken,
+    });
+    validateSession(session);
+
+    logPerfDuration("bundle-auth", "refresh token resolved", refreshStart, {
+      instanceUrl: metabaseInstanceUrl,
+      source: "backend",
+    });
+
+    return session;
+  } catch (error) {
+    logPerfDuration("bundle-auth", "refresh token failed", refreshStart, {
+      instanceUrl: metabaseInstanceUrl,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
   }
-
-  const customGetRefreshToken = getFetchRefreshTokenFn(state) ?? undefined;
-
-  const session = await getRefreshToken({
-    metabaseInstanceUrl,
-    preferredAuthMethod,
-    fetchRequestToken: customGetRefreshToken,
-  });
-  validateSession(session);
-
-  return session;
 };
 
 // Thunk used locally in this file, NOT exported
@@ -194,37 +285,47 @@ const getRefreshToken = async ({
   MetabaseAuthConfig,
   "metabaseInstanceUrl" | "fetchRequestToken" | "preferredAuthMethod"
 >) => {
+  const fetchStart = getPerfNow();
+  logPerfEvent("bundle-auth", "request auth SSO url", {
+    instanceUrl: metabaseInstanceUrl,
+    preferredAuthMethod,
+  });
   const urlResponseJson = await connectToInstanceAuthSso(metabaseInstanceUrl, {
     preferredAuthMethod,
     headers: getSdkRequestHeaders(),
   });
+  logPerfDuration("bundle-auth", "received auth SSO url", fetchStart, {
+    instanceUrl: metabaseInstanceUrl,
+  });
   const { method, url: responseUrl, hash } = urlResponseJson || {};
   if (method === "saml") {
+    const samlStart = getPerfNow();
+    logPerfEvent("bundle-auth", "start saml popup auth", {
+      instanceUrl: metabaseInstanceUrl,
+    });
     const token = await openSamlLoginPopup(responseUrl);
     samlTokenStorage.set(token);
+    logPerfDuration("bundle-auth", "saml popup resolved", samlStart, {
+      instanceUrl: metabaseInstanceUrl,
+    });
 
     return token;
   }
   if (method === "jwt") {
-    return jwtDefaultRefreshTokenFunction(
+    const jwtStart = getPerfNow();
+    logPerfEvent("bundle-auth", "start jwt refresh request", {
+      instanceUrl: metabaseInstanceUrl,
+    });
+    const token = await jwtDefaultRefreshTokenFunction(
       responseUrl,
       metabaseInstanceUrl,
-      getSdkRequestHeaders(hash),
+      getSdkRequestHeaders({ hash }),
       customGetRequestToken,
     );
+    logPerfDuration("bundle-auth", "jwt refresh resolved", jwtStart, {
+      instanceUrl: metabaseInstanceUrl,
+    });
+    return token;
   }
   throw MetabaseError.INVALID_AUTH_METHOD({ method });
 };
-
-function getSdkRequestHeaders(hash?: string): Record<string, string> {
-  return {
-    // eslint-disable-next-line no-literal-metabase-strings -- header name
-    "X-Metabase-Client": "embedding-sdk-react",
-    // eslint-disable-next-line no-literal-metabase-strings -- header name
-    "X-Metabase-Client-Version":
-      getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO").version ??
-      EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
-    // eslint-disable-next-line no-literal-metabase-strings -- header name
-    ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
-  };
-}
