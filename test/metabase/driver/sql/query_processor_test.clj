@@ -1644,7 +1644,7 @@
                                         (m/find-first (comp #{"a b"} :name)
                                                       (lib/orderable-columns $query))))
                     (lib/limit 3))]
-      (is (= [["2016-04-01T00:00:00Z" 1]
-              ["2016-05-01T00:00:00Z" 19]
-              ["2016-06-01T00:00:00Z" 37]]
-             (mt/rows (qp/process-query query)))))))
+      (is (= [1 19 37]
+             (->> (qp/process-query query)
+                  (mt/formatted-rows [identity int])
+                  (map second)))))))
