@@ -200,7 +200,7 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
               bg="accent-gray-light"
               flex={COLUMN_CONFIG.preview.flex}
               h="100%"
-              p="xl"
+              p="lg"
               maw={COLUMN_CONFIG.preview.max}
               miw={COLUMN_CONFIG.preview.min}
             >

@@ -61,6 +61,14 @@
 
 .editorContent
   :global(.ProseMirror)
+  :where(:global(h1), :global(h2), :global(h3)):first-child:not(
+    :global(.editor-style-boundary) *
+  ) {
+  margin-top: 0;
+}
+
+.editorContent
+  :global(.ProseMirror)
   :global(p):not(:global(.editor-style-boundary) *) {
   margin: 0 0 1rem 0;
   line-height: 1.5;

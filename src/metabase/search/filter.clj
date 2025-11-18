@@ -87,6 +87,13 @@
 
 (defmethod where-clause* ::list [_ k v] [:in k v])
 
+(defmethod where-clause* ::collection-hierarchy [_ k v]
+  ;; Filter by collection and all descendants
+  ;; Match items directly in the collection OR in descendant collections
+  [:or
+   [:= k v]
+   [:like :collection.location (str (t2/select-one-fn :location [:model/Collection :location] v) v "/%")]])
+
 (defn personal-collections-where-clause
   "Build a clause limiting the entries to those (not) within or within personal collections, if relevant.
   WARNING: this method queries the appdb, and its approach will get very slow when there are many users!"

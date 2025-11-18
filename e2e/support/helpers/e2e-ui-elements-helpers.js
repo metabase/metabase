@@ -415,6 +415,10 @@ export const undoToastList = () => {
   return cy.findAllByTestId("toast-undo");
 };
 
+export const undoToastListContainer = () => {
+  return cy.findByTestId("undo-list");
+};
+
 export function dashboardCards() {
   return cy.get("[data-element-id=dashboard-cards-container]");
 }

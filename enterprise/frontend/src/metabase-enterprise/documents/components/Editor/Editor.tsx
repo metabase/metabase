@@ -39,6 +39,7 @@ import { MetabotMentionSuggestion } from "metabase-enterprise/rich_text_editing/
 import { PlainLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/PlainLink/PlainLink";
 import { ResizeNode } from "metabase-enterprise/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
+import { SupportingText } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
 import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/suggestionRenderer";
 
 import S from "./Editor.module.css";
@@ -50,8 +51,11 @@ const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   MetabotNode.name,
   SmartLink.name,
   Image.name,
-  FlexContainer.name,
   "codeBlock",
+];
+
+const BUBBLE_MENU_DISALLOWED_FULLY_SELECTED_NODES: string[] = [
+  SupportingText.name,
 ];
 
 const getMetabotPromptSerializer =
@@ -129,6 +133,7 @@ export const Editor: React.FC<EditorProps> = ({
       }),
       CardEmbed,
       FlexContainer,
+      SupportingText,
       MentionExtension.configure({
         suggestion: {
           allow: ({ state }) => !isMetabotBlock(state),
@@ -258,6 +263,9 @@ export const Editor: React.FC<EditorProps> = ({
           <EditorBubbleMenu
             editor={editor}
             disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
+            disallowedFullySelectedNodes={
+              BUBBLE_MENU_DISALLOWED_FULLY_SELECTED_NODES
+            }
           />
         )}
         <Box pos="absolute" top={0} left={0} w="100%">

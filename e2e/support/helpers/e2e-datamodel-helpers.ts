@@ -254,7 +254,7 @@ function getTableSortOrderInput() {
 }
 
 function getTableSyncOptionsButton() {
-  return getTableSection().button(/Sync options/);
+  return getTableSection().button(/Sync/);
 }
 
 function getTableSectionField(name: string) {

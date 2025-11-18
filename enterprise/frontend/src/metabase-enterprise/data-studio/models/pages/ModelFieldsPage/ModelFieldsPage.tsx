@@ -133,7 +133,7 @@ function ModelFieldsPageBody({
 
   return (
     <>
-      <Flex direction="column" h="100%">
+      <Flex direction="column" h="100%" data-testid="model-fields-page">
         <ModelHeader
           card={card}
           actions={

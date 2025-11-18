@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import { useEditTablesMutation } from "metabase/api";
 import {
@@ -43,6 +43,11 @@ export function TableAttributesEditBulk() {
   const [userId, setUserId] = useState<UserId | "unknown" | null>(null);
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
     useDisclosure();
+
+  const hasOnlyTablesSelected =
+    selectedTables.size > 0 &&
+    selectedSchemas.size === 0 &&
+    selectedDatabases.size === 0;
 
   const handleSubmit = async ({
     dataLayer,
@@ -117,7 +122,9 @@ export function TableAttributesEditBulk() {
             style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
           >
             <Icon name="collection2" size={20} />
-            {jt`${selectedItemsCount} item${selectedItemsCount === 1 ? "" : "s"} selected`}
+            {hasOnlyTablesSelected
+              ? t`${selectedItemsCount} tables selected`
+              : t`Multiple tables selected`}
           </Title>
         </Group>
 

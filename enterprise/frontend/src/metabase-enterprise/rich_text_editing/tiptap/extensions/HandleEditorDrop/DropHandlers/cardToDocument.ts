@@ -1,3 +1,5 @@
+import { Fragment, type Node as ProseMirrorNode } from "@tiptap/pm/model";
+
 import {
   RESIZE_NODE_DEFAULT_HEIGHT,
   RESIZE_NODE_MIN_HEIGHT,
@@ -10,15 +12,30 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
     originalPos,
     view,
     cameFromFlexContainer,
-    event: e,
     cardEmbedNode,
     dropPos,
   } = payload;
+  let diffSize = 0;
+  const tr = view.state.tr;
+
+  /**
+   * Works like `tr.replaceWith` except keeps track of how much is added/deleted so previously calculated positions can be adjusted
+   */
+  const replaceWith = (
+    from: number,
+    to: number,
+    content: Fragment | ProseMirrorNode,
+  ) => {
+    const oldContentSize = to - from;
+    const newContentSize =
+      content instanceof Fragment ? content.size : content.nodeSize;
+    diffSize += newContentSize - oldContentSize;
+    return tr.replaceWith(from, to, content);
+  };
+
   if (cameFromFlexContainer) {
     // Handle moving from FlexContainer to document
     if (originalPos !== null && originalParent?.type.name === "flexContainer") {
-      const tr = view.state.tr;
-
       // First, update/remove from FlexContainer (do this BEFORE insertion to avoid position shifting)
       const flexContainerPos = view.state.doc.resolve(originalPos).before();
       const flexContainer = originalParent;
@@ -56,19 +73,29 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
           if (containerParent.type.name === "resizeNode") {
             // FlexContainer is wrapped in resizeNode, replace the entire wrapper
             const wrapperPos = containerResolvedPos.before();
-            tr.replaceWith(
+            replaceWith(
               wrapperPos,
               wrapperPos + containerParent.nodeSize,
               wrappedRemainingCard,
             );
           } else {
             // FlexContainer is not wrapped, just replace it
-            tr.replaceWith(
+            replaceWith(
               flexContainerPos,
               flexContainerPos + flexContainer.nodeSize,
               wrappedRemainingCard,
             );
           }
+        } else {
+          // Only a SupportingText is left, remove the entire FlexContainer and its wrapper
+          const containerResolvedPos = view.state.doc.resolve(flexContainerPos);
+          const containerParent = containerResolvedPos.parent;
+          const wrapperPos = containerResolvedPos.before();
+          replaceWith(
+            wrapperPos,
+            wrapperPos + containerParent.nodeSize,
+            Fragment.empty,
+          );
         }
       } else if (newChildren.length > 1) {
         // Multiple cards left, keep as FlexContainer
@@ -76,7 +103,7 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
           flexContainer.attrs,
           newChildren,
         );
-        tr.replaceWith(
+        replaceWith(
           flexContainerPos,
           flexContainerPos + flexContainer.nodeSize,
           newFlexContainer,
@@ -89,12 +116,17 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
         if (containerParent.type.name === "resizeNode") {
           // Remove the entire resizeNode wrapper
           const wrapperPos = containerResolvedPos.before();
-          tr.delete(wrapperPos, wrapperPos + containerParent.nodeSize);
+          replaceWith(
+            wrapperPos,
+            wrapperPos + containerParent.nodeSize,
+            Fragment.empty,
+          );
         } else {
           // Remove just the FlexContainer
-          tr.delete(
+          replaceWith(
             flexContainerPos,
             flexContainerPos + flexContainer.nodeSize,
+            Fragment.empty,
           );
         }
       }
@@ -111,15 +143,7 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
       // Calculate adjusted drop position if the FlexContainer operations affected positions
       let adjustedDropPos = dropPos;
       if (dropPos > flexContainerPos) {
-        // If dropping after the FlexContainer, positions might have shifted
-        // This is complex to calculate, so let's recalculate
-        const coords = view.posAtCoords({
-          left: e.clientX,
-          top: e.clientY,
-        });
-        if (coords) {
-          adjustedDropPos = tr.doc.resolve(coords.pos).pos;
-        }
+        adjustedDropPos += diffSize;
       }
 
       tr.insert(adjustedDropPos, wrappedNode);

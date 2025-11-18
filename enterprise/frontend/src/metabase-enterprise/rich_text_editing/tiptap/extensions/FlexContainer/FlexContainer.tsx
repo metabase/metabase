@@ -25,7 +25,7 @@ export const FlexContainer: Node<{
 }> = Node.create({
   name: "flexContainer",
   group: "block",
-  content: "cardEmbed{1,3}", // Contains 1-3 CardEmbed nodes only
+  content: "(supportingText | cardEmbed){1,3}", // Contains 1-3 CardEmbed or SupportingText nodes only
   defining: true,
   draggable: false,
   selectable: false,
@@ -88,7 +88,7 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
 
   // Get column count and current widths
   const columnCount = node.content.childCount;
-  const currentWidths = node.attrs.columnWidths;
+  const currentWidths: number[] = node.attrs.columnWidths;
 
   // Calculate default equal widths if not set
   const columnWidths = useMemo(() => {

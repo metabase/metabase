@@ -16,6 +16,7 @@
     :model/ApiKey                            metabase.api-keys.models.api-key
     :model/ApplicationPermissionsRevision    metabase.permissions.models.application-permissions-revision
     :model/AuditLog                          metabase.audit-app.models.audit-log
+    :model/AuthIdentity metabase.auth-identity.models.auth-identity
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
     :model/CacheConfig                       metabase.cache.models.cache-config
     :model/Card                              metabase.queries.models.card

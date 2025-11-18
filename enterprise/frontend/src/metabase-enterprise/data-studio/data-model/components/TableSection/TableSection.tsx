@@ -203,6 +203,7 @@ const TableSectionBase = ({
                   flexGrow: 0,
                   width: 40,
                 }}
+                aria-label={t`Dependency graph`}
               />
             </Box>
           </Tooltip>
@@ -279,21 +280,21 @@ const TableSectionBase = ({
 
           {hasFields && (
             <>
-              <Box display={isSorting ? "block" : "none"}>
+              {isSorting && (
                 <TableSortableFieldList
                   activeFieldId={activeFieldId}
                   table={table}
                   onChange={handleCustomFieldOrderChange}
                 />
-              </Box>
+              )}
 
-              <Box display={!isSorting ? "block" : "none"}>
+              {!isSorting && (
                 <TableFieldList
                   table={table}
                   activeFieldId={activeFieldId}
                   getFieldHref={getFieldHref}
                 />
-              </Box>
+              )}
             </>
           )}
         </Stack>

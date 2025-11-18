@@ -653,7 +653,7 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-token"?: string | null;
   "remote-sync-url"?: string | null;
   "remote-sync-branch"?: string | null;
-  "remote-sync-type"?: "production" | "development" | null;
+  "remote-sync-type"?: "read-only" | "read-write" | null;
   "remote-sync-auto-import"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
