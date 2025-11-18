@@ -38,7 +38,7 @@
 
 (defn- create-basis [edition]
   {:pre [(#{:ee :oss} edition)]}
-  (b/create-basis {:project "deps.edn", :aliases #{edition}}))
+  (b/create-basis {:project "deps.edn", :aliases #{edition :drivers}}))
 
 (defn- all-paths [basis]
   (concat (:paths basis)
