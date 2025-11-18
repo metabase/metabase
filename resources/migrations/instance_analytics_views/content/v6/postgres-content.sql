@@ -183,3 +183,27 @@ select
     cast(null as boolean) as question_is_native,
     cast(null as timestamp) as event_timestamp
     from transform
+union
+select
+    glossary.id as entity_id,
+    'glossary_' || glossary.id as entity_qualified_id,
+    'glossary' as entity_type,
+    created_at,
+    updated_at,
+    creator_id,
+    term as name,
+    definition as description,
+    cast(null as int) as collection_id,
+    cast(null as int) as made_public_by_user,
+    cast(null as boolean) as is_embedding_enabled,
+    null::bool as is_verified,
+    false as archived,
+    null as action_type,
+    cast(null as int) as action_model_id,
+    null as collection_is_official,
+    null as collection_is_personal,
+    null as question_viz_type,
+    null as question_database_id,
+    cast(null as boolean) as question_is_native,
+    cast(null as timestamp) as event_timestamp
+    from glossary

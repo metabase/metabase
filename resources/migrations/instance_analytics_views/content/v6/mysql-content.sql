@@ -185,3 +185,27 @@ select
     null as question_is_native,
     null as event_timestamp
     from transform
+union
+select
+    glossary.id as entity_id,
+    concat('glossary_', glossary.id) as entity_qualified_id,
+    'glossary' as entity_type,
+    created_at,
+    updated_at,
+    creator_id,
+    term as name,
+    definition as description,
+    null as collection_id,
+    null as made_public_by_user,
+    null as is_embedding_enabled,
+    null as is_verified,
+    false as archived,
+    null as action_type,
+    null as action_model_id,
+    null as collection_is_official,
+    null as collection_is_personal,
+    null as question_viz_type,
+    null as question_database_id,
+    null as question_is_native,
+    null as event_timestamp
+    from glossary
