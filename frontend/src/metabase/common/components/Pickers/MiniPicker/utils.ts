@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useDeepCompareEffect } from "react-use";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
   cardApi,
   collectionApi,
   databaseApi,
+  skipToken,
+  useListCollectionItemsQuery,
 } from "metabase/api";
 import type { DispatchFn } from "metabase/lib/redux";
 import { useDispatch } from "metabase/lib/redux";
@@ -161,20 +164,30 @@ async function getCollectionPathFromValue(
 
 
 export const useGetLibraryCollection = () => {
-  const { data: libraryCollection, isLoading } = useGetLibraryCollectionQuery();
-  const hasStuff = libraryCollection && libraryCollection?.below?.length;
+  const { data: libraryCollection, isLoading: isLoadingCollection } = useGetLibraryCollectionQuery();
+  const hasStuff = Boolean(libraryCollection && libraryCollection?.below?.length);
+  const { data: libraryItems, isLoading: isLoadingItems } = useListCollectionItemsQuery(
+    (libraryCollection && hasStuff) ? { id: libraryCollection.id } : skipToken,
+  );
+
+  const subcollectionsWithStuff = libraryItems?.data.filter((item) =>
+    item.model === "collection" &&
+    (item.here?.length || item.below?.length)
+  ) ?? [];
+
+  const showableLibrary = match({ subcollectionsWithStuff, hasStuff })
+    .when( // if there's only one subcollection with stuff, we want to go straight into it
+      ({ subcollectionsWithStuff }) => subcollectionsWithStuff?.length === 1,
+      () => subcollectionsWithStuff[0],
+    )
+    .with(
+      { hasStuff: true},
+      () => (libraryCollection as MiniPickerCollectionItem)
+  ).otherwise(() => undefined);
+
 
   return {
-    isLoading,
-    data: hasStuff
-      ? ({
-          id: libraryCollection.id,
-          name: libraryCollection.name,
-          model: "collection",
-          can_write: libraryCollection.can_write,
-          here: libraryCollection.here,
-          below: libraryCollection.below,
-        } as MiniPickerCollectionItem)
-      : undefined,
+    isLoading: isLoadingCollection || isLoadingItems,
+    data: showableLibrary,
   };
 };
