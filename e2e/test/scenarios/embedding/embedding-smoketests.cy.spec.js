@@ -42,23 +42,17 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.visit("/admin/embedding/modular");
 
       mainPage().within(() => {
-        cy.findByRole("link", { name: "Try for free" })
+        cy.findByRole("link", { name: "Upgrade" })
           .should("have.attr", "href")
           .and(
             "eq",
-            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedded-analytics-js&utm_content=embedding-page&source_plan=oss",
+            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=embedding-page&source_plan=oss&utm_users=10&utm_campaign=embedded-analytics-js",
           );
       });
     });
 
-    it("should not let you embed the question", () => {
+    it("should not let you use non-guest auth methods", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
-
-      ensureEmbeddingIsDisabled();
-    });
-
-    it("should not let you embed the dashboard", () => {
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
 
       ensureEmbeddingIsDisabled();
     });
@@ -302,17 +296,13 @@ function resetEmbedding() {
 }
 
 function ensureEmbeddingIsDisabled() {
-  H.openSharingMenu();
-  H.sharingMenu()
-    .findByRole("menuitem", { name: "Embed" })
-    .should("be.enabled")
-    .click();
-  H.modal()
-    .findByRole("article", { name: "Static embedding" })
-    .within(() => {
-      cy.findByText("Disabled.").should("be.visible");
-      cy.findByText("Enable in admin settings").should("be.visible");
-    });
+  H.openEmbedJsModal();
+  H.embedModalEnableEmbedding();
+
+  H.getEmbedModalContent().within(() => {
+    cy.findByLabelText("Single sign-on (SSO)").should("be.disabled");
+    cy.findByLabelText("Existing Metabase session").should("be.disabled");
+  });
 }
 
 function visitAndEnableSharing(object, acceptTerms = true) {
