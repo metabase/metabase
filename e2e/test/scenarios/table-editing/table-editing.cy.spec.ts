@@ -170,6 +170,13 @@ describe("scenarios > table-editing", () => {
       });
     });
 
+    afterEach(() => {
+      H.queryWritableDB(
+        `DROP TABLE IF EXISTS ${INLINE_EDIT_TEST_TABLE_NAME}`,
+        "postgres",
+      );
+    });
+
     it("should allow to filter table data", () => {
       cy.findByTestId("edit-table-data-root").findByText("Filter").click();
 
@@ -679,13 +686,9 @@ function openEditRowModal(rowIndex: number) {
           cy.wrap(text).as("rowId");
         });
 
-      cy.findAllByTestId("cell-data").first().realHover({
-        // scrollBehavior: false,
-      });
+      cy.findAllByTestId("cell-data").first().realHover();
 
-      cy.findByTestId("row-edit-icon").click({
-        // scrollBehavior: false,
-      });
+      cy.findByTestId("row-edit-icon").click();
     });
 
   H.modal().findByText("Edit record").should("be.visible");
