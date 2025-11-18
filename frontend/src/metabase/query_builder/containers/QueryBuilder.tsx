@@ -327,7 +327,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   useMount(() => {
     const isRouteInSync = window.location.pathname === location.pathname;
     if (isWithinIframe() && !isRouteInSync) {
-      return null; // Don't render until route syncs (metabase#65500)
+      return null; // Don't initialize query builder until route syncs (metabase#65500)
     }
     initializeQB(location, params);
   });

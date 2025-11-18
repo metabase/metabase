@@ -6,14 +6,12 @@ import { getIframeBody } from "./e2e-embedding-helpers";
 interface BaseEmbedTestPageOptions {
   dashboardId: number | string;
   iframeSelector?: string;
-  onVisitPage?(win: Cypress.AUTWindow): void;
 }
 
 /**
  * Creates and loads a test fixture for interactive iframe embedding tests
  */
 export function loadInteractiveIframeEmbedTestPage({
-  onVisitPage,
   iframeSelector,
   ...options
 }: BaseEmbedTestPageOptions) {
@@ -26,7 +24,7 @@ export function loadInteractiveIframeEmbedTestPage({
     headers: { "content-type": "text/html" },
   }).as("dynamicPage");
 
-  cy.visit(testPageUrl, { onLoad: onVisitPage });
+  cy.visit(testPageUrl);
   cy.title().should("include", "Metabase Embed Test");
 
   return getIframeBody(iframeSelector);
@@ -92,10 +90,6 @@ function getInteractiveHtml({ dashboardId }: BaseEmbedTestPageOptions) {
       <style>
         body {
           margin: 0;
-        }
-
-        metabase-question, metabase-dashboard {
-          height: 100vh;
         }
       </style>
     </head>
