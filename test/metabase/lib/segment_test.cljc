@@ -44,6 +44,42 @@
 (def ^:private segment-metadata
   (lib.metadata/segment query-with-segment segment-id))
 
+;;; Card-based segment test data
+
+(def ^:private card-segment-id 200)
+
+(def ^:private card-id
+  (-> (lib.tu/mock-cards) :model/products-and-reviews :id))
+
+(def ^:private metadata-provider-with-card-segment
+  (let [base-provider (lib.tu/metadata-provider-with-mock-cards)
+        card-segment-definition
+        (-> (lib/query base-provider (lib.metadata/card base-provider card-id))
+            (lib/filter (lib/> (meta/field-metadata :products :price) 50)))]
+    (lib.tu/mock-metadata-provider
+     base-provider
+     {:segments [{:id segment-id
+                  :name "PriceID-BBQ"
+                  :table-id (meta/id :venues)
+                  :definition segment-definition
+                  :description "The ID is greater than 11 times the price and the name contains \"BBQ\"."}
+                 {:id card-segment-id
+                  :name "Expensive-Products"
+                  :card-id card-id
+                  :definition card-segment-definition
+                  :description "Products with price greater than 50."}]})))
+
+(def ^:private card-segment-clause
+  [:segment {:lib/uuid (str (random-uuid))} card-segment-id])
+
+(def ^:private query-with-card-and-segment
+  (let [model-card (lib.metadata/card metadata-provider-with-card-segment card-id)]
+    (-> (lib/query metadata-provider-with-card-segment model-card)
+        (lib/filter card-segment-clause))))
+
+(def ^:private card-segment-metadata
+  (lib.metadata/segment metadata-provider-with-card-segment card-segment-id))
+
 (deftest ^:parallel uses-segment?-test
   (is (lib/uses-segment? query-with-segment segment-id)))
 
@@ -144,5 +180,84 @@
                       :long-display-name "PriceID-BBQ",
                       :effective-type    :type/Boolean,
                       :description       "The ID is greater than 11 times the price and the name contains \"BBQ\"."}]
+                    (map (partial lib/display-info query')
+                         (lib/filters query'))))))))))
+
+(deftest ^:parallel card-segment-uses-segment?-test
+  (testing "Card-based segments work with uses-segment?"
+    (is (lib/uses-segment? query-with-card-and-segment card-segment-id))))
+
+(deftest ^:parallel card-segment-display-info-test
+  (testing "Display info works for card-based segments"
+    (are [segment] (=? {:name "expensive_products",
+                        :display-name "Expensive-Products",
+                        :long-display-name "Expensive-Products",
+                        :effective-type :type/Boolean,
+                        :description "Products with price greater than 50."}
+                       (lib.metadata.calculation/display-info query-with-card-and-segment segment))
+      card-segment-clause
+      card-segment-metadata)))
+
+(deftest ^:parallel card-segment-available-segments-test
+  (testing "Should return card-based segments when querying a card"
+    (let [model-card (lib.metadata/card metadata-provider-with-card-segment card-id)
+          query (lib/query metadata-provider-with-card-segment model-card)]
+      (is (=? [{:lib/type :metadata/segment
+                :id card-segment-id
+                :name "Expensive-Products"
+                :card-id card-id
+                :description "Products with price greater than 50."}]
+              (lib/available-segments query)))))
+  (testing "Should return filter-positions for card segments"
+    (let [available-segments (lib/available-segments query-with-card-and-segment)]
+      (is (=? [{:lib/type :metadata/segment
+                :id card-segment-id
+                :name "Expensive-Products"
+                :card-id card-id
+                :description "Products with price greater than 50."
+                :filter-positions [0]}]
+              available-segments))
+      (is (=? [{:name "expensive_products",
+                :display-name "Expensive-Products",
+                :long-display-name "Expensive-Products",
+                :effective-type :type/Boolean,
+                :description "Products with price greater than 50.",
+                :filter-positions [0]}]
+              (map #(lib/display-info query-with-card-and-segment %) available-segments)))))
+  (testing "Card segments not returned for table-based queries"
+    (is (=? [{:lib/type   :metadata/segment
+              :definition {:filter       vector?
+                           :source-table int?}
+              :name       "PriceID-BBQ"}]
+            (lib/available-segments (lib/query metadata-provider-with-card-segment (meta/table-metadata :venues))))))
+  (testing "Table segments not returned for card-based queries"
+    (let [model-card (lib.metadata/card metadata-provider-with-card-segment card-id)
+          query (lib/query metadata-provider-with-card-segment model-card)]
+      (is (not-any? #(= segment-id (:id %)) (lib/available-segments query))))))
+
+(deftest ^:parallel card-segment-filter-test
+  (testing "Should be able to filter card queries with card-based segments"
+    (let [model-card (lib.metadata/card metadata-provider-with-card-segment card-id)
+          query (lib/query metadata-provider-with-card-segment model-card)
+          segments (lib/available-segments query)]
+      (is (= 1 (count segments)))
+      ;; test with both `:metadata/segment` and with a `:segment` ref clause
+      (doseq [segment [(first segments)
+                       [:segment {:lib/uuid (str (random-uuid))} card-segment-id]]]
+        (testing (pr-str (list 'lib/filter 'query segment))
+          (let [query' (lib/filter query segment)]
+            (is (lib/uses-segment? query' card-segment-id))
+            (is (=? {:lib/type :mbql/query
+                     :stages [{:lib/type :mbql.stage/mbql
+                               :source-card card-id
+                               :filters [[:segment {:lib/uuid string?} card-segment-id]]}]}
+                    query'))
+            (is (=? [[:segment {:lib/uuid string?} card-segment-id]]
+                    (lib/filters query')))
+            (is (=? [{:name "expensive_products",
+                      :display-name "Expensive-Products",
+                      :long-display-name "Expensive-Products",
+                      :effective-type :type/Boolean,
+                      :description "Products with price greater than 50."}]
                     (map (partial lib/display-info query')
                          (lib/filters query'))))))))))

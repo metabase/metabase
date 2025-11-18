@@ -1,3 +1,4 @@
+import type { CardId } from "./card";
 import type { DatasetQuery } from "./query";
 import type { Table, TableId } from "./table";
 
@@ -7,7 +8,9 @@ export interface Segment {
   id: SegmentId;
   name: string;
   description: string;
-  table_id: TableId;
+  // A segment is associated with either a table or a card, but not both
+  table_id?: TableId;
+  card_id?: CardId;
   table?: Table;
   archived: boolean;
   // Backend always returns MBQL5 format

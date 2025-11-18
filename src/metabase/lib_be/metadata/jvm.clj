@@ -424,7 +424,8 @@
 (defn- card-id-key [metadata-type]
     ;; types not in the case statement do not support Card ID
   (case metadata-type
-    :metadata/metric :source_card_id))
+    :metadata/metric :source_card_id
+    :metadata/segment :segment/card_id))
 
 (defn- active-only-honeysql-filter [metadata-type]
   (case metadata-type

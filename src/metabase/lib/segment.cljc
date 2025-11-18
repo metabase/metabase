@@ -71,21 +71,24 @@
   ([query :- ::lib.schema/query
     stage-number :- :int]
    (when (zero? (lib.util/canonical-stage-index query stage-number))
-     (when-let [source-table-id (lib.util/source-table-id query)]
-       (let [segments (lib.metadata.protocols/segments (lib.metadata/->metadata-provider query) source-table-id)
-             segment-filters (into {}
-                                   (keep-indexed (fn [index filter-clause]
-                                                   (when (lib.util/clause-of-type? filter-clause :segment)
-                                                     [(get filter-clause 2) index])))
-                                   (lib.filter/filters query 0))]
-         (cond
-           (empty? segments)        nil
-           (empty? segment-filters) (vec segments)
-           :else                    (mapv (fn [segment-metadata]
-                                            (let [filter-pos (-> segment-metadata :id segment-filters)]
-                                              (cond-> segment-metadata
-                                                ;; even though at most one filter can reference a given segment
-                                                ;; we use plural in order to keep the interface used with
-                                                ;; plain filters referencing columns
-                                                filter-pos (assoc :filter-positions [filter-pos]))))
-                                          segments)))))))
+     (let [source-table-id (lib.util/source-table-id query)
+           source-card-id (lib.util/source-card-id query)
+           segments (if source-card-id
+                      (lib.metadata.protocols/metadatas-for-card (lib.metadata/->metadata-provider query) :metadata/segment source-card-id)
+                      (lib.metadata.protocols/metadatas-for-table (lib.metadata/->metadata-provider query) :metadata/segment source-table-id))
+           segment-filters (into {}
+                                 (keep-indexed (fn [index filter-clause]
+                                                 (when (lib.util/clause-of-type? filter-clause :segment)
+                                                   [(get filter-clause 2) index])))
+                                 (lib.filter/filters query 0))]
+       (cond
+         (empty? segments)        nil
+         (empty? segment-filters) (vec segments)
+         :else                    (mapv (fn [segment-metadata]
+                                          (let [filter-pos (-> segment-metadata :id segment-filters)]
+                                            (cond-> segment-metadata
+                                              ;; even though at most one filter can reference a given segment
+                                              ;; we use plural in order to keep the interface used with
+                                              ;; plain filters referencing columns
+                                              filter-pos (assoc :filter-positions [filter-pos]))))
+                                        segments))))))

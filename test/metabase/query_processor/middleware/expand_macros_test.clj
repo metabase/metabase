@@ -109,6 +109,60 @@
                (expand-macros
                 (lib.tu.macros/mbql-query venues {:filter [:segment 2]})))))))))
 
+(deftest ^:parallel card-segment-expansion-test
+  (testing "Card-based segments expand correctly"
+    (let [base-provider (lib.tu/metadata-provider-with-mock-cards)
+          model-id (-> (lib.tu/mock-cards) :model/products-and-reviews :id)
+          model-card (lib.metadata/card base-provider model-id)
+          card-segment-id 3
+          card-segment-definition (-> (lib/query base-provider model-card)
+                                      (lib/filter (lib/> (meta/field-metadata :products :price) 50)))
+          metadata-provider (lib.tu/mock-metadata-provider
+                             base-provider
+                             {:segments [{:id card-segment-id
+                                          :name "Expensive Products"
+                                          :card-id model-id
+                                          :definition card-segment-definition
+                                          :description "Products with price > 50"}]})]
+      (qp.store/with-metadata-provider metadata-provider
+        (testing "Card-based segment expands to its filter definition"
+          (is (=? {:database (meta/id)
+                   :type :query
+                   :query {:source-table (str "card__" model-id)
+                           :filter [:> [:field (meta/id :products :price) {:base-type :type/Float}] 50]}}
+                  (expand-macros
+                   {:database (meta/id)
+                    :type :query
+                    :query {:source-table (str "card__" model-id)
+                            :filter [:segment card-segment-id]}})))))))
+  (testing "Card-based segments combined with other filters"
+    (let [base-provider (lib.tu/metadata-provider-with-mock-cards)
+          model-id (-> (lib.tu/mock-cards) :model/products-and-reviews :id)
+          model-card (lib.metadata/card base-provider model-id)
+          card-segment-id 3
+          card-segment-definition (-> (lib/query base-provider model-card)
+                                      (lib/filter (lib/> (meta/field-metadata :products :price) 50)))
+          metadata-provider (lib.tu/mock-metadata-provider
+                             base-provider
+                             {:segments [{:id card-segment-id
+                                          :name "Expensive Products"
+                                          :card-id model-id
+                                          :definition card-segment-definition}]})]
+      (qp.store/with-metadata-provider metadata-provider
+        (is (=? {:database (meta/id)
+                 :type :query
+                 :query {:source-table (str "card__" model-id)
+                         :filter [:and
+                                  [:> [:field (meta/id :products :price) {:base-type :type/Float}] 50]
+                                  [:< [:field (meta/id :products :rating) nil] 4]]}}
+                (expand-macros
+                 {:database (meta/id)
+                  :type :query
+                  :query {:source-table (str "card__" model-id)
+                          :filter [:and
+                                   [:segment card-segment-id]
+                                   [:< [:field (meta/id :products :rating) nil] 4]]}})))))))
+
 (deftest ^:parallel segments-in-share-clauses-test
   (testing "segments in :share clauses"
     (qp.store/with-metadata-provider mock-metadata-provider

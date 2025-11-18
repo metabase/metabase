@@ -1,6 +1,6 @@
 (ns metabase.lib.js.metadata-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.js.metadata :as lib.js.metadata]
    [metabase.lib.metadata :as lib.metadata]))
@@ -68,3 +68,52 @@
         query    {:lib/type :mbql/query, :database 1, :lib/metadata mp, :stages [{:lib/type :mbql.stage/mbql, :source-table 2}]}]
     (is (= query
            (lib/normalize query)))))
+
+(def ^:private mock-card-based-segment-metadata
+  #js {"id"          200
+       "name"        "Expensive Products"
+       "card_id"     1
+       "description" "Products with price > 50"
+       "card"        #js {"id"   1
+                          "name" "Products Model"}
+       "definition"  #js {}})
+
+(def ^:private mock-table-based-segment-metadata
+  #js {"id"          100
+       "name"        "Cheap Products"
+       "table_id"    10
+       "description" "Products with price < 10"
+       "definition"  #js {}})
+
+(deftest ^:parallel available-segments-with-js-metadata-provider-test
+  (testing "available-segments filters by card-id with JS metadata provider"
+    (let [;; metadata with both a table-based and card-based segment
+          metadata #js {:segments #js {"100" mock-table-based-segment-metadata
+                                       "200" mock-card-based-segment-metadata}}
+          metadata-provider (lib.js.metadata/metadata-provider 1 metadata)
+          query {:lib/type     :mbql/query
+                 :database     1
+                 :lib/metadata metadata-provider
+                 :stages       [{:lib/type    :mbql.stage/mbql
+                                 :source-card 1}]}
+          available (lib/available-segments query)]
+      (testing "should return only the card-based segment matching source-card"
+        (is (= 1 (count available)))
+        (is (= 200 (:id (first available))))
+        (is (= "Expensive Products" (:name (first available))))
+        (is (= 1 (:card-id (first available)))))))
+  (testing "available-segments filters by table-id with JS metadata provider"
+    (let [metadata #js {:segments #js {"100" mock-table-based-segment-metadata
+                                       "200" mock-card-based-segment-metadata}}
+          metadata-provider (lib.js.metadata/metadata-provider 1 metadata)
+          query {:lib/type     :mbql/query
+                 :database     1
+                 :lib/metadata metadata-provider
+                 :stages       [{:lib/type     :mbql.stage/mbql
+                                 :source-table 10}]}
+          available (lib/available-segments query)]
+      (testing "should return only the table-based segment matching source-table"
+        (is (= 1 (count available)))
+        (is (= 100 (:id (first available))))
+        (is (= "Cheap Products" (:name (first available))))
+        (is (= 10 (:table-id (first available))))))))

@@ -257,6 +257,7 @@
         {:lib/type :metadata/segment, :id #{1}}
         {:lib/type :metadata/segment, :name #{"Segment"}}
         {:lib/type :metadata/segment, :table-id 1}
+        {:lib/type :metadata/segment, :card-id 1}
         {:lib/type :metadata/native-query-snippet, :id #{1}}
         {:lib/type :metadata/native-query-snippet, :name #{"Snippet"}}))))
 

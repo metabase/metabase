@@ -32,7 +32,7 @@ export const SegmentItem = ({ segment, onRetire }: Props) => {
       </Box>
 
       <Box component="td" className={S.cell} maw={500} p="sm">
-        <TableBreadcrumbs tableId={segment.table_id} />
+        {segment.table_id && <TableBreadcrumbs tableId={segment.table_id} />}
       </Box>
 
       <Box component="td" className={S.cell} p="sm">

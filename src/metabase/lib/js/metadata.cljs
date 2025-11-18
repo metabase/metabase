@@ -445,7 +445,7 @@
 
 (defmethod excluded-keys :segment
   [_object-type]
-  #{:database :table})
+  #{:database :table :card})
 
 (defmethod parse-field-fn :segment
   [_object-type]

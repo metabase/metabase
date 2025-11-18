@@ -101,8 +101,8 @@
     (lib.metadata.protocols/metadatas-for-table (->metadata-provider metadata-providerable) metadata-type table-id)))
 
 (mu/defn metadatas-for-card :- [:sequential ::lib.schema.metadata/metric]
-  "Return active (non-archived) metadatas associated with a particular Card, currently only Metrics.
-   `metadata-type` must be `:metadata/metric`."
+  "Return active (non-archived) metadatas associated with a particular Card, currently only Metrics and Segments.
+   `metadata-type` must be `:metadata/metric` or `:metadata/segment`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    metadata-type         :- [:enum :metadata/metric]
    card-id              :- ::lib.schema.id/card]

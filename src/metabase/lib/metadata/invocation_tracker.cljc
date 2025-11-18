@@ -36,7 +36,8 @@
 
     card-id
     (let [tracking-type (case metadata-type
-                          :metadata/metric ::card-metrics)]
+                          :metadata/metric  ::card-metrics
+                          :metadata/segment ::card-segments)]
       (track-ids! tracker tracking-type [card-id]))))
 
 (defn- metadatas
