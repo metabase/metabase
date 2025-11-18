@@ -2,32 +2,69 @@ import type React from "react";
 import { type MouseEvent, type Ref, forwardRef } from "react";
 import { t } from "ttag";
 
+import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 import { NotebookCell } from "../NotebookCell";
 
+import { getUrl } from "./utils";
+
 type DataPickerTargetProps = {
-  tableInfo?: Lib.TableDisplayInfo;
+  table?: Lib.TableMetadata | Lib.CardMetadata;
+  query: Lib.Query;
+  stageIndex: number;
   placeholder?: React.ReactNode;
   isDisabled?: boolean;
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   onAuxClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   getTableIcon?: (tableInfo: Lib.TableDisplayInfo) => IconName;
+  setIsOpened: (isOpened: boolean) => void;
 };
 
 export const DataPickerTarget = forwardRef(function DataPickerTarget(
   {
-    tableInfo,
+    table,
+    query,
+    stageIndex,
     placeholder = t`Select data`,
     isDisabled,
-    onClick,
-    onAuxClick,
     getTableIcon = defaultGetTableIcon,
+    setIsOpened,
   }: DataPickerTargetProps,
   ref: Ref<HTMLButtonElement>,
 ) {
+  const tableInfo =
+    table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
+
+  const openDataSourceInNewTab = () => {
+    const url = getUrl({ query, table, stageIndex });
+    if (url) {
+      const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
+      Urls.openInNewTab(subpathSafeUrl);
+    }
+  };
+
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    const isCtrlOrMetaClick =
+      (event.ctrlKey || event.metaKey) && event.button === 0;
+    if (isCtrlOrMetaClick) {
+      openDataSourceInNewTab();
+    } else {
+      setIsOpened(true);
+    }
+  };
+
+  const handleAuxClick = (event: MouseEvent<HTMLButtonElement>) => {
+    const isMiddleClick = event.button === 1;
+    if (isMiddleClick) {
+      openDataSourceInNewTab();
+    } else {
+      setIsOpened(true);
+    }
+  };
+
   return (
     <UnstyledButton
       ref={ref}
@@ -36,8 +73,8 @@ export const DataPickerTarget = forwardRef(function DataPickerTarget(
       fw="inherit"
       p={NotebookCell.CONTAINER_PADDING}
       disabled={isDisabled}
-      onClick={onClick}
-      onAuxClick={onAuxClick}
+      onClick={handleClick}
+      onAuxClick={handleAuxClick}
     >
       <Flex align="center" gap="xs">
         {tableInfo && (

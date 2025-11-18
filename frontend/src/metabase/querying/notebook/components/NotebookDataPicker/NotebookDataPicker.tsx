@@ -1,5 +1,4 @@
-import type React from "react";
-import { type MouseEvent, useState } from "react";
+import { useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -11,14 +10,12 @@ import {
 } from "metabase/common/components/Pickers/DataPicker";
 import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
 import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
-import { METAKEY } from "metabase/lib/browser";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getIsEmbedding } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Icon, TextInput, Tooltip } from "metabase/ui";
+import { Icon, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { RecentCollectionItem, TableId } from "metabase-types/api";
@@ -28,9 +25,7 @@ import {
   useNotebookContext,
 } from "../Notebook/context";
 
-import { DataPickerTarget } from "./DataPickerTarget";
 import { EmbeddingDataPicker } from "./EmbeddingDataPicker";
-import { getUrl } from "./utils";
 
 export interface NotebookDataPickerProps {
   title: string;
@@ -41,6 +36,8 @@ export interface NotebookDataPickerProps {
   canChangeDatabase: boolean;
   hasMetrics: boolean;
   isDisabled: boolean;
+  isOpened: boolean;
+  setIsOpened: (isOpened: boolean) => void;
   onChange: (
     table: Lib.TableMetadata | Lib.CardMetadata,
     metadataProvider: Lib.MetadataProvider,
@@ -48,7 +45,6 @@ export interface NotebookDataPickerProps {
   shouldDisableItem?: (
     item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
   ) => boolean;
-  cellComponent?: ({ children }: { children: React.ReactNode }) => JSX.Element;
 }
 
 export function NotebookDataPicker({
@@ -60,9 +56,10 @@ export function NotebookDataPicker({
   canChangeDatabase,
   hasMetrics,
   isDisabled,
+  isOpened,
+  setIsOpened,
   onChange,
   shouldDisableItem,
-  cellComponent,
 }: NotebookDataPickerProps) {
   const store = useStore();
   const dispatch = useDispatch();
@@ -102,10 +99,11 @@ export function NotebookDataPicker({
         placeholder={placeholder}
         canChangeDatabase={canChangeDatabase}
         hasMetrics={hasMetrics}
+        isOpened={isOpened}
+        setIsOpened={setIsOpened}
         isDisabled={isDisabled}
         onChange={handleChange}
         shouldDisableItem={shouldDisableItem}
-        cellComponent={cellComponent}
       />
     );
   }
@@ -117,6 +115,8 @@ type ModernDataPickerProps = {
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
   title: string;
   placeholder: string;
+  isOpened: boolean;
+  setIsOpened: (isOpened: boolean) => void;
   canChangeDatabase: boolean;
   hasMetrics: boolean;
   isDisabled: boolean;
@@ -124,7 +124,6 @@ type ModernDataPickerProps = {
   shouldDisableItem?: (
     item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
   ) => boolean;
-  cellComponent?: ({ children }: { children: React.ReactNode }) => JSX.Element;
 };
 
 function ModernDataPicker({
@@ -132,53 +131,22 @@ function ModernDataPicker({
   stageIndex,
   table,
   title,
-  placeholder,
+  isOpened,
+  setIsOpened,
   canChangeDatabase,
   hasMetrics,
   isDisabled,
   onChange,
   shouldDisableItem,
-  cellComponent,
 }: ModernDataPickerProps) {
-  const [isOpened, setIsOpened] = useState(!table);
   const context = useNotebookContext();
   const modelList = getModelFilterList(context, hasMetrics);
 
   const databaseId = Lib.databaseID(query) ?? undefined;
-  const tableInfo =
-    table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
+
   const tableValue =
     table != null ? getDataPickerValue(query, stageIndex, table) : undefined;
   const [dataSourceSearchQuery, setDataSourceSearchQuery] = useState("");
-
-  const openDataSourceInNewTab = () => {
-    const url = getUrl({ query, table, stageIndex });
-    if (url) {
-      const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
-      Urls.openInNewTab(subpathSafeUrl);
-    }
-  };
-
-  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
-    const isCtrlOrMetaClick =
-      (event.ctrlKey || event.metaKey) && event.button === 0;
-    if (isCtrlOrMetaClick) {
-      openDataSourceInNewTab();
-    } else {
-      setIsOpened(true);
-    }
-  };
-
-  const handleAuxClick = (event: MouseEvent<HTMLButtonElement>) => {
-    const isMiddleClick = event.button === 1;
-    if (isMiddleClick) {
-      openDataSourceInNewTab();
-    } else {
-      setIsOpened(true);
-    }
-  };
-
-  const Cell = cellComponent ?? (({ children }) => <>{children}</>);
 
   return (
     <>
@@ -230,24 +198,9 @@ function ModernDataPicker({
           }}
           miw="20rem"
           autoFocus={isOpened}
+          disabled={isDisabled}
         />
-      ) : (
-        <Tooltip
-          label={t`${METAKEY}+click to open in new tab`}
-          hidden={!table || isDisabled}
-          events={{ hover: true, focus: false, touch: false }}
-        >
-          <Cell>
-            <DataPickerTarget
-              tableInfo={tableInfo}
-              placeholder={placeholder}
-              isDisabled={isDisabled}
-              onClick={handleClick}
-              onAuxClick={handleAuxClick}
-            />
-          </Cell>
-        </Tooltip>
-      )}
+      ) : null}
     </>
   );
 }
