@@ -652,6 +652,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         H.visitQuestion(card_id);
 
         cy.wrap(card_id).as("questionId");
+        cy.wrap(dashboard_id).as("dashboardId");
       });
     });
 
@@ -691,12 +692,24 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
             });
           }
 
-          cy.get("@questionId").then((questionId) => {
-            H.openLegacyStaticEmbeddingModal({
+          const { alias, resource } = {
+            question: {
+              alias: "@questionId",
               resource: "question",
-              resourceId: questionId,
+            },
+            dashboard: {
+              alias: "@dashboardId",
+              resource: "dashboard",
+            },
+          }[test.case];
+
+          cy.get(alias).then((id) => {
+            H.openLegacyStaticEmbeddingModal({
+              resource: resource,
+              resourceId: id,
               activeTab: "parameters",
               confirmSave: test.confirmSave,
+              unpublishBeforeOpen: false,
             });
           });
 
