@@ -362,10 +362,11 @@
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
                :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority]
    :skip      [:estimated_row_count :view_count]
-   :transform {:created_at (serdes/date)
-               :archived_at (serdes/date)
+   :transform {:created_at     (serdes/date)
+               :archived_at    (serdes/date)
                :deactivated_at (serdes/date)
-               :db_id      (serdes/fk :model/Database :name)}})
+               :db_id          (serdes/fk :model/Database :name)
+               :workspace_id   (serdes/fk :model/Workspace)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-path-prefixes (serdes/path table))
