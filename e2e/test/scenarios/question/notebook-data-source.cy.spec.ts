@@ -72,20 +72,6 @@ describe("scenarios > notebook > data source", () => {
       });
     });
 
-    it("should not show models if only saved questions exist", () => {
-      H.createQuestion({
-        name: "GUI Question",
-        query: { "source-table": REVIEWS_ID, limit: 1 },
-        display: "table",
-      });
-
-      H.startNewQuestion();
-
-      H.entityPickerModal().within(() => {
-        H.shouldDisplayTabs(["Tables", "Collections"]);
-      });
-    });
-
     it("should include dashboard questions (metabase#56887)", () => {
       const QUESTION_NAME = "Find me";
 
@@ -122,13 +108,15 @@ describe("scenarios > notebook > data source", () => {
       H.openReviewsTable();
       H.openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Reviews").click();
+      H.miniPickerHeader().should("contain", "Sample Database");
+      H.miniPicker().findByText("Reviews");
+
+      H.miniPickerHeader().click();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.tabsShouldBe("Tables", ["Tables", "Collections"]);
-        // should not show databases step if there's only 1 database
-        H.entityPickerModalLevel(0).should("not.exist");
         // should not show schema step if there's only 1 schema
-        H.entityPickerModalLevel(1).should("not.exist");
-        assertDataPickerEntitySelected(2, "Reviews");
+        H.entityPickerModalLevel(2).should("not.exist");
+        assertDataPickerEntitySelected(3, "Reviews");
       });
     });
 
@@ -136,13 +124,15 @@ describe("scenarios > notebook > data source", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       H.openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
+      H.miniPickerHeader().should("contain", "Sample Database");
+      H.miniPicker().findByText("Orders");
+
+      H.miniPickerHeader().click();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.tabsShouldBe("Tables", ["Tables", "Collections"]);
-        // should not show databases step if there's only 1 database
-        H.entityPickerModalLevel(0).should("not.exist");
         // should not show schema step if there's only 1 schema
-        H.entityPickerModalLevel(1).should("not.exist");
-        assertDataPickerEntitySelected(2, "Orders");
+        H.entityPickerModalLevel(2).should("not.exist");
+        assertDataPickerEntitySelected(3, "Orders");
       });
     });
 
@@ -169,8 +159,7 @@ describe("scenarios > notebook > data source", () => {
         });
 
         H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
           cy.findByText(dbName).click();
           cy.findByText(schemaName).click();
           cy.findByText(tableName).click();
@@ -223,17 +212,9 @@ describe("scenarios > notebook > data source", () => {
       cy.visit(`/model/${ORDERS_MODEL_ID}/query`);
 
       cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
-        // should not show databases step if there's only 1 database
-        H.entityPickerModalLevel(0).should("not.exist");
-        // should not show schema step if there's only 1 schema
-        H.entityPickerModalLevel(1).should("not.exist");
-        assertDataPickerEntitySelected(2, "Orders");
+      H.miniPicker().within(() => {
+        H.miniPickerHeader().should("contain", "Sample Database");
+        cy.findByText("Orders").should("exist");
       });
     });
   });
@@ -323,12 +304,12 @@ describe("scenarios > notebook > data source", () => {
       H.visitQuestion("@nestedQuestionId");
       H.openNotebook();
       openDataSelector();
+      H.miniPickerHeader().should("contain", "Our analytics");
+      H.miniPicker().findByText(sourceQuestionName).should("exist");
+
+      H.miniPickerHeader().click();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, sourceQuestionName);
 
@@ -345,12 +326,12 @@ describe("scenarios > notebook > data source", () => {
       H.openNotebook();
 
       openDataSelector();
+      H.miniPickerHeader().should("contain", "First collection");
+      H.miniPicker().findByText(sourceQuestionName).should("exist");
+
+      H.miniPickerHeader().click().click();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, sourceQuestionName);
