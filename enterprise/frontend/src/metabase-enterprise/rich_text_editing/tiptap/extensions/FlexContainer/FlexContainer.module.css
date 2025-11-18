@@ -49,16 +49,16 @@
 }
 
 .flexContent :global(.node-supportingText) {
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
 }
 
 .flexContent :global(.node-supportingText):first-child {
-  padding-left: 0;
+  margin-left: 0;
 }
 
 .flexContent :global(.node-supportingText):last-child {
-  padding-right: 0;
+  margin-right: 0;
 }
 
 /* Resize handles */
