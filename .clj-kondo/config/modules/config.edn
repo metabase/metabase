@@ -1551,12 +1551,16 @@
    :uses #{analytics
            api
            app-db
+           collections
            database-routing
            driver
            events
            lib
+           lib-be
            models
            parameters
+           premium-features
+           queries
            query-processor
            request
            sync
