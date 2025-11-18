@@ -9,7 +9,7 @@ import {
   SemanticTypeAndTargetPicker,
   TitledSection,
 } from "metabase/metadata/components";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, Group, Title } from "metabase/ui";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import * as Lib from "metabase-lib";
@@ -68,8 +68,14 @@ export function ModelFieldDetails({
   };
 
   return (
-    <Flex className={S.section} flex={1} direction="column" h="100%">
-      <Box className={S.header} p="md">
+    <Flex
+      className={S.section}
+      flex={1}
+      direction="column"
+      h="100%"
+      bg="bg-white"
+    >
+      <Box p="md">
         <NameDescriptionInput
           name={field.display_name}
           nameIcon={getColumnIcon(Lib.legacyColumnTypeInfo(field))}
@@ -86,16 +92,25 @@ export function ModelFieldDetails({
           onDescriptionChange={handleDescriptionChange}
         />
       </Box>
+      <Title order={5} px="md">
+        {t`Settings`}
+      </Title>
       <Flex direction="column" p="md" gap="md">
-        <TitledSection title={t`Data`}>
-          <LabeledValue label={t`Field name`}>{field.name}</LabeledValue>
-          <LabeledValue label={t`Data type`}>
-            {field.database_type}
-          </LabeledValue>
+        <TitledSection>
+          <Group>
+            <Box flex={1}>
+              <LabeledValue label={t`Field name`}>{field.name}</LabeledValue>
+            </Box>
+            <Box flex={1}>
+              <LabeledValue label={t`Data type`}>
+                {field.database_type}
+              </LabeledValue>
+            </Box>
+          </Group>
         </TitledSection>
         {!isReadOnly && (
           <>
-            <TitledSection title={t`Metadata`}>
+            <TitledSection>
               <SemanticTypeAndTargetPicker
                 label={t`Semantic type`}
                 description={t`What this data represents`}
@@ -104,7 +119,7 @@ export function ModelFieldDetails({
                 onChange={handleChange}
               />
             </TitledSection>
-            <TitledSection title={t`Behavior`}>
+            <TitledSection>
               <FieldVisibilityPicker
                 label={t`Visibility`}
                 description={t`Where this field should be displayed`}
@@ -112,7 +127,7 @@ export function ModelFieldDetails({
                 onChange={handleVisibilityChange}
               />
             </TitledSection>
-            <TitledSection title={t`Formatting`}>
+            <TitledSection>
               <ColumnSettings
                 value={field.settings ?? {}}
                 column={field}

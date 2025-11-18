@@ -23,7 +23,6 @@ import { ModelHeader } from "../../components/ModelHeader";
 import type { FieldOverrides } from "../../types";
 
 import { ModelFieldDetails } from "./ModelFieldDetails";
-import { ModelFieldEmptyState } from "./ModelFieldEmptyState";
 import { ModelFieldList } from "./ModelFieldList";
 
 type ModelFieldsPageParams = {
@@ -163,9 +162,7 @@ function ModelFieldsPageBody({
               isReadOnly={isReadOnly}
               onChangeField={handleChangeField}
             />
-          ) : (
-            <ModelFieldEmptyState isReadOnly={isReadOnly} />
-          )}
+          ) : null}
         </Flex>
       </Flex>
       <LeaveRouteConfirmModal route={route} isEnabled={isDirty} />
