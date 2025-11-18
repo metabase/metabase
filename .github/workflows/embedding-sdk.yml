@@ -14,6 +14,7 @@ jobs:
     timeout-minutes: 3
     outputs:
       e2e_embedding_sdk: ${{ steps.changes.outputs.e2e_embedding_sdk }}
+      e2e_embedding_sdk_compatibility: ${{ steps.changes.outputs.e2e_embedding_sdk_compatibility }}
       frontend_embedding_sdk_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_sources }}
       embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
     steps:
@@ -140,20 +141,29 @@ jobs:
         run: exit 1
 
   # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
-  sdk-e2e-tests:
-    name: "SDK e2e tests"
+  embedding-sdk-component-tests:
+    name: "SDK component tests"
     needs: [build, files-changed]
     if: needs.files-changed.outputs.e2e_embedding_sdk == "true"
-    uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
+    uses: ./.github/workflows/embedding-sdk-component-tests.yml
     secrets: inherit
     with:
       cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
-  e2e-component-tests-embedding-sdk-backward-compatibility:
-    name: "SDK e2e backward compatibility tests"
+  embedding-sdk-component-tests-backward-compatibility:
+    name: "SDK component tests for the backward compatibility"
     needs: [build, files-changed]
     if: needs.files-changed.outputs.e2e_embedding_sdk == "true"
-    uses: ./.github/workflows/e2e-component-tests-embedding-sdk-backward-compatibility.yml
+    uses: ./.github/workflows/embedding-sdk-component-tests-backward-compatibility.yml
+    secrets: inherit
+    with:
+      cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+
+  not-required-embedding-sdk-e2e-tests:
+    name: "SDK e2e tests (host/sample) apps"
+    needs: [build, files-changed]
+    if: needs.files-changed.outputs.e2e_embedding_sdk_compatibility == "true"
+    uses: ./.github/workflows/embedding-sdk-e2e-tests.yml
     secrets: inherit
     with:
       cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
@@ -163,8 +173,8 @@ jobs:
       - embedding-sdk-cli-snippets-type-check
       - embedding-sdk-docs-snippets-type-check
       - embedding-sdk-api-documentation-generation-validation
-      - sdk-e2e-tests
-      - e2e-component-tests-embedding-sdk-backward-compatibility
+      - embedding-sdk-component-tests
+      - embedding-sdk-component-tests-backward-compatibility
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 5
