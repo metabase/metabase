@@ -468,8 +468,8 @@
 
 (def string-functions
   "Functions that return string values. Should match [[StringExpression]]."
-  #{:substring :trim :rtrim :ltrim :upper :lower :replace :collate :concat :regex-match-first :coalesce :case :if
-    :host :domain :subdomain :path :month-name :quarter-name :day-name :text :split-part})
+  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case :if
+    :host :domain :subdomain :path :month-name :quarter-name :day-name :text :split-part :collate})
 
 (mr/def ::StringExpressionArg
   [:multi
@@ -591,10 +591,6 @@
   b    [:ref ::ExpressionArg]
   more (rest [:ref ::ExpressionArg]))
 
-(defclause collate
-  s [:ref ::StringExpressionArg]
-  collation :string)
-
 (defclause substring
   s      [:ref ::StringExpressionArg]
   start  [:ref ::IntGreaterThanZeroOrNumericExpression]
@@ -604,6 +600,10 @@
   text      [:ref ::StringExpressionArg]
   delimiter [:string {:min 1}]
   position  [:ref ::IntGreaterThanZeroOrNumericExpression])
+
+(defclause collate
+  s [:ref ::StringExpressionArg]
+  collation :string)
 
 (defclause length
   s [:ref ::StringExpressionArg])
@@ -1205,8 +1205,8 @@
           aggregation))
 
 (mr/def ::StringExpression
-  (one-of substring trim ltrim rtrim replace lower upper concat collate regex-match-first coalesce case if host domain
-          subdomain path month-name quarter-name day-name text split-part))
+  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case if host domain
+          subdomain path month-name quarter-name day-name text split-part collate))
 
 (mr/def ::FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
