@@ -314,6 +314,11 @@ export type DocumentPrintEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
+export type DocumentAddSupportingTextEvent = ValidateEvent<{
+  event: "document_add_supporting_text";
+  target_id: number | null;
+}>;
+
 export type DatabaseHelpClickedEvent = ValidateEvent<{
   event: "database_help_clicked";
   triggered_from: "admin" | "setup";
@@ -534,6 +539,7 @@ export type SimpleEvent =
   | TransformCreateEvent
   | DocumentAddCardEvent
   | DocumentAddSmartLinkEvent
+  | DocumentAddSupportingTextEvent
   | DocumentAskMetabotEvent
   | DocumentCreatedEvent
   | DocumentReplaceCardEvent
