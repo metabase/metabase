@@ -46,7 +46,7 @@ describe("DiscardTableFieldValuesButton", () => {
 
     await userEvent.click(button);
     const calls = fetchMock.callHistory.calls(
-      `path:/api/ee/table/discard-values`,
+      `path:/api/ee/data-studio/table/discard-values`,
       {
         method: "POST",
       },
@@ -73,7 +73,7 @@ describe("DiscardTableFieldValuesButton", () => {
 
     await userEvent.click(button);
     let calls = fetchMock.callHistory.calls(
-      `path:/api/ee/table/discard-values`,
+      `path:/api/ee/data-studio/table/discard-values`,
       {
         method: "POST",
       },
@@ -92,9 +92,12 @@ describe("DiscardTableFieldValuesButton", () => {
 
     expect(button).toHaveTextContent("Discard triggered!");
     await userEvent.click(button);
-    calls = fetchMock.callHistory.calls(`path:/api/ee/table/discard-values`, {
-      method: "POST",
-    });
+    calls = fetchMock.callHistory.calls(
+      `path:/api/ee/data-studio/table/discard-values`,
+      {
+        method: "POST",
+      },
+    );
     expect(calls).toHaveLength(2);
     expect(JSON.parse(calls[1].options.body as string)).toEqual({
       table_ids: [table.id],
@@ -125,7 +128,7 @@ describe("DiscardTableFieldValuesButton", () => {
 
     await userEvent.click(button);
     const calls = fetchMock.callHistory.calls(
-      `path:/api/ee/table/discard-values`,
+      `path:/api/ee/data-studio/table/discard-values`,
       {
         method: "POST",
       },

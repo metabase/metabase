@@ -70,14 +70,17 @@ function setup(
 
   // Setup publish models API endpoint
   if (publishError) {
-    fetchMock.post("path:/api/ee/table/publish-model", {
+    fetchMock.post("path:/api/ee/data-studio/table/publish-model", {
       status: 500,
       body: { message: "Failed to publish" },
     });
   } else if (publishResponse) {
-    fetchMock.post("path:/api/ee/table/publish-model", publishResponse);
+    fetchMock.post(
+      "path:/api/ee/data-studio/table/publish-model",
+      publishResponse,
+    );
   } else {
-    fetchMock.post("path:/api/ee/table/publish-model", {
+    fetchMock.post("path:/api/ee/data-studio/table/publish-model", {
       created_count: 1,
       models: [createMockCard({ id: 1 })],
       target_collection: testCollection,
@@ -216,12 +219,14 @@ describe("PublishModelsModal", () => {
 
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.called("path:/api/ee/table/publish-model"),
+        fetchMock.callHistory.called(
+          "path:/api/ee/data-studio/table/publish-model",
+        ),
       ).toBe(true);
     });
 
     const lastCall = fetchMock.callHistory.lastCall(
-      "path:/api/ee/table/publish-model",
+      "path:/api/ee/data-studio/table/publish-model",
     );
     expect(lastCall).toBeTruthy();
     const body = lastCall?.options?.body;
@@ -296,12 +301,14 @@ describe("PublishModelsModal", () => {
 
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.called("path:/api/ee/table/publish-model"),
+        fetchMock.callHistory.called(
+          "path:/api/ee/data-studio/table/publish-model",
+        ),
       ).toBe(true);
     });
 
     const lastCall = fetchMock.callHistory.lastCall(
-      "path:/api/ee/table/publish-model",
+      "path:/api/ee/data-studio/table/publish-model",
     );
     expect(lastCall).toBeTruthy();
     const body = lastCall?.options?.body;

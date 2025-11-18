@@ -1,9 +1,10 @@
-(ns metabase-enterprise.warehouse-schema.api.table
-  "/api/ee/table endpoints for bulk table operations."
+(ns metabase-enterprise.data-studio.api.table
+  "/api/ee/data-studio/table endpoints for bulk table operations."
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collections]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
@@ -22,7 +23,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.table :as table]
-   [metabase.warehouses-rest.api :as warehouses]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
@@ -205,3 +205,7 @@
                                  :where  [:in :table_id (map :id tables)]}]
       (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids-to-delete-q]))
     {:status :ok}))
+
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/data-studio/table` routes."
+  (api.macros/ns-handler *ns* +auth))

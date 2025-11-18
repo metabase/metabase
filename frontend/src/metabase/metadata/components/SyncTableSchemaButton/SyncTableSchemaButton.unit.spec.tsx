@@ -46,7 +46,7 @@ describe("SyncTableSchemaButton", () => {
 
     await userEvent.click(button);
     const calls = fetchMock.callHistory.calls(
-      `path:/api/ee/table/sync-schema`,
+      `path:/api/ee/data-studio/table/sync-schema`,
       {
         method: "POST",
       },
@@ -72,9 +72,12 @@ describe("SyncTableSchemaButton", () => {
     expect(button).toHaveTextContent("Sync table schema");
 
     await userEvent.click(button);
-    let calls = fetchMock.callHistory.calls(`path:/api/ee/table/sync-schema`, {
-      method: "POST",
-    });
+    let calls = fetchMock.callHistory.calls(
+      `path:/api/ee/data-studio/table/sync-schema`,
+      {
+        method: "POST",
+      },
+    );
     expect(calls).toHaveLength(1);
     expect(JSON.parse(calls[0].options.body as string)).toEqual({
       table_ids: [table.id],
@@ -89,9 +92,12 @@ describe("SyncTableSchemaButton", () => {
 
     expect(button).toHaveTextContent("Sync triggered!");
     await userEvent.click(button);
-    calls = fetchMock.callHistory.calls(`path:/api/ee/table/sync-schema`, {
-      method: "POST",
-    });
+    calls = fetchMock.callHistory.calls(
+      `path:/api/ee/data-studio/table/sync-schema`,
+      {
+        method: "POST",
+      },
+    );
     expect(calls).toHaveLength(2);
     expect(JSON.parse(calls[1].options.body as string)).toEqual({
       table_ids: [table.id],
@@ -122,7 +128,7 @@ describe("SyncTableSchemaButton", () => {
 
     await userEvent.click(button);
     const calls = fetchMock.callHistory.calls(
-      `path:/api/ee/table/sync-schema`,
+      `path:/api/ee/data-studio/table/sync-schema`,
       {
         method: "POST",
       },
