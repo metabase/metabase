@@ -33,9 +33,9 @@ const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
 const SDK_PACKAGE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/embedding-sdk-package";
 const SDK_BUNDLE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
+  __dirname + "/frontend/src/embedding-sdk-bundle";
 const SDK_SHARED_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-shared";
+  __dirname + "/frontend/src/embedding-sdk-shared";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
 const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
