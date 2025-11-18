@@ -86,7 +86,7 @@ describe("scenarios > notebook > data source", () => {
       });
     });
 
-    it("should include dashboard questions when computing which tabs to show (metabase#56887)", () => {
+    it("should include dashboard questions (metabase#56887)", () => {
       const QUESTION_NAME = "Find me";
 
       H.createDashboard({
@@ -106,10 +106,7 @@ describe("scenarios > notebook > data source", () => {
 
       H.startNewQuestion();
 
-      H.entityPickerModal().should("exist");
-      H.tabsShouldBe("Tables", ["Tables", "Collections"]);
-
-      H.entityPickerModalTab("Collections").click();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModalItem(1, "Test Dashboard").click();
       H.entityPickerModalItem(2, QUESTION_NAME).should("exist");
     });
@@ -262,14 +259,7 @@ describe("scenarios > notebook > data source", () => {
         .should("have.text", modelDetails.name)
         .click();
 
-      H.entityPickerModal().within(() => {
-        H.shouldDisplayTabs(["Tables", "Collections"]);
-
-        assertDataPickerEntitySelected(0, "Our analytics");
-        assertDataPickerEntitySelected(1, "First collection");
-        assertDataPickerEntitySelected(2, "Second collection");
-        assertDataPickerEntitySelected(3, checkNotNull(modelDetails.name));
-
+      H.miniPicker().within(() => {
         cy.findByText(checkNotNull(modelDetails.name))
           .should("exist")
           .and("contain.text", checkNotNull(modelDetails.name));
@@ -281,12 +271,12 @@ describe("scenarios > notebook > data source", () => {
       H.openNotebook();
 
       openDataSelector();
+      H.miniPickerHeader().should("contain", "Our analytics");
+      H.miniPicker().findByText("Orders Model").should("exist");
+
+      H.miniPickerHeader().click();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "Orders Model");
 
@@ -296,12 +286,14 @@ describe("scenarios > notebook > data source", () => {
       moveToCollection("First collection");
 
       openDataSelector();
+
+      H.miniPickerHeader().should("contain", "First collection");
+      H.miniPicker().findByText("Orders Model").should("exist");
+
+      H.miniPickerHeader().click();
+      H.miniPickerHeader().click();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, "Orders Model");
@@ -398,7 +390,8 @@ describe("issue 34350", { tags: "@external" }, () => {
   it("works after changing question's source table to a one from a different database (metabase#34350)", () => {
     H.openOrdersTable({ mode: "notebook" });
     openDataSelector();
-    H.entityPickerModal().within(() => {
+    H.miniPicker().within(() => {
+      cy.icon("chevronleft").click();
       cy.findByText("QA Postgres12").click();
       cy.findByText("Orders").click();
     });

@@ -53,6 +53,10 @@ export function miniPickerBrowseAll() {
   return miniPicker().findByText("Browse all");
 }
 
+export function miniPickerHeader() {
+  return cy.findByTestId("mini-picker-header");
+}
+
 export function entityPickerModal() {
   return cy.findByTestId("entity-picker-modal");
 }

@@ -8,6 +8,7 @@ export function MiniPickerHeader() {
   return (
     <Box px="sm">
       <NavLink
+        data-testid="mini-picker-header"
         variant="mb-light"
         mb="sm"
         leftSection={<Icon name="chevronleft" />}
