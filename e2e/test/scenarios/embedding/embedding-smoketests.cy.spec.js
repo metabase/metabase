@@ -305,13 +305,13 @@ function ensureEmbeddingIsDisabled() {
   });
 }
 
-function visitAndEnableSharing(object, acceptTerms = true) {
+function visitAndEnableSharing(object, unpublishBeforeOpen = true) {
   if (object === "question") {
     H.visitQuestion(ORDERS_QUESTION_ID);
     H.openLegacyStaticEmbeddingModal({
       resource: "question",
       resourceId: ORDERS_QUESTION_ID,
-      acceptTerms,
+      unpublishBeforeOpen,
     });
   }
 
@@ -320,7 +320,7 @@ function visitAndEnableSharing(object, acceptTerms = true) {
     H.openLegacyStaticEmbeddingModal({
       resource: "dashboard",
       resourceId: ORDERS_DASHBOARD_ID,
-      acceptTerms,
+      unpublishBeforeOpen,
     });
   }
 }
