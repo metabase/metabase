@@ -1613,7 +1613,6 @@
            warehouses
            enterprise/advanced-permissions}}
 
-
   xrays
   {:team "Querying"
    :api  #{metabase.xrays.api
@@ -1873,7 +1872,8 @@
    :api  #{metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init}
-   :uses #{analyze
+   :uses #{analytics
+           analyze
            api
            collections
            config
