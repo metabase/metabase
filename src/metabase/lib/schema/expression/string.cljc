@@ -32,6 +32,10 @@
   #_find [:schema :string]
   #_replace [:schema :string])
 
+(mbql-clause/define-tuple-mbql-clause :collate :- :type/Text
+  #_str [:schema [:ref ::expression/string]]
+  #_collation [:schema :string])
+
 (mbql-clause/define-catn-mbql-clause :substring :- :type/Text
   [:str    [:schema [:ref ::expression/string]]]
   [:start  [:schema [:ref ::expression/integer]]]

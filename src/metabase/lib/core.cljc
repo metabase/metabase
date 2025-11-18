@@ -230,6 +230,7 @@
   concat
   substring
   replace
+  collate
   regex-match-first
   length
   trim

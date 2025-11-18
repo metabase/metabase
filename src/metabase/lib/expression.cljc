@@ -362,6 +362,7 @@
 (lib.common/defop substring [s start end])
 (lib.common/defop split-part [s delimiter index])
 (lib.common/defop replace [s search replacement])
+(lib.common/defop collate [s collation])
 (lib.common/defop regex-match-first [s regex])
 (lib.common/defop length [s])
 (lib.common/defop trim [s])
