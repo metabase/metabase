@@ -145,15 +145,15 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   };
 
   return (
-    <Stack data-testid="table-section" gap={0} pb="xl">
+    <Stack data-testid="table-section" gap={0} pb="lg">
       <Stack
         bg="accent-gray-light"
         className={S.header}
         gap="lg"
         pb={12}
         pos="sticky"
-        pt="xl"
-        px="xl"
+        pt="lg"
+        px="lg"
         top={0}
       >
         <NameDescriptionInput
@@ -243,7 +243,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         </Group>
       </Stack>
 
-      <Stack gap="lg" px="xl">
+      <Stack gap="lg" px="lg">
         <Stack gap={12}>
           {!hasFields && <EmptyState message={t`This table has no fields`} />}
 

@@ -87,7 +87,7 @@ const FieldSectionBase = ({
   };
 
   return (
-    <Stack data-testid="field-section" gap={0} pb="xl">
+    <Stack data-testid="field-section" gap={0} pb="lg">
       <Stack
         bg="accent-gray-light"
         className={S.header}
