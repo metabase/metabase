@@ -180,7 +180,7 @@ describe("scenarios > admin > embedding > static embedding> content translation"
       });
 
       it("rejects, in the frontend, a CSV upload that is too big", () => {
-        cy.visit("/admin/embedding/static");
+        cy.visit("/admin/embedding/modular");
         cy.get("#content-translation-dictionary-upload-input").selectFile(
           {
             contents: Cypress.Buffer.from(
@@ -206,7 +206,7 @@ describe("scenarios > admin > embedding > static embedding> content translation"
       });
 
       it("rejects invalid CSV", () => {
-        cy.visit("/admin/embedding/static");
+        cy.visit("/admin/embedding/modular");
         const validCSV = getCSVWithHeaderRow(germanFieldNames);
         const invalidCSV = validCSV + '\nde,Price,"Preis"X';
 
