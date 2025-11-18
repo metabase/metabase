@@ -22,6 +22,7 @@ import { CustomStarterKit } from "metabase-enterprise/rich_text_editing/tiptap/e
 import { FlexContainer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
 import { ResizeNode } from "metabase-enterprise/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
+import { SupportingText } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
 import type { Document } from "metabase-types/api";
 
 import S from "./PublicDocument.module.css";
@@ -77,6 +78,7 @@ export const PublicDocument = ({ params }: PublicDocumentProps) => {
       CardEmbed,
       FlexContainer,
       ResizeNode,
+      SupportingText,
     ],
     [siteUrl],
   );

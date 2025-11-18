@@ -29,8 +29,6 @@ const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
 const isQaDatabase = process.env["QA_DB_ENABLED"] === "true";
 
-const isEmbeddingSdk = process.env.CYPRESS_IS_EMBEDDING_SDK === "true";
-
 // docs say that tsconfig paths should handle aliases, but they don't
 const assetsResolverPlugin = {
   name: "assetsResolver",
@@ -174,14 +172,6 @@ const defaultConfig = {
 
 const mainConfig = {
   ...defaultConfig,
-  ...(isEmbeddingSdk
-    ? {
-        chromeWebSecurity: true,
-        hosts: {
-          "my-site.local": "127.0.0.1",
-        },
-      }
-    : {}),
   numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
   reporter: "cypress-multi-reporters",
   reporterOptions: {

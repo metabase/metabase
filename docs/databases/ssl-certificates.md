@@ -65,7 +65,7 @@ You'll add an ampersand (`&`) to separate each parameter. For example, In the **
 sslmode=verify-full&sslrootcert=/path/to/certificate.pem
 ```
 
-Replace `/path/to/certifcate.pem` with the full path for the certificate you downloaded from your provider.
+Replace `/path/to/certificate.pem` with the full path for the certificate you downloaded from your provider.
 
 You can learn more about [SSL support for PostgreSQL](https://www.postgresql.org/docs/current/libpq-ssl.html).
 

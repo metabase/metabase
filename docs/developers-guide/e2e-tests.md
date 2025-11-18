@@ -4,7 +4,7 @@ title: End-to-end tests with Cypress
 
 # End-to-end tests with Cypress
 
-Metabase uses Cypress for “end-to-end testing”, that is, tests that are executed against the application as a whole, including the frontend, backend, and application database. These tests are essentially scripts written in JavaScript that run in the web browser: visit different URLs, click various UI elements, type text, and assert that things happen as expected (for example, an element appearing on screen, or a network request occuring).
+Metabase uses Cypress for “end-to-end testing”, that is, tests that are executed against the application as a whole, including the frontend, backend, and application database. These tests are essentially scripts written in JavaScript that run in the web browser: visit different URLs, click various UI elements, type text, and assert that things happen as expected (for example, an element appearing on screen, or a network request occurring).
 
 _Please, get familiar with the [Cypress best practices](https://docs.cypress.io/app/core-concepts/best-practices) before you proceed._
 
@@ -172,6 +172,10 @@ Some of our tests depend on the email being set up, and require a local SMTP ser
 ```sh
 docker run -d -p 1080:1080 -p 1025:1025 maildev/maildev:latest
 ```
+
+### Running tests that require translation dictionaries
+
+Some of the tests are checking content translation functionality. These tests require to run `./bin/i18n/build-translation-resources` command before running the tests to precompile JSON files with translations.
 
 ### Cypress comes with `Lodash` for free
 

@@ -21,6 +21,7 @@ import {
   getHoveredChildTargetId,
 } from "metabase-enterprise/documents/selectors";
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
+import { isTopLevel } from "metabase-enterprise/documents/utils/editorNodeUtils";
 
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 import S from "../extensions.module.css";
@@ -120,7 +121,7 @@ export const CustomCodeBlock = CodeBlock.extend({
   },
 });
 
-export const CodeBlockNodeView = ({ node }: NodeViewProps) => {
+export const CodeBlockNodeView = ({ node, editor, getPos }: NodeViewProps) => {
   const childTargetId = useSelector(getChildTargetId);
   const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
   const document = useSelector(getCurrentDocument);
@@ -173,16 +174,19 @@ export const CodeBlockNodeView = ({ node }: NodeViewProps) => {
         </pre>
       </NodeViewWrapper>
 
-      {document && rendered && !isWithinIframe() && (
-        <CommentsMenu
-          active={isOpen}
-          href={`/document/${document.id}/comments/${_id}`}
-          ref={refs.setFloating}
-          show={isOpen || hovered}
-          threads={threads}
-          style={floatingStyles}
-        />
-      )}
+      {document &&
+        rendered &&
+        isTopLevel({ editor, getPos }) &&
+        !isWithinIframe() && (
+          <CommentsMenu
+            active={isOpen}
+            href={`/document/${document.id}/comments/${_id}`}
+            ref={refs.setFloating}
+            show={isOpen || hovered}
+            threads={threads}
+            style={floatingStyles}
+          />
+        )}
     </>
   );
 };
