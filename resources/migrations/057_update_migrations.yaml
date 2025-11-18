@@ -2459,6 +2459,79 @@ databaseChangeLog:
             constraintName: fk_transform_ref_creator_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: v57.2025-11-13T22:27:19
+      author: nvoxland
+      comment: Update old remote-sync settings
+      changes:
+        - sql:
+            dbms: mariadb,mysql
+            splitStatements: true
+            sql: |
+                UPDATE setting
+                SET value = 'read-write'
+                WHERE `key`='remote-sync-type' AND value='development';
+
+                UPDATE setting
+                SET value = 'read-only'
+                WHERE `key`='remote-sync-type' AND value='production';
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: |
+                UPDATE setting
+                SET value = 'read-write'
+                WHERE key='remote-sync-type' AND value='development';
+
+                UPDATE setting
+                SET value = 'read-only'
+                WHERE key='remote-sync-type' AND value='production';
+        - sql:
+            dbms: h2
+            splitStatements: true
+            sql: |
+                UPDATE setting
+                SET "VALUE" = 'read-write'
+                WHERE "KEY"='remote-sync-type' AND "VALUE"='development';
+
+                UPDATE setting
+                SET "VALUE" = 'read-only'
+                WHERE "KEY"='remote-sync-type' AND "VALUE"='production';
+      rollback:
+        - sql:
+            dbms: mariadb,mysql
+            splitStatements: true
+            sql: |
+              UPDATE setting
+              SET value = 'development'
+              WHERE `key`='remote-sync-type' AND value='read-write';
+
+              UPDATE setting
+              SET value = 'production'
+              WHERE `key`='remote-sync-type' AND value='read-only';
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: |
+              UPDATE setting
+              SET value = 'development'
+              WHERE key='remote-sync-type' AND value='read-write';
+
+              UPDATE setting
+              SET value = 'production'
+              WHERE key='remote-sync-type' AND value='read-only';
+        - sql:
+            dbms: h2
+            splitStatements: true
+            sql: |
+              UPDATE setting
+              SET "VALUE" = 'development'
+              WHERE "KEY"='remote-sync-type' AND "VALUE"='read-write';
+
+              UPDATE setting
+              SET "VALUE" = 'production'
+              WHERE "KEY"='remote-sync-type' AND "VALUE"='read-only';
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

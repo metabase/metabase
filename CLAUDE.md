@@ -459,7 +459,7 @@ Review pull requests with a focus on:
 - An OSS follows the pattern `metabase.<module>.*` (for the Clojure namespace) and `src/metabase/<module>/**`(for the
   source files) with tests inside the corresponding `test/metabase/<module>/` directory, e.g. the `dashboards` module
   is everything inside `src/metabase/dashboards/` and `test/metabase/dashboards/`; it might have a
-  `metabase.dashboards.api` namespace that corresponds to the file `src/metabase/dashboards/api.clj`.
+  `metabase.dashboards-rest.api` namespace that corresponds to the file `src/metabase/dashboards/api.clj`.
 
 - An EE module follows the pattern `metabase-enterprise.<module>.*` (for the Clojure namespaces) and
   `enterprise/backend/src/metabase_enterprise/<module>/**` (for the source files). The module name uses the

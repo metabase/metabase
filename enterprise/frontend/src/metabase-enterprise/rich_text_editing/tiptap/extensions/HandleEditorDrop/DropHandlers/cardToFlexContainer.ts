@@ -213,6 +213,11 @@ export const handleCardDropToFlexContainer = (
             wrappedRemainingCard,
           );
         }
+      } else {
+        tr.deleteRange(
+          sourceFlexContainerPos,
+          sourceFlexContainerPos + sourceFlexContainer.nodeSize,
+        );
       }
     } else if (sourceNewChildren.length > 1) {
       // Multiple cards left in source, keep as flexContainer

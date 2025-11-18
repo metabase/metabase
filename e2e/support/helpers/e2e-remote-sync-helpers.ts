@@ -44,7 +44,7 @@ export const commitToRepo = (
 
 // Setup remote sync via the API
 export function configureGit(
-  syncType: "development" | "production",
+  syncType: "read-write" | "read-only",
   syncUrl = LOCAL_GIT_PATH + "/.git",
 ) {
   cy.request("PUT", "/api/ee/remote-sync/settings", {
