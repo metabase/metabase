@@ -68,10 +68,6 @@
   "The value of the `:type` field for remote-synced collections."
   "remote-synced")
 
-(def ^:constant library-entity-id
-  "The remote-synced collection's entity ID"
-  "librarylibrarylibrary")
-
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
 
@@ -1554,10 +1550,26 @@
       (copy-collection-permissions! (or parent-collection-id (assoc root-collection :namespace collection-namespace))
                                     [id]))))
 
+(defn- set-tenant-collection-permissions!
+  "When creating a new Shared Tenant Collection, if its parent collection is not also a Shared Tenant Collection, we
+  should apply the default Shared Tenant Collection permissions which are :read for all user groups. If a Shared Tenant
+  Collection is a descendant of another Shared Tenant Collection we should apply the standard [[copy-parent-permissions!]]
+  defaults."
+  [collection]
+  (if (is-tenant-collection? (parent collection))
+    (copy-parent-permissions! collection)
+    ;; TODO(edpaget - 2025-11-17): this is potentially inserting a lot of rows but since the impl of
+    ;; [[copy-collection-permissions!]] doesn't do any batching this seems acceptable
+    (t2/insert! :model/Permissions
+                (for [group-id (t2/select-pks-set :model/PermissionsGroup :id [:not= (u/the-id (perms/admin-group))])]
+                  {:group_id group-id :object (perms/collection-read-path collection)}))))
+
 (t2/define-after-insert :model/Collection
   [collection]
   (u/prog1 collection
-    (copy-parent-permissions! (t2.realize/realize collection))))
+    (if (is-tenant-collection? <>)
+      (set-tenant-collection-permissions! <>)
+      (copy-parent-permissions! (t2.realize/realize <>)))))
 
 ;;; ----------------------------------------------------- UPDATE -----------------------------------------------------
 
