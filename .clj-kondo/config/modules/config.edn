@@ -1531,7 +1531,6 @@
            api
            app-db
            audit-app
-           collections
            driver
            lib
            lib-be
@@ -1539,7 +1538,6 @@
            parameters
            permissions
            premium-features
-           queries
            query-processor
            search
            util
