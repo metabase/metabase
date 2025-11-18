@@ -89,7 +89,7 @@
                    (build-frontend! edition))
    :licenses     (fn [{:keys [edition]}]
                    (build-licenses! edition))
-   :drivers      (fn [{:keys [edition]}]
+   #_ #_ :drivers      (fn [{:keys [edition]}]
                    (build-drivers/build-drivers! edition))
    :python       (fn [{:keys [edition]}]
                    (build.python/build-python-deps! edition))
