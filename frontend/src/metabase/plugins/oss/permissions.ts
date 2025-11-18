@@ -19,34 +19,71 @@ import type { State } from "metabase-types/store";
 
 import type { PluginGroupManagersType } from "../types";
 
-export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES = [];
-export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES = [];
-export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS = {
+// Types
+export interface UserWithApplicationPermissions extends User {
+  permissions?: {
+    can_access_monitoring: boolean;
+    can_access_setting: boolean;
+    can_access_subscription: boolean;
+  };
+}
+
+const getDefaultAdminPermissionsDatabaseRoutes = () => [];
+const getDefaultAdminPermissionsDatabaseGroupRoutes = () => [];
+const getDefaultAdminPermissionsDatabasePostActions = () => ({
   impersonated: null,
-};
-export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS = {
+});
+const getDefaultAdminPermissionsDatabaseActions = () => ({
   impersonated: [],
-};
-
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS = [];
-
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES = [];
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES = [];
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS = [];
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS = [] as Array<
+});
+const getDefaultAdminPermissionsTableOptions = () => [];
+const getDefaultAdminPermissionsTableRoutes = () => [];
+const getDefaultAdminPermissionsTableGroupRoutes = () => [];
+const getDefaultAdminPermissionsTableFieldsOptions = () => [];
+const getDefaultAdminPermissionsTableFieldsConfirmations = (): Array<
   (
     _permissions: GroupsPermissions,
     _groupId: number,
     _entityId: EntityId,
     _value: DataPermissionValue,
   ) => any
->;
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS = {
+> => [];
+const getDefaultAdminPermissionsTableFieldsActions = () => ({
   sandboxed: [],
-};
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION = {
+});
+const getDefaultAdminPermissionsTableFieldsPostAction = () => ({
   sandboxed: null,
-};
+});
+
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES =
+  getDefaultAdminPermissionsDatabaseRoutes();
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES =
+  getDefaultAdminPermissionsDatabaseGroupRoutes();
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS =
+  getDefaultAdminPermissionsDatabasePostActions();
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS =
+  getDefaultAdminPermissionsDatabaseActions();
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS =
+  getDefaultAdminPermissionsTableOptions();
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES =
+  getDefaultAdminPermissionsTableRoutes();
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES =
+  getDefaultAdminPermissionsTableGroupRoutes();
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS =
+  getDefaultAdminPermissionsTableFieldsOptions();
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS =
+  getDefaultAdminPermissionsTableFieldsConfirmations();
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS =
+  getDefaultAdminPermissionsTableFieldsActions();
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION =
+  getDefaultAdminPermissionsTableFieldsPostAction();
+
+const getDefaultDataPermissions = () => ({
+  permissionsPayloadExtraSelectors: [],
+  hasChanges: [],
+  upgradeViewPermissionsIfNeeded: null,
+  shouldRestrictNativeQueryPermissions: () => false,
+});
 
 export const PLUGIN_DATA_PERMISSIONS: {
   permissionsPayloadExtraSelectors: ((
@@ -72,19 +109,17 @@ export const PLUGIN_DATA_PERMISSIONS: {
         permission: DataPermission,
       ) => GroupPermissions)
     | null;
-} = {
-  permissionsPayloadExtraSelectors: [],
-  hasChanges: [],
-  upgradeViewPermissionsIfNeeded: null,
-  shouldRestrictNativeQueryPermissions: () => false,
-};
+} = getDefaultDataPermissions();
 
-export const PLUGIN_ADMIN_USER_MENU_ITEMS = [] as Array<
+const getDefaultAdminUserMenuItems = (): Array<
   (user: User) => React.ReactNode
->;
-export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
+> => [];
+const getDefaultAdminUserMenuRoutes = () => [];
 
-export const PLUGIN_ADVANCED_PERMISSIONS = {
+export const PLUGIN_ADMIN_USER_MENU_ITEMS = getDefaultAdminUserMenuItems();
+export const PLUGIN_ADMIN_USER_MENU_ROUTES = getDefaultAdminUserMenuRoutes();
+
+const getDefaultAdvancedPermissions = () => ({
   addDatabasePermissionOptions: (permissions: any[], _database: Database) =>
     permissions,
   addSchemaPermissionOptions: (permissions: any[], _value: string) =>
@@ -99,9 +134,11 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
   isRestrictivePermission: (_value: string) => false,
   shouldShowViewDataColumn: false,
   defaultViewDataPermission: DataPermissionValue.UNRESTRICTED,
-};
+});
 
-export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
+export const PLUGIN_ADVANCED_PERMISSIONS = getDefaultAdvancedPermissions();
+
+const getDefaultFeatureLevelPermissions = () => ({
   getFeatureLevelDataPermissions: (
     _entityId: DatabaseEntityId,
     _groupId: number,
@@ -118,26 +155,24 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
   canDownloadResults: (_result: Dataset): boolean => true,
   dataModelQueryProps: {} as any,
   databaseDetailsQueryProps: {} as any,
-};
+});
 
-export const PLUGIN_APPLICATION_PERMISSIONS = {
+export const PLUGIN_FEATURE_LEVEL_PERMISSIONS =
+  getDefaultFeatureLevelPermissions();
+
+const getDefaultApplicationPermissions = () => ({
   getRoutes: (): ReactNode => null,
   tabs: [] as any,
   selectors: {
     canAccessSettings: (_state: any) => false,
     canManageSubscriptions: (_state: any) => true,
   },
-};
+});
 
-export interface UserWithApplicationPermissions extends User {
-  permissions?: {
-    can_access_monitoring: boolean;
-    can_access_setting: boolean;
-    can_access_subscription: boolean;
-  };
-}
+export const PLUGIN_APPLICATION_PERMISSIONS =
+  getDefaultApplicationPermissions();
 
-export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
+const getDefaultGroupManagers = (): PluginGroupManagersType => ({
   UserTypeToggle: () => null as any,
   UserTypeCell: null,
 
@@ -147,4 +182,80 @@ export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
   deleteGroup: null,
   confirmDeleteMembershipAction: null,
   confirmUpdateMembershipAction: null,
-};
+});
+
+export const PLUGIN_GROUP_MANAGERS = getDefaultGroupManagers();
+
+export function reinitialize() {
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES.length = 0;
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES.push(
+    ...getDefaultAdminPermissionsDatabaseRoutes(),
+  );
+
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES.length = 0;
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES.push(
+    ...getDefaultAdminPermissionsDatabaseGroupRoutes(),
+  );
+
+  Object.assign(
+    PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
+    getDefaultAdminPermissionsDatabasePostActions(),
+  );
+  Object.assign(
+    PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
+    getDefaultAdminPermissionsDatabaseActions(),
+  );
+
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS.length = 0;
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS.push(
+    ...getDefaultAdminPermissionsTableOptions(),
+  );
+
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES.length = 0;
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES.push(
+    ...getDefaultAdminPermissionsTableRoutes(),
+  );
+
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES.length = 0;
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES.push(
+    ...getDefaultAdminPermissionsTableGroupRoutes(),
+  );
+
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.length = 0;
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(
+    ...getDefaultAdminPermissionsTableFieldsOptions(),
+  );
+
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.length = 0;
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.push(
+    ...getDefaultAdminPermissionsTableFieldsConfirmations(),
+  );
+
+  Object.assign(
+    PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
+    getDefaultAdminPermissionsTableFieldsActions(),
+  );
+  Object.assign(
+    PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
+    getDefaultAdminPermissionsTableFieldsPostAction(),
+  );
+
+  Object.assign(PLUGIN_DATA_PERMISSIONS, getDefaultDataPermissions());
+
+  PLUGIN_ADMIN_USER_MENU_ITEMS.length = 0;
+  PLUGIN_ADMIN_USER_MENU_ITEMS.push(...getDefaultAdminUserMenuItems());
+
+  PLUGIN_ADMIN_USER_MENU_ROUTES.length = 0;
+  PLUGIN_ADMIN_USER_MENU_ROUTES.push(...getDefaultAdminUserMenuRoutes());
+
+  Object.assign(PLUGIN_ADVANCED_PERMISSIONS, getDefaultAdvancedPermissions());
+  Object.assign(
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+    getDefaultFeatureLevelPermissions(),
+  );
+  Object.assign(
+    PLUGIN_APPLICATION_PERMISSIONS,
+    getDefaultApplicationPermissions(),
+  );
+  Object.assign(PLUGIN_GROUP_MANAGERS, getDefaultGroupManagers());
+}

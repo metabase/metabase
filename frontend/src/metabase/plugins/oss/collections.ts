@@ -16,14 +16,7 @@ import type {
   CollectionInstanceAnaltyicsConfig,
 } from "metabase-types/api";
 
-const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
-  type: null,
-  get name() {
-    return t`Regular`;
-  },
-  icon: "folder",
-};
-
+// Types
 export type ItemWithCollection = { collection: CollectionEssentials };
 
 type GetCollectionIdType = (
@@ -34,7 +27,34 @@ export type CollectionAuthorityLevelDisplayProps = {
   collection: Collection;
 };
 
-export const PLUGIN_COLLECTIONS = {
+export type CollectionAuthorityLevelIcon = ComponentType<
+  Omit<IconProps, "name" | "tooltip"> & {
+    collection: Pick<Collection, "authority_level">;
+    tooltip?: "default" | "belonging";
+    archived?: boolean;
+  }
+>;
+
+type CollectionInstanceAnalyticsIcon = React.ComponentType<
+  Omit<IconProps, "name"> & {
+    collection: Collection;
+    entity: "collection" | "question" | "model" | "dashboard" | "metric";
+  }
+>;
+
+type FormCollectionAuthorityLevelPicker = React.ComponentType<
+  React.HTMLAttributes<HTMLDivElement> & { name: string; title?: string }
+>;
+
+const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
+  type: null,
+  get name() {
+    return t`Regular`;
+  },
+  icon: "folder",
+};
+
+const getDefaultPluginCollections = () => ({
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
@@ -69,28 +89,11 @@ export const PLUGIN_COLLECTIONS = {
   cleanUpAlert: (() => null) as (props: {
     collection: Collection;
   }) => JSX.Element | null,
-};
+});
 
-export type CollectionAuthorityLevelIcon = ComponentType<
-  Omit<IconProps, "name" | "tooltip"> & {
-    collection: Pick<Collection, "authority_level">;
-    tooltip?: "default" | "belonging";
-    archived?: boolean;
-  }
->;
+export const PLUGIN_COLLECTIONS = getDefaultPluginCollections();
 
-type CollectionInstanceAnalyticsIcon = React.ComponentType<
-  Omit<IconProps, "name"> & {
-    collection: Collection;
-    entity: "collection" | "question" | "model" | "dashboard" | "metric";
-  }
->;
-
-type FormCollectionAuthorityLevelPicker = React.ComponentType<
-  React.HTMLAttributes<HTMLDivElement> & { name: string; title?: string }
->;
-
-export const PLUGIN_COLLECTION_COMPONENTS = {
+const getDefaultPluginCollectionComponents = () => ({
   CollectionAuthorityLevelIcon:
     PluginPlaceholder as CollectionAuthorityLevelIcon,
   FormCollectionAuthorityLevelPicker:
@@ -99,4 +102,15 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
     PluginPlaceholder as CollectionInstanceAnalyticsIcon,
   CollectionAuthorityLevelDisplay:
     PluginPlaceholder as ComponentType<CollectionAuthorityLevelDisplayProps>,
-};
+});
+
+export const PLUGIN_COLLECTION_COMPONENTS =
+  getDefaultPluginCollectionComponents();
+
+export function reinitialize() {
+  Object.assign(PLUGIN_COLLECTIONS, getDefaultPluginCollections());
+  Object.assign(
+    PLUGIN_COLLECTION_COMPONENTS,
+    getDefaultPluginCollectionComponents(),
+  );
+}

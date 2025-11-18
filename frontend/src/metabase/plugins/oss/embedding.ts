@@ -14,9 +14,15 @@ export interface SimpleDataPickerProps {
   entityTypes: EmbeddingEntityType[];
 }
 
-export const PLUGIN_EMBEDDING = {
+const getDefaultPluginEmbedding = () => ({
   isEnabled: () => false,
   isInteractiveEmbeddingEnabled: (_state: State) => false,
   SimpleDataPicker: (_props: SimpleDataPickerProps): ReactNode => null,
   DataSourceSelector: (_props: DataSourceSelectorProps): ReactNode => null,
-};
+});
+
+export const PLUGIN_EMBEDDING = getDefaultPluginEmbedding();
+
+export function reinitialize() {
+  Object.assign(PLUGIN_EMBEDDING, getDefaultPluginEmbedding());
+}

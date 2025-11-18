@@ -8,6 +8,20 @@ import {
 
 import type { SyncedCollectionsSidebarSectionProps } from "../types";
 
+const getDefaultPluginRemoteSync = () => ({
+  LibraryNav: PluginPlaceholder,
+  RemoteSyncSettings: NotFoundPlaceholder,
+  SyncedCollectionsSidebarSection: PluginPlaceholder,
+  REMOTE_SYNC_INVALIDATION_TAGS: null,
+  useSyncStatus: () => ({
+    isIdle: true,
+    taskType: null,
+    progress: 0,
+    message: "",
+    progressModal: null,
+  }),
+});
+
 export const PLUGIN_REMOTE_SYNC: {
   LibraryNav: ComponentType;
   RemoteSyncSettings: ComponentType;
@@ -20,16 +34,8 @@ export const PLUGIN_REMOTE_SYNC: {
     message: string;
     progressModal: ReactNode;
   };
-} = {
-  LibraryNav: PluginPlaceholder,
-  RemoteSyncSettings: NotFoundPlaceholder,
-  SyncedCollectionsSidebarSection: PluginPlaceholder,
-  REMOTE_SYNC_INVALIDATION_TAGS: null,
-  useSyncStatus: () => ({
-    isIdle: true,
-    taskType: null,
-    progress: 0,
-    message: "",
-    progressModal: null,
-  }),
-};
+} = getDefaultPluginRemoteSync();
+
+export function reinitialize() {
+  Object.assign(PLUGIN_REMOTE_SYNC, getDefaultPluginRemoteSync());
+}

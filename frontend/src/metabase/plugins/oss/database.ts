@@ -10,7 +10,7 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-export const PLUGIN_DB_ROUTING = {
+const getDefaultPluginDbRouting = () => ({
   DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;
   }>,
@@ -23,15 +23,20 @@ export const PLUGIN_DB_ROUTING = {
   getPrimaryDBEngineFieldState: (
     _database: Pick<Database, "router_user_attribute">,
   ): "default" | "hidden" | "disabled" => "default",
-};
+});
 
-export const PLUGIN_DATABASE_REPLICATION = {
+export const PLUGIN_DB_ROUTING = getDefaultPluginDbRouting();
+
+const getDefaultPluginDatabaseReplication = () => ({
   DatabaseReplicationSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;
   }>,
-};
+});
 
-export const PLUGIN_TABLE_EDITING = {
+export const PLUGIN_DATABASE_REPLICATION =
+  getDefaultPluginDatabaseReplication();
+
+const getDefaultPluginTableEditing = () => ({
   isEnabled: () => false,
   isDatabaseTableEditingEnabled: (_database: DatabaseType): boolean => false,
   getRoutes: () => null as React.ReactElement | null,
@@ -43,4 +48,15 @@ export const PLUGIN_TABLE_EDITING = {
       database: { id: DatabaseId } & Partial<DatabaseData>,
     ) => Promise<void>;
   }>,
-};
+});
+
+export const PLUGIN_TABLE_EDITING = getDefaultPluginTableEditing();
+
+export function reinitialize() {
+  Object.assign(PLUGIN_DB_ROUTING, getDefaultPluginDbRouting());
+  Object.assign(
+    PLUGIN_DATABASE_REPLICATION,
+    getDefaultPluginDatabaseReplication(),
+  );
+  Object.assign(PLUGIN_TABLE_EDITING, getDefaultPluginTableEditing());
+}

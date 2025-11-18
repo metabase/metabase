@@ -10,6 +10,7 @@ import type { StackProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { CacheableDashboard, CacheableModel } from "metabase-types/api";
 
+// Types
 export type InvalidateNowButtonProps = {
   targetId: number;
   targetModel: ModelWithClearableCache;
@@ -32,7 +33,7 @@ export type PreemptiveCachingSwitchProps = {
   handleSwitchToggle: () => void;
 };
 
-export const PLUGIN_CACHING = {
+const getDefaultPluginCaching = () => ({
   isGranularCachingEnabled: () => false,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
   GranularControlsExplanation: PluginPlaceholder as any,
@@ -51,4 +52,10 @@ export const PLUGIN_CACHING = {
   getTabMetadata: getPerformanceTabMetadata,
   PreemptiveCachingSwitch:
     PluginPlaceholder as ComponentType<PreemptiveCachingSwitchProps>,
-};
+});
+
+export const PLUGIN_CACHING = getDefaultPluginCaching();
+
+export function reinitialize() {
+  Object.assign(PLUGIN_CACHING, getDefaultPluginCaching());
+}

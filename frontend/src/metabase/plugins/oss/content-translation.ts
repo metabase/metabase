@@ -5,7 +5,7 @@ import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder
 import type { HoveredObject } from "metabase/visualizations/types";
 import type { Series } from "metabase-types/api";
 
-export const PLUGIN_CONTENT_TRANSLATION = {
+const getDefaultPluginContentTranslation = () => ({
   isEnabled: false,
   setEndpointsForStaticEmbedding: (_encodedToken: string) => {},
   ContentTranslationConfiguration: PluginPlaceholder,
@@ -22,4 +22,13 @@ export const PLUGIN_CONTENT_TRANSLATION = {
   useTranslateSeries: (obj: Series) => obj,
   useSortByContentTranslation: () => (a: string, b: string) =>
     a.localeCompare(b),
-};
+});
+
+export const PLUGIN_CONTENT_TRANSLATION = getDefaultPluginContentTranslation();
+
+export function reinitialize() {
+  Object.assign(
+    PLUGIN_CONTENT_TRANSLATION,
+    getDefaultPluginContentTranslation(),
+  );
+}

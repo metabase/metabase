@@ -17,7 +17,13 @@ export type InsightsLinkProps = (
 ) &
   Omit<LinkProps, "to">;
 
-export const PLUGIN_AUDIT = {
+const getDefaultPluginAudit = () => ({
   isAuditDb: (_db: DatabaseType) => false,
   InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
-};
+});
+
+export const PLUGIN_AUDIT = getDefaultPluginAudit();
+
+export function reinitialize() {
+  Object.assign(PLUGIN_AUDIT, getDefaultPluginAudit());
+}

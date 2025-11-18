@@ -2,13 +2,7 @@ import type { ComponentType } from "react";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 
-export const PLUGIN_ADMIN_SETTINGS: {
-  InteractiveEmbeddingSettings: ComponentType | null;
-  LicenseAndBillingSettings: ComponentType;
-  useUpsellFlow: (props: { campaign: string; location: string }) => {
-    triggerUpsellFlow: (() => void) | undefined;
-  };
-} = {
+const getDefaultPluginAdminSettings = () => ({
   InteractiveEmbeddingSettings: null,
   LicenseAndBillingSettings: PluginPlaceholder,
   useUpsellFlow: (_props: {
@@ -19,4 +13,16 @@ export const PLUGIN_ADMIN_SETTINGS: {
   } => ({
     triggerUpsellFlow: undefined,
   }),
-};
+});
+
+export const PLUGIN_ADMIN_SETTINGS: {
+  InteractiveEmbeddingSettings: ComponentType | null;
+  LicenseAndBillingSettings: ComponentType;
+  useUpsellFlow: (props: { campaign: string; location: string }) => {
+    triggerUpsellFlow: (() => void) | undefined;
+  };
+} = getDefaultPluginAdminSettings();
+
+export function reinitialize() {
+  Object.assign(PLUGIN_ADMIN_SETTINGS, getDefaultPluginAdminSettings());
+}

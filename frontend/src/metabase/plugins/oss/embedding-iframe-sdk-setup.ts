@@ -12,10 +12,20 @@ export type SdkIframeEmbedSetupModalInitialState = {
   useExistingUserSession?: boolean;
 };
 
-export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
+const getDefaultPluginEmbeddingIframeSdkSetup = () => ({
   isFeatureEnabled: () => false,
   shouldShowEmbedInNewItemMenu: () => false,
   SdkIframeEmbedSetupModal: (
     _props: SdkIframeEmbedSetupModalProps,
   ): ReactNode => null,
-};
+});
+
+export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP =
+  getDefaultPluginEmbeddingIframeSdkSetup();
+
+export function reinitialize() {
+  Object.assign(
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
+    getDefaultPluginEmbeddingIframeSdkSetup(),
+  );
+}

@@ -13,6 +13,12 @@ export type PluginDashcardMenu = {
   dashcardMenuItemGetters: DashCardMenuItemGetter[];
 };
 
-export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
+const getDefaultPluginDashcardMenu = (): PluginDashcardMenu => ({
   dashcardMenuItemGetters: [],
-};
+});
+
+export const PLUGIN_DASHCARD_MENU = getDefaultPluginDashcardMenu();
+
+export function reinitialize() {
+  Object.assign(PLUGIN_DASHCARD_MENU, getDefaultPluginDashcardMenu());
+}

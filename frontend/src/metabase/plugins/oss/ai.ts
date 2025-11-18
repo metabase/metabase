@@ -13,20 +13,8 @@ import type {
 } from "metabase-types/api";
 import type { AdminPath, State } from "metabase-types/store";
 
-const defaultMetabotContextValue: MetabotContext = {
-  prompt: "",
-  setPrompt: () => {},
-  promptInputRef: undefined,
-  getChatContext: () => ({}) as any,
-  registerChatContextProvider: () => () => {},
-};
-
 export type PluginAiSqlFixer = {
   FixSqlQueryButton: ComponentType<Record<string, never>>;
-};
-
-export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
-  FixSqlQueryButton: PluginPlaceholder,
 };
 
 export interface AIDashboardAnalysisSidebarProps {
@@ -50,14 +38,6 @@ export type PluginAIEntityAnalysis = {
   chartAnalysisRenderFormats: {
     [display in VisualizationDisplay]?: "png" | "svg" | "none";
   };
-};
-
-export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
-  AIQuestionAnalysisButton: PluginPlaceholder,
-  AIQuestionAnalysisSidebar: PluginPlaceholder,
-  AIDashboardAnalysisSidebar: PluginPlaceholder,
-  canAnalyzeQuestion: () => false,
-  chartAnalysisRenderFormats: {},
 };
 
 type PluginMetabotConfig = {
@@ -87,7 +67,34 @@ type PluginMetabotType = {
   MetabotAdminAppBarButton: ComponentType;
 };
 
-export const PLUGIN_METABOT: PluginMetabotType = {
+const getDefaultMetabotContextValue = (): MetabotContext => ({
+  prompt: "",
+  setPrompt: () => {},
+  promptInputRef: undefined,
+  getChatContext: () => ({}) as any,
+  registerChatContextProvider: () => () => {},
+});
+
+const defaultMetabotContextValue: MetabotContext =
+  getDefaultMetabotContextValue();
+
+const getDefaultPluginAiSqlFixer = (): PluginAiSqlFixer => ({
+  FixSqlQueryButton: PluginPlaceholder,
+});
+export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer =
+  getDefaultPluginAiSqlFixer();
+
+const getDefaultPluginAIEntityAnalysis = (): PluginAIEntityAnalysis => ({
+  AIQuestionAnalysisButton: PluginPlaceholder,
+  AIQuestionAnalysisSidebar: PluginPlaceholder,
+  AIDashboardAnalysisSidebar: PluginPlaceholder,
+  canAnalyzeQuestion: () => false,
+  chartAnalysisRenderFormats: {},
+});
+export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis =
+  getDefaultPluginAIEntityAnalysis();
+
+const getDefaultPluginMetabot = (): PluginMetabotType => ({
   isEnabled: () => false,
   Metabot: (_props: { hide?: boolean; config?: PluginMetabotConfig }) =>
     null as React.ReactElement | null,
@@ -109,4 +116,11 @@ export const PLUGIN_METABOT: PluginMetabotType = {
   MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,
   MetabotAdminAppBarButton: PluginPlaceholder,
-};
+});
+export const PLUGIN_METABOT: PluginMetabotType = getDefaultPluginMetabot();
+
+export function reinitialize() {
+  Object.assign(PLUGIN_AI_SQL_FIXER, getDefaultPluginAiSqlFixer());
+  Object.assign(PLUGIN_AI_ENTITY_ANALYSIS, getDefaultPluginAIEntityAnalysis());
+  Object.assign(PLUGIN_METABOT, getDefaultPluginMetabot());
+}

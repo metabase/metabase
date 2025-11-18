@@ -16,6 +16,7 @@ import type {
 } from "metabase-types/api";
 import type { AdminPath } from "metabase-types/store";
 
+// Types
 export type TransformPickerItem = {
   id: TransformId;
   name: string;
@@ -31,12 +32,6 @@ export type TransformsPlugin = {
   TransformPicker: ComponentType<TransformPickerProps>;
   getAdminPaths(): AdminPath[];
   getAdminRoutes(): ReactNode;
-};
-
-export const PLUGIN_TRANSFORMS: TransformsPlugin = {
-  TransformPicker: PluginPlaceholder,
-  getAdminPaths: () => [],
-  getAdminRoutes: () => null,
 };
 
 export type PythonTransformEditorProps = {
@@ -64,15 +59,6 @@ export type PythonTransformsPlugin = {
   PythonRunnerSettingsPage: ComponentType;
   getAdminRoutes: () => ReactNode;
   getTransformsNavLinks: () => ReactNode;
-};
-
-export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
-  isEnabled: false,
-  TransformEditor: PluginPlaceholder,
-  SourceSection: PluginPlaceholder,
-  PythonRunnerSettingsPage: NotFoundPlaceholder,
-  getAdminRoutes: () => null,
-  getTransformsNavLinks: () => null,
 };
 
 type DependenciesPlugin = {
@@ -136,7 +122,26 @@ function useCheckDependencies<TChange>({
   };
 }
 
-export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
+const getDefaultPluginTransforms = (): TransformsPlugin => ({
+  TransformPicker: PluginPlaceholder,
+  getAdminPaths: () => [],
+  getAdminRoutes: () => null,
+});
+
+export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
+
+const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
+  isEnabled: false,
+  TransformEditor: PluginPlaceholder,
+  SourceSection: PluginPlaceholder,
+  PythonRunnerSettingsPage: NotFoundPlaceholder,
+  getAdminRoutes: () => null,
+  getTransformsNavLinks: () => null,
+});
+
+export const PLUGIN_TRANSFORMS_PYTHON = getDefaultPluginTransformsPython();
+
+const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   isEnabled: false,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
@@ -146,4 +151,12 @@ export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   useCheckCardDependencies: useCheckDependencies,
   useCheckSnippetDependencies: useCheckDependencies,
   useCheckTransformDependencies: useCheckDependencies,
-};
+});
+
+export const PLUGIN_DEPENDENCIES = getDefaultPluginDependencies();
+
+export function reinitialize() {
+  Object.assign(PLUGIN_TRANSFORMS, getDefaultPluginTransforms());
+  Object.assign(PLUGIN_TRANSFORMS_PYTHON, getDefaultPluginTransformsPython());
+  Object.assign(PLUGIN_DEPENDENCIES, getDefaultPluginDependencies());
+}

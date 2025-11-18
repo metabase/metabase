@@ -1,6 +1,6 @@
 import type { DashboardId, ParameterId } from "metabase-types/api";
 
-export const PLUGIN_API = {
+const getDefaultPluginApi = () => ({
   getRemappedCardParameterValueUrl: (
     dashboardId: DashboardId,
     parameterId: ParameterId,
@@ -11,4 +11,10 @@ export const PLUGIN_API = {
     parameterId: ParameterId,
   ) =>
     `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
-};
+});
+
+export const PLUGIN_API = getDefaultPluginApi();
+
+export function reinitialize() {
+  Object.assign(PLUGIN_API, getDefaultPluginApi());
+}

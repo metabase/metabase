@@ -12,7 +12,7 @@ export type MetricFilterSettings = {
   verified: boolean;
 };
 
-export const PLUGIN_CONTENT_VERIFICATION = {
+const getDefaultPluginContentVerification = () => ({
   contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
   sortCollectionsByVerification: (
@@ -29,4 +29,14 @@ export const PLUGIN_CONTENT_VERIFICATION = {
     verified: false,
   }),
   MetricFilterControls: (_props: MetricFilterControlsProps) => null,
-};
+});
+
+export const PLUGIN_CONTENT_VERIFICATION =
+  getDefaultPluginContentVerification();
+
+export function reinitialize() {
+  Object.assign(
+    PLUGIN_CONTENT_VERIFICATION,
+    getDefaultPluginContentVerification(),
+  );
+}

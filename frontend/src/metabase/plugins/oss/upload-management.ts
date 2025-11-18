@@ -13,7 +13,7 @@ type GdriveAddDataPanelProps = {
   onAddDataModalClose: () => void;
 };
 
-export const PLUGIN_UPLOAD_MANAGEMENT = {
+const getDefaultPluginUploadManagement = () => ({
   FileUploadErrorModal: _FileUploadErrorModal,
   UploadManagementTable: PluginPlaceholder,
   GdriveSyncStatus: PluginPlaceholder,
@@ -22,4 +22,10 @@ export const PLUGIN_UPLOAD_MANAGEMENT = {
   GdriveDbMenu: PluginPlaceholder,
   GdriveAddDataPanel:
     PluginPlaceholder as ComponentType<GdriveAddDataPanelProps>,
-};
+});
+
+export const PLUGIN_UPLOAD_MANAGEMENT = getDefaultPluginUploadManagement();
+
+export function reinitialize() {
+  Object.assign(PLUGIN_UPLOAD_MANAGEMENT, getDefaultPluginUploadManagement());
+}

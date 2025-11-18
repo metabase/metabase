@@ -12,7 +12,7 @@ export type RevisionOrModerationEvent = {
   revision?: any;
 };
 
-export const PLUGIN_MODERATION = {
+const getDefaultPluginModeration = () => ({
   isEnabled: () => false,
   EntityModerationIcon: PluginPlaceholder,
   QuestionModerationSection: PluginPlaceholder,
@@ -27,4 +27,10 @@ export const PLUGIN_MODERATION = {
     [] as RevisionOrModerationEvent[],
   useDashboardMenuItems: (_model?: Dashboard, _reload?: () => void) => [],
   useQuestionMenuItems: (_model?: Question, _reload?: () => void) => [],
-};
+});
+
+export const PLUGIN_MODERATION = getDefaultPluginModeration();
+
+export function reinitialize() {
+  Object.assign(PLUGIN_MODERATION, getDefaultPluginModeration());
+}
