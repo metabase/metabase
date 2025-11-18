@@ -405,7 +405,7 @@ describe("#39152 sharing an unsaved question", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "public_link_removed",
             artifact: resource,
-            source: "public-embed",
+            source: "public-share",
           });
         });
       });
@@ -560,7 +560,6 @@ describe("#39152 sharing an unsaved question", () => {
               H.openLegacyStaticEmbeddingModal({
                 resource,
                 resourceId: id,
-                acceptTerms: false,
               });
             });
 
@@ -694,8 +693,12 @@ describe("#39152 sharing an unsaved question", () => {
             it("should support disabling PDF and result downloads individually in `static_embed_code_copied`", () => {
               cy.get("@resourceId").then((id) => {
                 visitResource(resource, id);
+
+                H.openLegacyStaticEmbeddingModal({
+                  resource: "dashboard",
+                  resourceId: id,
+                });
               });
-              H.openLegacyStaticEmbeddingModal({ acceptTerms: false });
 
               H.modal().within(() => {
                 cy.findByRole("tab", { name: "Look and Feel" }).click();
