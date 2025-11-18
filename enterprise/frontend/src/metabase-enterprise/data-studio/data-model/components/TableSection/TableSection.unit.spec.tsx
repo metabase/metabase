@@ -1,8 +1,12 @@
 import { Route } from "react-router";
 
+import {
+  setupUserKeyValueEndpoints,
+  setupUsersEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { Table } from "metabase-types/api";
-import { createMockTable } from "metabase-types/api/mocks";
+import { createMockTable, createMockUser } from "metabase-types/api/mocks";
 
 import type { RouteParams } from "../../pages/DataModel/types";
 
@@ -15,6 +19,13 @@ type SetupOpts = {
 
 function setup({ table = createMockTable() }: SetupOpts = {}) {
   const onSyncOptionsClick = jest.fn();
+
+  setupUsersEndpoints([createMockUser()]);
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "seen-publish-models-info",
+    value: true,
+  });
 
   renderWithProviders(
     <Route
