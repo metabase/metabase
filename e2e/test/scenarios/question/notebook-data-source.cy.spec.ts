@@ -60,10 +60,15 @@ describe("scenarios > notebook > data source", () => {
       });
 
       H.startNewQuestion();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        cy.findAllByRole("tab").should("have.length", 2);
-        H.entityPickerModalTab("Tables").should("exist");
-        H.entityPickerModalTab("Collections").should("exist");
+        H.entityPickerModalItem(0, "Our analytics").click();
+        H.entityPickerModalLevel(1)
+          .findAllByTestId("picker-item")
+          .should("have.length", 1);
+        H.entityPickerModalLevel(1)
+          .findByTestId("picker-item")
+          .should("contain.text", "GUI Model");
       });
     });
 

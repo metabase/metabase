@@ -360,8 +360,8 @@ describe("scenarios > question > new", () => {
 
       cy.findByLabelText("Navigation bar").findByText("New").click();
       H.popover().findByText("Question").click();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
       cy.findByTestId("qb-header").findByText("Save").click();
@@ -411,8 +411,9 @@ describe("scenarios > question > new", () => {
 
       cy.findByLabelText("Navigation bar").findByText("New").click();
       H.popover().findByText("Question").click();
+
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
       cy.findByTestId("qb-header").findByText("Save").click();
@@ -712,10 +713,9 @@ describe(
     it("can create a question from the sample database", () => {
       cy.visit("/question/new");
 
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").should("be.visible");
-        H.entityPickerModalTab("Tables").click();
-
+        H.entityPickerModalLevel(0).findByText("Databases").click();
         H.entityPickerModalItem(2, "Products").click();
       });
 
@@ -730,8 +730,8 @@ describe(
     it("can create a question from a saved question", () => {
       cy.visit("/question/new");
 
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
         H.entityPickerModalItem(1, "Orders").click();
       });
 
@@ -754,18 +754,19 @@ describe(
 
       cy.visit("/question/notebook");
 
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.tabsShouldBe("Tables", ["Tables", "Collections"]);
-        H.entityPickerModalTab("Collections").should("be.visible");
-        H.entityPickerModalTab("Tables").should("be.visible");
-        H.entityPickerModalTab("Collections").click();
         H.entityPickerModalItem(1, "Orders Model").click();
       });
 
       cy.wait("@recents");
 
       cy.button(/Orders Model/).click();
+      H.miniPicker().within(() => {
+        cy.findByRole("link", { name: /Our analytics/ }).click();
+      });
 
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
         H.tabsShouldBe("Collections", ["Recents", "Tables", "Collections"]);
         H.entityPickerModalTab("Recents").click();
