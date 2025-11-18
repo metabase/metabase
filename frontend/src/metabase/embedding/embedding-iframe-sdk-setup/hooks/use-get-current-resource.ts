@@ -6,7 +6,7 @@ import { getDashboardComplete } from "metabase/dashboard/selectors";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
-} from "metabase/embedding/embedding_iframe_sdk_setup/types";
+} from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { Card, Dashboard } from "metabase-types/api";
 

@@ -1,4 +1,4 @@
-import { SdkIframeEmbedRoute } from "metabase/embedding/embedding_iframe_sdk/components/SdkIframeEmbedRoute";
+import { SdkIframeEmbedRoute } from "metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 

@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase/embedding/embedding_iframe_sdk/constants";
+import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase/embedding/embedding-iframe-sdk/constants";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { Card, Radio, Stack, Text } from "metabase/ui";
 

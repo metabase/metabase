@@ -1,4 +1,4 @@
-import { SdkIframeEmbedSetupModal } from "metabase/embedding/embedding_iframe_sdk_setup/components/SdkIframeEmbedSetupModal";
+import { SdkIframeEmbedSetupModal } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 

@@ -6,11 +6,11 @@ import { useUserSetting } from "metabase/common/hooks";
 import {
   EMBED_FALLBACK_DASHBOARD_ID,
   USER_SETTINGS_DEBOUNCE_MS,
-} from "metabase/embedding/embedding_iframe_sdk_setup/constants";
+} from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import type {
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupSettings,
-} from "metabase/embedding/embedding_iframe_sdk_setup/types";
+} from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 
 import { trackEmbedWizardOpened } from "../analytics";

@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase/embedding/embedding_iframe_sdk_setup/constants";
+import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import { ParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import { Group, Stack, Text } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
