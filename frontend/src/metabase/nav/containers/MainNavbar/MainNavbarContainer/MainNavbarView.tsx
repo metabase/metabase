@@ -230,6 +230,8 @@ export function MainNavbarView({
               <CollectionSectionHeading
                 handleCreateNewCollection={handleCreateNewCollection}
               />
+            </ErrorBoundary>
+          </SidebarSection>
 
           <PLUGIN_TENANTS.MainNavSharedCollections />
 
@@ -257,10 +259,10 @@ export function MainNavbarView({
               </ErrorBoundary>
             </TrashSidebarSection>
           )}
-        </div>
         <div>
           <WhatsNewNotification />
         </div>
+      </div>
       </SidebarContentRoot>
 
       <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />
