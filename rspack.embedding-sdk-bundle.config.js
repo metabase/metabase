@@ -40,8 +40,8 @@ const {
   getBuildInfoValues,
 } = require("./frontend/build/embedding-sdk/rspack/get-build-info-values");
 const {
-  getSdkBundleVersionFromVersionProperties,
-} = require("./frontend/build/embedding-sdk/lib/get-sdk-bundle-version-from-version-properties");
+  EMBEDDING_SDK_BUNDLE_UNKNOWN_VERSION,
+} = require("./frontend/build/embedding-sdk/constants/versions");
 
 const SDK_BUNDLE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
@@ -177,7 +177,7 @@ const config = {
     new rspack.EnvironmentPlugin({
       IS_EMBEDDING_SDK: "true",
       ...getBuildInfoValues({
-        version: getSdkBundleVersionFromVersionProperties(),
+        version: EMBEDDING_SDK_BUNDLE_UNKNOWN_VERSION,
       }),
     }),
     shouldAnalyzeBundles &&

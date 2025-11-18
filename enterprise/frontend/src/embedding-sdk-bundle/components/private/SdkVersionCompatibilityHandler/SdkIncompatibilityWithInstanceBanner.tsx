@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { c, t } from "ttag";
 
+import { EMBEDDING_SDK_BUNDLE_UNKNOWN_VERSION } from "build-configs/embedding-sdk/constants/versions";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getMetabaseInstanceVersion } from "embedding-sdk-bundle/store/selectors";
@@ -23,7 +24,10 @@ export function SdkIncompatibilityWithInstanceBanner() {
       return true;
     }
 
-    if (isInvalidMetabaseVersion(metabaseInstanceVersion)) {
+    if (
+      sdkBundleVersion === EMBEDDING_SDK_BUNDLE_UNKNOWN_VERSION ||
+      isInvalidMetabaseVersion(metabaseInstanceVersion)
+    ) {
       return true;
     }
 
