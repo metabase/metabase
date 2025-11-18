@@ -137,7 +137,7 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
     });
   });
 
-  H.describeWithSnowplowEE("metabot events", () => {
+  describe("metabot events", () => {
     beforeEach(() => {
       H.resetSnowplow();
       H.restore();

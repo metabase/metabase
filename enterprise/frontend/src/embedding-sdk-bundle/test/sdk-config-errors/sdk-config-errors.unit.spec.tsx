@@ -1,3 +1,6 @@
+// Activates the plugins needed for the tests before any SDK code
+import "metabase-enterprise/sdk-plugins";
+
 import { render, screen, waitFor } from "@testing-library/react";
 
 import {

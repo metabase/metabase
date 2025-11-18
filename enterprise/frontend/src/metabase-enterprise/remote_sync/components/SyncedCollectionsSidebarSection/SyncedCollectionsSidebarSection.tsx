@@ -10,8 +10,8 @@ import {
   SidebarHeading,
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
-import type { CollectionTreeItem } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
+import type { SyncedCollectionsSidebarSectionProps } from "metabase/plugins/types";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Flex, Group, Text } from "metabase/ui";
 import {
@@ -32,16 +32,10 @@ import { CollectionSyncStatusBadge } from "./CollectionSyncStatusBadge";
 import { PullFromRemoteButton } from "./PullFromRemoteButton";
 import { PushChangesButton } from "./PushChangesButton";
 
-interface SyncedCollectionsSidebarSectionProps {
-  syncedCollections: CollectionTreeItem[];
-  collectionItem: CollectionTreeItem | null;
-  onItemSelect: VoidFunction;
-}
-
 export const SyncedCollectionsSidebarSection = ({
-  syncedCollections,
-  collectionItem,
   onItemSelect,
+  selectedId,
+  syncedCollections,
 }: SyncedCollectionsSidebarSectionProps) => {
   const hasSyncedCollections = syncedCollections.length > 0;
   const isAdmin = useSelector(getUserIsAdmin);
@@ -61,7 +55,11 @@ export const SyncedCollectionsSidebarSection = ({
       refetchOnFocus: true,
     });
 
+  const isSwitchingBranch = !!nextBranch;
   const isDirty = !!(dirtyData?.dirty && dirtyData.dirty.length > 0);
+  const hasEntityRemoved = dirtyData?.dirty?.some(
+    (entity) => entity.sync_status === "removed",
+  );
 
   const changeBranch = useCallback(
     async (branch: string | null, isNewBranch?: boolean) => {
@@ -112,8 +110,23 @@ export const SyncedCollectionsSidebarSection = ({
     },
     [currentBranch, changeBranch, refetchDirty, sendToast],
   );
+  const showChangesBadge = (itemId?: number | string) => {
+    if (!dirtyData?.changedCollections || typeof itemId !== "number") {
+      return false;
+    }
 
-  const isSwitchingBranch = !!nextBranch;
+    const collectionIsUpdated = !!dirtyData?.changedCollections[itemId];
+    const hasSingleRootCollection = syncedCollections.length === 1;
+
+    return (
+      // Collection was updated
+      collectionIsUpdated ||
+      // An item was removed and this is the root synced collection (TODO: this is a workaround before we do UXW-2181)
+      (hasEntityRemoved &&
+        hasSingleRootCollection &&
+        syncedCollections[0].id === itemId)
+    );
+  };
 
   if (!isRemoteSyncEnabled) {
     return null;
@@ -165,17 +178,14 @@ export const SyncedCollectionsSidebarSection = ({
           <Box>
             <Tree
               data={syncedCollections}
-              selectedId={collectionItem?.id}
+              selectedId={selectedId}
               onSelect={onItemSelect}
               TreeNode={SidebarCollectionLink}
               role="tree"
               aria-label="collection-tree"
-              rightSection={(item) => (
-                <CollectionSyncStatusBadge
-                  collection={item}
-                  changedCollections={dirtyData?.changedCollections}
-                />
-              )}
+              rightSection={(item) =>
+                showChangesBadge(item?.id) && <CollectionSyncStatusBadge />
+              }
             />
           </Box>
         </ErrorBoundary>

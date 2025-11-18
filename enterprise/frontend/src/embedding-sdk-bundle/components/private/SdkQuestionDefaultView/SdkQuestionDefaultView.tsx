@@ -181,7 +181,7 @@ export const SdkQuestionDefaultView = ({
           data-testid="interactive-question-top-toolbar"
         >
           <Group gap="xs">
-            <Box mr="sm">
+            <Box className={InteractiveQuestionS.BackButtonWrapper} mr="sm">
               <BackButton />
             </Box>
             <DefaultViewTitle

@@ -5,6 +5,9 @@ import { MOCK_API_KEY, MOCK_INSTANCE_URL } from "../mocks/sso";
 
 import { setup } from "./setup";
 
+// Activates the plugins needed for the tests before any SDK code
+import "metabase-enterprise/sdk-plugins";
+
 describe("Auth Flow - API Key", () => {
   it("should send the api key as 'X-Api-Key' header", async () => {
     const authConfig = defineMetabaseAuthConfig({

@@ -59,7 +59,6 @@ jobs:
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
       CYPRESS_QA_DB_MONGO: ${{ inputs.name == 'mongo' }}
-      CYPRESS_IS_EMBEDDING_SDK: "${{ inputs.name == 'embedding-sdk' }}"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -84,10 +83,6 @@ jobs:
           postgres: ${{ inputs.name != 'mongo' }}
           mysql: ${{ inputs.name != 'mongo' }}
           mongo: ${{ inputs.name == 'mongo' }}
-
-      - name: Run Embedding SDK Storybook
-        if: inputs.name == 'embedding-sdk'
-        uses: ./.github/actions/run-embedding-sdk-storybook
 
       - name: Retrieve uberjar artifact for ${{ inputs.edition }}
         uses: ./.github/actions/fetch-artifact
@@ -142,14 +137,13 @@ jobs:
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="-@mongo+-@python+-@flaky+-@OSS+-@skip",grepOmitFiltered=true \
+            --env grepTags="-@mongo+-@python+-@OSS+-@skip",grepOmitFiltered=true \
             --spec "$SPEC_PATH" \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         # Trunk Quarantine controls the final state of the run in the CI!
-        # Even if this step fails, we let it pass and then `trunk-io/analytics-uploader` determines whether to fail or to
-        # pass the whole job, based on the quarantine list.
-        # We only want to "continue on error" (ignore failures) when the Trunk upload is active - i.e. not on drafts!
-        continue-on-error: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft == true) }}
+        # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
+        # whether to fail or to pass the whole job, based on the quarantine list.
+        continue-on-error: true
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
         if: ${{ inputs.specs }}
@@ -163,10 +157,9 @@ jobs:
           --spec "$SPEC_PATH" \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         # Trunk Quarantine controls the final state of the run in the CI!
-        # Even if this step fails, we let it pass and then `trunk-io/analytics-uploader` determines whether to fail or to
-        # pass the whole job, based on the quarantine list.
-        # We only want to "continue on error" (ignore failures) when the Trunk upload is active - i.e. not on drafts!
-        continue-on-error: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft == true) }}
+        # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
+        # whether to fail or to pass the whole job, based on the quarantine list.
+        continue-on-error: true
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results

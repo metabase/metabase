@@ -48,7 +48,7 @@ const EVENTS = {
   saveDashboard: { event: "dashboard_saved" },
 };
 
-H.describeWithSnowplow("scenarios > dashboard cards > duplicate", () => {
+describe("scenarios > dashboard cards > duplicate", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

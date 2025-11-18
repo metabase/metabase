@@ -36,7 +36,7 @@ export function ArchiveButton({ item }: ArchiveButtonProps) {
       <Menu.Target>
         <ActionIcon
           aria-label={c(
-            "button that opens a actions dropdown e.g. Delete this row",
+            "button that opens an actions dropdown e.g. Move this item to trash",
           ).t`Actions`}
           variant="subtle"
           onClick={dropdownActions.open}
@@ -50,7 +50,7 @@ export function ArchiveButton({ item }: ArchiveButtonProps) {
           onClick={handleArchive}
           className={S.archiveMenuItem}
         >
-          {t`Delete`}
+          {t`Move to trash`}
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>

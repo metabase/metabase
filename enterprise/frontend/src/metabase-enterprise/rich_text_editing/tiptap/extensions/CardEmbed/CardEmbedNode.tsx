@@ -1,4 +1,8 @@
-import { Node, mergeAttributes } from "@tiptap/core";
+import {
+  Node,
+  findParentNodeClosestToPos,
+  mergeAttributes,
+} from "@tiptap/core";
 import {
   type NodeViewProps,
   NodeViewWrapper,
@@ -28,9 +32,13 @@ import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
 import { useListCommentsQuery } from "metabase-enterprise/api";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
 import { navigateToCardFromDocument } from "metabase-enterprise/documents/actions";
-import { trackDocumentReplaceCard } from "metabase-enterprise/documents/analytics";
+import {
+  trackDocumentAddSupportingText,
+  trackDocumentReplaceCard,
+} from "metabase-enterprise/documents/analytics";
 import { getUnresolvedComments } from "metabase-enterprise/documents/components/Editor/CommentsMenu";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase-enterprise/documents/components/Editor/constants";
+import { MAX_GROUP_SIZE } from "metabase-enterprise/documents/constants";
 import {
   loadMetadataForDocumentCard,
   openVizSettingsSidebar,
@@ -56,11 +64,11 @@ import {
 } from "../HandleEditorDrop/utils";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 import CS from "../extensions.module.css";
+import { NativeQueryModal } from "../shared/NativeQueryModal";
 
 import styles from "./CardEmbedNode.module.css";
-import { ModifyQuestionModal } from "./ModifyQuestionModal";
-import { NativeQueryModal } from "./NativeQueryModal";
 import { PublicDocumentCardMenu } from "./PublicDocumentCardMenu";
+import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
 import { useDndHelpers } from "./use-dnd-helpers";
 import { useUpdateCardOperations } from "./use-update-card-operations";
 import { getEmbedIndex } from "./utils";
@@ -85,6 +93,7 @@ interface CardEmbedMenuActions {
   setIsModifyModalOpen: (open: boolean) => void;
   handleReplaceQuestion: () => void;
   handleRemoveNode: () => void;
+  handleAddSupportingText?: () => void;
 }
 
 interface CardEmbedMenuState {
@@ -112,6 +121,7 @@ const CardEmbedMenuDropdown = ({
   setIsModifyModalOpen,
   handleReplaceQuestion,
   handleRemoveNode,
+  handleAddSupportingText,
   // State
   menuView,
   setMenuView,
@@ -151,6 +161,13 @@ const CardEmbedMenuDropdown = ({
           {t`Comment`}
         </Menu.Item>
       )}
+      <Menu.Item
+        onClick={handleAddSupportingText}
+        disabled={!canWrite || !handleAddSupportingText}
+        leftSection={<Icon name="add_list" size={14} />}
+      >
+        {t`Add supporting text`}
+      </Menu.Item>
       <Menu.Item
         onClick={handleEditVisualizationSettings}
         leftSection={<Icon name="palette" size={14} />}
@@ -384,6 +401,74 @@ export const CardEmbedComponent = memo(
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
     const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
     const [menuView, setMenuView] = useState<string | null>(null);
+
+    const shouldAllowAddingSupportingText = () => {
+      const pos = getPos();
+      if (!pos) {
+        return false;
+      }
+      const resolvedPos = editor.state.doc.resolve(pos);
+      const match = findParentNodeClosestToPos(
+        resolvedPos,
+        (n) => n.type.name === "flexContainer",
+      );
+      if (!match) {
+        return true;
+      }
+      if (match.node.content.childCount >= MAX_GROUP_SIZE) {
+        return false;
+      }
+      const hasSupportingText = match?.node.content.content.some(
+        (n) => n.type.name === "supportingText",
+      );
+      return !hasSupportingText;
+    };
+
+    const handleAddSupportingText = !shouldAllowAddingSupportingText()
+      ? undefined
+      : async () => {
+          await Promise.resolve(); // Wait for the menu to close. The transaction below may cause this item to disable and the mouseup isn't registered (so the menu stays open).
+          const pos = getPos();
+          if (!pos) {
+            return;
+          }
+          const resolvedPos = editor.state.doc.resolve(pos);
+          const match = findParentNodeClosestToPos(
+            resolvedPos,
+            (n) =>
+              n.type.name === "flexContainer" || n.type.name === "resizeNode",
+          );
+          if (!match) {
+            return;
+          }
+          const { schema, tr } = editor.view.state;
+          const supportingText = schema.nodes.supportingText.create({}, [
+            schema.nodes.paragraph.create({}),
+          ]);
+          if (match.node.type.name === "flexContainer") {
+            tr.insert(match.start, supportingText);
+            editor.view.dispatch(tr);
+            editor.commands.focus(match.start + 1);
+            trackDocumentAddSupportingText(document);
+            return;
+          }
+          const flexContainer =
+            editor.view.state.schema.nodes.flexContainer.create(
+              {
+                columnWidths: [
+                  (1 / MAX_GROUP_SIZE) * 100,
+                  ((MAX_GROUP_SIZE - 1) / MAX_GROUP_SIZE) * 100,
+                ],
+              },
+              [supportingText, node],
+            );
+          const endPos = match.start + match.node.nodeSize;
+          tr.replaceWith(match.start, endPos, flexContainer);
+
+          editor.view.dispatch(tr);
+          editor.commands.focus(match.start + 2);
+          trackDocumentAddSupportingText(document);
+        };
 
     const displayName = name || card?.name;
     const question = useMemo(
@@ -720,6 +805,7 @@ export const CardEmbedComponent = memo(
                             handleEditVisualizationSettings={
                               handleEditVisualizationSettings
                             }
+                            handleAddSupportingText={handleAddSupportingText}
                             setIsModifyModalOpen={setIsModifyModalOpen}
                             handleReplaceQuestion={handleReplaceQuestion}
                             handleRemoveNode={handleRemoveNode}
