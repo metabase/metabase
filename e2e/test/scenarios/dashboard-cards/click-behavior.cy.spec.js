@@ -1963,6 +1963,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             resource: "dashboard",
             resourceId: dashCard.dashboard_id,
             activeTab: "parameters",
+            unpublishBeforeOpen: false,
           });
         });
 
