@@ -10,7 +10,7 @@
    [metabase.query-processor :as qp]
    [metabase.util.malli.schema :as ms]
    [metabase.util.retry :as retry]
-   [metabase.warehouses.api :as warehouses]))
+   [metabase.warehouses-rest.api :as warehouses]))
 
 (set! *warn-on-reflection* true)
 

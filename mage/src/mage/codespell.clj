@@ -1,7 +1,7 @@
 (ns mage.codespell
   (:require
-   [mage.shell :as shell]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [mage.shell :as shell]))
 
 (set! *warn-on-reflection* true)
 
@@ -53,5 +53,4 @@
                    "frontend/src/metabase/querying/expressions/tokenizer/lezer.js"
                    "frontend/src/metabase/static-viz/constants/char-sizes.ts"
                    "frontend/src/metabase/visualizations/lib/mapping_codes.ts"
-                   "modules/drivers/mongo/src/metabase/driver/mongo/operators.clj"
-                   ])))
+                   "modules/drivers/mongo/src/metabase/driver/mongo/operators.clj"])))
