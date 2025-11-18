@@ -3,7 +3,7 @@ import _ from "underscore";
 import { TablePicker } from "metabase/common/components/Pickers/TablePicker";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
-import type { CollectionItemListProps } from "../types";
+import type { CollectionItemListProps, CollectionPickerItem } from "../types";
 
 import { CollectionItemList } from "./CollectionItemList";
 import { DashboardItemList } from "./DashboardItemList";
@@ -72,7 +72,8 @@ export const CollectionItemPickerResolver = ({
         value={initialValue}
         onItemSelect={(i) => {
           if (i.model === "table") {
-            onClick(i);
+            // We build on a tower or lies and deception
+            onClick(i as unknown as CollectionPickerItem);
           } else {
             // WARNING: may trigger epilepsy
             refresh?.();

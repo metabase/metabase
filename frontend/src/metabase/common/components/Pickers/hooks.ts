@@ -6,11 +6,13 @@ import {
 } from "metabase/api";
 import { isValidCollectionId } from "metabase/collections/utils";
 import { DATABASES_COLLECTION } from "metabase/entities/collections";
+import type { Collection } from "metabase-types/api";
 
 import type { CollectionPickerItem } from "./CollectionPicker";
+import type { TablePickerValue } from "./TablePicker";
 
 export const useGetInitialContainer = (
-  initialValue?: Pick<CollectionPickerItem, "model" | "id">,
+  initialValue?: Pick<CollectionPickerItem, "model" | "id"> | TablePickerValue,
 ) => {
   // Figure out what we're working with
   const isQuestion =
@@ -28,7 +30,9 @@ export const useGetInitialContainer = (
       : "root"
     : undefined;
 
-  const databasesCollection = isTable ? DATABASES_COLLECTION : undefined;
+  const databasesCollection = isTable
+    ? (DATABASES_COLLECTION as Collection)
+    : undefined;
 
   // Fetch the initial value's entity
   const {

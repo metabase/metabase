@@ -9,6 +9,7 @@ import { DelayedLoadingSpinner, NestedItemPicker } from "../../../EntityPicker";
 import { useEnsureCollectionSelected } from "../../CollectionPicker";
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
+import { type TablePickerValue, isTablePickerValue } from "../../TablePicker";
 import { useGetInitialContainer } from "../../hooks";
 import { getCollectionIdPath, getStateFromIdPath } from "../../utils";
 import type {
@@ -25,7 +26,7 @@ export const defaultOptions: QuestionPickerOptions = {
 };
 
 interface QuestionPickerProps {
-  initialValue?: Pick<QuestionPickerItem, "model" | "id">;
+  initialValue?: Pick<QuestionPickerItem, "model" | "id"> | TablePickerValue;
   models?: CollectionItemModel[];
   options: QuestionPickerOptions;
   path: QuestionPickerStatePath | undefined;
@@ -173,7 +174,7 @@ export const QuestionPicker = ({
 
   return (
     <NestedItemPicker
-      initialValue={initialValue}
+      initialValue={isTablePickerValue(initialValue) ? initialValue : undefined}
       isFolder={(item: QuestionPickerItem) => isFolder(item, models)}
       options={options}
       onFolderSelect={onFolderSelect}

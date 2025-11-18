@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import { useState } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import type { TablePickerValue } from "metabase/common/components/Pickers/TablePicker";
 import { Flex } from "metabase/ui";
 
 import type {
@@ -28,7 +29,7 @@ export interface NestedItemPickerProps<
   onItemSelect: (item: Item) => void;
   options: Options;
   path: PickerState<Item, Query>;
-  initialValue: Item | undefined;
+  initialValue?: TablePickerValue;
   isFolder: IsFolder<Id, Model, Item>;
   listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
   shouldDisableItem?: (item: Item) => boolean;

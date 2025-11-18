@@ -1,5 +1,7 @@
 import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
 
+import type { CollectionPickerItem } from "../CollectionPicker";
+
 export type DatabaseItem = {
   id: DatabaseId;
   name: string;
@@ -41,3 +43,7 @@ export type TablePickerValueItem = TableItem;
 export type TablePickerFolderItem = DatabaseItem | SchemaItem;
 
 export type TablePickerItem = TablePickerValueItem | TablePickerFolderItem;
+
+export const isTablePickerValue = (
+  input?: TablePickerValue | Pick<CollectionPickerItem, "id" | "model">,
+): input is TablePickerValue => input?.model === "table";

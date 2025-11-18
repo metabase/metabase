@@ -63,6 +63,7 @@ export type EntityPickerModalOptions = {
   confirmButtonText?: string | ((model?: string) => string);
   cancelButtonText?: string;
   hasRecents?: boolean;
+  showDatabases?: boolean;
 };
 
 export const defaultOptions: EntityPickerModalOptions = {
