@@ -40,6 +40,92 @@ describe("scenarios > data studio > datamodel", () => {
     cy.intercept("PUT", "/api/table/*").as("updateTable");
   });
 
+  describe("Data loading", () => {
+    it("should show 404 if database does not exist (metabase#14652)", () => {
+      visitDataStudioDataModel({ databaseId: 54321, skipWaiting: true });
+      cy.wait("@databases");
+      cy.wait(100); // wait with assertions for React effects to kick in
+
+      TablePicker.getDatabases().should("have.length", 1);
+      TablePicker.getTables().should("have.length", 0);
+      H.DataModel.get().findByText("Not found.").should("be.visible");
+      cy.location("pathname").should("eq", "/data-studio/data/database/54321");
+    });
+
+    it("should show 404 if table does not exist", () => {
+      visitDataStudioDataModel({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: 12345,
+        skipWaiting: true,
+      });
+      cy.wait("@databases");
+      cy.wait(100); // wait with assertions for React effects to kick in
+
+      TablePicker.getDatabases().should("have.length", 1);
+      TablePicker.getTables().should("have.length", 8);
+      H.DataModel.get().findByText("Not found.").should("be.visible");
+      cy.location("pathname").should(
+        "eq",
+        `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/12345`,
+      );
+    });
+
+    it("should show 404 if field does not exist", () => {
+      visitDataStudioDataModel({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: 12345,
+        skipWaiting: true,
+      });
+      cy.wait("@databases");
+      cy.wait(100); // wait with assertions for React effects to kick in
+
+      TablePicker.getDatabases().should("have.length", 1);
+      TablePicker.getTables().should("have.length", 8);
+      H.DataModel.get().findByText("Not found.").should("be.visible");
+      cy.location("pathname").should(
+        "eq",
+        `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
+      );
+    });
+
+    it(
+      "should not show 404 error if database is not selected",
+      { tags: ["@external"] },
+      () => {
+        H.restore("postgres-writable");
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+        cy.log("database not selected");
+        visitDataStudioDataModel();
+        H.DataModel.get()
+          .findByText(/Not found/)
+          .should("not.exist");
+
+        cy.log("database selected");
+        TablePicker.getDatabase("Writable Postgres12").click();
+        H.DataModel.get()
+          .findByText(/Not found/)
+          .should("not.exist");
+
+        cy.log("schema selected");
+        TablePicker.getSchema("Domestic").click();
+        H.DataModel.get()
+          .findByText(/Not found/)
+          .should("not.exist");
+
+        cy.log("table selected");
+        TablePicker.getTable("Animals").click();
+        H.DataModel.get()
+          .findByText(/Not found/)
+          .should("not.exist");
+      },
+    );
+  });
+
   describe("Table picker", () => {
     describe("No databases", () => {
       beforeEach(() => {
