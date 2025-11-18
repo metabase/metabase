@@ -94,6 +94,7 @@ export function MiniPicker({
         setShouldBrowse,
         models,
         canBrowse: !!browseAllComponent,
+        libraryCollection,
       }}
     >
       {shouldBrowse ? (

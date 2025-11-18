@@ -6,6 +6,7 @@ import {
 } from "react";
 
 import type {
+  MiniPickerCollectionItem,
   MiniPickerFolderItem,
   MiniPickerItem,
   MiniPickerPickableItem,
@@ -23,6 +24,7 @@ export interface MiniPickerContextValue {
   clearSearchQuery: () => void;
   canBrowse: boolean;
   setShouldBrowse: (shouldBrowse: boolean) => void;
+  libraryCollection?: MiniPickerCollectionItem;
 }
 
 export const MiniPickerContext = createContext<
