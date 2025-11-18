@@ -1,4 +1,5 @@
 import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { LibrarySection } from "./components/LibrarySection";
@@ -18,5 +19,14 @@ export function initializePlugin() {
     PLUGIN_LIBRARY.canPlaceEntityInCollection = canPlaceEntityInCollection;
     PLUGIN_LIBRARY.canPlaceEntityInCollectionOrDescendants =
       canPlaceEntityInCollectionOrDescendants;
+    PLUGIN_LIBRARY.useGetLibraryCollectionQuery = ({
+      skip,
+    }: { skip?: boolean } = {}) => {
+      const { data = null, isLoading } = useGetLibraryCollectionQuery(
+        undefined,
+        { skip },
+      );
+      return { data, isLoading };
+    };
   }
 }

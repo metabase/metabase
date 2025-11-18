@@ -69,6 +69,7 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  CollectionItem,
   CollectionItemModel,
   CollectionType,
   DashCardId,
@@ -1178,6 +1179,11 @@ export type LibraryPlugin = {
     entityType: CollectionItemModel,
     collectionType: CollectionType | null | undefined,
   ) => boolean;
+
+  useGetLibraryCollectionQuery: ({ skip }: { skip?: boolean }) => {
+    data: CollectionItem | null;
+    isLoading: boolean;
+  };
 };
 
 export const PLUGIN_LIBRARY: LibraryPlugin = {
@@ -1187,6 +1193,10 @@ export const PLUGIN_LIBRARY: LibraryPlugin = {
   getLibraryCollectionType: () => undefined,
   canPlaceEntityInCollection: () => true,
   canPlaceEntityInCollectionOrDescendants: () => true,
+  useGetLibraryCollectionQuery: ({ skip: _skip }: { skip?: boolean }) => ({
+    data: null,
+    isLoading: false,
+  }),
 };
 
 export type DataStudioPlugin = {

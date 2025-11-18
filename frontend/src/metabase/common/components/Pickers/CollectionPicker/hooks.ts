@@ -1,15 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   skipToken,
   useGetCollectionQuery,
   useListCollectionItemsQuery,
-  useListCollectionsTreeQuery,
 } from "metabase/api";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type { Collection, Dashboard } from "metabase-types/api";
 
@@ -77,6 +76,7 @@ export const useRootCollectionPickerItems = (
         model: "collection",
         here: ["collection"],
         below: ["collection", "card"],
+        moderated_status: null,
       });
     }
 
@@ -211,23 +211,9 @@ export const useEnsureCollectionSelected = ({
 };
 
 const useGetLibraryCollection = ({ skip = false }: { skip?: boolean }) => {
-  const { data, isLoading } = useListCollectionsTreeQuery(
-    skip ? skipToken : undefined,
-  );
+  const { data, isLoading } = PLUGIN_LIBRARY.useGetLibraryCollectionQuery({
+    skip,
+  });
 
-  const libraryCollection = data?.find((item) => item.type === "library");
-
-  return {
-    isLoading,
-    data: libraryCollection
-      ? (_.pick(libraryCollection, [
-          "id",
-          "name",
-          "description",
-          "can_write",
-          "type",
-          "location",
-        ]) as CollectionPickerItem)
-      : undefined,
-  };
+  return { data: data as CollectionPickerItem, isLoading };
 };
