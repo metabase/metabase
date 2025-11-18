@@ -216,7 +216,7 @@ function ModernDataPicker({
       />
       {isOpened || !table ? (
         <TextInput
-          placeholder={t`Search for tables and and more...`}
+          placeholder={t`Search for tables and more...`}
           value={dataSourceSearchQuery}
           variant="unstyled"
           styles={{
