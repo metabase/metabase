@@ -98,7 +98,7 @@
           (some->> @final-value
                    (println "\n=> "))
           (recur))))
-    final-value))
+    (delay final-value)))
 
 (defn nrepl-open? []
   (let [result (atom false)]

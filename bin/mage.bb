@@ -73,7 +73,8 @@
 
     ;; errors
     (invalid-task?)
-    (do (print-help) (System/exit 1))
+    (do (print-help)
+        (System/exit 1))
 
     :else
     ;; at this point, we always have a valid task, and we are running in bb, so

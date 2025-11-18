@@ -1,6 +1,7 @@
 #!/usr/bin/env bb
 (ns mage.fzf-preview
-  (:require [babashka.process :as p]
+  (:require [babashka.fs :as fs]
+            [babashka.process :as p]
             [clojure.string :as str]
             [mage.util :as u]))
 
@@ -18,13 +19,9 @@
 
 (defn -main [& args]
   (let [file-or-dir (first args)]
-    (if (or
-         (str/ends-with? file-or-dir ".edn")
-         (str/ends-with? file-or-dir ".clj")
-         (str/ends-with? file-or-dir ".cljs")
-         (str/ends-with? file-or-dir ".cljc"))
-      (preview-file file-or-dir)
-      (preview-dir file-or-dir))))
+    (if (fs/directory? file-or-dir)
+      (preview-dir file-or-dir)
+      (preview-file file-or-dir))))
 
 (try
   (apply -main *command-line-args*)

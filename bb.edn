@@ -198,7 +198,7 @@
 
   quick-test {:doc "run backend tests easier than cake"
               :examples [["./bin/mage quick-test" "interactively select directories and files to test"]]
-              :options [["-s" "--style TYPE" "How to select tests (default: dir)" :default "dir" :default "dir"]]
+              :options [["-s" "--style TYPE" "How to select tests (default: dir)" :default "dir"]]
               :requires [[mage.quick-test-runner :refer [go]]]
               :task (task! (go parsed))}
 
@@ -297,6 +297,12 @@
   {:doc      "Runs every example and checks that it exits with 0"
    :requires [[mage.examples-test :as examples-test]]
    :task     (System/exit (if (= :ok (examples-test/run-tests)) 0 1))}
+
+  local
+  {:doc "Run your own tasks from a me.bb file"
+   :requires [[mage.local :as local]]
+   ;; Prefer `task!` ... `parsed`
+   :task (local/run *command-line-args*)}
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Personal Tasks:
