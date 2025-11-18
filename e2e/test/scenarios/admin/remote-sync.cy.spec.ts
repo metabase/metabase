@@ -389,6 +389,7 @@ describe("Remote Sync", () => {
         });
 
         H.waitForTask({ taskName: "export" });
+        cy.findByRole("dialog").should("not.exist");
 
         H.branchPicker().should("contain.text", NEW_BRANCH);
         H.collectionTable().within(() => {
@@ -400,6 +401,8 @@ describe("Remote Sync", () => {
         H.popover().findByRole("option", { name: "main" }).click();
 
         H.waitForTask({ taskName: "import" });
+        cy.findByRole("dialog").should("not.exist");
+
         H.collectionTable().within(() => {
           cy.findByText("Orders").should("not.exist");
           cy.findByText(REMOTE_QUESTION_NAME).should("exist");
