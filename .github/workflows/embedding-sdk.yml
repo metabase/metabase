@@ -142,16 +142,18 @@ jobs:
   # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
   sdk-e2e-tests:
     name: "SDK e2e tests"
+    needs: [build, files-changed]
+    if: needs.files-changed.outputs.e2e_embedding_sdk == "true"
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
-    needs: [build]
     secrets: inherit
     with:
       cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
   e2e-component-tests-embedding-sdk-backward-compatibility:
     name: "SDK e2e backward compatibility tests"
+    needs: [build, files-changed]
+    if: needs.files-changed.outputs.e2e_embedding_sdk == "true"
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk-backward-compatibility.yml
-    needs: [build]
     secrets: inherit
     with:
       cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
