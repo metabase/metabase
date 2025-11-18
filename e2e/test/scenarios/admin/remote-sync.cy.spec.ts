@@ -380,7 +380,7 @@ describe("Remote Sync", () => {
         });
       });
 
-      it("new branch", () => {
+      it("new branch for unsynced changes", () => {
         const NEW_BRANCH = `new-branch-${Date.now()}`;
         cy.findByRole("dialog", { name: /unsynced changes/ }).within(() => {
           cy.findByRole("radio", { name: /new branch/ }).click();
