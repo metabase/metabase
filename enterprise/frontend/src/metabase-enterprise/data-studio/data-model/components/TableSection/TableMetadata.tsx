@@ -48,7 +48,7 @@ export function TableMetadata({ table }: Props) {
                 {dependenciesCount}
               </DependencyLink>
             }
-          />{" "}
+          />
           <MetadataRow
             label={t`Dependents`}
             value={
