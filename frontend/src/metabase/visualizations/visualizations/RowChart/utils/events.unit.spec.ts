@@ -14,12 +14,11 @@ import type {
   RemappingHydratedDatasetColumn,
   TooltipRowModel,
 } from "metabase/visualizations/types";
-import type {
-  DatasetColumn,
-  SeriesSettings,
-  VisualizationSettings,
-} from "metabase-types/api";
-import { createMockColumn } from "metabase-types/api/mocks";
+import type { SeriesSettings, VisualizationSettings } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockNumericColumn,
+} from "metabase-types/api/mocks";
 
 import { getHoverData, getStackedTooltipRows } from "./events";
 
@@ -227,35 +226,26 @@ describe("events utils", () => {
       ];
 
       const datasetColumns = [
-        {
+        createMockColumn({
           name: "TIME",
           display_name: "TIME",
-        } as DatasetColumn,
-        {
+        }),
+        createMockColumn({
           name: "COUNTRY",
           display_name: "COUNTRY",
-        } as DatasetColumn,
-        {
+        }),
+        createMockNumericColumn({
           name: "PERCENTAGEOFTOTALSPEND",
           display_name: "PERCENTAGEOFTOTALSPEND",
-          base_type: "type/Integer",
-          database_type: "INTEGER",
-          effective_type: "type/Integer",
-        } as DatasetColumn,
-        {
+        }),
+        createMockNumericColumn({
           name: "TOTALSPEND",
           display_name: "TOTALSPEND",
-          base_type: "type/Integer",
-          database_type: "INTEGER",
-          effective_type: "type/Integer",
-        } as DatasetColumn,
-        {
+        }),
+        createMockNumericColumn({
           name: "FUTURESPEND",
           display_name: "FUTURESPEND",
-          base_type: "type/Integer",
-          database_type: "INTEGER",
-          effective_type: "type/Integer",
-        } as DatasetColumn,
+        }),
       ];
 
       const COLUMNS_MAP = {
