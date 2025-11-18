@@ -241,11 +241,15 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
       H.saveDashboard();
 
-      // Check that parameter visibility is correct
-      H.openLegacyStaticEmbeddingModal({
-        activeTab: "parameters",
-        acceptTerms: true,
+      cy.get("@dashboardId").then((dashboardId) => {
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboardId,
+          activeTab: "parameters",
+        });
       });
+
+      // Check that parameter visibility is correct
       H.assertEmbeddingParameter("Id", "Disabled");
       H.assertEmbeddingParameter("Name", "Editable");
       H.assertEmbeddingParameter("Source", "Disabled");
