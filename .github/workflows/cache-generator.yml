@@ -77,7 +77,7 @@ jobs:
             ~/.m2
             ~/.gitlibs
             ~/.deps.clj
-            bin/bb
+            ${{ github.workspace}}/bin/bb
           key: ${{ env.M2_CACHE_KEY }}
 
   generate-frontend-caches:
