@@ -1,15 +1,20 @@
-# Malli Schema Guide for Metabase API Endpoints
+---
+name: add-malli-schemas
+description: Efficiently add Malli schemas to API endpoints in the Metabase codebase with proper patterns, validation timing, and error handling
+---
 
-This guide helps you efficiently and uniformly add Malli schemas to API endpoints in the Metabase codebase.
+# Add Malli Schemas to API Endpoints
 
-## 📚 Reference Files (Best Examples)
+This skill helps you efficiently and uniformly add Malli schemas to API endpoints in the Metabase codebase.
 
-- **`src/metabase/warehouses/api.clj`** - Most comprehensive schemas, custom error messages
-- **`src/metabase/api_keys/api.clj`** - Excellent response schemas
-- **`src/metabase/collections/api.clj`** - Great named schema patterns
-- **`src/metabase/timeline/api/timeline.clj`** - Clean, simple examples
+## Reference Files (Best Examples)
 
-## 🎯 Quick Checklist
+- `src/metabase/warehouses/api.clj` - Most comprehensive schemas, custom error messages
+- `src/metabase/api_keys/api.clj` - Excellent response schemas
+- `src/metabase/collections/api.clj` - Great named schema patterns
+- `src/metabase/timeline/api/timeline.clj` - Clean, simple examples
+
+## Quick Checklist
 
 When adding Malli schemas to an endpoint:
 
@@ -21,7 +26,7 @@ When adding Malli schemas to an endpoint:
 - [ ] Consider creating named schemas for reusable/complex types
 - [ ] Add custom error messages for validation failures
 
-## 🏗️ Basic Structure
+## Basic Structure
 
 ### Complete Endpoint Example
 
@@ -43,7 +48,7 @@ When adding Malli schemas to an endpoint:
   )
 ```
 
-## 📦 Common Schema Patterns
+## Common Schema Patterns
 
 ### Route Parameters
 
@@ -113,7 +118,7 @@ Use `:optional true` and `:default` values:
   ...)
 ```
 
-## 🔧 Common Schema Types
+## Common Schema Types
 
 ### From `metabase.util.malli.schema` (aliased as `ms`)
 
@@ -129,7 +134,7 @@ ms/PositiveNum              ;; Positive number
 ms/IntGreaterThanOrEqualToZero  ;; 0 or positive
 ```
 
-⚠️ **IMPORTANT:** For response schemas, use `:any` for temporal fields, not `ms/TemporalString`!
+**IMPORTANT:** For response schemas, use `:any` for temporal fields, not `ms/TemporalString`!
 Response schemas validate BEFORE JSON serialization, so they see Java Time objects.
 
 ### Built-in Malli Types
@@ -150,7 +155,7 @@ pos-int?                    ;; Positive integer predicate
 [:tuple X Y Z]              ;; Fixed-length tuple
 ```
 
-## 📝 Step-by-Step: Adding Schemas to an Endpoint
+## Step-by-Step: Adding Schemas to an Endpoint
 
 ### Example: Adding schema to `GET /api/field/:id/related`
 
@@ -184,7 +189,7 @@ pos-int?                    ;; Positive integer predicate
   (-> (t2/select-one :model/Field :id id) api/read-check xrays/related))
 ```
 
-## 🎨 Advanced Patterns
+## Advanced Patterns
 
 ### Custom Error Messages
 
@@ -239,55 +244,40 @@ pos-int?                    ;; Positive integer predicate
    [:offset {:optional true} [:maybe integer?]]])
 ```
 
-## 🚨 Common Pitfalls
+## Common Pitfalls
 
-### ❌ Don't: Forget `:maybe` for nullable fields
+### Don't: Forget `:maybe` for nullable fields
 
 ```clojure
 [:description string?]  ;; WRONG - fails if nil
-```
-
-✅ Do:
-```clojure
 [:description [:maybe string?]]  ;; RIGHT - allows nil
 ```
 
-### ❌ Don't: Forget `:optional true` for optional query params
+### Don't: Forget `:optional true` for optional query params
 
 ```clojure
 [:limit ms/PositiveInt]  ;; WRONG - required
-```
-
-✅ Do:
-```clojure
 [:limit {:optional true} [:maybe ms/PositiveInt]]  ;; RIGHT
 ```
 
-### ❌ Don't: Mix up route params, query params, and body
+### Don't: Mix up route params, query params, and body
 
 ```clojure
 ;; WRONG - all in one map
 [{:keys [id name archived]} :- [:map ...]]
-```
 
-✅ Do:
-```clojure
 ;; RIGHT - separate destructuring
 [{:keys [id]} :- [:map [:id ms/PositiveInt]]
  {:keys [archived]} :- [:map [:archived {:default false} ms/BooleanValue]]
  {:keys [name]} :- [:map [:name ms/NonBlankString]]]
 ```
 
-### ❌ Don't: Use `ms/TemporalString` for Java Time objects in response schemas
+### Don't: Use `ms/TemporalString` for Java Time objects in response schemas
 
 ```clojure
 ;; WRONG - Java Time objects aren't strings yet
 [:date_joined ms/TemporalString]
-[:last_login [:maybe ms/TemporalString]]
-```
 
-✅ Do: Use `:any` for temporal fields that get serialized by middleware:
-```clojure
 ;; RIGHT - schemas validate BEFORE JSON serialization
 [:date_joined :any]  ;; Java Time object, serialized to string by middleware
 [:last_login [:maybe :any]]  ;; Java Time object or nil
@@ -295,24 +285,21 @@ pos-int?                    ;; Positive integer predicate
 
 **Why:** Response schemas validate the internal Clojure data structures BEFORE they are serialized to JSON. Java Time objects like `OffsetDateTime` get converted to ISO-8601 strings by the JSON middleware, so the schema needs to accept the raw Java objects.
 
-### ❌ Don't: Use `[:sequential X]` when the data is actually a set
+### Don't: Use `[:sequential X]` when the data is actually a set
 
 ```clojure
 ;; WRONG - group_ids is actually a set
 [:group_ids {:optional true} [:sequential pos-int?]]
-```
 
-✅ Do: Use `[:set X]` for set fields:
-```clojure
 ;; RIGHT - matches the actual data structure
 [:group_ids {:optional true} [:maybe [:set pos-int?]]]
 ```
 
-**Why:** Toucan hydration methods often return sets (e.g., `(set (map :group_id ...))`). The JSON middleware will serialize sets to arrays, but the schema validates before serialization.
+**Why:** Toucan hydration methods often return sets. The JSON middleware will serialize sets to arrays, but the schema validates before serialization.
 
-### ❌ Don't: Create anonymous schemas for reused structures
+### Don't: Create anonymous schemas for reused structures
 
-✅ Do: Use `mr/def` for schemas used in multiple places:
+Use `mr/def` for schemas used in multiple places:
 
 ```clojure
 (mr/def ::User
@@ -322,9 +309,9 @@ pos-int?                    ;; Positive integer predicate
    [:name string?]])
 ```
 
-## 🔍 Finding Return Types
+## Finding Return Types
 
-### 1. Look at the function being called
+1. **Look at the function being called**
 
 ```clojure
 (api.macros/defendpoint :get "/:id"
@@ -332,69 +319,36 @@ pos-int?                    ;; Positive integer predicate
   (t2/select-one :model/Field :id id))  ;; Returns a Field instance
 ```
 
-### 2. Check Toucan models for structure
+2. **Check Toucan models for structure**
 
 Look in `src/metabase/*/models/*.clj` for model definitions.
 
-### 3. Use REPL to inspect
+3. **Use REPL to inspect**
 
 ```bash
 ./bin/mage -repl '(require '\''metabase.xrays.core) (doc metabase.xrays.core/related)'
 ```
 
-### 4. Check tests
+4. **Check tests**
 
 Tests often show the expected response structure.
 
-## 📋 Workflow Summary
-
-1. **Read the endpoint** - understand what it does
-2. **Identify parameters** - route, query, body
-3. **Add parameter schemas** - use existing types from `ms`
-4. **Determine return type** - check the implementation
-5. **Define response schema** - inline or named with `mr/def`
-6. **Test** - ensure the endpoint works and validates correctly
-
-## 🧪 Testing Your Schemas
-
-After adding schemas, verify:
-
-1. **Valid requests work** - test with correct data
-2. **Invalid requests fail gracefully** - test with wrong types
-3. **Optional parameters work** - test with/without optional params
-4. **Error messages are clear** - check validation error responses
-
-## ⏰ Understanding Schema Validation Timing
+## Understanding Schema Validation Timing
 
 **CRITICAL CONCEPT:** Schemas validate at different points in the request/response lifecycle:
 
 ### Request Parameter Schemas (Query/Body/Route)
-- ✅ Validate AFTER JSON parsing
-- ✅ Data is already deserialized (strings, numbers, booleans)
-- ✅ Use `ms/TemporalString` for date/time inputs
-- ✅ Use `ms/BooleanValue` for boolean query params
-
-```clojure
-;; Request body - data is already parsed from JSON
-{:keys [created_at]} :- [:map
-                         [:created_at ms/TemporalString]] ;; OK - this is a string
-```
+- Validate AFTER JSON parsing
+- Data is already deserialized (strings, numbers, booleans)
+- Use `ms/TemporalString` for date/time inputs
+- Use `ms/BooleanValue` for boolean query params
 
 ### Response Schemas
-- ⚠️ Validate BEFORE JSON serialization
-- ⚠️ Data is still in Clojure format (Java Time objects, sets, keywords)
-- ⚠️ Use `:any` for Java Time objects
-- ⚠️ Use `[:set X]` for sets
-- ⚠️ Use `[:enum :keyword]` for keyword enums
-
-```clojure
-;; Response - data hasn't been serialized yet
-(defendpoint :get "/" :- [:map
-                          [:created_at :any]        ;; Java Time object
-                          [:group_ids [:set int?]]  ;; Clojure set
-                          [:status [:enum :active :inactive]]] ;; Keyword
-  ...)
-```
+- Validate BEFORE JSON serialization
+- Data is still in Clojure format (Java Time objects, sets, keywords)
+- Use `:any` for Java Time objects
+- Use `[:set X]` for sets
+- Use `[:enum :keyword]` for keyword enums
 
 ### Serialization Flow
 
@@ -405,7 +359,25 @@ Response: Handler → Validate → Serialize → JSON string
                 Schema checks here!
 ```
 
-## 💡 Tips
+## Workflow Summary
+
+1. **Read the endpoint** - understand what it does
+2. **Identify parameters** - route, query, body
+3. **Add parameter schemas** - use existing types from `ms`
+4. **Determine return type** - check the implementation
+5. **Define response schema** - inline or named with `mr/def`
+6. **Test** - ensure the endpoint works and validates correctly
+
+## Testing Your Schemas
+
+After adding schemas, verify:
+
+1. **Valid requests work** - test with correct data
+2. **Invalid requests fail gracefully** - test with wrong types
+3. **Optional parameters work** - test with/without optional params
+4. **Error messages are clear** - check validation error responses
+
+## Tips
 
 - **Start simple** - begin with basic types, refine later
 - **Reuse schemas** - if you see the same structure twice, make it a named schema
@@ -414,7 +386,7 @@ Response: Handler → Validate → Serialize → JSON string
 - **Follow conventions** - look at similar endpoints in the same namespace
 - **Check the actual data** - use REPL to inspect what's actually returned before serialization
 
-## 📖 Additional Resources
+## Additional Resources
 
 - [Malli Documentation](https://github.com/metosin/malli)
 - Metabase Malli utilities: `src/metabase/util/malli/schema.clj`
