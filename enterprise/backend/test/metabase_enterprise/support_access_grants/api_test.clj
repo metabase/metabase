@@ -76,7 +76,7 @@
              (mt/user-http-request :lucky :put 403 (format "ee/support-access-grant/%d/revoke" grant-id)))))))
 
 (deftest revoke-grant-fails-for-nonexistent-grant-test
-  (is (= "Grant not found"
+  (is (= "Not found."
          (mt/user-http-request :crowberto :put 404 "ee/support-access-grant/999999/revoke"))))
 
 (deftest revoke-grant-fails-for-already-revoked-grant-test
