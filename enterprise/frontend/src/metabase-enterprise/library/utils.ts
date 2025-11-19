@@ -5,11 +5,11 @@ export function getLibraryCollectionType(
   type: CollectionType | null | undefined,
 ): LibraryCollectionType | undefined {
   switch (type) {
-    case "semantic-layer":
+    case "library":
       return "root";
-    case "semantic-layer-models":
+    case "library-models":
       return "models";
-    case "semantic-layer-metrics":
+    case "library-metrics":
       return "metrics";
   }
 }
@@ -28,15 +28,15 @@ export function canPlaceEntityInCollection(
   }
 
   // Can't create anything in the root Library collection
-  if (collectionType === "semantic-layer") {
+  if (collectionType === "library") {
     return false;
   }
 
-  if (collectionType === "semantic-layer-models") {
+  if (collectionType === "library-models") {
     return entityType === "dataset";
   }
 
-  if (collectionType === "semantic-layer-metrics") {
+  if (collectionType === "library-metrics") {
     return entityType === "metric";
   }
 
@@ -51,10 +51,10 @@ export function canPlaceEntityInCollectionOrDescendants(
     return true;
   }
 
-  if (collectionType === "semantic-layer") {
+  if (collectionType === "library") {
     return (
-      canPlaceEntityInCollection(entityType, "semantic-layer-models") ||
-      canPlaceEntityInCollection(entityType, "semantic-layer-metrics")
+      canPlaceEntityInCollection(entityType, "library-models") ||
+      canPlaceEntityInCollection(entityType, "library-metrics")
     );
   }
 

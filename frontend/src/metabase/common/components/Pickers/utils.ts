@@ -28,7 +28,7 @@ export const getCollectionIdPath = (
     return ["databases"];
   }
 
-  if (collection.type === "semantic-layer") {
+  if (collection.type === "library") {
     return [collection.id];
   }
 
@@ -50,8 +50,7 @@ export const getCollectionIdPath = (
     (collection.id === userPersonalCollectionId ||
       pathFromRoot.includes(userPersonalCollectionId));
 
-  const isInSemanticLayerCollection =
-    collection?.type?.includes("semantic-layer");
+  const isInSemanticLayerCollection = collection?.type?.includes("library");
 
   const id = collection.model === "collection" ? collection.id : -collection.id;
 

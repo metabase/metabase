@@ -34,9 +34,9 @@ export type CollectionType =
   | "instance-analytics"
   | "trash"
   | "remote-synced"
-  | "semantic-layer"
-  | "semantic-layer-models"
-  | "semantic-layer-metrics"
+  | "library"
+  | "library-models"
+  | "library-metrics"
   | null;
 
 export type LastEditInfo = Pick<

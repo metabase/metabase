@@ -215,9 +215,7 @@ const useGetLibraryCollection = ({ skip = false }: { skip?: boolean }) => {
     skip ? skipToken : undefined,
   );
 
-  const libraryCollection = data?.find(
-    (item) => item.type === "semantic-layer",
-  );
+  const libraryCollection = data?.find((item) => item.type === "library");
 
   return {
     isLoading,
