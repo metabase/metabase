@@ -532,6 +532,87 @@ describe("scenarios > data studio > datamodel", () => {
       });
     });
 
+    describe("Extra info about tables", () => {
+      const databaseName = "Writable Postgres12";
+      const domesticSchema = "Domestic";
+      const domesticAnimalsTable = "Animals";
+
+      beforeEach(() => {
+        H.restore("postgres-writable");
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+      });
+
+      it("should show the table owner", () => {
+        cy.request("GET", "/api/user/current")
+          .its("body")
+          .then(({ id, common_name }) => {
+            cy.wrap(common_name).as("tableOwnerName");
+            return updateTableAttributes({
+              databaseId: WRITABLE_DB_ID,
+              displayName: domesticAnimalsTable,
+              attributes: { owner_user_id: id },
+            });
+          })
+          .as("ownerTableId");
+
+        openWritableDomesticSchema(databaseName, domesticSchema);
+
+        cy.get<string>("@tableOwnerName").then((ownerName) => {
+          TablePicker.getTable(domesticAnimalsTable)
+            .findByTestId("table-owner")
+            .should("contain", ownerName);
+        });
+      });
+
+      it("should display the estimated row count", () => {
+        const EXPECTED_ROWS = 3210;
+
+        cy.intercept(
+          "GET",
+          `/api/database/${WRITABLE_DB_ID}/schema/${domesticSchema}*`,
+          (req) => {
+            req.continue((res) => {
+              if (Array.isArray(res.body)) {
+                res.body = res.body.map((table) => {
+                  if (
+                    table.display_name === domesticAnimalsTable ||
+                    table.name === domesticAnimalsTable
+                  ) {
+                    return {
+                      ...table,
+                      estimated_row_count: EXPECTED_ROWS,
+                    };
+                  }
+                  return table;
+                });
+              }
+            });
+          },
+        );
+
+        openWritableDomesticSchema(databaseName, domesticSchema);
+
+        TablePicker.getTable(domesticAnimalsTable)
+          .findByTestId("table-expected-rows")
+          .should("contain", "3,210");
+      });
+
+      it("should indicate published tables", () => {
+        getTableId({ databaseId: WRITABLE_DB_ID, name: domesticAnimalsTable })
+          .then((tableId) => {
+            return publishTables([tableId]);
+          })
+          .as("publishedTableId");
+
+        openWritableDomesticSchema(databaseName, domesticSchema);
+
+        TablePicker.getTable(domesticAnimalsTable)
+          .findByTestId("table-published")
+          .should("contain", "Yes");
+      });
+    });
+
     describe("Filtering", () => {
       it("should filter tables by visibility type", () => {
         updateTableAttributes({
@@ -3842,6 +3923,7 @@ type TableSummary = {
   db_id: number;
   display_name: string;
   name: string;
+  estimated_row_count?: number | null;
 };
 
 type TableLookup = {
@@ -3894,9 +3976,15 @@ function expectTableNotVisible(tableId: TableId) {
 function findSearchResultByTableId(tableId: TableId) {
   return cy.findAllByTestId("tree-item").filter((_, element) => {
     const href = element.getAttribute("href") ?? "";
-    const pattern = new RegExp(`/table/${tableId}$`);
+    const pattern = new RegExp(`/table/${tableId}(?:/|$)`);
     return pattern.test(href);
   });
+}
+
+function openWritableDomesticSchema(databaseName: string, schemaName: string) {
+  H.DataModel.visitDataStudio();
+  TablePicker.getDatabase(databaseName).click();
+  TablePicker.getSchema(schemaName).click();
 }
 
 function getTableId({
@@ -3945,8 +4033,18 @@ function updateTableAttributes({
 }): Cypress.Chainable<TableId> {
   return getTableId({ databaseId, displayName, name }).then((tableId) => {
     return cy
-      .request("PUT", `/api/table/${tableId}`, attributes)
+      .request("POST", "/api/ee/data-studio/table/edit", {
+        table_ids: [tableId],
+        ...attributes,
+      })
       .then(() => tableId);
+  });
+}
+
+function publishTables(tableIds: TableId[]) {
+  return cy.request("POST", "/api/ee/data-studio/table/publish-model", {
+    table_ids: tableIds,
+    target_collection_id: null,
   });
 }
 
