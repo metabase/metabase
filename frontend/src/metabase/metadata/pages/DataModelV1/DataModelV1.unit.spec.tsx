@@ -9,6 +9,7 @@ import {
   setupFieldsValuesEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
+  setupTablesBulkEndpoints,
   setupUnauthorizedFieldEndpoint,
   setupUnauthorizedFieldValuesEndpoints,
 } from "__support__/server-mocks";
@@ -196,6 +197,7 @@ async function setup({
 }: SetupOpts = {}) {
   setupDatabasesEndpoints(databases, { hasSavedQuestions: false });
   setupCardDataset();
+  setupTablesBulkEndpoints();
 
   if (hasFieldValuesAccess) {
     setupFieldsValuesEndpoints(fieldValues);
@@ -703,11 +705,20 @@ describe("DataModelV1", () => {
         screen.getByRole("button", { name: "Re-scan table" }),
       );
 
+      const calls = fetchMock.callHistory.calls(
+        "path:/api/table/rescan-values",
+        {
+          method: "POST",
+        },
+      );
+
       await waitFor(() => {
-        const path = `path:/api/table/${ORDERS_TABLE.id}/rescan_values`;
-        expect(
-          fetchMock.callHistory.called(path, { method: "POST" }),
-        ).toBeTruthy();
+        expect(calls.length).toBeGreaterThan(0);
+      });
+
+      const lastCall = calls[calls.length - 1];
+      expect(JSON.parse(lastCall.options.body as string)).toEqual({
+        table_ids: [ORDERS_TABLE.id],
       });
     });
 
@@ -726,12 +737,20 @@ describe("DataModelV1", () => {
           name: "Discard cached field values",
         }),
       );
+      const calls = fetchMock.callHistory.calls(
+        "path:/api/table/discard-values",
+        {
+          method: "POST",
+        },
+      );
 
       await waitFor(() => {
-        const path = `path:/api/table/${ORDERS_TABLE.id}/discard_values`;
-        expect(
-          fetchMock.callHistory.called(path, { method: "POST" }),
-        ).toBeTruthy();
+        expect(calls.length).toBeGreaterThan(0);
+      });
+
+      const lastCall = calls[calls.length - 1];
+      expect(JSON.parse(lastCall.options.body as string)).toEqual({
+        table_ids: [ORDERS_TABLE.id],
       });
     });
   });

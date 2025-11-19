@@ -145,7 +145,7 @@ function ModelFieldsPageBody({
             />
           }
         />
-        <Flex className={S.contentWrapper}>
+        <Flex className={S.contentWrapper} flex={1}>
           <Flex flex={1} mih={0} bg="bg-light" miw={740}>
             <ModelFieldList
               fields={fields}

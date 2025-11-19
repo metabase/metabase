@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useRef } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -28,7 +28,8 @@ export function SearchNew({
   filters,
   setOnUpdateCallback,
 }: SearchNewProps) {
-  const { selectedTables, setSelectedTables } = useSelection();
+  const { selectedTables, setSelectedTables, selectedItemsCount } =
+    useSelection();
   const routeParams = parseRouteParams(params);
   const { baseUrl } = useContext(DataModelContext);
   const {
@@ -56,6 +57,14 @@ export function SearchNew({
     return () => setOnUpdateCallback(null);
   }, [refetch, setOnUpdateCallback]);
 
+  const lastSelectedTableIndex = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (selectedItemsCount === 0) {
+      lastSelectedTableIndex.current = null;
+    }
+  }, [selectedItemsCount]);
+
   if (isLoading) {
     return (
       <Flex justify="center" align="center" p="xl">
@@ -72,26 +81,53 @@ export function SearchNew({
     );
   }
 
-  function onTableSelect(tableId: TableId) {
-    if (selectedTables.has(tableId)) {
+  const handleTableSelect = (
+    tableId: TableId,
+    tableIndex: number,
+    options?: { isShiftPressed?: boolean },
+  ) => {
+    const isShiftPressed = Boolean(options?.isShiftPressed);
+    const hasRangeAnchor = lastSelectedTableIndex.current != null;
+
+    if (isShiftPressed && hasRangeAnchor) {
+      const anchorIndex = lastSelectedTableIndex.current;
+      if (anchorIndex == null) {
+        return;
+      }
+
+      const start = Math.min(anchorIndex, tableIndex);
+      const end = Math.max(anchorIndex, tableIndex);
+      const rangeTables = tables.slice(start, end + 1);
+
       setSelectedTables((prev) => {
         const newSet = new Set(prev);
-        newSet.delete(tableId);
+        rangeTables.forEach((rangeTable) => {
+          newSet.add(rangeTable.id);
+        });
         return newSet;
       });
-    } else {
-      setSelectedTables((prev) => {
-        const newSet = new Set(prev);
-        newSet.add(tableId);
-        return newSet;
-      });
+
+      lastSelectedTableIndex.current = tableIndex;
+      return;
     }
-  }
+
+    setSelectedTables((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(tableId)) {
+        newSet.delete(tableId);
+      } else {
+        newSet.add(tableId);
+      }
+      return newSet;
+    });
+
+    lastSelectedTableIndex.current = tableIndex;
+  };
 
   return (
     <Stack>
       <Stack gap={0} px="lg">
-        {tables.map((table) => {
+        {tables.map((table, tableIndex) => {
           const breadcrumbs = table.schema
             ? `${table.db?.name} (${table.schema})`
             : table.db?.name;
@@ -128,9 +164,16 @@ export function SearchNew({
                   top: 4,
                 }}
                 size="sm"
-                onChange={() => onTableSelect(table.id)}
                 checked={selectedTables.has(table.id)}
-                onClick={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleTableSelect(table.id, tableIndex, {
+                    isShiftPressed: Boolean(
+                      (event.nativeEvent as { shiftKey?: boolean }).shiftKey,
+                    ),
+                  });
+                }}
+                onChange={() => {}}
               />
               <Icon
                 style={{

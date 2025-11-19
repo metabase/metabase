@@ -6,6 +6,7 @@ import {
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { DataModel } from "e2e/support/helpers";
 import type { TableId } from "metabase-types/api";
 
 const { H } = cy;
@@ -28,12 +29,6 @@ const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
 
 const CUSTOM_MAPPING_ERROR =
   "You need unrestricted data access on this table to map custom display values.";
-
-function visitDataStudioDataModel(
-  options?: Parameters<typeof H.DataModel.visit>[0],
-) {
-  H.DataModel.visit({ ...options, basePath: "/data-studio/data" });
-}
 
 describe("scenarios > data studio > datamodel", () => {
   beforeEach(() => {
@@ -59,7 +54,7 @@ describe("scenarios > data studio > datamodel", () => {
 
   describe("Data loading", () => {
     it("should show 404 if database does not exist (metabase#14652)", () => {
-      visitDataStudioDataModel({ databaseId: 54321, skipWaiting: true });
+      H.DataModel.visitDataStudio({ databaseId: 54321, skipWaiting: true });
       cy.wait("@databases");
       cy.wait(100); // wait with assertions for React effects to kick in
 
@@ -70,7 +65,7 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     it("should show 404 if table does not exist", () => {
-      visitDataStudioDataModel({
+      H.DataModel.visitDataStudio({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: 12345,
@@ -89,7 +84,7 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     it("should show 404 if field does not exist", () => {
-      visitDataStudioDataModel({
+      H.DataModel.visitDataStudio({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
@@ -117,7 +112,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
         cy.log("database not selected");
-        visitDataStudioDataModel();
+        H.DataModel.visitDataStudio();
         H.DataModel.get()
           .findByText(/Not found/)
           .should("not.exist");
@@ -150,7 +145,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow to navigate databases, schemas, and tables", () => {
-        visitDataStudioDataModel();
+        H.DataModel.visitDataStudio();
 
         cy.get("main")
           .findByText("No connected databases")
@@ -172,7 +167,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.restore("mysql-8");
         cy.signInAsAdmin();
 
-        visitDataStudioDataModel();
+        H.DataModel.visitDataStudio();
 
         TablePicker.getDatabase("QA MySQL8").click();
         TablePicker.getTables().should("have.length", 4);
@@ -197,7 +192,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.restore("mysql-8");
         cy.signInAsAdmin();
 
-        visitDataStudioDataModel();
+        H.DataModel.visitDataStudio();
 
         TablePicker.getSearchInput().type("rEvIeWs");
         TablePicker.getTables().should("have.length", 2);
@@ -216,7 +211,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.restore("mysql-8");
         cy.signInAsAdmin();
 
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: MYSQL_DB_ID,
           schemaId: MYSQL_DB_SCHEMA_ID,
         });
@@ -241,7 +236,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("1 database, 1 schema", () => {
       it("should allow to navigate databases, schemas, and tables", () => {
-        visitDataStudioDataModel();
+        H.DataModel.visitDataStudio();
 
         cy.log("should auto-open the only schema in the only database");
         cy.location("pathname").should(
@@ -271,7 +266,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow to search for tables", () => {
-        visitDataStudioDataModel();
+        H.DataModel.visitDataStudio();
 
         TablePicker.getSearchInput().type("or");
         TablePicker.getTables().should("have.length", 1);
@@ -305,7 +300,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to navigate databases, schemas, and tables", () => {
-          visitDataStudioDataModel();
+          H.DataModel.visitDataStudio();
 
           cy.location("pathname").should("eq", "/data-studio/data");
           TablePicker.getDatabases().should("have.length", 2);
@@ -421,7 +416,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to search for tables", () => {
-          visitDataStudioDataModel();
+          H.DataModel.visitDataStudio();
 
           TablePicker.getSearchInput().type("b");
           TablePicker.getTables().should("have.length", 2);
@@ -445,7 +440,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should restore previously selected table when expanding the tree", () => {
-          visitDataStudioDataModel();
+          H.DataModel.visitDataStudio();
 
           TablePicker.getDatabase("Writable Postgres12").click();
           TablePicker.getSchema("Domestic").click();
@@ -471,11 +466,261 @@ describe("scenarios > data studio > datamodel", () => {
         });
       },
     );
+
+    describe("Search", () => {
+      beforeEach(() => {
+        H.restore("postgres-writable");
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+      });
+
+      it("should support prefix-based search", () => {
+        H.DataModel.visitDataStudio();
+
+        TablePicker.getSearchInput().type("an");
+        TablePicker.getTables().should("have.length", 3);
+        TablePicker.getTable("Analytic Events").should("be.visible");
+        TablePicker.getTable("Animals").should("be.visible");
+      });
+
+      it("should support wildcard search with *", () => {
+        H.DataModel.visitDataStudio();
+
+        TablePicker.getSearchInput().type("irds");
+        TablePicker.get().findByText("No tables found").should("be.visible");
+
+        TablePicker.getSearchInput().clear().type("*irds");
+        TablePicker.getTables().should("have.length", 1);
+        TablePicker.getTable("Birds").should("be.visible");
+      });
+
+      it("should allow using shift key to select multiple tables", () => {
+        H.DataModel.visitDataStudio();
+        TablePicker.getSearchInput().type("a");
+
+        TablePicker.getTables().should("have.length", 9);
+        TablePicker.getTable("Accounts").find('input[type="checkbox"]').click();
+        TablePicker.getTable("Api Key")
+          .find('input[type="checkbox"]')
+          .click({ shiftKey: true });
+
+        cy.findByRole("heading", { name: /4 tables selected/i }).should(
+          "be.visible",
+        );
+      });
+
+      it("should select/deselect tables with clicking checkboxes", () => {
+        H.DataModel.visitDataStudio();
+        TablePicker.getSearchInput().type("a");
+        TablePicker.getTables().should("have.length", 9);
+        TablePicker.getTable("Accounts")
+          .find('input[type="checkbox"]')
+          .as("accountsCheckbox");
+        TablePicker.getTable("Api Key")
+          .find('input[type="checkbox"]')
+          .as("apiKeyCheckbox");
+        cy.get("@accountsCheckbox").check();
+        cy.get("@apiKeyCheckbox").check();
+        cy.findByRole("heading", { name: /2 tables selected/i }).should(
+          "be.visible",
+        );
+        cy.get("@accountsCheckbox").uncheck();
+        cy.findByRole("heading", { name: /2 table selected/i }).should(
+          "not.exist",
+        );
+      });
+    });
+
+    it("select/deselect functionality", { tags: ["@external"] }, () => {
+      H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "multi_schema" });
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+      H.DataModel.visitDataStudio();
+
+      const databaseName = "Writable Postgres12";
+      const sampleDatabaseName = "Sample Database";
+      const domesticSchema = "Domestic";
+      const wildSchema = "Wild";
+      const domesticTables = ["Animals"];
+      const wildTables = ["Animals", "Birds"];
+      const tablesInDatabase = [
+        ...domesticTables.map((table) => ({
+          schema: domesticSchema,
+          table,
+        })),
+        ...wildTables.map((table) => ({
+          schema: wildSchema,
+          table,
+        })),
+      ];
+
+      const getDatabaseCheckbox = () =>
+        TablePicker.getDatabase(databaseName).find('input[type="checkbox"]');
+      const getSchemaCheckbox = (schemaName: string) =>
+        TablePicker.getSchema(schemaName).find('input[type="checkbox"]');
+      const getWpTableCheckbox = (schemaName: string, tableName: string) =>
+        getTableCheckbox(
+          WRITABLE_DB_ID,
+          `${WRITABLE_DB_ID}:${schemaName}`,
+          tableName,
+        );
+      const getSampleTableCheckbox = (tableName: string) =>
+        getTableCheckbox(SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID, tableName);
+
+      function getTableCheckbox(
+        databaseId: number,
+        schemaFragment: string,
+        tableName: string,
+      ) {
+        return TablePicker.getTables()
+          .filter((_, element) => {
+            const href = element.getAttribute("href") ?? "";
+            const text = element.textContent ?? "";
+
+            return (
+              href.includes(`/database/${databaseId}/`) &&
+              href.includes(`/schema/${schemaFragment}`) &&
+              text.toLowerCase().includes(tableName.toLowerCase())
+            );
+          })
+          .find('input[type="checkbox"]');
+      }
+
+      TablePicker.getDatabase(databaseName).click();
+      TablePicker.getSchema(domesticSchema).click();
+      TablePicker.getSchema(wildSchema).click();
+      TablePicker.getTables().should("have.length", 3);
+
+      cy.log("selecting a db selects all schemas and tables in it");
+      getDatabaseCheckbox().check();
+      for (const schemaName of [domesticSchema, wildSchema]) {
+        getSchemaCheckbox(schemaName).should("be.checked");
+      }
+      for (const tableName of domesticTables) {
+        getWpTableCheckbox(domesticSchema, tableName).should("be.checked");
+      }
+      for (const tableName of wildTables) {
+        getWpTableCheckbox(wildSchema, tableName).should("be.checked");
+      }
+      getDatabaseCheckbox().uncheck();
+      for (const schemaName of [domesticSchema, wildSchema]) {
+        getSchemaCheckbox(schemaName).should("not.be.checked");
+      }
+      for (const { schema, table } of tablesInDatabase) {
+        getWpTableCheckbox(schema, table).should("not.be.checked");
+      }
+
+      cy.log("selecting a schema selects all tables in it");
+      getSchemaCheckbox(domesticSchema).check();
+      for (const tableName of domesticTables) {
+        getWpTableCheckbox(domesticSchema, tableName).should("be.checked");
+      }
+      getSchemaCheckbox(domesticSchema).uncheck();
+      for (const tableName of domesticTables) {
+        getWpTableCheckbox(domesticSchema, tableName).should("not.be.checked");
+      }
+
+      cy.log("selecting all tables in a schema selects the schema");
+      getSchemaCheckbox(wildSchema).should("not.be.checked");
+      getWpTableCheckbox(wildSchema, "Animals").check();
+      getSchemaCheckbox(wildSchema).should("not.be.checked");
+      getWpTableCheckbox(wildSchema, "Birds").check();
+      getSchemaCheckbox(wildSchema).should("be.checked");
+      getSchemaCheckbox(wildSchema).uncheck();
+      for (const tableName of wildTables) {
+        getWpTableCheckbox(wildSchema, tableName).should("not.be.checked");
+      }
+
+      cy.log("selecting all schemas in a db selects the db");
+      getSchemaCheckbox(domesticSchema).check();
+      getSchemaCheckbox(wildSchema).check();
+      getDatabaseCheckbox().should("be.checked");
+      getSchemaCheckbox(domesticSchema).uncheck();
+      getSchemaCheckbox(wildSchema).uncheck();
+      getDatabaseCheckbox().should("not.be.checked");
+
+      cy.log("selecting all tables in a db selects the db");
+      cy.then(() => {
+        tablesInDatabase.forEach(({ schema, table }, index) => {
+          getWpTableCheckbox(schema, table).check();
+          if (index < tablesInDatabase.length - 1) {
+            getDatabaseCheckbox().should("not.be.checked");
+          }
+        });
+      });
+      getDatabaseCheckbox().should("be.checked");
+      getDatabaseCheckbox().uncheck();
+      for (const { schema, table } of tablesInDatabase) {
+        getWpTableCheckbox(schema, table).should("not.be.checked");
+      }
+
+      cy.log("deselecting a table updates parent state");
+      getDatabaseCheckbox().check();
+      getWpTableCheckbox(wildSchema, "Birds").uncheck();
+      getSchemaCheckbox(wildSchema).should("not.be.checked");
+      // partially selected now, so clicking twice to make it unchecked
+      getDatabaseCheckbox().should("not.be.checked");
+
+      getDatabaseCheckbox().uncheck();
+      getDatabaseCheckbox().uncheck();
+      for (const { schema, table } of tablesInDatabase) {
+        getWpTableCheckbox(schema, table).should("not.be.checked");
+      }
+
+      cy.log("deselecting a schema clears its tables");
+      getSchemaCheckbox(domesticSchema).check();
+      cy.findByPlaceholderText("Give this table a name")
+        .should("have.value", domesticTables[0])
+        .should("be.visible");
+      getSchemaCheckbox(domesticSchema).uncheck();
+
+      cy.log("schema toggle handles partially selected state");
+      getSchemaCheckbox(wildSchema).check();
+      cy.findByRole("heading", { name: /2 tables selected/i }).should(
+        "be.visible",
+      );
+      getWpTableCheckbox(wildSchema, "Birds").uncheck();
+      cy.findByPlaceholderText("Give this table a name")
+        .should("have.value", domesticTables[0])
+        .should("be.visible");
+
+      cy.log("first click selects all tables");
+      getSchemaCheckbox(wildSchema).click();
+      cy.findByRole("heading", { name: /2 tables selected/i }).should(
+        "be.visible",
+      );
+      cy.log("second click deselects all tables");
+      getSchemaCheckbox(wildSchema).click();
+      cy.findAllByRole("heading", { name: /table[s]? selected/i }).should(
+        "have.length",
+        0,
+      );
+      for (const tableName of wildTables) {
+        getWpTableCheckbox(wildSchema, tableName).should("not.be.checked");
+      }
+
+      cy.log("shift + click selects a range of tables");
+      TablePicker.getDatabase(databaseName).click();
+      TablePicker.getDatabase(sampleDatabaseName).click();
+
+      getSampleTableCheckbox("Orders").should("not.be.checked");
+      getSampleTableCheckbox("People").should("not.be.checked");
+      getSampleTableCheckbox("Products").should("not.be.checked");
+
+      getSampleTableCheckbox("Orders").click();
+      getSampleTableCheckbox("Products").click({ shiftKey: true });
+
+      getSampleTableCheckbox("Orders").should("be.checked");
+      getSampleTableCheckbox("People").should("be.checked");
+      getSampleTableCheckbox("Products").should("be.checked");
+      getSampleTableCheckbox("Feedback").should("not.be.checked");
+    });
   });
 
   describe("Table section", () => {
     it("should show all tables in sample database and fields in orders table", () => {
-      visitDataStudioDataModel({
+      H.DataModel.visitDataStudio({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
@@ -525,7 +770,7 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     it("should be able to preview the table in the query builder", () => {
-      visitDataStudioDataModel({
+      H.DataModel.visitDataStudio({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
@@ -535,7 +780,7 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     it("should be able to see details of a table", () => {
-      visitDataStudioDataModel({ databaseId: SAMPLE_DB_ID });
+      H.DataModel.visitDataStudio({ databaseId: SAMPLE_DB_ID });
 
       verifyTableSectionEmptyState();
 
@@ -554,7 +799,7 @@ describe("scenarios > data studio > datamodel", () => {
       () => {
         H.restore("mysql-8");
 
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: MYSQL_DB_ID,
           schemaId: MYSQL_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -578,7 +823,7 @@ describe("scenarios > data studio > datamodel", () => {
         );
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
-        visitDataStudioDataModel();
+        H.DataModel.visitDataStudio();
         TablePicker.getDatabase("Writable Postgres12").click();
         TablePicker.getSchema("Domestic").click();
         TablePicker.getTable("Animals").click();
@@ -592,7 +837,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Name and description", () => {
       it("should allow changing the table name", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -612,7 +857,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow changing the table description", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -643,7 +888,7 @@ describe("scenarios > data studio > datamodel", () => {
         setDataModelPermissions({ tableIds: [ORDERS_ID] });
 
         cy.signIn("none");
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -665,7 +910,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow clearing the table description", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -686,7 +931,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Field name and description", () => {
       it("should allow changing the field name", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -720,7 +965,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.activateToken("pro-self-hosted");
         setDataModelPermissions({ tableIds: [ORDERS_ID] });
         cy.signIn("none");
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -755,7 +1000,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow changing the field description", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -791,7 +1036,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow clearing the field description", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -824,7 +1069,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Sorting", () => {
       it("should allow sorting fields as in the database", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
@@ -851,7 +1096,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow sorting fields alphabetically", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
@@ -883,7 +1128,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow sorting fields smartly", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
@@ -913,7 +1158,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow sorting fields in the custom order", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
@@ -957,7 +1202,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow switching to predefined order after drag & drop (metabase#56482)", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
@@ -1028,7 +1273,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Sync options", () => {
       it("should allow to sync table schema, re-scan table, and discard cached field values", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
@@ -1080,7 +1325,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Name and description", () => {
       it("should allow changing the field name", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -1115,7 +1360,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.activateToken("pro-self-hosted");
         setDataModelPermissions({ tableIds: [ORDERS_ID] });
         cy.signIn("none");
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -1153,7 +1398,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow changing the field description", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -1190,7 +1435,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow clearing the field description", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -1222,7 +1467,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should remap FK display value from field section", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -1255,7 +1500,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Field values", () => {
       it("should allow to sync table schema, re-scan table, and discard cached field values", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
@@ -1286,7 +1531,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should not automatically re-fetch field values when they are discarded unless 'Custom mapping' is used (metabase#62626)", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
@@ -1307,7 +1552,7 @@ describe("scenarios > data studio > datamodel", () => {
     describe("Data", () => {
       describe("Coercion strategy", () => {
         it("should allow you to cast a field to a data type", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: FEEDBACK_ID,
@@ -1353,7 +1598,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to enable, change, and disable coercion strategy", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: FEEDBACK_ID,
@@ -1426,7 +1671,7 @@ describe("scenarios > data studio > datamodel", () => {
     describe("Metadata", () => {
       describe("Semantic type", () => {
         it("should allow to change the type to 'No semantic type' (metabase#59052)", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1469,7 +1714,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to change the type to 'Foreign Key' and choose the target field (metabase#59052)", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1521,7 +1766,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to change the foreign key target", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1567,7 +1812,7 @@ describe("scenarios > data studio > datamodel", () => {
           });
 
           cy.signIn("none");
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1624,7 +1869,7 @@ describe("scenarios > data studio > datamodel", () => {
           setDataModelPermissions({ tableIds: [REVIEWS_ID] });
 
           cy.signIn("none");
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: REVIEWS_ID,
@@ -1643,7 +1888,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to change the type to 'Currency' and choose the currency (metabase#59052)", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1696,7 +1941,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should correctly filter out options in Foreign Key picker (metabase#56839)", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1729,7 +1974,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should not let you change the type to 'Number' (metabase#16781)", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1747,7 +1992,7 @@ describe("scenarios > data studio > datamodel", () => {
           const viewportHeight = 400;
 
           cy.viewport(1280, viewportHeight);
-          visitDataStudioDataModel({ databaseId: SAMPLE_DB_ID });
+          H.DataModel.visitDataStudio({ databaseId: SAMPLE_DB_ID });
           TablePicker.getTable("Reviews").scrollIntoView().click();
           TableSection.clickField("ID");
           FieldSection.getSemanticTypeInput().click();
@@ -1781,7 +2026,7 @@ describe("scenarios > data studio > datamodel", () => {
               tableName: "many_data_types",
             });
 
-            visitDataStudioDataModel({ databaseId: WRITABLE_DB_ID });
+            H.DataModel.visitDataStudio({ databaseId: WRITABLE_DB_ID });
             TablePicker.getTable("Many Data Types").click();
             TableSection.clickField("Json → D");
             FieldSection.getSemanticTypeInput().click();
@@ -1828,7 +2073,7 @@ describe("scenarios > data studio > datamodel", () => {
           cy.request("PUT", `/api/field/${ORDERS.TAX}`, {
             visibility_type: "sensitive",
           });
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1875,7 +2120,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should let you change field visibility to 'Do not include'", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1921,7 +2166,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should let you change field visibility to 'Do not include' even if Preview is opened (metabase#61806)", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1948,7 +2193,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should let you change field visibility to 'Only in detail views'", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1999,7 +2244,7 @@ describe("scenarios > data studio > datamodel", () => {
           { tags: ["@external"] },
           () => {
             H.restore("mysql-8");
-            visitDataStudioDataModel({
+            H.DataModel.visitDataStudio({
               databaseId: MYSQL_DB_ID,
               schemaId: MYSQL_DB_SCHEMA_ID,
               tableId: ORDERS_ID,
@@ -2020,7 +2265,7 @@ describe("scenarios > data studio > datamodel", () => {
 
       describe("Filtering", () => {
         it("should let you change filtering to 'Search box'", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -2056,7 +2301,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should let you change filtering to 'Plain input box'", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -2091,7 +2336,7 @@ describe("scenarios > data studio > datamodel", () => {
           cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
             has_field_values: "none",
           });
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -2124,7 +2369,7 @@ describe("scenarios > data studio > datamodel", () => {
 
       describe("Display values", () => {
         it("should show tooltips explaining why remapping options are disabled", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: PRODUCTS_ID,
@@ -2176,7 +2421,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should let you change to 'Use foreign key' and change the target for field with fk", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -2243,7 +2488,7 @@ describe("scenarios > data studio > datamodel", () => {
           });
 
           cy.signIn("none");
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: REVIEWS_ID,
@@ -2279,7 +2524,7 @@ describe("scenarios > data studio > datamodel", () => {
                   ({ body }) => {
                     const [schemaName] = body;
 
-                    visitDataStudioDataModel({
+                    H.DataModel.visitDataStudio({
                       databaseId,
                       schemaId: `${databaseId}:${schemaName}`,
                       tableId: NUMBER_WITH_NULLS_ID,
@@ -2334,7 +2579,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should correctly show remapped column value", () => {
-          visitDataStudioDataModel({ databaseId: SAMPLE_DB_ID });
+          H.DataModel.visitDataStudio({ databaseId: SAMPLE_DB_ID });
 
           // edit "Product ID" column in "Orders" table
           TablePicker.getTable("Orders").click();
@@ -2391,7 +2636,7 @@ describe("scenarios > data studio > datamodel", () => {
             5: "Perfecto",
           };
 
-          visitDataStudioDataModel({ databaseId: SAMPLE_DB_ID });
+          H.DataModel.visitDataStudio({ databaseId: SAMPLE_DB_ID });
           // edit "Rating" values in "Reviews" table
           TablePicker.getTable("Reviews").click();
           TableSection.clickField("Rating");
@@ -2459,7 +2704,7 @@ describe("scenarios > data studio > datamodel", () => {
           setDataModelPermissions({ tableIds: [REVIEWS_ID] });
 
           cy.signIn("none");
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: REVIEWS_ID,
@@ -2477,7 +2722,7 @@ describe("scenarios > data studio > datamodel", () => {
           });
 
           cy.signInAsAdmin();
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: REVIEWS_ID,
@@ -2492,7 +2737,7 @@ describe("scenarios > data studio > datamodel", () => {
           );
 
           cy.signIn("none");
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: REVIEWS_ID,
@@ -2504,7 +2749,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow 'Custom mapping' option only for 'Search box' filtering type (metabase#16322)", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: REVIEWS_ID,
@@ -2547,7 +2792,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to map FK to date fields (metabase#7108)", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -2614,7 +2859,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should let you enable/disable 'Unfold JSON' for JSON columns", () => {
-          visitDataStudioDataModel({ databaseId: WRITABLE_DB_ID });
+          H.DataModel.visitDataStudio({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
 
           cy.log("json is unfolded initially and shows prefix");
@@ -2676,13 +2921,13 @@ describe("scenarios > data studio > datamodel", () => {
           cy.button(/Sync triggered!/).should("be.visible");
 
           // Check json field is not unfolded
-          visitDataStudioDataModel({ databaseId: WRITABLE_DB_ID });
+          H.DataModel.visitDataStudio({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
           TableSection.getField("Json → A").should("not.exist");
         });
 
         it("should let you change the name of JSON-unfolded columns (metabase#55563)", () => {
-          visitDataStudioDataModel({ databaseId: WRITABLE_DB_ID });
+          H.DataModel.visitDataStudio({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
           TableSection.clickField("Json → A");
 
@@ -2703,7 +2948,7 @@ describe("scenarios > data studio > datamodel", () => {
         it("should smartly truncate prefix name", () => {
           const shortPrefix = "Short prefix";
           const longPrefix = "Legendarily long column prefix";
-          visitDataStudioDataModel({ databaseId: WRITABLE_DB_ID });
+          H.DataModel.visitDataStudio({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
           TableSection.clickField("Json → A");
 
@@ -2770,7 +3015,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Formatting", () => {
       it("should let you to change field formatting", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -2800,7 +3045,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should only show currency formatting options for currency fields", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -2815,7 +3060,7 @@ describe("scenarios > data studio > datamodel", () => {
             cy.findByText("Currency label style").should("be.visible");
           });
 
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -2845,7 +3090,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should save and obey field prefix formatting settings", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -2885,7 +3130,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should not call PUT field endpoint when prefix or suffix has not been changed (SEM-359)", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -2901,6 +3146,509 @@ describe("scenarios > data studio > datamodel", () => {
         cy.get("@updateFieldSpy").should("not.have.been.called");
         H.undoToast().should("not.exist");
       });
+    });
+  });
+
+  describe("Preview section", () => {
+    describe("Esc key", () => {
+      it("should allow closing the preview with Esc key", () => {
+        H.DataModel.visitDataStudio({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.PRODUCT_ID,
+        });
+
+        PreviewSection.get().should("not.exist");
+
+        FieldSection.getPreviewButton().click();
+        PreviewSection.get().scrollIntoView().should("be.visible");
+
+        cy.realPress("Escape");
+        PreviewSection.get().should("not.exist");
+      });
+
+      it("should not close the preview when hitting Esc key while modal is open", () => {
+        H.DataModel.visitDataStudio({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.PRODUCT_ID,
+        });
+
+        FieldSection.getPreviewButton().click();
+        PreviewSection.get().scrollIntoView().should("be.visible");
+
+        TableSection.getSyncOptionsButton().click();
+        H.modal().should("be.visible");
+
+        cy.realPress("Escape");
+        H.modal().should("not.exist");
+        PreviewSection.get().should("be.visible");
+
+        FieldSection.getFieldValuesButton().click();
+        H.modal().should("be.visible");
+
+        cy.realPress("Escape");
+        H.modal().should("not.exist");
+        PreviewSection.get().should("be.visible");
+      });
+
+      it("should not close the preview when hitting Esc key while popover is open", () => {
+        H.DataModel.visitDataStudio({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.PRODUCT_ID,
+        });
+
+        FieldSection.getPreviewButton().click();
+        PreviewSection.get().scrollIntoView().should("be.visible");
+
+        FieldSection.getSemanticTypeInput().click();
+        H.popover().should("be.visible");
+
+        cy.realPress("Escape");
+        H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
+        PreviewSection.get().scrollIntoView().should("be.visible");
+      });
+
+      it("should not close the preview when hitting Esc key while command palette is open", () => {
+        H.DataModel.visitDataStudio({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.PRODUCT_ID,
+        });
+
+        FieldSection.getPreviewButton().click();
+        PreviewSection.get().scrollIntoView().should("be.visible");
+
+        H.openCommandPalette();
+        H.commandPalette().should("be.visible");
+
+        cy.realPress("Escape");
+        H.commandPalette().should("not.exist");
+        PreviewSection.get().should("be.visible");
+      });
+    });
+
+    describe("Empty states", { tags: "@external" }, () => {
+      beforeEach(() => {
+        H.restore("postgres-writable");
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+        H.queryWritableDB('delete from "Domestic"."Animals"');
+      });
+
+      it("should show empty state when there is no data", () => {
+        H.DataModel.visitDataStudio();
+
+        TablePicker.getDatabase("Writable Postgres12").click();
+        TablePicker.getSchema("Domestic").click();
+        TablePicker.getTable("Animals").click();
+        TableSection.clickField("Name");
+        FieldSection.getPreviewButton().click();
+
+        PreviewSection.get()
+          .scrollIntoView()
+          .findByText("No data to show")
+          .should("be.visible");
+        PreviewSection.getPreviewTypeInput().findByText("Detail").click();
+        PreviewSection.get().findByText("No data to show").should("be.visible");
+      });
+    });
+
+    it("should not auto-focus inputs in filtering preview", () => {
+      H.DataModel.visitDataStudio({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.PRODUCT_ID,
+      });
+
+      FieldSection.getPreviewButton().click();
+      PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
+
+      PreviewSection.get()
+        .findByPlaceholderText("Enter an ID")
+        .should("be.visible")
+        .and("not.be.focused");
+
+      FieldSection.getFilteringInput().click();
+      H.popover().findByText("A list of all values").click();
+
+      PreviewSection.get()
+        .findByPlaceholderText("Search the list")
+        .should("be.visible")
+        .and("not.be.focused");
+
+      TableSection.clickField("Tax");
+
+      PreviewSection.get()
+        .findByPlaceholderText("Min")
+        .should("be.visible")
+        .and("not.be.focused");
+
+      FieldSection.getFilteringInput().click();
+      H.popover().findByText("Search box").click();
+
+      PreviewSection.get()
+        .findByPlaceholderText("Enter a number")
+        .should("be.visible")
+        .and("not.be.focused");
+    });
+
+    it("should not crash when viewing filtering preview of a hidden table", () => {
+      H.DataModel.visitDataStudio({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.PRODUCT_ID,
+      });
+
+      DataModel.TableSection.getVisibilityTypeInput().click();
+      H.popover().findByText("Copper").click();
+      cy.wait("@updateTable");
+
+      FieldSection.getPreviewButton().click();
+      PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
+      PreviewSection.get()
+        .findByPlaceholderText("Enter an ID")
+        .should("be.visible");
+      H.main().findByText("Something’s gone wrong").should("not.exist");
+    });
+  });
+
+  describe("Error handling", { tags: "@external" }, () => {
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "many_data_types" });
+      cy.signInAsAdmin();
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: "many_data_types",
+      });
+
+      const error = { statusCode: 500 };
+      cy.intercept("POST", "/api/dataset*", error);
+      cy.intercept("PUT", "/api/field/*", error);
+      cy.intercept("PUT", "/api/table/*/fields/order", error);
+      cy.intercept("POST", "/api/field/*/values", error);
+      cy.intercept("POST", "/api/field/*/dimension", error);
+      cy.intercept("PUT", "/api/table/*", error);
+      cy.intercept("POST", "/api/ee/data-studio/table/sync-schema", error);
+      cy.intercept("POST", "/api/ee/data-studio/table/rescan-values", error);
+      cy.intercept("POST", "/api/ee/data-studio/table/discard-values", error);
+    });
+
+    it("shows toast errors and preview errors", () => {
+      H.DataModel.visitDataStudio({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.QUANTITY,
+      });
+
+      cy.log("table section");
+
+      cy.log("name");
+      TableSection.getNameInput().type("a").blur();
+      verifyAndCloseToast("Failed to update table name");
+
+      cy.log("description");
+      TableSection.getDescriptionInput().type("a").blur();
+      verifyAndCloseToast("Failed to update table description");
+
+      cy.log("predefined field order");
+      TableSection.getSortButton().click();
+      TableSection.getSortOrderInput()
+        .findByLabelText("Alphabetical order")
+        .click();
+      verifyAndCloseToast("Failed to update field order");
+
+      cy.log("custom field order");
+      H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        vertical: 50,
+      });
+      verifyAndCloseToast("Failed to update field order");
+      TableSection.get().button("Done").click();
+
+      cy.log("sync");
+      TableSection.getSyncOptionsButton().click();
+      H.modal().button("Sync table schema").click();
+      verifyAndCloseToast("Failed to start sync");
+
+      cy.log("scan");
+      H.modal().button("Re-scan table").click();
+      verifyAndCloseToast("Failed to start scan");
+
+      cy.log("discard field values");
+      H.modal().button("Discard cached field values").click();
+      verifyAndCloseToast("Failed to discard values");
+      cy.realPress("Escape");
+
+      cy.log("field name");
+      TableSection.getFieldNameInput("Quantity").type("a").blur();
+      verifyAndCloseToast("Failed to update name of Quantity");
+
+      cy.log("field description");
+      TableSection.getFieldDescriptionInput("Quantity").type("a").blur();
+      verifyAndCloseToast("Failed to update description of Quantity");
+
+      cy.log("field section");
+
+      cy.log("name");
+      FieldSection.getNameInput().type("a").blur();
+      verifyAndCloseToast("Failed to update name of Quantity");
+
+      cy.log("description");
+      FieldSection.getDescriptionInput().type("a").blur();
+      verifyAndCloseToast("Failed to update description of Quantity");
+
+      cy.log("coercion strategy");
+      FieldSection.getCoercionToggle().parent().scrollIntoView().click();
+      H.popover()
+        .findByText("UNIX seconds → Datetime")
+        .scrollIntoView()
+        .click();
+      verifyAndCloseToast("Failed to enable casting for Quantity");
+
+      cy.log("semantic type");
+      FieldSection.getSemanticTypeInput().click();
+      H.popover().findByText("Score").click();
+      verifyAndCloseToast("Failed to update semantic type of Quantity");
+
+      cy.log("visibility");
+      FieldSection.getVisibilityInput().click();
+      H.popover().findByText("Only in detail views").click();
+      verifyAndCloseToast("Failed to update visibility of Quantity");
+
+      cy.log("filtering");
+      FieldSection.getFilteringInput().click();
+      H.popover().findByText("Search box").click();
+      verifyAndCloseToast("Failed to update filtering of Quantity");
+
+      cy.log("display values");
+      FieldSection.getDisplayValuesInput().click();
+      H.popover().findByText("Custom mapping").click();
+      verifyAndCloseToast("Failed to update display values of Quantity");
+
+      cy.log("JSON unfolding");
+      TablePicker.getDatabase("Writable Postgres12").click();
+      TablePicker.getTable("Many Data Types").click();
+      TableSection.clickField("Json");
+      FieldSection.getUnfoldJsonInput().click();
+      H.popover().findByText("No").click();
+      verifyAndCloseToast("Failed to disable JSON unfolding for Json");
+
+      cy.log("formatting");
+      TablePicker.getTable("Orders").click();
+      TableSection.clickField("Quantity");
+      FieldSection.getPrefixInput().type("5").blur();
+      verifyAndCloseToast("Failed to update formatting of Quantity");
+
+      cy.log("preview section");
+
+      cy.log("table preview");
+      FieldSection.getPreviewButton().click();
+      PreviewSection.get()
+        .scrollIntoView()
+        .findByText("Something went wrong")
+        .should("be.visible");
+
+      cy.log("object detail preview");
+      PreviewSection.getPreviewTypeInput().findByText("Detail").click();
+      PreviewSection.get()
+        .findByText("Something went wrong")
+        .should("be.visible");
+    });
+  });
+
+  describe("Undos", { tags: "@external" }, () => {
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "many_data_types" });
+      cy.signInAsAdmin();
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: "many_data_types",
+      });
+    });
+
+    it("allows to undo every action", () => {
+      H.DataModel.visitDataStudio({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.QUANTITY,
+      });
+
+      cy.log("table section");
+
+      cy.log("name");
+      TableSection.getNameInput().type("a").blur();
+      verifyToastAndUndo("Table name updated");
+      TableSection.getNameInput().should("have.value", "Orders");
+
+      cy.log("description");
+      TableSection.getDescriptionInput().type("a").blur();
+      verifyToastAndUndo("Table description updated");
+      TableSection.getDescriptionInput().should(
+        "have.value",
+        "Confirmed Sample Company orders for a product, from a user.",
+      );
+
+      cy.log("predefined field order");
+      TableSection.getSortButton().click();
+      TableSection.getSortOrderInput()
+        .findByLabelText("Alphabetical order")
+        .click();
+      verifyToastAndUndo("Field order updated");
+      TableSection.getSortOrderInput()
+        .findByDisplayValue("database")
+        .should("be.checked");
+
+      cy.log("custom field order");
+      H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        vertical: 50,
+      });
+      verifyToastAndUndo("Field order updated");
+      TableSection.getSortOrderInput()
+        .findByDisplayValue("database")
+        .should("be.checked");
+      TableSection.get().button("Done").click();
+
+      cy.log("field name");
+      TableSection.getFieldNameInput("Quantity").type("a").blur();
+      verifyToastAndUndo("Name of Quantity updated");
+      TableSection.getFieldNameInput("Quantity").should(
+        "have.value",
+        "Quantity",
+      );
+
+      cy.log("field description");
+      TableSection.getFieldDescriptionInput("Quantity").type("a").blur();
+      verifyToastAndUndo("Description of Quantity updated");
+      TableSection.getFieldDescriptionInput("Quantity").should(
+        "have.value",
+        "Number of products bought.",
+      );
+
+      cy.log("field section");
+
+      cy.log("name");
+      FieldSection.getNameInput().type("a").blur();
+      verifyToastAndUndo("Name of Quantity updated");
+      FieldSection.getNameInput().should("have.value", "Quantity");
+
+      cy.log("description");
+      FieldSection.getDescriptionInput().type("a").blur();
+      verifyToastAndUndo("Description of Quantity updated");
+      FieldSection.getDescriptionInput().should(
+        "have.value",
+        "Number of products bought.",
+      );
+
+      cy.log("coercion strategy");
+      FieldSection.getCoercionToggle().parent().scrollIntoView().click();
+      H.popover()
+        .findByText("UNIX seconds → Datetime")
+        .scrollIntoView()
+        .click();
+      verifyToastAndUndo("Casting enabled for Quantity");
+      FieldSection.getCoercionToggle().should("not.be.checked");
+
+      cy.log("semantic type");
+      FieldSection.getSemanticTypeInput().click();
+      H.popover().findByText("Score").click();
+      verifyToastAndUndo("Semantic type of Quantity updated");
+      FieldSection.getSemanticTypeInput().should("have.value", "Quantity");
+
+      cy.log("visibility");
+      FieldSection.getVisibilityInput().click();
+      H.popover().findByText("Only in detail views").click();
+      verifyToastAndUndo("Visibility of Quantity updated");
+      FieldSection.getVisibilityInput().should("have.value", "Everywhere");
+
+      cy.log("filtering");
+      FieldSection.getFilteringInput().click();
+      H.popover().findByText("Search box").click();
+      verifyToastAndUndo("Filtering of Quantity updated");
+      FieldSection.getFilteringInput().should(
+        "have.value",
+        "A list of all values",
+      );
+
+      cy.log("display values");
+      FieldSection.getDisplayValuesInput().click();
+      H.popover().findByText("Custom mapping").click();
+      H.modal().should("be.visible");
+      H.modal().button("Close").click();
+      verifyToastAndUndo("Display values of Quantity updated");
+      FieldSection.getDisplayValuesInput().should(
+        "have.value",
+        "Use original value",
+      );
+
+      cy.log("custom mapping");
+      FieldSection.getDisplayValuesInput().click();
+      H.popover().findByText("Custom mapping").click();
+      verifyAndCloseToast("Display values of Quantity updated");
+      H.modal().within(() => {
+        cy.findByDisplayValue("0")
+          .clear()
+          .type("XYZ", { scrollBehavior: "center" })
+          .blur();
+        cy.button("Save").click();
+      });
+      verifyToastAndUndo("Display values of Quantity updated");
+      FieldSection.get().button("Edit mapping").click();
+      H.modal().within(() => {
+        cy.findByDisplayValue("0").should("be.visible");
+        cy.findByDisplayValue("XYZ").should("not.exist");
+        cy.button("Close").click();
+      });
+
+      cy.log("foreign key");
+      TableSection.clickField("User ID");
+      FieldSection.getDisplayValuesInput().click();
+      H.popover().findByText("Use foreign key").click();
+      verifyToastAndUndo("Display values of User ID updated");
+      FieldSection.getDisplayValuesInput().should(
+        "have.value",
+        "Use original value",
+      );
+
+      cy.log("JSON unfolding");
+      TablePicker.getDatabase("Writable Postgres12").click();
+      TablePicker.getTable("Many Data Types").click();
+      TableSection.clickField("Json");
+      FieldSection.getUnfoldJsonInput().click();
+      H.popover().findByText("No").click();
+      verifyToastAndUndo("JSON unfolding disabled for Json");
+      FieldSection.getUnfoldJsonInput().should("have.value", "Yes");
+
+      cy.log("formatting");
+      TablePicker.getTable("Orders").click();
+      TableSection.clickField("Quantity");
+
+      cy.log("prefix (ChartSettingInput)");
+      FieldSection.getPrefixInput().type("5").blur();
+      verifyToastAndUndo("Formatting of Quantity updated");
+      FieldSection.getPrefixInput().should("have.value", "");
+
+      cy.log("multiply by number (ChartSettingInputNumeric)");
+      FieldSection.getMultiplyByNumberInput().type("5").blur();
+      verifyToastAndUndo("Formatting of Quantity updated");
+      FieldSection.getMultiplyByNumberInput().should("have.value", "");
+
+      cy.log("mini bar chart (ChartSettingToggle)");
+      FieldSection.getMiniBarChartToggle()
+        .parent()
+        .click({ scrollBehavior: "center" });
+      verifyToastAndUndo("Formatting of Quantity updated");
+      FieldSection.getMiniBarChartToggle().should("not.be.checked");
     });
   });
 });
@@ -2933,6 +3681,13 @@ const setDataModelPermissions = ({
 function verifyAndCloseToast(message: string) {
   H.undoToast().should("contain.text", message);
   H.undoToast().icon("close").click({ force: true });
+}
+
+function verifyToastAndUndo(message: string) {
+  H.undoToast().should("contain.text", message);
+  H.undoToast().button("Undo").click();
+  H.undoToast().should("contain.text", "Change undone");
+  H.undoToast().icon("close").click();
 }
 
 function verifyTableSectionEmptyState() {

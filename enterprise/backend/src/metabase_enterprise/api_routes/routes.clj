@@ -18,6 +18,7 @@
    [metabase-enterprise.comments.api]
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
+   [metabase-enterprise.data-studio.api]
    [metabase-enterprise.database-replication.api :as database-replication.api]
    [metabase-enterprise.database-routing.api]
    [metabase-enterprise.dependencies.api]
@@ -57,6 +58,7 @@
    :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :content-translation        (deferred-tru "Content translation")
+   :data-studio                (deferred-tru "Data Studio")
    :dependencies               (deferred-tru "Dependency Tracking")
    :documents                  (deferred-tru "Documents")
    :embedding                  (deferred-tru "Embedding")
@@ -107,6 +109,7 @@
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes
    "/comment"                      (premium-handler metabase-enterprise.comments.api/routes :documents)
+   "/data-studio"                  (premium-handler metabase-enterprise.data-studio.api/routes :data-studio)
    "/database-replication"         (-> database-replication.api/routes ;; database-replication requires all these features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections)

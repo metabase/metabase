@@ -2,7 +2,6 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { usePublishModelsMutation } from "metabase/api";
 import {
   CollectionPickerModal,
   type CollectionPickerValueItem,
@@ -12,6 +11,7 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Checkbox, Group, Modal, Text, rem } from "metabase/ui";
+import { usePublishModelsMutation } from "metabase-enterprise/api";
 import type {
   DatabaseId,
   PublishModelsResponse,

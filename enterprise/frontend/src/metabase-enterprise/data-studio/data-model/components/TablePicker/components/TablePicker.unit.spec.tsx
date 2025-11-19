@@ -1,8 +1,11 @@
 import userEvent from "@testing-library/user-event";
+import { Route } from "react-router";
 
 import {
   setupDatabasesEndpoints,
-  setupSearchEndpoints,
+  setupTableSearchEndpoint,
+  setupUserKeyValueEndpoints,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -10,12 +13,13 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import type { Database, SearchResult } from "metabase-types/api";
+import { SelectionProvider } from "metabase-enterprise/data-studio/data-model/pages/DataModel/contexts/SelectionContext";
+import type { Database, User } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockSchema,
-  createMockSearchResult,
   createMockTable,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import type { TreePath } from "../types";
@@ -35,36 +39,36 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-const PUBLIC = createMockSchema({
+const PUBLIC_SCHEMA = createMockSchema({
   id: "PUBLIC",
   name: "PUBLIC",
 });
 
-const PRIVATE = createMockSchema({
+const PRIVATE_SCHEMA = createMockSchema({
   id: "PRIVATE",
   name: "PRIVATE",
 });
 
-const FOO = createMockTable({
+const FOO_TABLE = createMockTable({
   id: nextId(),
   name: "FOO",
   display_name: "Foo",
-  schema: PRIVATE.id,
+  schema: PRIVATE_SCHEMA.id,
   fields: [],
 });
 
-const BAR = createMockTable({
+const BAR_TABLE = createMockTable({
   id: nextId(),
   name: "BAR",
   display_name: "Bar",
-  schema: PUBLIC.id,
+  schema: PUBLIC_SCHEMA.id,
   fields: [],
 });
 
 const DATABASE_WITH_MULTIPLE_SCHEMAS = createMockDatabase({
   id: nextId(),
   name: "DATABASE_WITH_MULTIPLE_SCHEMAS",
-  tables: [FOO, BAR],
+  tables: [FOO_TABLE, BAR_TABLE],
 });
 
 const SINGLE_SCHEMA = createMockSchema({
@@ -135,26 +139,45 @@ const MOCK_DATABASES = [
   DATABASE_WITH_UNNAMED_SCHEMA,
 ];
 
+const currentUser: User = createMockUser({
+  id: 2,
+  common_name: "Bar",
+  is_superuser: true,
+});
+
 function setup({
   path = {},
   databases = MOCK_DATABASES,
-  searchResults = [],
 }: {
   path?: TreePath;
   databases?: Database[];
-  searchResults?: SearchResult[];
 } = {}) {
   setupDatabasesEndpoints(databases);
-  setupSearchEndpoints(searchResults);
+  setupTableSearchEndpoint(databases.flatMap((db) => db.tables ?? []));
+  setupUsersEndpoints([currentUser]);
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "seen-publish-models-info",
+    value: false,
+  });
 
   const onChange = jest.fn();
+  const params = {};
 
   renderWithProviders(
-    <UncontrolledTablePicker
-      initialValue={path}
-      onChange={onChange}
-      params={{}}
+    <Route
+      path="*"
+      component={() => (
+        <SelectionProvider>
+          <UncontrolledTablePicker
+            initialValue={path}
+            onChange={onChange}
+            params={params}
+          />
+        </SelectionProvider>
+      )}
     />,
+    { withRouter: true },
   );
   return { onChange };
 }
@@ -176,40 +199,46 @@ describe("TablePicker", () => {
         databaseId: DATABASE_WITH_MULTIPLE_SCHEMAS.id,
       });
 
-      expect(item(PRIVATE)).toBeInTheDocument();
-      expect(item(PUBLIC)).toBeInTheDocument();
-      expect(item(PUBLIC)).toBeInTheDocument();
+      expect(item(PRIVATE_SCHEMA)).toBeInTheDocument();
+      expect(item(PUBLIC_SCHEMA)).toBeInTheDocument();
+      expect(item(PUBLIC_SCHEMA)).toBeInTheDocument();
 
-      await clickItem(PUBLIC);
+      await clickItem(PUBLIC_SCHEMA);
       await waitLoading();
 
       expect(onChange).toHaveBeenCalledWith({
         databaseId: DATABASE_WITH_MULTIPLE_SCHEMAS.id,
-        schemaName: PUBLIC.name,
+        schemaName: PUBLIC_SCHEMA.name,
       });
 
-      expect(item(FOO)).not.toBeInTheDocument();
-      expect(item(BAR)).toBeInTheDocument();
+      expect(item(FOO_TABLE)).not.toBeInTheDocument();
+      expect(item(BAR_TABLE)).toBeInTheDocument();
 
-      await clickItem(BAR);
+      await clickItem(BAR_TABLE);
 
       expect(onChange).toHaveBeenCalledWith({
         databaseId: DATABASE_WITH_MULTIPLE_SCHEMAS.id,
-        schemaName: PUBLIC.name,
-        tableId: BAR.id,
+        schemaName: PUBLIC_SCHEMA.name,
+        tableId: BAR_TABLE.id,
       });
 
-      await clickItem(PUBLIC);
+      // first select, then collapse
+      await clickItem(PUBLIC_SCHEMA);
+      await waitLoading();
+      await clickItem(PUBLIC_SCHEMA);
       await waitLoading();
 
-      expect(item(FOO)).not.toBeInTheDocument();
-      expect(item(BAR)).not.toBeInTheDocument();
+      expect(item(FOO_TABLE)).not.toBeInTheDocument();
+      expect(item(BAR_TABLE)).not.toBeInTheDocument();
 
+      // first select, then collapse
+      await clickItem(DATABASE_WITH_MULTIPLE_SCHEMAS);
+      await waitLoading();
       await clickItem(DATABASE_WITH_MULTIPLE_SCHEMAS);
       await waitLoading();
 
-      expect(item(PUBLIC)).not.toBeInTheDocument();
-      expect(item(PRIVATE)).not.toBeInTheDocument();
+      expect(item(PUBLIC_SCHEMA)).not.toBeInTheDocument();
+      expect(item(PRIVATE_SCHEMA)).not.toBeInTheDocument();
     });
 
     it("flattens schemas with no names", async () => {
@@ -264,7 +293,8 @@ describe("TablePicker", () => {
 
       await userEvent.click(await screen.findByRole("textbox"));
 
-      // focus the first item
+      // focus the first item - need to tab twice to skip the filter button
+      await userEvent.keyboard("{Tab}");
       await userEvent.keyboard("{Tab}");
       expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveFocus();
 
@@ -276,16 +306,24 @@ describe("TablePicker", () => {
       await userEvent.keyboard("{ArrowUp}");
       expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveFocus();
 
-      // right arrow opens the node
+      // right arrow opens the node (auto-expands since single schema)
       await userEvent.keyboard("{ArrowRight}");
       expect(item(DATABASE_WITH_SINGLE_SCHEMA)?.dataset.open).toBe("true");
 
-      // arrow down moves focus down
+      // arrow down moves focus down to first table (QUU)
       await userEvent.keyboard("{ArrowDown}");
       expect(item(QUU)).toHaveFocus();
 
-      // left moves focus to the parent node
-      await userEvent.keyboard("{ArrowLeft}");
+      // arrow down again to move to next table (QUX)
+      await userEvent.keyboard("{ArrowDown}");
+      expect(item(QUX)).toHaveFocus();
+
+      // arrow up returns to first table
+      await userEvent.keyboard("{ArrowUp}");
+      expect(item(QUU)).toHaveFocus();
+
+      // arrow up again moves to parent database
+      await userEvent.keyboard("{ArrowUp}");
       expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveFocus();
 
       // left arrow closes the node
@@ -309,91 +347,123 @@ describe("TablePicker", () => {
   });
 
   describe("Search view", () => {
-    const DATABASE = "DATABASE";
-    const SCHEMA = "SCHEMA";
-    const FOO_RESULT = createMockSearchResult({
-      id: nextId(),
-      model: "table",
-      name: "Foo",
-      table_name: "FOO",
-      table_schema: SCHEMA,
-      database_name: DATABASE,
-      initial_sync_status: "complete",
-    });
-    const BAR_RESULT = createMockSearchResult({
-      id: nextId(),
-      model: "table",
-      name: "Bar",
-      table_name: "BAR",
-      table_schema: SCHEMA,
-      database_name: DATABASE,
-      initial_sync_status: "complete",
-    });
+    it("should filter tables based on the search input", async () => {
+      setup();
 
-    const SEARCH_RESULTS = [FOO_RESULT, BAR_RESULT];
+      await waitLoading();
 
-    it("should filter the tree based on the search input", async () => {
-      const { onChange } = setup({
-        searchResults: SEARCH_RESULTS,
-      });
+      // Initially no tables should be visible in search mode
+      expect(item(FOO_TABLE)).not.toBeInTheDocument();
+      expect(item(BAR_TABLE)).not.toBeInTheDocument();
 
       await userEvent.type(searchInput(), "foo");
+      await waitLoading();
 
-      expect(item(DATABASE)).toBeInTheDocument();
-      expect(item(SCHEMA)).toBeInTheDocument();
-
-      expect(item(FOO_RESULT)).toBeInTheDocument();
-      expect(item(BAR_RESULT)).not.toBeInTheDocument();
-
-      await clickItem(FOO_RESULT);
-      expect(onChange).toHaveBeenCalledWith({
-        databaseId: FOO_RESULT.database_id,
-        schemaName: FOO_RESULT.table_schema,
-        tableId: FOO_RESULT.id,
-      });
+      expect(item(FOO_TABLE)).toBeInTheDocument();
+      expect(item(BAR_TABLE)).not.toBeInTheDocument();
     });
 
     it("should render a message when no results are found", async () => {
       setup();
 
-      await userEvent.type(searchInput(), "foo");
+      await waitLoading();
+      await userEvent.type(searchInput(), "nonexistent");
+      await waitLoading();
 
-      expect(screen.getByText("No results.")).toBeInTheDocument();
+      expect(screen.getByText("No tables found")).toBeInTheDocument();
     });
 
-    it("should be possible to use the keyboard to select items in the search results", async () => {
-      const { onChange } = setup({
-        searchResults: SEARCH_RESULTS,
-      });
+    it("should clear search and return to tree view", async () => {
+      setup();
+
+      await waitLoading();
 
       await userEvent.type(searchInput(), "foo");
+      await waitLoading();
 
-      expect(item(DATABASE)).toBeInTheDocument();
-      expect(item(SCHEMA)).toBeInTheDocument();
+      expect(item(FOO_TABLE)).toBeInTheDocument();
 
-      expect(item(FOO_RESULT)).toBeInTheDocument();
-      expect(item(BAR_RESULT)).not.toBeInTheDocument();
+      await userEvent.clear(searchInput());
+      await waitLoading();
 
-      await userEvent.type(searchInput(), "{ArrowDown}");
-      await userEvent.type(searchInput(), "{Enter}");
-
-      expect(onChange).toHaveBeenCalledWith({
-        databaseId: FOO_RESULT.database_id,
-        schemaName: FOO_RESULT.table_schema,
-        tableId: FOO_RESULT.id,
-      });
+      // Should return to tree view with databases
+      expect(item(DATABASE_WITH_MULTIPLE_SCHEMAS)).toBeInTheDocument();
+      expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toBeInTheDocument();
     });
 
-    it("should not crash when pressing Enter with no item selected (metabase#63350)", async () => {
-      const { onChange } = setup({
-        searchResults: SEARCH_RESULTS,
-      });
+    it("should search case-insensitively", async () => {
+      setup();
 
-      await userEvent.type(searchInput(), "search");
+      await waitLoading();
 
-      await userEvent.type(searchInput(), "{Enter}");
+      // Search with uppercase
+      await userEvent.type(searchInput(), "BAR");
+      await waitLoading();
 
-      expect(onChange).not.toHaveBeenCalled();
+      // Should find "Bar" table
+      expect(item(BAR_TABLE)).toBeInTheDocument();
+      expect(item(FOO_TABLE)).not.toBeInTheDocument();
+    });
+
+    it("should support partial matching", async () => {
+      setup();
+
+      await waitLoading();
+
+      // Search for partial string "oo" should match "Foo"
+      await userEvent.type(searchInput(), "oo");
+      await waitLoading();
+
+      expect(item(FOO_TABLE)).toBeInTheDocument();
+      expect(item(BAR_TABLE)).not.toBeInTheDocument();
+
+      // Clear and search for "ar" should match "Bar"
+      await userEvent.clear(searchInput());
+      await waitLoading();
+
+      await userEvent.type(searchInput(), "ar");
+      await waitLoading();
+
+      expect(item(BAR_TABLE)).toBeInTheDocument();
+      expect(item(FOO_TABLE)).not.toBeInTheDocument();
+    });
+
+    it("should support wildcard search with *", async () => {
+      setup();
+
+      await waitLoading();
+
+      // Search with wildcard pattern
+      await userEvent.type(searchInput(), "Q*");
+      await waitLoading();
+
+      // Should match both QUU and QUX
+      expect(item(QUU)).toBeInTheDocument();
+      expect(item(QUX)).toBeInTheDocument();
+      expect(item(FOO_TABLE)).not.toBeInTheDocument();
+      expect(item(BAR_TABLE)).not.toBeInTheDocument();
+    });
+
+    it("should match tables from all databases in search", async () => {
+      setup();
+
+      await waitLoading();
+
+      // Search for a pattern that matches tables in different databases
+      await userEvent.type(searchInput(), "o");
+      await waitLoading();
+
+      // Should find FOO (from DATABASE_WITH_MULTIPLE_SCHEMAS)
+      // and CORGE, GLORP (from DATABASE_WITH_UNNAMED_SCHEMA)
+      expect(item(FOO_TABLE)).toBeInTheDocument();
+      expect(item(CORGE)).toBeInTheDocument();
+      expect(item(GLORP)).toBeInTheDocument();
+
+      // Should not find tables without "o"
+      expect(item(BAR_TABLE)).not.toBeInTheDocument();
+      expect(item(QUU)).not.toBeInTheDocument();
+      expect(item(QUX)).not.toBeInTheDocument();
+      expect(item(GRAULT)).not.toBeInTheDocument();
     });
   });
 });

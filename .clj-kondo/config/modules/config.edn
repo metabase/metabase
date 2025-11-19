@@ -1549,16 +1549,13 @@
    :uses #{analytics
            api
            app-db
-           collections
            database-routing
            driver
            events
            lib
-           lib-be
            models
            parameters
            premium-features
-           queries
            query-processor
            request
            sync
@@ -1617,7 +1614,6 @@
            warehouse-schema
            warehouses
            enterprise/advanced-permissions}}
-
 
   xrays
   {:team "Querying"
@@ -1844,6 +1840,22 @@
   {:team "Querying"
    :api  #{}
    :uses #{premium-features}}
+
+  enterprise/data-studio
+  {:team "Gadget"
+   :api  #{metabase-enterprise.data-studio.api}
+   :uses #{api
+           collections
+           database-routing
+           driver
+           events
+           lib
+           lib-be
+           queries
+           request
+           sync
+           util
+           warehouse-schema}}
 
   enterprise/database-replication
   {:team "Cloud"

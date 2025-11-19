@@ -7,6 +7,7 @@ import type {
 
 export const DataModel = {
   visit,
+  visitDataStudio,
   get: getDataModel,
   TablePicker: {
     get: getTablePicker,
@@ -32,6 +33,7 @@ export const DataModel = {
     getFieldDescriptionInput: getTableSectionFieldDescriptionInput,
     getSortableField: getTableSectionSortableField,
     getSortableFields: getTableSectionSortableFields,
+    getVisibilityTypeInput: getTableSectionVisibilityTypeInput,
     clickField: clickTableSectionField,
   },
   FieldSection: {
@@ -163,6 +165,10 @@ function visit({
   cy.wait(["@datamodel/visit/databases"]);
 }
 
+function visitDataStudio(options?: Parameters<typeof visit>[0]) {
+  visit({ ...options, basePath: "/data-studio/data" });
+}
+
 function getNormalizedBasePath(path?: string) {
   const resolvedPath = path ?? DEFAULT_BASE_PATH;
   if (resolvedPath.length === 0) {
@@ -267,6 +273,10 @@ function getTableSectionSortableField(name: string) {
 
 function getTableSectionSortableFields() {
   return getTableSection().findAllByRole("listitem");
+}
+
+function getTableSectionVisibilityTypeInput() {
+  return getTableSection().findByLabelText("Visibility type");
 }
 
 function getTableSectionFieldNameInput(name: string) {

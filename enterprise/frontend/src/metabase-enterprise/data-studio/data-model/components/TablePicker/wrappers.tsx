@@ -21,6 +21,11 @@ export function RouterTablePicker({ params, ...props }: Props) {
   const location = useSelector(getLocation);
   const { baseUrl } = useContext(DataModelContext);
   const isSegments = location.pathname?.startsWith(`${baseUrl}/segment`);
+  const {
+    databaseId: propDatabaseId,
+    schemaName: propSchemaName,
+    tableId: propTableId,
+  } = props;
 
   const onChange = useCallback(
     (value: TreePath, options?: ChangeOptions) => {
@@ -28,7 +33,7 @@ export function RouterTablePicker({ params, ...props }: Props) {
 
       // Update URL only when either opening a table or no table has been opened yet.
       // We want to keep user looking at a table when navigating databases/schemas.
-      const canUpdateUrl = value.tableId != null || props.tableId == null;
+      const canUpdateUrl = value.tableId != null || propTableId == null;
 
       if (canUpdateUrl) {
         if (options?.isAutomatic) {
@@ -41,18 +46,26 @@ export function RouterTablePicker({ params, ...props }: Props) {
         }
       }
     },
-    [dispatch, baseUrl, isSegments, props],
+    [dispatch, baseUrl, isSegments, propTableId],
   );
 
   useEffect(() => {
-    if (
-      value.databaseId !== props.databaseId ||
-      value.schemaName !== props.schemaName ||
-      value.tableId !== props.tableId
-    ) {
-      setValue(props);
-    }
-  }, [props, value]);
+    setValue((currentValue) => {
+      if (
+        currentValue.databaseId === propDatabaseId &&
+        currentValue.schemaName === propSchemaName &&
+        currentValue.tableId === propTableId
+      ) {
+        return currentValue;
+      }
+
+      return {
+        databaseId: propDatabaseId,
+        schemaName: propSchemaName,
+        tableId: propTableId,
+      };
+    });
+  }, [propDatabaseId, propSchemaName, propTableId]);
 
   return <TablePicker path={value} onChange={onChange} params={params} />;
 }

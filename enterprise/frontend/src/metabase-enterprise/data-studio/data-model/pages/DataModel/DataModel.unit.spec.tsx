@@ -7,10 +7,13 @@ import {
   setupDatabaseIdFieldsEndpoints,
   setupDatabasesEndpoints,
   setupFieldsValuesEndpoints,
-  setupSearchEndpoints,
   setupTableEndpoints,
+  setupTableSearchEndpoint,
+  setupTablesBulkEndpoints,
   setupUnauthorizedFieldEndpoint,
   setupUnauthorizedFieldValuesEndpoints,
+  setupUserAcknowledgementEndpoints,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -20,7 +23,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { getNextId } from "__support__/utils";
 import { checkNotNull } from "metabase/lib/types";
 import { getUrl } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -35,8 +37,8 @@ import {
   createMockField,
   createMockFieldDimension,
   createMockFieldValues,
-  createMockSearchResult,
   createMockTable,
+  createMockUserListResult,
 } from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_FIELD_VALUES,
@@ -198,6 +200,12 @@ async function setup({
 }: SetupOpts = {}) {
   setupDatabasesEndpoints(databases, { hasSavedQuestions: false });
   setupCardDataset();
+  setupTablesBulkEndpoints();
+  setupUsersEndpoints([createMockUserListResult()]);
+  setupUserAcknowledgementEndpoints({
+    key: "seen-publish-models-info",
+    value: false,
+  });
 
   if (hasFieldValuesAccess) {
     setupFieldsValuesEndpoints(fieldValues);
@@ -262,10 +270,9 @@ describe("DataModel", () => {
   it("should show empty state by default", async () => {
     await setup();
 
-    expect(screen.getByRole("link", { name: /Segments/ })).toBeInTheDocument();
-    expect(
-      screen.getByText("Start by selecting data to model"),
-    ).toBeInTheDocument();
+    expect(getTableSearchInput()).toBeInTheDocument();
+    expect(screen.queryByTestId("table-section")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("field-section")).not.toBeInTheDocument();
   });
 
   describe("no schema database", () => {
@@ -296,16 +303,7 @@ describe("DataModel", () => {
 
     it("should allow to search for a table", async () => {
       await setup();
-      setupSearchEndpoints([
-        createMockSearchResult({
-          id: getNextId(),
-          model: "table",
-          name: ORDERS_TABLE.display_name,
-          table_name: ORDERS_TABLE.display_name,
-          table_schema: "public",
-          database_name: SAMPLE_DB.name,
-        }),
-      ]);
+      setupTableSearchEndpoint([ORDERS_TABLE]);
 
       const searchValue = ORDERS_TABLE.name.substring(0, 3);
       await userEvent.type(getTableSearchInput(), searchValue);
@@ -373,9 +371,7 @@ describe("DataModel", () => {
       );
       await waitForLoaderToBeRemoved();
 
-      expect(
-        await getHideTableButton(PRODUCTS_TABLE.display_name),
-      ).toBeInTheDocument();
+      expect(getTableNameInput()).toHaveValue(PRODUCTS_TABLE.display_name);
     });
 
     it("should display hidden tables", async () => {
@@ -386,40 +382,25 @@ describe("DataModel", () => {
       );
       await waitForLoaderToBeRemoved();
 
-      expect(
-        await getUnhideTableButton(ORDERS_TABLE.display_name),
-      ).toBeInTheDocument();
+      expect(getTableNameInput()).toHaveValue(ORDERS_TABLE.display_name);
     });
 
     it("clicking on tables with initial_sync_status='incomplete' should not navigate to the table", async () => {
       await setup({ databases: [SAMPLE_DB_WITH_INITIAL_SYNC_INCOMPLETE] });
 
-      expect(
-        screen.getByText("Start by selecting data to model"),
-      ).toBeInTheDocument();
+      expect(screen.queryByTestId("table-section")).not.toBeInTheDocument();
 
-      expect(
-        within(
-          await findTablePickerTable(
-            ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name,
-          ),
-        ).queryByRole("button", {
-          name: "Hide table",
-        }),
-      ).not.toBeInTheDocument();
+      const disabledTable = await findTablePickerTable(
+        ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name,
+      );
+      expect(disabledTable).toHaveStyle({ pointerEvents: "none" });
 
       // This click should not cause a change, as the table should be disabled
-      await expect(
-        userEvent.click(
-          await findTablePickerTable(
-            ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name,
-          ),
-        ),
-      ).rejects.toThrow(/pointer-events: none/);
+      await expect(userEvent.click(disabledTable)).rejects.toThrow(
+        /pointer-events: none/,
+      );
 
-      expect(
-        screen.getByText("Start by selecting data to model"),
-      ).toBeInTheDocument();
+      expect(screen.queryByTestId("table-section")).not.toBeInTheDocument();
     });
 
     it("should display sort options", async () => {
@@ -699,17 +680,26 @@ describe("DataModel", () => {
       );
       await waitForLoaderToBeRemoved();
       await userEvent.click(
-        screen.getByRole("button", { name: /Sync options/ }),
+        screen.getByRole("button", { name: /Sync settings/ }),
       );
       await userEvent.click(
         screen.getByRole("button", { name: "Re-scan table" }),
       );
 
+      const calls = fetchMock.callHistory.calls(
+        "path:/api/table/rescan-values",
+        {
+          method: "POST",
+        },
+      );
+
       await waitFor(() => {
-        const path = `path:/api/table/${ORDERS_TABLE.id}/rescan_values`;
-        expect(
-          fetchMock.callHistory.called(path, { method: "POST" }),
-        ).toBeTruthy();
+        expect(calls.length).toBeGreaterThan(0);
+      });
+
+      const lastCall = calls[calls.length - 1];
+      expect(JSON.parse(lastCall.options.body as string)).toEqual({
+        table_ids: [ORDERS_TABLE.id],
       });
     });
 
@@ -721,19 +711,27 @@ describe("DataModel", () => {
       );
       await waitForLoaderToBeRemoved();
       await userEvent.click(
-        screen.getByRole("button", { name: /Sync options/ }),
+        screen.getByRole("button", { name: /Sync settings/ }),
       );
       await userEvent.click(
         screen.getByRole("button", {
           name: "Discard cached field values",
         }),
       );
+      const calls = fetchMock.callHistory.calls(
+        "path:/api/table/discard-values",
+        {
+          method: "POST",
+        },
+      );
 
       await waitFor(() => {
-        const path = `path:/api/table/${ORDERS_TABLE.id}/discard_values`;
-        expect(
-          fetchMock.callHistory.called(path, { method: "POST" }),
-        ).toBeTruthy();
+        expect(calls.length).toBeGreaterThan(0);
+      });
+
+      const lastCall = calls[calls.length - 1];
+      expect(JSON.parse(lastCall.options.body as string)).toEqual({
+        table_ids: [ORDERS_TABLE.id],
       });
     });
   });
@@ -981,18 +979,6 @@ async function findTablePickerItem(
   });
 
   return items[0];
-}
-
-async function getHideTableButton(name: string) {
-  return within(await findTablePickerTable(name)).getByRole("button", {
-    name: "Hide table",
-  });
-}
-
-async function getUnhideTableButton(name: string) {
-  return within(await findTablePickerTable(name)).getByRole("button", {
-    name: "Unhide table",
-  });
 }
 
 /** table section helpers */

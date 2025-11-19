@@ -1,12 +1,11 @@
 import { t } from "ttag";
 
-import {
-  DiscardTableFieldValuesButton,
-  RescanTableFieldsButton,
-  SyncTableSchemaButton,
-} from "metabase/metadata/components";
 import { Modal, Stack, Text, rem } from "metabase/ui";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+
+import { DiscardTableFieldValuesButton } from "./DiscardTableFieldValuesButton";
+import { RescanTableFieldsButton } from "./RescanTableFieldsButton";
+import { SyncTableSchemaButton } from "./SyncTableSchemaButton";
 
 interface Props {
   isOpen: boolean;
