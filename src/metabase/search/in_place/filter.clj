@@ -265,28 +265,6 @@
     [_filter model query display-types]
     (sql.helpers/where query [:in (search.config/column-with-model-alias model :display) display-types])))
 
-;; Collection filter - filters by collection and all descendants
-(doseq [model ["card" "dataset" "metric" "dashboard" "action" "collection" "document"]]
-  (defmethod build-optional-filter-query [:collection model]
-    [_filter model query collection-id]
-    (let [collection-col (search.config/column-with-model-alias model :collection_id)]
-      ;; Join with collection table if not already joined to get location for descendant filtering
-      ;; Filter by direct match (collection_id = ?) OR descendants (collection.location LIKE '/collection_id/%')
-      (cond-> query
-        (not (joined-with-table? query :left-join :collection))
-        (sql.helpers/left-join :collection [:= collection-col :collection.id])
-        true
-        (sql.helpers/where [:or
-                            [:= collection-col collection-id]
-                            [:like :collection.location (str "/" collection-id "/%")]])))))
-
-;; Tables and databases don't belong to collections
-(doseq [model ["table" "database"]]
-  (defmethod build-optional-filter-query [:collection model]
-    [_filter _model query _collection-id]
-    ;; These models don't have collection_id, so they never match
-    (sql.helpers/where query false-clause)))
-
 (defn- feature->supported-models
   "Return A map of filter to its support models.
 
@@ -294,21 +272,19 @@
 
   This is function instead of a def so that optional-filter-clause can be defined anywhere in the codebase."
   []
-  (-> (merge
-        ;; models support search-native-query if there are additional columns to search when the `search-native-query`
-        ;; argument is true
-       {:search-native-query (->> (dissoc (methods @(requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)) :default)
-                                  (filter (fn [[model f]]
-                                            (seq (set/difference (set (f model true)) (set (f model false))))))
-                                  (map first)
-                                  set)}
-       (->> (dissoc (methods build-optional-filter-query) :default)
-            keys
-            (reduce (fn [acc [filter model]]
-                      (update acc filter set/union #{model}))
-                    {})))
-      (update :collection disj "table" "database")
-      (update :collection conj "indexed-entity")))
+  (merge
+   ;; models support search-native-query if there are additional columns to search when the `search-native-query`
+   ;; argument is true
+   {:search-native-query (->> (dissoc (methods @(requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)) :default)
+                              (filter (fn [[model f]]
+                                        (seq (set/difference (set (f model true)) (set (f model false))))))
+                              (map first)
+                              set)}
+   (->> (dissoc (methods build-optional-filter-query) :default)
+        keys
+        (reduce (fn [acc [filter model]]
+                  (update acc filter set/union #{model}))
+                {}))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                        Public functions                                         ;;
@@ -319,8 +295,7 @@
 
   If the context has optional filters, the models will be restricted for the set of supported models only."
   [search-context]
-  (let [{:keys [collection
-                created-at
+  (let [{:keys [created-at
                 created-by
                 last-edited-at
                 last-edited-by
@@ -334,7 +309,6 @@
         feature->supported-models (feature->supported-models)]
     (cond-> models
       (not   is-superuser?)        (disj "transform")
-      (some? collection)           (set/intersection (:collection feature->supported-models))
       (some? created-at)           (set/intersection (:created-at feature->supported-models))
       (some? created-by)           (set/intersection (:created-by feature->supported-models))
       (some? last-edited-at)       (set/intersection (:last-edited-at feature->supported-models))
