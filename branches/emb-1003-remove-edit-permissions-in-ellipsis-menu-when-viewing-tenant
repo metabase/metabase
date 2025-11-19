@@ -2,5 +2,16 @@
   "base": {
     "name": "tenants-rebased",
     "hash": "962d7698e9393228cc067fc66d7612df4da94fbe"
+  },
+  "upstream": {
+    "branch": "emb-1003-remove-edit-permissions-in-ellipsis-menu-when-viewing-tenant"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 66042,
+        "gqlID": "PR_kwDOAczgH860cWCA"
+      }
+    }
   }
 }
