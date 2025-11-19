@@ -6,7 +6,7 @@ inputs:
   apply-patches:
     description: "Whether to patch frontend dependencies with patch-package."
     required: true
-    default: 'true'
+    default: "true"
 runs:
   using: "composite"
   steps:
@@ -42,12 +42,12 @@ runs:
         path: ${{ steps.yarn-cache-dir.outputs.dir }}
         key: ${{ steps.get-cache-keys.outputs.yarn-cache-key }}
 
-    - name: Restore node_modules cache
-      uses: actions/cache/restore@v4
-      id: node-modules-cache
-      with:
-        path: node_modules
-        key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
+    # - name: Restore node_modules cache
+    #   uses: actions/cache/restore@v4
+    #   id: node-modules-cache
+    #   with:
+    #     path: node_modules
+    #     key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
 
     # postinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)
     # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.
