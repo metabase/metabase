@@ -83,25 +83,17 @@
 
 ;; TODO: proper docstring
 (defn mirror-entities!
-  "Create duplicated namespace specific entities.
-
-  Input:
-  TBD, when setteled the schema will be added
-  For now it takes tables and
-
-  bla bla
-
-  RETURNING
-  some map with mappings of old entities to new entities"
-  [workspace ; some map
+  "WIP"
+  [workspace ; some map???????
    {:keys [_check-outs
-           inputs
+           inputs       ; tables the checkouts depend on
            _tables
            _transforms
            _nodes]
     :as entities-info}]
-  ;; - ignoring multiple entites from multiple databases atm -- hence following "get database" is ok
-  ;; - inputs are tables that should be made RO later
+  ;; currently we support single transform only
+  (assert (= 1 (count (-> entities-info :transforms))))
+  (assert (>= 1 (count (-> entities-info :inputs))))
   (let [database (t2/select-one :model/Database :id (:db_id (first inputs)))]
     (ws.isolation/ensure-database-isolation! workspace database)
     (let [updated-info-1 (ws.isolation/create-transform-tables! workspace database entities-info)
