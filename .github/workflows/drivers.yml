@@ -27,21 +27,6 @@ jobs:
           # Fetch the base branch to ensure its history is available for diffing
           git fetch --depth=1 origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
           # Only run this if it's a pull request and the base ref exists
-      - name: Get Date
-        id: get-date
-        shell: bash
-        run: |
-          echo "date=$(/bin/date -u "+%Y%m%d")" >> $GITHUB_OUTPUT
-      - name: Restore Babashka cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.m2
-            ~/.deps.clj
-          restore-keys: |
-            mage-drivers-
-          key: >-
-            mage-drivers-${{ steps.get-date.outputs.date }}
       - name: Check if driver tests should run
         id: check-branch-and-files-changed
         run: |
