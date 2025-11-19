@@ -59,7 +59,7 @@ const assertAcceptRejectUI = (opts: { visible: boolean }) => {
   rejectSuggestionBtn().should(should);
 };
 
-H.describeWithSnowplowEE("scenarios > metabot > transforms codegen", () => {
+describe("scenarios > metabot > transforms codegen", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });

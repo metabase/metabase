@@ -11,16 +11,19 @@ export const getAllCommandSections = (): CommandSection[] => {
         ...(PLUGIN_METABOT.isEnabled()
           ? ([
               {
-                icon: "metabot",
+                icon: "metabot" as const,
                 label: t`Ask Metabot`,
                 command: "metabot",
+                isAllowedAtPosition: (editor) =>
+                  !editor.isActive("supportingText"),
               },
-            ] as const)
+            ] satisfies CommandSection["items"])
           : []),
         {
           icon: "lineandbar",
           label: t`Chart`,
           command: "embedQuestion",
+          isAllowedAtPosition: (editor) => !editor.isActive("supportingText"),
         },
         {
           icon: "link",

@@ -31110,15 +31110,15 @@ msgid "The location of your git repository, e.g. https://github.com/acme-inco/me
 msgstr "Lokasi repositori git anda, cth https://github.com/acme-inco/metabase.git"
 
 #: metabase_enterprise/remote_sync/settings.clj:46
-msgid "Git synchronization type - :development or :production"
+msgid "Git synchronization type - :read-write or :read-only"
 msgstr "Jenis penyegerakan Git - :pembangunan atau :pengeluaran"
 
 #: metabase_enterprise/remote_sync/settings.clj:62
-msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production."
-msgstr "Sama ada untuk mengimport secara automatik dari repositori git jauh. Hanya terpakai jika remote-sync-type ialah :production."
+msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only."
+msgstr "Sama ada untuk mengimport secara automatik dari repositori git jauh. Hanya terpakai jika remote-sync-type ialah :read-only."
 
 #: metabase_enterprise/remote_sync/settings.clj:70
-msgid "If remote-sync-type is :production and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
+msgid "If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
 msgstr "Jika remote-sync-type ialah : production dan remote-sync-auto-import adalah benar, kadar (dalam minit) untuk menyemak kemas kini untuk diimport. Lalai kepada 5."
 
 #: metabase_enterprise/remote_sync/settings.clj:78

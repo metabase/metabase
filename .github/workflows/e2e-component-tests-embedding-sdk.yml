@@ -116,7 +116,6 @@ jobs:
       CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
-      CYPRESS_IS_EMBEDDING_SDK: "true"
       COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
@@ -155,14 +154,18 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js start
 
       - name: Make app db snapshot
-        run: node e2e/runner/run_cypress_ci.js snapshot --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+        run: node e2e/runner/run_cypress_ci.js snapshot
 
       # Has to be run after the app db snapshot is made, as it is not compatible with React 19
       - name: Change React version to ${{ matrix.react-version }}
         run: ./bin/embedding-sdk/change-react-version.bash ${{ matrix.react-version }}
 
       - name: Run component tests for Embedding SDK
-        run: node e2e/runner/run_cypress_ci.js component --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+        run: node e2e/runner/run_cypress_ci.js component
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
