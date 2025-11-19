@@ -7,22 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
-   [metabase.system.core :as system]
-   [toucan2.core :as t2]))
-
-;; At this point this ns is responsible for
-;; - duplication of entities gathered by `workspaces.artifacts`
-;;
-;; Aim is to add also functionality for
-;; - dwh isolation,
-;; - core app isolation (maybe).
-;;
-;; That said, as it will grow, it may be sliced, or dropped in favor
-;; of other namespaces handling the isolation.
-
-;; What this does
-;; and how
-;; entrypoint
+   [metabase.system.core :as system]))
 
 ;;;; Naming
 
@@ -72,7 +57,7 @@
 ;;;; Transform table duplication
 
 (defmulti duplicate-transform-table!
-  "ahoj"
+  "WIP"
   {:added "0.59.0" :arglists '([database transform])}
   #'dispatch-on-engine
   :hierarchy #'driver/hierarchy)
@@ -83,6 +68,7 @@
         jdbc-spec (sql-jdbc.conn/connection-details->spec driver* details)
         mirror-schema-name (isolation-schema-name (:id workspace))
         mirror-table-name (isolated-transform-table-name transform)]
+    ;; TODO: execute the following only if the transform was previously executed and its table exists.
     (jdbc/execute! jdbc-spec [(format (str "CREATE TABLE \"%s\".\"%s\""
                                            "  AS SELECT * FROM \"%s\".\"%s\""
                                            "WITH NO DATA")
@@ -109,7 +95,7 @@
     (assoc entities-info :transforms transforms*)))
 
 (defn ensure-database-isolation!
-  "tbd"
+  "WIP"
   [workspace database]
   ;; TODO: Make this check the ws existence aka fail closed ~atm
   (init-workspace-database-isolation! database workspace))

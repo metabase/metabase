@@ -15,7 +15,8 @@
 ;;; schemas
 
 (mr/def ::stuff
-  [:string {:min 1 :max 254}])
+  :keyword
+  #_[:string {:min 1 :max 254}])
 
 (def CreateWorkspace
   "Schema for creating a new workspace"

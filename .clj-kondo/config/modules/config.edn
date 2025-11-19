@@ -2257,8 +2257,10 @@
            metabase-enterprise.workspaces.init}
    :uses #{api
            api-keys
+           driver
            models
            request
+           system
            util}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
