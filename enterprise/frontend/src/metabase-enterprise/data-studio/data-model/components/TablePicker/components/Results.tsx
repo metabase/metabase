@@ -585,7 +585,10 @@ const ResultsItem = ({
               {expectedRowsDisplay}
             </Box>
 
-            <Box className={cx(S.column, S.publishedColumn)}>
+            <Box
+              className={cx(S.column, S.publishedColumn)}
+              data-testid="table-published"
+            >
               {publishedDisplay}
             </Box>
           </>

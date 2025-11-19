@@ -29,10 +29,8 @@ interface PublishModelResponse {
   }[];
 }
 
-describe("syncing multiple tables", () => {
+describe("bulk table operations", { tags: ["@external"] }, () => {
   beforeEach(() => {
-    H.restore("postgres-writable");
-    cy.signInAsAdmin();
     cy.intercept("POST", "/api/table/sync-schema").as("syncSchema");
     cy.intercept("POST", "/api/table/rescan-values").as("rescanValues");
     cy.intercept("POST", "/api/table/discard-values").as("discardValues");
@@ -43,7 +41,9 @@ describe("syncing multiple tables", () => {
     cy.intercept("POST", "/api/table/publish-model").as("publishModel");
   });
 
-  it("syncing multiple tables", () => {
+  it("syncing multiple tables", { tags: ["@external"] }, () => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
     H.DataModel.visit();
     TablePicker.getDatabase("Writable Postgres12").click();
     cy.wait("@getSchema").then(({ response }) => {
@@ -96,7 +96,9 @@ describe("syncing multiple tables", () => {
     });
   });
 
-  it("publishing multiple tables", () => {
+  it("allows publishing multiple tables", { tags: ["@external"] }, () => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
     H.DataModel.visit();
     TablePicker.getDatabase("Writable Postgres12").click();
     TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
@@ -122,6 +124,110 @@ describe("syncing multiple tables", () => {
     });
 
     cy.url().should("include", "/data-studio/modeling/collections/root");
+  });
+
+  it("allows to edit attributes for tables", { tags: ["@external"] }, () => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.DataModel.visit();
+    TablePicker.getDatabase("Writable Postgres12").click();
+    TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
+    TablePicker.getTable("Feedback").find('input[type="checkbox"]').check();
+
+    H.selectHasValue("Owner", "").click();
+    H.selectDropdown().contains("Bobby Tables").click();
+
+    H.selectHasValue("Visibility type", "").click();
+    H.selectDropdown().contains("Gold").click();
+
+    H.selectHasValue("Entity type", "").click();
+    H.selectDropdown().contains("Person").click();
+
+    H.selectHasValue("Source", "").click();
+    H.selectDropdown().contains("Ingested").click();
+    H.undoToastList().should("have.length", 4);
+    TablePicker.getTable("Accounts")
+      .findByTestId("table-owner")
+      .should("have.text", "Bobby Tables");
+    TablePicker.getTable("Feedback")
+      .findByTestId("table-owner")
+      .should("have.text", "Bobby Tables");
+  });
+
+  it("allows to edit attributes for db", { tags: ["@external"] }, () => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.DataModel.visit();
+    TablePicker.getDatabase("Writable Postgres12")
+      .find('input[type="checkbox"]')
+      .check();
+
+    H.selectHasValue("Owner", "").click();
+    H.selectDropdown().contains("Bobby Tables").click();
+
+    H.selectHasValue("Visibility type", "").click();
+    H.selectDropdown().contains("Gold").click();
+
+    H.selectHasValue("Entity type", "").click();
+    H.selectDropdown().contains("Person").click();
+
+    H.selectHasValue("Source", "").click();
+    H.selectDropdown().contains("Ingested").click();
+
+    cy.findByRole("button", { name: /Publish/ }).click();
+    cy.findByRole("button", { name: /Got it/ }).click();
+    H.pickEntity({
+      tab: "Collections",
+      path: ["Our analytics"],
+    });
+    cy.findByRole("button", { name: /Publish here/ }).click();
+
+    TablePicker.getDatabase("Writable Postgres12").click();
+
+    cy.findAllByTestId("tree-item")
+      .filter('[data-type="table"]')
+      .each((table) => {
+        cy.wrap(table)
+          .findByTestId("table-owner")
+          .should("have.text", "Bobby Tables");
+        cy.wrap(table)
+          .findByTestId("table-published")
+          .should("have.text", "Yes");
+      });
+  });
+
+  it("allows to edit attributes for schema", { tags: ["@external"] }, () => {
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_schemas" });
+    cy.signInAsAdmin();
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });
+    H.DataModel.visit();
+    TablePicker.getDatabase("Writable Postgres12").click();
+    TablePicker.getSchema("Schema A").find('input[type="checkbox"]').check();
+    TablePicker.getSchema("Schema B").find('input[type="checkbox"]').check();
+
+    H.selectHasValue("Owner", "").click();
+    H.selectDropdown().contains("Bobby Tables").click();
+
+    H.selectHasValue("Visibility type", "").click();
+    H.selectDropdown().contains("Gold").click();
+
+    H.selectHasValue("Entity type", "").click();
+    H.selectDropdown().contains("Person").click();
+
+    H.selectHasValue("Source", "").click();
+    H.selectDropdown().contains("Ingested").click();
+
+    TablePicker.getSchema("Schema A").click();
+    TablePicker.getSchema("Schema B").click();
+
+    cy.findAllByTestId("tree-item")
+      .filter('[data-type="table"]')
+      .each((table) => {
+        cy.wrap(table)
+          .findByTestId("table-owner")
+          .should("have.text", "Bobby Tables");
+      });
   });
 });
 
