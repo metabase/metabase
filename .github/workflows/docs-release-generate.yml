@@ -16,6 +16,6 @@ jobs:
     name: Call documentation update for release branch
     uses: ./.github/workflows/docs-generate-base.yml
     with:
-      target_branch: ${{ inputs.target_branch || "release-x.57.x" }}
+      target_branch: ${{ inputs.target_branch || 'release-x.57.x' }}
     secrets:
       automation_token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
