@@ -45,6 +45,7 @@
     FieldValueList
     InsertAllRequest
     InsertAllRequest$RowToInsert
+    JobInfo
     QueryJobConfiguration
     Schema
     Table
@@ -698,12 +699,15 @@
   (let [^BigQuery client (database-details->client database-details)
         result-promise (promise)
         request (build-bigquery-request sql parameters)
+        job-id (-> client
+                   (.create (JobInfo/of request) (u/varargs BigQuery$JobOption))
+                   (.getJobId))
         query-future (future
                        ;; ensure the classloader is available within the future.
                        (driver-api/the-classloader)
                        (try
                          (*page-callback*)
-                         (if-let [result (.query client request (u/varargs BigQuery$JobOption))]
+                         (if-let [result (.query client request job-id (u/varargs BigQuery$JobOption))]
                            (deliver result-promise [:ready result])
                            (throw (ex-info "Null response from query" {})))
                          (catch Throwable t
@@ -714,6 +718,7 @@
     (when cancel-chan
       (a/go
         (when-let [cancelled (a/<! cancel-chan)]
+          (.cancel client job-id)
           (deliver result-promise [:cancel cancelled])
           (some-> query-future future-cancel))))
 
