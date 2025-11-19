@@ -100,7 +100,7 @@
      metabase.permissions.models.permissions/update-data-perms-graph!
      metabase.permissions.models.permissions/update-group-permissions!
      metabase.permissions.test-util/with-restored-perms!
-     metabase.public-sharing.api-test/add-card-to-dashboard!
+     metabase.public-sharing-rest.api-test/add-card-to-dashboard!
      metabase.pulse.send/send-notifications!
      metabase.pulse.send/send-pulse!
      metabase.query-processor.streaming.interface/begin!

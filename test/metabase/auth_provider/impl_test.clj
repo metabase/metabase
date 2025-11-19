@@ -7,7 +7,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.http-client :as client]
    [metabase.util.json :as json]
-   [metabase.warehouses.api :as api.database]))
+   [metabase.warehouses-rest.api :as api.database]))
 
 (deftest auth-integration-test
   (mt/test-drivers #{:postgres :mysql}
