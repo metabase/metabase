@@ -11,14 +11,12 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [metabase.warehouse-schema-rest.api.table :as api.table]
-   [toucan2.core :as t2])
-  (:import (java.util.concurrent CountDownLatch TimeUnit)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 

@@ -1618,7 +1618,6 @@
            warehouses
            enterprise/advanced-permissions}}
 
-
   xrays
   {:team "Querying"
    :api  #{metabase.xrays.api
@@ -1872,6 +1871,22 @@
            util
            warehouse-schema
            warehouses-rest}}
+
+  enterprise/data-studio
+  {:team "Gadget"
+   :api  #{metabase-enterprise.data-studio.api}
+   :uses #{api
+           collections
+           database-routing
+           driver
+           events
+           lib
+           lib-be
+           queries
+           request
+           sync
+           util
+           warehouse-schema}}
 
   enterprise/dependencies
   {:team "Querying"
@@ -2261,25 +2276,9 @@
            models
            premium-features
            upload
-           util}}
+           util}}}
 
-  enterprise/data-studio
-  {:team "UX West"
-   :api  #{metabase-enterprise.data-studio.api}
-   :uses #{api
-           collections
-           database-routing
-           driver
-           events
-           lib
-           lib-be
-           queries
-           request
-           sync
-           util
-           warehouse-schema}}}
-
- ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
+;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
  ;;
  ;; this is mostly intended for excluding test namespaces or those rare 'glue' namespaces that glue multiple modules
