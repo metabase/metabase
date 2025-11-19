@@ -58,8 +58,8 @@ jobs:
           build-static-viz: true
           junit-name: 'minimal-be-tests-postgres-ee'
           test-args: >-
-            :only '"test"'
-            :exclude-tags [:mb/driver-tests :mb/transforms-python-test]
+            :only '["test" "enterprise/backend/test"]'
+            :exclude-tags '[:mb/driver-tests :mb/transforms-python-test]'
             :partition/total 2
             :partition/index 0
       - name: Upload Test Results
