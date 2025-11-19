@@ -38,7 +38,7 @@ function formatWithInferredType(value: any, parameter: UiParameter) {
 }
 
 export function formatParameterValue(
-  value: string | number | number[],
+  value: boolean | string | number | number[],
   parameter: UiParameter,
 ) {
   if (Array.isArray(value) && value.length > 1) {
