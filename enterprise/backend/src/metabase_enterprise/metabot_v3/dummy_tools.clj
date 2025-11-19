@@ -4,8 +4,6 @@
    [metabase-enterprise.documents.core :as documents]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
-   ;; TODO (Cam 10/10/25) -- update MetaBot to use Lib + MBQL 5
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -378,23 +376,23 @@
     {:output "invalid document_id"}))
 
 (defn- execute-query
-  [query-id legacy-query]
-  (let [legacy-query (mbql.normalize/normalize legacy-query)
+  [query-id query-input]
+  (let [normalized-query (lib-be/normalize-query query-input)
         field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
-        database-id (:database legacy-query)
+        database-id (:database normalized-query)
         _ (api/read-check :model/Database database-id)
         mp (lib-be/application-database-metadata-provider database-id)
-        query (lib/query mp legacy-query)
+        query (lib/query mp normalized-query)
         returned-cols (lib/returned-columns query)]
     {:type :query
      :query-id query-id
-     :query legacy-query
+     :query normalized-query
      :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 field-id-prefix))
                            returned-cols)}))
 
 (defn get-query-details
-  "Get the details of a (legacy) query."
+  "Get the details of a query (supports both MBQL v4 and v5)."
   [{:keys [query]}]
   (lib-be/with-metadata-provider-cache
     {:structured-output (execute-query (u/generate-nano-id) query)}))
