@@ -469,11 +469,10 @@ describe("scenarios > data studio > datamodel", () => {
 
     it("select/deselect functionality", { tags: ["@external"] }, () => {
       H.restore("postgres-writable");
-      cy.signInAsAdmin();
       H.resetTestTable({ type: "postgres", table: "multi_schema" });
       H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
-      visitDataStudioDataModel();
+      H.DataModel.visitDataStudio();
 
       const databaseName = "Writable Postgres12";
       const sampleDatabaseName = "Sample Database";
