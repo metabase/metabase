@@ -221,16 +221,7 @@ export interface PublishModelsRequest {
 export interface PublishModelsResponse {
   created_count: number;
   models: Card[];
-  target_collection: Collection;
-}
-
-export interface SubstituteModelRequest {
-  id: TableId;
-  collection_id: number | null;
-}
-
-export interface SubstituteModelResponse {
-  model: Card;
+  target_collection: Collection | null;
 }
 
 export type TableData = {

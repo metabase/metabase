@@ -3,6 +3,7 @@ const { H } = cy;
 const { TablePicker } = H.DataModel;
 const DATA_STUDIO_BASE_PATH = "/data-studio/data";
 const visitAdminDataModel = H.DataModel.visit;
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 H.DataModel.visit = (options = {}) =>
   visitAdminDataModel({ ...options, basePath: DATA_STUDIO_BASE_PATH });
@@ -37,9 +38,7 @@ describe("Table editing", () => {
     cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
     cy.intercept("PUT", "/api/table").as("updateTables");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
-    cy.intercept("post", "/api/ee/data-studio/table/publish-model").as(
-      "publishModel",
-    );
+    cy.intercept("post", "/api/ee/data-studio/table/publish-model").as("publishModel");
   });
 
   it("should display metadata information", { tags: ["@external"] }, () => {
@@ -93,7 +92,6 @@ describe("Table editing", () => {
         cy.findByRole("button", { name: /Cancel/ }).click();
       });
 
-      // Publish to a collection
       cy.findByRole("button", { name: /Publish/ }).click();
       H.pickEntity({
         tab: "Collections",
@@ -101,14 +99,12 @@ describe("Table editing", () => {
       });
       cy.findByRole("button", { name: /Publish here/ }).click();
 
-      // Feedback toast is correctly shown
-      H.undoToast().within(() => {
-        cy.findByText("Published").should("be.visible");
-        cy.findByRole("button", { name: /See it/ }).click();
-      });
-
       cy.wait<PublishModelResponse>("@publishModel").then(({ response }) => {
         const modelId = response?.body.models[0].id ?? 0;
+        H.undoToast().within(() => {
+          cy.findByText("Published").should("be.visible");
+          cy.findByRole("button", { name: /See it/ }).click();
+        });
         cy.url().should("include", `/data-studio/modeling/models/${modelId}`);
       });
 
@@ -137,7 +133,7 @@ describe("Table editing", () => {
       .findByText("Table owner updated")
       .should("be.visible");
 
-    H.selectHasValue("Visibility type", "Copper").click();
+    H.selectHasValue("Visibility type", "Bronze").click();
     H.selectDropdown().contains("Gold").click();
     H.undoToastListContainer()
       .findByText("Table layer updated")
@@ -161,4 +157,41 @@ describe("Table editing", () => {
     H.selectHasValue("Entity type", "Person");
     H.selectHasValue("Source", "Ingested");
   });
+
+  it(
+    "transform-created table should have link and disabled source edit",
+    { tags: ["@external"] },
+    () => {
+      cy.signInAsAdmin();
+      H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "many_schemas" });
+
+      const SOURCE_TABLE = "Animals";
+      const TARGET_TABLE = "transform_table";
+      const TARGET_SCHEMA = "Schema A";
+      const TRANSFORM_TABLE_DISPLAY_NAME = "Transform Table";
+      const TRANSFORM_NAME = "Test transform for animals";
+
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
+
+      // Create and run a transform to create a table
+      H.createAndRunMbqlTransform({
+        sourceTable: SOURCE_TABLE,
+        targetTable: TARGET_TABLE,
+        targetSchema: TARGET_SCHEMA,
+        name: TRANSFORM_NAME,
+      }).then(() => {
+        H.DataModel.visit();
+        TablePicker.getDatabase("Writable Postgres12").click();
+        TablePicker.getSchema(TARGET_SCHEMA).click();
+        TablePicker.getTable(TRANSFORM_TABLE_DISPLAY_NAME).click();
+
+        cy.findByRole("link", { name: new RegExp(TRANSFORM_NAME) }).should(
+          "be.visible",
+        );
+
+        H.selectIsDisabled("Source");
+      });
+    },
+  );
 });

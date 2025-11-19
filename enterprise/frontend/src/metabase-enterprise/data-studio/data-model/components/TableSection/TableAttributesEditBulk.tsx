@@ -76,8 +76,6 @@ export function TableAttributesEditBulk() {
       owner_user_id: userId === "unknown" ? null : (userId ?? undefined),
     });
 
-    // onUpdate?.();
-
     if (error) {
       sendErrorToast(t`Failed to update items`);
     } else {

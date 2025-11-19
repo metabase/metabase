@@ -13,7 +13,7 @@ import {
   getFieldRawName,
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
-import { Flex, Stack, Switch, rem } from "metabase/ui";
+import { Box, Flex, Group, Stack, Switch, rem } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
 import { trackMetadataChange } from "../../analytics";
@@ -108,50 +108,55 @@ const DataSectionBase = ({ field }: Props) => {
   };
 
   return (
-    <TitledSection title={t`Data`}>
-      <LabeledValue label={t`Field name`}>
-        {getFieldRawName(field)}
-      </LabeledValue>
+    <TitledSection>
+      <Group align="start">
+        <Box flex={1}>
+          <LabeledValue label={t`Field name`}>
+            {getFieldRawName(field)}
+          </LabeledValue>
+        </Box>
+        <Stack gap={0} flex={1}>
+          <LabeledValue label={t`Data type`}>
+            {field.database_type}
+          </LabeledValue>
 
-      <Stack gap={0}>
-        <LabeledValue label={t`Data type`}>{field.database_type}</LabeledValue>
+          {canCoerceFieldType(field) && (
+            <>
+              <Flex gap="xs" ml={rem(12)} wrap="nowrap">
+                {isCasting ? (
+                  <SubInputFollowIllustration />
+                ) : (
+                  <SubInputIllustration />
+                )}
 
-        {canCoerceFieldType(field) && (
-          <>
-            <Flex gap="xs" ml={rem(12)} wrap="nowrap">
-              {isCasting ? (
-                <SubInputFollowIllustration />
-              ) : (
-                <SubInputIllustration />
+                <Switch
+                  checked={isCasting}
+                  classNames={{
+                    body: S.switchBody,
+                  }}
+                  flex="1"
+                  label={t`Cast to a specific data type`}
+                  mt="md"
+                  size="xs"
+                  onChange={handleCastingChange}
+                />
+              </Flex>
+
+              {isCasting && (
+                <CoercionStrategyPicker
+                  autoFocus={autoFocusCoercionPicker}
+                  baseType={field.base_type}
+                  dropdownOpened={isCoercionPickerOpen}
+                  value={field.coercion_strategy ?? undefined}
+                  onChange={handleCoercionStrategyChange}
+                  onDropdownClose={() => setIsCoercionPickerOpen(false)}
+                  onDropdownOpen={() => setIsCoercionPickerOpen(true)}
+                />
               )}
-
-              <Switch
-                checked={isCasting}
-                classNames={{
-                  body: S.switchBody,
-                }}
-                flex="1"
-                label={t`Cast to a specific data type`}
-                mt="md"
-                size="xs"
-                onChange={handleCastingChange}
-              />
-            </Flex>
-
-            {isCasting && (
-              <CoercionStrategyPicker
-                autoFocus={autoFocusCoercionPicker}
-                baseType={field.base_type}
-                dropdownOpened={isCoercionPickerOpen}
-                value={field.coercion_strategy ?? undefined}
-                onChange={handleCoercionStrategyChange}
-                onDropdownClose={() => setIsCoercionPickerOpen(false)}
-                onDropdownOpen={() => setIsCoercionPickerOpen(true)}
-              />
-            )}
-          </>
-        )}
-      </Stack>
+            </>
+          )}
+        </Stack>
+      </Group>
     </TitledSection>
   );
 };

@@ -14,7 +14,6 @@ import { ResponsiveButton } from "../ResponsiveButton";
 
 import { BehaviorSection } from "./BehaviorSection";
 import { DataSection } from "./DataSection";
-import S from "./FieldSection.module.css";
 import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
 import { useResponsiveButtons } from "./hooks";
@@ -87,17 +86,8 @@ const FieldSectionBase = ({
   };
 
   return (
-    <Stack data-testid="field-section" gap={0} pb="lg">
-      <Stack
-        bg="accent-gray-light"
-        className={S.header}
-        gap="lg"
-        pb={12}
-        pos="sticky"
-        pt="lg"
-        px="lg"
-        top={0}
-      >
+    <Stack data-testid="field-section" gap={0} pb="lg" bg="bg-white">
+      <Stack gap="md" pb="md" pt="lg" px="lg">
         <NameDescriptionInput
           description={field.description ?? ""}
           descriptionPlaceholder={t`Give this field a description`}

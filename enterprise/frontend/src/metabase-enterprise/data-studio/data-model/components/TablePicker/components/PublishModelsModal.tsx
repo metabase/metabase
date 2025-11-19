@@ -131,7 +131,7 @@ function getLink(response: PublishModelsResponse) {
     return Urls.dataStudioModel(response.models[0].id);
   }
 
-  return Urls.dataStudioCollection(response.target_collection.id);
+  return Urls.dataStudioCollection(response.target_collection?.id ?? "root");
 }
 
 function AcknowledgePublishModelsModal({

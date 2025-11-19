@@ -146,7 +146,7 @@
   (= (:type collection) library-metrics-collection-type))
 
 (defn remote-synced-collection
-  "Get the remote-synced collection if it exists."
+  "Get the remote-synced collection, if it exists."
   []
   (t2/select-one :model/Collection :type remote-synced-collection-type :location "/"))
 
