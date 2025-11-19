@@ -110,4 +110,3 @@
 
 (defmethod disjunction nil [_ terms]
   (disjunction (default-engine) terms))
-
