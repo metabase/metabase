@@ -76,6 +76,9 @@
                 collection]}
         (create-resources user-id database-id name)
 
+        _ #_:clj-kondo/ignore (def wsx workspace)
+        _ #_:clj-kondo/ignore (def collx collection)
+
         entities-info (dummy-dag-single-transform->entities-info stuffs)
 
         ;; Creates the new schema database schema
@@ -92,3 +95,29 @@
                  #_#_:graph (dummy-dag-add-mirrored-entities _entities-info-with-mirrors)})
     ;; TBD what this should return.
     (assoc workspace :collection_id (:id collection))))
+
+#_:clj-kondo/ignore
+(comment
+  (def duped-trans-id 1)
+
+  (try (create-workspace
+        1 ;; that's me
+        {:name "the best workspace"
+         :database_id 2 ;; hardcoded test-data on pg
+         :stuffs {:transforms [duped-trans-id]}})
+       (catch Throwable e
+         (def eee e)
+         (throw e)))
+
+  (let [db (t2/select-one :model/Database :id 2) ;; pg test data
+        driver (metabase.driver.util/database->driver db)
+        jdbc-spec ((requiring-resolve 'metabase.driver.sql-jdbc.connection/connection-details->spec)
+                   driver
+                   (:details db))
+        coll-id (:id collx)
+        ws-id (:id wsx)]
+    (t2/delete! :model/Collection :id coll-id)
+    (t2/delete! :model/Transform :id [:> 1])
+    (t2/delete! :model/Workspace :id ws-id)
+    (t2/delete! :model/Table :schema (str "mb__isolation_ff4a5_" ws-id))
+    (clojure.java.jdbc/execute! jdbc-spec [(str "DROP SCHEMA \"mb__isolation_ff4a5_" ws-id "\" CASCADE")])))

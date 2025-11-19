@@ -102,7 +102,7 @@
 
 #_:clj-kondo/ignore
 (comment
-  ;;;; manually mirror some transform without dependencies
+  ;;;; manually mirror some transform without dependencies -- adjust to your needs
   ;;
   ;; Set the following vars, then exec try block
   ;; for cleanup use the do block
