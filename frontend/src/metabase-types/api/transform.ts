@@ -17,6 +17,7 @@ export type Transform = {
   target: TransformTarget;
   created_at: string;
   updated_at: string;
+  workspace_id: number | null;
 
   // hydrated fields
   tag_ids?: TransformTagId[];

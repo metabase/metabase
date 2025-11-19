@@ -18,6 +18,7 @@ import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
 import { RunSection } from "./RunSection";
 import { TargetSection } from "./TargetSection";
+import { WorkspaceSection } from "./WorkspaceSection";
 import {
   isTransformCanceling,
   isTransformRunning,
@@ -69,6 +70,7 @@ export function TransformPage({ params }: TransformPageProps) {
     <Stack gap="3.5rem" data-testid="transform-page">
       <Stack gap="lg">
         <HeaderSection transform={transform} />
+        <WorkspaceSection transform={transform} />
         <NameSection transform={transform} />
       </Stack>
       <RunSection transform={transform} />
