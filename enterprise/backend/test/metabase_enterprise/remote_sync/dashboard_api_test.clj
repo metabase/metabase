@@ -6,7 +6,7 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [f]
-                      (mt/with-temporary-setting-values [remote-sync-type :development]
+                      (mt/with-temporary-setting-values [remote-sync-type :read-write]
                         (f))))
 
 (deftest api-update-dashboard-collection-id-remote-synced-dependency-checking-success-test

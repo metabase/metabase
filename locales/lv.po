@@ -31296,16 +31296,16 @@ msgid "The location of your git repository, e.g. https://github.com/acme-inco/me
 msgstr "Jūsu git repozitorija atrašanās vieta, piemēram, https://github.com/acme-inco/metabase.git"
 
 #: metabase_enterprise/remote_sync/settings.clj:46
-msgid "Git synchronization type - :development or :production"
-msgstr "Git sinhronizācijas veids — :development vai :production"
+msgid "Git synchronization type - :read-write or :read-only"
+msgstr "Git sinhronizācijas veids — :read-write vai :read-only"
 
 #: metabase_enterprise/remote_sync/settings.clj:62
-msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production."
-msgstr "Vai automātiski importēt no attālā git repozitorija. Attiecas tikai tad, ja remote-sync-type ir :production."
+msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only."
+msgstr "Vai automātiski importēt no attālā git repozitorija. Attiecas tikai tad, ja remote-sync-type ir :read-only."
 
 #: metabase_enterprise/remote_sync/settings.clj:70
-msgid "If remote-sync-type is :production and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
-msgstr "Ja remote-sync-type ir :production un remote-sync-autoimport ir true, ātrums (minūtēs), ar kādu pārbaudīt importējamos atjauninājumus. Noklusējuma vērtība ir 5."
+msgid "If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
+msgstr "Ja remote-sync-type ir :read-only un remote-sync-autoimport ir true, ātrums (minūtēs), ar kādu pārbaudīt importējamos atjauninājumus. Noklusējuma vērtība ir 5."
 
 #: metabase_enterprise/remote_sync/settings.clj:78
 msgid "The maximum amount of time a remote sync task will be given to complete"

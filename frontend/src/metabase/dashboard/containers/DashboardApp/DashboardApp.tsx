@@ -25,6 +25,7 @@ import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
 import { useAutoScrollToDashcard } from "metabase/dashboard/hooks/use-auto-scroll-to-dashcard";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
+import { isWithinIframe } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
@@ -146,6 +147,11 @@ export const DashboardApp = ({
 
   const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
     useAutoScrollToDashcard(location);
+
+  const isRouteInSync = window.location.pathname === location.pathname;
+  if (isWithinIframe() && !isRouteInSync) {
+    return null; // Don't render until route syncs (metabase#65500)
+  }
 
   return (
     <ErrorBoundary message={error}>

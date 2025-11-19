@@ -115,7 +115,6 @@ module.exports = {
           "And",
           "When",
           "Then",
-          "describeWithSnowplow",
         ],
       },
     ],
@@ -343,6 +342,12 @@ module.exports = {
       files: ["frontend/build/**/*.js"],
       rules: {
         "import/no-commonjs": "off",
+      },
+    },
+    {
+      files: ["**/*.stories.tsx", "**/preview.tsx"],
+      rules: {
+        "import/no-default-export": "off",
       },
     },
   ],

@@ -2313,7 +2313,7 @@
 
 (deftest create-document-in-remote-synced-with-non-remote-synced-smartlink-test
   (testing "POST /api/ee/document/ - creating document in remote-synced collection with smartlink to non-remote-synced item"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-model-cleanup [:model/Document]
         (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                  :location "/"
@@ -2336,7 +2336,7 @@
 
 (deftest create-document-in-remote-synced-with-remote-synced-smartlink-test
   (testing "POST /api/ee/document/ - creating document in remote-synced collection with smartlink to remote-synced item"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-model-cleanup [:model/Document]
         (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                  :location "/"
@@ -2356,7 +2356,7 @@
 
 (deftest create-document-in-regular-collection-with-any-smartlink-test
   (testing "POST /api/ee/document/ - creating document in regular collection can reference any item"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-model-cleanup [:model/Document]
         (mt/with-temp [:model/Collection {regular-id :id} {:name "Regular Collection"
                                                            :location "/"
@@ -2389,7 +2389,7 @@
 
 (deftest update-document-in-remote-synced-with-non-remote-synced-smartlink-test
   (testing "PUT /api/ee/document/:id - updating document in remote-synced collection to add non-remote-synced reference"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                :location "/"
                                                                :type "remote-synced"}
@@ -2411,7 +2411,7 @@
 
 (deftest update-document-in-remote-synced-with-remote-synced-smartlink-test
   (testing "PUT /api/ee/document/:id - updating document in remote-synced collection to add remote-synced reference"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                :location "/"
                                                                :type "remote-synced"}
@@ -2431,7 +2431,7 @@
 
 (deftest move-document-with-remote-synced-refs-out-of-remote-synced-collection-test
   (testing "PUT /api/ee/document/:id - moving document with remote-synced references out of remote-synced collection"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                :location "/"
                                                                :type "remote-synced"}
@@ -2454,7 +2454,7 @@
 
 (deftest move-document-with-remote-synced-refs-to-root-collection-test
   (testing "PUT /api/ee/document/:id - moving document with remote-synced references to root collection"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                :location "/"
                                                                :type "remote-synced"}
@@ -2474,7 +2474,7 @@
 
 (deftest move-document-without-remote-synced-refs-out-of-remote-synced-collection-test
   (testing "PUT /api/ee/document/:id - moving document without remote-synced references out of remote-synced collection"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                :location "/"
                                                                :type "remote-synced"}
@@ -2494,7 +2494,7 @@
 
 (deftest move-document-into-remote-synced-collection-with-non-remote-synced-refs-test
   (testing "PUT /api/ee/document/:id - moving document into remote-synced collection when it has non-remote-synced references"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                :location "/"
                                                                :type "remote-synced"}
@@ -2519,7 +2519,7 @@
                 "Document should remain in regular collection")))))))
 
 (deftest update-and-move-document-simultaneously-test
-  (mt/with-temporary-setting-values [remote-sync-type :development]
+  (mt/with-temporary-setting-values [remote-sync-type :read-write]
     (testing "PUT /api/ee/document/:id - updating content and moving collection simultaneously"
       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                :location "/"
