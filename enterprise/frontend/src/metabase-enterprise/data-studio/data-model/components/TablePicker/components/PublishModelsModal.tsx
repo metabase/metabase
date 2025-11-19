@@ -2,11 +2,7 @@ import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useListCollectionItemsQuery,
-  usePublishModelsMutation,
-} from "metabase/api";
+import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import {
   CollectionPickerModal,
   type CollectionPickerValueItem,
@@ -16,7 +12,10 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Checkbox, Group, Modal, Text, rem } from "metabase/ui";
-import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
+import {
+  useGetLibraryCollectionQuery,
+  usePublishModelsMutation,
+} from "metabase-enterprise/api";
 import type {
   CollectionItem,
   DatabaseId,
@@ -150,7 +149,7 @@ function getLink(response: PublishModelsResponse) {
     return Urls.dataStudioModel(response.models[0].id);
   }
 
-  return Urls.dataStudioCollection(response.target_collection.id);
+  return Urls.dataStudioCollection(response.target_collection?.id ?? "root");
 }
 
 function AcknowledgePublishModelsModal({

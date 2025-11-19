@@ -1531,7 +1531,6 @@
            api
            app-db
            audit-app
-           collections
            driver
            lib
            lib-be
@@ -1539,7 +1538,6 @@
            parameters
            permissions
            premium-features
-           queries
            query-processor
            search
            util
@@ -1619,7 +1617,6 @@
            warehouse-schema
            warehouses
            enterprise/advanced-permissions}}
-
 
   xrays
   {:team "Querying"
@@ -1874,6 +1871,22 @@
            util
            warehouse-schema
            warehouses-rest}}
+
+  enterprise/data-studio
+  {:team "Gadget"
+   :api  #{metabase-enterprise.data-studio.api}
+   :uses #{api
+           collections
+           database-routing
+           driver
+           events
+           lib
+           lib-be
+           queries
+           request
+           sync
+           util
+           warehouse-schema}}
 
   enterprise/dependencies
   {:team "Querying"

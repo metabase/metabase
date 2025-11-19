@@ -1,8 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useEditTablesMutation } from "metabase/api";
 import {
   DataSourceInput,
   EntityTypeInput,
@@ -10,8 +9,8 @@ import {
   UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { SyncOptionsModal } from "metabase/metadata/pages/shared/SyncOptionsModal";
 import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
+import { useEditTablesMutation } from "metabase-enterprise/api";
 import type {
   TableDataLayer,
   TableDataSource,
@@ -19,6 +18,7 @@ import type {
 } from "metabase-types/api";
 
 import { useSelection } from "../../pages/DataModel/contexts/SelectionContext";
+import { SyncOptionsModal } from "../SyncOptionsModal";
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 
 import S from "./TableAttributes.module.css";
@@ -76,8 +76,6 @@ export function TableAttributesEditBulk() {
       owner_user_id: userId === "unknown" ? null : (userId ?? undefined),
     });
 
-    // onUpdate?.();
-
     if (error) {
       sendErrorToast(t`Failed to update items`);
     } else {
@@ -100,6 +98,14 @@ export function TableAttributesEditBulk() {
       setEntityType(entityType);
     }
   };
+
+  useEffect(() => {
+    setDataLayer(null);
+    setDataSource(null);
+    setEmail(null);
+    setEntityType(null);
+    setUserId(null);
+  }, [selectedTables, selectedSchemas, selectedDatabases]);
 
   return (
     <>

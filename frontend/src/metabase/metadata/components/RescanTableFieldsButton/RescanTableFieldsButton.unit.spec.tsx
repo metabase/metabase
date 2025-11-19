@@ -1,10 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupTableEndpoints,
-  setupTablesBulkEndpoints,
-} from "__support__/server-mocks";
+import { setupTableEndpoints } from "__support__/server-mocks";
 import {
   act,
   renderWithProviders,
@@ -21,11 +18,10 @@ function setup() {
   const table = createMockTable();
 
   setupTableEndpoints(table);
-  setupTablesBulkEndpoints();
 
   renderWithProviders(
     <>
-      <RescanTableFieldsButton tableIds={[table.id]} />
+      <RescanTableFieldsButton tableId={table.id} />
       <UndoListing />
     </>,
   );
@@ -45,13 +41,11 @@ describe("RescanTableFieldsButton", () => {
     expect(button).toHaveTextContent("Re-scan table");
 
     await userEvent.click(button);
-    const calls = fetchMock.callHistory.calls(`path:/api/table/rescan-values`, {
-      method: "POST",
-    });
-    expect(calls).toHaveLength(1);
-    expect(JSON.parse(calls[0].options.body as string)).toEqual({
-      table_ids: [table.id],
-    });
+    expect(
+      fetchMock.callHistory.calls(`path:/api/table/${table.id}/rescan_values`, {
+        method: "POST",
+      }),
+    ).toHaveLength(1);
     await waitFor(() => {
       expect(button).toHaveTextContent("Scan triggered!");
     });
@@ -69,13 +63,11 @@ describe("RescanTableFieldsButton", () => {
     expect(button).toHaveTextContent("Re-scan table");
 
     await userEvent.click(button);
-    let calls = fetchMock.callHistory.calls(`path:/api/table/rescan-values`, {
-      method: "POST",
-    });
-    expect(calls).toHaveLength(1);
-    expect(JSON.parse(calls[0].options.body as string)).toEqual({
-      table_ids: [table.id],
-    });
+    expect(
+      fetchMock.callHistory.calls(`path:/api/table/${table.id}/rescan_values`, {
+        method: "POST",
+      }),
+    ).toHaveLength(1);
     await waitFor(() => {
       expect(button).toHaveTextContent("Scan triggered!");
     });
@@ -86,13 +78,11 @@ describe("RescanTableFieldsButton", () => {
 
     expect(button).toHaveTextContent("Scan triggered!");
     await userEvent.click(button);
-    calls = fetchMock.callHistory.calls(`path:/api/table/rescan-values`, {
-      method: "POST",
-    });
-    expect(calls).toHaveLength(2);
-    expect(JSON.parse(calls[1].options.body as string)).toEqual({
-      table_ids: [table.id],
-    });
+    expect(
+      fetchMock.callHistory.calls(`path:/api/table/${table.id}/rescan_values`, {
+        method: "POST",
+      }),
+    ).toHaveLength(2);
 
     await act(() => {
       jest.advanceTimersByTime(1000);
@@ -110,7 +100,7 @@ describe("RescanTableFieldsButton", () => {
   it("should show error message toast", async () => {
     const { table } = setup();
 
-    fetchMock.modifyRoute("tables-rescan-values", {
+    fetchMock.modifyRoute(`table-${table.id}-rescan-values`, {
       response: { status: 500 },
     });
 
@@ -118,13 +108,11 @@ describe("RescanTableFieldsButton", () => {
     expect(button).toHaveTextContent("Re-scan table");
 
     await userEvent.click(button);
-    const calls = fetchMock.callHistory.calls(`path:/api/table/rescan-values`, {
-      method: "POST",
-    });
-    expect(calls).toHaveLength(1);
-    expect(JSON.parse(calls[0].options.body as string)).toEqual({
-      table_ids: [table.id],
-    });
+    expect(
+      fetchMock.callHistory.calls(`path:/api/table/${table.id}/rescan_values`, {
+        method: "POST",
+      }),
+    ).toHaveLength(1);
     await waitFor(() => {
       expect(button).toHaveTextContent("Re-scan table");
     });

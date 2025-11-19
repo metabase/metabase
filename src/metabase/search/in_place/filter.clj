@@ -294,19 +294,21 @@
 
   This is function instead of a def so that optional-filter-clause can be defined anywhere in the codebase."
   []
-  (merge
-   ;; models support search-native-query if there are additional columns to search when the `search-native-query`
-   ;; argument is true
-   {:search-native-query (->> (dissoc (methods @(requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)) :default)
-                              (filter (fn [[model f]]
-                                        (seq (set/difference (set (f model true)) (set (f model false))))))
-                              (map first)
-                              set)}
-   (->> (dissoc (methods build-optional-filter-query) :default)
-        keys
-        (reduce (fn [acc [filter model]]
-                  (update acc filter set/union #{model}))
-                {}))))
+  (-> (merge
+        ;; models support search-native-query if there are additional columns to search when the `search-native-query`
+        ;; argument is true
+       {:search-native-query (->> (dissoc (methods @(requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)) :default)
+                                  (filter (fn [[model f]]
+                                            (seq (set/difference (set (f model true)) (set (f model false))))))
+                                  (map first)
+                                  set)}
+       (->> (dissoc (methods build-optional-filter-query) :default)
+            keys
+            (reduce (fn [acc [filter model]]
+                      (update acc filter set/union #{model}))
+                    {})))
+      (update :collection disj "table" "database")
+      (update :collection conj "indexed-entity")))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                        Public functions                                         ;;
@@ -317,7 +319,8 @@
 
   If the context has optional filters, the models will be restricted for the set of supported models only."
   [search-context]
-  (let [{:keys [created-at
+  (let [{:keys [collection
+                created-at
                 created-by
                 last-edited-at
                 last-edited-by
@@ -331,6 +334,7 @@
         feature->supported-models (feature->supported-models)]
     (cond-> models
       (not   is-superuser?)        (disj "transform")
+      (some? collection)           (set/intersection (:collection feature->supported-models))
       (some? created-at)           (set/intersection (:created-at feature->supported-models))
       (some? created-by)           (set/intersection (:created-by feature->supported-models))
       (some? last-edited-at)       (set/intersection (:last-edited-at feature->supported-models))

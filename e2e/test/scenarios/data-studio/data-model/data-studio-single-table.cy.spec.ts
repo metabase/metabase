@@ -1,12 +1,7 @@
-const { H } = cy;
-
-const { TablePicker } = H.DataModel;
-const DATA_STUDIO_BASE_PATH = "/data-studio/data";
-const visitAdminDataModel = H.DataModel.visit;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
-H.DataModel.visit = (options = {}) =>
-  visitAdminDataModel({ ...options, basePath: DATA_STUDIO_BASE_PATH });
+const { H } = cy;
+const { TablePicker } = H.DataModel;
 
 interface MetadataResponse {
   updated_at: string;
@@ -22,8 +17,7 @@ interface PublishModelResponse {
 
 describe("Table editing", () => {
   beforeEach(() => {
-    H.activateToken("bleeding-edge");
-
+    H.restore();
     cy.intercept("GET", "/api/database?*").as("databases");
     cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
@@ -38,13 +32,16 @@ describe("Table editing", () => {
     cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
     cy.intercept("PUT", "/api/table").as("updateTables");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
-    cy.intercept("post", "/api/table/publish-model").as("publishModel");
+    cy.intercept("POST", "/api/ee/data-studio/table/publish-model").as(
+      "publishModel",
+    );
   });
 
   it("should display metadata information", { tags: ["@external"] }, () => {
-    H.restore("mysql-8");
     cy.signInAsAdmin();
-    H.DataModel.visit();
+    H.activateToken("bleeding-edge");
+    H.restore("mysql-8");
+    H.DataModel.visitDataStudio();
     TablePicker.getDatabase("QA MySQL8").click();
     TablePicker.getTable("Orders").click();
 
@@ -72,8 +69,9 @@ describe("Table editing", () => {
     { tags: ["@external"] },
     () => {
       cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
       H.restore("mysql-8");
-      H.DataModel.visit();
+      H.DataModel.visitDataStudio();
       TablePicker.getDatabase("QA MySQL8").click();
       TablePicker.getTable("Orders").click();
 
@@ -92,7 +90,6 @@ describe("Table editing", () => {
         cy.findByRole("button", { name: /Cancel/ }).click();
       });
 
-      // Publish to a collection
       cy.findByRole("button", { name: /Publish/ }).click();
       H.pickEntity({
         tab: "Collections",
@@ -100,20 +97,18 @@ describe("Table editing", () => {
       });
       cy.findByRole("button", { name: /Publish here/ }).click();
 
-      // Feedback toast is correctly shown
-      H.undoToast().within(() => {
-        cy.findByText("Published").should("be.visible");
-        cy.findByRole("button", { name: /See it/ }).click();
-      });
-
       cy.wait<PublishModelResponse>("@publishModel").then(({ response }) => {
         const modelId = response?.body.models[0].id ?? 0;
+        H.undoToast().within(() => {
+          cy.findByText("Published").should("be.visible");
+          cy.findByRole("button", { name: /See it/ }).click();
+        });
         cy.url().should("include", `/data-studio/modeling/models/${modelId}`);
       });
 
-      // Should not show info modal again after page reload
+      // Should not show info modal again
       cy.go("back");
-      cy.reload();
+
       cy.findByRole("button", { name: /Publish/ }).click();
       H.modal().within(() => {
         cy.findByText("Pick the collection to publish this table in").should(
@@ -125,8 +120,9 @@ describe("Table editing", () => {
 
   it("should allow to edit attributes", { tags: ["@external"] }, () => {
     cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
     H.restore("postgres-12");
-    H.DataModel.visit();
+    H.DataModel.visitDataStudio();
     TablePicker.getDatabase("QA Postgres12").click();
     TablePicker.getTable("Orders").click();
 
@@ -154,7 +150,10 @@ describe("Table editing", () => {
       .findByText("Table data source updated")
       .should("be.visible");
 
-    cy.reload();
+    // navigate away and back
+    TablePicker.getTable("Products").click();
+    TablePicker.getTable("Orders").click();
+
     H.selectHasValue("Owner", "Bobby Tables");
     H.selectHasValue("Visibility type", "Gold");
     H.selectHasValue("Entity type", "Person");
@@ -166,6 +165,7 @@ describe("Table editing", () => {
     { tags: ["@external"] },
     () => {
       cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
       H.restore("postgres-writable");
       H.resetTestTable({ type: "postgres", table: "many_schemas" });
 
@@ -184,7 +184,7 @@ describe("Table editing", () => {
         targetSchema: TARGET_SCHEMA,
         name: TRANSFORM_NAME,
       }).then(() => {
-        H.DataModel.visit();
+        H.DataModel.visitDataStudio();
         TablePicker.getDatabase("Writable Postgres12").click();
         TablePicker.getSchema(TARGET_SCHEMA).click();
         TablePicker.getTable(TRANSFORM_TABLE_DISPLAY_NAME).click();

@@ -67,7 +67,7 @@ const MetadataSectionBase = ({ databaseId, field, table }: Props) => {
   };
 
   return (
-    <TitledSection title={t`Metadata`}>
+    <TitledSection>
       <SemanticTypeAndTargetPicker
         description={t`What this data represents`}
         field={field}

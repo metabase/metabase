@@ -8,6 +8,7 @@ import {
   useRef,
 } from "react";
 import { Link } from "react-router";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
@@ -65,6 +66,9 @@ export function TablePickerResults({
       element?.getBoundingClientRect().height ?? ITEM_MIN_HEIGHT,
   });
 
+  const latestItems = useLatest(items);
+  const latestVirtual = useLatest(virtual);
+
   const virtualItems = virtual.getVirtualItems();
 
   const { data: usersData } = useListUsersQuery();
@@ -80,25 +84,26 @@ export function TablePickerResults({
       if (path.tableId === undefined) {
         return;
       }
-      const index = items.findIndex(
+      const index = latestItems.current.findIndex(
         (item) => item.type === "table" && item.value?.tableId === path.tableId,
       );
       if (index === -1) {
         return;
       }
 
-      const visibleIndices = virtual
+      const visibleIndices = latestVirtual.current
         .getVirtualItems()
         .map((virtualItem) => virtualItem.index);
       if (visibleIndices.includes(index)) {
         return;
       }
 
-      virtual.scrollToIndex(index, { align: "start", behavior: "auto" });
+      latestVirtual.current.scrollToIndex(index, {
+        align: "start",
+        behavior: "auto",
+      });
     },
-    // TODO: fix it, avoids unnecessary jumps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [path.tableId],
+    [path.tableId, latestItems, latestVirtual],
   );
 
   useEffect(() => {
@@ -263,13 +268,13 @@ function ElementCheckbox({
 }
 
 function Loading() {
-  const w = 20 + Math.random() * 80;
+  const width = useMemo(() => 100 + Math.random() * 100, []);
 
   return (
     <Skeleton
       data-testid="loading-placeholder"
-      height={rem(12)}
-      width={`${w}%`}
+      height={rem(16)}
+      width={width}
       radius="sm"
     />
   );
@@ -585,7 +590,10 @@ const ResultsItem = ({
               {expectedRowsDisplay}
             </Box>
 
-            <Box className={cx(S.column, S.publishedColumn)}>
+            <Box
+              className={cx(S.column, S.publishedColumn)}
+              data-testid="table-published"
+            >
               {publishedDisplay}
             </Box>
           </>
