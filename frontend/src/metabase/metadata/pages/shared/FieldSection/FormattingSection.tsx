@@ -53,7 +53,7 @@ const FormattingSectionBase = ({ field }: Props) => {
   };
 
   return (
-    <TitledSection title={t`Formatting`}>
+    <TitledSection>
       <ColumnSettings
         column={field}
         denylist={denyList}

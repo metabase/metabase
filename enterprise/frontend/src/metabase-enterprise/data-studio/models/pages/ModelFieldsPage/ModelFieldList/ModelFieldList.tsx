@@ -54,12 +54,18 @@ export function ModelFieldList({
   };
 
   return (
-    <Flex className={S.section} flex={1} direction="column">
+    <Flex
+      className={S.section}
+      flex={activeFieldName ? "0 0 33%" : 1}
+      direction="column"
+    >
       {!isReadOnly && (
-        <Group className={S.header} p="md" justify="end">
+        <Group className={S.header} p="md" pb="sm">
           <Button
-            size="sm"
-            leftSection={isSorting! && <Icon name="sort_arrows" />}
+            px="sm"
+            py="0.85rem"
+            size="compact-md"
+            leftSection={<Icon name="sort_arrows" />}
             onClick={handleSortingClick}
           >
             {isSorting ? t`Done` : t`Sorting`}

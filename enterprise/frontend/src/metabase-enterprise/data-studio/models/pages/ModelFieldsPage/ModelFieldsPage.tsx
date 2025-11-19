@@ -23,8 +23,8 @@ import { ModelHeader } from "../../components/ModelHeader";
 import type { FieldOverrides } from "../../types";
 
 import { ModelFieldDetails } from "./ModelFieldDetails";
-import { ModelFieldEmptyState } from "./ModelFieldEmptyState";
 import { ModelFieldList } from "./ModelFieldList";
+import S from "./ModelFieldsPage.module.css";
 
 type ModelFieldsPageParams = {
   cardId: string;
@@ -145,27 +145,27 @@ function ModelFieldsPageBody({
             />
           }
         />
-        <Flex flex={1} mih={0} bg="bg-light">
-          <ModelFieldList
-            fields={fields}
-            activeFieldName={activeFieldName}
-            isSorting={isSorting}
-            isReadOnly={isReadOnly}
-            onSelectField={handleSelectField}
-            onChangeField={handleChangeField}
-            onChangeSorting={setFields}
-            onToggleSorting={setIsSorting}
-          />
-          {activeField != null ? (
-            <ModelFieldDetails
-              field={activeField}
-              idFields={idFields}
+        <Flex className={S.contentWrapper}>
+          <Flex flex={1} mih={0} bg="bg-light" miw={740}>
+            <ModelFieldList
+              fields={fields}
+              activeFieldName={activeFieldName}
+              isSorting={isSorting}
               isReadOnly={isReadOnly}
+              onSelectField={handleSelectField}
               onChangeField={handleChangeField}
+              onChangeSorting={setFields}
+              onToggleSorting={setIsSorting}
             />
-          ) : (
-            <ModelFieldEmptyState isReadOnly={isReadOnly} />
-          )}
+            {activeField != null ? (
+              <ModelFieldDetails
+                field={activeField}
+                idFields={idFields}
+                isReadOnly={isReadOnly}
+                onChangeField={handleChangeField}
+              />
+            ) : null}
+          </Flex>
         </Flex>
       </Flex>
       <LeaveRouteConfirmModal route={route} isEnabled={isDirty} />

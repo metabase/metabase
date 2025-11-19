@@ -38,7 +38,7 @@ describe("Table editing", () => {
     cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
     cy.intercept("PUT", "/api/table").as("updateTables");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
-    cy.intercept("post", "/api/table/publish-model").as("publishModel");
+    cy.intercept("POST", "/api/table/publish-model").as("publishModel");
   });
 
   it("should display metadata information", { tags: ["@external"] }, () => {
@@ -92,7 +92,6 @@ describe("Table editing", () => {
         cy.findByRole("button", { name: /Cancel/ }).click();
       });
 
-      // Publish to a collection
       cy.findByRole("button", { name: /Publish/ }).click();
       H.pickEntity({
         tab: "Collections",
@@ -100,14 +99,12 @@ describe("Table editing", () => {
       });
       cy.findByRole("button", { name: /Publish here/ }).click();
 
-      // Feedback toast is correctly shown
-      H.undoToast().within(() => {
-        cy.findByText("Published").should("be.visible");
-        cy.findByRole("button", { name: /See it/ }).click();
-      });
-
       cy.wait<PublishModelResponse>("@publishModel").then(({ response }) => {
         const modelId = response?.body.models[0].id ?? 0;
+        H.undoToast().within(() => {
+          cy.findByText("Published").should("be.visible");
+          cy.findByRole("button", { name: /See it/ }).click();
+        });
         cy.url().should("include", `/data-studio/modeling/models/${modelId}`);
       });
 
