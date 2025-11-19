@@ -275,3 +275,122 @@
 
         (testing "empty selectors returns no tables"
           (is (= nil (selectors->table-ids {}))))))))
+
+(deftest trigger-sync-on-data-layer-change-from-copper-test
+  (mt/with-premium-features #{:data-studio}
+    (testing "Changing data_layer from copper to another value triggers sync"
+      (mt/with-temp [:model/Database {db-id :id}      {}
+                     :model/Table    {copper-1 :id}   {:db_id db-id, :data_layer :copper}
+                     :model/Table    {copper-2 :id}   {:db_id db-id, :data_layer :copper}
+                     :model/Table    {copper-3 :id}   {:db_id db-id, :data_layer :copper}
+                     :model/Table    {copper-4 :id}   {:db_id db-id, :data_layer :copper}
+                     :model/Table    {gold-1 :id}     {:db_id db-id, :data_layer :gold}
+                     :model/Table    {gold-2 :id}     {:db_id db-id, :data_layer :gold}]
+        (let [synced-ids (atom #{})]
+          (mt/with-dynamic-fn-redefs [api.table/sync-unhidden-tables (fn [tables] (reset! synced-ids (set (map :id tables))))]
+            (testing "Changing from copper to gold triggers sync"
+              (reset! synced-ids #{})
+              (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
+                                    {:table_ids  [copper-1 copper-2]
+                                     :data_layer "gold"})
+              (is (= #{copper-1 copper-2} @synced-ids)))
+
+            (testing "Changing from copper to silver triggers sync"
+              (reset! synced-ids #{})
+              (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
+                                    {:table_ids  [copper-3]
+                                     :data_layer "silver"})
+              (is (= #{copper-3} @synced-ids)))
+
+            (testing "Changing from copper to bronze triggers sync"
+              (reset! synced-ids #{})
+              (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
+                                    {:table_ids  [copper-4]
+                                     :data_layer "bronze"})
+              (is (= #{copper-4} @synced-ids)))
+
+            (testing "Not changing from copper does not trigger sync"
+              (reset! synced-ids #{})
+              (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
+                                    {:table_ids  [gold-1]
+                                     :data_layer "silver"})
+              (is (= #{} @synced-ids)))
+
+            (testing "Changing to copper does not trigger sync"
+              (reset! synced-ids #{})
+              (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
+                                    {:table_ids  [gold-2]
+                                     :data_layer "copper"})
+              (is (= #{} @synced-ids)))))))))
+
+(deftest ^:parallel bulk-edit-test
+  (mt/with-premium-features #{:data-studio}
+    (testing "can edit a bunch of things at once"
+      (mt/with-temp [:model/Database {clojure :id}    {}
+                     :model/Database {jvm :id}        {}
+                     :model/Table    {vars :id}       {:db_id clojure}
+                     :model/Table    {namespaces :id} {:db_id clojure}
+                     :model/Table    {beans :id}      {:db_id jvm}
+                     :model/Table    {classes :id}    {:db_id jvm}
+                     :model/Table    {gc :id}         {:db_id jvm, :schema "jre"}
+                     :model/Table    {jit :id}        {:db_id jvm, :schema "jre"}]
+
+        (testing "only admin can edit"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "ee/data-studio/table/edit"
+                                       {:database_ids [clojure jvm]
+                                        :data_layer   "copper"}))))
+
+        (testing "simple happy path updating with db ids"
+          (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
+                                {:database_ids   [clojure jvm]
+                                 :data_layer     "copper"
+                                 :data_authority "authoritative"
+                                 :data_source    "ingested"})
+          (is (= #{:copper} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
+          (is (= #{:authoritative} (t2/select-fn-set :data_authority :model/Table :db_id [:in [clojure jvm]])))
+          (is (= #{:ingested} (t2/select-fn-set :data_source :model/Table :db_id [:in [clojure jvm]]))))
+
+        (testing "updating with all selectors"
+          (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
+                                {:database_ids  [clojure]
+                                 :table_ids     [classes]
+                                 :schema_ids    [(format "%d:jre" jvm)]
+                                 :data_layer    "silver"})
+          (is (= {vars       :silver
+                  namespaces :silver
+                  beans      :copper
+                  classes    :silver
+                  gc         :silver
+                  jit        :silver}
+                 (t2/select-pk->fn :data_layer :model/Table :db_id [:in [clojure jvm]]))))
+
+        (testing "can update owner_email"
+          (is (= #{nil} (t2/select-fn-set :owner_email :model/Table :db_id [:in [clojure jvm]])))
+
+          (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
+                                {:database_ids [clojure]
+                                 :owner_email  "clojure-owner@example.com"})
+
+          (is (= {vars       "clojure-owner@example.com"
+                  namespaces "clojure-owner@example.com"
+                  beans      nil
+                  classes    nil
+                  gc         nil
+                  jit        nil}
+                 (t2/select-pk->fn :owner_email :model/Table :db_id [:in [clojure jvm]]))))
+
+        (testing "can update owner_user_id"
+          (is (= #{nil} (t2/select-fn-set :owner_user_id :model/Table :db_id [:in [clojure jvm]])))
+
+          (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
+                                {:table_ids      [beans classes]
+                                 :owner_user_id  (mt/user->id :rasta)})
+
+          (is (= {vars       nil
+                  namespaces nil
+                  beans      (mt/user->id :rasta)
+                  classes    (mt/user->id :rasta)
+                  gc         nil
+                  jit        nil}
+                 (t2/select-pk->fn :owner_user_id :model/Table :db_id [:in [clojure jvm]]))))))))

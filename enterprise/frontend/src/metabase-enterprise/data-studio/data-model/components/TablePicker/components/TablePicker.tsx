@@ -110,6 +110,7 @@ export function TablePicker({
           <Popover.Target>
             <Tooltip label={t`Filter`}>
               <Button
+                aria-label={t`Filter`}
                 leftSection={
                   <Box pos="relative">
                     <Icon name="filter" />

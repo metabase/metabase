@@ -165,7 +165,6 @@
   [_route-params
    {:keys                               [q context archived models verified ids]
     calculate-available-models          :calculate_available_models
-    collection                          :collection
     created-at                          :created_at
     created-by                          :created_by
     filter-items-in-personal-collection :filter_items_in_personal_collection
@@ -184,7 +183,6 @@
        [:q                                   {:optional true} [:maybe :string]]
        [:context                             {:optional true} [:maybe :keyword]]
        [:archived                            {:default false} [:maybe :boolean]]
-       [:collection                          {:optional true} [:maybe ms/PositiveInt]]
        [:table_db_id                         {:optional true} [:maybe ms/PositiveInt]]
        [:models                              {:optional true} [:maybe (ms/QueryVectorOf search/SearchableModel)]]
        [:filter_items_in_personal_collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
@@ -208,7 +206,6 @@
     (u/prog1 (search/search
               (search/search-context
                {:archived                            archived
-                :collection                          collection
                 :context                             context
                 :created-at                          created-at
                 :created-by                          (set created-by)
