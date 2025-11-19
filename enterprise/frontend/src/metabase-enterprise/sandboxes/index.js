@@ -24,7 +24,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import sandboxingReducer from "./actions";
 import { LoginAttributesWidget } from "./components/LoginAttributesWidget/LoginAttributesWidget";
 import { getSandboxedTableWarningModal } from "./confirmations";
-import { EditSandboxingModalContainer } from "./containers/EditSandboxingModal";
+import { EditSandboxingModalContainer } from "./containers/EditSandboxingModalContainer";
 import { getDraftPolicies, hasPolicyChanges } from "./selectors";
 
 const OPTION_SEGMENTED = {
