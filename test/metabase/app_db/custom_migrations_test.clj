@@ -2702,8 +2702,8 @@
           (assert-pre-conditions))))))
 
 (deftest escape-existing-at-symbol-user-attributes-test
-  (testing "v56.2025-07-18T06:58:44 : rename any existing `@.+` user attrs to add a preceding underscore"
-    (impl/test-migrations ["v56.2025-07-18T06:58:44"] [migrate!]
+  (testing "v58.2025-11-18T12:31:49 : rename any existing `@.+` user attrs to add a preceding underscore"
+    (impl/test-migrations ["v58.2025-11-18T12:31:49"] [migrate!]
       (let [user-id (:id (new-instance-with-default :core_user {:login_attributes "{\"@foo\": \"bar\"}"}))
             other-user-id (:id (new-instance-with-default :core_user {:login_attributes "{\"@foo\": \"bang\"}"}))
             database-id (:id (new-instance-with-default :metabase_database))
