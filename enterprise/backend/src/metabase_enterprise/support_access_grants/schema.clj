@@ -31,6 +31,7 @@
    [:id ms/PositiveInt]
    [:user_id ms/PositiveInt]
    [:user_name [:maybe :string]]
+   [:user_email [:maybe :string]]
    [:ticket_number [:maybe :string]]
    [:notes [:maybe :string]]
    [:grant_start_timestamp ::timestamp]

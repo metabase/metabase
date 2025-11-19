@@ -28,13 +28,18 @@
                                       :last_name (sag.settings/support-access-grant-last-name)
                                       :password (str (random-uuid))})))
 
-(methodical/defmethod t2/batched-hydrate [:model/SupportAccessGrantLog :user_name]
+(methodical/defmethod t2/batched-hydrate [:model/SupportAccessGrantLog :user_info]
   [_model _k grants]
   (let [user-ids   (keep :user_id grants)
-        user-names      (when (seq user-ids)
-                          (t2/select-pk->fn #(str (:first_name %)) [:model/User :id :first_name] :id [:in user-ids]))]
+        user-info  (when (seq user-ids)
+                     (t2/select-pk->fn #(select-keys % [:first_name :email])
+                                       [:model/User :id :first_name :email]
+                                       :id [:in user-ids]))]
     (for [grant grants]
-      (assoc grant :user_name (get user-names (:user_id grant))))))
+      (let [user-info (get user-info (:user_id grant))]
+        (assoc grant
+               :user_name (:first_name user-info)
+               :user_email (:email user-info))))))
 
 (t2/define-after-update :model/SupportAccessGrantLog
   [{revoked-at :revoked_at :as grant}]

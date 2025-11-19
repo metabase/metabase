@@ -43,7 +43,7 @@
                         :grant_start_timestamp now
                         :grant_end_timestamp grant-end}
           grant (-> (t2/insert-returning-instance! :model/SupportAccessGrantLog grant-record)
-                    (t2/hydrate :user_name))
+                    (t2/hydrate :user_info))
           support-email (sag.settings/support-access-grant-email)
           support-user (sag.model/fetch-or-create-support-user!)
           token (sag.provider/create-support-access-reset! (:id support-user) grant)
@@ -89,7 +89,7 @@
                   {:revoked_at now
                    :revoked_by_user_id user-id})
       (-> (t2/select-one :model/SupportAccessGrantLog :id grant-id)
-          (t2/hydrate :user_name)))))
+          (t2/hydrate :user_info)))))
 
 (defn list-grants
   "List support access grants with optional filtering and pagination.
@@ -135,7 +135,7 @@
                             {:limit limit
                              :offset offset
                              :order-by [[:created_at :desc]]}))
-        grants-with-user-name (t2/hydrate grants :user_name)
+        grants-with-user-name (t2/hydrate grants :user_info)
         total (if where-clause
                 (t2/count :model/SupportAccessGrantLog {:where where-clause})
                 (t2/count :model/SupportAccessGrantLog))]
@@ -154,4 +154,4 @@
                                   [:> :grant_end_timestamp :%now]]
                           :order-by [[:created_at :desc]
                                      [:id :desc]]})
-          (t2/hydrate :user_name)))
+          (t2/hydrate :user_info)))

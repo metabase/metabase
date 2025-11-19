@@ -37,28 +37,30 @@ describe("AccessGrantList", () => {
     fetchMock.clearHistory();
   });
 
+  const testActiveGrant = createMockAccessGrant({
+    id: 1,
+    ticket_number: "TICKET-1234",
+    notes: "This is a test note",
+    grant_start_timestamp: dayjs().subtract(1, "hour").toISOString(),
+    grant_end_timestamp: dayjs().add(23, "hours").toISOString(),
+    revoked_at: null,
+    user_name: "John Doe",
+    user_email: "john.doe@example.com",
+  });
+
+  const testRevokedGrant = createMockAccessGrant({
+    id: 2,
+    ticket_number: null,
+    notes: null,
+    grant_start_timestamp: dayjs().subtract(3, "days").toISOString(),
+    grant_end_timestamp: dayjs().add(1, "day").toISOString(),
+    revoked_at: dayjs().subtract(2, "days").toISOString(),
+    user_name: "Jane Smith",
+    user_email: "john.doe@example.com",
+  });
+
   it("should render a list of access grants", () => {
-    const activeGrant = createMockAccessGrant({
-      id: 1,
-      ticket_number: "TICKET-1234",
-      notes: "This is a test note",
-      grant_start_timestamp: dayjs().subtract(1, "hour").toISOString(),
-      grant_end_timestamp: dayjs().add(23, "hours").toISOString(),
-      revoked_at: null,
-      user_name: "John Doe",
-    });
-
-    const revokedGrant = createMockAccessGrant({
-      id: 2,
-      ticket_number: null,
-      notes: null,
-      grant_start_timestamp: dayjs().subtract(3, "days").toISOString(),
-      grant_end_timestamp: dayjs().add(1, "day").toISOString(),
-      revoked_at: dayjs().subtract(2, "days").toISOString(),
-      user_name: "Jane Smith",
-    });
-
-    setup([activeGrant, revokedGrant]);
+    setup([testActiveGrant, testRevokedGrant]);
 
     const table = screen.getByTestId("access-grant-list-table");
     expect(table).toBeInTheDocument();
@@ -74,7 +76,21 @@ describe("AccessGrantList", () => {
     const revokeButtons = screen.getAllByLabelText("Revoke access grant");
     expect(revokeButtons).toHaveLength(1);
 
-    expect(within(table).getByText(/left/)).toBeInTheDocument();
+    expect(within(table).getByText(/23 hours left/)).toBeInTheDocument();
+  });
+
+  it("should use email and user id as fallback if name is not set", () => {
+    setup([
+      { ...testActiveGrant, user_id: 1001, user_name: null },
+      { ...testActiveGrant, user_id: 1002, user_name: null, user_email: null },
+    ]);
+
+    const table = screen.getByTestId("access-grant-list-table");
+    expect(table).toBeInTheDocument();
+
+    expect(within(table).getAllByText("john.doe@example.com")).toHaveLength(1);
+    expect(within(table).queryByText("1001")).not.toBeInTheDocument();
+    expect(within(table).getAllByText("1002")).toHaveLength(1);
   });
 
   describe("revoking", () => {

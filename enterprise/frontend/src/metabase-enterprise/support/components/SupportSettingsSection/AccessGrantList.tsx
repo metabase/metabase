@@ -67,7 +67,7 @@ export const AccessGrantList = (props: AccessGrantListProps) => {
                 <td style={{ paddingLeft: 0 }}>{startDate.format("lll")}</td>
                 <td>{grant.ticket_number || "-"}</td>
                 <td>{grant.notes || "-"}</td>
-                <td>{grant.user_name || grant.user_id}</td>
+                <td>{grant.user_name || grant.user_email || grant.user_id}</td>
                 <td>
                   {effectiveEndDate.isBefore(now) ? (
                     effectiveEndDate.format("lll")

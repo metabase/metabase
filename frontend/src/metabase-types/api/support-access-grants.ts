@@ -2,6 +2,7 @@ export interface SupportAccessGrant {
   id: number;
   user_id: number;
   user_name: string | null;
+  user_email: string | null;
   ticket_number: string | null;
   notes: string | null;
   grant_start_timestamp: string;

@@ -14,7 +14,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest create-grant-returns-grant-test
-  (mt/with-temp [:model/User {user-id :id} {}]
+  (mt/with-temp [:model/User {user-id :id} {:first_name "Bobby" :email "bobby-test@metabase.com"}]
     (mt/with-model-cleanup [:model/SupportAccessGrantLog]
       (let [ticket-number "SUPPORT-12345"
             duration 240
@@ -24,19 +24,23 @@
         (is (= user-id (:user_id grant)))
         (is (= ticket-number (:ticket_number grant)))
         (is (= notes (:notes grant)))
+        (is (= "Bobby" (:user_name grant)))
+        (is (= "bobby-test@metabase.com" (:user_email grant)))
         (is (some? (:grant_start_timestamp grant)))
         (is (some? (:grant_end_timestamp grant)))
         (is (nil? (:revoked_at grant)))
         (is (nil? (:revoked_by_user_id grant)))))))
 
 (deftest create-grant-with-nil-fields-test
-  (mt/with-temp [:model/User {user-id :id} {}]
+  (mt/with-temp [:model/User {user-id :id} {:first_name nil :email "bobby-test@metabase.com"}]
     (mt/with-model-cleanup [:model/SupportAccessGrantLog]
       (let [grant (grants/create-grant! user-id 240 nil nil)]
         (is (some? grant))
         (is (= user-id (:user_id grant)))
         (is (nil? (:ticket_number grant)))
         (is (nil? (:notes grant)))
+        (is (nil? (:user_name grant)))
+        (is (= "bobby-test@metabase.com" (:user_email grant)))
         (is (some? (:grant_start_timestamp grant)))
         (is (some? (:grant_end_timestamp grant)))
         (is (nil? (:revoked_at grant)))

@@ -15,6 +15,7 @@ export const createMockAccessGrant = (
     updated_at: "2025-03-01T00:00:00.000Z",
     user_id: 123,
     user_name: "Bobby",
+    user_email: "bobby+test@metabase.com",
     ...opts,
   };
 };
