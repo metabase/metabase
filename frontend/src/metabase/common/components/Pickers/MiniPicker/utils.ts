@@ -196,3 +196,16 @@ export function getFolderAndHiddenFunctions(
   };
   return { isFolder, isHidden };
 }
+
+export const focusFirstMiniPickerItem = () => {
+  // any time the path changes, focus the first item
+  setTimeout(() => {
+    // dirty, but let's wait for a render
+    const firstItem = document.querySelector(
+      '[data-testid="mini-picker"] [role="menuitem"]',
+    );
+    if (firstItem) {
+      (firstItem as HTMLElement)?.focus?.();
+    }
+  }, 10);
+};

@@ -6,7 +6,11 @@ import { Box, Menu } from "metabase/ui";
 import type { DataPickerValue } from "../../DataPicker";
 import { MiniPickerContext } from "../context";
 import type { MiniPickerPickableItem } from "../types";
-import { getFolderAndHiddenFunctions, useGetPathFromValue } from "../utils";
+import {
+  focusFirstMiniPickerItem,
+  getFolderAndHiddenFunctions,
+  useGetPathFromValue,
+} from "../utils";
 
 import { MiniPickerListLoader } from "./MiniPickerItemList";
 import { MiniPickerPane } from "./MiniPickerPane";
@@ -48,12 +52,7 @@ export function MiniPicker({
   useEffect(() => {
     if (trapFocus && path) {
       // any time the path changes, focus the first item
-      const firstItem = document.querySelector(
-        '[data-testid="mini-picker"] [role="menuitem"]',
-      );
-      if (firstItem) {
-        (firstItem as HTMLElement).focus();
-      }
+      focusFirstMiniPickerItem();
     }
   }, [path, trapFocus]);
 
