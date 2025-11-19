@@ -23,7 +23,7 @@ export interface MiniPickerContextValue {
   searchQuery?: string;
   clearSearchQuery: () => void;
   canBrowse: boolean;
-  setShouldBrowse: (shouldBrowse: boolean) => void;
+  onBrowseAll?: () => void;
   libraryCollection?: MiniPickerCollectionItem;
 }
 

@@ -147,15 +147,17 @@ function ModernDataPicker({
   const tableValue =
     table != null ? getDataPickerValue(query, stageIndex, table) : undefined;
   const [dataSourceSearchQuery, setDataSourceSearchQuery] = useState("");
+  const [isBrowsing, setIsBrowsing] = useState(false);
 
   return (
     <>
       <MiniPicker
         value={tableValue}
-        opened={isOpened}
+        opened={isOpened && !isBrowsing}
         onClose={() => setIsOpened(false)}
         models={["table", "dataset", "metric", "card"]}
         searchQuery={dataSourceSearchQuery}
+        onBrowseAll={() => setIsBrowsing(true)}
         clearSearchQuery={() => setDataSourceSearchQuery("")}
         onChange={(value: MiniPickerPickableItem) => {
           const id =
@@ -166,22 +168,23 @@ function ModernDataPicker({
           setDataSourceSearchQuery("");
           setIsOpened(false);
         }}
-        browseAllComponent={
-          isOpened && (
-            <DataPickerModal
-              title={title}
-              value={tableValue}
-              databaseId={canChangeDatabase ? undefined : databaseId}
-              models={modelList}
-              onChange={(i) => {
-                onChange(i);
-              }}
-              onClose={() => setIsOpened(false)}
-              shouldDisableItem={shouldDisableItem}
-            />
-          )
-        }
       />
+      {isOpened && isBrowsing && (
+        <DataPickerModal
+          title={title}
+          value={tableValue}
+          databaseId={canChangeDatabase ? undefined : databaseId}
+          models={modelList}
+          onChange={(i) => {
+            onChange(i);
+          }}
+          onClose={() => {
+            setIsBrowsing(false);
+            setIsOpened(false);
+          }}
+          shouldDisableItem={shouldDisableItem}
+        />
+      )}
       {isOpened || !table ? (
         <TextInput
           placeholder={t`Search for tables and more...`}

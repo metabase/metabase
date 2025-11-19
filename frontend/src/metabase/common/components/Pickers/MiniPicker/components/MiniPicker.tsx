@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Box, Popover } from "metabase/ui";
@@ -23,7 +23,7 @@ type MiniPickerProps = {
   onChange: (value: MiniPickerPickableItem) => void;
   onClose: () => void;
   models: MiniPickerPickableItem["model"][];
-  browseAllComponent?: React.ReactNode;
+  onBrowseAll?: () => void;
 };
 
 export function MiniPicker({
@@ -34,9 +34,8 @@ export function MiniPicker({
   onClose,
   models,
   clearSearchQuery,
-  browseAllComponent,
+  onBrowseAll,
 }: MiniPickerProps) {
-  const [shouldBrowse, setShouldBrowse] = useState(false);
   const { data: libraryCollection } =
     PLUGIN_DATA_STUDIO.useGetLibraryCollection();
 
@@ -91,30 +90,21 @@ export function MiniPicker({
         isHidden,
         searchQuery,
         clearSearchQuery,
-        setShouldBrowse,
+        onBrowseAll,
         models,
-        canBrowse: !!browseAllComponent,
+        canBrowse: !!onBrowseAll,
         libraryCollection,
       }}
     >
-      {shouldBrowse ? (
-        browseAllComponent
-      ) : (
-        <Popover opened={opened} onChange={onClose} position="bottom-start">
-          <Popover.Target>
-            <Box />
-          </Popover.Target>
+      <Popover opened={opened} onChange={onClose} position="bottom-start">
+        <Popover.Target>
+          <Box />
+        </Popover.Target>
 
-          <Popover.Dropdown
-            mt="xl"
-            ml="-1rem"
-            py="sm"
-            data-testid="mini-picker"
-          >
-            {isLoadingPath ? <MiniPickerListLoader /> : <MiniPickerPane />}
-          </Popover.Dropdown>
-        </Popover>
-      )}
+        <Popover.Dropdown mt="xl" ml="-1rem" py="sm" data-testid="mini-picker">
+          {isLoadingPath ? <MiniPickerListLoader /> : <MiniPickerPane />}
+        </Popover.Dropdown>
+      </Popover>
     </MiniPickerContext.Provider>
   );
 }

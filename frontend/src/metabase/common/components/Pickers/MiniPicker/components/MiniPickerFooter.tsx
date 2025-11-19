@@ -5,7 +5,7 @@ import { Box, Divider, Icon, NavLink } from "metabase/ui";
 import { useMiniPickerContext } from "../context";
 
 export function MiniPickerFooter() {
-  const { canBrowse, setShouldBrowse } = useMiniPickerContext();
+  const { canBrowse, onBrowseAll } = useMiniPickerContext();
 
   if (!canBrowse) {
     return null;
@@ -18,7 +18,7 @@ export function MiniPickerFooter() {
         variant="mb-light"
         leftSection={<Icon name="search" />}
         label={t`Browse all`}
-        onClick={() => setShouldBrowse(true)}
+        onClick={onBrowseAll}
       />
     </Box>
   );
