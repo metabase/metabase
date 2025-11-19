@@ -467,6 +467,70 @@ describe("scenarios > data studio > datamodel", () => {
       },
     );
 
+    describe("Search", () => {
+      beforeEach(() => {
+        H.restore("postgres-writable");
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+      });
+
+      it("should support prefix-based search", () => {
+        H.DataModel.visitDataStudio();
+
+        TablePicker.getSearchInput().type("an");
+        TablePicker.getTables().should("have.length", 3);
+        TablePicker.getTable("Analytic Events").should("be.visible");
+        TablePicker.getTable("Animals").should("be.visible");
+      });
+
+      it("should support wildcard search with *", () => {
+        H.DataModel.visitDataStudio();
+
+        TablePicker.getSearchInput().type("irds");
+        TablePicker.get().findByText("No tables found").should("be.visible");
+
+        TablePicker.getSearchInput().clear().type("*irds");
+        TablePicker.getTables().should("have.length", 1);
+        TablePicker.getTable("Birds").should("be.visible");
+      });
+
+      it("should allow using shift key to select multiple tables", () => {
+        H.DataModel.visitDataStudio();
+        TablePicker.getSearchInput().type("a");
+
+        TablePicker.getTables().should("have.length", 9);
+        TablePicker.getTable("Accounts").find('input[type="checkbox"]').click();
+        TablePicker.getTable("Api Key")
+          .find('input[type="checkbox"]')
+          .click({ shiftKey: true });
+
+        cy.findByRole("heading", { name: /4 tables selected/i }).should(
+          "be.visible",
+        );
+      });
+
+      it("should select/deselect tables with clicking checkboxes", () => {
+        H.DataModel.visitDataStudio();
+        TablePicker.getSearchInput().type("a");
+        TablePicker.getTables().should("have.length", 9);
+        TablePicker.getTable("Accounts")
+          .find('input[type="checkbox"]')
+          .as("accountsCheckbox");
+        TablePicker.getTable("Api Key")
+          .find('input[type="checkbox"]')
+          .as("apiKeyCheckbox");
+        cy.get("@accountsCheckbox").check();
+        cy.get("@apiKeyCheckbox").check();
+        cy.findByRole("heading", { name: /2 tables selected/i }).should(
+          "be.visible",
+        );
+        cy.get("@accountsCheckbox").uncheck();
+        cy.findByRole("heading", { name: /2 table selected/i }).should(
+          "not.exist",
+        );
+      });
+    });
+
     it("select/deselect functionality", { tags: ["@external"] }, () => {
       H.restore("postgres-writable");
       H.resetTestTable({ type: "postgres", table: "multi_schema" });
