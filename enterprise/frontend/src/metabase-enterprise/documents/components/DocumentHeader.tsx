@@ -46,6 +46,7 @@ interface DocumentHeaderProps {
   showSaveButton: boolean;
   isBookmarked: boolean;
   onTitleChange: (title: string) => void;
+  onTitleSubmit?: () => void;
   onSave: () => void;
   onMove: () => void;
   onToggleBookmark: () => void;
@@ -61,6 +62,7 @@ export const DocumentHeader = ({
   showSaveButton,
   isBookmarked,
   onTitleChange,
+  onTitleSubmit,
   onSave,
   onMove,
   onToggleBookmark,
@@ -109,6 +111,15 @@ export const DocumentHeader = ({
           readOnly={!canWrite}
           maxLength={DOCUMENT_TITLE_MAX_LENGTH}
           classNames={{ input: S.titleInput }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+
+              if (canWrite) {
+                onTitleSubmit?.();
+              }
+            }
+          }}
         />
         {document && (
           <Flex gap="md">

@@ -533,10 +533,3 @@
     (:query :native) :mbql-version/legacy
     ;; otherwise, this is not a valid MBQL query.
     nil))
-
-(defn drop-summary-clauses
-  "Remove :aggregation and :breakout from the stage at `stage-number` of a `query`."
-  ([query]
-   (drop-summary-clauses query -1))
-  ([query stage-number]
-   (update-query-stage query stage-number dissoc :aggregation :breakout)))

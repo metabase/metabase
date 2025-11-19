@@ -57,3 +57,10 @@ export const trackDocumentBookmark = () => {
     triggered_from: "document_header",
   });
 };
+
+export const trackDocumentAddSupportingText = (document?: Document | null) => {
+  trackSimpleEvent({
+    event: "document_add_supporting_text",
+    target_id: document?.id || null,
+  });
+};

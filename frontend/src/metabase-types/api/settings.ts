@@ -239,6 +239,7 @@ const tokenStatusFeatures = [
   "metabot-v3",
   "no-upsell",
   "offer-metabase-ai",
+  "offer-metabase-ai-tiered",
   "official-collections",
   "query-reference-validation",
   "question-error-logs",
@@ -314,6 +315,7 @@ export const tokenFeatures = [
   "cache_preemptive",
   "metabot_v3",
   "offer_metabase_ai",
+  "offer_metabase_ai_tiered",
   "ai_sql_fixer",
   "ai_sql_generation",
   "ai_entity_analysis",
@@ -647,7 +649,7 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-token"?: string | null;
   "remote-sync-url"?: string | null;
   "remote-sync-branch"?: string | null;
-  "remote-sync-type"?: "production" | "development" | null;
+  "remote-sync-type"?: "read-only" | "read-write" | null;
   "remote-sync-auto-import"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;

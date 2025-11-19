@@ -477,10 +477,8 @@
   temporal-bucket
   with-temporal-bucket]
  [lib.util
-  canonical-stage-index
   clause?
   clause-of-type?
-  drop-summary-clauses
   fresh-uuids
   mbql-stage?
   native-stage?

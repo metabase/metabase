@@ -1,6 +1,8 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.count-where-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -78,18 +80,19 @@
 
 (deftest ^:parallel segment-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
-    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                      (mt/metadata-provider)
-                                      {:segments [{:id         1
-                                                   :table-id   (mt/id :venues)
-                                                   :definition {:source-table (mt/id :venues)
-                                                                :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]})
-      (is (= 94
-             (->> {:aggregation [[:count-where [:segment 1]]]}
-                  (mt/run-mbql-query venues)
-                  mt/rows
-                  ffirst
-                  long))))))
+    (let [mp (mt/metadata-provider)]
+      (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                        mp
+                                        {:segments [{:id         1
+                                                     :table-id   (mt/id :venues)
+                                                     :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                     (lib/filter (lib/< (lib.metadata/field mp (mt/id :venues :price)) 4)))}]})
+        (is (= 94
+               (->> {:aggregation [[:count-where [:segment 1]]]}
+                    (mt/run-mbql-query venues)
+                    mt/rows
+                    ffirst
+                    long)))))))
 
 (deftest ^:parallel metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)

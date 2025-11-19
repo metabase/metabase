@@ -345,7 +345,8 @@
 (deftest filter-by-using-model-segment-metric
   (mt/with-temp [:model/Database {database-id :id} {}
                  :model/Table {table-id :id} {:db_id database-id}
-                 :model/Segment {segment-id :id} {:table_id table-id}
+                 :model/Segment {segment-id :id} {:table_id table-id
+                                                  :definition {:filter 100}} ; just a random filter
                  :model/Card {model-id :id :as model} {:name "Model"
                                                        :type :model
                                                        :dataset_query {:database (mt/id)

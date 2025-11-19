@@ -9,7 +9,7 @@ const { H } = cy;
 
 const suiteTitle = "scenarios > sharing > embed flow pre-selection";
 
-H.describeWithSnowplow(suiteTitle, () => {
+describe(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
