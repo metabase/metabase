@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -98,6 +98,14 @@ export function TableAttributesEditBulk() {
       setEntityType(entityType);
     }
   };
+
+  useEffect(() => {
+    setDataLayer(null);
+    setDataSource(null);
+    setEmail(null);
+    setEntityType(null);
+    setUserId(null);
+  }, [selectedTables, selectedSchemas, selectedDatabases]);
 
   return (
     <>
