@@ -8,6 +8,7 @@ import {
 } from "metabase-enterprise/metabot/state";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   DraftTransformSource,
   SuggestedTransform,
@@ -34,7 +35,7 @@ type UseSourceStateResult = {
 
 function normalizeSource(
   source: DraftTransformSource,
-  metadata: ReturnType<typeof getMetadata>,
+  metadata: Metadata,
 ): DraftTransformSource {
   if (source.type !== "query") {
     return source;
