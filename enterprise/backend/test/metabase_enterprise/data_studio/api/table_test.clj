@@ -2,6 +2,7 @@
   "Tests for /api/ee/data-studio/table endpoints."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-studio.api.table :as api.table]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -223,3 +224,47 @@
                                                                                   :table_ids    [t4]})))
             (testing "Selected FieldValues should be gone"
               (is (= [v3] (get-field-values))))))))))
+
+(deftest ^:parallel table-selectors->filter-test
+  (testing "table-selectors->filter function generates correct WHERE clauses"
+    (let [selectors->table-ids (fn [selectors]
+                                 (let [where (#'api.table/table-selectors->filter selectors)]
+                                   (t2/select-pks-set :model/Table {:where where})))]
+      (mt/with-temp [:model/Database {db-1 :id}      {}
+                     :model/Database {db-2 :id}      {}
+                     :model/Table    {table-1 :id}   {:db_id db-1}
+                     :model/Table    {table-2 :id}   {:db_id db-1, :schema "schema-a"}
+                     :model/Table    {table-3 :id}   {:db_id db-2, :schema "schema-a"}
+                     :model/Table    {table-4 :id}   {:db_id db-2, :schema "schema-b"}
+                     :model/Table    {table-5 :id}   {:db_id db-2}]
+
+        (testing "filter by database_ids"
+          (is (= #{table-1 table-2}
+                 (selectors->table-ids {:database_ids [db-1]}))))
+
+        (testing "filter by table_ids"
+          (is (= #{table-3 table-4}
+                 (selectors->table-ids {:table_ids [table-3 table-4]}))))
+
+        (testing "filter by schema_ids"
+          (is (= #{table-2}
+                 (selectors->table-ids {:schema_ids [(format "%d:schema-a" db-1)]}))))
+
+        (testing "filter by multiple schema_ids"
+          (is (= #{table-3 table-4}
+                 (selectors->table-ids {:schema_ids [(format "%d:schema-a" db-2)
+                                                     (format "%d:schema-b" db-2)]}))))
+
+        (testing "combine database_ids and table_ids (OR logic)"
+          (is (= #{table-1 table-2 table-3}
+                 (selectors->table-ids {:database_ids [db-1]
+                                        :table_ids    [table-3]}))))
+
+        (testing "combine all selectors (OR logic)"
+          (is (= #{table-1 table-2 table-4 table-5}
+                 (selectors->table-ids {:database_ids [db-1]
+                                        :table_ids    [table-5]
+                                        :schema_ids   [(format "%d:schema-b" db-2)]}))))
+
+        (testing "empty selectors returns no tables"
+          (is (= nil (selectors->table-ids {}))))))))
