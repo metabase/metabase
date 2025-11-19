@@ -493,6 +493,7 @@
    :transform {:created_at (serdes/date)
                :archived_at (serdes/date)
                :deactivated_at (serdes/date)
+               :data_layer  (serdes/kw)
                :db_id      (serdes/fk :model/Database :name)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
