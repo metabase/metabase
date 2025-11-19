@@ -64,12 +64,14 @@ export type EntityPickerModalOptions = {
   cancelButtonText?: string;
   hasRecents?: boolean;
   showDatabases?: boolean;
+  showLibrary?: boolean;
 };
 
 export const defaultOptions: EntityPickerModalOptions = {
   showSearch: true,
   hasConfirmButtons: true,
   hasRecents: true,
+  showLibrary: true,
 };
 
 export const DEFAULT_RECENTS_CONTEXT: RecentContexts[] = [

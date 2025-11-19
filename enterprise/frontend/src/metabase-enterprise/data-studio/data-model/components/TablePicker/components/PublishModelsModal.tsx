@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { usePublishModelsMutation } from "metabase/api";
+import {
+  skipToken,
+  useListCollectionItemsQuery,
+  usePublishModelsMutation,
+} from "metabase/api";
 import {
   CollectionPickerModal,
   type CollectionPickerValueItem,
@@ -12,7 +16,9 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Checkbox, Group, Modal, Text, rem } from "metabase/ui";
+import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import type {
+  CollectionItem,
   DatabaseId,
   PublishModelsResponse,
   SchemaId,
@@ -44,6 +50,19 @@ export function PublishModelsModal({
   );
   const [publishModels] = usePublishModelsMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+
+  const { data: rootLibraryCollection } = useGetLibraryCollectionQuery();
+  const { data: libraryCollections } = useListCollectionItemsQuery(
+    rootLibraryCollection ? { id: rootLibraryCollection.id } : skipToken,
+  );
+
+  const defaultPublishLocation = useMemo(
+    () =>
+      libraryCollections?.data.find(
+        (collection: CollectionItem) => collection.type === "library-models",
+      )?.id || "root",
+    [libraryCollections],
+  );
 
   const handleSubmit = async (collection: CollectionPickerValueItem) => {
     if (!collection) {
@@ -105,7 +124,7 @@ export function PublishModelsModal({
   return (
     <CollectionPickerModal
       value={{
-        id: "root",
+        id: defaultPublishLocation,
         model: "collection",
       }}
       options={{
