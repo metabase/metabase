@@ -18,45 +18,62 @@ This skill helps you efficiently and uniformly add Malli schemas to API endpoint
 
 When adding Malli schemas to an endpoint:
 
-- [ ] Route parameters have schemas
-- [ ] Query parameters have schemas with `:optional true` and `:default` where appropriate
-- [ ] Request body has schema (for POST/PUT)
+- [ ] Route params have schemas
+- [ ] Query params have schemas with `:optional true` and `:default` where appropriate
+- [ ] Request body has a schema (for POST/PUT)
 - [ ] Response schema is defined (using `:-` after route string)
 - [ ] Use existing schema types from `ms` namespace when possible
-- [ ] Consider creating named schemas for reusable/complex types
-- [ ] Add custom error messages for validation failures
+- [ ] Consider creating named schemas for reusable or complex types
+- [ ] Add contextual error messages for validation failures
 
 ## Basic Structure
 
 ### Complete Endpoint Example
 
 ```clojure
+(mr/def ::Color [:enum "red" "blue" "green"])
+
 (mr/def ::ResponseSchema
   [:map
    [:id pos-int?]
    [:name string?]
+   [:color ::Color]
    [:created_at ms/TemporalString]])
 
-(api.macros/defendpoint :get "/:id" :- ::ResponseSchema
-  "Fetch a resource by ID."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+(api.macros/defendpoint :post "/:name" :- ::ResponseSchema
+  "Create a resource with a given name."
+  [;; Route Params:
+   {:keys [name]} :- [:map [:name ms/NonBlankString]]
+   ;; Query Params:
    {:keys [include archived]} :- [:map
                                    [:include  {:optional true} [:maybe [:= "details"]]]
-                                   [:archived {:default false} [:maybe ms/BooleanValue]]]]
-  ;; implementation
+                                   [:archived {:default false} [:maybe ms/BooleanValue]]]
+   ;; Body Params:
+   {:keys [color]} :- [:map [:color ::Color]]
+   ]
+  ;; endpoint implementation, ex:
+  {:id 99
+   :name (str "mr or mrs " name)
+   :color ({"red" "blue" "blue" "green" "green" "red"} color)
+   :created_at (t/format (t/formatter "yyyy-MM-dd'T'HH:mm:ssXXX") (t/zoned-date-time))}
   )
 ```
 
 ## Common Schema Patterns
 
-### Route Parameters
+1. Route Params (the 5 in `api/user/id/5`)
+2. Query Params (the sort+asc pair in `api/users?sort=asc`)
+3. Body Params (the contents of a request body. Almost always decoded from json into edn)
+4. The Raw Request map
 
-Always required, typically just an ID:
+Of the 4 arguments, deprioritize usage of the raw request unless necessary.
+
+### Route Params
+
+Always required, typically just a map with an ID:
 
 ```clojure
-[{:keys [id]} :- [:map
-                  [:id ms/PositiveInt]]]
+[{:keys [id]} :- [:map [:id ms/PositiveInt]]]
 ```
 
 For multiple route params:
@@ -67,14 +84,14 @@ For multiple route params:
                            [:field-id ms/PositiveInt]]]
 ```
 
-### Query Parameters
+### Query Params
 
-Use `:optional true` and `:default` values:
+Add properties for `{:optional true ...}` and `:default` values:
 
 ```clojure
 {:keys [archived include limit offset]} :- [:map
                                             [:archived {:default false} [:maybe ms/BooleanValue]]
-                                            [:include  {:optional true} [:maybe [:= "tables"]]]
+                                            [:include  {:optional true}   [:maybe [:= "tables"]]]
                                             [:limit    {:optional true} [:maybe ms/PositiveInt]]
                                             [:offset   {:optional true} [:maybe ms/PositiveInt]]]
 ```
@@ -122,15 +139,19 @@ Use `:optional true` and `:default` values:
 
 ### From `metabase.util.malli.schema` (aliased as `ms`)
 
+Prefer the schemas in the ms/* namespace, since they work better with our api infrastructure. 
+
+For example use `ms/PositiveInt` instead of `pos-int?`.
+
 ```clojure
-ms/PositiveInt              ;; Positive integer
-ms/NonBlankString           ;; Non-empty string
-ms/BooleanValue             ;; String "true"/"false" or boolean
-ms/MaybeBooleanValue        ;; BooleanValue or nil
-ms/TemporalString           ;; ISO-8601 date/time string (for REQUEST params only!)
-ms/Map                      ;; Any map
-ms/JSONString               ;; JSON-encoded string
-ms/PositiveNum              ;; Positive number
+ms/PositiveInt                  ;; Positive integer
+ms/NonBlankString               ;; Non-empty string
+ms/BooleanValue                 ;; String "true"/"false" or boolean
+ms/MaybeBooleanValue            ;; BooleanValue or nil
+ms/TemporalString               ;; ISO-8601 date/time string (for REQUEST params only!)
+ms/Map                          ;; Any map
+ms/JSONString                   ;; JSON-encoded string
+ms/PositiveNum                  ;; Positive number
 ms/IntGreaterThanOrEqualToZero  ;; 0 or positive
 ```
 
@@ -147,24 +168,25 @@ Response schemas validate BEFORE JSON serialization, so they see Java Time objec
 pos-int?                    ;; Positive integer predicate
 [:maybe X]                  ;; X or nil
 [:enum "a" "b" "c"]         ;; One of these values
-[:or X Y]                   ;; X or Y
-[:and X Y]                  ;; X and Y
-[:sequential X]             ;; Sequential of X
-[:set X]                    ;; Set of X
-[:map-of K V]               ;; Map with keys K and values V
-[:tuple X Y Z]              ;; Fixed-length tuple
+[:or X Y]                   ;; Schema that satisfies X or Y
+[:and X Y]                  ;; Schema that satisfies X and Y
+[:sequential X]             ;; Sequential of Xs
+[:set X]                    ;; Set of Xs
+[:map-of K V]               ;; Map with keys w/ schema K and values w/ schema V
+[:tuple X Y Z]              ;; Fixed-length tuple of schemas X Y Z
 ```
+
+Avoid using sequence schemas unless completely necessary.
 
 ## Step-by-Step: Adding Schemas to an Endpoint
 
-### Example: Adding schema to `GET /api/field/:id/related`
+### Example: Adding return schema to `GET /api/field/:id/related`
 
 **Before:**
 ```clojure
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (-> (t2/select-one :model/Field :id id) api/read-check xrays/related))
 ```
 
@@ -184,8 +206,7 @@ pos-int?                    ;; Positive integer predicate
 ```clojure
 (api.macros/defendpoint :get "/:id/related" :- ::RelatedEntity
   "Return related entities."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (-> (t2/select-one :model/Field :id id) api/read-check xrays/related))
 ```
 
@@ -209,7 +230,7 @@ pos-int?                    ;; Positive integer predicate
 
 ```clojure
 (def PinnedState
-  (into [:enum {:error/message "must be 'all', 'is_pinned', or 'is_not_pinned'"}]
+  (into [:enum {:error/message "pinned state must be 'all', 'is_pinned', or 'is_not_pinned'"}]
         #{"all" "is_pinned" "is_not_pinned"}))
 ```
 
@@ -218,19 +239,19 @@ pos-int?                    ;; Positive integer predicate
 ```clojure
 (mr/def ::DashboardQuestionCandidate
   [:map
-   [:id pos-int?]
-   [:name string?]
+   [:id ms/PositiveInt]
+   [:name ms/NonBlankString]
    [:description [:maybe string?]]
    [:sole_dashboard_info
     [:map
-     [:id pos-int?]
-     [:name string?]
+     [:id ms/PositiveInt]
+     [:name ms/NonBlankString]
      [:description [:maybe string?]]]]])
 
 (mr/def ::DashboardQuestionCandidatesResponse
   [:map
    [:data [:sequential ::DashboardQuestionCandidate]]
-   [:total integer?]])
+   [:total ms/PositiveInt]])
 ```
 
 ### Paginated Response Pattern
@@ -249,16 +270,24 @@ pos-int?                    ;; Positive integer predicate
 ### Don't: Forget `:maybe` for nullable fields
 
 ```clojure
-[:description string?]  ;; WRONG - fails if nil
-[:description [:maybe string?]]  ;; RIGHT - allows nil
+[:description ms/NonBlankString]  ;; WRONG - fails if nil
+[:description [:maybe ms/NonBlankString]]  ;; RIGHT - allows nil
 ```
 
 ### Don't: Forget `:optional true` for optional query params
 
 ```clojure
-[:limit ms/PositiveInt]  ;; WRONG - required
+[:limit ms/PositiveInt]  ;; WRONG - required but shouldn't be
 [:limit {:optional true} [:maybe ms/PositiveInt]]  ;; RIGHT
 ```
+
+### Don't: Forget `:default` values for known params
+
+```clojure
+[:limit ms/PositiveInt]  ;; WRONG - required but shouldn't be
+[:limit {:optional true :default 0} [:maybe ms/PositiveInt]]  ;; RIGHT
+```
+
 
 ### Don't: Mix up route params, query params, and body
 
@@ -323,7 +352,7 @@ Use `mr/def` for schemas used in multiple places:
 
 Look in `src/metabase/*/models/*.clj` for model definitions.
 
-3. **Use REPL to inspect**
+3. **Use clojure-mcp or REPL to inspect**
 
 ```bash
 ./bin/mage -repl '(require '\''metabase.xrays.core) (doc metabase.xrays.core/related)'
@@ -353,16 +382,14 @@ Tests often show the expected response structure.
 ### Serialization Flow
 
 ```
-Request:  JSON string → Parse → Validate → Handler
-Response: Handler → Validate → Serialize → JSON string
-                    ↑
-                Schema checks here!
+Request:  JSON string → Parse → Coerce → Handler
+Response: Handler → Schema Check → Encode → Serialize → JSON string
 ```
 
 ## Workflow Summary
 
 1. **Read the endpoint** - understand what it does
-2. **Identify parameters** - route, query, body
+2. **Identify params** - route, query, body
 3. **Add parameter schemas** - use existing types from `ms`
 4. **Determine return type** - check the implementation
 5. **Define response schema** - inline or named with `mr/def`
@@ -374,14 +401,14 @@ After adding schemas, verify:
 
 1. **Valid requests work** - test with correct data
 2. **Invalid requests fail gracefully** - test with wrong types
-3. **Optional parameters work** - test with/without optional params
+3. **Optional params work** - test with/without optional params
 4. **Error messages are clear** - check validation error responses
 
 ## Tips
 
 - **Start simple** - begin with basic types, refine later
 - **Reuse schemas** - if you see the same structure twice, make it a named schema
-- **Be specific** - use `ms/PositiveInt` instead of just `:int` when appropriate
+- **Be specific** - use `ms/PositiveInt` instead of `pos-int?`
 - **Document intent** - add docstrings to named schemas
 - **Follow conventions** - look at similar endpoints in the same namespace
 - **Check the actual data** - use REPL to inspect what's actually returned before serialization
