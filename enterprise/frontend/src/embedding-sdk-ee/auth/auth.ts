@@ -45,6 +45,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
     preferredAuthMethod,
     apiKey,
     isLocalHost,
+    jwtProviderUrl,
   }: MetabaseAuthConfig & { isLocalHost?: boolean },
   { dispatch }: { dispatch: SdkDispatch },
 ) => {
@@ -69,6 +70,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
           getOrRefreshSession({
             metabaseInstanceUrl,
             preferredAuthMethod,
+            jwtProviderUrl,
           }),
         ).unwrap();
         if (session?.id) {
@@ -81,6 +83,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
         getOrRefreshSession({
           metabaseInstanceUrl,
           preferredAuthMethod,
+          jwtProviderUrl,
         }),
       ).unwrap();
     } catch (e) {
@@ -116,7 +119,10 @@ const refreshTokenImpl = async (
   {
     metabaseInstanceUrl,
     preferredAuthMethod,
-  }: Pick<MetabaseAuthConfig, "metabaseInstanceUrl" | "preferredAuthMethod">,
+    jwtProviderUrl,
+  }: Pick<MetabaseAuthConfig, "metabaseInstanceUrl" | "preferredAuthMethod"> & {
+    jwtProviderUrl?: string;
+  },
   { getState }: { getState: () => unknown },
 ): Promise<MetabaseEmbeddingSessionToken | null> => {
   const state = getState() as SdkStoreState;
@@ -131,6 +137,7 @@ const refreshTokenImpl = async (
     metabaseInstanceUrl,
     preferredAuthMethod,
     fetchRequestToken: customGetRefreshToken,
+    jwtProviderUrl,
   });
   validateSession(session);
 
@@ -152,7 +159,7 @@ export const getOrRefreshSession = createAsyncThunk(
     authConfig: Pick<
       MetabaseAuthConfig,
       "metabaseInstanceUrl" | "preferredAuthMethod"
-    >,
+    > & { jwtProviderUrl?: string },
     { dispatch, getState },
   ) => {
     // necessary to ensure that we don't use a popup every time the user
@@ -190,10 +197,23 @@ const getRefreshToken = async ({
   metabaseInstanceUrl,
   preferredAuthMethod,
   fetchRequestToken: customGetRequestToken,
+  jwtProviderUrl,
 }: Pick<
   MetabaseAuthConfig,
   "metabaseInstanceUrl" | "fetchRequestToken" | "preferredAuthMethod"
->) => {
+> & { jwtProviderUrl?: string }) => {
+  // [POC] If jwtProviderUrl is provided, skip the discovery request
+  if (jwtProviderUrl) {
+    // When using direct JWT provider URL, we skip the hash entirely
+    return jwtDefaultRefreshTokenFunction(
+      jwtProviderUrl,
+      metabaseInstanceUrl,
+      getSdkRequestHeaders(), // No hash parameter
+      customGetRequestToken,
+    );
+  }
+
+  // Standard flow: discover provider URL and get hash
   const urlResponseJson = await connectToInstanceAuthSso(metabaseInstanceUrl, {
     preferredAuthMethod,
     headers: getSdkRequestHeaders(),
