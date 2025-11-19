@@ -13,7 +13,7 @@ jobs:
     if: |
       ${{
         (github.event_name != 'schedule' || github.repository == 'metabase/metabase') &&
-        (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-cloverage'))
+        contains(github.event.pull_request.labels.*.name, 'run-cloverage')
       }}
     runs-on: ubuntu-22.04
     timeout-minutes: 30
