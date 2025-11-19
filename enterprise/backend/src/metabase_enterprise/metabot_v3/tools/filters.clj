@@ -350,13 +350,14 @@
   (let [{:keys [table-id query query-id report-id]} data-source
         model-id (lib.util/legacy-string-table-id->card-id table-id)
         handle-query (fn [query query-id]
-                       (let [database-id (:database query)
+                       (let [normalized-query (lib-be/normalize-query query)
+                             database-id (:database normalized-query)
                              _ (api/read-check :model/Database database-id)
                              mp (lib-be/application-database-metadata-provider database-id)]
                          [(if query-id
                             (metabot-v3.tools.u/query-field-id-prefix query-id)
                             metabot-v3.tools.u/any-prefix-pattern)
-                          (-> (lib/query mp query) lib/append-stage)]))]
+                          (-> (lib/query mp normalized-query) lib/append-stage)]))]
     (cond
       model-id
       (if-let [model-query (metabot-v3.tools.u/card-query model-id)]
