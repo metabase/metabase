@@ -35,7 +35,7 @@ jobs:
         with:
           path: |
             ~/.deps.clj
-            ~/bin/bb
+            ./bin/bb
           key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
 
       - name: Check if driver tests should run
