@@ -25,28 +25,30 @@ describe("scenarios > notebook > data source", () => {
         cy.visit("/");
         cy.findByTestId("app-bar").findByText("New").click();
         H.popover().findByTextEnsureVisible("Question").click();
-        cy.findByTestId("data-step-cell").should(
-          "have.text",
-          "Pick your starting data",
+        cy.findByPlaceholderText("Search for tables and more...").should(
+          "exist",
         );
 
+        H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
           cy.log("Should not have Recents tab");
-          cy.findAllByRole("tab").should("have.length", 0);
+          cy.findAllByRole("tab").should("not.exist");
 
-          H.entityPickerModalLevel(0).should("not.exist");
-          H.entityPickerModalLevel(1).should("not.exist");
-          H.entityPickerModalLevel(2)
-            .get("[data-index]")
+          H.entityPickerModalItem(0, "Databases").click();
+          H.entityPickerModalLevel(0)
+            .findByText("Sample Database")
+            .should("not.exist");
+          H.entityPickerModalLevel(3)
+            .find("[data-index]")
             .should("have.length", 8);
-          assertDataPickerEntityNotSelected(2, "Accounts");
-          assertDataPickerEntityNotSelected(2, "Analytic Events");
-          assertDataPickerEntityNotSelected(2, "Feedback");
-          assertDataPickerEntityNotSelected(2, "Invoices");
-          assertDataPickerEntityNotSelected(2, "Orders");
-          assertDataPickerEntityNotSelected(2, "People");
-          assertDataPickerEntityNotSelected(2, "Products");
-          assertDataPickerEntityNotSelected(2, "Reviews");
+          assertDataPickerEntityNotSelected(3, "Accounts");
+          assertDataPickerEntityNotSelected(3, "Analytic Events");
+          assertDataPickerEntityNotSelected(3, "Feedback");
+          assertDataPickerEntityNotSelected(3, "Invoices");
+          assertDataPickerEntityNotSelected(3, "Orders");
+          assertDataPickerEntityNotSelected(3, "People");
+          assertDataPickerEntityNotSelected(3, "Products");
+          assertDataPickerEntityNotSelected(3, "Reviews");
         });
       },
     );

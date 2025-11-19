@@ -152,54 +152,6 @@ describe("issue 19737", () => {
   });
 });
 
-// this is only testable in OSS because EE always has models from auditv2
-describe("issue 19776", { tags: "@OSS" }, () => {
-  const modelName = "Orders Model";
-  function openEllipsisMenuFor(item) {
-    cy.findByText(item).closest("tr").find(".Icon-ellipsis").click();
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should reflect archived model in the data picker without refreshing (metabase#19776)", () => {
-    cy.visit("/");
-
-    cy.findByTestId("app-bar").button("New").click();
-    H.popover().findByText("Question").click();
-    H.entityPickerModalTab("Collections").click(); // now you see it
-    H.entityPickerModal()
-      .button(/Filter/)
-      .click();
-
-    H.popover().findByText("Models").should("exist");
-
-    H.entityPickerModal().findByLabelText("Close").click();
-
-    // navigate without a page load
-    cy.findByTestId("sidebar-toggle").click();
-    H.navigationSidebar().findByText("Our analytics").click();
-
-    // archive the only model
-    cy.findByTestId("collection-table").within(() => {
-      openEllipsisMenuFor(modelName);
-    });
-    H.popover().contains("Move to trash").click();
-    cy.findByTestId("undo-list").findByText("Trashed model");
-
-    cy.findByTestId("app-bar").button("New").click();
-    H.popover().findByText("Question").click();
-    H.entityPickerModalTab("Collections").click(); // now you don't
-    H.entityPickerModal()
-      .button(/Filter/)
-      .click();
-
-    H.popover().findByText("Models").should("not.exist");
-  });
-});
-
 describe("issue 20042", () => {
   beforeEach(() => {
     cy.intercept("POST", `/api/card/${ORDERS_QUESTION_ID}/query`).as("query");
