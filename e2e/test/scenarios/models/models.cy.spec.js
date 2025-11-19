@@ -479,6 +479,7 @@ describe("scenarios > models", () => {
     it("should not display models if nested queries are disabled", () => {
       H.mockSessionProperty("enable-nested-queries", false);
       H.startNewQuestion();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
         cy.findAllByRole("tab").should("not.exist");
 

@@ -49,6 +49,7 @@ interface Props {
   shouldDisableItem?: (
     item: DataPickerItem | CollectionPickerItem | RecentItem,
   ) => boolean;
+  options?: DataPickerModalOptions;
 }
 
 type FilterOption = { label: string; value: CollectionItemModel };
@@ -62,7 +63,7 @@ const QUESTION_PICKER_MODELS: CollectionItemModel[] = [
 
 const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
 
-const options: DataPickerModalOptions = {
+const OPTIONS: DataPickerModalOptions = {
   ...defaultOptions,
   hasConfirmButtons: false,
   showPersonalCollections: true,
@@ -76,15 +77,20 @@ export const DataPickerModal = ({
   databaseId,
   title,
   value,
-  models = ["table", "card", "dataset"],
   onChange,
   onClose,
   shouldDisableItem,
+  options,
 }: Props) => {
+  options = {
+    ...OPTIONS,
+    ...options,
+  };
   const [modelFilter, setModelFilter] = useState<CollectionItemModel[]>(
     QUESTION_PICKER_MODELS,
   );
   const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
+
   const {
     hasQuestions,
     hasModels,
@@ -165,7 +171,6 @@ export const DataPickerModal = ({
 
   const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
   const [tablesPath, setTablesPath] = useState<TablePickerStatePath>();
-
   const filterButton = (
     <FilterButton
       value={modelFilter}
@@ -181,7 +186,7 @@ export const DataPickerModal = ({
       DataPickerItem
     >[] = [];
 
-    if (models.includes("table")) {
+    if (!hasNestedQueriesEnabled) {
       computedTabs.push({
         id: "tables-tab",
         displayName: t`Tables`,
@@ -199,16 +204,7 @@ export const DataPickerModal = ({
           />
         ),
       });
-    }
-
-    const shouldShowCollectionsTab =
-      (hasQuestions || hasMetrics || hasModels) &&
-      hasNestedQueriesEnabled &&
-      (models.includes("card") ||
-        models.includes("dataset") ||
-        models.includes("metric"));
-
-    if (shouldShowCollectionsTab) {
+    } else {
       computedTabs.push({
         id: "questions-tab",
         displayName: t`Data`,
@@ -250,7 +246,7 @@ export const DataPickerModal = ({
       recentFilter={recentFilter}
       searchParams={searchParams}
       selectedItem={value ?? null}
-      tabs={tabs.slice(1, 2)} // FIXME: for testing
+      tabs={tabs}
       title={title}
       onClose={onClose}
       onItemSelect={handleItemSelect}
