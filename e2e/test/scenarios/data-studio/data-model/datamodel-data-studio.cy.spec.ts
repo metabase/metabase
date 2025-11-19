@@ -42,6 +42,7 @@ describe("scenarios > data studio > datamodel", () => {
     cy.intercept("GET", "/api/database/*/schema/*").as("schema");
     cy.intercept("POST", "/api/dataset*").as("dataset");
     cy.intercept("GET", "/api/field/*/values").as("fieldValues");
+    cy.intercept("GET", "/api/table?*").as("listTables");
     cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
       "updateField",
     );
@@ -528,6 +529,164 @@ describe("scenarios > data studio > datamodel", () => {
         cy.findByRole("heading", { name: /2 table selected/i }).should(
           "not.exist",
         );
+      });
+    });
+
+    describe("Filtering", () => {
+      it("should filter tables by visibility type", () => {
+        updateTableAttributes({
+          databaseId: SAMPLE_DB_ID,
+          displayName: "Orders",
+          attributes: { data_layer: "gold" },
+        }).as("goldTableId");
+
+        updateTableAttributes({
+          databaseId: SAMPLE_DB_ID,
+          displayName: "Products",
+          attributes: { data_layer: "silver" },
+        }).as("silverTableId");
+
+        H.DataModel.visitDataStudio();
+
+        openFilterPopover();
+        selectFilterOption("Visibility type", "Gold");
+        applyFilters();
+
+        cy.get<TableId>("@goldTableId").then(expectTableVisible);
+        cy.get<TableId>("@silverTableId").then(expectTableNotVisible);
+      });
+
+      it("should filter tables owned by no one", () => {
+        cy.request("GET", "/api/user/current")
+          .its("body")
+          .then(({ id }) => {
+            return updateTableAttributes({
+              databaseId: SAMPLE_DB_ID,
+              displayName: "Orders",
+              attributes: { owner_user_id: id },
+            }).as("ownedTableId");
+          });
+
+        getTableId({
+          databaseId: SAMPLE_DB_ID,
+          displayName: "Products",
+        }).as("unownedTableId");
+
+        H.DataModel.visitDataStudio();
+
+        openFilterPopover();
+        selectFilterOption("Owner", "No one");
+        applyFilters();
+
+        cy.get<TableId>("@unownedTableId").then(expectTableVisible);
+        cy.get<TableId>("@ownedTableId").then(expectTableNotVisible);
+      });
+
+      it("should filter tables by owner user", () => {
+        cy.request("GET", "/api/user/current")
+          .its("body")
+          .then(({ id, common_name }) => {
+            cy.wrap(common_name).as("ownerName");
+            return updateTableAttributes({
+              databaseId: SAMPLE_DB_ID,
+              displayName: "Orders",
+              attributes: { owner_user_id: id },
+            }).as("ownedTableId");
+          });
+
+        getTableId({
+          databaseId: SAMPLE_DB_ID,
+          displayName: "Products",
+        }).as("unownedTableId");
+
+        H.DataModel.visitDataStudio();
+
+        openFilterPopover();
+        cy.get<string>("@ownerName").then((ownerName) => {
+          selectOwnerByName(ownerName);
+        });
+        applyFilters();
+
+        cy.get<TableId>("@ownedTableId").then(expectTableVisible);
+        cy.get<TableId>("@unownedTableId").then(expectTableNotVisible);
+      });
+
+      it("should filter tables by owner email", () => {
+        const OWNER_EMAIL = "owner-filter@example.com";
+
+        updateTableAttributes({
+          databaseId: SAMPLE_DB_ID,
+          displayName: "Orders",
+          attributes: { owner_email: OWNER_EMAIL, owner_user_id: null },
+        }).as("emailOwnedTableId");
+
+        getTableId({
+          databaseId: SAMPLE_DB_ID,
+          displayName: "Products",
+        }).as("otherTableId");
+
+        H.DataModel.visitDataStudio();
+
+        openFilterPopover();
+        selectOwnerByEmail(OWNER_EMAIL);
+        applyFilters();
+
+        cy.get<TableId>("@emailOwnedTableId").then(expectTableVisible);
+        cy.get<TableId>("@otherTableId").then(expectTableNotVisible);
+      });
+
+      it("should filter tables by source", () => {
+        updateTableAttributes({
+          databaseId: SAMPLE_DB_ID,
+          displayName: "Orders",
+          attributes: { data_source: "upload" },
+        }).as("uploadedTableId");
+
+        updateTableAttributes({
+          databaseId: SAMPLE_DB_ID,
+          displayName: "Products",
+          attributes: { data_source: "ingested" },
+        }).as("ingestedTableId");
+
+        H.DataModel.visitDataStudio();
+
+        openFilterPopover();
+        selectFilterOption("Source", "Uploaded data");
+        applyFilters();
+
+        cy.get<TableId>("@uploadedTableId").then(expectTableVisible);
+        cy.get<TableId>("@ingestedTableId").then(expectTableNotVisible);
+      });
+
+      it("should filter unused tables only", () => {
+        const usedTableName = "Animals";
+        const unusedTableName = "Birds";
+
+        getTableId({
+          databaseId: WRITABLE_DB_ID,
+          name: usedTableName,
+        }).then((tableId) => {
+          cy.wrap(tableId).as("usedTableId");
+          return H.createQuestion({
+            database: WRITABLE_DB_ID,
+            name: "filter used question",
+            query: { "source-table": tableId },
+          });
+        });
+
+        getTableId({
+          databaseId: WRITABLE_DB_ID,
+          name: unusedTableName,
+        }).as("unusedTableId");
+
+        H.DataModel.visitDataStudio();
+
+        openFilterPopover();
+        toggleUnusedFilter(true);
+        applyFilters();
+
+        cy.get<TableId>("@unusedTableId").then(expectTableVisible);
+        cy.get<TableId>("@usedTableId").then(expectTableNotVisible);
       });
     });
 
@@ -3677,6 +3836,119 @@ const setDataModelPermissions = ({
     },
   });
 };
+
+type TableSummary = {
+  id: TableId;
+  db_id: number;
+  display_name: string;
+  name: string;
+};
+
+type TableLookup = {
+  databaseId: number;
+  displayName?: string;
+  name?: string;
+};
+
+function openFilterPopover() {
+  cy.findByRole("button", { name: "Filter" }).click();
+  H.popover();
+}
+
+function applyFilters() {
+  cy.findByRole("button", { name: "Apply" }).click();
+  cy.wait("@listTables");
+}
+
+function selectFilterOption(fieldLabel: string, optionLabel: string) {
+  cy.findByRole("textbox", { name: fieldLabel }).click();
+  H.popover().contains(optionLabel).click();
+}
+
+function selectOwnerByName(ownerLabel: string) {
+  cy.findByRole("textbox", { name: "Owner" }).click();
+  H.popover().contains(ownerLabel).click();
+}
+
+function selectOwnerByEmail(email: string) {
+  cy.findByRole("textbox", { name: "Owner" }).clear().type(email);
+  H.popover().contains(email).click();
+}
+
+function toggleUnusedFilter(checked: boolean) {
+  if (checked) {
+    cy.findByLabelText("Table isn’t referenced by anything").check();
+  } else {
+    cy.findByLabelText("Table isn’t referenced by anything").uncheck();
+  }
+}
+
+function expectTableVisible(tableId: TableId) {
+  findSearchResultByTableId(tableId).should("exist");
+}
+
+function expectTableNotVisible(tableId: TableId) {
+  findSearchResultByTableId(tableId).should("not.exist");
+}
+
+function findSearchResultByTableId(tableId: TableId) {
+  return cy.findAllByTestId("tree-item").filter((_, element) => {
+    const href = element.getAttribute("href") ?? "";
+    const pattern = new RegExp(`/table/${tableId}$`);
+    return pattern.test(href);
+  });
+}
+
+function getTableId({
+  databaseId,
+  displayName,
+  name,
+}: TableLookup): Cypress.Chainable<TableId> {
+  if (!displayName && !name) {
+    throw new Error("displayName or name must be provided");
+  }
+
+  return cy.request<TableSummary[]>("/api/table").then(({ body }) => {
+    const table = body.find((candidate) => {
+      if (candidate.db_id !== databaseId) {
+        return false;
+      }
+
+      if (displayName && candidate.display_name === displayName) {
+        return true;
+      }
+
+      if (name && candidate.name === name) {
+        return true;
+      }
+
+      return false;
+    });
+
+    if (!table) {
+      throw new Error(
+        `Table not found for database ${databaseId} (${displayName ?? name})`,
+      );
+    }
+
+    return table.id;
+  });
+}
+
+function updateTableAttributes({
+  databaseId,
+  displayName,
+  name,
+  attributes,
+}: TableLookup & {
+  attributes: Record<string, unknown>;
+}): Cypress.Chainable<TableId> {
+  return getTableId({ databaseId, displayName, name }).then((tableId) => {
+    return cy
+      .request("PUT", `/api/table/${tableId}`, attributes)
+      .then(() => tableId);
+  });
+}
 
 function verifyAndCloseToast(message: string) {
   H.undoToast().should("contain.text", message);
