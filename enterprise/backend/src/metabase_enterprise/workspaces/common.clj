@@ -94,7 +94,7 @@
         ;; Creates the new schema database schema
         _              (ws.isolation/ensure-database-isolation! workspace database)
         graph          (ws.mirroring/mirror-entities! workspace database graph)
-        _              (t2/update! :model/Transform {:id (:id workspace)} {:graph graph})
+        _              (t2/update! :model/Workspace {:id (:id workspace)} {:graph graph})
         workspace      (assoc workspace :graph graph)]
     workspace))
 
