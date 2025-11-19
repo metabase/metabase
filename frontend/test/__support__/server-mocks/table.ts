@@ -29,6 +29,30 @@ export function setupTablesEndpoints(tables: Table[]) {
   setupTablesBulkEndpoints();
 }
 
+export function setupTableSearchEndpoint(tables: Table[]) {
+  const name = "table-search";
+  fetchMock.removeRoute(name);
+  fetchMock.get({
+    url: "path:/api/table?term*",
+    name,
+    response: (call) => {
+      const url = new URL(call.url);
+      const term = url.searchParams.get("term");
+
+      // Convert wildcard pattern to regex (support * as wildcard)
+      const searchPattern = term?.toLowerCase().replace(/\*/g, ".*"); // Convert \* back to .* for wildcard matching
+
+      const regex = new RegExp(searchPattern ?? "");
+
+      return tables.filter(
+        (table) =>
+          regex.test(table.name.toLowerCase()) ||
+          regex.test(table.display_name?.toLowerCase() ?? ""),
+      );
+    },
+  });
+}
+
 export function setupTablesBulkEndpoints() {
   fetchMock.post(
     "path:/api/table/rescan-values",
