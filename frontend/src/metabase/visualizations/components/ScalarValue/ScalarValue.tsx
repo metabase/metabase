@@ -9,6 +9,7 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import Markdown from "metabase/common/components/Markdown";
 import DashboardS from "metabase/css/dashboard.module.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Tooltip, useMantineTheme } from "metabase/ui";
 import type { VisualizationGridSize } from "metabase/visualizations/types";
@@ -99,38 +100,44 @@ export const ScalarTitle = ({
   title,
   description,
   onClick,
-}: ScalarTitleProps) => (
-  <ScalarTitleContainer data-testid="scalar-title" lines={lines}>
-    {/*
+}: ScalarTitleProps) => {
+  const tc = useTranslateContent();
+
+  return (
+    <ScalarTitleContainer data-testid="scalar-title" lines={lines}>
+      {/*
       This is a hacky spacer so that the h3 is centered correctly.
       It needs match the width of the tooltip icon on the other side.
      */}
-    {description && description.length > 0 && <ScalarDescriptionPlaceholder />}
-    <ScalarTitleContent
-      className={cx(
-        DashboardS.fullscreenNormalText,
-        DashboardS.fullscreenNightText,
-        EmbedFrameS.fullscreenNightText,
+      {description && description.length > 0 && (
+        <ScalarDescriptionPlaceholder />
       )}
-      onClick={onClick}
-    >
-      <Ellipsified tooltip={title} lines={lines} placement="bottom">
-        {title}
-      </Ellipsified>
-    </ScalarTitleContent>
-    {description && description.length > 0 && (
-      <ScalarDescriptionContainer data-testid="scalar-description">
-        <Tooltip
-          label={
-            <Markdown dark disallowHeading unstyleLinks>
-              {description}
-            </Markdown>
-          }
-          maw="22em"
-        >
-          <ScalarDescriptionIcon name="info_filled" />
-        </Tooltip>
-      </ScalarDescriptionContainer>
-    )}
-  </ScalarTitleContainer>
-);
+      <ScalarTitleContent
+        className={cx(
+          DashboardS.fullscreenNormalText,
+          DashboardS.fullscreenNightText,
+          EmbedFrameS.fullscreenNightText,
+        )}
+        onClick={onClick}
+      >
+        <Ellipsified tooltip={title} lines={lines} placement="bottom">
+          {tc(title)}
+        </Ellipsified>
+      </ScalarTitleContent>
+      {description && description.length > 0 && (
+        <ScalarDescriptionContainer data-testid="scalar-description">
+          <Tooltip
+            label={
+              <Markdown dark disallowHeading unstyleLinks>
+                {description}
+              </Markdown>
+            }
+            maw="22em"
+          >
+            <ScalarDescriptionIcon name="info_filled" />
+          </Tooltip>
+        </ScalarDescriptionContainer>
+      )}
+    </ScalarTitleContainer>
+  );
+};
