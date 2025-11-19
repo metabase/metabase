@@ -28,10 +28,18 @@ runs:
           ~/.gitlibs
         key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
 
+    - name: Get yarn cache directory
+      id: yarn-cache-dir
+      run: |
+        YARN_CACHE_DIR=$(yarn cache dir)
+        echo "Yarn cache directory: $YARN_CACHE_DIR"
+        echo "dir=$YARN_CACHE_DIR" >> $GITHUB_OUTPUT
+      shell: bash
+
     - name: Restore yarn global cache
       uses: actions/cache/restore@v4
       with:
-        path: ~/.cache/yarn
+        path: ${{ steps.yarn-cache-dir.outputs.dir }}
         key: ${{ steps.get-cache-keys.outputs.yarn-cache-key }}
 
     - name: Restore node_modules cache

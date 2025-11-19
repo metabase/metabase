@@ -96,10 +96,17 @@ jobs:
         with:
           apply-patches: 'false'
 
+      - name: Get yarn cache directory
+        id: yarn-cache-dir
+        run: |
+          YARN_CACHE_DIR=$(yarn cache dir)
+          echo "Yarn cache directory: $YARN_CACHE_DIR"
+          echo "dir=$YARN_CACHE_DIR" >> $GITHUB_OUTPUT
+
       - name: Update yarn global cache
         uses: ./.github/actions/update-cache
         with:
-          path: ~/.cache/yarn
+          path: ${{ steps.yarn-cache-dir.outputs.dir }}
           key: ${{ env.YARN_CACHE_KEY }}
 
       - name: Update node_modules cache
