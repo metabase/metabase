@@ -15,7 +15,7 @@
   (visit-field-id    [this mp context field-id]))
 
 (defn query-visitor?
-  "Does x implement the ExportVisitor protocol?"
+  "Does x implement the QueryVisitor protocol?"
   [x]
   #?(:clj  (extends? QueryVisitor (class x))
      :cljs (satisfies? QueryVisitor x)))
