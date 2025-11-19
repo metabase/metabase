@@ -219,6 +219,8 @@
       (if group_id
         (perms/check-manager-of-group group_id)
         (perms/check-group-manager)))
+  (api/check-400 (not (every? #(contains? params %) [:tenant_id :tenancy]))
+                 (tru "You cannot specify both `tenancy` and `tenant_id`"))
   (let [include_deactivated include_deactivated
         group-id-clause     (when group_id [group_id])
         clauses             (let [clauses (user/filter-clauses status query group-id-clause include_deactivated

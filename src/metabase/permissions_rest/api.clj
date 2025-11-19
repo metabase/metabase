@@ -229,7 +229,8 @@
   (when (and is_tenant_group (not (premium-features/enable-tenants?)))
     (throw (premium-features/ee-feature-error (tru "Tenants"))))
   (u/prog1 (t2/insert-returning-instance! :model/PermissionsGroup
-                                          :name name)
+                                          :name name
+                                          :is_tenant_group is_tenant_group)
     (events/publish-event! :event/group-create {:object <>
                                                 :user-id api/*current-user-id*})))
 

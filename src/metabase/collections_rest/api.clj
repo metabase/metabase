@@ -298,7 +298,7 @@
 
 (def ^:private CollectionType
   "Collection types that the root/items endpoint can filter on"
-  [:enum "remote-synced"])
+  [:enum "remote-synced" "shared-tenant-collection"])
 
 (def ^:private CollectionChildrenOptions
   [:map
