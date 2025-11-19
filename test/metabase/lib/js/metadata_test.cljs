@@ -83,6 +83,8 @@
        "name"        "Cheap Products"
        "table_id"    10
        "description" "Products with price < 10"
+       "table"       #js {"id"   10
+                          "name" "Products Table"}
        "definition"  #js {}})
 
 (deftest ^:parallel available-segments-with-js-metadata-provider-test
