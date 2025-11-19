@@ -1,11 +1,7 @@
-const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
-const DATA_STUDIO_BASE_PATH = "/data-studio/data";
-const visitAdminDataModel = H.DataModel.visit;
-const { TablePicker } = H.DataModel;
 
-H.DataModel.visit = (options = {}) =>
-  visitAdminDataModel({ ...options, basePath: DATA_STUDIO_BASE_PATH });
+const { H } = cy;
+const { TablePicker } = H.DataModel;
 
 interface TablesActionRequest {
   database_ids: number[];
@@ -52,7 +48,7 @@ describe("bulk table operations", { tags: ["@external"] }, () => {
   it("syncing multiple tables", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
-    H.DataModel.visit();
+    H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
     cy.wait("@getSchema").then(({ response }) => {
       const tables = response?.body ?? [];
@@ -107,7 +103,7 @@ describe("bulk table operations", { tags: ["@external"] }, () => {
   it("allows publishing multiple tables", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
-    H.DataModel.visit();
+    H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
     TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
     TablePicker.getTable("Feedback").find('input[type="checkbox"]').check();
@@ -136,7 +132,7 @@ describe("bulk table operations", { tags: ["@external"] }, () => {
   it("allows to edit attributes for tables", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
-    H.DataModel.visit();
+    H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
     TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
     TablePicker.getTable("Feedback").find('input[type="checkbox"]').check();
@@ -164,7 +160,7 @@ describe("bulk table operations", { tags: ["@external"] }, () => {
   it("allows to edit attributes for db", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
-    H.DataModel.visit();
+    H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12")
       .find('input[type="checkbox"]')
       .check();
@@ -208,7 +204,7 @@ describe("bulk table operations", { tags: ["@external"] }, () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });
-    H.DataModel.visit();
+    H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
     TablePicker.getSchema("Schema A").find('input[type="checkbox"]').check();
     TablePicker.getSchema("Schema B").find('input[type="checkbox"]').check();

@@ -7,6 +7,7 @@ import type {
 
 export const DataModel = {
   visit,
+  visitDataStudio,
   get: getDataModel,
   TablePicker: {
     get: getTablePicker,
@@ -162,6 +163,10 @@ function visit({
 
   cy.visit(normalizedBasePath);
   cy.wait(["@datamodel/visit/databases"]);
+}
+
+function visitDataStudio(options?: Parameters<typeof visit>[0]) {
+  visit({ ...options, basePath: "/data-studio/data" });
 }
 
 function getNormalizedBasePath(path?: string) {

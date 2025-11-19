@@ -30,12 +30,6 @@ const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
 const CUSTOM_MAPPING_ERROR =
   "You need unrestricted data access on this table to map custom display values.";
 
-function visitDataStudioDataModel(
-  options?: Parameters<typeof H.DataModel.visit>[0],
-) {
-  H.DataModel.visit({ ...options, basePath: "/data-studio/data" });
-}
-
 describe("scenarios > data studio > datamodel", () => {
   beforeEach(() => {
     H.restore();
@@ -60,7 +54,7 @@ describe("scenarios > data studio > datamodel", () => {
 
   describe("Data loading", () => {
     it("should show 404 if database does not exist (metabase#14652)", () => {
-      visitDataStudioDataModel({ databaseId: 54321, skipWaiting: true });
+      H.DataModel.visitDataStudio({ databaseId: 54321, skipWaiting: true });
       cy.wait("@databases");
       cy.wait(100); // wait with assertions for React effects to kick in
 
@@ -71,7 +65,7 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     it("should show 404 if table does not exist", () => {
-      visitDataStudioDataModel({
+      H.DataModel.visitDataStudio({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: 12345,
@@ -90,7 +84,7 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     it("should show 404 if field does not exist", () => {
-      visitDataStudioDataModel({
+      H.DataModel.visitDataStudio({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
@@ -118,7 +112,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
         cy.log("database not selected");
-        visitDataStudioDataModel();
+        H.DataModel.visitDataStudio();
         H.DataModel.get()
           .findByText(/Not found/)
           .should("not.exist");
@@ -151,7 +145,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow to navigate databases, schemas, and tables", () => {
-        visitDataStudioDataModel();
+        H.DataModel.visitDataStudio();
 
         cy.get("main")
           .findByText("No connected databases")
@@ -173,7 +167,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.restore("mysql-8");
         cy.signInAsAdmin();
 
-        visitDataStudioDataModel();
+        H.DataModel.visitDataStudio();
 
         TablePicker.getDatabase("QA MySQL8").click();
         TablePicker.getTables().should("have.length", 4);
@@ -198,7 +192,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.restore("mysql-8");
         cy.signInAsAdmin();
 
-        visitDataStudioDataModel();
+        H.DataModel.visitDataStudio();
 
         TablePicker.getSearchInput().type("rEvIeWs");
         TablePicker.getTables().should("have.length", 2);
@@ -217,7 +211,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.restore("mysql-8");
         cy.signInAsAdmin();
 
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: MYSQL_DB_ID,
           schemaId: MYSQL_DB_SCHEMA_ID,
         });
@@ -242,7 +236,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("1 database, 1 schema", () => {
       it("should allow to navigate databases, schemas, and tables", () => {
-        visitDataStudioDataModel();
+        H.DataModel.visitDataStudio();
 
         cy.log("should auto-open the only schema in the only database");
         cy.location("pathname").should(
@@ -272,7 +266,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow to search for tables", () => {
-        visitDataStudioDataModel();
+        H.DataModel.visitDataStudio();
 
         TablePicker.getSearchInput().type("or");
         TablePicker.getTables().should("have.length", 1);
@@ -306,7 +300,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to navigate databases, schemas, and tables", () => {
-          visitDataStudioDataModel();
+          H.DataModel.visitDataStudio();
 
           cy.location("pathname").should("eq", "/data-studio/data");
           TablePicker.getDatabases().should("have.length", 2);
@@ -422,7 +416,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to search for tables", () => {
-          visitDataStudioDataModel();
+          H.DataModel.visitDataStudio();
 
           TablePicker.getSearchInput().type("b");
           TablePicker.getTables().should("have.length", 2);
@@ -446,7 +440,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should restore previously selected table when expanding the tree", () => {
-          visitDataStudioDataModel();
+          H.DataModel.visitDataStudio();
 
           TablePicker.getDatabase("Writable Postgres12").click();
           TablePicker.getSchema("Domestic").click();
@@ -476,7 +470,7 @@ describe("scenarios > data studio > datamodel", () => {
 
   describe("Table section", () => {
     it("should show all tables in sample database and fields in orders table", () => {
-      visitDataStudioDataModel({
+      H.DataModel.visitDataStudio({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
@@ -526,7 +520,7 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     it("should be able to preview the table in the query builder", () => {
-      visitDataStudioDataModel({
+      H.DataModel.visitDataStudio({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
@@ -536,7 +530,7 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     it("should be able to see details of a table", () => {
-      visitDataStudioDataModel({ databaseId: SAMPLE_DB_ID });
+      H.DataModel.visitDataStudio({ databaseId: SAMPLE_DB_ID });
 
       verifyTableSectionEmptyState();
 
@@ -555,7 +549,7 @@ describe("scenarios > data studio > datamodel", () => {
       () => {
         H.restore("mysql-8");
 
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: MYSQL_DB_ID,
           schemaId: MYSQL_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -579,7 +573,7 @@ describe("scenarios > data studio > datamodel", () => {
         );
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
-        visitDataStudioDataModel();
+        H.DataModel.visitDataStudio();
         TablePicker.getDatabase("Writable Postgres12").click();
         TablePicker.getSchema("Domestic").click();
         TablePicker.getTable("Animals").click();
@@ -593,7 +587,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Name and description", () => {
       it("should allow changing the table name", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -613,7 +607,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow changing the table description", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -644,7 +638,7 @@ describe("scenarios > data studio > datamodel", () => {
         setDataModelPermissions({ tableIds: [ORDERS_ID] });
 
         cy.signIn("none");
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -666,7 +660,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow clearing the table description", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -687,7 +681,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Field name and description", () => {
       it("should allow changing the field name", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -721,7 +715,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.activateToken("pro-self-hosted");
         setDataModelPermissions({ tableIds: [ORDERS_ID] });
         cy.signIn("none");
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -756,7 +750,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow changing the field description", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -792,7 +786,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow clearing the field description", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -825,7 +819,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Sorting", () => {
       it("should allow sorting fields as in the database", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
@@ -852,7 +846,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow sorting fields alphabetically", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
@@ -884,7 +878,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow sorting fields smartly", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
@@ -914,7 +908,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow sorting fields in the custom order", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
@@ -958,7 +952,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow switching to predefined order after drag & drop (metabase#56482)", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
@@ -1029,7 +1023,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Sync options", () => {
       it("should allow to sync table schema, re-scan table, and discard cached field values", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
@@ -1081,7 +1075,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Name and description", () => {
       it("should allow changing the field name", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -1116,7 +1110,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.activateToken("pro-self-hosted");
         setDataModelPermissions({ tableIds: [ORDERS_ID] });
         cy.signIn("none");
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -1154,7 +1148,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow changing the field description", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -1191,7 +1185,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow clearing the field description", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -1223,7 +1217,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should remap FK display value from field section", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -1256,7 +1250,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Field values", () => {
       it("should allow to sync table schema, re-scan table, and discard cached field values", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
@@ -1287,7 +1281,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should not automatically re-fetch field values when they are discarded unless 'Custom mapping' is used (metabase#62626)", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
@@ -1308,7 +1302,7 @@ describe("scenarios > data studio > datamodel", () => {
     describe("Data", () => {
       describe("Coercion strategy", () => {
         it("should allow you to cast a field to a data type", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: FEEDBACK_ID,
@@ -1354,7 +1348,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to enable, change, and disable coercion strategy", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: FEEDBACK_ID,
@@ -1427,7 +1421,7 @@ describe("scenarios > data studio > datamodel", () => {
     describe("Metadata", () => {
       describe("Semantic type", () => {
         it("should allow to change the type to 'No semantic type' (metabase#59052)", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1470,7 +1464,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to change the type to 'Foreign Key' and choose the target field (metabase#59052)", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1522,7 +1516,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to change the foreign key target", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1568,7 +1562,7 @@ describe("scenarios > data studio > datamodel", () => {
           });
 
           cy.signIn("none");
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1625,7 +1619,7 @@ describe("scenarios > data studio > datamodel", () => {
           setDataModelPermissions({ tableIds: [REVIEWS_ID] });
 
           cy.signIn("none");
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: REVIEWS_ID,
@@ -1644,7 +1638,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to change the type to 'Currency' and choose the currency (metabase#59052)", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1697,7 +1691,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should correctly filter out options in Foreign Key picker (metabase#56839)", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1730,7 +1724,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should not let you change the type to 'Number' (metabase#16781)", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1748,7 +1742,7 @@ describe("scenarios > data studio > datamodel", () => {
           const viewportHeight = 400;
 
           cy.viewport(1280, viewportHeight);
-          visitDataStudioDataModel({ databaseId: SAMPLE_DB_ID });
+          H.DataModel.visitDataStudio({ databaseId: SAMPLE_DB_ID });
           TablePicker.getTable("Reviews").scrollIntoView().click();
           TableSection.clickField("ID");
           FieldSection.getSemanticTypeInput().click();
@@ -1782,7 +1776,7 @@ describe("scenarios > data studio > datamodel", () => {
               tableName: "many_data_types",
             });
 
-            visitDataStudioDataModel({ databaseId: WRITABLE_DB_ID });
+            H.DataModel.visitDataStudio({ databaseId: WRITABLE_DB_ID });
             TablePicker.getTable("Many Data Types").click();
             TableSection.clickField("Json → D");
             FieldSection.getSemanticTypeInput().click();
@@ -1829,7 +1823,7 @@ describe("scenarios > data studio > datamodel", () => {
           cy.request("PUT", `/api/field/${ORDERS.TAX}`, {
             visibility_type: "sensitive",
           });
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1876,7 +1870,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should let you change field visibility to 'Do not include'", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1922,7 +1916,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should let you change field visibility to 'Do not include' even if Preview is opened (metabase#61806)", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -1949,7 +1943,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should let you change field visibility to 'Only in detail views'", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -2000,7 +1994,7 @@ describe("scenarios > data studio > datamodel", () => {
           { tags: ["@external"] },
           () => {
             H.restore("mysql-8");
-            visitDataStudioDataModel({
+            H.DataModel.visitDataStudio({
               databaseId: MYSQL_DB_ID,
               schemaId: MYSQL_DB_SCHEMA_ID,
               tableId: ORDERS_ID,
@@ -2021,7 +2015,7 @@ describe("scenarios > data studio > datamodel", () => {
 
       describe("Filtering", () => {
         it("should let you change filtering to 'Search box'", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -2057,7 +2051,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should let you change filtering to 'Plain input box'", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -2092,7 +2086,7 @@ describe("scenarios > data studio > datamodel", () => {
           cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
             has_field_values: "none",
           });
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -2125,7 +2119,7 @@ describe("scenarios > data studio > datamodel", () => {
 
       describe("Display values", () => {
         it("should show tooltips explaining why remapping options are disabled", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: PRODUCTS_ID,
@@ -2177,7 +2171,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should let you change to 'Use foreign key' and change the target for field with fk", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -2244,7 +2238,7 @@ describe("scenarios > data studio > datamodel", () => {
           });
 
           cy.signIn("none");
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: REVIEWS_ID,
@@ -2280,7 +2274,7 @@ describe("scenarios > data studio > datamodel", () => {
                   ({ body }) => {
                     const [schemaName] = body;
 
-                    visitDataStudioDataModel({
+                    H.DataModel.visitDataStudio({
                       databaseId,
                       schemaId: `${databaseId}:${schemaName}`,
                       tableId: NUMBER_WITH_NULLS_ID,
@@ -2335,7 +2329,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should correctly show remapped column value", () => {
-          visitDataStudioDataModel({ databaseId: SAMPLE_DB_ID });
+          H.DataModel.visitDataStudio({ databaseId: SAMPLE_DB_ID });
 
           // edit "Product ID" column in "Orders" table
           TablePicker.getTable("Orders").click();
@@ -2392,7 +2386,7 @@ describe("scenarios > data studio > datamodel", () => {
             5: "Perfecto",
           };
 
-          visitDataStudioDataModel({ databaseId: SAMPLE_DB_ID });
+          H.DataModel.visitDataStudio({ databaseId: SAMPLE_DB_ID });
           // edit "Rating" values in "Reviews" table
           TablePicker.getTable("Reviews").click();
           TableSection.clickField("Rating");
@@ -2460,7 +2454,7 @@ describe("scenarios > data studio > datamodel", () => {
           setDataModelPermissions({ tableIds: [REVIEWS_ID] });
 
           cy.signIn("none");
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: REVIEWS_ID,
@@ -2478,7 +2472,7 @@ describe("scenarios > data studio > datamodel", () => {
           });
 
           cy.signInAsAdmin();
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: REVIEWS_ID,
@@ -2493,7 +2487,7 @@ describe("scenarios > data studio > datamodel", () => {
           );
 
           cy.signIn("none");
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: REVIEWS_ID,
@@ -2505,7 +2499,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow 'Custom mapping' option only for 'Search box' filtering type (metabase#16322)", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: REVIEWS_ID,
@@ -2548,7 +2542,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to map FK to date fields (metabase#7108)", () => {
-          visitDataStudioDataModel({
+          H.DataModel.visitDataStudio({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
@@ -2615,7 +2609,7 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should let you enable/disable 'Unfold JSON' for JSON columns", () => {
-          visitDataStudioDataModel({ databaseId: WRITABLE_DB_ID });
+          H.DataModel.visitDataStudio({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
 
           cy.log("json is unfolded initially and shows prefix");
@@ -2677,13 +2671,13 @@ describe("scenarios > data studio > datamodel", () => {
           cy.button(/Sync triggered!/).should("be.visible");
 
           // Check json field is not unfolded
-          visitDataStudioDataModel({ databaseId: WRITABLE_DB_ID });
+          H.DataModel.visitDataStudio({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
           TableSection.getField("Json → A").should("not.exist");
         });
 
         it("should let you change the name of JSON-unfolded columns (metabase#55563)", () => {
-          visitDataStudioDataModel({ databaseId: WRITABLE_DB_ID });
+          H.DataModel.visitDataStudio({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
           TableSection.clickField("Json → A");
 
@@ -2704,7 +2698,7 @@ describe("scenarios > data studio > datamodel", () => {
         it("should smartly truncate prefix name", () => {
           const shortPrefix = "Short prefix";
           const longPrefix = "Legendarily long column prefix";
-          visitDataStudioDataModel({ databaseId: WRITABLE_DB_ID });
+          H.DataModel.visitDataStudio({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
           TableSection.clickField("Json → A");
 
@@ -2771,7 +2765,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     describe("Formatting", () => {
       it("should let you to change field formatting", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -2801,7 +2795,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should only show currency formatting options for currency fields", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -2816,7 +2810,7 @@ describe("scenarios > data studio > datamodel", () => {
             cy.findByText("Currency label style").should("be.visible");
           });
 
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -2846,7 +2840,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should save and obey field prefix formatting settings", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -2886,7 +2880,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should not call PUT field endpoint when prefix or suffix has not been changed (SEM-359)", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -2908,7 +2902,7 @@ describe("scenarios > data studio > datamodel", () => {
   describe("Preview section", () => {
     describe("Esc key", () => {
       it("should allow closing the preview with Esc key", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -2925,7 +2919,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should not close the preview when hitting Esc key while modal is open", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -2951,7 +2945,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should not close the preview when hitting Esc key while popover is open", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -2970,7 +2964,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should not close the preview when hitting Esc key while command palette is open", () => {
-        visitDataStudioDataModel({
+        H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
@@ -2998,7 +2992,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should show empty state when there is no data", () => {
-        visitDataStudioDataModel();
+        H.DataModel.visitDataStudio();
 
         TablePicker.getDatabase("Writable Postgres12").click();
         TablePicker.getSchema("Domestic").click();
@@ -3016,7 +3010,7 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     it("should not auto-focus inputs in filtering preview", () => {
-      visitDataStudioDataModel({
+      H.DataModel.visitDataStudio({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
@@ -3056,7 +3050,7 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     it("should not crash when viewing filtering preview of a hidden table", () => {
-      visitDataStudioDataModel({
+      H.DataModel.visitDataStudio({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
@@ -3099,7 +3093,7 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     it("shows toast errors and preview errors", () => {
-      visitDataStudioDataModel({
+      H.DataModel.visitDataStudio({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
@@ -3233,7 +3227,7 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     it("allows to undo every action", () => {
-      visitDataStudioDataModel({
+      H.DataModel.visitDataStudio({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,

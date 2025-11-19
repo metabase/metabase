@@ -1,12 +1,7 @@
-const { H } = cy;
-
-const { TablePicker } = H.DataModel;
-const DATA_STUDIO_BASE_PATH = "/data-studio/data";
-const visitAdminDataModel = H.DataModel.visit;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
-H.DataModel.visit = (options = {}) =>
-  visitAdminDataModel({ ...options, basePath: DATA_STUDIO_BASE_PATH });
+const { H } = cy;
+const { TablePicker } = H.DataModel;
 
 interface MetadataResponse {
   updated_at: string;
@@ -46,7 +41,7 @@ describe("Table editing", () => {
   it("should display metadata information", { tags: ["@external"] }, () => {
     H.restore("mysql-8");
     cy.signInAsAdmin();
-    H.DataModel.visit();
+    H.DataModel.visitDataStudio();
     TablePicker.getDatabase("QA MySQL8").click();
     TablePicker.getTable("Orders").click();
 
@@ -75,7 +70,7 @@ describe("Table editing", () => {
     () => {
       cy.signInAsAdmin();
       H.restore("mysql-8");
-      H.DataModel.visit();
+      H.DataModel.visitDataStudio();
       TablePicker.getDatabase("QA MySQL8").click();
       TablePicker.getTable("Orders").click();
 
@@ -125,7 +120,7 @@ describe("Table editing", () => {
   it("should allow to edit attributes", { tags: ["@external"] }, () => {
     cy.signInAsAdmin();
     H.restore("postgres-12");
-    H.DataModel.visit();
+    H.DataModel.visitDataStudio();
     TablePicker.getDatabase("QA Postgres12").click();
     TablePicker.getTable("Orders").click();
 
@@ -183,7 +178,7 @@ describe("Table editing", () => {
         targetSchema: TARGET_SCHEMA,
         name: TRANSFORM_NAME,
       }).then(() => {
-        H.DataModel.visit();
+        H.DataModel.visitDataStudio();
         TablePicker.getDatabase("Writable Postgres12").click();
         TablePicker.getSchema(TARGET_SCHEMA).click();
         TablePicker.getTable(TRANSFORM_TABLE_DISPLAY_NAME).click();
