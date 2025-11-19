@@ -168,7 +168,7 @@ describe("scenarios > dependencies > dependency graph", () => {
       testEntityPicker({
         tabName: "Tables",
         itemName: "Products",
-        itemLevel: 2,
+        itemLevel: 3,
         itemIcon: "table",
       });
       testEntityPicker({
