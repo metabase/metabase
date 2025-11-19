@@ -1,6 +1,7 @@
 (ns metabase-enterprise.tenants.core
   (:require
    [metabase-enterprise.tenants.api :as tenants.api]
+   [metabase-enterprise.tenants.auth-provider]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
@@ -60,7 +61,6 @@
                                                {"@tenant.slug" (:slug tenant)}))]
     (assoc user
            :structured_attributes combined-attributes)))
-
 
 (defenterprise validate-new-tenant-collection!
   "Throws API exceptions if the passed collection is an invalid tenant collection."
