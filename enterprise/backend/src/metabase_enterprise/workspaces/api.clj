@@ -15,13 +15,16 @@
 ;;; schemas
 
 (mr/def ::stuff
-  [:string {:min 1 :max 254}])
+  :keyword
+  #_[:string {:min 1 :max 254}])
 
 (def CreateWorkspace
   "Schema for creating a new workspace"
   [:map
+   ;; TODO We will want a way for the server to create unique workspace names
    [:name [:string {:min 1}]]
-   [:database_id :int]
+   ;; Omit namespace to allow it to be deduced from the "stuffs"
+   [:database_id {:optional true} :int]
    [:stuffs [:map-of ::stuff [:sequential ms/PositiveInt]]]])
 
 (def Workspace
