@@ -3233,7 +3233,7 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     it("allows to undo every action", () => {
-      H.DataModel.visit({
+      visitDataStudioDataModel({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,

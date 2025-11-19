@@ -212,6 +212,7 @@ function DataModelContent({ params }: Props) {
 
         {showFieldDetails && (
           <Stack
+            bg="white"
             className={S.column}
             flex={COLUMN_CONFIG.field.flex}
             h="100%"
