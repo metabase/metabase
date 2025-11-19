@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -348,18 +349,21 @@
 (methodical/defmethod t2/batched-hydrate [:model/Table :transform]
   "Hydrate transforms that created the tables."
   [_model k tables]
-  (mi/instances-with-hydrated-data
-   tables k
-   #(let [table-ids                (map :id tables)
-          table-id->transform-id   (t2/select-fn->fn :from_entity_id :to_entity_id :model/Dependency
-                                                     :from_entity_type "table"
-                                                     :from_entity_id [:in table-ids]
-                                                     :to_entity_type "transform")
-          transform-id->transform  (when-let [transform-ids (seq (vals table-id->transform-id))]
-                                     (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))]
-      (update-vals table-id->transform-id transform-id->transform))
-   :id
-   {:default nil}))
+  (if config/ee-available?
+    (mi/instances-with-hydrated-data
+     tables k
+     #(let [table-ids                (map :id tables)
+            table-id->transform-id   (t2/select-fn->fn :from_entity_id :to_entity_id :model/Dependency
+                                                       :from_entity_type "table"
+                                                       :from_entity_id [:in table-ids]
+                                                       :to_entity_type "transform")
+            transform-id->transform  (when-let [transform-ids (seq (vals table-id->transform-id))]
+                                       (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))]
+        (update-vals table-id->transform-id transform-id->transform))
+     :id
+     {:default nil})
+    ;; EE not available, so no transforms
+    tables))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :pk_field]
   [_model k tables]
