@@ -17,17 +17,6 @@
 
 (def ^:private ^:dynamic *definitions* nil)
 
-(mu/defn- merge-required :- :metabase.api.open-api/parameter.schema.object
-  [schema]
-  (let [optional? (set (keep (fn [[k v]] (when (:optional v) k))
-                             (:properties schema)))]
-    (-> schema
-        (m/update-existing :required #(into []
-                                            (comp (map u/qualified-name)
-                                                  (remove optional?))
-                                            %))
-        (m/update-existing :properties #(update-vals % (fn [v] (dissoc v :optional)))))))
-
 (def ^:private file-schema (mjs/transform ms/File {::mjs/definitions-path "#/components/schemas/"}))
 
 (mu/defn- fix-json-schema :- :metabase.api.open-api/parameter.schema
@@ -50,14 +39,6 @@
                                                                 (cond-> additional-properties
                                                                   (map? additional-properties) fix-json-schema))))]
       (cond
-        ;; we're using `[:maybe ...]` a lot, and it generates `{:oneOf [... {:type "null"}]}`
-        ;; it needs to be cleaned up to be presented in OpenAPI viewers
-        (and (:oneOf schema)
-             (= (second (:oneOf schema)) {:type :null}))
-        (fix-json-schema (merge (first (:oneOf schema))
-                                (select-keys schema [:description :default])
-                                {:optional true}))
-
         ;; this happens when we use `[:and ... [:fn ...]]`, the `:fn` schema gets converted into an empty object
         (:allOf schema)
         (let [schema (update schema :allOf (partial remove (partial = {})))]
@@ -72,12 +53,13 @@
                (select-keys schema [:description :default]))
 
         (:properties schema)
-        (merge-required
-         (update schema :properties (fn [properties]
-                                      (into (sorted-map)
-                                            (map (fn [[k v]]
-                                                   [(u/qualified-name k) (fix-json-schema v)]))
-                                            properties))))
+        (-> schema
+            (update :required #(mapv u/qualified-name %))
+            (update :properties (fn [properties]
+                                  (into (sorted-map)
+                                        (map (fn [[k v]]
+                                               [(u/qualified-name k) (fix-json-schema v)]))
+                                        properties))))
 
         (and (= (:type schema) :array) (:items schema))
         (update schema :items (fn [items]
