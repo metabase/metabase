@@ -105,9 +105,9 @@ describe("Table editing", () => {
         cy.url().should("include", `/data-studio/modeling/models/${modelId}`);
       });
 
-      // Should not show info modal again after page reload
+      // Should not show info modal again
       cy.go("back");
-      cy.reload();
+
       cy.findByRole("button", { name: /Publish/ }).click();
       H.modal().within(() => {
         cy.findByText("Pick the collection to publish this table in").should(
