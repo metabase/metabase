@@ -1184,6 +1184,13 @@ export type LibraryPlugin = {
     data: CollectionItem | null;
     isLoading: boolean;
   };
+  useGetLibraryChildCollectionByType: ({
+    skip,
+    type,
+  }: {
+    skip?: boolean;
+    type: CollectionType;
+  }) => CollectionItem | undefined;
 };
 
 export const PLUGIN_LIBRARY: LibraryPlugin = {
@@ -1197,6 +1204,8 @@ export const PLUGIN_LIBRARY: LibraryPlugin = {
     data: null,
     isLoading: false,
   }),
+  useGetLibraryChildCollectionByType: ({ skip: _skip, type: _type }) =>
+    undefined,
 };
 
 export type DataStudioPlugin = {

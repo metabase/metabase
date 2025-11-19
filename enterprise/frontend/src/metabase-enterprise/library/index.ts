@@ -1,6 +1,10 @@
+import { useMemo } from "react";
+
+import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import type { CollectionItem, CollectionType } from "metabase-types/api";
 
 import { LibrarySection } from "./components/LibrarySection";
 import { NavbarLibrarySection } from "./components/NavbarLibrarySection";
@@ -27,6 +31,27 @@ export function initializePlugin() {
         { skip },
       );
       return { data, isLoading };
+    };
+
+    PLUGIN_LIBRARY.useGetLibraryChildCollectionByType = ({
+      skip,
+      type,
+    }: {
+      skip?: boolean;
+      type: CollectionType;
+    }) => {
+      const { data: rootLibraryCollection } =
+        PLUGIN_LIBRARY.useGetLibraryCollectionQuery({ skip });
+      const { data: libraryCollections } = useListCollectionItemsQuery(
+        rootLibraryCollection ? { id: rootLibraryCollection.id } : skipToken,
+      );
+      return useMemo(
+        () =>
+          libraryCollections?.data.find(
+            (collection: CollectionItem) => collection.type === type,
+          ),
+        [libraryCollections, type],
+      );
     };
   }
 }

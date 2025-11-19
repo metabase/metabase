@@ -1,8 +1,7 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import {
   CollectionPickerModal,
   type CollectionPickerValueItem,
@@ -11,13 +10,10 @@ import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowled
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { Box, Button, Checkbox, Group, Modal, Text, rem } from "metabase/ui";
-import {
-  useGetLibraryCollectionQuery,
-  usePublishModelsMutation,
-} from "metabase-enterprise/api";
+import { usePublishModelsMutation } from "metabase-enterprise/api";
 import type {
-  CollectionItem,
   DatabaseId,
   PublishModelsResponse,
   SchemaId,
@@ -50,18 +46,10 @@ export function PublishModelsModal({
   const [publishModels] = usePublishModelsMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const { data: rootLibraryCollection } = useGetLibraryCollectionQuery();
-  const { data: libraryCollections } = useListCollectionItemsQuery(
-    rootLibraryCollection ? { id: rootLibraryCollection.id } : skipToken,
-  );
-
-  const defaultPublishLocation = useMemo(
-    () =>
-      libraryCollections?.data.find(
-        (collection: CollectionItem) => collection.type === "library-models",
-      )?.id || "root",
-    [libraryCollections],
-  );
+  const defaultPublishCollection =
+    PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
+      type: "library-models",
+    });
 
   const handleSubmit = async (collection: CollectionPickerValueItem) => {
     if (!collection) {
@@ -123,7 +111,7 @@ export function PublishModelsModal({
   return (
     <CollectionPickerModal
       value={{
-        id: defaultPublishLocation,
+        id: defaultPublishCollection?.id || "root",
         model: "collection",
       }}
       options={{
