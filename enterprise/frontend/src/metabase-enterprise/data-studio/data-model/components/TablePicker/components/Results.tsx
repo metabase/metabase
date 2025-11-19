@@ -263,13 +263,13 @@ function ElementCheckbox({
 }
 
 function Loading() {
-  const w = 20 + Math.random() * 80;
+  const width = useMemo(() => 100 + Math.random() * 100, []);
 
   return (
     <Skeleton
       data-testid="loading-placeholder"
-      height={rem(12)}
-      width={`${w}%`}
+      height={rem(16)}
+      width={width}
       radius="sm"
     />
   );
