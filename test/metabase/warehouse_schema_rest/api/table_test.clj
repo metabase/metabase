@@ -1218,7 +1218,7 @@
       (testing "empty filter"
         (is (=? [{:display_name "People"}
                  {:display_name "Products"}]
-                (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "")
+                (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "bronze")
                      (filter #(= (:db_id %) (mt/id)))       ; prevent stray tables from affecting unit test results
                      (map #(select-keys % [:display_name])))))))))
 
