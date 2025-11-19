@@ -64,7 +64,7 @@
               yaml-str (yaml/generate-string export-1)
               rep (yaml/parse-string yaml-str)
               normalized (rep-read/parse rep)
-              imported (import/yaml->toucan normalized nil)
+              _imported (import/yaml->toucan normalized nil)
             ;; Persist and reload
               persisted (mt/with-test-user :crowberto
                           (import/persist! normalized nil))

@@ -165,7 +165,9 @@
   [mp]
   (->MapEntityIndex mp))
 
-(defn ensure-not-nil [entity]
+(defn ensure-not-nil
+  "Validates that an entity is not nil. Throws an exception if nil, otherwise returns the entity."
+  [entity]
   (when (nil? entity)
     (throw (ex-info "Entity not found." {})))
   entity)
@@ -187,11 +189,15 @@
   (->ref (:id t2-entity) (representation-type t2-entity)))
 
 (defn id-model->ref
-  "Get the internal ref for a toucan model and id."
+  "Get the internal ref for a toucan model and id by fetching the entity from the database.
+   Returns a reference string in the format expected by the representation system."
   [id model]
   (entity->ref (t2/select-one model id)))
 
-(defn ensure-correct-model-type [entity expected-type]
+(defn ensure-correct-model-type
+  "Validates that an entity has the expected Toucan model type.
+   Throws an exception if the model type doesn't match, otherwise returns the entity."
+  [entity expected-type]
   (when (not= expected-type (t2/model entity))
     (throw (ex-info (str "Entity is not the correct model type. Expected: " expected-type "; Actual: " (t2/model entity))
                     {:entity entity

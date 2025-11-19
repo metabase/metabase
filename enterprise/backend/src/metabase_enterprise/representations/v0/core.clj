@@ -15,6 +15,8 @@
    [toucan2.core :as t2]))
 
 (defn toucan-model
+  "Returns the Toucan model keyword for a given v0 representation type.
+   Maps representation types (e.g., :collection, :database) to their corresponding Toucan models."
   [representation-type]
   (case representation-type
     :collection v0-coll/toucan-model

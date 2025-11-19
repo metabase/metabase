@@ -7,6 +7,7 @@
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.yaml :as rep-yaml]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn export-card
@@ -18,7 +19,7 @@
         representation (export/export-entity card)
         yaml-str (rep-yaml/generate-string representation)]
     (spit filepath yaml-str)
-    (println "Exported card" card-id "to" filepath)))
+    (log/info "Exported card" card-id "to" filepath)))
 
 (defn import-card
   "Import a card from a YAML file, updating the specified card ID.

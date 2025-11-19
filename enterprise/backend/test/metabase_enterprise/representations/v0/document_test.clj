@@ -1,12 +1,9 @@
 (ns metabase-enterprise.representations.v0.document-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.representations.core :as rep]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
-   [metabase-enterprise.representations.v0.document :as v0-document]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]

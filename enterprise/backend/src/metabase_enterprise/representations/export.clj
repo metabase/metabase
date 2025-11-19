@@ -63,20 +63,28 @@
       (mu/lower-case-en)))
 
 (defn ref-from-name
+  "Generate a reference name for each representation based on its display name.
+   Munges the display name to create a valid reference identifier."
   [reps]
   (map #(assoc % ::proposed-ref (munge-name (:display_name %))) reps))
 
 (defn add-type
+  "Append the entity type to each representation's proposed reference.
+   This helps distinguish entities with similar names but different types."
   [reps]
   (map #(update % ::proposed-ref str "-" (name (:type %))) reps))
 
 (defn add-sequence-number
+  "Append a sequence number to each representation's proposed reference.
+   This ensures uniqueness when other strategies don't provide sufficient disambiguation."
   [reps]
   (map-indexed (fn [i rep]
                  (update rep ::proposed-ref str "-" i))
                reps))
 
 (def standard-ref-strategies
+  "Default strategies for generating unique references for exported representations.
+   Applied in order to disambiguate entities with conflicting reference names."
   [add-type])
 
 (defn- rename-refs-map

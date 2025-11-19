@@ -1,7 +1,5 @@
 (ns metabase-enterprise.representations.api
   (:require
-   [cheshire.core :as json]
-   [clojure.pprint :refer [pprint]]
    [metabase-enterprise.representations.common :as common]
    [metabase-enterprise.representations.core :as rep]
    [metabase-enterprise.representations.dependencies :as deps]
@@ -14,6 +12,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [representations.core :as rep-core]
    [representations.read :as rep-read]
@@ -49,13 +48,12 @@
       (rep/normalize-representation representation)
       "") ; Return empty string on success
     (catch Exception e
-      (with-out-str
-        (println (ex-message e))
-        (pprint (ex-data e))))))
+      (log/error e "Validation failed")
+      (str (ex-message e) "\n" (json/encode (ex-data e))))))
 
 (api.macros/defendpoint :get "/collection/:collection-id"
   "Export all representations in a collection as a single yaml file"
-  [{:keys [collection-id]} :- :any
+  [{:keys [collection-id]}
    _
    _
    _]
@@ -64,7 +62,7 @@
 
 (api.macros/defendpoint :put "/collection/:collection-id"
   "Import into a collection. Will delete everything in the collection first."
-  [{:keys [collection-id]} :- :any
+  [_path-params
    _
    _
    request]
@@ -79,7 +77,7 @@
 
 (api.macros/defendpoint :post "/collection/validate"
   "Validate a collection. Will return empty yml map when it's nothing."
-  [_ :- :any
+  [_path-params
    _
    _
    request]
@@ -94,7 +92,7 @@
 
 (api.macros/defendpoint :post "/collection/:collection-id/export"
   "Export all representations in a collection to the local filesystem"
-  [{:keys [collection-id]} :- :any
+  [{:keys [collection-id]}
    _query-params
    _body-params
    _request]
@@ -103,7 +101,7 @@
 
 (api.macros/defendpoint :post "/collection/:collection-id/import"
   "Import all representations from the local filesystem into a collection"
-  [{:keys [collection-id]} :- :any
+  [{:keys [collection-id]}
    _query-params
    _body-params
    _request]
@@ -166,7 +164,7 @@
         export-set (mapv #(dissoc % :entity_id :entity-id) export-set)
         clean-yamls (mapv v0-common/cleanup-delete-before-output export-set)
         export-yamls (mapv rep-yaml/generate-string clean-yamls)]
-    (json/generate-string {:yamls export-yamls})))
+    (json/encode {:yamls export-yamls})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/representations` routes."

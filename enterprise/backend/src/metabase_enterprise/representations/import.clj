@@ -2,10 +2,7 @@
   "Import functionality for Metabase entities from human-readable representations"
   (:require
    [clojure.java.io :as io]
-   [clojure.set :as set]
    [clojure.string :as str]
-   [metabase-enterprise.representations.common :as common]
-   [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.core :as v0-core]
    [metabase-enterprise.representations.yaml :as rep-yaml]
@@ -101,7 +98,10 @@
             {}
             representations)))
 
-(defn collection-representations [collection-yaml]
+(defn collection-representations
+  "Extract all representations from a collection YAML, including the collection itself,
+   its databases, and recursively all child collections."
+  [collection-yaml]
   (concat
    [(dissoc collection-yaml :children :databases)]
    (:databases collection-yaml)
@@ -126,14 +126,6 @@
                                [child]))
                            children)]
     (concat databases child-reps)))
-
-(defn- order-collections
-  "Order collections by location depth (parents before children)."
-  [collections]
-  (sort-by (fn [coll]
-             (let [location (or (:location coll) "/")]
-               (count (filter #(= % \/) location))))
-           collections))
 
 (defn import-collection-yaml
   "Import a collection from a YAML string containing the full bundle.
@@ -164,7 +156,7 @@
                                             (v0-common/map-entity-index index))]
                     (assoc index (:name entity) persisted))
                   (catch Exception e
-                    (log/warn e (format "Failed to persist entity with ref %s" (:name entity)))
+                    (log/warnf e "Failed to persist entity with ref %s" (:name entity))
                     (dissoc index (:name entity)))))
               {}
               ordered)

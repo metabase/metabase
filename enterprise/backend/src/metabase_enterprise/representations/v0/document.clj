@@ -1,8 +1,5 @@
 (ns metabase-enterprise.representations.v0.document
   (:require
-   [clojure.java.io :as io]
-   [clojure.java.shell :as sh]
-   [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
@@ -19,26 +16,6 @@
 
 (defmethod v0-common/representation-type :model/Document [_entity]
   :document)
-
-(defn- markdown->yaml [md]
-  (let [script (str (io/file (io/resource "representations/markdown-to-prosemirror.mjs")))
-        result (->> md (sh/sh "node" script :in))]
-    ;; Always log errors if present
-    (when (seq (:err result))
-      (log/warn "Error from prosemirror-to-markdown:" (:err result)))
-    ;; Throw if we got an error and no output
-    (when (not (zero? (:exit result)))
-      (throw (ex-info (str "Error converting markdown to prosemirror: " (:err result))
-                      {:md md
-                       :error (:err result)
-                       :exit-code (:exit result)})))
-    ;; Throw if we got no output at all (even without explicit error)
-    (when-not (seq (:out result))
-      (throw (ex-info "Markdown to prosemirror conversion produced no output"
-                      {:md md
-                       :stderr (:err result)
-                       :exit-code (:exit result)})))
-    (str/trim (:out result))))
 
 (defn yaml->toucan
   "Convert a v0 document representation to Toucan-compatible data."
@@ -77,29 +54,6 @@
             (= "cardEmbed" (:type node)))
        (update-in [:attrs :id] v0-common/id-model->ref :model/Card)))
    yaml))
-
-(defn- edn->markdown
-  [edn]
-  (let [script (str (io/file (io/resource "representations/prosemirror-to-markdown.mjs")))
-        result (->> edn
-                    (json/encode)
-                    (sh/sh "node" script :in))]
-    ;; Always log errors if present
-    (when (seq (:err result))
-      (log/warn "Error from prosemirror-to-markdown:" (:err result)))
-    ;; Throw if we got an error and no output
-    (when (not (zero? (:exit result)))
-      (throw (ex-info (str "Error converting prosemirror to markdown: " (:err result))
-                      {:edn edn
-                       :error (:err result)
-                       :exit-code (:exit result)})))
-    ;; Throw if we got no output at all (even without explicit error)
-    (when-not (seq (:out result))
-      (throw (ex-info "Prosemirror to markdown conversion produced no output"
-                      {:edn edn
-                       :stderr (:err result)
-                       :exit-code (:exit result)})))
-    (str/trim (:out result))))
 
 (defn export-document
   "Export a Document Toucan entity to a v0 document representation."

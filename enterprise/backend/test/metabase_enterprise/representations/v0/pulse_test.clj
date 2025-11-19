@@ -1,6 +1,7 @@
 (ns metabase-enterprise.representations.v0.pulse-test
   (:require
    [clj-yaml.core :as yaml]
+   [clojure.string]
    [clojure.test :refer :all]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]

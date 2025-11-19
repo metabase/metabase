@@ -1,6 +1,7 @@
 (ns metabase-enterprise.representations.toucan.core
-  (:require [metabase.api.common :as api]
-            [metabase.config.core :as config]))
+  (:require
+   [metabase.api.common :as api]
+   [metabase.config.core :as config]))
 
 (defmulti with-toucan-defaults
   "Adds default, required values to a toucan representation."

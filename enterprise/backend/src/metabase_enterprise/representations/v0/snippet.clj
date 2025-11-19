@@ -18,7 +18,7 @@
 
 (defn yaml->toucan
   "Convert a v0 snippet representation to Toucan-compatible data."
-  [{:keys [name display_name description sql collection entity-id] :as representation}
+  [{:keys [name display_name description sql collection]}
    _ref-index]
   (-> {:name (or display_name name)
        :description description
@@ -48,7 +48,7 @@
   [template-tag]
   (case (:type template-tag)
     :snippet (v0-common/->ref (:snippet-id template-tag) :snippet)
-    :card    (v0-common/->ref (:card-id    template-tag) :card)
+    :card (v0-common/->ref (:card-id template-tag) :card)
     (throw (ex-info (str "Unknown template tag type " (:type template-tag))
                     {:template-tag template-tag}))))
 

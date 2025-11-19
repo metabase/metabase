@@ -4,7 +4,6 @@
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (def toucan-model
@@ -99,5 +98,5 @@
 
 (defn persist!
   "Persist a v0 transform representation by creating or updating it in the database."
-  [representation ref-index]
+  [_representation _ref-index]
   nil)

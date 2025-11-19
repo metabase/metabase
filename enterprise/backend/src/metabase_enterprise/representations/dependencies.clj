@@ -1,8 +1,7 @@
 (ns metabase-enterprise.representations.dependencies
   (:require
    [metabase-enterprise.dependencies.core :as dependencies]
-   [metabase-enterprise.representations.import :as import]
-   [toucan2.core :as t2]))
+   [metabase-enterprise.representations.import :as import]))
 
 (defn check-dependencies
   "Check dependencies of the representations, which should be in order from least dependent to most."
