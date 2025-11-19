@@ -32,6 +32,7 @@ export const DataModel = {
     getFieldDescriptionInput: getTableSectionFieldDescriptionInput,
     getSortableField: getTableSectionSortableField,
     getSortableFields: getTableSectionSortableFields,
+    getVisibilityTypeInput: getTableSectionVisibilityTypeInput,
     clickField: clickTableSectionField,
   },
   FieldSection: {
@@ -267,6 +268,10 @@ function getTableSectionSortableField(name: string) {
 
 function getTableSectionSortableFields() {
   return getTableSection().findAllByRole("listitem");
+}
+
+function getTableSectionVisibilityTypeInput() {
+  return getTableSection().findByLabelText("Visibility type");
 }
 
 function getTableSectionFieldNameInput(name: string) {

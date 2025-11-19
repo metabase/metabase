@@ -6,6 +6,7 @@ import {
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { DataModel } from "e2e/support/helpers";
 import type { TableId } from "metabase-types/api";
 
 const { H } = cy;
@@ -2901,6 +2902,177 @@ describe("scenarios > data studio > datamodel", () => {
         cy.get("@updateFieldSpy").should("not.have.been.called");
         H.undoToast().should("not.exist");
       });
+    });
+  });
+
+  describe("Preview section", () => {
+    describe("Esc key", () => {
+      it("should allow closing the preview with Esc key", () => {
+        visitDataStudioDataModel({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.PRODUCT_ID,
+        });
+
+        PreviewSection.get().should("not.exist");
+
+        FieldSection.getPreviewButton().click();
+        PreviewSection.get().scrollIntoView().should("be.visible");
+
+        cy.realPress("Escape");
+        PreviewSection.get().should("not.exist");
+      });
+
+      it("should not close the preview when hitting Esc key while modal is open", () => {
+        visitDataStudioDataModel({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.PRODUCT_ID,
+        });
+
+        FieldSection.getPreviewButton().click();
+        PreviewSection.get().scrollIntoView().should("be.visible");
+
+        TableSection.getSyncOptionsButton().click();
+        H.modal().should("be.visible");
+
+        cy.realPress("Escape");
+        H.modal().should("not.exist");
+        PreviewSection.get().should("be.visible");
+
+        FieldSection.getFieldValuesButton().click();
+        H.modal().should("be.visible");
+
+        cy.realPress("Escape");
+        H.modal().should("not.exist");
+        PreviewSection.get().should("be.visible");
+      });
+
+      it("should not close the preview when hitting Esc key while popover is open", () => {
+        visitDataStudioDataModel({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.PRODUCT_ID,
+        });
+
+        FieldSection.getPreviewButton().click();
+        PreviewSection.get().scrollIntoView().should("be.visible");
+
+        FieldSection.getSemanticTypeInput().click();
+        H.popover().should("be.visible");
+
+        cy.realPress("Escape");
+        H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
+        PreviewSection.get().scrollIntoView().should("be.visible");
+      });
+
+      it("should not close the preview when hitting Esc key while command palette is open", () => {
+        visitDataStudioDataModel({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.PRODUCT_ID,
+        });
+
+        FieldSection.getPreviewButton().click();
+        PreviewSection.get().scrollIntoView().should("be.visible");
+
+        H.openCommandPalette();
+        H.commandPalette().should("be.visible");
+
+        cy.realPress("Escape");
+        H.commandPalette().should("not.exist");
+        PreviewSection.get().should("be.visible");
+      });
+    });
+
+    describe("Empty states", { tags: "@external" }, () => {
+      beforeEach(() => {
+        H.restore("postgres-writable");
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+        H.queryWritableDB('delete from "Domestic"."Animals"');
+      });
+
+      it("should show empty state when there is no data", () => {
+        visitDataStudioDataModel();
+
+        TablePicker.getDatabase("Writable Postgres12").click();
+        TablePicker.getSchema("Domestic").click();
+        TablePicker.getTable("Animals").click();
+        TableSection.clickField("Name");
+        FieldSection.getPreviewButton().click();
+
+        PreviewSection.get()
+          .scrollIntoView()
+          .findByText("No data to show")
+          .should("be.visible");
+        PreviewSection.getPreviewTypeInput().findByText("Detail").click();
+        PreviewSection.get().findByText("No data to show").should("be.visible");
+      });
+    });
+
+    it("should not auto-focus inputs in filtering preview", () => {
+      visitDataStudioDataModel({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.PRODUCT_ID,
+      });
+
+      FieldSection.getPreviewButton().click();
+      PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
+
+      PreviewSection.get()
+        .findByPlaceholderText("Enter an ID")
+        .should("be.visible")
+        .and("not.be.focused");
+
+      FieldSection.getFilteringInput().click();
+      H.popover().findByText("A list of all values").click();
+
+      PreviewSection.get()
+        .findByPlaceholderText("Search the list")
+        .should("be.visible")
+        .and("not.be.focused");
+
+      TableSection.clickField("Tax");
+
+      PreviewSection.get()
+        .findByPlaceholderText("Min")
+        .should("be.visible")
+        .and("not.be.focused");
+
+      FieldSection.getFilteringInput().click();
+      H.popover().findByText("Search box").click();
+
+      PreviewSection.get()
+        .findByPlaceholderText("Enter a number")
+        .should("be.visible")
+        .and("not.be.focused");
+    });
+
+    it("should not crash when viewing filtering preview of a hidden table", () => {
+      visitDataStudioDataModel({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.PRODUCT_ID,
+      });
+
+      DataModel.TableSection.getVisibilityTypeInput().click();
+      H.popover().findByText("Copper").click();
+      cy.wait("@updateTable");
+
+      FieldSection.getPreviewButton().click();
+      PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
+      PreviewSection.get()
+        .findByPlaceholderText("Enter an ID")
+        .should("be.visible");
+      H.main().findByText("Something’s gone wrong").should("not.exist");
     });
   });
 });
