@@ -174,8 +174,8 @@ describe("scenarios > metrics > editing", () => {
 
     it("should create a metric based on a saved question", () => {
       H.startNewMetric();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("Orders").click();
       });
       addStringCategoryFilter({
@@ -190,8 +190,8 @@ describe("scenarios > metrics > editing", () => {
     it("should create a metric based on a multi-stage saved question", () => {
       H.createQuestion(ORDERS_MULTI_STAGE_QUESTION);
       H.startNewMetric();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText(ORDERS_MULTI_STAGE_QUESTION.name).click();
       });
       addNumberBetweenFilter({
@@ -205,8 +205,8 @@ describe("scenarios > metrics > editing", () => {
 
     it("should create a metric based on a model", () => {
       H.startNewMetric();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("Orders Model").click();
       });
       addStringCategoryFilter({
@@ -221,8 +221,8 @@ describe("scenarios > metrics > editing", () => {
     it("should create a metric based on a multi-stage model", () => {
       H.createQuestion({ ...ORDERS_MULTI_STAGE_QUESTION, type: "model" });
       H.startNewMetric();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText(ORDERS_MULTI_STAGE_QUESTION.name).click();
       });
       addNumberBetweenFilter({
@@ -236,8 +236,8 @@ describe("scenarios > metrics > editing", () => {
 
     it("should not allow to create a multi-stage metric", () => {
       H.startNewMetric();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("Orders Model").click();
       });
       getActionButton("Summarize").should("not.exist");
@@ -296,8 +296,8 @@ describe("scenarios > metrics > editing", () => {
     it("should be possible to join data on the first stage of a metric-based query", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC);
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       });
       H.getNotebookStep("data").within(() => {
