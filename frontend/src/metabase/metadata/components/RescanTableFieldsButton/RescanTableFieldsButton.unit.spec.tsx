@@ -45,9 +45,12 @@ describe("RescanTableFieldsButton", () => {
     expect(button).toHaveTextContent("Re-scan table");
 
     await userEvent.click(button);
-    const calls = fetchMock.callHistory.calls(`path:/api/table/rescan-values`, {
-      method: "POST",
-    });
+    const calls = fetchMock.callHistory.calls(
+      `path:/api/ee/data-studio/table/rescan-values`,
+      {
+        method: "POST",
+      },
+    );
     expect(calls).toHaveLength(1);
     expect(JSON.parse(calls[0].options.body as string)).toEqual({
       table_ids: [table.id],
@@ -69,9 +72,12 @@ describe("RescanTableFieldsButton", () => {
     expect(button).toHaveTextContent("Re-scan table");
 
     await userEvent.click(button);
-    let calls = fetchMock.callHistory.calls(`path:/api/table/rescan-values`, {
-      method: "POST",
-    });
+    let calls = fetchMock.callHistory.calls(
+      `path:/api/ee/data-studio/table/rescan-values`,
+      {
+        method: "POST",
+      },
+    );
     expect(calls).toHaveLength(1);
     expect(JSON.parse(calls[0].options.body as string)).toEqual({
       table_ids: [table.id],
@@ -86,9 +92,12 @@ describe("RescanTableFieldsButton", () => {
 
     expect(button).toHaveTextContent("Scan triggered!");
     await userEvent.click(button);
-    calls = fetchMock.callHistory.calls(`path:/api/table/rescan-values`, {
-      method: "POST",
-    });
+    calls = fetchMock.callHistory.calls(
+      `path:/api/ee/data-studio/table/rescan-values`,
+      {
+        method: "POST",
+      },
+    );
     expect(calls).toHaveLength(2);
     expect(JSON.parse(calls[1].options.body as string)).toEqual({
       table_ids: [table.id],
@@ -118,9 +127,12 @@ describe("RescanTableFieldsButton", () => {
     expect(button).toHaveTextContent("Re-scan table");
 
     await userEvent.click(button);
-    const calls = fetchMock.callHistory.calls(`path:/api/table/rescan-values`, {
-      method: "POST",
-    });
+    const calls = fetchMock.callHistory.calls(
+      `path:/api/ee/data-studio/table/rescan-values`,
+      {
+        method: "POST",
+      },
+    );
     expect(calls).toHaveLength(1);
     expect(JSON.parse(calls[0].options.body as string)).toEqual({
       table_ids: [table.id],

@@ -38,7 +38,9 @@ describe("Table editing", () => {
     cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
     cy.intercept("PUT", "/api/table").as("updateTables");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
-    cy.intercept("POST", "/api/table/publish-model").as("publishModel");
+    cy.intercept("POST", "/api/ee/data-studio/table/publish-model").as(
+      "publishModel",
+    );
   });
 
   it("should display metadata information", { tags: ["@external"] }, () => {
