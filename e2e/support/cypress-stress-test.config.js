@@ -1,5 +1,8 @@
 const { defineConfig } = require("cypress");
 
-const { stressTestConfig } = require("./config");
+const { defaultConfig, embeddingSdkComponentTestConfig } = require("./config");
 
-module.exports = defineConfig({ e2e: stressTestConfig });
+module.exports = defineConfig({
+  e2e: { ...defaultConfig, retries: 0 },
+  component: { ...embeddingSdkComponentTestConfig, retries: 0 },
+});
