@@ -30,8 +30,8 @@ name: Cache Generator
 
 on:
   schedule:
-    - cron: '0 3 * * 1'   # Mondays at 03:00 UTC
-  workflow_dispatch:      # manually update the cache
+    - cron: "0 3 * * 1" # Mondays at 03:00 UTC
+  workflow_dispatch: # manually update the cache
 
 concurrency:
   group: cache-generator
@@ -49,6 +49,7 @@ jobs:
       m2-cache-key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
       node-cache-key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
       eslint-cache-key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
+      cypress-cache-key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}
 
   generate-m2-cache:
     runs-on: ubuntu-22.04
@@ -81,6 +82,7 @@ jobs:
     env:
       NODE_CACHE_KEY: ${{ needs.get-cache-keys.outputs.node-cache-key }}
       ESLINT_CACHE_KEY: ${{ needs.get-cache-keys.outputs.eslint-cache-key }}
+      CYPRESS_CACHE_KEY: ${{ needs.get-cache-keys.outputs.cypress-cache-key }}
     steps:
       - uses: actions/checkout@v4
       # `prepare-frontend` action (1) prepares Node.js and (2) fetches the node_modules cache if it exists.
@@ -92,7 +94,7 @@ jobs:
       - name: Install front-end dependencies
         uses: ./.github/actions/prepare-frontend
         with:
-          apply-patches: 'false'
+          apply-patches: "false"
 
       - name: Get yarn cache directory
         id: yarn-cache-dir
@@ -114,3 +116,9 @@ jobs:
         with:
           path: .eslintcache
           key: ${{ env.ESLINT_CACHE_KEY }}
+
+      - name: Update Cypress cache
+        uses: ./.github/actions/update-cache
+        with:
+          path: ~/.cache/Cypress
+          key: ${{ env.CYPRESS_CACHE_KEY }}
