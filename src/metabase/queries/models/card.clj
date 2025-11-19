@@ -322,9 +322,9 @@
    cards k
    #(group-by :source_card_id
               (->> (t2/select :model/Card
-                              :source_card_id [:in (map :id cards)],
-                              :archived false,
-                              :type :metric,
+                              :source_card_id [:in (map :id cards)]
+                              :archived false
+                              :type :metric
                               {:order-by [[:name :asc]]})
                    (filter mi/can-read?)))
    :id))
@@ -335,8 +335,8 @@
    cards k
    #(group-by :card_id
               (->> (t2/select :model/Segment
-                              :card_id [:in (map :id cards)],
-                              :archived false,
+                              :card_id [:in (map :id cards)]
+                              :archived false
                               {:order-by [[:name :asc]]})
                    (filter mi/can-read?)))
    :id))

@@ -25,8 +25,8 @@
    :- [:and
        [:map
         [:name        ms/NonBlankString]
-        [:table_id {:optional true} [:maybe ms/PositiveInt]]
-        [:card_id {:optional true} [:maybe ms/PositiveInt]]
+        [:table_id    {:optional true} [:maybe ms/PositiveInt]]
+        [:card_id     {:optional true} [:maybe ms/PositiveInt]]
         [:definition  ms/Map]
         [:description {:optional true} [:maybe :string]]]
        [:fn {:error/message "Must provide exactly one of :table_id or :card_id"}
@@ -36,10 +36,10 @@
   (api/create-check :model/Segment body)
   (let [segment (api/check-500
                  (first (t2/insert-returning-instances! :model/Segment
-                                                        (-> {:creator_id api/*current-user-id*
+                                                        (-> {:creator_id  api/*current-user-id*
                                                              :name        name
                                                              :description description
-                                                             :definition definition}
+                                                             :definition  definition}
                                                             (m/assoc-some :table_id table_id)
                                                             (m/assoc-some :card_id card_id)))))]
     (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})

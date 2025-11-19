@@ -122,7 +122,7 @@
              :description      (:description card)
              :entity_id        (:entity_id card)
              :metrics          (:metrics card)
-             :segments (:segments card)
+             :segments         (:segments card)
              :type             card-type}
       (and (= card-type :metric)
            dataset-query)

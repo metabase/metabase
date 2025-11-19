@@ -131,30 +131,28 @@
         (let [card (lib.metadata/card mp (:id model))
               query (lib/query mp card)
               price (lib.metadata/field mp (mt/id :venues :price))]
-          (mt/with-temp [:model/Segment segment1 {:card_id (:id model)
-                                                  :table_id nil
+          (mt/with-temp [:model/Segment segment1 {:card_id    (:id model)
+                                                  :table_id   nil
                                                   :definition (lib/filter query (lib/> price 10))}
-                         :model/Segment segment2 {:card_id (:id model)
-                                                  :table_id nil
+                         :model/Segment segment2 {:card_id    (:id model)
+                                                  :table_id   nil
                                                   :definition (lib/filter query (lib/> price 100))}
-                         :model/Card metric {:source_card_id (mt/id :venues)
-                                             :type           :metric
+                         :model/Card metric {:type           :metric
                                              :dataset_query  (mt/mbql-query nil
-                                                               {:aggregation [[:count]]
+                                                               {:aggregation  [[:count]]
                                                                 :source-table (str "card__" (:id model))})}]
             (let [related-result (mt/user-http-request :crowberto :get 200 (format "segment/%s/related" (:id segment1)))]
-              ;; TODO (tamas 2025-11-14) -- model under :table??? should they be returned under another key?
-              (is (=? {:table {:archived false
-                               :id (:id model)}
-                       :metrics [{:archived false
-                                  :dataset_query map?
-                                  :id (:id metric)
-                                  :source_card_id (:id model)
-                                  :type "metric"}]
-                       :segments [{:archived false,
+              (is (=? {:table    {:archived false
+                                  :id       (:id model)}
+                       :metrics  [{:archived       false
+                                   :dataset_query  map?
+                                   :id             (:id metric)
+                                   :source_card_id (:id model)
+                                   :type           "metric"}]
+                       :segments [{:archived   false
                                    :definition map?
-                                   :id (:id segment2)
-                                   :card_id (:id model)}]}
+                                   :id         (:id segment2)
+                                   :card_id    (:id model)}]}
                       related-result)))))))))
 
 (deftest ^:parallel related-tables-test

@@ -56,8 +56,8 @@
                               (dissoc definition :aggregation))
                             definition)]
                       {:database database-id
-                       :type :query
-                       :query (merge {:source-table table-id} definition)}))
+                       :type     :query
+                       :query    (merge {:source-table table-id} definition)}))
                   lib-be/normalize-query)
        (validate-mbql5-definition <>))
      {})))
