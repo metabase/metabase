@@ -81,22 +81,16 @@
     []
     (assoc (get-trash) :name (deferred-tru "Trash"))))
 
-(mu/defn is-tenant-collection-type?
-  "Whether or not the passed `type` is a tenant collection type."
-  [ttype :- [:maybe :string]]
-  (= ttype "shared-tenant-collection"))
-
 (mu/defn is-tenant-collection?
-  "Whether or not a collection is a tenant collection. Placeholder for now."
-  [{:keys [type]} :- [:or RootCollection [:map [:type [:maybe string?]]]]]
-  (is-tenant-collection-type? type))
+  "Whether or not a collection is a tenant collection."
+  [{:keys [is_shared_tenant_collection]} :- [:or RootCollection [:map [:is_shared_tenant_collection [:maybe :boolean]]]]]
+  (boolean is_shared_tenant_collection))
 
 (defn tenant-collection-where-clause
-  "Returns a clause that will be true if this is a tenant collection, false otherwise."
-  [& [type-column]]
-  [:case
-   [:= (or type-column :type) nil] false
-   :else [:= (or type-column :type) [:inline "shared-tenant-collection"]]])
+  "Returns a HoneySQL clause that will be true if this is a tenant collection, false otherwise."
+  [& [column-name]]
+  [:and [:not= (or column-name :is_shared_tenant_collection) nil]
+   [:= (or column-name :is_shared_tenant_collection) true]])
 
 (defn trash-collection-id
   "The ID representing the Trash collection."
@@ -657,6 +651,15 @@
     ;; we're not looking for a particular `archive_operation_id`
     (not (:archive-operation-id visibility-config)))))
 
+(def ^:private visible-union-columns
+  [:c.id
+   :c.location
+   :c.archived
+   :c.archive_operation_id
+   :c.archived_directly
+   :c.type
+   :c.is_shared_tenant_collection])
+
 (mu/defn visible-collection-query
   "Given a `CollectionVisibilityConfig`, return a HoneySQL query that selects all visible Collection IDs."
   ([visibility-config :- CollectionVisibilityConfig]
@@ -685,7 +688,7 @@
     ;; c) their personal collection and its descendants
     :from [(if is-superuser?
              [:collection :c]
-             [{:union-all (keep identity [{:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly :c.type]
+             [{:union-all (keep identity [{:select visible-union-columns
                                            :from   [[:collection :c]]
                                            :where [:exists {:select [1]
                                                             :from [[:permissions :p]]
@@ -698,19 +701,19 @@
                                                                      [:= :p.perm_value (h2x/literal "read-and-write")]
                                                                      (when (= :read (:permission-level visibility-config))
                                                                        [:= :p.perm_value (h2x/literal "read")])]]}]}
-                                          {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly :c.type]
+                                          {:select visible-union-columns
                                            :from   [[:collection :c]]
                                            :where  [:= :type (h2x/literal trash-collection-type)]}
                                           (when-let [personal-collection-and-descendant-ids
                                                      (seq (user->personal-collection-and-descendant-ids current-user-id))]
-                                            {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly :c.type]
+                                            {:select visible-union-columns
                                              :from   [[:collection :c]]
                                              :where  [:in :id [:inline personal-collection-and-descendant-ids]]})])}
               :c])]
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
             (when-not (perms/use-tenants)
-              [:not (tenant-collection-where-clause :c.type)])
+              [:not (tenant-collection-where-clause :c.is_shared_tenant_collection)])
 
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
@@ -1492,10 +1495,10 @@
         (throw (ex-info "Can't create a personal collection for an API key" {:user user-id}))))))
 
 (defn- assert-type-ok [collection]
-  (when (and (:type collection)
-             (is-tenant-collection? collection)
+  (when (and (:is_shared_tenant_collection collection)
              (not (perms/use-tenants)))
-    (throw (ex-info "Can't create a tenant collection without tenants enabled." {:type (:type collection)}))))
+    (throw (ex-info "Can't create a tenant collection without tenants enabled."
+                    {:is_shared_tenant_collection true}))))
 
 (t2/define-before-insert :model/Collection
   [{collection-name :name, :as collection}]
@@ -1566,10 +1569,10 @@
 
 (t2/define-after-insert :model/Collection
   [collection]
-  (u/prog1 collection
+  (u/prog1 (t2.realize/realize collection)
     (if (is-tenant-collection? <>)
       (set-tenant-collection-permissions! <>)
-      (copy-parent-permissions! (t2.realize/realize <>)))))
+      (copy-parent-permissions! <>))))
 
 ;;; ----------------------------------------------------- UPDATE -----------------------------------------------------
 
@@ -1709,7 +1712,7 @@
   in the single case of deleting a User themselves, we need to allow this. (Note that in normal usage, Users never get
   deleted, but rather archived; thus this code is used solely by our test suite, by things such as the `with-temp`
   macros.)"}
-  *allow-deleting-personal-collections*
+ *allow-deleting-personal-collections*
   false)
 
 (t2/define-before-delete :model/Collection
@@ -1874,7 +1877,8 @@
           :name
           :namespace
           :slug
-          :type]
+          :type
+          :is_shared_tenant_collection]
    :skip []
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.

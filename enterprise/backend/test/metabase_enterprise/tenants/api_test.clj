@@ -287,8 +287,8 @@
 (deftest tenant-collections-are-labeled-in-collection-items-api
   (mt/with-premium-features #{:tenants}
     (mt/with-temporary-setting-values [use-tenants true]
-      (mt/with-temp [:model/Collection {parent-id :id :as parent} {:type "shared-tenant-collection"}
-                     :model/Collection {coll-id :id} {:type "shared-tenant-collection"
+      (mt/with-temp [:model/Collection {parent-id :id :as parent} {:is_shared_tenant_collection true}
+                     :model/Collection {coll-id :id} {:is_shared_tenant_collection true
                                                       :location (collection/children-location parent)}]
         (let [coll-item (->> (mt/user-http-request :rasta :get 200 (str "collection/" parent-id "/items"))
                              :data
@@ -305,9 +305,9 @@
 (deftest can-get-tenant-collections-from-tree-api
   (mt/with-premium-features #{:tenants}
     (mt/with-temporary-setting-values [use-tenants true]
-      (mt/with-temp [:model/Collection {parent-id :id :as parent} {:type "shared-tenant-collection"}
-                     :model/Collection {other-rooty-id :id} {:type "shared-tenant-collection"}
-                     :model/Collection {coll-id :id} {:type "shared-tenant-collection"
+      (mt/with-temp [:model/Collection {parent-id :id :as parent} {:is_shared_tenant_collection true}
+                     :model/Collection {other-rooty-id :id} {:is_shared_tenant_collection true}
+                     :model/Collection {coll-id :id} {:is_shared_tenant_collection true
                                                       :location (collection/children-location parent)}
                      :model/Collection {non-tenant-coll-id :id} {}]
         (letfn [(simplify-children [children]
@@ -337,7 +337,7 @@
 (deftest root-collection-items-does-not-include-tenant-collections
   (mt/with-premium-features #{:tenants}
     (mt/with-temporary-setting-values [use-tenants true]
-      (mt/with-temp [:model/Collection {parent-id :id} {:type "shared-tenant-collection"}]
+      (mt/with-temp [:model/Collection {parent-id :id} {:is_shared_tenant_collection true}]
         (is (= []
                (->> (mt/user-http-request :rasta :get 200 "collection/root/items")
                     :data
@@ -347,9 +347,9 @@
 (deftest we-can-get-root-tenant-collections
   (mt/with-premium-features #{:tenants}
     (mt/with-temporary-setting-values [use-tenants true]
-      (mt/with-temp [:model/Collection {top-id :id :as parent} {:type "shared-tenant-collection"}
-                     :model/Collection {other-top-id :id} {:type "shared-tenant-collection"}
-                     :model/Collection _doesnt-appear-in-results {:type     "shared-tenant-collection"
+      (mt/with-temp [:model/Collection {top-id :id :as parent} {:is_shared_tenant_collection true}
+                     :model/Collection {other-top-id :id} {:is_shared_tenant_collection true}
+                     :model/Collection _doesnt-appear-in-results {:is_shared_tenant_collection true
                                                                   :location (collection/children-location parent)}]
         (is (= #{{:id top-id :is_tenant_collection true}
                  {:id other-top-id :is_tenant_collection true}}
@@ -364,15 +364,15 @@
   (mt/with-premium-features #{:tenants}
     (mt/with-temporary-setting-values [use-tenants true]
       (mt/with-model-cleanup [:model/Collection]
-        (let [{id :id} (mt/user-http-request :crowberto :post 200 "collection/" {:type "shared-tenant-collection"
+        (let [{id :id} (mt/user-http-request :crowberto :post 200 "collection/" {:is_shared_tenant_collection true
                                                                                  :name (mt/random-name)})
               coll (t2/select-one :model/Collection id)]
           (is coll)
-          (is (= "shared-tenant-collection" (:type coll))))))))
+          (is (:is_shared_tenant_collection coll)))))))
 
 (deftest tenant-collections-cant-be-created-if-tenants-disabled
   (mt/with-temporary-setting-values [use-tenants false]
-    (mt/user-http-request :crowberto :post 400 "collection/" {:type "shared-tenant-collection" :name (mt/random-name)})))
+    (mt/user-http-request :crowberto :post 400 "collection/" {:is_shared_tenant_collection true :name (mt/random-name)})))
 
 (defn do-with-disabled-create-tenant-collections-permissions
   [f]
@@ -393,7 +393,7 @@
   (mt/with-premium-features #{:tenants}
     (mt/with-temporary-setting-values [use-tenants true]
       (with-disabled-create-tenant-collections-permissions!
-        (mt/user-http-request :rasta :post 403 "collection/" {:type "shared-tenant-collection"
+        (mt/user-http-request :rasta :post 403 "collection/" {:is_shared_tenant_collection true
                                                               :name (mt/random-name)})))))
 
 (deftest regular-users-with-necessary-perm-can-create-shared-tenant-collections
@@ -401,24 +401,24 @@
     (mt/with-temporary-setting-values [use-tenants true]
       (with-disabled-create-tenant-collections-permissions!
         (perms/grant-application-permissions! (perms/all-users-group) :create-tenant-collections)
-        (mt/user-http-request :rasta :post 403 "collection/" {:type "shared-tenant-collection"
+        (mt/user-http-request :rasta :post 403 "collection/" {:is_shared_tenant_collection true
                                                               :name (mt/random-name)})))))
 
 (deftest admins-can-create-shared-tenant-collections-as-children-of-other-collections
   (mt/with-premium-features #{:tenants}
     (mt/with-temporary-setting-values [use-tenants true]
-      (mt/with-temp [:model/Collection {parent-id :id} {:type "shared-tenant-collection"}]
-        (let [id (:id (mt/user-http-request :crowberto :post 200 "collection/" {:type "shared-tenant-collection"
+      (mt/with-temp [:model/Collection {parent-id :id} {:is_shared_tenant_collection true}]
+        (let [id (:id (mt/user-http-request :crowberto :post 200 "collection/" {:is_shared_tenant_collection true
                                                                                 :name (mt/random-name)
                                                                                 :parent_id parent-id}))
               coll (t2/select-one :model/Collection id)]
           (is id)
-          (is (= "shared-tenant-collection" (:type coll))))))))
+          (is (:is_shared_tenant_collection coll)))))))
 
 (deftest a-child-of-a-shared-tenant-collection-defaults-to-shared-tenant-collection-type
   (mt/with-premium-features #{:tenants}
     (mt/with-temporary-setting-values [use-tenants true]
-      (mt/with-temp [:model/Collection {parent-id :id} {:type "shared-tenant-collection"}]
+      (mt/with-temp [:model/Collection {parent-id :id} {:is_shared_tenant_collection true}]
         (is (= "shared-tenant-collection"
                (:type (mt/user-http-request :crowberto :post 200 "collection/" {:name (mt/random-name)
                                                                                 :parent_id parent-id}))))))))

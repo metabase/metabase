@@ -43,7 +43,7 @@ export const MainNavSharedCollections = () => {
       createCollection({
         ...values,
         parent_id: null,
-        type: "shared-tenant-collection",
+        is_shared_tenant_collection: true,
       });
     },
     [createCollection],

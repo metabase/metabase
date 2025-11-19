@@ -1212,8 +1212,8 @@
   "OSS version. Throws API exceptions if the passed collection is an invalid tenant collection, which in OSS
   means 'any tenant collection.'"
   metabase-enterprise.tenants.core
-  [{ttype :type :as _new-coll}]
-  (when (collection/is-tenant-collection-type? ttype)
+  [{:keys [is_shared_tenant_collection] :as _new-coll}]
+  (when is_shared_tenant_collection
     (throw (ex-info "Cannot create tenant collection on OSS." {:status-code 400}))))
 
 (def ^:private CreateCollectionArguments
@@ -1224,7 +1224,7 @@
    [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
    [:namespace       {:optional true} [:maybe ms/NonBlankString]]
    [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]
-   [:type            {:optional true} [:maybe [:enum "shared-tenant-collection"]]]])
+   [:is_shared_tenant_collection {:optional true} [:maybe :boolean]]])
 
 (def ^:private NewCollectionArguments
   "What we use internally to actually create a collection, i.e. what `t2/insert!` needs to create a collection."
@@ -1242,7 +1242,7 @@
                       (t2/select-one :model/Collection pid))]
     (cond-> coll-data
       ;; default to the same type of tenant collection, if applicable
-      (some-> parent-coll collection/is-tenant-collection?) (assoc :type (:type parent-coll))
+      (some-> parent-coll collection/is-tenant-collection?) (assoc :is_shared_tenant_collection (:is_shared_tenant_collection parent-coll))
       ;; set the location
       parent-coll (assoc :location (collection/children-location parent-coll))
       ;; select only the known set of keys
@@ -1250,7 +1250,7 @@
 
 (mu/defn create-collection!
   "Create a new collection."
-  [{:keys [name description parent_id namespace authority_level type] :as coll-data}]
+  [{:keys [name description parent_id namespace authority_level is_shared_tenant_collection] :as coll-data}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id namespace)
   (when (some? authority_level)
@@ -1258,16 +1258,16 @@
     (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
     (api/check-superuser))
   ;; Get namespace from parent collection if not provided
-  (let [{parent-type :type
+  (let [{parent-is-shared-tenant :is_shared_tenant_collection
          :as parent-collection} (when parent_id
-                                  (t2/select-one [:model/Collection :location :id :namespace :type] :id parent_id))
+                                  (t2/select-one [:model/Collection :location :id :namespace :is_shared_tenant_collection] :id parent_id))
         effective-namespace (cond
                               (contains? coll-data :namespace) namespace
                               parent-collection (:namespace parent-collection)
                               :else nil)
-        effective-type (cond
-                         (contains? coll-data :type) type
-                         parent-type parent-type
+        effective-is-shared-tenant (cond
+                                     (contains? coll-data :is_shared_tenant_collection) is_shared_tenant_collection
+                                     parent-is-shared-tenant parent-is-shared-tenant
                          :else nil)]
     (validate-new-tenant-collection! coll-data)
      ;; Now create the new Collection :)
@@ -1276,7 +1276,7 @@
               (merge
                {:name            name
                 :description     description
-                :type            effective-type
+                :is_shared_tenant_collection effective-is-shared-tenant
                 :authority_level authority_level
                 :namespace       effective-namespace}
                (when parent-collection

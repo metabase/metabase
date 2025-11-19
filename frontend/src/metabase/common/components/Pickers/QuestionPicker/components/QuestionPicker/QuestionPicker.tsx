@@ -104,7 +104,7 @@ export const QuestionPicker = ({
             model: "dashboard",
             location,
             is_tenant_dashboard:
-              currentDashboard?.collection?.type === "shared-tenant-collection",
+              !!currentDashboard?.collection?.is_shared_tenant_collection,
           },
           userPersonalCollectionId,
         );

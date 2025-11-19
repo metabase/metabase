@@ -41,13 +41,13 @@ import { initializePlugin as initializeSharing } from "./sharing";
 import { initializePlugin as initializeSmtpOverride } from "./smtp-override";
 import { initializePlugin as initializeSnippets } from "./snippets";
 import { initializePlugin as initializeTableEditing } from "./table-editing";
+import { initializePlugin as initializeTenants } from "./tenants";
 import { initializePlugin as initializeTools } from "./tools";
 import { initializePlugin as initializeTransforms } from "./transforms";
 import { initializePlugin as initializeTransformsPython } from "./transforms-python";
 import { initializePlugin as initializeUploadManagement } from "./upload_management";
 import { initializePlugin as initializeUserProvisioning } from "./user_provisioning";
 import { initializePlugin as initializeWhitelabel } from "./whitelabel";
-import { initializePlugin as initializeTenants } from "./tenants";
 
 /**
  * Initialize all enterprise plugins that use hasPremiumFeature.

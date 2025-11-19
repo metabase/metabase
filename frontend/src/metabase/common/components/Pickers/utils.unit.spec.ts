@@ -153,7 +153,7 @@ describe("getCollectionIdPath", () => {
         location: "/4/5/6/7/8/",
         effective_location: "/6/7/8/",
         model: "collection",
-        type: "shared-tenant-collection",
+        is_shared_tenant_collection: true,
       },
       1337,
     );

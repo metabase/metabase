@@ -250,7 +250,7 @@ const commonSetup = ({ ee = false }: { ee?: boolean } = {}) => {
       } else {
         fetchMock.get(`path:/api/collection/${item.id}`, {
           ...item,
-          type: "shared-tenant-collection",
+          is_shared_tenant_collection: true,
         });
       }
     });

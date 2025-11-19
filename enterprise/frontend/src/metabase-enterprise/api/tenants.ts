@@ -1,3 +1,4 @@
+import { provideCollectionItemListTags } from "metabase/api/tags";
 import type {
   CreateTenantInput,
   ListCollectionItemsRequest,
@@ -8,7 +9,6 @@ import type {
 
 import { EnterpriseApi } from "./api";
 import { idTag, invalidateTags, listTag } from "./tags";
-import { provideCollectionItemListTags } from "metabase/api/tags";
 
 export const tenantsApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({

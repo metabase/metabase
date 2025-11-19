@@ -50,8 +50,8 @@ import {
   PLUGIN_DB_ROUTING,
   PLUGIN_DEPENDENCIES,
   PLUGIN_METABOT,
-  PLUGIN_TRANSFORMS,
   PLUGIN_TENANTS,
+  PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
 
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";

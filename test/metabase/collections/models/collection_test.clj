@@ -3315,7 +3315,7 @@
           (mt/with-temp [:model/PermissionsGroup {group-1-id :id} {:name "Group 1"}
                          :model/PermissionsGroup {group-2-id :id} {:name "Group 2"}
                          :model/Collection coll {:name "Tenant Collection"
-                                                 :type "shared-tenant-collection"
+                                                 :is_shared_tenant_collection true
                                                  :location "/"}]
             (let [group-1-perms (t2/select-one :model/Permissions
                                                :group_id group-1-id
@@ -3341,7 +3341,7 @@
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Collection coll {:name "Tenant Collection"
-                                               :type "shared-tenant-collection"
+                                               :is_shared_tenant_collection true
                                                :location "/"}]
           (let [admin-group-id (:id (perms/admin-group))]
             (is (not (t2/exists? :model/Permissions
@@ -3356,11 +3356,11 @@
         (mt/with-temporary-setting-values [use-tenants true]
           (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}
                          :model/Collection parent {:name "Parent Tenant Collection"
-                                                   :type "shared-tenant-collection"
+                                                   :is_shared_tenant_collection true
                                                    :location "/"}]
             (perms/grant-collection-readwrite-permissions! group-id parent)
             (mt/with-temp [:model/Collection child {:name "Child Tenant Collection"
-                                                    :type "shared-tenant-collection"
+                                                    :is_shared_tenant_collection true
                                                     :location (collection/children-location parent)}]
               (is (t2/exists? :model/Permissions
                               :group_id group-id
@@ -3377,7 +3377,7 @@
                                                    :location "/"}]
             (perms/grant-collection-readwrite-permissions! group-id parent)
             (mt/with-temp [:model/Collection child {:name "Tenant Collection"
-                                                    :type "shared-tenant-collection"
+                                                    :is_shared_tenant_collection true
                                                     :location (collection/children-location parent)}]
               (is (not (t2/exists? :model/Permissions
                                    :group_id group-id
@@ -3396,7 +3396,7 @@
                        :model/PermissionsGroup {group-2-id :id} {:name "Group 2"}
                        :model/PermissionsGroup {group-3-id :id} {:name "Group 3"}
                        :model/Collection coll {:name "Tenant Collection"
-                                               :type "shared-tenant-collection"
+                                               :is_shared_tenant_collection true
                                                :location "/"}]
           (let [groups-with-read-perms (t2/select-fn-set :group_id :model/Permissions
                                                          :object (perms/collection-read-path coll))
@@ -3415,10 +3415,10 @@
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Collection {parent-id :id :as parent} {:name "Parent"
-                                                                     :type "shared-tenant-collection"
+                                                                     :is_shared_tenant_collection true
                                                                      :location "/"}
                        :model/Collection child {:name "Child"
-                                                :type "shared-tenant-collection"
+                                                :is_shared_tenant_collection true
                                                 :location (collection/children-location parent)}]
           (let [child-parent (#'collection/parent child)]
             (is (= parent-id (:id child-parent))
@@ -3430,7 +3430,7 @@
   (testing "The is-tenant-collection? predicate"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/Collection tenant-coll {:type "shared-tenant-collection"}
+        (mt/with-temp [:model/Collection tenant-coll {:is_shared_tenant_collection true}
                        :model/Collection regular-coll {:type nil}
                        :model/Collection remote-coll {:type "remote-synced"}]
           (is (collection/is-tenant-collection? tenant-coll)
@@ -3447,7 +3447,7 @@
         (testing "for tenant collections"
           (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}
                          :model/Collection coll {:name "Tenant Collection"
-                                                 :type "shared-tenant-collection"
+                                                 :is_shared_tenant_collection true
                                                  :location "/"}]
             (is (t2/exists? :model/Permissions
                             :group_id group-id
@@ -3468,13 +3468,13 @@
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}
                        :model/Collection level-1 {:name "Level 1 Tenant"
-                                                  :type "shared-tenant-collection"
+                                                  :is_shared_tenant_collection true
                                                   :location "/"}
                        :model/Collection level-2 {:name "Level 2 Tenant"
-                                                  :type "shared-tenant-collection"
+                                                  :is_shared_tenant_collection true
                                                   :location (collection/children-location level-1)}
                        :model/Collection level-3 {:name "Level 3 Tenant"
-                                                  :type "shared-tenant-collection"
+                                                  :is_shared_tenant_collection true
                                                   :location (collection/children-location level-2)}]
           (is (t2/exists? :model/Permissions
                           :group_id group-id
@@ -3495,7 +3495,7 @@
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}
                        :model/Collection coll {:name "Tenant Collection"
-                                               :type "shared-tenant-collection"
+                                               :is_shared_tenant_collection true
                                                :location "/"}]
           (let [read-perms (t2/exists? :model/Permissions
                                        :group_id group-id

@@ -63,8 +63,7 @@ export const getCollectionIdPath = (
     return ["personal", ...pathFromRoot, id];
   } else if (
     collection.is_tenant_collection ||
-    collection.is_tenant_dashboard ||
-    collection.type === "shared-tenant-collection"
+    collection.is_tenant_dashboard
   ) {
     return ["tenant", ...pathFromRoot, id];
   } else {

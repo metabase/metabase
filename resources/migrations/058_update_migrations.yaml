@@ -636,6 +636,25 @@ databaseChangeLog:
               VALUES
               ('All External Users', 'all-external-users', true);
 
+  - changeSet:
+      id: v58.2025-11-18T13:00:00
+      author: edpaget
+      comment: Add is_shared_tenant_collection to collection table
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: is_shared_tenant_collection
+                  type: ${boolean.type}
+                  remarks: Flag to control whether this collection is treated as a shared-tenant-collection
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: collection
+            columnName: is_shared_tenant_collection
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

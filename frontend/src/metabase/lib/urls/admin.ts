@@ -1,6 +1,6 @@
 import type {
-  DatabaseId,
   BaseUser,
+  DatabaseId,
   SchemaName,
   TableId,
   UserId,

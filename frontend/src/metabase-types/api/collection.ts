@@ -76,6 +76,7 @@ export interface Collection {
   children?: Collection[];
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
+  is_shared_tenant_collection?: boolean;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
@@ -206,7 +207,7 @@ export interface CreateCollectionRequest {
   parent_id?: CollectionId | null;
   namespace?: string;
   authority_level?: CollectionAuthorityLevel;
-  type?: "shared-tenant-collection";
+  is_shared_tenant_collection?: boolean;
 }
 
 export interface ListCollectionsRequest {
