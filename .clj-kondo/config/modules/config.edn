@@ -1531,6 +1531,7 @@
            api
            app-db
            audit-app
+           config
            driver
            lib
            lib-be
