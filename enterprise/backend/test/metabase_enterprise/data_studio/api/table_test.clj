@@ -115,6 +115,13 @@
                                  :visibility_type  "hidden"
                                  :data_layer "copper"}))))))
 
+(deftest requests-data-studio-feature-flag-test
+  (mt/with-premium-features #{}
+    (is (= "Data Studio is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+           (:message (mt/user-http-request :crowberto :post 402 "ee/data-studio/table/edit"
+                                           {:table_ids  [(mt/id :users)]
+                                            :data_layer "gold"}))))))
+
 (deftest ^:parallel non-admins-cant-trigger-bulk-sync-test
   (mt/with-premium-features #{:data-studio}
     (testing "Non-admins should not be allowed to trigger sync"
