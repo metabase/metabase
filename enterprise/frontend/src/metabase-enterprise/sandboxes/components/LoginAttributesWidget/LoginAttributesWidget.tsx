@@ -35,7 +35,9 @@ const isInheritedValue = (
 
   const inheritedValue =
     attribute?.original?.value ??
-    (attribute.source === "jwt" || attribute.source === "tenant" ? attribute.value : undefined);
+    (attribute.source === "jwt" || attribute.source === "tenant"
+      ? attribute.value
+      : undefined);
   return inheritedValue === inputValue;
 };
 
@@ -52,13 +54,13 @@ export const LoginAttributesWidget = ({
   const [{ value: tenantId }] = useField("tenant_id");
   const { data: userData, isLoading } = useGetUserQuery(userId ?? skipToken);
 
-  const structuredAttributes = useMemo(() => {
-    return getExtraAttributes(userData?.structured_attributes, tenant);
-  }, [userData?.structured_attributes]);
-
   const { data: tenant, isLoading: isLoadingTenant } = useGetTenantQuery(
     tenantId ?? skipToken,
   );
+
+  const structuredAttributes = useMemo(() => {
+    return getExtraAttributes(userData?.structured_attributes, tenant);
+  }, [tenant, userData?.structured_attributes]);
 
   const handleChange = (newValue: UserAttributeMap) => {
     const validEntries = Object.entries(newValue).filter(
