@@ -34,26 +34,28 @@
   (mt/with-model-cleanup [:model/Collection :model/Workspace]
     (let [stuffs         {:transform [1]}
           workspace-name (str "Workspace " (random-uuid))
-          created        (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                               {:name        workspace-name
-                                                :database_id 1
-                                                :stuffs      stuffs})
-          workspace-id   (:id created)
-          collection-id  (:collection_id created)]
-      (is (pos-int? workspace-id))
-      (is (pos-int? collection-id))
+          {ws-id :id
+           :keys [collection_id]
+           :as   created}  (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                 {:name        workspace-name
+                                                  :database_id 1
+                                                  :stuffs      stuffs})
+          ws             (t2/select-one :model/Workspace :id ws-id)
+          coll           (t2/select-one :model/Collection :id collection_id)]
       (is (= workspace-name (:name created)))
-      (is (t2/exists? :model/Workspace :id workspace-id :collection_id collection-id))
-      (is (t2/exists? :model/Collection :id collection-id :workspace_id workspace-id))
+      (is ws)
+      (is coll)
+      (is (=? {:namespace :workspaces}
+              coll))
 
       (testing "workspace appears in list response"
         (let [{:keys [items]} (mt/user-http-request :crowberto :get 200 "ee/workspace")]
-          (is (some #(= workspace-id (:id %)) items))))
+          (is (some #(= ws-id (:id %)) items))))
 
       (testing "workspace can be fetched individually"
-        (let [response (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" workspace-id))]
-          (is (= workspace-id (:id response)))))
+        (let [response (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" ws-id))]
+          (is (= ws-id (:id response)))))
 
       (testing "workspace can be archived"
-        (let [updated (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" workspace-id "/archive"))]
+        (let [updated (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" ws-id "/archive"))]
           (is (some? (:archived_at updated))))))))

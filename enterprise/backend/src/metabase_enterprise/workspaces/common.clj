@@ -29,6 +29,7 @@
                                                 :execution_user (:user_id api-key)})
         coll    (t2/insert-returning-instance! :model/Collection
                                                {:name         (format "Collection for Workspace %s" name)
+                                                :namespace    :workspaces
                                                 :workspace_id (:id ws)})]
     ;; TODO (Sanya 2025-11-18) - not sure how to transfer this api key to agent
     (log/infof "Generated API key for workspace: %s" (u.secret/expose (:unmasked_key api-key)))
