@@ -17,6 +17,7 @@ interface PublishModelResponse {
 
 describe("Table editing", () => {
   beforeEach(() => {
+    H.restore();
     cy.intercept("GET", "/api/database?*").as("databases");
     cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
