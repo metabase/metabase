@@ -4,6 +4,20 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.56.13
+
+- `/api/collection/graph` endpoints now no longer return 'none' permissions in the returned graph. Missing fields in
+  between group ids and collection id indicate that that the group provides no permissions for the collection. For
+  example, what was returned in versions before 0.56.13:
+  ```json
+  {"revision": 2, "groups": {"1": {"root": "write", "1": "read", "2": "none"}}}
+  ```
+  becomes:
+  ```json
+  {"revision": 2, "groups": {"1": {"root": "write", "1": "read"}}}
+  ```
+  in versions 0.56.13 and up. 
+
 ## Metabase 0.55.0
 
 - `POST /api/card/from-csv` has been renamed to `POST /api/upload/csv`.
