@@ -93,11 +93,11 @@ export const ActionExecuteModal = ({
       title={action?.name}
       data-testid="action-execute-modal"
     >
-      {error || isLoading ? (
+      {error || isLoading || !action ? (
         <LoadingAndErrorWrapper error={error} loading={isLoading} />
       ) : (
         <ActionParametersInputForm
-          action={checkNotNull(action)}
+          action={action}
           initialValues={initialValues}
           onCancel={onClose}
           onSubmit={handleSubmit}
