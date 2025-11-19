@@ -754,7 +754,7 @@
           (mt/with-temporary-setting-values [use-tenants true]
             (testing "a new user fails to log in"
               (mt/with-model-cleanup [:model/User]
-                (let [response    (client/client-real-response :get 400 "/auth/sso"
+                (let [response    (client/client-real-response :get 403 "/auth/sso"
                                                                {:request-options {:redirect-strategy :none}}
                                                                :return_to default-redirect-uri
                                                                :jwt
@@ -766,7 +766,7 @@
                                                                 default-jwt-secret))]
                   (is (not (saml-test/successful-login? response))))))
             (testing "an existing user also fails to log in"
-              (let [response    (client/client-real-response :get 400 "/auth/sso"
+              (let [response    (client/client-real-response :get 403 "/auth/sso"
                                                              {:request-options {:redirect-strategy :none}}
                                                              :return_to default-redirect-uri
                                                              :jwt

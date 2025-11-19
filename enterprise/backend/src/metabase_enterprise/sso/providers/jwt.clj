@@ -92,11 +92,13 @@
         (log/infof "Successfully authenticated JWT token for: %s %s" first-name last-name)
         {:success? true
          :tenant-slug tenant-slug
-         :user-data {:email email
-                     :first_name first-name
-                     :last_name last-name
-                     :sso_source :jwt
-                     :jwt_attributes user-attributes}
+         :user-data (->> {:email email
+                          :first_name first-name
+                          :last_name last-name
+                          :sso_source :jwt
+                          :jwt_attributes user-attributes}
+                         (remove #(nil? (val %)))
+                         (into {}))
          :jwt-data jwt-data
          :provider-id email})
       (catch clojure.lang.ExceptionInfo e
