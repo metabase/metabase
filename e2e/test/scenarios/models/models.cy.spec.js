@@ -362,8 +362,8 @@ describe("scenarios > models", () => {
 
     it("transforms the data picker", () => {
       H.startNewQuestion();
-
       H.miniPickerBrowseAll().click();
+
       H.entityPickerModal().within(() => {
         H.entityPickerModalItem(0, "Our analytics").click();
         cy.findByText("Orders").should("exist");
@@ -375,47 +375,52 @@ describe("scenarios > models", () => {
         cy.findByText("Products").should("exist");
 
         H.entityPickerModalItem(0, "Databases").click();
-        cy.findByText("Orders").should("exist");
-        cy.findByText("People").should("exist");
-        cy.findByText("Products").should("exist");
-        cy.findByText("Reviews").should("exist");
+
+        H.entityPickerModalItem(1, "Orders").should("exist");
+        H.entityPickerModalItem(1, "People").should("exist");
+        H.entityPickerModalItem(1, "Products").should("exist");
+        H.entityPickerModalItem(1, "Reviews").should("exist");
+
         cy.findByText("Orders, Count").should("not.exist");
 
-        cy.findByPlaceholderText("Search this collection or everywhere…").type(
-          "Ord",
-        );
-        cy.wait("@search");
+        // TODO: commenting the rest of this test out as it involves searching particular databases and schemas. We
+        // want to get this functionality back, just not right this minute
 
-        getResults().should("have.length", 1);
-        cy.findByText("1 result").should("be.visible");
-        getResults()
-          .eq(0)
-          .should("have.attr", "data-model-type", "table")
-          .and("contain.text", "Orders");
+        // cy.findByPlaceholderText("Search this database or everywhere…").type(
+        //   "Ord",
+        // );
+        // cy.wait("@search");
 
-        cy.findByText("Everywhere").click();
-        getResults().should("have.length", 5);
-        cy.findByText("5 results").should("be.visible");
-        getResults()
-          .eq(0)
-          .should("have.attr", "data-model-type", "dataset")
-          .and("contain.text", "Orders Model");
-        getResults()
-          .eq(1)
-          .should("have.attr", "data-model-type", "dataset")
-          .and("contain.text", "Orders");
-        getResults()
-          .eq(2)
-          .should("have.attr", "data-model-type", "card")
-          .and("contain.text", "Orders, Count, Grouped by Created At (year)");
-        getResults()
-          .eq(3)
-          .should("have.attr", "data-model-type", "card")
-          .and("contain.text", "Orders, Count");
-        getResults()
-          .eq(4)
-          .should("have.attr", "data-model-type", "table")
-          .and("contain.text", "Orders");
+        // getResults().should("have.length", 1);
+        // cy.findByText("1 result").should("be.visible");
+        // getResults()
+        //   .eq(0)
+        //   .should("have.attr", "data-model-type", "table")
+        //   .and("contain.text", "Orders");
+
+        // cy.findByText("Everywhere").click();
+        // getResults().should("have.length", 5);
+        // cy.findByText("5 results").should("be.visible");
+        // getResults()
+        //   .eq(0)
+        //   .should("have.attr", "data-model-type", "dataset")
+        //   .and("contain.text", "Orders Model");
+        // getResults()
+        //   .eq(1)
+        //   .should("have.attr", "data-model-type", "dataset")
+        //   .and("contain.text", "Orders");
+        // getResults()
+        //   .eq(2)
+        //   .should("have.attr", "data-model-type", "card")
+        //   .and("contain.text", "Orders, Count, Grouped by Created At (year)");
+        // getResults()
+        //   .eq(3)
+        //   .should("have.attr", "data-model-type", "card")
+        //   .and("contain.text", "Orders, Count");
+        // getResults()
+        //   .eq(4)
+        //   .should("have.attr", "data-model-type", "table")
+        //   .and("contain.text", "Orders");
       });
     });
 
@@ -433,12 +438,12 @@ describe("scenarios > models", () => {
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
         H.entityPickerModalItem(0, "Databases").click();
-        cy.findByText("Orders").should("exist");
-        cy.findByText("People").should("exist");
-        cy.findByText("Products").should("exist");
-        cy.findByText("Reviews").should("exist");
+        H.entityPickerModalItem(1, "Orders").should("exist");
+        H.entityPickerModalItem(1, "People").should("exist");
+        H.entityPickerModalItem(1, "Products").should("exist");
+        H.entityPickerModalItem(1, "Reviews").should("exist");
 
-        cy.findByText("Products").click();
+        H.entityPickerModalItem(1, "Products").click();
       });
 
       H.getNotebookStep("filter")
@@ -751,6 +756,6 @@ function getCollectionItemCard(itemName) {
   return cy.findByText(itemName).closest("a");
 }
 
-function getResults() {
-  return cy.findAllByTestId("result-item");
-}
+// function getResults() {
+//   return cy.findAllByTestId("result-item");
+// }
