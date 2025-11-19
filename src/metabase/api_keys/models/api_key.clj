@@ -203,10 +203,10 @@
 
 (mu/defn create-api-key-with-new-user!
   "Create a new API key and a new user for that key at the same time."
-  [{:keys [key-name group-id]} :- [:map
-                                   {:closed true}
-                                   [:key-name ::api-keys.schema/name]
-                                   [:group-id {:optional true} pos-int?]]]
+  [{:keys [key-name group-id]}
+   :- [:map {:closed true}
+       [:key-name ::api-keys.schema/name]
+       [:group-id {:optional true} pos-int?]]]
   (api/checkp (not (t2/exists? :model/ApiKey :name key-name))
               "name" "An API key with this name already exists.")
   (let [unhashed-key (key-with-unique-prefix)
@@ -218,7 +218,8 @@
                                               :last_name  ""
                                               :type       :api-key
                                               :password   (str (random-uuid))})]
-        (user/set-permissions-groups! user-id [(perms/all-users-group) group-id])
+        (when group-id
+          (user/set-permissions-groups! user-id [(perms/all-users-group) group-id]))
         (-> (t2/insert-returning-instance! :model/ApiKey
                                            {:user_id                user-id
                                             :name                   key-name

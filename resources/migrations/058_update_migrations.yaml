@@ -501,6 +501,306 @@ databaseChangeLog:
             baseTableName: core_session
             constraintName: fk_session_auth_identity
 
+  - changeSet:
+      id: v58.2025-11-18T12:00:00
+      author: piranha
+      comment: Create workspace table
+      changes:
+        - createTable:
+            tableName: workspace
+            remarks: Internal Metabase container
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: Integer PK
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: Workspace name
+              - column:
+                  name: collection_id
+                  type: int
+                  constraints:
+                    nullable: true
+                  remarks: FK to workspace's collection
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: FK to owner
+              - column:
+                  name: api_key_id
+                  type: int
+                  remarks: FK to api key used by agent
+              - column:
+                  name: execution_user
+                  type: int
+                  remarks: FK to api key's user
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: FK to db used for this workspace
+              - column:
+                  name: schema
+                  type: varchar(254)
+                  remarks: Isolated schema where work happens
+                  constraints:
+                    nullable: true
+              - column:
+                  name: graph
+                  type: ${text.type}
+                  remarks: Graph configuration serialized as JSON
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the workspace was created
+                  defaultValueComputed: current_timestamp
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the workspace was last updated
+                  defaultValueComputed: current_timestamp
+              - column:
+                  name: archived_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when (and if) the workspace was archived
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropTable:
+            tableName: workspace
+
+  - changeSet:
+      id: v58.2025-11-18T12:00:01
+      author: piranha
+      comment: Add index on workspace.collection_id for quick lookups by collection
+      changes:
+        - createIndex:
+            tableName: workspace
+            indexName: idx_workspace_collection_id
+            columns:
+              - column:
+                  name: collection_id
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v58.2025-11-18T12:00:02
+      author: piranha
+      comment: Add index on workspace.creator_id for quick lookups
+      changes:
+        - createIndex:
+            tableName: workspace
+            indexName: idx_workspace_creator_id
+            columns:
+              - column:
+                  name: creator_id
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v58.2025-11-18T12:00:03
+      author: piranha
+      comment: Add index on workspace.api_key_id for quick lookups
+      changes:
+        - createIndex:
+            tableName: workspace
+            indexName: idx_workspace_api_key_id
+            columns:
+              - column:
+                  name: api_key_id
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v58.2025-11-18T12:00:04
+      author: piranha
+      comment: Add index on workspace.execution_user for quick lookups
+      changes:
+        - createIndex:
+            tableName: workspace
+            indexName: idx_workspace_execution_user_id
+            columns:
+              - column:
+                  name: execution_user
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v58.2025-11-18T12:00:07
+      author: piranha
+      comment: Add workspace_id column to metabase_table table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: Workspace that owns schema with this table
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: workspace_id
+
+  - changeSet:
+      id: v58.2025-11-18T12:00:08
+      author: piranha
+      comment: Add foreign key constraint from metabase_table.workspace_id to workspace
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table
+            baseColumnNames: workspace_id
+            constraintName: fk_metabase_table_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_table
+            constraintName: fk_metabase_table_workspace_id
+
+  - changeSet:
+      id: v58.2025-11-18T12:00:09
+      author: piranha
+      comment: Add workspace_id column to metabase_field table
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: Workspace that owns schema with this field
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: workspace_id
+
+  - changeSet:
+      id: v58.2025-11-18T12:00:10
+      author: piranha
+      comment: Add foreign key constraint from metabase_field.workspace_id to workspace
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_field
+            baseColumnNames: workspace_id
+            constraintName: fk_metabase_field_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_field
+            constraintName: fk_metabase_field_workspace_id
+
+  - changeSet:
+      id: v58.2025-11-18T12:00:11
+      author: piranha
+      comment: Add workspace_id column to collection table
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: Workspace containing this collection
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: collection
+            columnName: workspace_id
+
+  - changeSet:
+      id: v58.2025-11-18T12:00:12
+      author: piranha
+      comment: Add foreign key constraint from collection.workspace_id to workspace
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: collection
+            baseColumnNames: workspace_id
+            constraintName: fk_collection_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: collection
+            constraintName: fk_collection_workspace_id
+
+  - changeSet:
+      id: v58.2025-11-18T12:00:13
+      author: piranha
+      comment: Add workspace_id column to report_card table
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: Workspace containing this card
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: report_card
+            columnName: workspace_id
+
+  - changeSet:
+      id: v58.2025-11-18T12:00:14
+      author: piranha
+      comment: Add foreign key constraint from report_card.workspace_id to workspace
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: workspace_id
+            constraintName: fk_report_card_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_report_card_workspace_id
+
+  - changeSet:
+      id: v58.2025-11-18T12:00:17
+      author: piranha
+      comment: Add workspace_id column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: Workspace containing this transform
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: transform
+            columnName: workspace_id
+
+  - changeSet:
+      id: v58.2025-11-18T12:00:18
+      author: piranha
+      comment: Add foreign key constraint from transform.workspace_id to workspace
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: workspace_id
+            constraintName: fk_transform_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: transform
+            constraintName: fk_transform_workspace_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
