@@ -23,6 +23,7 @@ import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
+// TEMP trigger CI
 const MIN_ICON_WIDTH = 20;
 
 export interface SelectProps<
