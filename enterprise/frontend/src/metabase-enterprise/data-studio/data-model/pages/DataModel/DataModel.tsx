@@ -133,7 +133,12 @@ function DataModelContent({ params }: Props) {
     !showBulkTableEdit;
 
   return (
-    <Flex bg="accent-gray-light" data-testid="data-model" h="100%">
+    <Flex
+      bg="accent-gray-light"
+      data-testid="data-model"
+      h="100%"
+      style={{ overflow: "auto" }}
+    >
       <Stack
         bg="bg-white"
         className={S.column}
