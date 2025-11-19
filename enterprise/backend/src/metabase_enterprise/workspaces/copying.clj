@@ -14,7 +14,7 @@
 ;; Ignoring the "dag things" now, just mirror single transform
 (defn- mirror-transform!
   "WIP"
-  [_workspace database entities-info]
+  [workspace database entities-info]
   ;; how to clone reasonably
   ;; Expecting single transform now
   (assert (= 1 (count (-> entities-info :transforms))))
@@ -33,7 +33,8 @@
                                                (-> (select-keys transform t2-transform-mirrored-keys)
                                                    ;; this should be happening elsewhere, not on write, for now ok
                                                    (update :name str "_DUP"))
-                                               {:target {:type "table"
+                                               {:workspace_id (:id workspace)
+                                                :target {:type "table"
                                                          :database (:id database)
                                                          :schema mirror-schema-name
                                                          :name mirror-table-name}}))]
@@ -100,7 +101,7 @@
           ;; TODO: later, working with multiple input entities, ensure toposorting for adjustments
           ;; Mirroring only a single transform here
           updated-info-2 (mirror-transform! workspace database updated-info-1)]
-      updated-info-2)))
+      @(def uuu updated-info-2))))
 
 (comment
   ;;;; manually mirror some transform without dependencies
