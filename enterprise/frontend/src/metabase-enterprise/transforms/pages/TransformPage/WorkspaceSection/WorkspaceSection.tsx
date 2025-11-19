@@ -9,6 +9,7 @@ import { Button, Card, Group, Icon, Text } from "metabase/ui";
 import {
   useCreateWorkspaceMutation,
   useGetWorkspaceContentsQuery,
+  useGetWorkspaceQuery,
 } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
@@ -23,12 +24,21 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
   const hasWorkspace = transform.workspace_id != null;
   const [createWorkspace, { isLoading }] = useCreateWorkspaceMutation();
   const { sendErrorToast } = useMetadataToasts();
-  const [workspaceId, setWorkspaceId] = useState<number | null>(null);
+  const [createdWorkspaceId, setCreatedWorkspaceId] = useState<number | null>(
+    null,
+  );
+
+  const { data: workspace } = useGetWorkspaceQuery(
+    transform.workspace_id ?? 0,
+    {
+      skip: transform.workspace_id == null,
+    },
+  );
 
   const { data: workspaceContents } = useGetWorkspaceContentsQuery(
-    workspaceId ?? 0,
+    createdWorkspaceId ?? 0,
     {
-      skip: workspaceId == null,
+      skip: createdWorkspaceId == null,
     },
   );
 
@@ -37,7 +47,7 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
       workspaceContents &&
       workspaceContents.contents.transforms.length === 1
     ) {
-      const newTransformId = workspaceContents.contents.transforms[0];
+      const newTransformId = workspaceContents.contents.transforms[0].id;
       dispatch(push(Urls.transform(newTransformId)));
     }
   }, [workspaceContents, dispatch]);
@@ -46,12 +56,12 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
     try {
       const result = await createWorkspace({
         name: `${transform.name} workspace`,
-        stuffs: {
+        upstream: {
           transforms: [transform.id],
         },
       }).unwrap();
 
-      setWorkspaceId(result.id);
+      setCreatedWorkspaceId(result.id);
     } catch (error) {
       sendErrorToast(t`Failed to create workspace`);
     }
@@ -64,7 +74,9 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
           <Group>
             <Icon name="folder" aria-hidden />
             <Text>
-              {t`This is part of Workspace ${transform.workspace_id}`}
+              {workspace
+                ? t`This is part of ${workspace.name} (${transform.workspace_id})`
+                : t`This is part of Workspace ${transform.workspace_id}`}
             </Text>
           </Group>
         ) : (

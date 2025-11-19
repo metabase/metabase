@@ -14,13 +14,18 @@ export type Workspace = {
 export type CreateWorkspaceRequest = {
   name: string;
   database_id?: number;
-  stuffs: {
+  upstream: {
     transforms?: TransformId[];
   };
 };
 
+export type WorkspaceContentItem = {
+  id: TransformId;
+  name: string;
+};
+
 export type WorkspaceContents = {
   contents: {
-    transforms: TransformId[];
+    transforms: WorkspaceContentItem[];
   };
 };

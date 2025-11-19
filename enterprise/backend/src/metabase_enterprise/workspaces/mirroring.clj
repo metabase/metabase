@@ -14,7 +14,7 @@
   #{:description :name :source :source_type})
 
 (defn- mirror-transform!
-  [database-id graph]
+  [workspace database-id graph]
   ;; With addition of e.g. Clickhouse I expect some juggling with how we provide targets,
   ;; but for now doing plain copy-paste schema name here.
   ;; TODO (lbrdnk 2025-11-18) revisit schema, name vs db specific access pattern.
@@ -31,7 +31,8 @@
                        (merge (-> (t2/select-one (into [:model/Transform] t2-transform-mirrored-keys) (:id transform))
                                   ;; TODO (Chris 2025-11-19) shouldn't rename like this - will mess up promotion!
                                   ;; this should be happening elsewhere, not on write, for now ok
-                                  (update :name str "_DUP"))
+                                  (update :name str "_DUP")
+                                  (assoc :workspace_id (:id workspace)))
                               ;; TODO (Chris 2025-11-19) remap source table (when necessary)
                               {:target {:type     "table"
                                         :database database-id
@@ -90,7 +91,7 @@
   #_(ws.isolation/ensure-database-isolation! workspace database)
   (->> graph
        (ws.isolation/create-isolated-output-tables! workspace database)
-       (mirror-transform! (:id database))))
+       (mirror-transform! workspace (:id database))))
 
 #_:clj-kondo/ignore
 (comment
