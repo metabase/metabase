@@ -65,7 +65,7 @@ export function ModelFieldList({
             px="sm"
             py="0.85rem"
             size="compact-md"
-            leftSection={<Icon name="sort_arrows" />}
+            leftSection={<Icon name={isSorting ? "check" : "sort_arrows"} />}
             onClick={handleSortingClick}
           >
             {isSorting ? t`Done` : t`Sorting`}
