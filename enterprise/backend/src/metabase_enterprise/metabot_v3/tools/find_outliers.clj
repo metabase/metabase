@@ -67,7 +67,12 @@
                                      first)
                                 (throw (ex-info "Could not determine result field."
                                                 {:agent-error? true})))
-                            (metabot-v3.tools.u/resolve-column-index result-field-id field-id-prefix))]
+                            ;; Parse field-id and extract the numeric index
+                            (if-let [{:keys [field-index]} (metabot-v3.tools.u/parse-field-id result-field-id)]
+                              field-index
+                              (throw (ex-info (str "Invalid result_field_id format: " result-field-id)
+                                              {:agent-error? true
+                                               :result-field-id result-field-id}))))]
         (when-not (< -1 value-col-idx (-> data :rows first count))
           (throw (ex-info (str "Invalid result_field_id " result-field-id)
                           {:agent-error? true})))

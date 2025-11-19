@@ -77,29 +77,57 @@
                       :field_values (:field-values column)
                       :table_reference (:table-reference column)))))
 
-(defn resolve-column-index
-  "Resolve the reference `field_id` to the index of the result columns in the entity with `field-id-prefix`."
-  [field-id field-id-prefix]
-  (if (string? field-id-prefix)
-    (if (str/starts-with? field-id field-id-prefix)
-      (-> field-id (subs (count field-id-prefix)) parse-long)
-      (throw (ex-info (str "field " field-id " not found") {:agent-error? true
-                                                            :expected-prefix field-id-prefix})))
-    (if-let [id-str (when (instance? java.util.regex.Pattern field-id-prefix)
-                      (-> (re-matches field-id-prefix field-id)
-                          second))]
-      (parse-long id-str)
-      (throw (ex-info (str "invalid field_id " field-id " for prefix " field-id-prefix)
-                      {:agent-error? true
-                       :expected-prefix (str field-id-prefix)
-                       :field-id field-id})))))
+(defn parse-field-id
+  "Parse a field-id string into its components.
+
+  The field-id format is '<model-tag><model-id>/<field-index>' where:
+  - model-tag is 't' for tables, 'c' for cards/models/metrics, or 'q' for ad-hoc queries
+  - model-id is the numeric ID of the table, card, or query
+  - field-index is the index within that model's visible columns
+
+  Returns a map with :model-tag, :model-id, and :field-index keys, or nil if the format is invalid.
+
+  Examples:
+    (parse-field-id \"t154/1\") => {:model-tag \"t\", :model-id 154, :field-index 1}
+    (parse-field-id \"q12345/0\") => {:model-tag \"q\", :model-id 12345, :field-index 0}"
+  [field-id]
+  (when-let [[_ model-tag model-id field-index] (re-matches #"^([tcq])(\d+)/(\d+)$" field-id)]
+    {:model-tag model-tag
+     :model-id (parse-long model-id)
+     :field-index (parse-long field-index)}))
 
 (defn resolve-column
   "Resolve the reference `field-id` in filter `item` by finding the column in `columns` specified by `field-id`.
-  `field-id-prefix` is used to check if the filter refers to a column from the right entity."
-  [{:keys [field-id] :as item} field-id-prefix columns]
-  (let [index (resolve-column-index field-id field-id-prefix)]
-    (assoc item :column (nth columns index))))
+
+  The field-id format is '<model-tag><model-id>/<field-index>' where:
+  - model-tag is 't' for tables, 'c' for cards/models/metrics, or 'q' for ad-hoc queries
+  - model-id is the numeric ID of the table, card, or query
+  - field-index is the index within that model's visible columns
+
+  For example, 't154/1' refers to the second visible column (index 1) from table 154."
+  [{:keys [field-id] :as item} columns]
+  (if-let [{:keys [model-tag model-id field-index]} (parse-field-id field-id)]
+    (let [;; Filter columns to those from the specified model
+          ;; For queries ('q'), all columns belong to that query so we don't filter
+          model-columns (case model-tag
+                          "t" (filterv #(= (:table-id %) model-id) columns)
+                          "c" (filterv #(= (:lib/card-id %) model-id) columns)
+                          "q" columns)
+          ;; Get the column at the specified index within the filtered set
+          column (get model-columns field-index)]
+      (if column
+        (assoc item :column column)
+        (throw (ex-info (str "field " field-id " not found - no column at index " field-index
+                             " for " (case model-tag "t" "table" "c" "card" "q" "query") " " model-id)
+                        {:agent-error? true
+                         :field-id field-id
+                         :model-tag model-tag
+                         :model-id model-id
+                         :field-index field-index
+                         :available-columns-count (count model-columns)}))))
+    (throw (ex-info (str "invalid field_id format: " field-id)
+                    {:agent-error? true
+                     :field-id field-id}))))
 
 (defn get-table
   "Get the `fields` of the table with ID `id`."
