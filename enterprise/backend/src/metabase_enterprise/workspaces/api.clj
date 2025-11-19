@@ -62,7 +62,7 @@
       api/check-404
       ws->res))
 
-(api.macros/defendpoint :get "/:id/contents" :- Workspace
+(api.macros/defendpoint :get "/:id/contents" :- [:map [:contents [:map [:transforms [:sequential ms/PositiveInt]]]]]
   "Get the contents being edited within a Workspace."
   [{workspace-id :id} :- [:map [:id ms/PositiveInt]]
    _query-params]
