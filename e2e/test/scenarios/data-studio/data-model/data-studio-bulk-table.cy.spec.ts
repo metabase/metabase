@@ -31,14 +31,22 @@ interface PublishModelResponse {
 
 describe("bulk table operations", { tags: ["@external"] }, () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/table/sync-schema").as("syncSchema");
-    cy.intercept("POST", "/api/table/rescan-values").as("rescanValues");
-    cy.intercept("POST", "/api/table/discard-values").as("discardValues");
+    cy.intercept("POST", "/api/ee/data-studio/table/sync-schema").as(
+      "syncSchema",
+    );
+    cy.intercept("POST", "/api/ee/data-studio/table/rescan-values").as(
+      "rescanValues",
+    );
+    cy.intercept("POST", "/api/ee/data-studio/table/discard-values").as(
+      "discardValues",
+    );
     cy.intercept(
       "GET",
       `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true&include_editable_data_model=true`,
     ).as("getSchema");
-    cy.intercept("POST", "/api/table/publish-model").as("publishModel");
+    cy.intercept("POST", "/api/ee/data-studio/table/publish-model").as(
+      "publishModel",
+    );
   });
 
   it("syncing multiple tables", { tags: ["@external"] }, () => {
@@ -114,7 +122,6 @@ describe("bulk table operations", { tags: ["@external"] }, () => {
     cy.findByRole("button", { name: /Publish here/ }).click();
 
     cy.wait<PublishModelResponse>("@publishModel").then(({ response }) => {
-      cy.log(JSON.stringify(response, null, 2));
       expect(response?.body.created_count).to.eq(2);
     });
 
@@ -205,6 +212,8 @@ describe("bulk table operations", { tags: ["@external"] }, () => {
     TablePicker.getDatabase("Writable Postgres12").click();
     TablePicker.getSchema("Schema A").find('input[type="checkbox"]').check();
     TablePicker.getSchema("Schema B").find('input[type="checkbox"]').check();
+
+    cy.findByRole("heading", { name: /Multiple tables selected/ }).click();
 
     H.selectHasValue("Owner", "").click();
     H.selectDropdown().contains("Bobby Tables").click();
