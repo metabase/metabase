@@ -1,8 +1,10 @@
 import { t } from "ttag";
 
-import { Box, Divider, Icon, NavLink } from "metabase/ui";
+import { Icon, Menu } from "metabase/ui";
 
 import { useMiniPickerContext } from "../context";
+
+import { MiniPickerItem } from "./MiniPickerItem";
 
 export function MiniPickerFooter() {
   const { canBrowse, onBrowseAll } = useMiniPickerContext();
@@ -11,15 +13,14 @@ export function MiniPickerFooter() {
     return null;
   }
   return (
-    <Box px="sm">
-      <Divider />
-      <NavLink
-        mt="sm"
+    <>
+      <Menu.Divider px="sm" />
+      <MiniPickerItem
         variant="mb-light"
         leftSection={<Icon name="search" />}
-        label={t`Browse all`}
+        name={t`Browse all`}
         onClick={onBrowseAll}
       />
-    </Box>
+    </>
   );
 }

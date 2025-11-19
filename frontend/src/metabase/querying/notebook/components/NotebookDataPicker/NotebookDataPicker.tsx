@@ -148,6 +148,7 @@ function ModernDataPicker({
     table != null ? getDataPickerValue(query, stageIndex, table) : undefined;
   const [dataSourceSearchQuery, setDataSourceSearchQuery] = useState("");
   const [isBrowsing, setIsBrowsing] = useState(false);
+  const [focusPicker, setFocusPicker] = useState(false);
 
   return (
     <>
@@ -159,6 +160,7 @@ function ModernDataPicker({
         searchQuery={dataSourceSearchQuery}
         onBrowseAll={() => setIsBrowsing(true)}
         clearSearchQuery={() => setDataSourceSearchQuery("")}
+        trapFocus={focusPicker}
         onChange={(value: MiniPickerPickableItem) => {
           const id =
             value.model === "table"
@@ -195,9 +197,15 @@ function ModernDataPicker({
           }}
           leftSection={<Icon name="search" />}
           onChange={(e) => setDataSourceSearchQuery(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown" || e.key === "tab") {
+              setFocusPicker(true);
+            }
+          }}
           onClickCapture={(e) => {
             e.stopPropagation();
             setIsOpened(true);
+            setFocusPicker(false);
           }}
           miw="20rem"
           autoFocus={isOpened}

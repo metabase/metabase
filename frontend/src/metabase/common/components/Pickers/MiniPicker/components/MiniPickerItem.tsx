@@ -1,5 +1,6 @@
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { getIcon } from "metabase/lib/icon";
-import { Box, Icon, NavLink } from "metabase/ui";
+import { Box, Icon, Menu, type MenuItemProps } from "metabase/ui";
 
 import type { MiniPickerItem as MiniPickerItemType } from "../types";
 
@@ -9,25 +10,27 @@ export const MiniPickerItem = ({
   onClick,
   isFolder,
   isHidden,
+  ...menuItemProps
 }: {
-  model: MiniPickerItemType["model"];
   name: string;
+  model?: MiniPickerItemType["model"];
   onClick?: () => void;
   isFolder?: boolean;
   isHidden?: boolean;
-}) => {
+} & MenuItemProps) => {
   if (isHidden) {
     return null;
   }
   return (
     <Box px="sm">
-      <NavLink
-        leftSection={<Icon {...getIcon({ model })} />}
+      <Menu.Item
+        leftSection={model ? <Icon {...getIcon({ model })} /> : undefined}
         rightSection={isFolder ? <Icon name="chevronright" /> : undefined}
-        label={name}
         onClick={onClick}
-        variant="mb-light"
-      />
+        {...menuItemProps}
+      >
+        <Ellipsified maw={isFolder ? "13rem" : "16rem"}>{name}</Ellipsified>
+      </Menu.Item>
     </Box>
   );
 };

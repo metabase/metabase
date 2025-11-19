@@ -11,7 +11,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
-import { Box, Stack, Text } from "metabase/ui";
+import { Box, Text } from "metabase/ui";
 import type { SchemaName, SearchModel } from "metabase-types/api";
 
 import { useMiniPickerContext } from "../context";
@@ -45,7 +45,7 @@ export function MiniPickerItemList() {
     return <CollectionItemList parent={lastParent} />;
   }
 
-  return <Stack>{JSON.stringify(lastParent)}</Stack>;
+  return null;
 }
 
 function RootItemList() {

@@ -1,7 +1,7 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
-import { Box, Popover } from "metabase/ui";
+import { Box, Menu } from "metabase/ui";
 
 import type { DataPickerValue } from "../../DataPicker";
 import { MiniPickerContext } from "../context";
@@ -20,6 +20,7 @@ type MiniPickerProps = {
   clearSearchQuery: () => void;
   value?: DataPickerValue;
   opened: boolean;
+  trapFocus?: boolean;
   onChange: (value: MiniPickerPickableItem) => void;
   onClose: () => void;
   models: MiniPickerPickableItem["model"][];
@@ -35,6 +36,7 @@ export function MiniPicker({
   models,
   clearSearchQuery,
   onBrowseAll,
+  trapFocus = false,
 }: MiniPickerProps) {
   const { data: libraryCollection } =
     PLUGIN_DATA_STUDIO.useGetLibraryCollection();
@@ -80,6 +82,18 @@ export function MiniPicker({
     return { isFolder, isHidden };
   }, [models]);
 
+  useEffect(() => {
+    if (trapFocus && path) {
+      // any time the path changes, focus the first item
+      const firstItem = document.querySelector(
+        '[data-testid="mini-picker"] [role="menuitem"]',
+      );
+      if (firstItem) {
+        (firstItem as HTMLElement).focus();
+      }
+    }
+  }, [path, trapFocus]);
+
   return (
     <MiniPickerContext.Provider
       value={{
@@ -96,15 +110,29 @@ export function MiniPicker({
         libraryCollection,
       }}
     >
-      <Popover opened={opened} onChange={onClose} position="bottom-start">
-        <Popover.Target>
+      <Menu
+        opened={opened}
+        onChange={onClose}
+        closeOnItemClick={false}
+        clickOutsideEvents={["mousedown", "touchstart"]}
+        position="bottom-start"
+        menuItemTabIndex={-1}
+        trapFocus={false}
+      >
+        <Menu.Target>
           <Box />
-        </Popover.Target>
+        </Menu.Target>
 
-        <Popover.Dropdown mt="xl" ml="-1rem" py="sm" data-testid="mini-picker">
+        <Menu.Dropdown
+          mt="xl"
+          ml="-1rem"
+          px={0}
+          py="sm"
+          data-testid="mini-picker"
+        >
           {isLoadingPath ? <MiniPickerListLoader /> : <MiniPickerPane />}
-        </Popover.Dropdown>
-      </Popover>
+        </Menu.Dropdown>
+      </Menu>
     </MiniPickerContext.Provider>
   );
 }

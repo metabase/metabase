@@ -1,22 +1,23 @@
-import { Box, Icon, NavLink } from "metabase/ui";
+import { Icon } from "metabase/ui";
 
 import { useMiniPickerContext } from "../context";
+
+import { MiniPickerItem } from "./MiniPickerItem";
 
 export function MiniPickerHeader() {
   const { path, setPath } = useMiniPickerContext();
   const backName = path[path.length - 1]?.name || "";
   return (
-    <Box px="sm">
-      <NavLink
-        data-testid="mini-picker-header"
-        variant="mb-light"
-        mb="sm"
-        leftSection={<Icon name="chevronleft" />}
-        label={backName}
-        onClick={() => {
-          setPath((prevPath) => prevPath.slice(0, -1));
-        }}
-      />
-    </Box>
+    <MiniPickerItem
+      name={backName}
+      data-testid="mini-picker-header"
+      data-autofocus
+      variant="mb-light"
+      mb="sm"
+      leftSection={<Icon name="chevronleft" />}
+      onClick={() => {
+        setPath((prevPath) => prevPath.slice(0, -1));
+      }}
+    />
   );
 }
