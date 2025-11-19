@@ -230,6 +230,23 @@ export function MainNavbarView({
               <CollectionSectionHeading
                 handleCreateNewCollection={handleCreateNewCollection}
               />
+
+              <Tree
+                data={regularCollections}
+                selectedId={collectionItem?.id}
+                onSelect={onItemSelect}
+                TreeNode={SidebarCollectionLink}
+                role="tree"
+                aria-label="collection-tree"
+              />
+              {showOtherUsersCollections && (
+                <PaddedSidebarLink
+                  icon="group"
+                  url={OTHER_USERS_COLLECTIONS_URL}
+                >
+                  {t`Other users' personal collections`}
+                </PaddedSidebarLink>
+              )}
             </ErrorBoundary>
           </SidebarSection>
 
