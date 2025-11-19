@@ -9,7 +9,7 @@ import type { MetabaseFontFamily } from "./fonts";
 /**
  * Theme configuration for embedded Metabase components.
  */
-export interface MetabaseTheme {
+export interface MetabaseThemeV1 {
   /**
    * Base font size.
    * Supported units are px, em and rem.
@@ -31,7 +31,13 @@ export interface MetabaseTheme {
 
   /** Component theme options */
   components?: DeepPartial<MetabaseComponentTheme>;
+
+  /** Legacy theme does not have the `version` property */
+  version?: never;
 }
+
+// TODO: add MetabaseThemeV2 support as a union type
+export type MetabaseTheme = MetabaseThemeV1;
 
 export interface MetabaseColors {
   /** Primary brand color used for buttons and links */

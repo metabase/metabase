@@ -2,7 +2,6 @@
 import { ThemeProvider as _CompatibilityEmotionThemeProvider } from "@emotion/react";
 import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
 import { MantineProvider } from "@mantine/core";
-import { merge } from "icepick";
 import {
   type ReactNode,
   useContext,
@@ -17,25 +16,33 @@ import {
 } from "metabase/embedding/config";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { parseHashOptions } from "metabase/lib/browser";
-import { mutateColors } from "metabase/lib/colors/colors";
+import {
+  getDarkColorPalette,
+  getLightColorPalette,
+  mutateColors,
+} from "metabase/lib/colors";
+import type { MetabaseThemeV2 } from "metabase/lib/colors/types";
 import type { DisplayTheme } from "metabase/public/lib/types";
 
-import { getThemeOverrides } from "../../../theme";
 import { ColorSchemeProvider, useColorScheme } from "../ColorSchemeProvider";
 import type { ResolvedColorScheme } from "../ColorSchemeProvider/ColorSchemeProvider";
 import { DatesProvider } from "../DatesProvider";
 
 import { ThemeProviderContext } from "./context";
+import { useDerivedMantineTheme } from "./useDerivedMantineTheme";
 
 interface ThemeProviderProps {
   children: ReactNode;
 
+  /** Theme configuration. If not passed, it uses the default theme based on your color scheme. */
+  theme?: MetabaseThemeV2;
+
   /**
    * Extend Metabase's theme overrides.
-   * This is primarily used in the React embedding SDK
-   * to allow SDK users to customize the theme.
+   * This is primarily used in legacy theme system
+   * for the Embedding SDK.
    */
-  theme?: MantineThemeOverride;
+  themeOverride?: MantineThemeOverride;
 
   displayTheme?: DisplayTheme | string;
 }
@@ -44,13 +51,17 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
   const { resolvedColorScheme } = useColorScheme();
   const [themeCacheBuster, setThemeCacheBuster] = useState(1);
 
-  // Merge default theme overrides with user-provided theme overrides
-  const theme = useMemo(() => {
-    const theme = merge(
-      getThemeOverrides(resolvedColorScheme),
-      props.theme,
-    ) as MantineTheme;
+  const sourceTheme: MetabaseThemeV2 = useMemo(() => {
+    return props.theme ?? getDefaultMetabaseTheme(resolvedColorScheme);
+  }, [props.theme, resolvedColorScheme]);
 
+  const theme = useDerivedMantineTheme({
+    resolvedColorScheme,
+    theme: sourceTheme,
+    themeOverride: props.themeOverride,
+  });
+
+  const themeWithColorFn = useMemo(() => {
     return {
       ...theme,
       other: {
@@ -95,14 +106,14 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
         },
       },
     } as MantineTheme;
-  }, [props.theme, resolvedColorScheme, themeCacheBuster]);
+  }, [theme, themeCacheBuster]);
 
   const { withCssVariables, withGlobalClasses } =
     useContext(ThemeProviderContext);
 
   return (
     <MantineProvider
-      theme={theme}
+      theme={themeWithColorFn}
       forceColorScheme={resolvedColorScheme}
       getStyleNonce={() => window.MetabaseNonce ?? "metabase"}
       classNamesPrefix="mb-mantine"
@@ -111,7 +122,7 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
       withCssVariables={withCssVariables}
       withGlobalClasses={withGlobalClasses}
     >
-      <_CompatibilityEmotionThemeProvider theme={theme}>
+      <_CompatibilityEmotionThemeProvider theme={themeWithColorFn}>
         <DatesProvider>{props.children}</DatesProvider>
       </_CompatibilityEmotionThemeProvider>
     </MantineProvider>
@@ -169,3 +180,8 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
     </ColorSchemeProvider>
   );
 };
+
+export const getDefaultMetabaseTheme = (scheme: ResolvedColorScheme) => ({
+  version: 2 as const,
+  colors: scheme === "dark" ? getDarkColorPalette() : getLightColorPalette(),
+});

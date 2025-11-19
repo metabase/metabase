@@ -33,12 +33,12 @@ describe.skip("ThemeProvider", () => {
   it("merges the theme overrides when the theme prop is provided", () => {
     // Simulate a user-provided theme override.
     // This is primarily used by the React embedding SDK.
-    const theme: MantineThemeOverride = {
+    const themeOverride: MantineThemeOverride = {
       colors: { "text-primary": getColorShades("rgb(12, 34, 56)") },
     };
 
     render(
-      <ThemeProvider theme={theme}>
+      <ThemeProvider themeOverride={themeOverride}>
         <Text size="xl">Text</Text>
       </ThemeProvider>,
     );

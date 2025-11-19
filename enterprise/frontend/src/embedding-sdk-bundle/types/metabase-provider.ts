@@ -1,6 +1,7 @@
 import type { JSX, ReactNode } from "react";
 
-import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import type { MetabaseThemeV1 } from "metabase/embedding-sdk/theme";
+import type { MetabaseThemeV2 } from "metabase/lib/colors";
 
 import type { MetabaseAuthConfig } from "./auth-config";
 import type { SdkEventHandlersConfig } from "./events";
@@ -32,7 +33,7 @@ export interface MetabaseProviderProps {
   /**
    * See [Appearance](https://www.metabase.com/docs/latest/embedding/sdk/appearance).
    */
-  theme?: MetabaseTheme;
+  theme?: MetabaseThemeV1 | MetabaseThemeV2;
 
   /**
    * See [Plugins](https://www.metabase.com/docs/latest/embedding/sdk/plugins).

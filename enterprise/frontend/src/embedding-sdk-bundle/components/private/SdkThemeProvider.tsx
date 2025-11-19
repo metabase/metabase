@@ -3,9 +3,10 @@ import { useContext, useId, useMemo } from "react";
 
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { getEmbeddingThemeOverride } from "embedding-sdk-bundle/lib/theme";
-import type { MetabaseTheme } from "embedding-sdk-bundle/types/ui";
+import type { MetabaseThemeV1 } from "embedding-sdk-bundle/types/ui";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import type { MetabaseThemeV2 } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { getSettings } from "metabase/selectors/settings";
 import { getFont } from "metabase/styled-components/selectors";
@@ -15,7 +16,7 @@ import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider
 import { getApplicationColors } from "metabase-enterprise/settings/selectors";
 
 interface Props {
-  theme?: MetabaseTheme;
+  theme?: MetabaseThemeV1 | MetabaseThemeV2;
   children: React.ReactNode;
 }
 
@@ -26,6 +27,11 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
   );
 
   const themeOverride = useMemo(() => {
+    // Does not apply to the new theme system.
+    if (theme && theme.version === 2) {
+      return;
+    }
+
     // !! Mutate the global colors object to apply the new colors.
     // This must be done before ThemeProvider calls getThemeOverrides.
     setGlobalEmbeddingColors(theme?.colors, appColors ?? {});
@@ -50,7 +56,10 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
             withGlobalClasses: withGlobalClasses ?? isInstanceToRender,
           }}
         >
-          <ThemeProvider theme={themeOverride}>
+          <ThemeProvider
+            theme={theme?.version === 2 ? theme : undefined}
+            themeOverride={themeOverride}
+          >
             {isInstanceToRender && <GlobalSdkCssVariables />}
 
             {children}
