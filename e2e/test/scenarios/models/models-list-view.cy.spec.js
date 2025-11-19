@@ -258,7 +258,6 @@ describe("scenarios > models list view", () => {
         {
           name: "Native Model",
           type: "model",
-          display: "list",
           native: {
             query: "SELECT * FROM ORDERS LIMIT 5",
           },
@@ -304,7 +303,6 @@ describe("scenarios > models list view", () => {
         {
           name: "Native Model",
           type: "model",
-          display: "list",
           native: {
             query: "SELECT * FROM ORDERS LIMIT 5",
           },
@@ -335,6 +333,64 @@ describe("scenarios > models list view", () => {
       cy.wait("@dataset");
       H.undoToast().should("contain.text", "This is a question now");
       cy.findByTestId("list-view").should("not.exist");
+    });
+
+    it("should consider mini bar chart setting for quantity/score columns", () => {
+      H.restore();
+      cy.signInAsAdmin();
+      cy.intercept("POST", "/api/dataset").as("dataset");
+
+      H.createNativeQuestion({
+        name: "Native Model",
+        type: "model",
+        native: {
+          query: "SELECT * FROM ORDERS LIMIT 5",
+        },
+      }).then(({ body: { id: nativeModelId } }) => {
+        cy.request("PUT", `/api/card/${nativeModelId}`, {
+          display: "list",
+        });
+        H.setModelMetadata(nativeModelId, (field) => {
+          if (field.display_name === "SUBTOTAL") {
+            return {
+              ...field,
+              semantic_type: "type/Quantity",
+              settings: {
+                show_mini_bar: true,
+              },
+            };
+          }
+          return field;
+        });
+        cy.visit(`/model/${nativeModelId}`);
+      });
+
+      cy.findByTestId("list-view").within(() => {
+        cy.findAllByTestId("mini-bar-container").should("be.visible");
+      });
+
+      H.openQuestionActions();
+
+      H.popover().findByTextEnsureVisible("Edit metadata").click();
+
+      cy.findByTestId("dataset-edit-bar").findByText("Columns").click();
+
+      cy.findByTestId("table-header")
+        .findByText(/Subtotal/i)
+        .click();
+
+      H.sidebar().findByRole("tab", { name: "Formatting" }).click();
+
+      H.sidebar()
+        .findByLabelText("Show a mini bar chart")
+        .click({ force: true });
+
+      cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+      cy.wait("@dataset");
+
+      cy.findByTestId("list-view").within(() => {
+        cy.findAllByTestId("mini-bar-container").should("not.exist");
+      });
     });
   });
 });
