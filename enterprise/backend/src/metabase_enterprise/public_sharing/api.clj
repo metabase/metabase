@@ -8,7 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
-   [metabase.public-sharing.api :as public-sharing.api]
+   [metabase.public-sharing-rest.api :as public-sharing.api]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.schema :as qp.schema]

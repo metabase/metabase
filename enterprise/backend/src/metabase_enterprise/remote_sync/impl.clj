@@ -153,7 +153,7 @@
               (t2/with-transaction [_conn]
                 (remove-unsynced! (all-top-level-remote-synced-collections) imported-entities-by-model)
                 (sync-objects! sync-timestamp imported-entities-by-model)
-                (when (and (nil? (collection/remote-synced-collection)) (= :development (settings/remote-sync-type)))
+                (when (and (nil? (collection/remote-synced-collection)) (= :read-write (settings/remote-sync-type)))
                   (collection/create-remote-synced-collection!)))
               (remote-sync.task/update-progress! task-id 0.95)
               (remote-sync.task/set-version!
@@ -304,7 +304,7 @@
 (defn finish-remote-config!
   "Based on the current configuration, fill in any missing settings and finalize remote sync setup.
 
-  Will attempt, import the remote collection if no remote-collection exists locally or you are in production mode.
+  Will attempt, import the remote collection if no remote-collection exists locally or you are in read-only mode.
 
   Returns the async-task id if an async task was started, otherwise nil."
   []
@@ -312,7 +312,7 @@
     (do
       (when (str/blank? (setting/get :remote-sync-branch))
         (setting/set! :remote-sync-branch (source.p/default-branch (source/source-from-settings))))
-      (when (or (nil? (collection/remote-synced-collection)) (= :production (settings/remote-sync-type)))
+      (when (or (nil? (collection/remote-synced-collection)) (= :read-only (settings/remote-sync-type)))
         (:id (async-import! (settings/remote-sync-branch) true {}))))
     (u/prog1 nil
       (collection/clear-remote-synced-collection!))))

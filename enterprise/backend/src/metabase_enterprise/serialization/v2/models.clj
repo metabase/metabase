@@ -51,6 +51,7 @@
   ["ApiKey"
    "ApplicationPermissionsRevision"
    "AuditLog"
+   "AuthIdentity"
    "BookmarkOrdering"
    "CacheConfig"
    "CardBookmark"
