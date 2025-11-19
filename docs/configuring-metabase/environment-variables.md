@@ -1599,7 +1599,7 @@ Used for encrypting and checking whether SDK requests are signed.
 - Default: `null`
 
 When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.
-  Value must be a valid configured langauge option in your database such as 'english' or 'simple'.
+  Value must be a valid configured language option in your database such as 'english' or 'simple'.
 
 ### `MB_SEARCH_TYPEAHEAD_ENABLED`
 
