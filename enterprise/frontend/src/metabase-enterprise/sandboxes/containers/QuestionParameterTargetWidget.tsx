@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
 
 import { QuestionLoaderHOC } from "metabase/common/components/QuestionLoader";
 import SelectButton from "metabase/common/components/SelectButton";
@@ -24,8 +24,6 @@ function QuestionParameterTargetWidgetInner({
   onChange,
   placeholder,
 }: QuestionParameterTargetWidgetProps) {
-  const [opened, setOpened] = useState(false);
-
   const mappingOptions = question
     ? getParameterMappingOptions(question, null, question.card())
     : [];
@@ -33,13 +31,20 @@ function QuestionParameterTargetWidgetInner({
   const disabled = mappingOptions.length === 0;
   const selected = getMappingOptionByTarget(mappingOptions, target, question);
 
+  const [opened, { close, toggle }] = useDisclosure(false);
+
   return (
-    <Popover opened={opened} onChange={setOpened} disabled={disabled}>
+    <Popover
+      opened={opened}
+      onDismiss={close}
+      closeOnClickOutside
+      disabled={disabled}
+    >
       <Popover.Target>
         <SelectButton
           hasValue={!!selected}
           className="border-med"
-          onClick={() => setOpened(!opened)}
+          onClick={toggle}
           disabled={disabled}
         >
           {selected ? selected.name : placeholder}
@@ -49,7 +54,7 @@ function QuestionParameterTargetWidgetInner({
         <ParameterTargetList
           onChange={(newTarget) => {
             onChange(newTarget);
-            setOpened(false);
+            close();
           }}
           mappingOptions={mappingOptions}
           selectedMappingOption={selected}
