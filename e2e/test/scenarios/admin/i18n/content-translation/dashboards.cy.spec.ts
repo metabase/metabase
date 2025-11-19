@@ -168,17 +168,17 @@ describe("scenarios > content translation > static embedding > dashboards", () =
     });
 
     it("should translate static embedding dashboard card titles and descriptions", () => {
-      H.createDashboard({
-        name: "the_dashboard",
-      }).then(({ body: { id: dashboardId } }) => {
-        H.visitDashboard(dashboardId);
-        H.editDashboard();
-        H.openQuestionsSidebar();
-
-        H.sidebar().findByText(PRODUCTS_COUNT_BY_CATEGORY_PIE.name).click();
-        H.sidebar().findByText(SCALAR_CARD.LANDING_PAGE_VIEWS.name).click(); // metabase#65085
-        H.saveDashboard();
-
+      H.createDashboardWithQuestions({
+        dashboardName: "the_dashboard",
+        questions: [
+          {
+            ...PRODUCTS_COUNT_BY_CATEGORY_PIE,
+            description: "A breakdown of products by category",
+          },
+          SCALAR_CARD.LANDING_PAGE_VIEWS,
+        ],
+      }).then(({ dashboard }) => {
+        H.visitDashboard(dashboard.id);
         H.openStaticEmbeddingModal({
           acceptTerms: false,
         });
@@ -186,7 +186,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
 
         H.visitEmbeddedPage(
           {
-            resource: { dashboard: dashboardId as number },
+            resource: { dashboard: dashboard.id as number },
             params: {},
           },
           {
@@ -197,8 +197,6 @@ describe("scenarios > content translation > static embedding > dashboards", () =
         );
 
         cy.wait("@dashboard");
-        cy.wait("@cardQuery");
-        cy.wait("@cardQuery");
 
         // Check that the titles are translated
         cy.findByText("Produits par catégorie (Camembert)").should("exist");
