@@ -264,7 +264,7 @@ describe("issue 38354", { tags: "@external" }, () => {
     H.openNotebook();
     H.getNotebookStep("data").findByTestId("data-step-cell").click();
     H.miniPicker().within(() => {
-      cy.icon("chevronleft").click();
+      H.miniPickerHeader().click();
       cy.findByText("QA Postgres12").click();
       cy.findByText("Orders").click();
     });

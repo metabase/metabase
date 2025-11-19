@@ -172,7 +172,7 @@ describe("scenarios > notebook > data source", () => {
         H.miniPickerHeader().should("contain", schemaName);
         H.miniPicker().findByText(tableName).should("exist");
 
-        cy.realType("a");
+        cy.realType("a"); // start typing to expose mini-picker "Browse all" option
         H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
           assertDataPickerEntitySelected(1, dbName);
@@ -367,7 +367,7 @@ describe("issue 34350", { tags: "@external" }, () => {
     H.openOrdersTable({ mode: "notebook" });
     openDataSelector();
     H.miniPicker().within(() => {
-      cy.icon("chevronleft").click();
+      H.miniPickerHeader().click();
       cy.findByText("QA Postgres12").click();
       cy.findByText("Orders").click();
     });
