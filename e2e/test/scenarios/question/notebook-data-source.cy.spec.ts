@@ -169,28 +169,23 @@ describe("scenarios > notebook > data source", () => {
 
         H.openNotebook();
         cy.findByTestId("data-step-cell").should("contain", tableName).click();
+        H.miniPickerHeader().should("contain", schemaName);
+        H.miniPicker().findByText(tableName).should("exist");
+
+        cy.realType("a");
+        H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
-          assertDataPickerEntitySelected(0, dbName);
-          assertDataPickerEntitySelected(1, schemaName);
-          assertDataPickerEntitySelected(2, tableName);
-
-          H.entityPickerModalTab("Recents").click();
-          cy.contains("button", "Animals")
-            .should("exist")
-            .and("contain.text", tableName)
-            .and("have.attr", "aria-selected", "true");
-
-          H.entityPickerModalTab("Tables").click();
-          cy.findByText(dbName).click();
-          cy.findByText(schemaName).click();
+          assertDataPickerEntitySelected(1, dbName);
+          assertDataPickerEntitySelected(2, schemaName);
+          assertDataPickerEntitySelected(3, tableName);
           cy.findByText(tableName).click();
         });
 
         cy.log("select a table from the second schema");
         H.join();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
-          cy.findByText("Public").click();
+        H.miniPicker().within(() => {
+          cy.findByText(dbName).click();
+          cy.findByText("public").click();
           cy.findByText("Many Data Types").click();
         });
         H.popover().findByText("Name").click();
@@ -198,8 +193,8 @@ describe("scenarios > notebook > data source", () => {
 
         cy.log("select a table from the third schema");
         H.join();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
+          cy.findByText(dbName).click();
           cy.findByText("Domestic").click();
           cy.findByText("Animals").click();
         });
