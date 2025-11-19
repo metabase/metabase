@@ -3,8 +3,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sync.core :as sync]
-   [metabase.sync.sync-metadata.tables :as sync-tables]
-   [metabase.sync.util :as sync-util]))
+   [metabase.sync.sync-metadata.tables :as sync-tables]))
 
 ;; this ns will be probably moved
 
