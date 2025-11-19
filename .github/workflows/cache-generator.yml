@@ -127,7 +127,7 @@ jobs:
       - name: Update eslint cache
         uses: ./.github/actions/update-cache
         with:
-          path: .eslintcache
+          path: ${{ github.workspace}}/.eslintcache
           key: ${{ env.ESLINT_CACHE_KEY }}
 
       - name: Update Cypress cache
