@@ -651,6 +651,48 @@ databaseChangeLog:
       rollback:
         - sql: DELETE FROM auth_identity WHERE provider IN ('saml', 'jwt');
 
+  - changeSet:
+      id: v58.2025-11-19T00:00:00
+      author: edpaget
+      comment: Add is_remote_synced boolean column to collection table
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: is_remote_synced
+                  type: ${boolean.type}
+                  remarks: Indicates if this collection is synced from a remote source
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: collection
+            columnName: is_remote_synced
+
+  - changeSet:
+      id: v58.2025-11-19T00:00:01
+      author: edpaget
+      comment: Migrate existing remote-synced collections to use is_remote_synced column
+      changes:
+        - sql:
+            sql: UPDATE collection SET is_remote_synced = true WHERE type = 'remote-synced'
+      rollback:
+        - sql:
+            sql: UPDATE collection SET is_remote_synced = false WHERE type = 'remote-synced'
+
+  - changeSet:
+      id: v58.2025-11-19T00:00:02
+      author: edpaget
+      comment: Clear remote-synced type value (replaced by is_remote_synced column)
+      changes:
+        - sql:
+            sql: UPDATE collection SET type = NULL WHERE type = 'remote-synced'
+      rollback:
+        - sql:
+            sql: UPDATE collection SET type = 'remote-synced' WHERE is_remote_synced = true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
