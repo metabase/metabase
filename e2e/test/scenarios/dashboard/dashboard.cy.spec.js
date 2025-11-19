@@ -200,10 +200,8 @@ describe("scenarios > dashboard", () => {
       cy.wait("@saveQuestion");
 
       cy.log("Add this new question to a dashboard created on the fly");
-      H.modal().within(() => {
-        cy.findByText("Saved! Add this to a dashboard?");
-        cy.button("Yes please!").click();
-      });
+
+      H.checkSavedToCollectionQuestionToast(true);
 
       H.entityPickerModal()
         .findByRole("tab", { name: /Dashboards/ })
@@ -1361,7 +1359,7 @@ describe("scenarios > dashboard", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > dashboard", () => {
+describe("scenarios > dashboard", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/activity/recents?*").as("recentViews");
     H.resetSnowplow();

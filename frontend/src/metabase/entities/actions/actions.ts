@@ -65,7 +65,7 @@ const defaultImplicitActionCreateOptions = {
 };
 
 const enableImplicitActionsForModel =
-  async (modelId: number, options = defaultImplicitActionCreateOptions) =>
+  (modelId: number, options = defaultImplicitActionCreateOptions) =>
   async (dispatch: Dispatch) => {
     // We're ordering actions that's most recently created first.
     // So if we want to show Create, Update, Delete, then we need

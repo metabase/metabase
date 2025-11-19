@@ -94,10 +94,7 @@ module.exports = {
     "react/jsx-no-target-blank": 2,
     "react/jsx-key": 2,
     "react/forbid-component-props": [2, { forbid: ["sx"] }],
-    "react-hooks/exhaustive-deps": [
-      "warn",
-      { additionalHooks: "(useSafeAsyncFunction)" },
-    ],
+    "react-hooks/exhaustive-deps": ["warn"],
     "prefer-const": [1, { destructuring: "all" }],
     "no-restricted-globals": ["error", "close"],
     "no-useless-escape": 0,
@@ -118,7 +115,6 @@ module.exports = {
           "And",
           "When",
           "Then",
-          "describeWithSnowplow",
         ],
       },
     ],
@@ -346,6 +342,12 @@ module.exports = {
       files: ["frontend/build/**/*.js"],
       rules: {
         "import/no-commonjs": "off",
+      },
+    },
+    {
+      files: ["**/*.stories.tsx", "**/preview.tsx"],
+      rules: {
+        "import/no-default-export": "off",
       },
     },
   ],

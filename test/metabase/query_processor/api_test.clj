@@ -5,7 +5,8 @@
   {:clj-kondo/config '{:linters
                        ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
                        ;; metadata providers.
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp           {:level :off}
+                                          toucan2.tools.with-temp/with-temp {:level :off}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]
@@ -668,7 +669,7 @@
                                                         "asdf;"))]
         (is (= {:error_type "invalid-query"
                 :status "failed"
-                :class "class com.databricks.client.support.exceptions.ErrorException"}
+                :class "class com.databricks.jdbc.exception.DatabricksSQLException"}
                (select-keys res [:error_type :status :class])))
         (is (not (str/includes? (:error res) "\n\tat ")))))))
 
