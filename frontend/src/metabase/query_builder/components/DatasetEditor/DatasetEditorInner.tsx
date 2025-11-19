@@ -358,9 +358,11 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
         display: question.display(),
         visualizationSettings:
           getTempVisualizationSettings(rawSeries) || question.settings(),
+        isDirty: false,
       };
     },
   );
+
   const tempRawSeries = useMemo(() => {
     if (!rawSeries || !rawSeries.length || !tempModelSettings.display) {
       return rawSeries;
@@ -369,8 +371,8 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     return getTempRawSeries(rawSeries, tempModelSettings.display);
   }, [tempModelSettings, rawSeries]);
 
-  const [isSettingsDirty, setSettingsDirty] = useState(false);
-  const isDirty = isSettingsDirty || isModelQueryDirty || isMetadataDirty;
+  const isDirty =
+    tempModelSettings.isDirty || isModelQueryDirty || isMetadataDirty;
 
   const { data: modelIndexes } = useListModelIndexesQuery(
     {
@@ -480,7 +482,8 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       const hasListViewSelected = display === "list" || tempDisplay === "list";
       if (hasListViewSelected) {
         if (tab !== "metadata") {
-          setTempModelSettings(() => ({
+          setTempModelSettings((prevSettings) => ({
+            ...prevSettings,
             visualizationSettings: question.settings(),
             display: "table",
           }));
@@ -488,6 +491,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       }
       if (tab === "metadata") {
         setTempModelSettings((prevSettings) => ({
+          ...prevSettings,
           visualizationSettings:
             getTempVisualizationSettings(tempRawSeries) ||
             prevSettings.visualizationSettings,
@@ -554,10 +558,13 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
     let questionWithUpdatedSettings = question;
-    if (
-      !!tempModelSettings.display &&
-      tempModelSettings.display !== question.display()
-    ) {
+    /**
+     * When updating 'display' setting, we need to check if there were actually
+     * any user-driven changes, because the same temp setting value is used
+     * to display proper UI when switching between 'Columns' and 'Settings' tabs.
+     * (see comment for `tempModelSettings`)
+     */
+    if (!!tempModelSettings.display && tempModelSettings.isDirty) {
       questionWithUpdatedSettings = question.setDisplay(
         tempModelSettings.display,
       );
@@ -582,6 +589,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   }, [
     question,
     tempModelSettings.display,
+    tempModelSettings.isDirty,
     metadataDiff,
     isShowingListViewConfiguration,
     dispatch,
@@ -709,9 +717,9 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       onFieldMetadataChange,
       onMappedDatabaseColumnChange,
       onUpdateModelSettings: (settings) => {
-        setSettingsDirty(settings.display !== question.display());
         if (settings.display !== undefined) {
           setTempModelSettings((prevSettings) => ({
+            ...prevSettings,
             display: settings.display || prevSettings.display,
             visualizationSettings:
               settings.display === "list" && rawSeries != null
@@ -719,6 +727,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
                     getTempRawSeries(rawSeries, settings.display),
                   ) || prevSettings.visualizationSettings
                 : prevSettings.visualizationSettings,
+            isDirty: settings.display !== question.display(),
           }));
         }
       },
