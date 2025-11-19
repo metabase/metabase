@@ -13,7 +13,6 @@ export function MiniPickerHeader() {
       data-testid="mini-picker-header"
       data-autofocus
       variant="mb-light"
-      mb="sm"
       leftSection={<Icon name="chevronleft" />}
       onClick={() => {
         setPath((prevPath) => prevPath.slice(0, -1));

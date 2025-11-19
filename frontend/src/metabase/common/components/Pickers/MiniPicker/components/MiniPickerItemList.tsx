@@ -287,5 +287,5 @@ export const MiniPickerListLoader = () => (
 );
 
 const ItemList = ({ children }: { children: React.ReactNode[] }) => {
-  return <VirtualizedList>{children}</VirtualizedList>;
+  return <VirtualizedList extraPadding={2}>{children}</VirtualizedList>;
 };

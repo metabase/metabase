@@ -21,7 +21,6 @@ export interface MiniPickerContextValue {
   isHidden: (item: MiniPickerItem | unknown) => item is unknown;
   models: MiniPickerPickableItem["model"][];
   searchQuery?: string;
-  clearSearchQuery: () => void;
   canBrowse: boolean;
   onBrowseAll?: () => void;
   libraryCollection?: MiniPickerCollectionItem;

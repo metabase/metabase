@@ -14,7 +14,7 @@ export function MiniPickerFooter() {
   }
   return (
     <>
-      <Menu.Divider px="sm" />
+      <Menu.Divider mx="sm" />
       <MiniPickerItem
         variant="mb-light"
         leftSection={<Icon name="search" />}

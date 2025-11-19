@@ -5,19 +5,14 @@ import { Box, Menu } from "metabase/ui";
 
 import type { DataPickerValue } from "../../DataPicker";
 import { MiniPickerContext } from "../context";
-import type {
-  MiniPickerFolderItem,
-  MiniPickerItem,
-  MiniPickerPickableItem,
-} from "../types";
-import { useGetPathFromValue } from "../utils";
+import type { MiniPickerPickableItem } from "../types";
+import { getFolderAndHiddenFunctions, useGetPathFromValue } from "../utils";
 
 import { MiniPickerListLoader } from "./MiniPickerItemList";
 import { MiniPickerPane } from "./MiniPickerPane";
 
-type MiniPickerProps = {
+export type MiniPickerProps = {
   searchQuery?: string;
-  clearSearchQuery: () => void;
   value?: DataPickerValue;
   opened: boolean;
   trapFocus?: boolean;
@@ -34,7 +29,6 @@ export function MiniPicker({
   opened,
   onClose,
   models,
-  clearSearchQuery,
   onBrowseAll,
   trapFocus = false,
 }: MiniPickerProps) {
@@ -48,38 +42,7 @@ export function MiniPicker({
   });
 
   const { isFolder, isHidden } = useMemo(() => {
-    const modelSet = new Set(models);
-    const isFolder = (
-      item: MiniPickerItem | unknown,
-    ): item is MiniPickerFolderItem => {
-      if (!item || typeof item !== "object" || !("model" in item)) {
-        return false;
-      }
-
-      if (!("here" in item) && !("below" in item)) {
-        return false;
-      }
-
-      const hereBelowSet = Array.from(
-        new Set([
-          ...("here" in item && Array.isArray(item.here) ? item.here : []),
-          ...("below" in item && Array.isArray(item.below) ? item.below : []),
-        ]),
-      );
-      return (
-        item.model === "collection" &&
-        hereBelowSet.some((hereBelowModel) => modelSet.has(hereBelowModel))
-      );
-    };
-
-    const isHidden = (item: MiniPickerItem | unknown): item is unknown => {
-      if (!item || typeof item !== "object" || !("model" in item)) {
-        return false;
-      }
-
-      return !modelSet.has(item.model as any) && !isFolder(item);
-    };
-    return { isFolder, isHidden };
+    return getFolderAndHiddenFunctions(models);
   }, [models]);
 
   useEffect(() => {
@@ -103,7 +66,6 @@ export function MiniPicker({
         isFolder,
         isHidden,
         searchQuery,
-        clearSearchQuery,
         onBrowseAll,
         models,
         canBrowse: !!onBrowseAll,
@@ -116,7 +78,7 @@ export function MiniPicker({
         closeOnItemClick={false}
         clickOutsideEvents={["mousedown", "touchstart"]}
         position="bottom-start"
-        menuItemTabIndex={-1}
+        // menuItemTabIndex={-1}
         trapFocus={false}
       >
         <Menu.Target>

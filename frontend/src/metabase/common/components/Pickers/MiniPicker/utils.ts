@@ -10,7 +10,12 @@ import type { SchemaName } from "metabase-types/api";
 import type { DataPickerValue } from "../DataPicker";
 import type { TablePickerValue } from "../TablePicker";
 
-import type { MiniPickerCollectionItem, MiniPickerFolderItem } from "./types";
+import type {
+  MiniPickerCollectionItem,
+  MiniPickerFolderItem,
+  MiniPickerItem,
+  MiniPickerPickableItem,
+} from "./types";
 
 export const getOurAnalytics = (): MiniPickerFolderItem => ({
   model: "collection",
@@ -152,4 +157,42 @@ async function getCollectionPathFromValue(
   }
 
   return locationPath;
+}
+
+// not a factory
+export function getFolderAndHiddenFunctions(
+  models: MiniPickerPickableItem["model"][],
+) {
+  const modelSet = new Set(models);
+  const isFolder = (
+    item: MiniPickerItem | unknown,
+  ): item is MiniPickerFolderItem => {
+    if (!item || typeof item !== "object" || !("model" in item)) {
+      return false;
+    }
+
+    if (!("here" in item) && !("below" in item)) {
+      return false;
+    }
+
+    const hereBelowSet = Array.from(
+      new Set([
+        ...("here" in item && Array.isArray(item.here) ? item.here : []),
+        ...("below" in item && Array.isArray(item.below) ? item.below : []),
+      ]),
+    );
+    return (
+      item.model === "collection" &&
+      hereBelowSet.some((hereBelowModel) => modelSet.has(hereBelowModel))
+    );
+  };
+
+  const isHidden = (item: MiniPickerItem | unknown): item is unknown => {
+    if (!item || typeof item !== "object" || !("model" in item)) {
+      return false;
+    }
+
+    return !modelSet.has(item.model as any) && !isFolder(item);
+  };
+  return { isFolder, isHidden };
 }

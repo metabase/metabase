@@ -22,7 +22,7 @@ export const MiniPickerItem = ({
     return null;
   }
   return (
-    <Box px="sm">
+    <Box px="sm" py="2px">
       <Menu.Item
         leftSection={model ? <Icon {...getIcon({ model })} /> : undefined}
         rightSection={isFolder ? <Icon name="chevronright" /> : undefined}

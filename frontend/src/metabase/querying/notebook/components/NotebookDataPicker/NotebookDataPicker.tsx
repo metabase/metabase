@@ -159,7 +159,6 @@ function ModernDataPicker({
         models={["table", "dataset", "metric", "card"]}
         searchQuery={dataSourceSearchQuery}
         onBrowseAll={() => setIsBrowsing(true)}
-        clearSearchQuery={() => setDataSourceSearchQuery("")}
         trapFocus={focusPicker}
         onChange={(value: MiniPickerPickableItem) => {
           const id =
@@ -199,6 +198,8 @@ function ModernDataPicker({
           onChange={(e) => setDataSourceSearchQuery(e.currentTarget.value)}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown" || e.key === "tab") {
+              e.preventDefault();
+              e.stopPropagation();
               setFocusPicker(true);
             }
           }}
