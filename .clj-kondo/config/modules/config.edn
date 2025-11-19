@@ -921,6 +921,7 @@
            permissions
            premium-features
            request
+           settings
            util}}
 
   pivot
@@ -1411,8 +1412,7 @@
   tenants
   {:team "Admin Webapp"
    :api #{metabase.tenants.core}
-   :uses #{collections
-           premium-features
+   :uses #{premium-features
            util}}
 
   testing-api
@@ -1506,6 +1506,7 @@
            settings
            setup
            system
+           tenants
            util}}
 
   users-rest
@@ -1523,9 +1524,10 @@
            permissions
            premium-features
            request
+           settings
            sso
-           users
            tenants
+           users
            util
            enterprise/advanced-permissions}}
 
@@ -2201,7 +2203,6 @@
            settings
            sso
            system
-           tenants
            util
            enterprise/scim}}
 
@@ -2231,6 +2232,23 @@
            request
            settings
            system
+           util}}
+
+  enterprise/tenants
+  {:team "Admin Webapp"
+   :api #{metabase-enterprise.tenants.api}
+   :uses #{api
+           audit-app
+           auth-identity
+           collections
+           collections-rest
+           events
+           models
+           permissions
+           premium-features
+           request
+           settings
+           tenants
            util}}
 
   enterprise/transforms
@@ -2275,21 +2293,6 @@
            settings
            util
            enterprise/transforms}}
-
-  enterprise/tenants
-  {:team "Admin Webapp"
-   :api #{}
-   :uses #{api
-           audit-app
-           events
-           collections
-           models
-           permissions
-           premium-features
-           request
-           settings
-           tenants
-           util}}
 
   enterprise/upload-management
   {:team "UX West"
