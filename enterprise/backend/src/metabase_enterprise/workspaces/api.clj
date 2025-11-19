@@ -59,6 +59,12 @@
       api/check-404
       ws->res))
 
+(api.macros/defendpoint :get "/:id/contents" :- Workspace
+  "Get the contents being edited within a Workspace."
+  [{workspace-id :id} :- [:map [:id ms/PositiveInt]]
+   _query-params]
+  {:contents {:transforms (t2/select [:model/Transform :id] :workspace_id workspace-id)}})
+
 (api.macros/defendpoint :post "/" :- Workspace
   "Create a new workspace"
   [_route-params
