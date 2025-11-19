@@ -957,6 +957,7 @@ describe("issue 19341", () => {
   it("should correctly disable nested queries (metabase#19341)", () => {
     // Test "Saved Questions" table is hidden in QB data selector
     H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
       cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText("Orders").should("exist");
@@ -983,6 +984,7 @@ describe("issue 19341", () => {
     });
 
     cy.icon("join_left_outer").click();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().findAllByRole("tab").should("not.exist");
 
     // Test "Explore results" button is hidden for native questions
@@ -1009,8 +1011,9 @@ describe("issue 19742", () => {
     cy.findByText("New").click();
 
     H.popover().findByText("Question").click();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+      H.entityPickerModalItem(0, "Databases").click();
       cy.findByText("Orders").should("exist");
       cy.button("Close").click();
     });
@@ -1029,8 +1032,9 @@ describe("issue 19742", () => {
     cy.findByText("New").click();
     H.popover().findByText("Question").click();
 
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+      H.entityPickerModalItem(0, "Databases").click();
 
       cy.findByText("Orders").should("not.exist");
       cy.findByText("Products").should("exist");
@@ -1184,8 +1188,8 @@ describe("issue 20627", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
 
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText(newTableName).click();
     });
 
