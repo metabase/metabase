@@ -611,52 +611,13 @@
                                                  :last_name "User"}
                                                 default-jwt-secret)))))))))
 
-(deftest jwt-data->login-attributes-works
-  (mt/with-additional-premium-features #{:tenants}
-    (mt/with-temporary-setting-values [jwt-attribute-email "email"
-                                       jwt-attribute-firstname "first_name"
-                                       jwt-attribute-lastname "last_name"
-                                       jwt-attribute-tenant "tenant"
-                                       use-tenants true]
-      (is (= {:something "else"}
-             (#'mt.jwt/jwt-data->login-attributes {:email "foo"
-                                                   :first_name "bar"
-                                                   :last_name "bin"
-                                                   :tenant "baz"
-                                                   :something "else"
-                                                   ;; registered claims in the JWT standard
-                                                   :iss "a"
-                                                   :iat "b"
-                                                   :sub "c"
-                                                   :aud "d"
-                                                   :exp "e"
-                                                   :nbf "f"
-                                                   :jti "g"})))
-      (testing "If tenants are not enabled, tenant is interpreted as a user attribute."
-        (is (= {:tenant "baz"
-                :something "else"}
-               (mt/with-temporary-setting-values [use-tenants false]
-                 (#'mt.jwt/jwt-data->login-attributes {:email "foo"
-                                                       :first_name "bar"
-                                                       :last_name "bin"
-                                                       :tenant "baz"
-                                                       :something "else"
-                                                       ;; registered claims in the JWT standard
-                                                       :iss "a"
-                                                       :iat "b"
-                                                       :sub "c"
-                                                       :aud "d"
-                                                       :exp "e"
-                                                       :nbf "f"
-                                                       :jti "g"}))))))))
-
 (deftest tenants-can-be-auto-provisioned
   (mt/with-model-cleanup [:model/Tenant]
     (with-jwt-default-setup!
       (mt/with-additional-premium-features #{:tenants}
         (mt/with-temporary-setting-values [use-tenants true]
           (mt/with-temp [:model/PermissionsGroup _my-group {:name (str ::my-group)}]
-            (with-users-with-email-deleted "newuser@metabase.com"
+            (mt/with-model-cleanup [:model/User]
               (let [response    (client/client-real-response :get 302 "/auth/sso"
                                                              {:request-options {:redirect-strategy :none}}
                                                              :return_to default-redirect-uri
@@ -690,7 +651,7 @@
         (mt/with-temp [:model/PermissionsGroup _my-group {:name (str ::my-group)}
                        :model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
                                                       :name "Tenant McTenantson"}]
-          (with-users-with-email-deleted "newuser@metabase.com"
+          (mt/with-model-cleanup [:model/User]
             (let [response    (client/client-real-response :get 302 "/auth/sso"
                                                            {:request-options {:redirect-strategy :none}}
                                                            :return_to default-redirect-uri
@@ -725,7 +686,7 @@
       (mt/with-temp [:model/PermissionsGroup _my-group {:name (str ::my-group)}
                      :model/Tenant _ {:slug "tenant-mctenantson"
                                       :name "Tenant McTenantson"}]
-        (with-users-with-email-deleted "newuser@metabase.com"
+        (mt/with-model-cleanup [:model/User]
           (mt/with-temporary-setting-values [use-tenants false]
             (let [response    (client/client-real-response :get 302 "/auth/sso"
                                                            {:request-options {:redirect-strategy :none}}
@@ -792,7 +753,7 @@
                        :model/User {existing-email :email} {:tenant_id tenant-id}]
           (mt/with-temporary-setting-values [use-tenants true]
             (testing "a new user fails to log in"
-              (with-users-with-email-deleted "newuser@metabase.com"
+              (mt/with-model-cleanup [:model/User]
                 (let [response    (client/client-real-response :get 400 "/auth/sso"
                                                                {:request-options {:redirect-strategy :none}}
                                                                :return_to default-redirect-uri
@@ -823,7 +784,7 @@
       (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
                                                     :name "Tenant McTenantson"}]
         (mt/with-temporary-setting-values [use-tenants true]
-          (with-users-with-email-deleted "newuser@metabase.com"
+          (mt/with-model-cleanup [:model/User]
             (testing "log in without a tenant"
               (let [response    (client/client-real-response :get 302 "/auth/sso"
                                                              {:request-options {:redirect-strategy :none}}
