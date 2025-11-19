@@ -20,11 +20,15 @@ import {
   NoDatabasesEmptyState,
   PreviewSection,
   type PreviewType,
-  SyncOptionsModal,
 } from "../shared";
 
 import S from "./DataModel.module.css";
-import { RouterTablePicker, SegmentsLink, TableSection } from "./components";
+import {
+  RouterTablePicker,
+  SegmentsLink,
+  SyncOptionsModal,
+  TableSection,
+} from "./components";
 import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
 import type { RouteParams } from "./types";
 import { getTableMetadataQuery, parseRouteParams } from "./utils";
@@ -248,7 +252,7 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
       {table && (
         <SyncOptionsModal
           isOpen={isSyncModalOpen}
-          tableIds={[table.id]}
+          tableId={table.id}
           onClose={closeSyncModal}
         />
       )}
