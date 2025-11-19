@@ -32,6 +32,14 @@
                                                 :database_id    db-id
                                                 :api_key_id     (:id api-key)
                                                 :execution_user (:user_id api-key)})
+        ;; mock copy tx
+        _       (when-let [tx-id (first (:transforms stuffs))]
+                  (t2/insert! :model/Transform
+                              (-> (t2/select-one :model/Transform tx-id)
+                                  (dissoc :id)
+                                  (dissoc :entity_id)
+                                  (assoc :workspace_id (:id ws)))))
+
         coll    (t2/insert-returning-instance! :model/Collection
                                                {:name         (format "Collection for Workspace %s" name)
                                                 :workspace_id (:id ws)})]
