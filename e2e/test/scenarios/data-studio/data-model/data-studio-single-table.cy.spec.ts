@@ -148,7 +148,10 @@ describe("Table editing", () => {
       .findByText("Table data source updated")
       .should("be.visible");
 
-    cy.reload();
+    // navigate away and back
+    TablePicker.getTable("Products").click();
+    TablePicker.getTable("Orders").click();
+
     H.selectHasValue("Owner", "Bobby Tables");
     H.selectHasValue("Visibility type", "Gold");
     H.selectHasValue("Entity type", "Person");
