@@ -476,22 +476,6 @@
                   (try (sync-fields/sync-fields-for-table! (mt/db) table)
                        (catch Throwable _ ::thrown))))))))
 
-(defn- generate-wide-table-ddl
-  "Generate a CREATE TABLE statement with 1000 columns."
-  []
-  (let [columns (for [i (range 1 1001)]
-                  (format "  column_%04d VARCHAR(255)" i))
-        columns-str (clojure.string/join ",\n" columns)]
-    (format "CREATE TABLE wide_table (\n  id BIGINT PRIMARY KEY,\n%s\n);"
-            columns-str)))
-
-(comment
-
-  (println (generate-wide-table-ddl)))
-
-(deftest sync-fields-big-table
-  (sync-fields/sync-fields! (t2/select-one :model/Database :id 49)))
-
 (deftest visibility-type-stays-normal-after-manual-change-test
   (testing "visibility_type remains :normal after being manually changed from :details-only"
     (mt/test-driver :postgres
