@@ -60,7 +60,9 @@
   (let [tables (sync-util/reducible-sync-tables database :schema-names schema-names :table-names table-names)]
     (eduction
      (mapcat (fn [table]
+
                (for [x (table-fields-metadata database table)]
+
                  (assoc x :table-schema (:schema table) :table-name (:name table)))))
      tables)))
 

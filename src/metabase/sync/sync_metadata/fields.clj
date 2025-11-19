@@ -106,6 +106,8 @@
                                                                          (set table-metadata)
                                                                          database
                                                                          table)]
+                                                       ;; put the thread.sleep here
+                                                       (Thread/sleep 10000)
                                                        (sync-and-update! database table all-metadata))
                                                      (catch Exception e
                                                        (log/error e)
