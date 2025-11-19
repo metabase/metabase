@@ -28,6 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.workspaces :as u.workspaces]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
@@ -164,6 +165,10 @@
 
 (t2/define-after-select :model/Collection [collection]
   (maybe-localize-trash-name collection))
+
+(t2/define-before-select :model/Collection
+  [parsed-args]
+  (u.workspaces/apply-default-workspace-filter &model parsed-args))
 
 (doto :model/Collection
   (derive :metabase/model)

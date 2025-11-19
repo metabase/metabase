@@ -6,7 +6,7 @@
    [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
-(defn make-graph-from-stuff [_stuff]
+(defn- make-graph-from-stuff [_stuff]
   {})
 
 (mu/defn create-workspace

@@ -49,6 +49,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.workspaces :as u.workspaces]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -109,6 +110,10 @@
    :parameters             parameters/transform-parameters
    :parameter_mappings     parameters/transform-parameter-mappings
    :type                   mi/transform-keyword})
+
+(t2/define-before-select :model/Card
+  [parsed-args]
+  (u.workspaces/apply-default-workspace-filter &model parsed-args))
 
 (doto :model/Card
   (derive :metabase/model)

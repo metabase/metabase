@@ -13,6 +13,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.workspaces :as u.workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -85,6 +86,10 @@
    :field_order     mi/transform-keyword
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
    :data_authority  transform-data-authority})
+
+(t2/define-before-select :model/Table
+  [parsed-args]
+  (u.workspaces/apply-default-workspace-filter &model parsed-args))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :table]
   [_original-model _k]

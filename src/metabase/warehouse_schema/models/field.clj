@@ -19,6 +19,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.workspaces :as u.workspaces]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
@@ -113,6 +114,10 @@
    :fingerprint       transform-json-fingerprints
    :settings          mi/transform-json
    :nfc_path          mi/transform-json})
+
+(t2/define-before-select :model/Field
+  [parsed-args]
+  (u.workspaces/apply-default-workspace-filter &model parsed-args))
 
 (doto :model/Field
   (derive :metabase/model)

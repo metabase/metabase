@@ -14,6 +14,7 @@
    [metabase.search.ingestion :as search]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
+   [metabase.util.workspaces :as u.workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -46,6 +47,10 @@
    :source      {:out transform-source-out, :in transform-source-in}
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
+
+(t2/define-before-select :model/Transform
+  [parsed-args]
+  (u.workspaces/apply-default-workspace-filter &model parsed-args))
 
 (t2/define-before-insert :model/Transform
   [{:keys [source] :as transform}]
