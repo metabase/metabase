@@ -230,8 +230,8 @@
                                 (not api/*is-superuser?*)     (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])
                                 (contains? params :tenant_id) (sql.helpers/where clauses [:= :tenant_id tenant_id])
                                 (= tenancy :all)              clauses
-                                (= tenancy :external)         (sql.helpers/where [:not= :tenant_id nil])
-                                :else                         (sql.helpers/where [:= :tenant_id nil])))]
+                                (= tenancy :external)         (sql.helpers/where clauses [:not= :tenant_id nil])
+                                :else                         (sql.helpers/where clauses [:= :tenant_id nil])))]
     {:data (cond-> (t2/select
                     (vec (cons :model/User (user-visible-columns)))
                     (sql.helpers/order-by clauses
@@ -458,7 +458,7 @@
                        (notification/with-skip-sending-notification (boolean (:tenant_id body))
                          (user/create-and-invite-user!
                           (u/select-keys-when body
-                                              :non-nil [:first_name :last_name :email :password :login_attributes])
+                                              :non-nil [:first_name :last_name :email :password :login_attributes :tenant_id])
                           @api/*current-user*
                           (= source "setup"))))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)

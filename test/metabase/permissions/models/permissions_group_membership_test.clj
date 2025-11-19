@@ -37,9 +37,9 @@
                      (t2/delete! :model/PermissionsGroupMembership :user_id id, :group_id (u/the-id (perms-group/admin)))))))))
 
 (deftest tenant-users-and-groups
-  ;; This will need to get fixed once we have actual tenants - right now the `tenant_id` doesn't actually connect to
-  ;; anything.
-  (mt/with-temp [:model/User {tenant-user :id} {:tenant_id 1}
+  ;; This will need to get moved to EE
+  (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "tenant" :name "tenant"}
+                 :model/User {tenant-user :id} {:tenant_id tenant-id}
                  :model/User {normal-user :id} {}
                  :model/PermissionsGroup {tenant-group :id} {:is_tenant_group true}
                  :model/PermissionsGroup {normal-group :id} {:is_tenant_group false}]
