@@ -57,7 +57,9 @@
    (table-defaults (or driver/*driver* :h2)))
   ([driver]
    (merge
-    (update (mt/object-defaults :model/Table) :data_authority name)
+    (-> (mt/object-defaults :model/Table)
+        (update :data_authority name)
+        (update :data_layer name))
     {:db          (db-details)
      :db_id       (mt/id)
      :entity_type "entity/GenericTable"
