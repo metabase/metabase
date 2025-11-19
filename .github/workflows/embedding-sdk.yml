@@ -144,7 +144,7 @@ jobs:
   embedding-sdk-component-tests:
     name: "SDK component tests"
     needs: [build, files-changed]
-    if: needs.files-changed.outputs.e2e_embedding_sdk == "true"
+    if: needs.files-changed.outputs.e2e_embedding_sdk == 'true'
     uses: ./.github/workflows/embedding-sdk-component-tests.yml
     secrets: inherit
     with:
@@ -153,7 +153,7 @@ jobs:
   embedding-sdk-component-tests-backward-compatibility:
     name: "SDK component tests for the backward compatibility"
     needs: [build, files-changed]
-    if: needs.files-changed.outputs.e2e_embedding_sdk == "true"
+    if: needs.files-changed.outputs.e2e_embedding_sdk == 'true'
     uses: ./.github/workflows/embedding-sdk-component-tests-backward-compatibility.yml
     secrets: inherit
     with:
@@ -162,7 +162,7 @@ jobs:
   not-required-embedding-sdk-e2e-tests:
     name: "SDK e2e tests (host/sample) apps"
     needs: [build, files-changed]
-    if: needs.files-changed.outputs.e2e_embedding_sdk_compatibility == "true"
+    if: needs.files-changed.outputs.e2e_embedding_sdk_compatibility == 'true'
     uses: ./.github/workflows/embedding-sdk-e2e-tests.yml
     secrets: inherit
     with:
