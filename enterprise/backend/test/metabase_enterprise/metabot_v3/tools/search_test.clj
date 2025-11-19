@@ -432,13 +432,42 @@
 (defmacro with-and-without-semantic-search! [& body]
   `(do ~@body (with-semantic-search-if-available! ~@body)))
 
-(deftest non-semantic-keywords-test
+(deftest split-keywords-only-test
+  (testing "search returns only exact matches for keyword terms when {:split-semantic-terms true}\n"
+    (mt/with-test-user :rasta
+      (with-and-without-semantic-search!
+        (search.tu/with-new-search-and-legacy-search
+          (let [semantic-support? (search.engine/supported-engine? :search.engine/semantic)]
+          ;; we expect these to fail matching via fulltext search (even though they match semantically)
+            (mt/with-temp [:model/Dashboard {id-1 :id} {:name "belligerent"}
+                           :model/Dashboard {id-2 :id} {:name "bellicose"}
+                         ;; this will match via fulltext search
+                           :model/Dashboard {id-3 :id} {:name "baseline"}]
+              (when semantic-support?
+                (semantic.tu/index-all!))
+              (doseq [unified-disjunct-querying [false true]]
+                (testing (str "{unified-disjunct-querying " unified-disjunct-querying "}\n")
+                  (let [base-query   {:term-queries     ["combative" "quarrelsome" "baseline"]
+                                      :semantic-queries []}
+                        test-entity? (comp #{id-1 id-2 id-3} :id)
+                        query        (fn [unified-disjunct-querying]
+                                       (->> (search/search (assoc base-query
+                                                                  :experimental-opts
+                                                                  {:unified-disjunct-querying unified-disjunct-querying
+                                                                   :split-semantic-terms      true}))
+                                            (filter test-entity?)
+                                            (map :name)))]
+                    (testing "Semantic results are not returned for keyword terms"
+                      (is (= #{"baseline"}
+                             (set (query unified-disjunct-querying)))))))))))))))
+
+(deftest split-keyword-and-semantic-test
   (testing "search returns only exact matches for keyword terms when {:split-semantic-terms true}\n"
     (mt/with-test-user :rasta
       (with-and-without-semantic-search!
         (search.tu/with-temp-index-table
           (let [semantic-support? (search.engine/supported-engine? :search.engine/semantic)]
-          ;; we expect these to fail matching via keyword search (even though they match semantically)
+            ;; we expect these to fail matching via keyword search (even though they match semantically)
             (mt/with-temp [:model/Dashboard {id-1 :id} {:name "belligerent"}
                            :model/Dashboard {id-2 :id} {:name "bellicose"}
                          ;; these we expect to match successfully via semantic search
@@ -454,6 +483,7 @@
                                       :semantic-queries (if semantic-support?
                                                           ;; TODO (Chris 2025-11-14) disabled semantic search for now,
                                                           ;;      as currently any search returns *everything* @_@
+                                                          ;;      likely we must alter mock vectors to be further apart.
                                                           #_["unrealistic" "adjunct"] []
                                                           ["quixotic" "ancillary"])}
                         test-entity? (comp #{id-1 id-2 id-3 id-4 id-5} :id)
