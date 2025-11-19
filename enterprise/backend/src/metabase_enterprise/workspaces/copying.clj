@@ -100,7 +100,7 @@
           ;; TODO: later, working with multiple input entities, ensure toposorting for adjustments
           ;; Mirroring only a single transform here
           updated-info-2 (mirror-transform! workspace database updated-info-1)]
-      updated-info-2)))
+      @(def uuu updated-info-2))))
 
 (comment
   ;;;; manually mirror some transform without dependencies
