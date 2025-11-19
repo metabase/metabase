@@ -119,8 +119,8 @@ describe("scenarios > metrics > editing", () => {
         .findByLabelText("Create a new metric")
         .click();
 
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       saveMetric({ name: "New metric" });
@@ -137,8 +137,8 @@ describe("scenarios > metrics > editing", () => {
 
     it("should not crash when cancelling creation of a new metric (metabase#48024)", () => {
       H.startNewMetric();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       cancelMetricEditing();
@@ -159,8 +159,8 @@ describe("scenarios > metrics > editing", () => {
   describe("data source", () => {
     it("should create a metric based on a table", () => {
       H.startNewMetric();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       addStringCategoryFilter({
@@ -245,8 +245,8 @@ describe("scenarios > metrics > editing", () => {
 
     it("should allow to run the query from the metric empty state", () => {
       H.startNewMetric();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       cy.intercept("POST", "/api/dataset").as("dataset");
@@ -259,13 +259,13 @@ describe("scenarios > metrics > editing", () => {
   describe("joins", () => {
     it("should join a table", () => {
       H.startNewMetric();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Products").click();
       });
       startNewJoin();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       startNewFilter();
@@ -310,8 +310,8 @@ describe("scenarios > metrics > editing", () => {
   describe("custom columns", () => {
     it("should be able to use custom columns in metric queries (metabase#42360)", () => {
       H.startNewMetric();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       startNewCustomColumn();
@@ -331,8 +331,8 @@ describe("scenarios > metrics > editing", () => {
 
     it("should be able to use implicitly joinable columns in custom columns in metric queries (metabase#42360)", () => {
       H.startNewMetric();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       startNewCustomColumn();
@@ -354,8 +354,8 @@ describe("scenarios > metrics > editing", () => {
   describe("breakouts", () => {
     it("should create a timeseries metric", () => {
       H.startNewMetric();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       H.getNotebookStep("summarize").findByText("Count").click();
@@ -377,8 +377,8 @@ describe("scenarios > metrics > editing", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC);
       H.startNewMetric();
       cy.intercept("POST", "/api/dataset/query_metadata").as("queryMetadata");
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       });
       cy.wait("@queryMetadata");
@@ -427,8 +427,8 @@ describe("scenarios > metrics > editing", () => {
       H.createQuestion(ORDERS_SCALAR_FILTER_METRIC);
       H.createQuestion(PRODUCTS_SCALAR_METRIC);
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       startNewAggregation();
@@ -449,8 +449,8 @@ describe("scenarios > metrics > editing", () => {
       H.createQuestion(ORDERS_SCALAR_FILTER_METRIC);
       H.createQuestion(PRODUCTS_SCALAR_METRIC);
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       startNewAggregation();
@@ -467,8 +467,8 @@ describe("scenarios > metrics > editing", () => {
     it("should show the description for metrics", () => {
       H.createQuestion(ORDERS_SCALAR_FILTER_METRIC);
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       startNewAggregation();
