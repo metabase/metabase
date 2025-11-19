@@ -2,5 +2,16 @@
   "base": {
     "name": "tenants-rebased",
     "hash": "962d7698e9393228cc067fc66d7612df4da94fbe"
+  },
+  "upstream": {
+    "branch": "emb-1004-when-adding-users-to-tenant-group-from-within-tenant-group"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 66046,
+        "gqlID": "PR_kwDOAczgH860cz6X"
+      }
+    }
   }
 }
