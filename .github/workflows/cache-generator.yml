@@ -108,6 +108,14 @@ jobs:
           echo "Yarn cache directory: $YARN_CACHE_DIR"
           echo "dir=$YARN_CACHE_DIR" >> $GITHUB_OUTPUT
 
+      - name: Ensure that Cypress executable is ready
+        run: |
+          yarn cypress install
+          yarn cypress cache path
+          yarn cypress cache list
+          yarn cypress verify
+        shell: bash
+
       - name: Update node_modules cache
         uses: ./.github/actions/update-cache
         with:
