@@ -466,6 +466,193 @@ describe("scenarios > data studio > datamodel", () => {
         });
       },
     );
+
+    it("select/deselect functionality", { tags: ["@external"] }, () => {
+      H.restore("postgres-writable");
+      cy.signInAsAdmin();
+      H.resetTestTable({ type: "postgres", table: "multi_schema" });
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+      visitDataStudioDataModel();
+
+      const databaseName = "Writable Postgres12";
+      const sampleDatabaseName = "Sample Database";
+      const domesticSchema = "Domestic";
+      const wildSchema = "Wild";
+      const domesticTables = ["Animals"];
+      const wildTables = ["Animals", "Birds"];
+      const tablesInDatabase = [
+        ...domesticTables.map((table) => ({
+          schema: domesticSchema,
+          table,
+        })),
+        ...wildTables.map((table) => ({
+          schema: wildSchema,
+          table,
+        })),
+      ];
+
+      const getDatabaseCheckbox = () =>
+        TablePicker.getDatabase(databaseName).find('input[type="checkbox"]');
+      const getSchemaCheckbox = (schemaName: string) =>
+        TablePicker.getSchema(schemaName).find('input[type="checkbox"]');
+      const getWpTableCheckbox = (schemaName: string, tableName: string) =>
+        getTableCheckbox(
+          WRITABLE_DB_ID,
+          `${WRITABLE_DB_ID}:${schemaName}`,
+          tableName,
+        );
+      const getSampleTableCheckbox = (tableName: string) =>
+        getTableCheckbox(SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID, tableName);
+
+      function getTableCheckbox(
+        databaseId: number,
+        schemaFragment: string,
+        tableName: string,
+      ) {
+        return TablePicker.getTables()
+          .filter((_, element) => {
+            const href = element.getAttribute("href") ?? "";
+            const text = element.textContent ?? "";
+
+            return (
+              href.includes(`/database/${databaseId}/`) &&
+              href.includes(`/schema/${schemaFragment}`) &&
+              text.toLowerCase().includes(tableName.toLowerCase())
+            );
+          })
+          .find('input[type="checkbox"]');
+      }
+
+      TablePicker.getDatabase(databaseName).click();
+      TablePicker.getSchema(domesticSchema).click();
+      TablePicker.getSchema(wildSchema).click();
+      TablePicker.getTables().should("have.length", 3);
+
+      cy.log("selecting a db selects all schemas and tables in it");
+      getDatabaseCheckbox().check();
+      for (const schemaName of [domesticSchema, wildSchema]) {
+        getSchemaCheckbox(schemaName).should("be.checked");
+      }
+      for (const tableName of domesticTables) {
+        getWpTableCheckbox(domesticSchema, tableName).should("be.checked");
+      }
+      for (const tableName of wildTables) {
+        getWpTableCheckbox(wildSchema, tableName).should("be.checked");
+      }
+      getDatabaseCheckbox().uncheck();
+      for (const schemaName of [domesticSchema, wildSchema]) {
+        getSchemaCheckbox(schemaName).should("not.be.checked");
+      }
+      for (const { schema, table } of tablesInDatabase) {
+        getWpTableCheckbox(schema, table).should("not.be.checked");
+      }
+
+      cy.log("selecting a schema selects all tables in it");
+      getSchemaCheckbox(domesticSchema).check();
+      for (const tableName of domesticTables) {
+        getWpTableCheckbox(domesticSchema, tableName).should("be.checked");
+      }
+      getSchemaCheckbox(domesticSchema).uncheck();
+      for (const tableName of domesticTables) {
+        getWpTableCheckbox(domesticSchema, tableName).should("not.be.checked");
+      }
+
+      cy.log("selecting all tables in a schema selects the schema");
+      getSchemaCheckbox(wildSchema).should("not.be.checked");
+      getWpTableCheckbox(wildSchema, "Animals").check();
+      getSchemaCheckbox(wildSchema).should("not.be.checked");
+      getWpTableCheckbox(wildSchema, "Birds").check();
+      getSchemaCheckbox(wildSchema).should("be.checked");
+      getSchemaCheckbox(wildSchema).uncheck();
+      for (const tableName of wildTables) {
+        getWpTableCheckbox(wildSchema, tableName).should("not.be.checked");
+      }
+
+      cy.log("selecting all schemas in a db selects the db");
+      getSchemaCheckbox(domesticSchema).check();
+      getSchemaCheckbox(wildSchema).check();
+      getDatabaseCheckbox().should("be.checked");
+      getSchemaCheckbox(domesticSchema).uncheck();
+      getSchemaCheckbox(wildSchema).uncheck();
+      getDatabaseCheckbox().should("not.be.checked");
+
+      cy.log("selecting all tables in a db selects the db");
+      cy.then(() => {
+        tablesInDatabase.forEach(({ schema, table }, index) => {
+          getWpTableCheckbox(schema, table).check();
+          if (index < tablesInDatabase.length - 1) {
+            getDatabaseCheckbox().should("not.be.checked");
+          }
+        });
+      });
+      getDatabaseCheckbox().should("be.checked");
+      getDatabaseCheckbox().uncheck();
+      for (const { schema, table } of tablesInDatabase) {
+        getWpTableCheckbox(schema, table).should("not.be.checked");
+      }
+
+      cy.log("deselecting a table updates parent state");
+      getDatabaseCheckbox().check();
+      getWpTableCheckbox(wildSchema, "Birds").uncheck();
+      getSchemaCheckbox(wildSchema).should("not.be.checked");
+      // partially selected now, so clicking twice to make it unchecked
+      getDatabaseCheckbox().should("not.be.checked");
+
+      getDatabaseCheckbox().uncheck();
+      getDatabaseCheckbox().uncheck();
+      for (const { schema, table } of tablesInDatabase) {
+        getWpTableCheckbox(schema, table).should("not.be.checked");
+      }
+
+      cy.log("deselecting a schema clears its tables");
+      getSchemaCheckbox(domesticSchema).check();
+      cy.findByPlaceholderText("Give this table a name")
+        .should("have.value", domesticTables[0])
+        .should("be.visible");
+      getSchemaCheckbox(domesticSchema).uncheck();
+
+      cy.log("schema toggle handles partially selected state");
+      getSchemaCheckbox(wildSchema).check();
+      cy.findByRole("heading", { name: /2 tables selected/i }).should(
+        "be.visible",
+      );
+      getWpTableCheckbox(wildSchema, "Birds").uncheck();
+      cy.findByPlaceholderText("Give this table a name")
+        .should("have.value", domesticTables[0])
+        .should("be.visible");
+
+      cy.log("first click selects all tables");
+      getSchemaCheckbox(wildSchema).click();
+      cy.findByRole("heading", { name: /2 tables selected/i }).should(
+        "be.visible",
+      );
+      cy.log("second click deselects all tables");
+      getSchemaCheckbox(wildSchema).click();
+      cy.findAllByRole("heading", { name: /table[s]? selected/i }).should(
+        "have.length",
+        0,
+      );
+      for (const tableName of wildTables) {
+        getWpTableCheckbox(wildSchema, tableName).should("not.be.checked");
+      }
+
+      cy.log("shift + click selects a range of tables");
+      TablePicker.getDatabase(databaseName).click();
+      TablePicker.getDatabase(sampleDatabaseName).click();
+
+      getSampleTableCheckbox("Orders").should("not.be.checked");
+      getSampleTableCheckbox("People").should("not.be.checked");
+      getSampleTableCheckbox("Products").should("not.be.checked");
+
+      getSampleTableCheckbox("Orders").click();
+      getSampleTableCheckbox("Products").click({ shiftKey: true });
+
+      getSampleTableCheckbox("Orders").should("be.checked");
+      getSampleTableCheckbox("People").should("be.checked");
+      getSampleTableCheckbox("Products").should("be.checked");
+      getSampleTableCheckbox("Feedback").should("not.be.checked");
+    });
   });
 
   describe("Table section", () => {
