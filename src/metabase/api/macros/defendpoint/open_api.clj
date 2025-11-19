@@ -151,6 +151,11 @@
   (mjs-collect-definitions :metabase.timeline.api.timeline/Timeline)
   (schema->response-obj :metabase.timeline.api.timeline/Timeline))
 
+(defn- deprecate-description [description deprecated?]
+  (if (string? deprecated?)
+    (str description " **Deprecated since " deprecated? ".**")
+    (str description " **Deprecated.**")))
+
 (mu/defn- path-item :- :metabase.api.open-api/path-item
   "Generate OpenAPI desc for `defendpoint` 2.0 ([[metabase.api.macros/defendpoint]]) handler.
 
@@ -175,14 +180,17 @@
                                     (get-in form [:params :body :schema]))
                                   mjs-collect-definitions
                                   fix-json-schema)
-          response-schema (:response-schema form)]
+          response-schema (:response-schema form)
+          deprecated?     (get-in form [:metadata :deprecated])]
       ;; summary is the string in the sidebar of Scalar
       (cond-> {:summary     (str (u/upper-case-en (name method)) " " full-path)
                :description (some-> (:docstr form) str)
                :parameters params
                :responses  default-response-schema}
         body-schema     (assoc :requestBody {:content {ctype {:schema body-schema}}})
-        response-schema (update :responses merge (schema->response-obj response-schema))))
+        response-schema (update :responses merge (schema->response-obj response-schema))
+        deprecated?     (assoc :deprecated true)
+        deprecated?     (update :description deprecate-description deprecated?)))
     (catch Throwable e
       (throw (ex-info (str (format "Error creating OpenAPI spec for endpoint %s %s: %s"
                                    (:method form)
