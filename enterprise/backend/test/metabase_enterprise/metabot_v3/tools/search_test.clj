@@ -438,10 +438,10 @@
       (with-and-without-semantic-search!
         (search.tu/with-new-search-and-legacy-search
           (let [semantic-support? (search.engine/supported-engine? :search.engine/semantic)]
-          ;; we expect these to fail matching via fulltext search (even though they match semantically)
+            ;; we expect these to fail matching via fulltext search (even though they match semantically)
             (mt/with-temp [:model/Dashboard {id-1 :id} {:name "belligerent"}
                            :model/Dashboard {id-2 :id} {:name "bellicose"}
-                         ;; this will match via fulltext search
+                           ;; this will match via fulltext search
                            :model/Dashboard {id-3 :id} {:name "baseline"}]
               (when semantic-support?
                 (semantic.tu/index-all!))
@@ -473,7 +473,7 @@
                          ;; these we expect to match successfully via semantic search
                            :model/Dashboard {id-3 :id} {:name "quixotic"}
                            :model/Dashboard {id-4 :id} {:name "ancillary"}
-                         ;; these we
+                           ;; this will match via fulltext search
                            :model/Dashboard {id-5 :id} {:name "baseline"}]
               (when semantic-support?
                 (semantic.tu/index-all!))
