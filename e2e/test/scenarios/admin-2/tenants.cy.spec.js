@@ -695,25 +695,11 @@ describe("tenant users", () => {
   });
 
   it("should create a tenant group and add users to it", () => {
-    const GROUP_NAME = "Favorites";
-    cy.intercept("POST", "/api/permissions/group").as("createGroup");
     cy.intercept("POST", "/api/user").as("createUser");
     cy.intercept("PUT", "/api/user/*").as("updateUser");
-    cy.visit("/admin/tenants/groups");
 
-    // FIXME shouldn't be necessary - caused by slow route guard
-    cy.findByTestId("admin-layout-sidebar")
-      .findByText(/Tenant Groups/)
-      .click();
-
-    cy.findByTestId("admin-layout-content")
-      .findByRole("heading", { name: /Tenant Groups/ })
-      .should("be.visible");
-
-    cy.button("Create a group").click();
-    cy.findByPlaceholderText(/something like/i).type(GROUP_NAME);
-    cy.findByRole("button", { name: "Add" }).click();
-    cy.wait("@createGroup");
+    const GROUP_NAME = "Favorites";
+    createTenantGroupFromUI(GROUP_NAME);
     cy.findByTestId("admin-content-table").findByText(GROUP_NAME);
 
     cy.findByTestId("admin-layout-sidebar")
@@ -773,6 +759,41 @@ describe("tenant users", () => {
       },
     );
   });
+
+  it("can add external users to a tenant group via 'Add members", () => {
+    cy.intercept("GET", "/api/user*").as("listUsers");
+
+    const GROUP_NAME = "Marketing Team";
+    createTenantGroupFromUI(GROUP_NAME);
+    cy.findByTestId("admin-content-table").findByText(GROUP_NAME).click();
+
+    cy.findByTestId("admin-pane-page-title", { name: GROUP_NAME }).should(
+      "be.visible",
+    );
+
+    cy.button("Add members").click();
+    cy.wait("@listUsers");
+
+    cy.findByPlaceholderText(/Julie McMemberson/).type("gizmo");
+
+    H.popover().within(() => {
+      cy.log("tenant user should be visible");
+      cy.findByText("gizmo user").should("be.visible");
+
+      cy.log("internal user should not be visible");
+      cy.findByText("Bobby Tables").should("not.exist");
+
+      cy.log("select a tenant user to add");
+      cy.findByText("gizmo user").click();
+    });
+
+    cy.findByTestId("add-member-button").click();
+
+    cy.log("user should be added to the group");
+    cy.findByTestId("admin-content-table")
+      .findByText("gizmo user")
+      .should("be.visible");
+  });
 });
 
 const assertPermissionTableColumnsExist = (assertions) => {
@@ -822,4 +843,23 @@ const createUsers = () => {
 
 const createTenants = () => {
   TENANTS.forEach((tenant) => cy.request("POST", "/api/ee/tenant", tenant));
+};
+
+const createTenantGroupFromUI = (groupName) => {
+  cy.intercept("POST", "/api/permissions/group").as("createGroup");
+  cy.visit("/admin/tenants/groups");
+
+  // FIXME shouldn't be necessary - caused by slow route guard
+  cy.findByTestId("admin-layout-sidebar")
+    .findByText(/Tenant Groups/)
+    .click();
+
+  cy.findByTestId("admin-layout-content")
+    .findByRole("heading", { name: /Tenant Groups/ })
+    .should("be.visible");
+
+  cy.button("Create a group").click();
+  cy.findByPlaceholderText(/something like/i).type(groupName);
+  cy.findByRole("button", { name: "Add" }).click();
+  cy.wait("@createGroup");
 };
