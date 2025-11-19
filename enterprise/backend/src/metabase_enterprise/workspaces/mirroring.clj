@@ -14,30 +14,33 @@
   #{:description :name :source :source_type})
 
 (defn- mirror-transform!
-  [database-id entities-info]
-  (let [;; At this point transform tables were created and `transform` that follows should have the `:mirror`
-        ;; key set. With addition of e.g. Clickhouse I expect some juggling with how we provide targets,
-        ;; but for now doing plain copy-paste schema name here.
-        ;; TODO (lbrdnk 2025-11-18) revisit schema, name vs db specific access pattern.
-        transform (-> entities-info :transforms first)
+  [database-id graph]
+  ;; With addition of e.g. Clickhouse I expect some juggling with how we provide targets,
+  ;; but for now doing plain copy-paste schema name here.
+  ;; TODO (lbrdnk 2025-11-18) revisit schema, name vs db specific access pattern.
+  (let [#_#_table-mapping (u/for-map [{:keys [name schema mapping]} (:outputs graph)]
+                                     [[name schema] ((juxt :name :schema) mapping)])
+        _             (= 1 (count (:outputs graph)))
+        output-table  (-> graph :outputs first :mapping)
+        _             (= 1 (count (:transforms graph)))
+        transform     (-> graph :transforms first)
 
-        {:keys [mirror-schema-name
-                mirror-table-name]}
-        (:mirror transform)
-
-        mirror (t2/insert-returning-instance! :model/Transform
-                                              (merge
-                                               (-> (select-keys transform t2-transform-mirrored-keys)
-                                                   ;; this should be happening elsewhere, not on write, for now ok
-                                                   (update :name str "_DUP"))
-                                               {:target {:type "table"
-                                                         :database database-id
-                                                         :schema mirror-schema-name
-                                                         :name mirror-table-name}}))]
-    (assoc entities-info :transforms [(assoc-in transform [:mirror :transform] mirror)])))
+        mirror        (t2/insert-returning-instance!
+                       :model/Transform
+                       ;; TODO (Chris 2025-11-19) avoid reselecting transform here, by passing along all the keys from the top
+                       (merge (-> (t2/select-one (into [:model/Transform] t2-transform-mirrored-keys) (:id transform))
+                                  ;; TODO (Chris 2025-11-19) shouldn't rename like this - will mess up promotion!
+                                  ;; this should be happening elsewhere, not on write, for now ok
+                                  (update :name str "_DUP"))
+                              ;; TODO (Chris 2025-11-19) remap source table (when necessary)
+                              {:target {:type     "table"
+                                        :database database-id
+                                        :schema   (:schema output-table)
+                                        :name     (:name output-table)}}))]
+    (assoc graph :transforms [(assoc transform :mapping (select-keys mirror [:id :name]))])))
 
 (comment
-  ;; 
+  ;;
   (t2/select-one :model/Transform)
   ;;=> (toucan2.instance/instance
   ;;    :model/Transform
@@ -81,24 +84,13 @@
 (defn mirror-entities!
   "WIP"
   [workspace
-   ;; The `entites-info` attempts to follow schema from
-   ;; https://metaboat.slack.com/archives/C099RKNLP6U/p1763470366995789?thread_ts=1763462819.139739&cid=C099RKNLP6U
-   ;; subject to change. `transforms` and `inputs` are model/Transform and model/Table now.
-   {:keys [_check-outs
-           inputs
-           _tables
-           _transforms
-           _nodes]
-    :as entities-info}]
-  ;; Currently we support single mbql transform only.
-  (assert (= 1 (count (-> entities-info :transforms))))
-  (assert (>= 1 (count (-> entities-info :inputs))))
-  (let [database (t2/select-one :model/Database :id (:db_id (first inputs)))]
-    ;; Add a check that isolation exists instead as this is supposed to be called from common or core.
-    #_(ws.isolation/ensure-database-isolation! workspace database)
-    (let [updated-info-1 (ws.isolation/create-transform-tables! workspace database entities-info)
-          updated-info-2 (mirror-transform! (:id database) updated-info-1)]
-      updated-info-2)))
+   database
+   graph]
+  ;; Add a check that isolation exists instead as this is supposed to be called from common or core.
+  #_(ws.isolation/ensure-database-isolation! workspace database)
+  (->> graph
+       (ws.isolation/create-isolated-output-tables! workspace database)
+       (mirror-transform! (:id database))))
 
 #_:clj-kondo/ignore
 (comment
@@ -107,21 +99,20 @@
   ;; Set the following vars, then exec try block
   ;; for cleanup use the do block
   ;;
-  (def your-db-id 2)
-  (def your-transform (t2/select-one :model/Transform :id 1))
   (def ws* {:id "ahoj2"})
-  ;; going forward we will not be passing whole toucan model around
-  (def entities-info* {:transforms [your-transform]
-                       :inputs [(t2/select-one :model/Table :db_id your-db-id)]})
-  (-> entities-info* :inputs first :db_id)
 
-  (try (mirror-entities! ws* entities-info*)
+  (def graph* (#'metabase-enterprise.workspaces.common/build-graph
+               {:transforms (t2/select-fn-vec :id [:model/Transform :id] :workspace_id nil {:order-by [:id], :limit 1})}))
+
+  (def db-id* (t2/select-one-fn :db_id [:model/Table :db_id] (:id (first (:inputs graph*)))))
+
+  (try (mirror-entities! ws* db-id* graph*)
        (catch Throwable t
          (def eee t)
          (throw t)))
 
   ;; synced transform tables
-  #_(t2/select :model/Table :schema "mb__isolation_91499_ahoj2")
+  #_(t2/select :model/Table :schema [:like "mb__isolation_%_ahoj2"])
 
   ;; drop tested
   (do
