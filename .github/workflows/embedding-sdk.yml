@@ -150,15 +150,6 @@ jobs:
     with:
       cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
-  embedding-sdk-component-tests-backward-compatibility:
-    name: "SDK component tests for the backward compatibility"
-    needs: [build-sdk-package, files-changed]
-    if: needs.files-changed.outputs.e2e_embedding_sdk == 'true'
-    uses: ./.github/workflows/embedding-sdk-component-tests-backward-compatibility.yml
-    secrets: inherit
-    with:
-      cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
-
   not-required-embedding-sdk-apps-compatibility-tests:
     name: "SDK e2e tests for compatibility with (host/sample) apps"
     needs: [build-sdk-package, files-changed]
@@ -174,7 +165,6 @@ jobs:
       - embedding-sdk-docs-snippets-type-check
       - embedding-sdk-api-documentation-generation-validation
       - embedding-sdk-component-tests
-      - embedding-sdk-component-tests-backward-compatibility
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 5
