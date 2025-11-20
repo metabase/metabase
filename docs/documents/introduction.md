@@ -86,7 +86,9 @@ After arranging your charts, save your changes!
 
 ## Adding supporting text to charts
 
-You can add supporting text blocks next to charts to provide context. Supporting text blocks use the same formatting options as regular document text.
+![Supporting text next to a chart](./images/supporting-text.png)
+
+You can add supporting text blocks next to charts to provide context.
 
 To add supporting text to a chart:
 
