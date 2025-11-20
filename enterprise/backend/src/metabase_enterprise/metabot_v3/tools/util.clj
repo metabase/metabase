@@ -1,6 +1,5 @@
 (ns metabase-enterprise.metabot-v3.tools.util
   (:require
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
