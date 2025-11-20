@@ -164,12 +164,12 @@ const SdkIframeEmbedView = ({
 
           return (
             <StaticDashboard
+              key={rerenderKey}
               {...entityProps}
               withTitle={settings.withTitle}
               withDownloads={settings.withDownloads}
               initialParameters={settings.initialParameters}
               hiddenParameters={settings.hiddenParameters}
-              key={rerenderKey}
             />
           );
         },
@@ -183,6 +183,7 @@ const SdkIframeEmbedView = ({
         },
         (settings) => (
           <InteractiveDashboard
+            key={rerenderKey}
             dashboardId={settings.dashboardId ?? null}
             token={settings.token}
             withTitle={settings.withTitle}
@@ -191,7 +192,6 @@ const SdkIframeEmbedView = ({
             hiddenParameters={settings.hiddenParameters}
             drillThroughQuestionHeight="100%"
             drillThroughQuestionProps={{ isSaveEnabled: false }}
-            key={rerenderKey}
           />
         ),
       )
@@ -257,7 +257,11 @@ const SdkIframeEmbedView = ({
           componentName: "metabase-metabot",
         },
         (settings) => (
-          <MetabotQuestion layout={settings.layout} height="100%" />
+          <MetabotQuestion
+            key={rerenderKey}
+            layout={settings.layout}
+            height="100%"
+          />
         ),
       )
       .otherwise(() => null)
