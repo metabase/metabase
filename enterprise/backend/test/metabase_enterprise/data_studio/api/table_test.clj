@@ -84,7 +84,7 @@
             (is (nil? (list-published-models :rasta (mt/id :venues))))
             (is (nil? (list-published-models :rasta (mt/id :users))))))))))
 
-(deftest ^:parallel bulk-edit-visibility-sync-test
+(deftest bulk-edit-visibility-sync-test
   (mt/with-premium-features #{:data-studio}
     (testing "POST /api/ee/data-studio/table/edit visibility field synchronization"
       (mt/with-temp [:model/Database {db-id :id} {}
@@ -323,7 +323,7 @@
                                      :data_layer "copper"})
               (is (= #{} @synced-ids)))))))))
 
-(deftest ^:parallel bulk-edit-test
+(deftest bulk-edit-test
   (mt/with-premium-features #{:data-studio}
     (testing "can edit a bunch of things at once"
       (mt/with-temp [:model/Database {clojure :id}    {}
