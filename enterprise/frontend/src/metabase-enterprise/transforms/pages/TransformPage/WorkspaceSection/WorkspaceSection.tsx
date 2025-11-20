@@ -44,19 +44,17 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
     },
   );
 
-  const { data: upstreamMapping } = useGetTransformUpstreamMappingQuery(
-    transform.id,
-    {
+  const { data: upstreamMapping, isLoading: isLoadingUpstream } =
+    useGetTransformUpstreamMappingQuery(transform.id, {
       skip: !hasWorkspace,
-    },
-  );
+    });
 
-  const { data: downstreamMapping } = useGetTransformDownstreamMappingQuery(
-    transform.id,
-    {
+  const { data: downstreamMapping, isLoading: isLoadingDownstream } =
+    useGetTransformDownstreamMappingQuery(transform.id, {
       skip: hasWorkspace,
-    },
-  );
+    });
+
+  const isLoadingMappings = isLoadingUpstream || isLoadingDownstream;
 
   useEffect(() => {
     if (
@@ -96,11 +94,11 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
                   : t`This is part of Workspace ${transform.workspace_id}`}
               </Text>
             </Group>
-            {upstreamMapping?.transform != null && (
+            {!isLoadingMappings && upstreamMapping?.transform != null && (
               <Group>
                 <Icon name="arrow_left" aria-hidden />
                 <Text>
-                  {t`Upstream transform:`}{" "}
+                  {t`Live version:`}{" "}
                   <Anchor href={Urls.transform(upstreamMapping.transform.id)}>
                     {upstreamMapping.transform.name}
                   </Anchor>
@@ -123,22 +121,24 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
                 {t`Check this out in a new workspace`}
               </Button>
             </Group>
-            {downstreamMapping && downstreamMapping.transforms.length > 0 && (
-              <Group>
-                <Icon name="arrow_right" aria-hidden />
-                <Text>
-                  {t`Downstream workspaces:`}{" "}
-                  {downstreamMapping.transforms.map((item, index) => (
-                    <span key={item.id}>
-                      {index > 0 && ", "}
+            {!isLoadingMappings &&
+              downstreamMapping &&
+              downstreamMapping.transforms.length > 0 && (
+                <Stack gap="xs">
+                  <Group>
+                    <Icon name="arrow_right" aria-hidden />
+                    <Text>{t`It is checked out as part of the following workspaces:`}</Text>
+                  </Group>
+                  {downstreamMapping.transforms.map((item) => (
+                    <Group key={item.id} ml="xl" gap="xs">
+                      <Text c="text-secondary">•</Text>
                       <Anchor href={Urls.transform(item.id)}>
                         {item.workspace.name}
                       </Anchor>
-                    </span>
+                    </Group>
                   ))}
-                </Text>
-              </Group>
-            )}
+                </Stack>
+              )}
           </Stack>
         )}
       </Card>

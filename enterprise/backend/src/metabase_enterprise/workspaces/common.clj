@@ -1,11 +1,30 @@
 (ns metabase-enterprise.workspaces.common
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.mirroring :as ws.mirroring]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
    [toucan2.core :as t2]))
+
+(defn- unique-workspace-name
+  "Generate a unique workspace name by appending (N) if the name already exists."
+  [base-name]
+  (if-not (t2/exists? :model/Workspace :name base-name)
+    base-name
+    (let [;; Strip existing (N) suffix if present
+          stripped-name (str/replace base-name #"\s*\(\d+\)$" "")
+          ;; Find all existing workspaces with this base name pattern
+          existing      (t2/select-fn-set :name :model/Workspace
+                                          :name [:like (str stripped-name " (%")])
+          ;; Extract numbers from existing names
+          numbers       (keep (fn [name]
+                                (when-let [[_ n] (re-find #"\((\d+)\)$" name)]
+                                  (parse-long n)))
+                              existing)
+          next-num      (inc (apply max 0 numbers))]
+      (str stripped-name " (" next-num ")"))))
 
 ;; TODO (Chris 2025-11-20) Just subsume the rest of this up into ws.dag/path-induced-subgraph
 (defn- build-graph
@@ -66,7 +85,8 @@
         db-id          (or inferred-db-id maybe-db-id)
         _              (assert db-id "Was not given and could not infer a database_id for the workspace.")
         database       (api/check-500 (t2/select-one :model/Database :id db-id))
-        workspace      (create-workspace-container! creator-id db-id ws-name)
+        unique-name    (unique-workspace-name ws-name)
+        workspace      (create-workspace-container! creator-id db-id unique-name)
         ;; Creates the new schema database schema
         _              (ws.isolation/ensure-database-isolation! workspace database)
         graph          (ws.mirroring/mirror-entities! workspace database graph)
