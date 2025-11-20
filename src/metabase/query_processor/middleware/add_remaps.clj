@@ -349,10 +349,19 @@
           ;; last stage (only stage) is native
           (= (:lib/type (lib/query-stage query -1)) :mbql.stage/native))
     query
-    (let [{:keys [remaps query]} (add-fk-remaps query)]
+    (let [{:keys [remaps query]} (add-fk-remaps query)
+          returned-ids           (into #{} (keep :id) (lib/returned-columns query))
+          ;; Only retain those remappings which actually apply to returned columns.
+          ;; Otherwise, if an FK has an external remapping (say, Orders.PRODUCT_ID -> Product.TITLE) and we implicitly
+          ;; join `Product.TITLE` directly, we actually don't want to mark that column as :remapped_from anything -
+          ;; it wasn't remapped, it was explicitly referenced. So if the FK doesn't appear as a returned column, any
+          ;; remaps we might have inherited from earlier stages etc. don't apply. See #65726
+          remaps                 (into [] (comp (filter (comp returned-ids :field-id))
+                                                ;; Convert the remappings to plain maps rather than record types.
+                                                (map #(into {} %)))
+                                       remaps)]
       (cond-> query
-        ;; convert the remappings to plain maps so we don't have to look at record type nonsense everywhere
-        (seq remaps) (assoc ::external-remaps (mapv (partial into {}) remaps))))))
+        (seq remaps) (assoc ::external-remaps remaps)))))
 
 ;;;; Post-processing
 

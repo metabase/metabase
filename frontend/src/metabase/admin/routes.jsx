@@ -49,6 +49,7 @@ import {
   PLUGIN_DB_ROUTING,
   PLUGIN_DEPENDENCIES,
   PLUGIN_METABOT,
+  PLUGIN_SUPPORT,
   PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
 
@@ -251,7 +252,14 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           >
             <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />
           </Route>
-          <Route path="help" component={Help} />
+          <Route path="help" component={Help}>
+            {PLUGIN_SUPPORT.isEnabled && (
+              <ModalRoute
+                modal={PLUGIN_SUPPORT.GrantAccessModal}
+                path="grant-access"
+              />
+            )}
+          </Route>
           <Route path="tasks" component={TasksApp}>
             <ModalRoute
               path=":taskId"

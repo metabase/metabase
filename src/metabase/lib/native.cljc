@@ -362,7 +362,7 @@
 
 (mu/defn has-write-permission :- :boolean
   "Returns whether the database has native write permissions.
-   This is only filled in by [[metabase.warehouses.api/add-native-perms-info]]
+   This is only filled in by [[metabase.warehouses-rest.api/add-native-perms-info]]
    and added to metadata when pulling a database from the list of dbs in js."
   [query :- ::lib.schema/query]
   (assert-native-query (lib.util/query-stage query 0))

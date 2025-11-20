@@ -108,7 +108,7 @@ describe("scenarios > reference > databases", () => {
     );
   });
 
-  H.describeWithSnowplow("x-ray", () => {
+  describe("x-ray", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/automagic-dashboards/**").as(
         "getXrayDashboard",

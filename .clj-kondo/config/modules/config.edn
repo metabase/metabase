@@ -47,14 +47,13 @@
 {:metabase/modules
  {actions
   {:team "Gadget"
-   :api  #{metabase.actions.api
-           metabase.actions.args
+   :api  #{metabase.actions.args
            metabase.actions.core
            metabase.actions.init
+           metabase.actions.schema
            metabase.actions.types}
    :uses #{analytics
            api
-           collections
            driver
            events
            legacy-mbql
@@ -63,14 +62,25 @@
            model-persistence
            models
            parameters
-           permissions
-           public-sharing
            queries
            query-processor
            search
            settings
            util
            warehouses}}
+
+  actions-rest
+  {:team "Gadget"
+   :api  #{metabase.actions-rest.api}
+   :uses #{actions
+           analytics
+           api
+           collections
+           lib
+           permissions
+           public-sharing
+           queries
+           util}}
 
   activity-feed
   {:team "UX West"
@@ -196,6 +206,19 @@
            task-history
            util}}
 
+  auth-identity
+  {:team "UX West"
+   :api  #{metabase.auth-identity.core
+           metabase.auth-identity.init}
+   :uses #{channel
+           events
+           login-history
+           models
+           notification
+           premium-features
+           request
+           util}}
+
   auth-provider
   {:team "UX West"
    :api  #{metabase.auth-provider.core}
@@ -316,26 +339,39 @@
    :uses #{api
            api-routes
            app-db
+           auth-identity
            classloader
            config
-
            models
            query-processor
            search
            settings
-           users
            util}}
 
   collections
   {:team "UX West"
-   :api  #{metabase.collections.api
-           metabase.collections.core
+   :api  #{metabase.collections.core
            metabase.collections.models.collection
            metabase.collections.models.collection.root}
    :uses #{api
            api-keys
            app-db
            audit-app
+           config
+           events
+           models
+           permissions
+           premium-features
+           remote-sync
+           search
+           util}}
+
+  collections-rest
+  {:team "UX West"
+   :api  #{metabase.collections-rest.api}
+   :uses #{api
+           app-db
+           collections
            config
            eid-translation
            events
@@ -345,10 +381,8 @@
            permissions
            premium-features
            queries
-           remote-sync
            request
            revisions
-           search
            upload
            util}}
 
@@ -386,22 +420,43 @@
 
   dashboards
   {:team "UX West"
-   :api  #{metabase.dashboards.api
-           metabase.dashboards.autoplace
+   :api  #{metabase.dashboards.autoplace
            metabase.dashboards.constants
            metabase.dashboards.init
            metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.models.dashboard-tab
-           metabase.dashboards.schema}
+           metabase.dashboards.schema
+           metabase.dashboards.settings}
+   :uses #{api
+           app-db
+           audit-app
+           collections
+           config
+           events
+           lib
+           models
+           parameters
+           permissions
+           public-sharing
+           queries
+           query-processor
+           search
+           settings
+           util
+           warehouse-schema}}
+
+  dashboards-rest
+  {:team "UX West"
+   :api  #{metabase.dashboards-rest.api}
    :uses #{actions
            analytics
            api
            app-db
-           audit-app
            channel
            collections
-           config
+           collections-rest
+           dashboards
            eid-translation
            embedding
            events
@@ -417,10 +472,7 @@
            query-processor
            request
            revisions
-           search
-           settings
            util
-           warehouse-schema
            xrays}}
 
   database-routing
@@ -506,8 +558,7 @@
 
   embedding
   {:team "Embedding"
-   :api  #{metabase.embedding.api
-           metabase.embedding.init
+   :api  #{metabase.embedding.init
            metabase.embedding.jwt
            metabase.embedding.settings
            metabase.embedding.util
@@ -515,19 +566,26 @@
    :uses #{analytics
            api
            config
+           premium-features
+           server
+           settings
+           util}}
+
+  embedding-rest
+  {:team "Embedding"
+   :api  #{metabase.embedding-rest.api}
+   :uses #{api
            dashboards
            eid-translation
+           embedding
            events
            models
            notification
            parameters
-           premium-features
-           public-sharing
+           public-sharing-rest
            queries
            query-processor
            request
-           server
-           settings
            tiles
            util}}
 
@@ -756,6 +814,7 @@
    :uses #{analytics
            api
            appearance
+           auth-identity
            channel
            config
            dashboards
@@ -872,22 +931,29 @@
 
   public-sharing
   {:team "UX West"
-   :api  #{metabase.public-sharing.api
-           metabase.public-sharing.core
+   :api  #{metabase.public-sharing.core
            metabase.public-sharing.init
            metabase.public-sharing.validation}
+   :uses #{api
+           settings
+           util}}
+
+  public-sharing-rest
+  {:team "UX West"
+   :api  #{metabase.public-sharing-rest.api}
    :uses #{actions
            analytics
            api
            dashboards
+           dashboards-rest
            events
            lib
            models
            parameters
+           public-sharing
            queries
            query-processor
            request
-           settings
            tiles
            util}}
 
@@ -923,7 +989,7 @@
            metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
-           metabase.queries.schema}      ; TODO FIXME
+           metabase.queries.schema} ; TODO FIXME
    :uses #{analytics
            analyze
            api
@@ -1052,7 +1118,7 @@
    :uses #{api
            config
            embedding
-           permissions                  ; FIXME
+           permissions ; FIXME
            session
            settings
            users
@@ -1067,6 +1133,7 @@
            config
            dashboards
            events
+           lib
            models
            queries
            query-permissions
@@ -1166,20 +1233,18 @@
    :api  #{metabase.session.api
            metabase.session.core
            metabase.session.init
-           metabase.session.models.session ; TODO -- shouldn't be exposed as an API namespace
            metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
            app-db
+           auth-identity
            channel
            config
            events
-           login-history
            request
            settings
            sso
            system
            task
-           users
            util}}
 
   settings
@@ -1205,20 +1270,25 @@
 
   setup
   {:team "UX West"
-   :api  #{metabase.setup.api
-           metabase.setup.core
+   :api  #{metabase.setup.core
            metabase.setup.init}
+   :uses #{app-db
+           config
+           settings
+           util}}
+
+  setup-rest
+  {:team "UX West"
+   :api  #{metabase.setup-rest.api}
    :uses #{analytics
            api
-           app-db
            appearance
-           config
+           auth-identity
            events
            request
-           session
            settings
+           setup
            system
-           users
            util}}
 
   sso
@@ -1227,11 +1297,11 @@
            metabase.sso.core
            metabase.sso.init}
    :uses #{api
+           auth-identity
            config
            permissions
            premium-features
            settings
-           users
            util}}
 
   startup
@@ -1260,6 +1330,7 @@
            app-db
            audit-app
            config
+           database-routing
            driver
            events
            lib
@@ -1375,17 +1446,31 @@
 
   users
   {:team "UX West"
-   :api  #{metabase.users.api
-           metabase.users.core
-           metabase.users.init
+   :api  #{metabase.users.init
            metabase.users.models.user
            metabase.users.models.user-parameter-value
-           metabase.users.schema}
+           metabase.users.schema
+           metabase.users.settings}
+   :uses #{api
+           batch-processing
+           channel
+           config
+           events
+           models
+           permissions
+           premium-features
+           settings
+           setup
+           system
+           util}}
+
+  users-rest
+  {:team "UX West"
+   :api  #{metabase.users-rest.api}
    :uses #{analytics
            api
            appearance
-           batch-processing
-           channel
+           auth-identity
            collections
            config
            events
@@ -1393,11 +1478,8 @@
            permissions
            premium-features
            request
-           session
-           settings
-           setup
            sso
-           system
+           users
            util
            enterprise/advanced-permissions}}
 
@@ -1436,8 +1518,7 @@
 
   warehouse-schema
   {:team "UX West"
-   :api  #{metabase.warehouse-schema.api
-           metabase.warehouse-schema.field
+   :api  #{metabase.warehouse-schema.field
            metabase.warehouse-schema.metadata-from-qp
            metabase.warehouse-schema.metadata-queries
            metabase.warehouse-schema.models.field
@@ -1445,14 +1526,11 @@
            metabase.warehouse-schema.models.field-values
            metabase.warehouse-schema.models.table
            metabase.warehouse-schema.table}
-   :uses #{analytics
-           analyze
+   :uses #{analyze
            api
            app-db
            audit-app
-           database-routing
            driver
-           events
            lib
            lib-be
            models
@@ -1460,25 +1538,58 @@
            permissions
            premium-features
            query-processor
-           request
            search
+           util
+           warehouses}}
+
+  warehouse-schema-rest
+  {:team "UX West"
+   :api  #{metabase.warehouse-schema-rest.api}
+   :uses #{analytics
+           api
+           app-db
+           database-routing
+           driver
+           events
+           lib
+           models
+           parameters
+           query-processor
+           request
            sync
            types
            upload
            util
-           warehouses
+           warehouse-schema
+           warehouses-rest
            xrays}}
 
   warehouses
   {:team "UX West"
-   :api  #{metabase.warehouses.api
-           metabase.warehouses.core
+   :api  #{metabase.warehouses.core
            metabase.warehouses.init
            metabase.warehouses.models.database}
    :uses #{analytics
            api
            app-db
            audit-app
+           driver
+           lib
+           models
+           permissions
+           premium-features
+           search
+           secrets
+           settings
+           sync
+           util}}
+
+  warehouses-rest
+  {:team "UX West"
+   :api  #{metabase.warehouses-rest.api}
+   :uses #{analytics
+           api
+           app-db
            classloader
            collections
            config
@@ -1493,14 +1604,15 @@
            queries
            request
            sample-data
-           search
            secrets
            settings
            sync
            upload
            util
            warehouse-schema
+           warehouses
            enterprise/advanced-permissions}}
+
 
   xrays
   {:team "Querying"
@@ -1584,6 +1696,8 @@
    :api  #{metabase-enterprise.ai-sql-fixer.api}
    :uses #{api
            driver
+           lib
+           lib-be
            query-processor
            util
            enterprise/metabot-v3}}
@@ -1637,9 +1751,14 @@
            query-processor
            settings
            sync
-           users
+           users-rest
            util
            enterprise/serialization}}
+
+  enterprise/auth-identity
+  {:team "UX West"
+   :api  #{}
+   :uses #{premium-features}}
 
   enterprise/auth-provider
   {:team "UX West"
@@ -1690,6 +1809,7 @@
            models
            request
            users
+           users-rest
            util}}
 
   enterprise/content-translation
@@ -1746,7 +1866,7 @@
            settings
            util
            warehouse-schema
-           warehouses}}
+           warehouses-rest}}
 
   enterprise/dependencies
   {:team "Querying"
@@ -1875,7 +1995,8 @@
            metabase-enterprise.metabot-v3.core
            metabase-enterprise.metabot-v3.init
            metabase-enterprise.metabot-v3.tools.api}
-   :uses #{api
+   :uses #{activity-feed
+           api
            app-db
            audit-app
            collections
@@ -1898,10 +2019,10 @@
            sync
            system
            task
-           users
+           users-rest
            util
            warehouse-schema
-           warehouses
+           warehouses-rest
            enterprise/dependencies
            enterprise/documents
            enterprise/transforms
@@ -1930,6 +2051,7 @@
            events
            premium-features
            public-sharing
+           public-sharing-rest
            query-processor
            util}}
 
@@ -2052,10 +2174,9 @@
            metabase-enterprise.sso.settings}
    :uses #{api
            appearance
+           auth-identity
            channel
            embedding
-           events
-           notification
            premium-features
            request
            session
@@ -2072,11 +2193,25 @@
    :uses #{analytics
            api
            collections
+           collections-rest
            embedding
            premium-features
            queries
            request
            settings
+           util}}
+
+  enterprise/support-access-grants
+  {:team "UX West"
+   :api  #{metabase-enterprise.support-access-grants.api
+           metabase-enterprise.support-access-grants.init}
+   :uses #{api
+           auth-identity
+           events
+           models
+           request
+           settings
+           system
            util}}
 
   enterprise/transforms
