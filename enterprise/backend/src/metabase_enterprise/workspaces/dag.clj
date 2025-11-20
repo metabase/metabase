@@ -23,6 +23,7 @@
   "Convert a map of {type ids} to a sequence of [db-type id] tuples.
    `entities-by-type` is a map like {:transform [1 2 3]}."
   [entities-by-type]
+  (assert (every? type->db-type (keys entities-by-type)) "Not all entity types are supported")
   (into []
         (mapcat (fn [[entity-type ids]]
                   (let [dep-type (type->db-type entity-type)]
