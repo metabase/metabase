@@ -4,7 +4,7 @@
 
 - Structure things so that we can automagically infer things for the user
 
-- Don’t ask the user for information the system should already know
+- Don’t ask the user for information that the system should already know
 
 - Make it easy for the user to do the right thing
 
