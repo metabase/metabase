@@ -21,8 +21,8 @@ import type {
 } from "./types/embed";
 import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
 
-// Import EE Iframe Embedding plugin
-import "sdk-iframe-embedding-ee-plugins";
+// Import EE Iframe Embedding script plugins
+import "sdk-iframe-embedding-script-ee-plugins";
 
 const EMBEDDING_ROUTE = "embed/sdk/v1";
 

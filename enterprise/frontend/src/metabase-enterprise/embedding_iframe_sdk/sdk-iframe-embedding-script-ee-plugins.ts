@@ -2,4 +2,6 @@ import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plug
 
 import { EmbedAuthManager } from "./auth-manager/AuthManager";
 
-PLUGIN_EMBED_JS_EE.EmbedAuthManager = EmbedAuthManager;
+export const initializePlugins = () => {
+  PLUGIN_EMBED_JS_EE.EmbedAuthManager = EmbedAuthManager;
+};

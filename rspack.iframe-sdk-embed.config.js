@@ -84,8 +84,8 @@ module.exports = {
       metabase: SRC_PATH,
       embedding: EMBEDDING_SRC_PATH,
       "embedding-sdk-bundle": SDK_BUNDLE_SRC_PATH,
-      "sdk-iframe-embedding-ee-plugins": resolveEnterprisePathOrNoop(
-        "/embedding_iframe_sdk/sdk-iframe-embedding-ee-plugins.ts",
+      "sdk-iframe-embedding-script-ee-plugins": resolveEnterprisePathOrNoop(
+        "/sdk-iframe-embedding-script-plugins",
       ),
     },
   },
