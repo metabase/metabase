@@ -500,6 +500,8 @@ import verified_component from "./verified.svg?component";
 import verified_source from "./verified.svg?source";
 import verified_filled_component from "./verified_filled.svg?component";
 import verified_filled_source from "./verified_filled.svg?source";
+import verified_round_component from "./verified_round.svg?component";
+import verified_round_source from "./verified_round.svg?source";
 import view_archive_component from "./view_archive.svg?component";
 import view_archive_source from "./view_archive.svg?source";
 import warning_component from "./warning.svg?component";
@@ -1511,6 +1513,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: verified_filled_component,
       source: verified_filled_source,
     },
+    verified_round: {
+      component: verified_round_component,
+      source: verified_round_source,
+    },
     view_archive: {
       component: view_archive_component,
       source: view_archive_source,
@@ -1824,6 +1830,7 @@ export type IconName =
   | "official_collection"
   | "ordered_list"
   | "verified_filled"
+  | "verified_round"
   | "view_archive"
   | "warning"
   | "warning_round_filled"

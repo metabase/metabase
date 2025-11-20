@@ -535,7 +535,9 @@ describe("scenarios > data studio > datamodel", () => {
     describe("Extra info about tables", () => {
       const databaseName = "Writable Postgres12";
       const domesticSchema = "Domestic";
+      const wildSchema = "Wild";
       const domesticAnimalsTable = "Animals";
+      const wildBirdsTable = "Birds";
 
       beforeEach(() => {
         H.restore("postgres-writable");
@@ -609,7 +611,14 @@ describe("scenarios > data studio > datamodel", () => {
 
         TablePicker.getTable(domesticAnimalsTable)
           .findByTestId("table-published")
-          .should("contain", "Yes");
+          .icon("verified_round")
+          .should("have.attr", "aria-label", "published");
+
+        TablePicker.getSchema(wildSchema).click();
+
+        TablePicker.getTable(wildBirdsTable)
+          .icon("verified_round")
+          .should("not.exist");
       });
     });
 
