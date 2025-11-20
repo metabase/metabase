@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import {
@@ -161,6 +162,31 @@ describe("SearchApp", () => {
       expect(getPreviousPageButton()).toBeDisabled();
       expect(getNextPageButton()).toBeEnabled();
       expect(getPagination()).toHaveTextContent("1 - 4");
+    });
+
+    it("resets current page to zero when filters changed", async () => {
+      await setup({ searchText: "Test" });
+      const getNextPageButton = () => screen.getByTestId("next-page-btn");
+      await userEvent.click(getNextPageButton());
+      await waitForLoaderToBeRemoved();
+
+      await userEvent.click(
+        within(screen.getByTestId("type-search-filter")).getByTestId(
+          "sidebar-filter-dropdown-button",
+        ),
+      );
+      await waitForLoaderToBeRemoved();
+      const popover = within(screen.getByTestId("popover"));
+      await userEvent.click(
+        popover.getByRole("checkbox", {
+          name: TYPE_FILTER_LABELS["card"],
+        }),
+      );
+      await userEvent.click(popover.getByRole("button", { name: "Apply" }));
+      await waitForLoaderToBeRemoved();
+      const queryParams = fetchMock.callHistory.lastCall("search")?.queryParams;
+      const offset = queryParams?.get("offset");
+      expect(offset).toBe("0");
     });
   });
 
