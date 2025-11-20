@@ -101,6 +101,43 @@
     (-> (t2/select-one :model/Workspace :id id)
         ws->response)))
 
+(api.macros/defendpoint :get "/mapping/transform/:id/upstream"
+  :- [:map
+      [:transform [:maybe [:map
+                           [:id ms/PositiveInt]
+                           [:name :string]]]]]
+  "Get the upstream transform for a transform that is in a workspace.
+   Returns null if this transform has no upstream mapping (i.e., it's not a mirrored transform)."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params]
+  (if-let [mapping (t2/select-one :model/WorkspaceMappingTransform :downstream_id id)]
+    (let [transform (t2/select-one [:model/Transform :id :name] :id (:upstream_id mapping))]
+      {:transform {:id   (:id transform)
+                   :name (:name transform)}})
+    {:transform nil}))
+
+(api.macros/defendpoint :get "/mapping/transform/:id/downstream"
+  :- [:map
+      [:transforms [:sequential
+                    [:map
+                     [:id ms/PositiveInt]
+                     [:name :string]
+                     [:workspace [:map
+                                  [:id ms/PositiveInt]
+                                  [:name :string]]]]]]]
+  "Get all downstream transforms for a transform that is not in a workspace.
+   Returns the transforms that were mirrored from this upstream transform, with workspace info."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params]
+  (let [mappings (t2/select :model/WorkspaceMappingTransform :upstream_id id)]
+    {:transforms (for [mapping mappings
+                       :let [transform (t2/select-one [:model/Transform :id :name] :id (:downstream_id mapping))
+                             workspace (t2/select-one [:model/Workspace :id :name] :id (:workspace_id mapping))]]
+                   {:id        (:id transform)
+                    :name      (:name transform)
+                    :workspace {:id   (:id workspace)
+                                :name (:name workspace)}})}))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."
   (api.macros/ns-handler *ns* api/+check-superuser +auth))
