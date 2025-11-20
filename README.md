@@ -10,7 +10,7 @@
 
 ## Get started
 
-The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout). You get support, backups, upgrades, an SMTP server, SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving Metabase). Check out our quick overview of [cloud vs self-hosting](https://www.metabase.com/docs/latest/cloud/cloud-vs-self-hosting). If you need to, you can always switch to [self-hosting](https://www.metabase.com/docs/latest/installation-and-operation/installing-metabase) Metabase at any time (or vice versa).
+The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout). You get support, backups, upgrades, an SMTP server, an SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving Metabase). Check out our quick overview of [cloud vs self-hosting](https://www.metabase.com/docs/latest/cloud/cloud-vs-self-hosting). If you need to, you can always switch to [self-hosting](https://www.metabase.com/docs/latest/installation-and-operation/installing-metabase) Metabase at any time (or vice versa).
 
 ## Key Features
 
@@ -40,7 +40,7 @@ Metabase can be run just about anywhere. Check out our [Installation Guides](htt
 
 ## Quick Setup: Dev environment
 
-In order to spin up a development environment, you need to start the front end and the backend as follows:
+To spin up a development environment, you need to start the front end and the backend as follows:
 
 ### Frontend quick setup
 
@@ -68,7 +68,7 @@ To run the backend, you'll need to build the drivers first, and then start the b
 
 ```bash
 ./bin/build-drivers.sh
-clojure -M:run
+clojure -M: run
 ```
 
 For a more detailed setup of a dev environment for Metabase, check out our [Developers Guide](./docs/developers-guide/start.md).
@@ -82,7 +82,7 @@ We want Metabase to be available in as many languages as possible. See which tra
 Hit our Query API from JavaScript to integrate analytics. Metabase enables your application to:
 
 - Build moderation interfaces.
-- Export subsets of your users to third party marketing automation software.
+- Export subsets of your users to third-party marketing automation software.
 - Provide a custom customer lookup application for the people in your company.
 
 Check out our guide, [Working with the Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api).
