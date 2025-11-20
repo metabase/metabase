@@ -26,6 +26,7 @@ const setup = ({
     is_superuser: true,
   }),
   tenants = [],
+  isUsingTenants = false,
 }: {
   external?: boolean;
   showInviteButton?: boolean;
@@ -33,11 +34,13 @@ const setup = ({
   users?: User[];
   currentUser?: User;
   tenants?: Tenant[];
+  isUsingTenants?: boolean;
 } = {}) => {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
       tenants: true,
     }),
+    "use-tenants": isUsingTenants,
   });
 
   setupEnterprisePlugins();
@@ -75,12 +78,19 @@ const setup = ({
 
 describe("people table", () => {
   it("should show group association when viewing internal users", async () => {
-    setup();
+    setup({ isUsingTenants: true });
 
     expect(await screen.findByText("Name")).toBeInTheDocument();
     expect(await screen.findByText("Email")).toBeInTheDocument();
     expect(await screen.findByText("Groups / Tenant")).toBeInTheDocument();
     expect(await screen.findByText("Last Login")).toBeInTheDocument();
+  });
+
+  it("should show not show tenants in table header when tenants are disabled", async () => {
+    setup({ isUsingTenants: false });
+
+    expect(await screen.findByText("Groups")).toBeInTheDocument();
+    expect(screen.queryByText("Groups / Tenant")).not.toBeInTheDocument();
   });
 });
 

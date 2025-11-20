@@ -11,6 +11,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { useSetting } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
@@ -76,6 +77,7 @@ export const PeopleList = ({
   const total = data?.total ?? 0;
 
   const dispatch = useDispatch();
+  const isUsingTenants = useSetting("use-tenants");
 
   const [createMembership] = useCreateMembershipMutation();
   const [updateMembership] = useUpdateMembershipMutation();
@@ -169,6 +171,10 @@ export const PeopleList = ({
     return createMembership({ group_id: groupId, user_id: userId }).unwrap();
   };
 
+  const groupsOrTenantHeaderTitle = isUsingTenants
+    ? t`Groups / Tenant`
+    : t`Groups`;
+
   return (
     <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
       <Box component="section">
@@ -183,13 +189,13 @@ export const PeopleList = ({
               <th>{t`Email`}</th>
               {showDeactivated ? (
                 <Fragment>
-                  <th>{t`Groups / Tenant`}</th>
+                  <th>{groupsOrTenantHeaderTitle}</th>
                   <th>{t`Deactivated`}</th>
                   <th />
                 </Fragment>
               ) : (
                 <Fragment>
-                  <th>{t`Groups / Tenant`}</th>
+                  <th>{groupsOrTenantHeaderTitle}</th>
                   <th>{t`Last Login`}</th>
                   <th />
                 </Fragment>
