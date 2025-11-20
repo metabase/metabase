@@ -1,8 +1,10 @@
 (ns metabase-enterprise.workspaces.dag
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 ;; TODO handle shadowing / execution of transforms that depend on checkout out models
 
@@ -156,25 +158,126 @@
 (comment
   (path-induced-subgraph example))
 
-;; (path-induced-subgraph example) =>
-{:check-outs   '(:x3 :m6 :m10 :m12),
- ;; these are all the external tables that we will need ro access to
- :inputs       '(:t1 :t2 :t5 :t9),
- ;; these are all the tables we need to "shadow" in the workspace schema (previously called outputs)
- :tables       '(:t3 :t4 :t11),
- ;; these are all the transforms we need to execute when running the workspace (replaces "downstream")
- :transforms   '(:x3 :x4 :x11)
- ;; these are the appdb entities that need to be shadowed with "_workspace" versions.
- ;; this excludes the tables, which I'm assuming will be handled separately via sync.
- ;; we might change our mind here and just manually create the metadata along with
- ;; the other entities, if that's easier.
- :entities     '(:x3 :x4 :m6 :m10 :x11 :t11 :m12)
- ;; a mapping from entities that we copy to their dependencies within the subgraph
- ;; they may have other dependencies outside the subgraph, but we ignore these
- ;; as they don't need to be remapped
- :dependencies {:x3  []
-                :x4  [:t3]
-                :m6  [:t4]
-                :m10 []
-                :x11 [:m10]
-                :m12 [:t11]}}
+;;;; Database-backed path-induced subgraph calculation
+
+(def ^:private type->db-type
+  "Mapping from our entity type keywords to the dependency table's type strings."
+  {:transform "transform"
+   #_#_:model "card"})
+
+(defn- rows->entity-set
+  "Convert query result rows to a set of {:id :type} maps."
+  [rows]
+  (into #{}
+        (map (fn [{:keys [entity_type entity_id]}]
+               {:id entity_id :type (keyword entity_type)}))
+        rows))
+
+(defn- entities-map->tuples
+  "Convert a map of {type ids} to a sequence of [db-type id] tuples.
+   `entities-by-type` is a map like {:transform [1 2 3]}."
+  [entities-by-type]
+  (into []
+        (mapcat (fn [[entity-type ids]]
+                  (let [dep-type (type->db-type entity-type)]
+                    (map (fn [id] [dep-type id]) ids))))
+        entities-by-type))
+
+(defn- tuples->entity-set
+  "Convert a sequence of [type id] tuples to a set of {:id :type} maps."
+  [tuples]
+  (into #{}
+        (map (fn [[entity-type entity-id]]
+               {:id entity-id :type (keyword entity-type)}))
+        tuples))
+
+(defn- build-values-clause
+  "Build a VALUES clause string for the given tuples."
+  [tuples]
+  (str "VALUES "
+       (->> tuples
+            (map (fn [[t id]] (format "('%s', %d)" t id)))
+            (str/join ", "))))
+
+(defn upstream-entities
+  "Given a map of entity types to IDs, find all upstream entities (dependencies).
+   `entities-by-type` is a map like {:transform [1 2 3]}.
+   Returns a set of {:id :type} maps representing tables, cards, and transforms
+   that the given entities depend on (directly or transitively)."
+  [entities-by-type]
+  (let [starting-tuples (entities-map->tuples entities-by-type)]
+    (when (seq starting-tuples)
+      (rows->entity-set
+       (t2/query (str "WITH RECURSIVE upstream(entity_type, entity_id) AS ("
+                      "  " (build-values-clause starting-tuples)
+                      "  UNION "
+                      "  SELECT d.to_entity_type, d.to_entity_id "
+                      "  FROM dependency d "
+                      "  JOIN upstream u ON d.from_entity_type = u.entity_type "
+                      "                 AND d.from_entity_id = u.entity_id"
+                      ") "
+                      "SELECT entity_type, entity_id FROM upstream"))))))
+
+(defn downstream-entities
+  "Given a map of entity types to IDs, find all downstream entities (dependents).
+   `entities-by-type` is a map like {:transform [1 2 3]}.
+   Returns a set of {:id :type} maps representing tables, cards, and transforms
+   that depend on the given entities (directly or transitively)."
+  [entities-by-type]
+  (let [starting-tuples (entities-map->tuples entities-by-type)]
+    (when (seq starting-tuples)
+      (rows->entity-set
+       (t2/query (str "WITH RECURSIVE downstream(entity_type, entity_id) AS ("
+                      "  " (build-values-clause starting-tuples)
+                      "  UNION "
+                      "  SELECT d.from_entity_type, d.from_entity_id "
+                      "  FROM dependency d "
+                      "  JOIN downstream dn ON d.to_entity_type = dn.entity_type "
+                      "                    AND d.to_entity_id = dn.entity_id"
+                      ") "
+                      "SELECT entity_type, entity_id FROM downstream"))))))
+
+(defn path-induced-subgraph-entities
+  "Given a map of entity types to IDs, compute the path-induced subgraph.
+   `entities-by-type` is a map like {:transform [1 2 3]}.
+   Returns the intersection of upstream and downstream entities, plus the entities themselves.
+   This represents all entities that lie on paths through the given entities.
+
+   Returns a set of {:id :type} maps."
+  [entities-by-type]
+  (let [entities-set (tuples->entity-set (entities-map->tuples entities-by-type))
+        upstream     (or (upstream-entities entities-by-type) #{})
+        downstream   (or (downstream-entities entities-by-type) #{})]
+    (set/union entities-set
+               (set/intersection upstream downstream))))
+
+(comment
+  (upstream-entities {:transform [8]})
+  (downstream-entities {:transform [8]})
+
+  (path-induced-subgraph-entities {:transform [1 2]}))
+
+(comment
+  (path-induced-subgraph example)
+
+  {:check-outs   '(:x3 :m6 :m10 :m12),
+   ;; these are all the external tables that we will need ro access to
+   :inputs       '(:t1 :t2 :t5 :t9),
+   ;; these are all the tables we need to "shadow" in the workspace schema (previously called outputs)
+   :tables       '(:t3 :t4 :t11),
+   ;; these are all the transforms we need to execute when running the workspace (replaces "downstream")
+   :transforms   '(:x3 :x4 :x11)
+   ;; these are the appdb entities that need to be shadowed with "_workspace" versions.
+   ;; this excludes the tables, which I'm assuming will be handled separately via sync.
+   ;; we might change our mind here and just manually create the metadata along with
+   ;; the other entities, if that's easier.
+   :entities     '(:x3 :x4 :m6 :m10 :x11 :t11 :m12)
+   ;; a mapping from entities that we copy to their dependencies within the subgraph
+   ;; they may have other dependencies outside the subgraph, but we ignore these
+   ;; as they don't need to be remapped
+   :dependencies {:x3  []
+                  :x4  [:t3]
+                  :m6  [:t4]
+                  :m10 []
+                  :x11 [:m10]
+                  :m12 [:t11]}})
