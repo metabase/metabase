@@ -161,6 +161,10 @@ jobs:
         with:
           ref: ${{ needs.decide-target-ref.outputs.target-ref }}
 
+      - name: Get the actual commit SHA from the checked out branch
+        id: get-commit-sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
@@ -171,7 +175,7 @@ jobs:
         id: download-uberjar
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-ee-${{ needs.decide-target-ref.outputs.target-ref }}-uberjar
+          name: metabase-ee-${{ steps.get-commit-sha.outputs.sha }}-uberjar
         continue-on-error: true # do not break the whole job if this step doesn't succeed
 
       # Build the uberjar from the previous commit only it we couldn't fetch it.
