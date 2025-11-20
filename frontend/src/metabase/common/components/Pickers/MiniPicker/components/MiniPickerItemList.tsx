@@ -10,6 +10,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
+import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Box, Text } from "metabase/ui";
 import type { SchemaName, SearchModel } from "metabase-types/api";
@@ -53,9 +54,28 @@ function RootItemList() {
   const { setPath } = useMiniPickerContext();
   const { data: libraryCollection, isLoading } =
     PLUGIN_DATA_STUDIO.useGetLibraryCollection();
+  const enableNestedQueries = useSetting("enable-nested-queries");
 
   if (isLoading) {
     return <MiniPickerListLoader />;
+  }
+
+  if (!enableNestedQueries) {
+    return (
+      <ItemList>
+        {databases?.data?.map((db) => (
+          <MiniPickerItem
+            key={db.id}
+            name={db.name}
+            model="database"
+            isFolder
+            onClick={() => {
+              setPath([{ model: "database", id: db.id, name: db.name }]);
+            }}
+          />
+        )) ?? []}
+      </ItemList>
+    );
   }
 
   if (libraryCollection) {
