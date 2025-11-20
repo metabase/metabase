@@ -46,7 +46,7 @@
                                   {:upstream_id   (:id transform)
                                    :downstream_id (:id mirror)
                                    :workspace_id  (:id workspace)})]
-    (update graph :transforms #(if % (conj % graph-node) [graph-node]))))
+    (update graph :transforms #(conj (or % []) graph-node))))
 
 (defn- mirror-transforms! [workspace database-id graph]
   (reduce #(mirror-transform! workspace database-id %1 %2) graph (:transforms graph)))
