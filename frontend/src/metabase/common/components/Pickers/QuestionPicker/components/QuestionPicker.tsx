@@ -9,7 +9,11 @@ import { DelayedLoadingSpinner, NestedItemPicker } from "../../../EntityPicker";
 import { useEnsureCollectionSelected } from "../../CollectionPicker";
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
-import { type TablePickerValue, isTablePickerValue } from "../../TablePicker";
+import {
+  type TablePickerItem,
+  type TablePickerValue,
+  isTablePickerValue,
+} from "../../TablePicker";
 import { useGetInitialContainer } from "../../hooks";
 import { getCollectionIdPath, getStateFromIdPath } from "../../utils";
 import type {
@@ -17,7 +21,11 @@ import type {
   QuestionPickerOptions,
   QuestionPickerStatePath,
 } from "../types";
-import { getQuestionPickerValueModel, isFolder } from "../utils";
+import {
+  getQuestionPickerValueModel,
+  isFolder,
+  isTablePickerFolderOrQuestionPickerFolder,
+} from "../utils";
 
 export const defaultOptions: QuestionPickerOptions = {
   showPersonalCollections: true,
@@ -60,12 +68,17 @@ export const QuestionPicker = ({
 
   const onFolderSelect = useCallback(
     ({ folder }: { folder: QuestionPickerItem }) => {
-      const newPath = getStateFromIdPath({
-        idPath: getCollectionIdPath(folder, userPersonalCollectionId),
-        models,
-      });
       onItemSelect(folder);
-      onPathChange(newPath);
+
+      //if it's actually a folder
+      if (isFolder(folder, models)) {
+        const newPath = getStateFromIdPath({
+          idPath: getCollectionIdPath(folder, userPersonalCollectionId),
+          models,
+        });
+
+        onPathChange(newPath);
+      }
     },
     [onItemSelect, onPathChange, userPersonalCollectionId, models],
   );
@@ -175,7 +188,9 @@ export const QuestionPicker = ({
   return (
     <NestedItemPicker
       initialValue={isTablePickerValue(initialValue) ? initialValue : undefined}
-      isFolder={(item: QuestionPickerItem) => isFolder(item, models)}
+      isFolder={(item: QuestionPickerItem | TablePickerItem) =>
+        isTablePickerFolderOrQuestionPickerFolder(item, models)
+      }
       options={options}
       onFolderSelect={onFolderSelect}
       onItemSelect={handleItemSelect}

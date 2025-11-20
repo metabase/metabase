@@ -383,44 +383,41 @@ describe("scenarios > models", () => {
 
         cy.findByText("Orders, Count").should("not.exist");
 
-        // TODO: commenting the rest of this test out as it involves searching particular databases and schemas. We
-        // want to get this functionality back, just not right this minute
+        cy.findByPlaceholderText("Search this database or everywhere…").type(
+          "Ord",
+        );
+        cy.wait("@search");
 
-        // cy.findByPlaceholderText("Search this database or everywhere…").type(
-        //   "Ord",
-        // );
-        // cy.wait("@search");
+        getResults().should("have.length", 1);
+        cy.findByText("1 result").should("be.visible");
+        getResults()
+          .eq(0)
+          .should("have.attr", "data-model-type", "table")
+          .and("contain.text", "Orders");
 
-        // getResults().should("have.length", 1);
-        // cy.findByText("1 result").should("be.visible");
-        // getResults()
-        //   .eq(0)
-        //   .should("have.attr", "data-model-type", "table")
-        //   .and("contain.text", "Orders");
-
-        // cy.findByText("Everywhere").click();
-        // getResults().should("have.length", 5);
-        // cy.findByText("5 results").should("be.visible");
-        // getResults()
-        //   .eq(0)
-        //   .should("have.attr", "data-model-type", "dataset")
-        //   .and("contain.text", "Orders Model");
-        // getResults()
-        //   .eq(1)
-        //   .should("have.attr", "data-model-type", "dataset")
-        //   .and("contain.text", "Orders");
-        // getResults()
-        //   .eq(2)
-        //   .should("have.attr", "data-model-type", "card")
-        //   .and("contain.text", "Orders, Count, Grouped by Created At (year)");
-        // getResults()
-        //   .eq(3)
-        //   .should("have.attr", "data-model-type", "card")
-        //   .and("contain.text", "Orders, Count");
-        // getResults()
-        //   .eq(4)
-        //   .should("have.attr", "data-model-type", "table")
-        //   .and("contain.text", "Orders");
+        cy.findByText("Everywhere").click();
+        getResults().should("have.length", 5);
+        cy.findByText("5 results").should("be.visible");
+        getResults()
+          .eq(0)
+          .should("have.attr", "data-model-type", "dataset")
+          .and("contain.text", "Orders Model");
+        getResults()
+          .eq(1)
+          .should("have.attr", "data-model-type", "dataset")
+          .and("contain.text", "Orders");
+        getResults()
+          .eq(2)
+          .should("have.attr", "data-model-type", "card")
+          .and("contain.text", "Orders, Count, Grouped by Created At (year)");
+        getResults()
+          .eq(3)
+          .should("have.attr", "data-model-type", "card")
+          .and("contain.text", "Orders, Count");
+        getResults()
+          .eq(4)
+          .should("have.attr", "data-model-type", "table")
+          .and("contain.text", "Orders");
       });
     });
 
@@ -756,6 +753,6 @@ function getCollectionItemCard(itemName) {
   return cy.findByText(itemName).closest("a");
 }
 
-// function getResults() {
-//   return cy.findAllByTestId("result-item");
-// }
+function getResults() {
+  return cy.findAllByTestId("result-item");
+}

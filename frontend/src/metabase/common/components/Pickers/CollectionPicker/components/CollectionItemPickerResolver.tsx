@@ -20,7 +20,6 @@ export const CollectionItemPickerResolver = ({
   shouldDisableItem,
   shouldShowItem,
   entity = "collection",
-  refresh,
   initialValue,
 }: CollectionItemListProps) => {
   if (!query) {
@@ -70,15 +69,7 @@ export const CollectionItemPickerResolver = ({
     return (
       <TablePicker
         value={initialValue}
-        onItemSelect={(i) => {
-          if (i.model === "table") {
-            // We build on a tower or lies and deception
-            onClick(i as unknown as CollectionPickerItem);
-          } else {
-            // WARNING: may trigger epilepsy
-            refresh?.();
-          }
-        }}
+        onItemSelect={(i) => onClick(i as unknown as CollectionPickerItem)}
         onPathChange={_.noop}
       />
     );
