@@ -73,9 +73,11 @@ export function canPlaceEntityInCollectionOrDescendants(
   return false;
 }
 
-export const useGetLibraryCollection = () => {
+export const useGetLibraryCollection = ({
+  skip = false,
+}: { skip?: boolean } = {}) => {
   const { data: libraryCollection, isLoading: isLoadingCollection } =
-    useGetLibraryCollectionQuery();
+    useGetLibraryCollectionQuery(undefined, { skip });
   const hasStuff = Boolean(
     libraryCollection && libraryCollection?.below?.length,
   );

@@ -43,9 +43,10 @@ export const useRootCollectionPickerItems = (
         : skipToken,
     );
 
-  const { data: libraryCollection } = useGetLibraryCollection({
-    skip: !options.showLibrary,
-  });
+  const { data: libraryCollection } =
+    PLUGIN_DATA_STUDIO.useGetLibraryCollection({
+      skip: !options.showLibrary,
+    });
 
   const {
     data: personalCollectionItems,
@@ -74,8 +75,6 @@ export const useRootCollectionPickerItems = (
       collectionItems.push({
         ...libraryCollection,
         model: "collection",
-        here: ["collection"],
-        below: ["collection", "card"],
         moderated_status: null,
       });
     }
@@ -208,12 +207,4 @@ export const useEnsureCollectionSelected = ({
       setIsEnabled(false); // ensure this effect runs only once
     }
   }, [isEnabled, defaultCollectionItem, onInit]);
-};
-
-const useGetLibraryCollection = ({ skip = false }: { skip?: boolean }) => {
-  const { data, isLoading } = PLUGIN_DATA_STUDIO.useGetLibraryCollectionQuery({
-    skip,
-  });
-
-  return { data: data as CollectionPickerItem, isLoading };
 };

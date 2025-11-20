@@ -1205,7 +1205,7 @@ export type DataStudioPlugin = {
     skip?: boolean;
     type: CollectionType;
   }) => CollectionItem | undefined;
-  useGetLibraryCollection: () => {
+  useGetLibraryCollection: (props?: { skip?: boolean }) => {
     data: undefined | MiniPickerCollectionItem;
     isLoading: boolean;
   };
@@ -1226,5 +1226,5 @@ export const PLUGIN_DATA_STUDIO: DataStudioPlugin = {
   }),
   useGetLibraryChildCollectionByType: ({ skip: _skip, type: _type }) =>
     undefined,
-  useGetLibraryCollection: () => ({ data: undefined, isLoading: false }),
+  useGetLibraryCollection: (_props) => ({ data: undefined, isLoading: false }),
 };
