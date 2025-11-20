@@ -38,13 +38,14 @@ export const MainNavSharedCollections = () => {
     [tenantCollections],
   );
 
-  const handleCreateTenantTollection = useCallback(
-    (values: CreateCollectionProperties) => {
-      createCollection({
+  const handleCreateTenantCollection = useCallback(
+    async (values: CreateCollectionProperties) => {
+      await createCollection({
         ...values,
         parent_id: null,
         type: "shared-tenant-collection",
       });
+      setModalOpen(false);
     },
     [createCollection],
   );
@@ -78,7 +79,7 @@ export const MainNavSharedCollections = () => {
       >
         <CreateCollectionForm
           showCollectionPicker={false}
-          onSubmit={handleCreateTenantTollection}
+          onSubmit={handleCreateTenantCollection}
         />
       </Modal>
     </>
