@@ -44,7 +44,7 @@ export function useSdkUsageProblem({
       return true;
     }
 
-    return getTokenFeature(state, EMBEDDING_SDK_CONFIG.tokenFeatureKey);
+    return getHasTokenFeature(state);
   });
 
   const isDevelopmentMode = useSdkSelector((state) => {
@@ -53,7 +53,7 @@ export function useSdkUsageProblem({
       return false;
     }
 
-    return getHasTokenFeature(state);
+    return getTokenFeature(state, "development_mode");
   });
 
   const usageProblem = useMemo(() => {
