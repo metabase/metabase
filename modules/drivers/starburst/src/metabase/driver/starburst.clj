@@ -907,7 +907,7 @@
 (defn- jdbc-spec
   "Creates a spec for `clojure.java.jdbc` to use for connecting to starburst via JDBC, from the given `opts`."
   [{:keys [host port catalog schema]
-    :or   {host "localhost", port 5432, catalog ""}
+    :or   {host "localhost", port 8080, catalog ""}
     :as   details}]
   (-> details
       (merge {:classname   "io.trino.jdbc.TrinoDriver"
