@@ -111,6 +111,9 @@ jobs:
           yarn cypress verify
         shell: bash
 
+      - name: Run ESLint to populate cache
+        run: yarn lint-eslint-pure
+
       - name: Update node_modules cache
         uses: ./.github/actions/update-cache
         with:
