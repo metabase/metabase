@@ -135,7 +135,7 @@ const DashboardContextProviderInner = forwardRef(
       hideParameters: hide_parameters = null,
       downloadsEnabled = { pdf: true, results: true },
       /**
-       * TODO: (Kelvin 17/11/25) See if we could communicate better how these default values are derived from. E.g. some are passed via the SDK props
+       * TODO: (Kelvin 2025-11-17) See if we could communicate better how these default values are derived from. E.g. some are passed via the SDK props
        * which already have default values and we're setting another default values here again. One thing we could do is to have a constant file that
        * multiple places could refer to.
        */

@@ -30,6 +30,6 @@ export type EmbedDisplayParams = {
   getClickActionMode: ClickActionModeGetter | undefined;
   downloadsEnabled: EmbedResourceDownloadOptions;
   withFooter: boolean;
-  // Move this to a new type in EMB-1025
+  // TODO: (Kelvin 2025-11-17) move this to a new type in EMB-1025
   withSubscriptions: boolean;
 };
