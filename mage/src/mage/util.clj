@@ -178,3 +178,37 @@
     (println "For" (c/bold "more") "information on a task, run:")
     (println "  mage <task-name> -h")
     task+descriptions))
+
+(defn- can-run? [cmd]
+  (try (boolean (sh (str "command -v " cmd)))
+       (catch Exception _
+         (println (c/red "MAGE checked if you can run " cmd ", but it is not installed. Consider installing it for a better experience."))
+         false)))
+
+(defn- check-run!
+  [cmd]
+  (when-not (can-run? cmd)
+    (throw
+     (ex-info
+      nil
+      {:command cmd
+       :mage/error (str "You don't have " cmd " installed, maybe try\n " (c/green "brew install " cmd) "\nor your package manager of choice.")
+       :babashka/exit 1}))))
+
+(defn fzf-select [coll & [fzf-opts]]
+  "Use fzf to offer interactive selections.
+
+   See fzf --help for more info.
+   Some useful fzf options:
+    --multi - select multiple options
+    --preview='cat {}'
+
+  Returns stdout of fzf, if you use --multi str/split-lines it."
+  (check-run! "fzf")
+  (->> (shell
+        {:out :string :in (str/join "\n" coll)}
+        (str "fzf"
+             (when (seq fzf-opts) " ")
+             fzf-opts))
+       :out
+       str/trim))

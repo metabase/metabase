@@ -3,10 +3,11 @@
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths          ["mage/src" "mage/test" "bin/lint-migrations-file/src"]
  :deps           {dev.weavejester/cljfmt {:mvn/version "0.15.3"}
-                  org.babashka/json {:mvn/version "0.1.6"}
+                  io.github.paintparty/bling {:mvn/version "0.8.8"}
                   metosin/malli     {:mvn/version "0.17.0"}
-                  table/table       {:mvn/version "0.5.0"}
-                  mvxcvi/puget      {:mvn/version "1.3.4"}}
+                  mvxcvi/puget      {:mvn/version "1.3.4"}
+                  org.babashka/json {:mvn/version "0.1.6"}
+                  table/table       {:mvn/version "0.5.0"}}
  :tasks
  {:requires [[mage.cli :as cli]
              [mage.color :as c]]
@@ -218,10 +219,19 @@
    :requires [[mage.modules]]
    :task     (task! (mage.modules/cli-can-skip-driver-tests (:arguments parsed)))}
 
-  ls {:doc      "List all mage public and private tasks"
-      :examples [["./bin/mage ls" "List all tasks"]]
-      :requires [[mage.util :as u]]
-      :task     (task! (u/print-tasks parsed))}
+  ls
+  {:doc      "List all mage public and private tasks"
+   :examples [["./bin/mage ls" "List all tasks"]]
+   :requires [[mage.util :as u]]
+   :task     (task! (u/print-tasks parsed))}
+
+  quick-test
+  {:doc "Run local tests fast"
+   :examples [[]]
+   :options  [["-s" "--style STYLE" "Style of test selection" :default "dir" :parse-fn keyword]
+              ["-d" "--dirs DIRS" "Comma delimited list of directories to run. Skips interactive selection."]]
+   :requires [[mage.quick-test-runner :as qtr]]
+   :task (task! (qtr/go parsed))}
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:

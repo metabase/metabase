@@ -85,7 +85,7 @@
     (loop []
       (let [response (->> (bencode/read-bencode in)
                           (walk/postwalk consume))]
-        (println "Response:\n-----\n" (with-out-str (pp/pprint response)) "\n-----")
+        (u/debug "Response:\n-----\n" (with-out-str (pp/pprint response)) "\n-----")
         (println)
         (doseq [[k v] response]
           (case k
@@ -100,7 +100,16 @@
         (if (some #{"done"} (get response "status"))
           (some->> @final-value
                    (println "\n=> "))
-          (recur))))))
+          (recur))))
+    @final-value))
+
+(defn nrepl-open? []
+  (try
+    (let [port (nrepl-port nil)
+          s    (java.net.Socket. "localhost" port)]
+      (.close s)
+      true)
+    (catch Exception _ false)))
 
 (comment
 
