@@ -132,6 +132,9 @@ jobs:
             echo "value=$(git rev-parse HEAD^1)" >> "$GITHUB_OUTPUT"
           fi
 
+  # This job ensures that the Embedding SDK package from the current commit (N) works with the
+  # Embedding SDK Bundle (Metabase JAR) from the previous commit (N-1).
+  # N - 1 is a target of a pull request, or a literal previous commit when this job is run on push in a branch.
   sdk-component-tests-backward-compatibility:
     name: "SDK component tests (Backward compatibility)"
     needs: [decide-target-ref]
