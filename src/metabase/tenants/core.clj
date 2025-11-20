@@ -74,11 +74,8 @@
                              (value-map :user false user))
                  (value-map :system true system)))))
 
-(defenterprise attribute-structure
-  "Serializes the combination of tenant and user attributes for the given user with
-   metadata about their provenance."
+(defenterprise user->tenant
+  "Get the tenant for a user"
   metabase-enterprise.tenants.core
   [user]
-  (let [combined-attributes (combine (:login_attributes user))]
-    (assoc user
-           :structured_attributes combined-attributes)))
+  nil)
