@@ -22,6 +22,7 @@ import type {
 } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
+import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
@@ -30,7 +31,6 @@ import { createAsyncThunk } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
-import { requestSessionTokenFromEmbedJs } from "metabase-enterprise/embedding_iframe_sdk/utils";
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 

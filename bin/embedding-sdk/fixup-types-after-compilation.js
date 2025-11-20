@@ -20,8 +20,9 @@ const REPLACES_MAP = {
   "metabase-types": "frontend/src/metabase-types",
   metabase: "frontend/src/metabase",
   "embedding-sdk-package": "enterprise/frontend/src/embedding-sdk-package",
-  "embedding-sdk-bundle": "enterprise/frontend/src/embedding-sdk-bundle",
-  "embedding-sdk-shared": "enterprise/frontend/src/embedding-sdk-shared",
+  "embedding-sdk-bundle": "frontend/src/embedding-sdk-bundle",
+  "embedding-sdk-shared": "frontend/src/embedding-sdk-shared",
+  "embedding-sdk-ee": "enterprise/frontend/src/embedding-sdk-ee",
   cljs: "target/cljs_release",
 };
 

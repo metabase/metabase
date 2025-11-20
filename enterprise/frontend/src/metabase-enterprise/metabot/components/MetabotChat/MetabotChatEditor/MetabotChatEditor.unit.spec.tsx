@@ -21,6 +21,7 @@ const defaultProps = {
   value: "",
   onChange: jest.fn(),
   onSubmit: jest.fn(),
+  onStop: jest.fn(),
   suggestionModels: [
     "table",
     "database",
