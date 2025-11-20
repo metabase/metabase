@@ -1,5 +1,5 @@
-import { withGustEmbedNotAllowedGuard } from "embedding-sdk-bundle/components/private/GuestEmbedNotAllowedGuard";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { withValidLicenseGuard } from "embedding-sdk-bundle/components/private/ValidLicenseGuard";
 import {
   getCollectionIdSlugFromReference,
   getCollectionIdValueFromReference,
@@ -75,8 +75,6 @@ const CreateDashboardModalInner = ({
 };
 
 export const CreateDashboardModal = Object.assign(
-  withGustEmbedNotAllowedGuard(
-    withPublicComponentWrapper(CreateDashboardModalInner),
-  ),
+  withValidLicenseGuard(withPublicComponentWrapper(CreateDashboardModalInner)),
   { schema: createDashboardModalSchema },
 );

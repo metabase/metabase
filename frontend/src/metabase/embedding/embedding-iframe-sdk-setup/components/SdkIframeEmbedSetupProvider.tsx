@@ -90,6 +90,7 @@ export const SdkIframeEmbedSetupProvider = ({
     recentDashboards,
     isRecentsLoading,
     modelCount,
+    isSimpleEmbedFeatureAvailable,
     isGuestEmbedsEnabled,
   });
 

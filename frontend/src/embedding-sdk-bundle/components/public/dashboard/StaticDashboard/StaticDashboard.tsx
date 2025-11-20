@@ -1,3 +1,4 @@
+import { withValidLicenseGuard } from "embedding-sdk-bundle/components/private/ValidLicenseGuard";
 import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/dashboard";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
@@ -51,6 +52,11 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
   );
 };
 
-export const StaticDashboard = Object.assign(StaticDashboardInner, {
-  schema: staticDashboardSchema,
-});
+export const StaticDashboard = Object.assign(
+  withValidLicenseGuard(StaticDashboardInner, {
+    isComponentWithGuestEmbedSupport: true,
+  }),
+  {
+    schema: staticDashboardSchema,
+  },
+);

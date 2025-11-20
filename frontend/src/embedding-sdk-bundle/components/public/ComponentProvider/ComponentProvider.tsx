@@ -4,6 +4,7 @@ import { type JSX, memo, useEffect, useId, useRef } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
+import { normalizeComponentProviderProps } from "embedding-sdk-bundle/lib/normalize-component-provider-props";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
@@ -163,11 +164,13 @@ export const ComponentProvider = memo(function ComponentProvider({
     reduxStoreRef.current = props.reduxStore ?? getSdkStore();
   }
 
+  const normalizedProps = normalizeComponentProviderProps(props);
+
   return (
     <MetabaseReduxProvider store={reduxStoreRef.current!}>
       <METABOT_SDK_EE_PLUGIN.MetabotProvider>
         <ComponentProviderInternal
-          {...props}
+          {...normalizedProps}
           reduxStore={reduxStoreRef.current!}
         >
           {children}

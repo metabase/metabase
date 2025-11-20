@@ -22,7 +22,10 @@ import { ColorCustomizationSection } from "./ColorCustomizationSection";
 import { LegacyStaticEmbeddingAlert } from "./LegacyStaticEmbeddingAlert";
 import { MetabotLayoutSetting } from "./MetabotLayoutSetting";
 import { ParameterSettings } from "./ParameterSettings";
-import { TooltipWarning } from "./warnings/TooltipWarning";
+import {
+  TooltipWarning,
+  type TooltipWarningMode,
+} from "./warnings/TooltipWarning";
 import { WithSimpleEmbeddingFeatureUpsellTooltip } from "./warnings/WithSimpleEmbeddingFeatureUpsellTooltip";
 
 export const SelectEmbedOptionsStep = () => (
@@ -190,13 +193,18 @@ const BehaviorSection = () => {
               )}
             </WithNotAvailableForGuestEmbedsWarning>
 
-            <Checkbox
-              label={t`Allow downloads`}
-              checked={settings.withDownloads}
-              onChange={(e) =>
-                updateSettings({ withDownloads: e.target.checked })
-              }
-            />
+            <WithNotAvailableWithoutSimpleEmbeddingFeatureWarning>
+              {({ disabled }) => (
+                <Checkbox
+                  label={t`Allow downloads`}
+                  disabled={disabled}
+                  checked={settings.withDownloads}
+                  onChange={(e) =>
+                    updateSettings({ withDownloads: e.target.checked })
+                  }
+                />
+              )}
+            </WithNotAvailableWithoutSimpleEmbeddingFeatureWarning>
 
             <WithNotAvailableForGuestEmbedsWarning>
               {({ disabled }) => (
@@ -228,13 +236,18 @@ const BehaviorSection = () => {
               )}
             </WithNotAvailableForGuestEmbedsWarning>
 
-            <Checkbox
-              label={t`Allow downloads`}
-              checked={settings.withDownloads}
-              onChange={(e) =>
-                updateSettings({ withDownloads: e.target.checked })
-              }
-            />
+            <WithNotAvailableWithoutSimpleEmbeddingFeatureWarning>
+              {({ disabled }) => (
+                <Checkbox
+                  label={t`Allow downloads`}
+                  disabled={disabled}
+                  checked={settings.withDownloads}
+                  onChange={(e) =>
+                    updateSettings({ withDownloads: e.target.checked })
+                  }
+                />
+              )}
+            </WithNotAvailableWithoutSimpleEmbeddingFeatureWarning>
           </Stack>
         ),
       )
@@ -329,11 +342,17 @@ const AppearanceSection = () => {
 
   return (
     <Card p="md">
-      <ColorCustomizationSection
-        theme={theme}
-        onColorChange={updateColors}
-        onColorReset={() => updateSettings({ theme: undefined })}
-      />
+      <WithNotAvailableWithoutSimpleEmbeddingFeatureWarning mode="custom">
+        {({ disabled, hoverCard }) => (
+          <ColorCustomizationSection
+            theme={theme}
+            disabled={disabled}
+            hoverCard={hoverCard}
+            onColorChange={updateColors}
+            onColorReset={() => updateSettings({ theme: undefined })}
+          />
+        )}
+      </WithNotAvailableWithoutSimpleEmbeddingFeatureWarning>
 
       {appearanceSection && <Divider mt="lg" mb="md" />}
       {appearanceSection}
@@ -364,19 +383,37 @@ const WithGuestEmbedsDisabledWarning = ({
   );
 };
 
-const WithNotAvailableForGuestEmbedsWarning = ({
+const WithNotAvailableWithoutSimpleEmbeddingFeatureWarning = ({
+  mode,
   children,
 }: {
-  children: (data: { disabled: boolean }) => ReactNode;
+  mode?: TooltipWarningMode;
+  children: (data: { disabled: boolean; hoverCard: ReactNode }) => ReactNode;
 }) => {
-  const { isSimpleEmbedFeatureAvailable, settings } =
-    useSdkIframeEmbedSetupContext();
+  const { isSimpleEmbedFeatureAvailable } = useSdkIframeEmbedSetupContext();
 
   return (
     <WithSimpleEmbeddingFeatureUpsellTooltip
+      mode={mode}
       shouldWrap={!isSimpleEmbedFeatureAvailable}
     >
-      {({ disabled: disabledForOss }) => (
+      {({ disabled, hoverCard }) => children({ disabled, hoverCard })}
+    </WithSimpleEmbeddingFeatureUpsellTooltip>
+  );
+};
+
+const WithNotAvailableForGuestEmbedsWarning = ({
+  mode,
+  children,
+}: {
+  mode?: TooltipWarningMode;
+  children: (data: { disabled: boolean; hoverCard: ReactNode }) => ReactNode;
+}) => {
+  const { settings } = useSdkIframeEmbedSetupContext();
+
+  return (
+    <WithNotAvailableWithoutSimpleEmbeddingFeatureWarning mode={mode}>
+      {({ disabled: disabledForOss, hoverCard: disabledForOssHoverCard }) => (
         <TooltipWarning
           shouldWrap={!disabledForOss}
           warning={
@@ -386,13 +423,18 @@ const WithNotAvailableForGuestEmbedsWarning = ({
           }
           disabled={!!settings.isGuestEmbed}
         >
-          {({ disabled: disabledForGuestEmbed }) =>
+          {({
+            disabled: disabledForGuestEmbeds,
+            hoverCard: disabledForGuestEmbedsHoverCard,
+          }) =>
             children({
-              disabled: disabledForOss || disabledForGuestEmbed,
+              disabled: disabledForOss || disabledForGuestEmbeds,
+              hoverCard:
+                disabledForOssHoverCard || disabledForGuestEmbedsHoverCard,
             })
           }
         </TooltipWarning>
       )}
-    </WithSimpleEmbeddingFeatureUpsellTooltip>
+    </WithNotAvailableWithoutSimpleEmbeddingFeatureWarning>
   );
 };

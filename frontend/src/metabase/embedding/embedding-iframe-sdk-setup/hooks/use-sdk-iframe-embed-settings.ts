@@ -20,28 +20,49 @@ import {
   getResourceIdFromSettings,
 } from "../utils/get-default-sdk-iframe-embed-setting";
 
-const getSettingsToPersist = (
-  settings: Partial<SdkIframeEmbedSetupSettings>,
-) => {
-  return _.pick(settings, ["theme"]);
+const getSettingsToPersist = ({
+  isSimpleEmbedFeatureAvailable,
+  settings,
+}: {
+  isSimpleEmbedFeatureAvailable: boolean;
+  settings: Partial<SdkIframeEmbedSetupSettings>;
+}): Partial<Pick<SdkIframeEmbedSetupSettings, "theme">> => {
+  const keys = [];
+
+  // We don't allow theme change when `simple embedding` feature is not available.
+  if (isSimpleEmbedFeatureAvailable) {
+    keys.push("theme");
+  }
+
+  return _.pick(settings, keys);
 };
 
-const usePersistedSettings = () => {
+const usePersistedSettings = ({
+  isSimpleEmbedFeatureAvailable,
+}: {
+  isSimpleEmbedFeatureAvailable: boolean;
+}) => {
   const [rawPersisted, rawPersistSettings] = useUserSetting(
     "sdk-iframe-embed-setup-settings",
     { debounceTimeout: USER_SETTINGS_DEBOUNCE_MS },
   );
 
   const persistedSettings = useMemo(
-    () => getSettingsToPersist(rawPersisted || {}),
-    [rawPersisted],
+    () =>
+      getSettingsToPersist({
+        isSimpleEmbedFeatureAvailable,
+        settings: rawPersisted || {},
+      }),
+    [isSimpleEmbedFeatureAvailable, rawPersisted],
   );
 
   const persistSettings = useCallback(
     (settings: Partial<SdkIframeEmbedSetupSettings>) => {
-      rawPersistSettings(getSettingsToPersist(settings));
+      rawPersistSettings(
+        getSettingsToPersist({ isSimpleEmbedFeatureAvailable, settings }),
+      );
     },
-    [rawPersistSettings],
+    [isSimpleEmbedFeatureAvailable, rawPersistSettings],
   );
 
   return [persistedSettings, persistSettings] as const;
@@ -52,16 +73,20 @@ export const useSdkIframeEmbedSettings = ({
   recentDashboards,
   isRecentsLoading,
   modelCount,
+  isSimpleEmbedFeatureAvailable,
   isGuestEmbedsEnabled,
 }: {
   initialState: SdkIframeEmbedSetupModalInitialState | undefined;
   recentDashboards: SdkIframeEmbedSetupRecentItem[];
   isRecentsLoading: boolean;
   modelCount: number;
+  isSimpleEmbedFeatureAvailable: boolean;
   isGuestEmbedsEnabled: boolean;
 }) => {
   const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
-  const [persistedSettings, persistSettings] = usePersistedSettings();
+  const [persistedSettings, persistSettings] = usePersistedSettings({
+    isSimpleEmbedFeatureAvailable,
+  });
 
   const defaultSettings = useMemo(() => {
     return match(initialState)

@@ -1,4 +1,4 @@
-import { withGustEmbedNotAllowedGuard } from "embedding-sdk-bundle/components/private/GuestEmbedNotAllowedGuard";
+import { withValidLicenseGuard } from "embedding-sdk-bundle/components/private/ValidLicenseGuard";
 
 import {
   InteractiveQuestion,
@@ -19,6 +19,6 @@ const CreateQuestionInner = (props: CreateQuestionProps = {}) => (
   <InteractiveQuestion {...props} questionId="new" />
 );
 
-export const CreateQuestion = withGustEmbedNotAllowedGuard(
+export const CreateQuestion = withValidLicenseGuard(
   CreateQuestionInner,
 ) as typeof CreateQuestionInner;
