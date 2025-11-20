@@ -7,9 +7,8 @@ import type {
 
 export const isInternalUser = (user: BaseUser) => user.tenant_id === null;
 
-const getPeopleRoutePrefix = (isExternal: boolean) => {
-  return isExternal ? "/admin/tenants/people" : "/admin/people";
-};
+const getPeopleRoutePrefix = (isExternal: boolean) =>
+  isExternal ? "/admin/tenants/people" : "/admin/people";
 
 export function newUser() {
   return `/admin/people/new`;

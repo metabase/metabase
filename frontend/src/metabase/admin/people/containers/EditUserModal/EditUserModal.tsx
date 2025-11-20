@@ -8,6 +8,7 @@ import {
   useUpdateUserMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Modal } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
@@ -16,17 +17,16 @@ import { UserForm } from "../../forms/UserForm";
 interface EditUserModalProps {
   onClose: () => void;
   params: Params;
-  external?: boolean;
 }
 
-export const EditUserModal = ({
-  onClose,
-  params,
-  external = false,
-}: EditUserModalProps) => {
+export const EditUserModal = ({ onClose, params }: EditUserModalProps) => {
   const userId = params.userId ? parseInt(params.userId) : null;
   const { data: user, isLoading, error } = useGetUserQuery(userId ?? skipToken);
   const [updateUser] = useUpdateUserMutation();
+
+  // Always consider users with an associated tenant as external users.
+  // This allows editing external users from the "People" page.
+  const isExternal = PLUGIN_TENANTS.isExternalUser(user);
 
   const initialValues = useMemo(
     () => ({
@@ -37,11 +37,11 @@ export const EditUserModal = ({
       login_attributes: user?.login_attributes || {},
       user_group_memberships: user?.user_group_memberships || [],
 
-      ...(external
+      ...(isExternal
         ? { tenant_id: user?.tenant_id }
         : { user_group_memberships: user?.user_group_memberships || [] }),
     }),
-    [user, external],
+    [user, isExternal],
   );
 
   const handleSubmit = async (newValues: Partial<User>) => {
@@ -64,7 +64,7 @@ export const EditUserModal = ({
           onCancel={onClose}
           initialValues={initialValues}
           onSubmit={handleSubmit}
-          external={external}
+          external={isExternal}
           userId={userId}
           edit
         />

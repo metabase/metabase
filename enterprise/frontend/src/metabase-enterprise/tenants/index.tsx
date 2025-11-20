@@ -66,7 +66,7 @@ export function initializePlugin() {
               <ModalRoute
                 path="edit"
                 // @ts-expect-error - params prop can't be infered
-                modal={(props) => <EditUserModal {...props} external />}
+                modal={(props) => <EditUserModal {...props} />}
                 noWrap
               />
               {/* @ts-expect-error - params prop can't be infered */}
