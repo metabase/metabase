@@ -29,12 +29,20 @@ export const useExtractEntityIdFromJwtToken = <TEntityId>({
       };
     }
 
+    if (isGuestEmbed && entityId) {
+      return {
+        entityId: null,
+        token: null,
+        tokenError: t`A valid JWT token is required to be passed in guest embeds mode.`,
+      };
+    }
+
     if (token) {
       if (!isGuestEmbed) {
         return {
           entityId: null,
           token: null,
-          tokenError: t`Passing a token is only allowed for Guest Embed mode.`,
+          tokenError: t`Passing a token is only allowed for guest embeds mode.`,
         };
       }
 
