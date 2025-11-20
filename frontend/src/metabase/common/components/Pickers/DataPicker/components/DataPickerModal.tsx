@@ -81,6 +81,7 @@ export const DataPickerModal = ({
   onClose,
   shouldDisableItem,
   options,
+  models,
 }: Props) => {
   options = {
     ...OPTIONS,
@@ -252,6 +253,7 @@ export const DataPickerModal = ({
       onItemSelect={handleItemSelect}
       isLoadingTabs={isLoadingAvailableData}
       searchExtraButtons={[filterButton]}
+      searchModels={models}
     />
   );
 };

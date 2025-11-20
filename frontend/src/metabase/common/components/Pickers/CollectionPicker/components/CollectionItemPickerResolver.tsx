@@ -71,6 +71,9 @@ export const CollectionItemPickerResolver = ({
         value={initialValue}
         onItemSelect={(i) => onClick(i as unknown as CollectionPickerItem)}
         onPathChange={_.noop}
+        shouldDisableItem={(i) =>
+          shouldDisableItem?.(i as unknown as CollectionPickerItem) || false
+        }
       />
     );
   }
