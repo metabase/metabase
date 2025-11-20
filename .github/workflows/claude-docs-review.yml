@@ -50,15 +50,35 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
         shell: bash
         run: |
-          # Delete old reviews from the bot (both submitted and pending reviews contain inline comments)
-          # Must use the same GitHub App token that created the reviews
-          old_review_ids=$(gh api "/repos/$REPO/pulls/$PR_NUMBER/reviews" --jq '.[] | select(.user.login=="metabase-bot[bot]") | .id')
-          echo "Deleting reviews: $old_review_ids"
-          for id in $old_review_ids; do
-            # Note: This deletes the review and all associated comments (works for both submitted and pending reviews)
-            gh api -X DELETE "/repos/$REPO/pulls/$PR_NUMBER/reviews/$id"
-            echo "Deleted review $id"
-          done
+          # Delete pending reviews first (these can be deleted entirely)
+          pending_review_ids=$(gh api "/repos/$REPO/pulls/$PR_NUMBER/reviews" --jq '.[] | select(.user.login=="metabase-bot[bot]" and .state=="PENDING") | .id')
+          if [ -n "$pending_review_ids" ]; then
+            echo "Deleting pending reviews: $pending_review_ids"
+            for id in $pending_review_ids; do
+              gh api -X DELETE "/repos/$REPO/pulls/$PR_NUMBER/reviews/$id"
+              echo "Deleted pending review $id"
+            done
+          fi
+
+          # Delete individual inline comments from submitted reviews (can't delete the review itself)
+          old_line_comment_ids=$(gh api "/repos/$REPO/pulls/$PR_NUMBER/comments" --jq '.[] | select(.user.login=="metabase-bot[bot]") | .id')
+          if [ -n "$old_line_comment_ids" ]; then
+            echo "Deleting line comments: $old_line_comment_ids"
+            for id in $old_line_comment_ids; do
+              gh api -X DELETE "/repos/$REPO/pulls/comments/$id"
+              echo "Deleted line comment $id"
+            done
+          fi
+
+          # Delete top-level review comments
+          old_top_level_comment_ids=$(gh api "/repos/$REPO/issues/$PR_NUMBER/comments" --jq '.[] | select(.user.login=="metabase-bot[bot]") | .id')
+          if [ -n "$old_top_level_comment_ids" ]; then
+            echo "Deleting top-level comments: $old_top_level_comment_ids"
+            for id in $old_top_level_comment_ids; do
+              gh api -X DELETE "/repos/$REPO/issues/comments/$id"
+              echo "Deleted top-level comment $id"
+            done
+          fi
 
       - uses: anthropics/claude-code-action@v1
         timeout-minutes: 10
