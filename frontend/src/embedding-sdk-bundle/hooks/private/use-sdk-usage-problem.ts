@@ -4,7 +4,10 @@ import { printUsageProblemToConsole } from "embedding-sdk-bundle/lib/print-usage
 import { getSdkUsageProblem } from "embedding-sdk-bundle/lib/usage-problem";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setUsageProblem } from "embedding-sdk-bundle/store/reducer";
-import { getIsGuestEmbedRaw } from "embedding-sdk-bundle/store/selectors";
+import {
+  getHasTokenFeature,
+  getIsGuestEmbedRaw,
+} from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { useSetting } from "metabase/common/hooks";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
@@ -50,7 +53,7 @@ export function useSdkUsageProblem({
       return false;
     }
 
-    return getTokenFeature(state, "development_mode");
+    return getHasTokenFeature(state);
   });
 
   const usageProblem = useMemo(() => {

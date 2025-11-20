@@ -1,4 +1,4 @@
-import { withValidLicenseGuard } from "embedding-sdk-bundle/components/private/ValidLicenseGuard";
+import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { DASHBOARD_EDITING_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
@@ -53,7 +53,9 @@ export const EditableDashboardInner = (props: EditableDashboardProps) => {
 };
 
 export const EditableDashboard = Object.assign(
-  withValidLicenseGuard(EditableDashboardInner),
+  withPublicComponentWrapper(EditableDashboardInner, {
+    isComponentWithGuestEmbedSupport: false,
+  }),
   {
     schema: editableDashboardSchema,
   },

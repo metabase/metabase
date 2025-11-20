@@ -6,7 +6,6 @@ import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/F
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
-import { withValidLicenseGuard } from "embedding-sdk-bundle/components/private/ValidLicenseGuard";
 import { METABOT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/MetabotQuestion/MetabotQuestion";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useLocale } from "metabase/common/hooks/use-locale";
@@ -134,6 +133,8 @@ const MetabotQuestionWrapped = (props: MetabotQuestionProps) => {
 
 // side effect that activates the plugin
 METABOT_SDK_EE_PLUGIN.MetabotQuestion = Object.assign(
-  withValidLicenseGuard(withPublicComponentWrapper(MetabotQuestionWrapped)),
+  withPublicComponentWrapper(MetabotQuestionWrapped, {
+    isComponentWithGuestEmbedSupport: false,
+  }),
   { schema: metabotQuestionSchema },
 );
