@@ -3009,6 +3009,7 @@ describe("scenarios > admin > datamodel", () => {
           FieldSection.getNameInput().should("have.value", "A");
           FieldSection.get()
             .findByTestId("name-prefix")
+            .scrollIntoView()
             .should("be.visible")
             .and("have.text", "Json:");
           verifyTablePreview({
