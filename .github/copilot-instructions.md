@@ -33,7 +33,7 @@ frontend/test/          # Jest unit tests
 
 #### Styling
 
-ALWAYS prefer Mantine style props,then CSS modules. DO NOT suggest styled components, they are deprecated.
+ALWAYS prefer Mantine style props then CSS modules. DO NOT suggest styled components; they are deprecated.
 
 #### TypeScript Migration
 
@@ -41,7 +41,7 @@ When heavily editing `.js`/`.jsx` files, create a separate PR to convert to Type
 
 #### Enterprise Features
 
-Enterprise functionality MUST use the plugin system. It is very important to not expose enterprise code in the OSS version.
+Enterprise functionality MUST use the plugin system. It is very important not to expose enterprise code in the OSS version.
 
 #### Testing Requirements
 
@@ -49,4 +49,4 @@ All PRs should include tests. Prefer Unit tests over E2E tests.
 
 #### Localization
 
-All user-facing strings MUST be localized using the ttag library. Localized strings should be complete phrases, do not concatenate a few separately localized strings. You should add context to strings where the meaning of the string might not be obvious in isolation: e.g. "Home" might have different words in some languages depending on whether you're talking about a dwelling or the landing page for a website.
+All user-facing strings MUST be localized using the ttag library. Localized strings should be complete phrases; do not concatenate a few separately localized strings. You should add context to strings where the meaning of the string might not be obvious in isolation: e.g., "Home" might have different words in some languages depending on whether you're talking about a dwelling or the landing page for a website.
