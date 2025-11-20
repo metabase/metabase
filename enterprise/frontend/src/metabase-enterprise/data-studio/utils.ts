@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { match } from "ts-pattern";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
@@ -6,7 +7,11 @@ import type { LibraryCollectionType } from "metabase/plugins";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
-import type { CollectionItemModel, CollectionType } from "metabase-types/api";
+import type {
+  CollectionItem,
+  CollectionItemModel,
+  CollectionType,
+} from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 export function canAccessDataStudio(state: State) {
@@ -109,4 +114,27 @@ export const useGetLibraryCollection = ({
     isLoading: isLoadingCollection || isLoadingItems,
     data: showableLibrary,
   };
+};
+
+export const useGetLibraryChildCollectionByType = ({
+  skip,
+  type,
+}: {
+  skip?: boolean;
+  type: CollectionType;
+}) => {
+  const { data: rootLibraryCollection } = useGetLibraryCollectionQuery(
+    undefined,
+    { skip },
+  );
+  const { data: libraryCollections } = useListCollectionItemsQuery(
+    rootLibraryCollection ? { id: rootLibraryCollection.id } : skipToken,
+  );
+  return useMemo(
+    () =>
+      libraryCollections?.data.find(
+        (collection: CollectionItem) => collection.type === type,
+      ),
+    [libraryCollections, type],
+  );
 };

@@ -1193,11 +1193,6 @@ export type DataStudioPlugin = {
     entityType: CollectionItemModel,
     collectionType: CollectionType | null | undefined,
   ) => boolean;
-
-  useGetLibraryCollectionQuery: ({ skip }: { skip?: boolean }) => {
-    data: CollectionItem | null;
-    isLoading: boolean;
-  };
   useGetLibraryChildCollectionByType: ({
     skip,
     type,
@@ -1220,10 +1215,6 @@ export const PLUGIN_DATA_STUDIO: DataStudioPlugin = {
   getLibraryCollectionType: () => undefined,
   canPlaceEntityInCollection: () => true,
   canPlaceEntityInCollectionOrDescendants: () => true,
-  useGetLibraryCollectionQuery: ({ skip: _skip }: { skip?: boolean }) => ({
-    data: null,
-    isLoading: false,
-  }),
   useGetLibraryChildCollectionByType: ({ skip: _skip, type: _type }) =>
     undefined,
   useGetLibraryCollection: (_props) => ({ data: undefined, isLoading: false }),
