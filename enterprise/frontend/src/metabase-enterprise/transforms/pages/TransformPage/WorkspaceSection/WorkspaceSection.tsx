@@ -5,9 +5,11 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Card, Group, Icon, Text } from "metabase/ui";
+import { Anchor, Button, Card, Group, Icon, Stack, Text } from "metabase/ui";
 import {
   useCreateWorkspaceMutation,
+  useGetTransformDownstreamMappingQuery,
+  useGetTransformUpstreamMappingQuery,
   useGetWorkspaceContentsQuery,
   useGetWorkspaceQuery,
 } from "metabase-enterprise/api";
@@ -42,6 +44,20 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
     },
   );
 
+  const { data: upstreamMapping } = useGetTransformUpstreamMappingQuery(
+    transform.id,
+    {
+      skip: !hasWorkspace,
+    },
+  );
+
+  const { data: downstreamMapping } = useGetTransformDownstreamMappingQuery(
+    transform.id,
+    {
+      skip: hasWorkspace,
+    },
+  );
+
   useEffect(() => {
     if (
       workspaceContents &&
@@ -71,28 +87,59 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
     <TitleSection label={t`Workspace`}>
       <Card p="md" shadow="none" withBorder>
         {hasWorkspace ? (
-          <Group>
-            <Icon name="folder" aria-hidden />
-            <Text>
-              {workspace
-                ? t`This is part of ${workspace.name} (${transform.workspace_id})`
-                : t`This is part of Workspace ${transform.workspace_id}`}
-            </Text>
-          </Group>
+          <Stack gap="sm">
+            <Group>
+              <Icon name="folder" aria-hidden />
+              <Text>
+                {workspace
+                  ? t`This is part of ${workspace.name} (${transform.workspace_id})`
+                  : t`This is part of Workspace ${transform.workspace_id}`}
+              </Text>
+            </Group>
+            {upstreamMapping?.transform != null && (
+              <Group>
+                <Icon name="arrow_left" aria-hidden />
+                <Text>
+                  {t`Upstream transform:`}{" "}
+                  <Anchor href={Urls.transform(upstreamMapping.transform.id)}>
+                    {upstreamMapping.transform.name}
+                  </Anchor>
+                </Text>
+              </Group>
+            )}
+          </Stack>
         ) : (
-          <Group>
-            <Icon name="folder" aria-hidden />
-            <Text c="text-secondary">
-              {t`This transform is not part of any workspace`}
-            </Text>
-            <Button
-              leftSection={<Icon name="add" aria-hidden />}
-              onClick={handleCheckoutClick}
-              loading={isLoading}
-            >
-              {t`Check this out in a new workspace`}
-            </Button>
-          </Group>
+          <Stack gap="sm">
+            <Group>
+              <Icon name="folder" aria-hidden />
+              <Text c="text-secondary">
+                {t`This transform is not part of any workspace`}
+              </Text>
+              <Button
+                leftSection={<Icon name="add" aria-hidden />}
+                onClick={handleCheckoutClick}
+                loading={isLoading}
+              >
+                {t`Check this out in a new workspace`}
+              </Button>
+            </Group>
+            {downstreamMapping && downstreamMapping.transforms.length > 0 && (
+              <Group>
+                <Icon name="arrow_right" aria-hidden />
+                <Text>
+                  {t`Downstream workspaces:`}{" "}
+                  {downstreamMapping.transforms.map((item, index) => (
+                    <span key={item.id}>
+                      {index > 0 && ", "}
+                      <Anchor href={Urls.transform(item.id)}>
+                        {item.workspace.name}
+                      </Anchor>
+                    </span>
+                  ))}
+                </Text>
+              </Group>
+            )}
+          </Stack>
         )}
       </Card>
     </TitleSection>
