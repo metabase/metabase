@@ -31,7 +31,6 @@ import type {
   SdkDashboardId,
 } from "embedding-sdk-bundle/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
-import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import { useConfirmation } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
@@ -119,8 +118,7 @@ export type SdkDashboardProps = PropsWithChildren<
     initialParameters?: ParameterValues;
   } & SdkDashboardDisplayProps &
     DashboardEventHandlersProps &
-    EditableDashboardOwnProps &
-    CommonStylingProps
+    EditableDashboardOwnProps
 >;
 
 type RenderMode = "dashboard" | "question" | "queryBuilder";

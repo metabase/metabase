@@ -2,6 +2,7 @@ import { pick } from "underscore";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in JSDoc comment
 import type { SdkDashboardProps } from "embedding-sdk-bundle/components/public/dashboard/SdkDashboard";
+import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import { DEFAULT_DASHBOARD_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import { isNotNull } from "metabase/lib/types";
@@ -35,7 +36,7 @@ export type SdkDashboardDisplayProps = {
    * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
    **/
   hiddenParameters?: string[];
-};
+} & CommonStylingProps;
 
 export const useSdkDashboardParams = ({
   withDownloads,
@@ -43,7 +44,7 @@ export const useSdkDashboardParams = ({
   withTitle,
   withCardTitle,
   hiddenParameters,
-}: Required<SdkDashboardDisplayProps>) => {
+}: Omit<Required<SdkDashboardDisplayProps>, keyof CommonStylingProps>) => {
   // temporary name until we change `hideDownloadButton` to `downloads`
   const hideDownloadButton = !withDownloads;
 
