@@ -9,7 +9,6 @@ import {
   setupFieldsValuesEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
-  setupTablesBulkEndpoints,
   setupUnauthorizedFieldEndpoint,
   setupUnauthorizedFieldValuesEndpoints,
 } from "__support__/server-mocks";
@@ -197,7 +196,6 @@ async function setup({
 }: SetupOpts = {}) {
   setupDatabasesEndpoints(databases, { hasSavedQuestions: false });
   setupCardDataset();
-  setupTablesBulkEndpoints();
 
   if (hasFieldValuesAccess) {
     setupFieldsValuesEndpoints(fieldValues);
@@ -691,6 +689,10 @@ describe("DataModelV1", () => {
   });
 
   describe("table section", () => {
+    beforeEach(() => {
+      setupTableEndpoints(ORDERS_TABLE);
+    });
+
     it("should allow to rescan field values", async () => {
       await setup();
 
@@ -706,7 +708,7 @@ describe("DataModelV1", () => {
       );
 
       const calls = fetchMock.callHistory.calls(
-        "path:/api/table/rescan-values",
+        `path:/api/table/${ORDERS_TABLE.id}/rescan_values`,
         {
           method: "POST",
         },
@@ -717,9 +719,7 @@ describe("DataModelV1", () => {
       });
 
       const lastCall = calls[calls.length - 1];
-      expect(JSON.parse(lastCall.options.body as string)).toEqual({
-        table_ids: [ORDERS_TABLE.id],
-      });
+      expect(JSON.parse(lastCall.options.body as string)).toEqual({});
     });
 
     it("should allow to discard field values", async () => {
@@ -737,8 +737,9 @@ describe("DataModelV1", () => {
           name: "Discard cached field values",
         }),
       );
+
       const calls = fetchMock.callHistory.calls(
-        "path:/api/table/discard-values",
+        `path:/api/table/${ORDERS_TABLE.id}/discard_values`,
         {
           method: "POST",
         },
@@ -749,9 +750,7 @@ describe("DataModelV1", () => {
       });
 
       const lastCall = calls[calls.length - 1];
-      expect(JSON.parse(lastCall.options.body as string)).toEqual({
-        table_ids: [ORDERS_TABLE.id],
-      });
+      expect(JSON.parse(lastCall.options.body as string)).toEqual({});
     });
   });
 

@@ -15,6 +15,16 @@ export function setupTableEndpoints(
     {},
     { name: `table-${table.id}-put` },
   );
+  fetchMock.post(
+    `path:/api/table/${table.id}/rescan_values`,
+    {},
+    { name: `table-${table.id}-rescan-values` },
+  );
+  fetchMock.post(
+    `path:/api/table/${table.id}/discard_values`,
+    {},
+    { name: `table-${table.id}-discard-values` },
+  );
   setupTableQueryMetadataEndpoint(table);
   table.fields?.forEach((field) => setupFieldEndpoints({ ...field, table }));
 }
