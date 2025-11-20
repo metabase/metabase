@@ -44,13 +44,11 @@ export function CollectionItemsTable({ items }: CollectionItemsTableProps) {
     [items, sortingOptions],
   );
 
-  const descriptionWidth = 100;
-
   return (
     <Table aria-label={t`Table of models and metrics`}>
       <colgroup>
         <NameColumn {...sharedProps} />
-        <TableColumn {...descriptionProps} width={`${descriptionWidth}%`} />
+        <TableColumn {...descriptionProps} width="60%" />
         <TableColumn {...menuProps} width={DOTMENU_WIDTH} />
         <Columns.RightEdge.Col />
       </colgroup>

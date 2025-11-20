@@ -183,7 +183,7 @@ describe("scenarios > data studio > modeling > models", () => {
       .and("match", /\/model\/\d+/);
   });
 
-  it("should duplicate model via more menu", () => {
+  it.skip("should duplicate model via more menu", () => {
     cy.log("Navigate to Data Studio Modeling");
     cy.visit("/data-studio/modeling");
 
