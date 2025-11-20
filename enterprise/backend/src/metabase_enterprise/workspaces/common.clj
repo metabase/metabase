@@ -1,50 +1,27 @@
 (ns metabase-enterprise.workspaces.common
   (:require
+   [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.mirroring :as ws.mirroring]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
    [toucan2.core :as t2]))
 
-(defn- temp-assert-single-transform!
-  "A temporary restriction, until we have graph analysis merged."
-  [upstream-entities]
-  (assert (and (= 1 (count (keys upstream-entities)))
-               (= 1 (count (:transforms upstream-entities))))
-          "The only contents of the workspace must be a single transform."))
-
+;; TODO (Chris 2025-11-20) Just subsume the rest of this up into ws.dag/path-induced-subgraph
 (defn- build-graph
-  "Placeholder for our actual dag module, handling at most 1 transform, and not returning all the analysis."
+  "Thin wrapper around the dag module, that should probably be absorbed by it."
   [upstream]
   (if (not-any? seq (vals upstream))
     {:db_id      nil
      :transforms []
-     :inputs     []}
-    (do
-      (temp-assert-single-transform! upstream)
-      (let [transform-id (first (get upstream :transforms))
-            ;; NOte: we only support MBQL transforms for now
-            transform    (t2/select-one [:model/Transform :id :name :source :target] :id transform-id)
-            _            (assert (not-empty transform))
-            ;; Note: if there are additional tables being joined, we are not picking them up @_@
-            source-id    (get-in transform [:source :query :stages 0 :source-table])
-            _            (assert (pos-int? source-id))
-            source-table (t2/select-one [:model/Table :id :schema :name] :id source-id)
-            _            (assert (not-empty source-table))
-            output-table (let [{:keys [schema name]} (:target transform)]
-                           ;; TODO (Chris 2025-11-19) Relax downstream assumption that upstream-tx output table exists
-                           {:id     (t2/select-one-pk :model/Table :schema schema :name name)
-                            :schema schema
-                            :name   name})
-            db-ids       (vec (sort (distinct (filter pos-int? [(-> transform :source :query :database) (:db_id source-table)]))))
-            _            (assert (= 1 (count db-ids)) "All inputs and outputs must belong to the same database.")]
-        ;; Graph is based on this.
-        ;; https://metaboat.slack.com/archives/C099RKNLP6U/p1763470366995789?thread_ts=1763462819.139739&cid=C099RKNLP6U
-        ;; "tables" was renamed to "outputs", to perhaps make it clearer that they are not the input tables.
-        {:db_id      (first db-ids)
-         :transforms [(select-keys transform [:id :name])]
-         :inputs     [source-table]
-         :outputs    [output-table]}))))
+     :inputs     []
+     :outputs    []}
+    (let [graph        (ws.dag/path-induced-subgraph upstream)
+          db-ids       (when-let [table-ids (seq (keep :id (concat (:inputs graph) (:outputs graph))))]
+                         (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
+          _            (assert (= 1 (count db-ids)) "All inputs and outputs must belong to the same database.")]
+      ;; One reason this is here, is that I don't want the DAG module to have the single-DWH assumption.
+      (assoc graph :db_id (first db-ids)))))
 
 ;; TODO: Generate new metabase user for the workspace
 ;; TODO: Should we move this to model as per the diagram?
@@ -81,7 +58,6 @@
                upstream    :upstream}]
   ;; TODO put this in the malli schema for a request
   (assert (or maybe-db-id (some seq (vals upstream))) "Must provide a database_id unless initial entities are given.")
-  (temp-assert-single-transform! upstream)
   (let [graph          (build-graph upstream)
         inferred-db-id (:db_id graph)
         _              (when (and maybe-db-id inferred-db-id)
@@ -114,13 +90,14 @@
           (clojure.java.jdbc/execute! jdbc-spec [(str "DROP SCHEMA \"" schema "\" CASCADE")])))
       (t2/delete! :model/Workspace :id ws-clause)))
 
-  (def upstream-tx-id (t2/select-one-pk :model/Transform :workspace_id nil {:order-by [:id]}))
-  (def admin-id (t2/select-one-pk :model/User :is_superuser true {:order-by [:id]}))
+  (def upstream-id (t2/select-one-pk :model/Transform :workspace_id nil {:order-by [:id]}))
+  (def upstream-ids (t2/select-pks-vec :model/Transform :workspace_id nil {:order-by [:id]}))
 
   ;; Ensure output table exists
-  (#'metabase-enterprise.transforms.execute/run-mbql-transform! (t2/select-one :model/Transform upstream-tx-id))
+  (#'metabase-enterprise.transforms.execute/run-mbql-transform! (t2/select-one :model/Transform upstream-id))
 
-  (binding [api/*current-user-id* admin-id]
-    (create-workspace! admin-id {:name "Workplace Workspace", :upstream {:transforms [upstream-tx-id]}}))
+  (let [admin-id (t2/select-one-pk :model/User :is_superuser true {:order-by [:id]})]
+    (binding [api/*current-user-id* admin-id]
+      (create-workspace! admin-id {:name "Workplace Workspace", :upstream {:transforms upstream-ids #_[upstream-id]}})))
 
   (clean-up-ws!*))

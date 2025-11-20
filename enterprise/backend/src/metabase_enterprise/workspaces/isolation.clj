@@ -58,7 +58,7 @@
 ;;;; Transform table duplication
 
 (defmulti duplicate-output-table!
-  "WIP"
+  "Create an isolated copy of the given output tables, for a workspace transform to write to."
   {:added "0.59.0" :arglists '([database transform])}
   #'dispatch-on-engine
   :hierarchy #'driver/hierarchy)
@@ -89,17 +89,25 @@
   "Create new _isolated tables_ to correspond to the outputs of the upstream graph.
    Decorate the graph outputs with the mapping to the new tables."
   [workspace database graph]
-  (assoc graph :outputs (vec
-                         (for [upstream-output (:outputs graph)]
-                           (let [isolated-table (duplicate-output-table! database workspace upstream-output)]
-                             (t2/insert! :model/WorkspaceMappingTable
-                                         {:upstream_id   (:id upstream-output)
-                                          :downstream_id (:id isolated-table)
-                                          :workspace_id  (:id workspace)})
-                             (assoc upstream-output :mapping isolated-table))))))
+  (let [output-ids    (map :id (:outputs graph))
+        ;; TODO (Chris 2025-11-20) Avoid querying again here, let's have this data passed down as part of the graph
+        table-by-id   (when (seq output-ids)
+                        (into {}
+                              (map (juxt :id identity))
+                              (t2/select [:model/Table :id :name :schema] :id [:in output-ids])))]
+    (assoc graph :outputs (vec
+                           (for [upstream-output (:outputs graph)
+                                 :let [hydrated-output (merge upstream-output
+                                                              (get table-by-id (:id upstream-output)))]]
+                             (let [isolated-table (duplicate-output-table! database workspace hydrated-output)]
+                               (t2/insert! :model/WorkspaceMappingTable
+                                           {:upstream_id   (:id upstream-output)
+                                            :downstream_id (:id isolated-table)
+                                            :workspace_id  (:id workspace)})
+                               (assoc hydrated-output :mapping isolated-table)))))))
 
 (defn ensure-database-isolation!
-  "WIP"
+  "Wrapper around the driver method, to make migrations easier in future."
   [workspace database]
   ;; TODO: Make this check the ws existence aka fail closed ~atm
   (init-workspace-database-isolation! database workspace))
