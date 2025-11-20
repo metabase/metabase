@@ -40,7 +40,7 @@ export function ModelingSidebarView({
       data-testid="modeling-sidebar"
     >
       <Stack gap={0}>
-        <Box className={S.section} p="md">
+        <Box className={S.section} p="md" data-testid="collections-section">
           <LibrarySection
             collections={collections}
             selectedCollectionId={selectedCollectionId}
