@@ -527,7 +527,7 @@ export const PLUGIN_APPLICATION_PERMISSIONS = {
   tabs: [] as any,
   selectors: {
     canAccessSettings: (_state: any) => false,
-    canManageSubscriptions: (_state: any) => true,
+    canManageSubscriptions: (_state: any) => false,
   },
 };
 
