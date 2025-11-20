@@ -30,7 +30,7 @@ export function EmbeddingNav() {
         )}
 
         <EmbeddingNavItem
-          path="/admin/embedding/modular"
+          path="/admin/embedding"
           label={
             <Flex gap="sm" align="center">
               <span>{t`Settings`}</span>
