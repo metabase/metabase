@@ -104,22 +104,6 @@ describe("StaticDashboard", () => {
 
   addSubscriptionTests(setup);
 
-  it("should not show subscriptions button if subscriptions are disabled", async () => {
-    await setup({
-      props: { withSubscriptions: false },
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
-    });
-
-    const dashboardHeader = within(screen.getByTestId("dashboard-header"));
-
-    expect(
-      dashboardHeader.queryByLabelText("Subscriptions"),
-    ).not.toBeInTheDocument();
-  });
-
   it("should not show 'Add a chart' button on empty dashboards", async () => {
     await setup({ dashcards: [] });
 
