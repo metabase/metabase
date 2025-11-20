@@ -39,7 +39,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     });
 
     it("should show the sdk upsell link in oss", () => {
-      cy.visit("/admin/embedding/modular");
+      cy.visit("/admin/embedding");
 
       mainPage().within(() => {
         cy.findByRole("link", { name: "Upgrade" })

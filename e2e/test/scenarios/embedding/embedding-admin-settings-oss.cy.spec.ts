@@ -16,7 +16,7 @@ describe(
       cy.visit("/admin/embedding");
 
       cy.log("Check that we're on the embedding settings page");
-      cy.url().should("include", "/admin/embedding/modular");
+      cy.url().should("include", "/admin/embedding");
       cy.get("main").findByText("Embedding settings").should("be.visible");
 
       cy.log("Verify sidebar does not contain setup guide");
