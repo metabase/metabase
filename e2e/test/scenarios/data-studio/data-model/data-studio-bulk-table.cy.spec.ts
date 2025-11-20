@@ -29,6 +29,7 @@ describe("bulk table operations", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
     cy.intercept("POST", "/api/ee/data-studio/table/sync-schema").as(
       "syncSchema",
     );
