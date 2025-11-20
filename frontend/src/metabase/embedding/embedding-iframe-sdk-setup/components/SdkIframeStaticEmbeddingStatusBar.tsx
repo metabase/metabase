@@ -6,15 +6,15 @@ import {
 } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { STATIC_EMBED_JS_EMBEDDING_TYPE } from "metabase/embedding/constants";
+import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
+import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
+import { isStepWithResource } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-step-with-resource";
 import { EmbedModalContentStatusBar } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/EmbedModalContentStatusBar";
 import type { StaticEmbedSetupPaneProps } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/StaticEmbedSetupPane";
 import { getHasSettingsChanges } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-has-settings-changes";
 import { getStaticEmbedSetupPublishHandlers } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import { Card } from "metabase/ui";
-import { useSdkIframeEmbedSetupContext } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
-import { getResourceTypeFromExperience } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-resource-type-from-experience";
-import { isStepWithResource } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/is-step-with-resource";
 
 type Props = Pick<StaticEmbedSetupPaneProps, "resource" | "resourceType"> & {
   initialEmbeddingParameters: EmbeddingParameters;

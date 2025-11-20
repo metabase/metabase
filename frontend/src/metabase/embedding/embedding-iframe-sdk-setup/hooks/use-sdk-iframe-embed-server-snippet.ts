@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 
 import { useSetting } from "metabase/common/hooks";
+import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
+import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
 import {
   clojure,
   node,
@@ -11,8 +13,6 @@ import type {
   CodeSampleParameters,
   ServerCodeSampleConfig,
 } from "metabase/public/lib/types";
-import { useSdkIframeEmbedSetupContext } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
-import { getResourceTypeFromExperience } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-resource-type-from-experience";
 
 const getEmbedServerCodeExampleOptions = (
   codeSampleParameters: Omit<CodeSampleParameters, "displayOptions">,

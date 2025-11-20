@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 
 import { useSetting } from "metabase/common/hooks";
+import type { SdkIframeEmbedSetupContextType } from "metabase/embedding/embedding-iframe-sdk-setup/context";
+import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
 import { getSignedToken } from "metabase/public/lib/embed";
-import type { SdkIframeEmbedSetupContextType } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
-import { getResourceTypeFromExperience } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-resource-type-from-experience";
 
 const SIGNED_TOKEN_FOR_SNIPPET_EXPIRATION_MINUTES = 10;
 const SIGNED_TOKEN_FOR_PREVIEW_EXPIRATION_MINUTES = 60;

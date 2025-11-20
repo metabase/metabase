@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { UpsellGem } from "metabase/admin/upsells/components";
 import { UpsellCard } from "metabase/common/components/UpsellCard";
+import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { useSelector } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
-import { useSdkIframeEmbedSetupContext } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
 
 import { TooltipWarning, type TooltipWarningMode } from "./TooltipWarning";
 

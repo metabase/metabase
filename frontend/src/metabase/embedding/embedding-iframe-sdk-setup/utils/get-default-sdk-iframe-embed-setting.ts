@@ -1,7 +1,6 @@
 import { P, match } from "ts-pattern";
 
 import type { SdkDashboardId, SdkQuestionId } from "embedding-sdk-bundle/types";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import type {
   BrowserEmbedOptions,
   DashboardEmbedOptions,
@@ -9,6 +8,7 @@ import type {
   MetabotEmbedOptions,
   QuestionEmbedOptions,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 
 import type {
   SdkIframeEmbedSetupExperience,

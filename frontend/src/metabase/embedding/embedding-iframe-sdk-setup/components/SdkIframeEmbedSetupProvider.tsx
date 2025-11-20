@@ -3,13 +3,13 @@ import { useMount } from "react-use";
 
 import { useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
+import { trackEmbedWizardOpened } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
+import { useEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-paramers";
+import { useGetStaticEmbeddingSignedToken } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-get-static-embedding-signed-token";
 import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   type SdkIframeEmbedSetupModalInitialState,
 } from "metabase/plugins";
-import { trackEmbedWizardOpened } from "metabase-enterprise/embedding_iframe_sdk_setup/analytics";
-import { useEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-embedding-paramers";
-import { useGetStaticEmbeddingSignedToken } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-get-static-embedding-signed-token";
 
 import {
   SdkIframeEmbedSetupContext,

@@ -1,5 +1,5 @@
+import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import type { EmbeddingParameters } from "metabase/public/lib/types";
-import type { SdkIframeEmbedSetupSettings } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
 
 export const getSdkIframeEmbedSettingsForEmbeddingParameters = (
   embeddingParameters: EmbeddingParameters,

@@ -1,5 +1,5 @@
+import { isQuestionOrDashboardExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-experience";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
-import { isQuestionOrDashboardExperience } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/is-question-or-dashboard-experience";
 
 import type {
   SdkIframeDashboardEmbedSettings,

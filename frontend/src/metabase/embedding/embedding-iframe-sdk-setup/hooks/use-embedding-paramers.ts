@@ -1,11 +1,11 @@
 import { useCallback, useMemo } from "react";
 
+import { useHideParameter } from "metabase/embedding/embedding-iframe-sdk-setup/components/ParameterSettings/hooks/use-hide-parameter";
+import { useLockParameter } from "metabase/embedding/embedding-iframe-sdk-setup/components/ParameterSettings/hooks/use-lock-parameter";
+import type { SdkIframeEmbedSetupContextType } from "metabase/embedding/embedding-iframe-sdk-setup/context";
+import { getSdkIframeEmbedSettingsForEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-sdk-iframe-embed-settings-for-embedding-parameters";
 import { getDefaultEmbeddingParams } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-default-embedding-params";
 import type { EmbeddingParameters } from "metabase/public/lib/types";
-import { useHideParameter } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-hide-parameter";
-import { useLockParameter } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-lock-parameter";
-import type { SdkIframeEmbedSetupContextType } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
-import { getSdkIframeEmbedSettingsForEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-sdk-iframe-embed-settings-for-embedding-parameters";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
 export const useEmbeddingParameters = ({

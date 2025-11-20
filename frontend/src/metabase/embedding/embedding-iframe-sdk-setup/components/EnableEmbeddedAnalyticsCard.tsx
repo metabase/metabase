@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useSdkIframeEmbedSetupContext } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
+import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 
 import { EmbeddingControlCard } from "./EmbeddingControlCard";
 

@@ -1,6 +1,6 @@
 import { match } from "ts-pattern";
 
-import { getCommonEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-common-embed-settings";
+import { getCommonEmbedSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-common-embed-settings";
 
 import type { SdkIframeEmbedSetupSettings } from "../types";
 
