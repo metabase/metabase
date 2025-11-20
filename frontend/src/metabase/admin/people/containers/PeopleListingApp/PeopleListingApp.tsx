@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -8,11 +8,13 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Flex, Stack, Tabs } from "metabase/ui";
+import type { UserTenancy } from "metabase-types/api";
 
 import { PeopleList } from "../../components/PeopleList";
 import { SearchFilter } from "../../components/SearchFilter";
@@ -38,6 +40,7 @@ export function PeopleListingApp({
 }) {
   const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
+  const isUsingTenants = useSetting("use-tenants");
 
   const {
     data: groups = [],
@@ -48,6 +51,18 @@ export function PeopleListingApp({
     { skip: external },
   );
 
+  const tenancy: UserTenancy = useMemo(() => {
+    // External Users page - shows only external users
+    if (external) {
+      return "external";
+    }
+
+    // People page:
+    // tenants enabled - shows both internal and external users
+    // tenants disabled - shows only internal users
+    return isUsingTenants ? "all" : "internal";
+  }, [external, isUsingTenants]);
+
   const {
     query,
     status,
@@ -56,12 +71,12 @@ export function PeopleListingApp({
     updateStatus,
     handleNextPage,
     handlePreviousPage,
-  } = usePeopleQuery(PAGE_SIZE, external ? "external" : "all");
+  } = usePeopleQuery(PAGE_SIZE, tenancy);
 
   const { data: usersData } = useListUsersQuery({
     status: "deactivated",
     limit: 0,
-    ...(external ? { tenancy: "external" } : { tenancy: "all" }),
+    tenancy,
   });
   const hasDeactivatedUsers = usersData && usersData.total > 0;
 
@@ -145,7 +160,7 @@ export function PeopleListingApp({
                   onNextPage={handleNextPage}
                   onPreviousPage={handlePreviousPage}
                   noResultsMessage={noUsersFoundMessage}
-                  isExternal={external}
+                  isExternalPage={external}
                 />
               )}
 

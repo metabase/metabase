@@ -1,11 +1,10 @@
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   BaseUser,
   DatabaseId,
   SchemaName,
   TableId,
 } from "metabase-types/api";
-
-export const isInternalUser = (user: BaseUser) => user.tenant_id === null;
 
 const getPeopleRoutePrefix = (isExternal: boolean) =>
   isExternal ? "/admin/tenants/people" : "/admin/people";
@@ -17,30 +16,32 @@ export function newTenantUser() {
   return "/admin/tenants/people/new";
 }
 
-export function editUser(user: BaseUser, isExternal: boolean) {
-  return `${getPeopleRoutePrefix(isExternal)}/${user.id}/edit`;
+export function editUser(user: BaseUser, isExternalPage: boolean) {
+  return `${getPeopleRoutePrefix(isExternalPage)}/${user.id}/edit`;
 }
 
-export function resetPassword(user: BaseUser, isExternal: boolean) {
-  return `${getPeopleRoutePrefix(isExternal)}/${user.id}/reset`;
+export function resetPassword(user: BaseUser, isExternalPage: boolean) {
+  return `${getPeopleRoutePrefix(isExternalPage)}/${user.id}/reset`;
 }
 
 export function newUserSuccess(user: BaseUser) {
-  const isExternal = !isInternalUser(user);
-  return `${getPeopleRoutePrefix(isExternal)}/${user.id}/success`;
+  const isExternalUser = PLUGIN_TENANTS.isExternalUser(user);
+
+  return `${getPeopleRoutePrefix(isExternalUser)}/${user.id}/success`;
 }
 
-export function deactivateUser(user: BaseUser, isExternal: boolean) {
-  return `${getPeopleRoutePrefix(isExternal)}/${user.id}/deactivate`;
+export function deactivateUser(user: BaseUser, isExternalPage: boolean) {
+  return `${getPeopleRoutePrefix(isExternalPage)}/${user.id}/deactivate`;
 }
 
 export function reactivateUser(user: BaseUser) {
-  const isExternal = !isInternalUser(user);
-  return `${getPeopleRoutePrefix(isExternal)}/${user.id}/reactivate`;
+  const isExternalUser = PLUGIN_TENANTS.isExternalUser(user);
+
+  return `${getPeopleRoutePrefix(isExternalUser)}/${user.id}/reactivate`;
 }
 
-export function unsubscribeUser(user: BaseUser, isExternal: boolean) {
-  return `${getPeopleRoutePrefix(isExternal)}/${user.id}/unsubscribe`;
+export function unsubscribeUser(user: BaseUser, isExternalPage: boolean) {
+  return `${getPeopleRoutePrefix(isExternalPage)}/${user.id}/unsubscribe`;
 }
 
 // TODO: move to EE urls

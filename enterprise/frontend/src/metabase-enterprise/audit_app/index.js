@@ -20,10 +20,10 @@ import { isAuditDb } from "./utils";
 export function initializePlugin() {
   if (hasPremiumFeature("audit_app")) {
     // Add new menu item function
-    const menuItemFunction = (user, isExternal) => [
+    const menuItemFunction = (user, isExternalPage) => [
       <Menu.Item
         component={ForwardRefLink}
-        to={Urls.unsubscribeUser(user, isExternal)}
+        to={Urls.unsubscribeUser(user, isExternalPage)}
         key="unsubscribe"
       >
         {t`Unsubscribe from all subscriptions / alerts`}

@@ -26,7 +26,7 @@ export const EditUserModal = ({ onClose, params }: EditUserModalProps) => {
 
   // Always consider users with an associated tenant as external users.
   // This allows editing external users from the "People" page.
-  const isExternal = PLUGIN_TENANTS.isExternalUser(user);
+  const isExternalUser = PLUGIN_TENANTS.isExternalUser(user);
 
   const initialValues = useMemo(
     () => ({
@@ -37,11 +37,11 @@ export const EditUserModal = ({ onClose, params }: EditUserModalProps) => {
       login_attributes: user?.login_attributes || {},
       user_group_memberships: user?.user_group_memberships || [],
 
-      ...(isExternal
+      ...(isExternalUser
         ? { tenant_id: user?.tenant_id }
         : { user_group_memberships: user?.user_group_memberships || [] }),
     }),
-    [user, isExternal],
+    [user, isExternalUser],
   );
 
   const handleSubmit = async (newValues: Partial<User>) => {
@@ -64,7 +64,7 @@ export const EditUserModal = ({ onClose, params }: EditUserModalProps) => {
           onCancel={onClose}
           initialValues={initialValues}
           onSubmit={handleSubmit}
-          external={isExternal}
+          external={isExternalUser}
           userId={userId}
           edit
         />

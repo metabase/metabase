@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { Fragment } from "react";
+import { Fragment, useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import {
@@ -48,8 +48,8 @@ interface PeopleListProps extends PeopleListQueryProps {
   isAdmin: boolean;
   onNextPage?: () => void;
   onPreviousPage: () => void;
+  isExternalPage?: boolean;
   noResultsMessage: string;
-  isExternal: boolean;
 }
 
 export const PeopleList = ({
@@ -59,8 +59,8 @@ export const PeopleList = ({
   query,
   onNextPage,
   onPreviousPage,
+  isExternalPage = false,
   noResultsMessage,
-  isExternal,
 }: PeopleListProps) => {
   const { modalContent, show } = useConfirmation();
 
@@ -171,9 +171,13 @@ export const PeopleList = ({
     return createMembership({ group_id: groupId, user_id: userId }).unwrap();
   };
 
-  const groupsOrTenantHeaderTitle = isUsingTenants
-    ? t`Groups / Tenant`
-    : t`Groups`;
+  const groupOrTenantHeader = useMemo(() => {
+    if (isExternalPage) {
+      return t`Tenant`;
+    }
+
+    return isUsingTenants ? t`Groups / Tenant` : t`Groups`;
+  }, [isExternalPage, isUsingTenants]);
 
   return (
     <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
@@ -189,13 +193,13 @@ export const PeopleList = ({
               <th>{t`Email`}</th>
               {showDeactivated ? (
                 <Fragment>
-                  <th>{groupsOrTenantHeaderTitle}</th>
+                  {isUsingTenants && <th>{t`Tenant`}</th>}
                   <th>{t`Deactivated`}</th>
                   <th />
                 </Fragment>
               ) : (
                 <Fragment>
-                  <th>{groupsOrTenantHeaderTitle}</th>
+                  <th>{groupOrTenantHeader}</th>
                   <th>{t`Last Login`}</th>
                   <th />
                 </Fragment>
@@ -222,7 +226,7 @@ export const PeopleList = ({
                     membershipData: Partial<Member>,
                   ) => handleChange(groupId, membershipData, user.id)}
                   isConfirmModalOpen={Boolean(modalContent)}
-                  isExternal={isExternal}
+                  isExternalPage={isExternalPage}
                 />
               ))}
           </tbody>

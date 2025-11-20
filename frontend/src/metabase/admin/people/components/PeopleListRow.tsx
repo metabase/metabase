@@ -44,7 +44,7 @@ interface PeopleListRowProps {
   onChange: (groupId: GroupId, membershipData: Partial<Member>) => void;
   onRemove: (groupId: GroupId) => void;
   isConfirmModalOpen: boolean;
-  isExternal: boolean;
+  isExternalPage: boolean;
 }
 
 export const PeopleListRow = ({
@@ -58,7 +58,7 @@ export const PeopleListRow = ({
   onRemove,
   onChange,
   isConfirmModalOpen,
-  isExternal,
+  isExternalPage,
 }: PeopleListRowProps) => {
   const isExternalUser = !!user.tenant_id;
   const membershipsByGroupId = useMemo(
@@ -142,7 +142,7 @@ export const PeopleListRow = ({
                 <Menu.Dropdown>
                   <Menu.Item
                     component={ForwardRefLink}
-                    to={Urls.editUser(user, isExternal)}
+                    to={Urls.editUser(user, isExternalPage)}
                   >
                     {t`Edit user`}
                   </Menu.Item>
@@ -150,20 +150,20 @@ export const PeopleListRow = ({
                   {isPasswordLoginEnabled && (
                     <Menu.Item
                       component={ForwardRefLink}
-                      to={Urls.resetPassword(user, isExternal)}
+                      to={Urls.resetPassword(user, isExternalPage)}
                     >
                       {t`Reset password`}
                     </Menu.Item>
                   )}
 
                   {PLUGIN_ADMIN_USER_MENU_ITEMS.flatMap((getItems) =>
-                    getItems(user, isExternal),
+                    getItems(user, isExternalPage),
                   )}
 
                   {!isCurrentUser && (
                     <Menu.Item
                       component={ForwardRefLink}
-                      to={Urls.deactivateUser(user, isExternal)}
+                      to={Urls.deactivateUser(user, isExternalPage)}
                       c="danger"
                     >
                       {t`Deactivate user`}
