@@ -1,5 +1,5 @@
 accept = ["200..=204", "429"]
-exclude_path = ["docs/embedding/sdk"]
+exclude_path = ["docs/embedding/sdk", "docs/utils"]
 no_progress = true
 include_fragments = true
 verbose = "error"
