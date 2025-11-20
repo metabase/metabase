@@ -510,6 +510,29 @@ describe("scenarios > data studio > datamodel", () => {
         );
       });
 
+      it("should remove the active highlight once tables are selected", () => {
+        H.DataModel.visitDataStudio();
+
+        TablePicker.getSearchInput().type("an");
+        TablePicker.getTable("Animals").eq(0).should("be.visible").click();
+        TablePicker.getTable("Animals")
+          .eq(0)
+          .should("have.attr", "aria-selected", "true");
+
+        TablePicker.getTable("Animals")
+          .eq(0)
+          .find('input[type="checkbox"]')
+          .check();
+        TablePicker.getTable("Animals").eq(1).should("be.visible").click();
+
+        TablePicker.getTable("Animals")
+          .eq(0)
+          .should("not.have.attr", "aria-selected", "true");
+        TablePicker.getTable("Animals")
+          .eq(1)
+          .should("not.have.attr", "aria-selected", "true");
+      });
+
       it("should select/deselect tables with clicking checkboxes", () => {
         H.DataModel.visitDataStudio();
         TablePicker.getSearchInput().type("a");

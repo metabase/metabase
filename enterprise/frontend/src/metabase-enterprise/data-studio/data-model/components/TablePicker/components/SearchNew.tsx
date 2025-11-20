@@ -1,8 +1,9 @@
 import cx from "classnames";
-import { useContext, useEffect, useRef } from "react";
+import { useContext, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api";
 import { useListTablesQuery } from "metabase/api/table";
 import { DataModelContext } from "metabase/metadata/pages/shared/DataModelContext";
 import { getUrl, parseRouteParams } from "metabase/metadata/pages/shared/utils";
@@ -34,7 +35,7 @@ export function SearchNew({
   const { baseUrl } = useContext(DataModelContext);
   const {
     data: tables,
-    isLoading,
+    isLoading: isLoadingTables,
     refetch,
   } = useListTablesQuery({
     term: query,
@@ -51,6 +52,23 @@ export function SearchNew({
     "orphan-only": filters.ownerUserId === "unknown" ? true : undefined,
     "unused-only": filters.unusedOnly === true ? true : undefined,
   });
+  const { data: databases, isLoading: isLoadingDatabases } =
+    useListDatabasesQuery({ include_editable_data_model: true });
+
+  const allowedDatabaseIds = useMemo(
+    () => new Set(databases?.data.map((database) => database.id) ?? []),
+    [databases],
+  );
+
+  const filteredTables = useMemo(() => {
+    if (!tables || allowedDatabaseIds.size === 0) {
+      return [];
+    }
+
+    return tables.filter((table) => allowedDatabaseIds.has(table.db_id));
+  }, [allowedDatabaseIds, tables]);
+
+  const isLoading = isLoadingTables || isLoadingDatabases;
 
   useEffect(() => {
     setOnUpdateCallback(() => refetch);
@@ -73,7 +91,7 @@ export function SearchNew({
     );
   }
 
-  if (!tables || tables.length === 0) {
+  if (filteredTables.length === 0) {
     return (
       <Box p="xl">
         <Text c="text.2">{t`No tables found`}</Text>
@@ -97,7 +115,7 @@ export function SearchNew({
 
       const start = Math.min(anchorIndex, tableIndex);
       const end = Math.max(anchorIndex, tableIndex);
-      const rangeTables = tables.slice(start, end + 1);
+      const rangeTables = filteredTables.slice(start, end + 1);
 
       setSelectedTables((prev) => {
         const newSet = new Set(prev);
@@ -127,11 +145,12 @@ export function SearchNew({
   return (
     <Stack>
       <Stack gap={0} px="lg">
-        {tables.map((table, tableIndex) => {
+        {filteredTables.map((table, tableIndex) => {
           const breadcrumbs = table.schema
             ? `${table.db?.name} (${table.schema})`
             : table.db?.name;
-          const active =
+          const isActive =
+            selectedItemsCount === 0 &&
             routeParams.databaseId === table.db_id &&
             routeParams.schemaName === table.schema &&
             routeParams.tableId === table.id;
@@ -139,8 +158,9 @@ export function SearchNew({
           return (
             <Flex
               component={Link}
+              aria-selected={isActive}
               className={cx(S.item, {
-                [S.active]: active,
+                [S.active]: isActive,
               })}
               key={table.id}
               data-testid="tree-item"
@@ -182,18 +202,18 @@ export function SearchNew({
                   top: 4,
                 }}
                 name="table2"
-                c={active ? "brand" : "text-light"}
+                c={isActive ? "brand" : "text-light"}
                 size={16}
               />
               <Text
-                c={active ? "brand" : "text-primary"}
+                c={isActive ? "brand" : "text-primary"}
                 fw={500}
                 style={{ flex: 1 }}
               >
                 {table.display_name}
               </Text>
               {breadcrumbs && (
-                <BreadCrumbs active={active} breadcrumbs={breadcrumbs} />
+                <BreadCrumbs active={isActive} breadcrumbs={breadcrumbs} />
               )}
             </Flex>
           );
