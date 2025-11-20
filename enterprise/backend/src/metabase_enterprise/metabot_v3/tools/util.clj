@@ -108,11 +108,11 @@
   [{:keys [field-id] :as item} columns]
   (if-let [{:keys [model-tag model-id field-index]} (parse-field-id field-id)]
     (let [;; Filter columns to those from the specified model
-          ;; For queries ('q'), all columns belong to that query so we don't filter
-          model-columns (case model-tag
-                          "t" (filterv #(= (:table-id %) model-id) columns)
-                          "c" (filterv #(= (:lib/card-id %) model-id) columns)
-                          "q" columns)
+          ;; For fields in tables, we filter by table-id since it may be an implicitly-joined table to another
+          ;; table/card, and we only want to index into the columns from that specific table.
+          model-columns (if (= model-tag "t")
+                          (filterv #(= (:table-id %) model-id) columns)
+                          columns)
           ;; Get the column at the specified index within the filtered set
           column (get model-columns field-index)]
       (if column
