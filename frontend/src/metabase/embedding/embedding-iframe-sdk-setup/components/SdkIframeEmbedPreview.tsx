@@ -14,10 +14,6 @@ import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embeddin
 // by appending the script
 import { setupConfigWatcher } from "metabase/embedding/embedding-iframe-sdk/embed";
 import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
-import type {
-  SdkIframeDashboardEmbedSettings,
-  SdkIframeQuestionEmbedSettings,
-} from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { colors as defaultMetabaseColors } from "metabase/lib/colors";
 import { Card } from "metabase/ui";
@@ -227,24 +223,14 @@ const SdkIframeEmbedPreviewInner = () => {
 export const SdkIframeEmbedPreview = () => {
   const { settings } = useSdkIframeEmbedSetupContext();
 
-  const hiddenParams = (
-    settings as SdkIframeDashboardEmbedSettings | SdkIframeQuestionEmbedSettings
-  ).hiddenParameters;
-  const lockedParams = (
-    settings as SdkIframeDashboardEmbedSettings | SdkIframeQuestionEmbedSettings
-  ).lockedParameters;
-
   const remountKey = useMemo(
     () =>
       JSON.stringify({
-        // Hidden and locked params must force re-mount the preview to avoid issues
-        hiddenParams,
-        lockedParams,
         // We must re-mount preview when `isGuestEmbed` setting is changed
-        // to properly work with Guest Embed auth handling inside rendered SDK
+        // to force its change for embed.js
         isGuestEmbed: settings.isGuestEmbed,
       }),
-    [hiddenParams, lockedParams, settings.isGuestEmbed],
+    [settings.isGuestEmbed],
   );
 
   return <SdkIframeEmbedPreviewInner key={remountKey} />;
