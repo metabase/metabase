@@ -91,6 +91,7 @@
     :model/SemanticSearchTokenTracking       metabase-enterprise.semantic-search.models.token-tracking
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
+    :model/SupportAccessGrantLog metabase-enterprise.support-access-grants.models.support-access-grant-log
     :model/Table                             metabase.warehouse-schema.models.table
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/Timeline                          metabase.timeline.models.timeline

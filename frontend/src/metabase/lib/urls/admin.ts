@@ -95,3 +95,7 @@ export function adminToolsErrors() {
 export function adminToolsModelCaching() {
   return "/admin/tools/model-caching";
 }
+
+export function adminToolsGrantAccess() {
+  return "/admin/tools/help/grant-access";
+}

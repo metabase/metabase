@@ -160,6 +160,156 @@ databaseChangeLog:
             constraintName: unique_auth_identity_user_provider
 
   - changeSet:
+      id: v58.2025-11-06T15:00:43
+      author: edpaget
+      comment: Create support_access_grant_log table for tracking support access grants
+      changes:
+        - createTable:
+            tableName: support_access_grant_log
+            remarks: Store support access grant requests and their lifecycle for audit purposes
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Unique identifier for the grant
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: ID of the admin user who created this grant
+                  constraints:
+                    nullable: true
+              - column:
+                  name: ticket_number
+                  type: varchar(100)
+                  remarks: Support ticket number associated with this grant
+                  constraints:
+                    nullable: true
+              - column:
+                  name: notes
+                  type: varchar(255)
+                  remarks: Additional notes associated with this grant
+                  constraints:
+                    nullable: true
+              - column:
+                  name: grant_start_timestamp
+                  type: ${timestamp_type}
+                  remarks: When the grant becomes active (UTC)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: grant_end_timestamp
+                  type: ${timestamp_type}
+                  remarks: When the grant expires (UTC)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: revoked_at
+                  type: ${timestamp_type}
+                  remarks: When the grant was manually revoked (UTC), null if not revoked
+                  constraints:
+                    nullable: true
+              - column:
+                  name: revoked_by_user_id
+                  type: int
+                  remarks: ID of the admin user who revoked this grant
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When this record was created (UTC)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When this record was last updated (UTC)
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: support_access_grant_log
+
+  - changeSet:
+      id: v58.2025-11-06T15:01:00
+      author: edpaget
+      comment: Add index for finding support access grants by user
+      changes:
+        - createIndex:
+            indexName: idx_support_access_grant_log_user_id
+            tableName: support_access_grant_log
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: v58.2025-11-06T15:01:01
+      author: edpaget
+      comment: Add index for finding support access grants by revoked_by_user_id
+      changes:
+        - createIndex:
+            indexName: idx_support_access_grant_log_revoked_by_user_id
+            tableName: support_access_grant_log
+            columns:
+              - column:
+                  name: revoked_by_user_id
+
+  - changeSet:
+      id: v58.2025-11-06T15:01:02
+      author: edpaget
+      comment: Add foreign key constraint from support_access_grant_log.user_id to core_user with SET NULL on delete
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: support_access_grant_log
+            baseColumnNames: user_id
+            constraintName: fk_support_access_grant_log_user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: support_access_grant_log
+            constraintName: fk_support_access_grant_log_user_id
+
+  - changeSet:
+      id: v58.2025-11-06T15:01:03
+      author: edpaget
+      comment: Add foreign key constraint from support_access_grant_log.revoked_by_user_id to core_user with SET NULL on delete
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: support_access_grant_log
+            baseColumnNames: revoked_by_user_id
+            constraintName: fk_support_access_grant_log_revoked_by_user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: support_access_grant_log
+            constraintName: fk_support_access_grant_log_revoked_by_user_id
+
+  - changeSet:
+      id: v58.2025-11-06T15:01:04
+      author: edpaget
+      comment: Add index for finding active support access grants
+      changes:
+        - createIndex:
+            indexName: idx_support_access_grant_log_active
+            tableName: support_access_grant_log
+            columns:
+              - column:
+                  name: grant_end_timestamp
+              - column:
+                  name: revoked_at
+            where: revoked_at IS NULL
+
+  - changeSet:
       id: v58.2025-11-12T00:00:00
       author: edpaget
       comment: Add index on provider_id for efficient lookups
