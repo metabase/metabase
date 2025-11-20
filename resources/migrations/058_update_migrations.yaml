@@ -1324,6 +1324,12 @@ databaseChangeLog:
       id: v58.2025-11-20T08:35:14
       author: christruter
       comment: Add index on metabase_field.workspace_id
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_metabase_field_workspace_id
       changes:
         - createIndex:
             tableName: metabase_field
@@ -1340,6 +1346,12 @@ databaseChangeLog:
       id: v58.2025-11-20T08:35:15
       author: christruter
       comment: Add index on metabase_table.workspace_id
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_metabase_table_workspace_id
       changes:
         - createIndex:
             tableName: metabase_table
