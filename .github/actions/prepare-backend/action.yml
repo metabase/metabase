@@ -1,7 +1,6 @@
 name: Prepare back-end environment
 description: |
   Prepare the backend. Installs jdk, Clojure, and fetches the cache for m2.
-  The CI config fetches `ci-test-config.json` from master and lets us ignore tests at the var level if they are flaking.
 inputs:
   java-version:
     required: true
