@@ -22,7 +22,7 @@ export function UpsellMetabaseBanner() {
       fullWidth
       onClick={triggerUpsellFlow}
     >
-      {t`The “Powered by Metabase” banner appears on all static embeds created with your current version. Upgrade to remove it (and customize a lot more)`}
+      {t`The “Powered by Metabase” banner appears on all guest embeds created with your current version. Upgrade to remove it (and customize a lot more)`}
     </UpsellCard>
   );
 }

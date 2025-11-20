@@ -5,7 +5,7 @@ import { useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { trackEmbedWizardOpened } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
 import { useEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-paramers";
-import { useGetStaticEmbeddingSignedToken } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-get-static-embedding-signed-token";
+import { useGetGuestEmbedSignedToken } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-get-guest-embed-signed-token";
 import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   type SdkIframeEmbedSetupModalInitialState,
@@ -42,8 +42,8 @@ export const SdkIframeEmbedSetupProvider = ({
   const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
   const isSimpleEmbeddingTermsAccepted = !useSetting("show-simple-embed-terms");
 
-  const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
-  const isStaticEmbeddingTermsAccepted = !useSetting("show-static-embed-terms");
+  const isGuestEmbedsEnabled = useSetting("enable-embedding-static");
+  const isGuestEmbedsTermsAccepted = !useSetting("show-static-embed-terms");
 
   useMount(() => {
     trackEmbedWizardOpened();
@@ -90,7 +90,7 @@ export const SdkIframeEmbedSetupProvider = ({
     recentDashboards,
     isRecentsLoading,
     modelCount,
-    isStaticEmbeddingEnabled,
+    isGuestEmbedsEnabled,
   });
 
   // Which embed experience are we setting up?
@@ -129,9 +129,9 @@ export const SdkIframeEmbedSetupProvider = ({
     });
 
   const {
-    signedTokenForSnippet: staticEmbeddingSignedTokenForSnippet,
-    signedTokenForPreview: staticEmbeddingSignedTokenForPreview,
-  } = useGetStaticEmbeddingSignedToken({
+    signedTokenForSnippet: guestEmbedSignedTokenForSnippet,
+    signedTokenForPreview: guestEmbedSignedTokenForPreview,
+  } = useGetGuestEmbedSignedToken({
     settings,
     experience,
     previewParameterValuesBySlug,
@@ -139,13 +139,13 @@ export const SdkIframeEmbedSetupProvider = ({
   });
 
   useEffect(() => {
-    if (!settings.isStatic || !initialEmbeddingParameters) {
+    if (!settings.isGuestEmbed || !initialEmbeddingParameters) {
       return;
     }
 
     onEmbeddingParametersChange(initialEmbeddingParameters);
   }, [
-    settings.isStatic,
+    settings.isGuestEmbed,
     initialEmbeddingParameters,
     onEmbeddingParametersChange,
   ]);
@@ -154,8 +154,8 @@ export const SdkIframeEmbedSetupProvider = ({
     isSimpleEmbedFeatureAvailable,
     isSimpleEmbeddingEnabled,
     isSimpleEmbeddingTermsAccepted,
-    isStaticEmbeddingEnabled,
-    isStaticEmbeddingTermsAccepted,
+    isGuestEmbedsEnabled,
+    isGuestEmbedsTermsAccepted,
     currentStep,
     setCurrentStep,
     initialState,
@@ -180,8 +180,8 @@ export const SdkIframeEmbedSetupProvider = ({
     areEmbeddingParametersInitialized,
     embeddingParameters,
     onEmbeddingParametersChange,
-    staticEmbeddingSignedTokenForSnippet,
-    staticEmbeddingSignedTokenForPreview,
+    guestEmbedSignedTokenForSnippet,
+    guestEmbedSignedTokenForPreview,
     onClose,
   };
 

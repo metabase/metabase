@@ -2,17 +2,17 @@ import { t } from "ttag";
 
 import {
   RelatedSettingsSection,
-  getStaticEmbeddingRelatedSettingItems,
+  getGuestEmbedsRelatedSettingItems,
 } from "metabase/admin/components/RelatedSettingsSection";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { SharedCombinedEmbeddingSettings } from "metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings";
 
-export function StaticEmbeddingSettings() {
+export function GuestEmbedsSettings() {
   return (
-    <SettingsPageWrapper title={t`Static embedding`}>
+    <SettingsPageWrapper title={t`Guest embeds`}>
       <SharedCombinedEmbeddingSettings />
 
-      <RelatedSettingsSection items={getStaticEmbeddingRelatedSettingItems()} />
+      <RelatedSettingsSection items={getGuestEmbedsRelatedSettingItems()} />
     </SettingsPageWrapper>
   );
 }

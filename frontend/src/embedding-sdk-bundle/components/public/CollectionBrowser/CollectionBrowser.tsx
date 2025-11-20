@@ -1,11 +1,11 @@
 import { type ComponentType, useEffect, useMemo, useState } from "react";
 
+import { withGustEmbedNotAllowedGuard } from "embedding-sdk-bundle/components/private/GuestEmbedNotAllowedGuard";
 import {
   CollectionNotFoundError,
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
-import { withStaticNotAllowedGuard } from "embedding-sdk-bundle/components/private/StaticEmbeddingNotAllowedGuard";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getCollectionIdSlugFromReference } from "embedding-sdk-bundle/store/collections";
@@ -206,7 +206,7 @@ const CollectionBrowserWrapper = ({
 };
 
 export const CollectionBrowser = Object.assign(
-  withStaticNotAllowedGuard(
+  withGustEmbedNotAllowedGuard(
     withPublicComponentWrapper(CollectionBrowserWrapper),
   ),
   { schema: collectionBrowserPropsSchema },

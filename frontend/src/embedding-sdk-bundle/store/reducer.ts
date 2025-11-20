@@ -11,7 +11,7 @@ import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
 import type { MetabaseFetchRequestTokenFn } from "metabase/embedding-sdk/types/refresh-token";
 
 import { initAuth, refreshTokenAsync } from "./auth";
-const SET_IS_STATIC_EMBEDDING = "sdk/SET_IS_STATIC_EMBEDDING";
+const SET_IS_GUEST_EMBED = "sdk/SET_IS_GUEST_EMBED";
 const SET_METABASE_INSTANCE_VERSION = "sdk/SET_METABASE_INSTANCE_VERSION";
 const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
 const SET_LOADER_COMPONENT = "sdk/SET_LOADER_COMPONENT";
@@ -19,9 +19,7 @@ const SET_ERROR_COMPONENT = "sdk/SET_ERROR_COMPONENT";
 const SET_ERROR = "sdk/SET_ERROR";
 const SET_FETCH_REQUEST_TOKEN_FN = "sdk/SET_FETCH_REQUEST_TOKEN_FN";
 
-export const setIsStaticEmbedding = createAction<boolean>(
-  SET_IS_STATIC_EMBEDDING,
-);
+export const setIsGuestEmbed = createAction<boolean>(SET_IS_GUEST_EMBED);
 export const setMetabaseInstanceVersion = createAction<string>(
   SET_METABASE_INSTANCE_VERSION,
 );
@@ -54,7 +52,7 @@ export const setUsageProblem = createAction<SdkUsageProblem | null>(
 );
 
 const initialState: SdkState = {
-  isStaticEmbedding: null,
+  isGuestEmbed: null,
   metabaseInstanceUrl: "",
   metabaseInstanceVersion: null,
   token: {
@@ -107,8 +105,8 @@ export const sdk = createReducer(initialState, (builder) => {
     state.loaderComponent = action.payload;
   });
 
-  builder.addCase(setIsStaticEmbedding, (state, action) => {
-    state.isStaticEmbedding = action.payload;
+  builder.addCase(setIsGuestEmbed, (state, action) => {
+    state.isGuestEmbed = action.payload;
   });
 
   builder.addCase(setPlugins, (state, action) => {

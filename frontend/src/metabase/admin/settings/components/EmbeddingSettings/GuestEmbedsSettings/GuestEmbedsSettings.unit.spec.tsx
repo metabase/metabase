@@ -14,7 +14,7 @@ import {
   createMockSettings,
 } from "metabase-types/api/mocks";
 
-import { StaticEmbeddingSettings } from "./StaticEmbeddingSettings";
+import { GuestEmbedsSettings } from "./GuestEmbedsSettings";
 
 const setup = async ({ enabled }: { enabled: boolean }) => {
   const settings = createMockSettings({ "enable-embedding-static": enabled });
@@ -36,12 +36,12 @@ const setup = async ({ enabled }: { enabled: boolean }) => {
     value: true,
   });
 
-  renderWithProviders(<StaticEmbeddingSettings />);
+  renderWithProviders(<GuestEmbedsSettings />);
 
-  await screen.findByText("Static embedding"); // breadcrumb
+  await screen.findByText("Guest embeds"); // breadcrumb
 };
 
-describe("StaticEmbeddingSettings", () => {
+describe("GuestEmbedsSettings", () => {
   it("should show cards with related settings", async () => {
     await setup({ enabled: true });
 

@@ -9,7 +9,7 @@ import type {
   EmbedResource,
   EmbedResourceParameter,
   EmbeddingParameters,
-  StaticEmbedResourceType,
+  GuestEmbedResourceType,
 } from "metabase/public/lib/types";
 import { getCurrentOpenModalState } from "metabase/selectors/ui";
 
@@ -18,7 +18,7 @@ import { EmbedModalHeader } from "./EmbedModal.styled";
 interface EmbedModalProps {
   isOpen?: boolean;
   resource: EmbedResource;
-  resourceType: StaticEmbedResourceType;
+  resourceType: GuestEmbedResourceType;
   resourceParameters: EmbedResourceParameter[];
 
   onUpdateEnableEmbedding: (enableEmbedding: boolean) => void;

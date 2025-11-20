@@ -8,7 +8,7 @@ import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
   setEventHandlers,
-  setIsStaticEmbedding,
+  setIsGuestEmbed,
   setLoaderComponent,
   setPlugins,
 } from "embedding-sdk-bundle/store/reducer";
@@ -53,7 +53,7 @@ function useInitPlugins() {
 
 export const ComponentProviderInternal = ({
   children,
-  isStatic,
+  isGuestEmbed,
   authConfig,
   pluginsConfig,
   eventHandlers,
@@ -71,11 +71,16 @@ export const ComponentProviderInternal = ({
   // This call in the ComponentProvider is still needed for:
   // - Storybook stories, where we don't have the MetabaseProvider
   // - Unit tests
-  useInitDataInternal({ reduxStore, isStatic, authConfig, isLocalHost });
+  useInitDataInternal({
+    reduxStore,
+    isGuestEmbed,
+    authConfig,
+    isLocalHost,
+  });
 
   useEffect(() => {
-    reduxStore.dispatch(setIsStaticEmbedding(!!isStatic));
-  }, [reduxStore, isStatic]);
+    reduxStore.dispatch(setIsGuestEmbed(!!isGuestEmbed));
+  }, [reduxStore, isGuestEmbed]);
 
   useInitPlugins();
 

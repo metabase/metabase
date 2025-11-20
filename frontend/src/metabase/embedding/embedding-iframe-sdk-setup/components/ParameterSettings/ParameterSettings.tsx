@@ -35,7 +35,7 @@ export const ParameterSettings = () => {
     updateSettings,
   });
 
-  const isStaticEmbedding = !!settings.isStatic;
+  const isGuestEmbed = !!settings.isGuestEmbed;
   const isQuestionOrDashboardEmbed =
     !!settings.questionId || !!settings.dashboardId;
 
@@ -104,7 +104,7 @@ export const ParameterSettings = () => {
     );
   }
 
-  if (isStaticEmbedding) {
+  if (isGuestEmbed) {
     const lockedParameters = getLockedPreviewParameters(
       availableParameters,
       embeddingParameters,

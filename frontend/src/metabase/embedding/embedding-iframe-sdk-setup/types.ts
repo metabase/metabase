@@ -5,7 +5,7 @@ import type {
   MetabotEmbedOptions,
   QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
-  SdkIframeEmbedStaticEmbeddingSettings,
+  SdkIframeEmbedGuestEmbedSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import type { BaseRecentItem } from "metabase-types/api";
 
@@ -32,8 +32,8 @@ export type SdkIframeEmbedSetupRecentItem = Pick<
   "name" | "description"
 > & { id: string | number };
 
-export type SdkIframeEmbedSetupStaticEmbeddingSettings =
-  SdkIframeEmbedStaticEmbeddingSettings;
+export type SdkIframeEmbedSetupGuestEmbedSettings =
+  SdkIframeEmbedGuestEmbedSettings;
 
 export type SdkIframeDashboardEmbedSettings = DashboardEmbedOptions & {
   lockedParameters?: string[];
@@ -58,5 +58,5 @@ export type SdkIframeEmbedSetupSettings = Omit<
   SdkIframeEmbedBaseSettings,
   "instanceUrl"
 > &
-  Partial<SdkIframeEmbedSetupStaticEmbeddingSettings> &
+  Partial<SdkIframeEmbedSetupGuestEmbedSettings> &
   SdkIframeEmbedSetupTemplateSettings;

@@ -18,7 +18,7 @@ import {
 
 const { H } = cy;
 
-describe("scenarios > admin > embedding > static embedding> content translation", () => {
+describe("scenarios > admin > embedding > guest embeds> content translation", () => {
   describe("oss", () => {
     beforeEach(() => {
       H.restore();
@@ -26,7 +26,7 @@ describe("scenarios > admin > embedding > static embedding> content translation"
     });
 
     it("admin settings configuration form is not present", () => {
-      cy.visit("/admin/embedding/static");
+      cy.visit("/admin/embedding/guest");
       cy.findByTestId("content-translation-configuration").should("not.exist");
     });
   });

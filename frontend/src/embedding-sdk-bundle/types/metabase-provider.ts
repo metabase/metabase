@@ -30,9 +30,9 @@ export interface MetabaseProviderProps {
   authConfig: MetabaseAuthConfig;
 
   /**
-   * Defines if SDK should work in a Static Embedding mode
+   * Defines if SDK should work in a Guest Embed mode
    */
-  isStatic?: boolean;
+  isGuestEmbed?: boolean;
 
   /**
    * See [Appearance](https://www.metabase.com/docs/latest/embedding/sdk/appearance).

@@ -11,7 +11,7 @@ import { useSdkIframeEmbedSetupContext } from "../context";
 
 export function useSdkIframeEmbedNavigation() {
   const {
-    isStaticEmbeddingEnabled,
+    isGuestEmbedsEnabled,
     initialState,
     experience,
     currentStep,
@@ -50,7 +50,7 @@ export function useSdkIframeEmbedNavigation() {
           initialState,
           settings,
           experience,
-          isStaticEmbeddingEnabled,
+          isGuestEmbedsEnabled,
         });
       });
 

@@ -9,7 +9,7 @@ import type { ParameterValuesMap } from "metabase-types/api";
 
 interface RunQuestionQueryParams {
   question: Question;
-  isStaticEmbedding: boolean;
+  isGuestEmbed: boolean;
   token: string | null | undefined;
   originalQuestion?: Question;
   parameterValues?: ParameterValuesMap;
@@ -21,7 +21,7 @@ export async function runQuestionQuerySdk(
 ): Promise<SdkQuestionState> {
   let {
     question,
-    isStaticEmbedding,
+    isGuestEmbed,
     token,
     originalQuestion,
     parameterValues,
@@ -42,7 +42,7 @@ export async function runQuestionQuerySdk(
 
   let queryResults;
 
-  if (shouldRunCardQuery({ question, isStaticEmbedding })) {
+  if (shouldRunCardQuery({ question, isGuestEmbed })) {
     const parameters = getParameterValuesBySlug(
       question.card().parameters,
       parameterValues,
@@ -56,15 +56,15 @@ export async function runQuestionQuerySdk(
       ignoreCache: false,
       isDirty: isQueryDirty,
       token,
-      ...(isStaticEmbedding && {
+      ...(isGuestEmbed && {
         queryParamsOverride: {
           parameters: JSON.stringify(filteredParameters),
         },
       }),
     });
 
-    // Default values for rows/cols are needed because the `data` is missing in the case of Static Embedding
-    const [{ data = isStaticEmbedding ? { rows: [], cols: [] } : undefined }] =
+    // Default values for rows/cols are needed because the `data` is missing in the case of Guest Embed
+    const [{ data = isGuestEmbed ? { rows: [], cols: [] } : undefined }] =
       queryResults;
 
     const sensibleDisplays = getSensibleDisplays(data);
@@ -81,14 +81,14 @@ export async function runQuestionQuerySdk(
 
 export function shouldRunCardQuery({
   question,
-  isStaticEmbedding,
+  isGuestEmbed,
 }: {
   question: Question;
-  isStaticEmbedding: boolean | null;
+  isGuestEmbed: boolean | null;
 }): boolean {
-  // Static embedding questions have some fields missing, and it forces the this.legacyNativeQuery().canRun() to return `false`
-  // To avoid it we just force-return true for static embedding
-  if (isStaticEmbedding) {
+  // Questions fetched from `/api/embed/*` endpoints have some fields missing, and it forces the this.legacyNativeQuery().canRun() to return `false`
+  // To avoid it we just force-return true
+  if (isGuestEmbed) {
     return true;
   }
 

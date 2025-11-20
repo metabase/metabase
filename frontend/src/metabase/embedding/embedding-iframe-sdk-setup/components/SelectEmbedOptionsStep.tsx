@@ -43,7 +43,7 @@ const AuthenticationSection = () => {
     updateSettings,
   } = useSdkIframeEmbedSetupContext();
 
-  const isStaticEmbedding = !!settings.isStatic;
+  const isGuestEmbed = !!settings.isGuestEmbed;
   const isQuestionOrDashboardEmbed =
     (experience === "dashboard" && settings.dashboardId) ||
     (experience === "chart" && settings.questionId);
@@ -56,18 +56,18 @@ const AuthenticationSection = () => {
   const isSsoEnabledAndConfigured =
     (isJwtEnabled && isJwtConfigured) || (isSamlEnabled && isSamlConfigured);
 
-  const authType = isStaticEmbedding
-    ? "no-user"
+  const authType = isGuestEmbed
+    ? "guest-embed"
     : settings.useExistingUserSession
       ? "user-session"
       : "sso";
 
   const handleAuthTypeChange = (value: string) => {
-    const isStatic = value === "no-user";
+    const isGuestEmbed = value === "guest-embed";
     const useExistingUserSession = value === "user-session";
 
     updateSettings({
-      isStatic,
+      isGuestEmbed,
       useExistingUserSession,
     });
   };
@@ -85,15 +85,15 @@ const AuthenticationSection = () => {
         <Radio.Group value={authType} onChange={handleAuthTypeChange}>
           <Stack gap="sm">
             {isQuestionOrDashboardEmbed && (
-              <WithStaticEmbeddingDisabledWarning>
+              <WithGuestEmbedsDisabledWarning>
                 {({ disabled }) => (
                   <Radio
                     disabled={disabled}
-                    value="no-user"
-                    label={t`Unauthenticated`}
+                    value="guest-embed"
+                    label={t`Guest`}
                   />
                 )}
-              </WithStaticEmbeddingDisabledWarning>
+              </WithGuestEmbedsDisabledWarning>
             )}
 
             <WithSimpleEmbeddingFeatureUpsellTooltip
@@ -163,11 +163,11 @@ const BehaviorSection = () => {
   const behaviorSection = useMemo(() => {
     return match(settings)
       .with(
-        { template: "exploration", isStatic: P.optional(false) },
+        { template: "exploration", isGuestEmbed: P.optional(false) },
         (settings) => (
           <Checkbox
             label={t`Allow people to save new questions`}
-            disabled={settings.isStatic}
+            disabled={settings.isGuestEmbed}
             checked={settings.isSaveEnabled}
             onChange={(e) =>
               updateSettings({ isSaveEnabled: e.target.checked })
@@ -179,7 +179,7 @@ const BehaviorSection = () => {
         { componentName: "metabase-question", questionId: P.nonNullable },
         (settings) => (
           <Stack gap="md">
-            <WithNotAvailableForStaticEmbeddingWarning>
+            <WithNotAvailableForGuestEmbedsWarning>
               {({ disabled }) => (
                 <Checkbox
                   label={t`Allow people to drill through on data points`}
@@ -188,7 +188,7 @@ const BehaviorSection = () => {
                   onChange={(e) => updateSettings({ drills: e.target.checked })}
                 />
               )}
-            </WithNotAvailableForStaticEmbeddingWarning>
+            </WithNotAvailableForGuestEmbedsWarning>
 
             <Checkbox
               label={t`Allow downloads`}
@@ -198,7 +198,7 @@ const BehaviorSection = () => {
               }
             />
 
-            <WithNotAvailableForStaticEmbeddingWarning>
+            <WithNotAvailableForGuestEmbedsWarning>
               {({ disabled }) => (
                 <Checkbox
                   label={t`Allow people to save new questions`}
@@ -209,7 +209,7 @@ const BehaviorSection = () => {
                   }
                 />
               )}
-            </WithNotAvailableForStaticEmbeddingWarning>
+            </WithNotAvailableForGuestEmbedsWarning>
           </Stack>
         ),
       )
@@ -217,7 +217,7 @@ const BehaviorSection = () => {
         { componentName: "metabase-dashboard", dashboardId: P.nonNullable },
         (settings) => (
           <Stack gap="md">
-            <WithNotAvailableForStaticEmbeddingWarning>
+            <WithNotAvailableForGuestEmbedsWarning>
               {({ disabled }) => (
                 <Checkbox
                   label={t`Allow people to drill through on data points`}
@@ -226,7 +226,7 @@ const BehaviorSection = () => {
                   onChange={(e) => updateSettings({ drills: e.target.checked })}
                 />
               )}
-            </WithNotAvailableForStaticEmbeddingWarning>
+            </WithNotAvailableForGuestEmbedsWarning>
 
             <Checkbox
               label={t`Allow downloads`}
@@ -239,11 +239,11 @@ const BehaviorSection = () => {
         ),
       )
       .with(
-        { componentName: "metabase-browser", isStatic: P.optional(false) },
+        { componentName: "metabase-browser", isGuestEmbed: P.optional(false) },
         (settings) => (
           <Checkbox
             label={t`Allow editing dashboards and questions`}
-            disabled={settings.isStatic}
+            disabled={settings.isGuestEmbed}
             checked={!settings.readOnly}
             onChange={(e) => updateSettings({ readOnly: !e.target.checked })}
           />
@@ -341,14 +341,14 @@ const AppearanceSection = () => {
   );
 };
 
-const WithStaticEmbeddingDisabledWarning = ({
+const WithGuestEmbedsDisabledWarning = ({
   children,
 }: {
   children: (data: { disabled: boolean }) => ReactNode;
 }) => {
-  const { isStaticEmbeddingEnabled } = useSdkIframeEmbedSetupContext();
+  const { isGuestEmbedsEnabled } = useSdkIframeEmbedSetupContext();
 
-  const disabled = !isStaticEmbeddingEnabled;
+  const disabled = !isGuestEmbedsEnabled;
 
   return (
     <TooltipWarning
@@ -364,7 +364,7 @@ const WithStaticEmbeddingDisabledWarning = ({
   );
 };
 
-const WithNotAvailableForStaticEmbeddingWarning = ({
+const WithNotAvailableForGuestEmbedsWarning = ({
   children,
 }: {
   children: (data: { disabled: boolean }) => ReactNode;
@@ -381,14 +381,14 @@ const WithNotAvailableForStaticEmbeddingWarning = ({
           shouldWrap={!disabledForOss}
           warning={
             <Text lh="md" p="md">
-              {t`Not available if unauthenticated is selected`}
+              {t`Not available if Guest Mode is selected`}
             </Text>
           }
-          disabled={!!settings.isStatic}
+          disabled={!!settings.isGuestEmbed}
         >
-          {({ disabled: disabledForStaticEmbedding }) =>
+          {({ disabled: disabledForGuestEmbed }) =>
             children({
-              disabled: disabledForOss || disabledForStaticEmbedding,
+              disabled: disabledForOss || disabledForGuestEmbed,
             })
           }
         </TooltipWarning>

@@ -4,7 +4,7 @@ import { printUsageProblemToConsole } from "embedding-sdk-bundle/lib/print-usage
 import { getSdkUsageProblem } from "embedding-sdk-bundle/lib/usage-problem";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setUsageProblem } from "embedding-sdk-bundle/store/reducer";
-import { getIsStaticEmbeddingRaw } from "embedding-sdk-bundle/store/selectors";
+import { getIsGuestEmbedRaw } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { useSetting } from "metabase/common/hooks";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
@@ -22,7 +22,7 @@ export function useSdkUsageProblem({
   session: MetabaseEmbeddingSessionToken | null;
   isLocalHost?: boolean;
 }) {
-  const isStaticEmbedding = useSdkSelector(getIsStaticEmbeddingRaw);
+  const isGuestEmbed = useSdkSelector(getIsGuestEmbedRaw);
 
   const hasLoggedRef = useRef(false);
 
@@ -55,7 +55,7 @@ export function useSdkUsageProblem({
 
   const usageProblem = useMemo(() => {
     return getSdkUsageProblem({
-      isStaticEmbedding,
+      isGuestEmbed,
       authConfig,
       hasTokenFeature,
       isEnabled,
@@ -64,7 +64,7 @@ export function useSdkUsageProblem({
       isLocalHost,
     });
   }, [
-    isStaticEmbedding,
+    isGuestEmbed,
     authConfig,
     hasTokenFeature,
     isEnabled,

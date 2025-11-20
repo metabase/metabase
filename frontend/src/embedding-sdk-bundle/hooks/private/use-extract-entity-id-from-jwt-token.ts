@@ -5,11 +5,11 @@ import type { SdkEntityToken } from "embedding-sdk-bundle/types";
 import { extractEntityIdFromJwtToken, isJWT } from "metabase/lib/utils";
 
 export const useExtractEntityIdFromJwtToken = <TEntityId>({
-  isStaticEmbedding,
+  isGuestEmbed,
   entityId,
   token,
 }: {
-  isStaticEmbedding: boolean;
+  isGuestEmbed: boolean;
   entityId: TEntityId | undefined;
   token: SdkEntityToken | undefined;
 }): {
@@ -30,11 +30,11 @@ export const useExtractEntityIdFromJwtToken = <TEntityId>({
     }
 
     if (token) {
-      if (!isStaticEmbedding) {
+      if (!isGuestEmbed) {
         return {
           entityId: null,
           token: null,
-          tokenError: t`Passing a token is only allowed for anonymous embedding.`,
+          tokenError: t`Passing a token is only allowed for Guest Embed mode.`,
         };
       }
 
@@ -60,5 +60,5 @@ export const useExtractEntityIdFromJwtToken = <TEntityId>({
       entityId: null,
       token: null,
     };
-  }, [entityId, isStaticEmbedding, token]);
+  }, [entityId, isGuestEmbed, token]);
 };

@@ -9,7 +9,7 @@ import "react-resizable/css/styles.css";
 import noResultsSource from "assets/img/no_results.svg";
 import { useUpdateSettingsMutation } from "metabase/api";
 import CS from "metabase/css/core/index.css";
-import { SdkIframeStaticEmbeddingStatusBar } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeStaticEmbeddingStatusBar";
+import { SdkIframeGuestEmbedStatusBar } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeGuestEmbedStatusBar";
 import { SdkIframeStepHeader } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeStepHeader";
 import { useDispatch } from "metabase/lib/redux";
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
@@ -41,8 +41,8 @@ export const SdkIframeEmbedSetupContent = () => {
     isSimpleEmbedFeatureAvailable,
     isSimpleEmbeddingEnabled,
     isSimpleEmbeddingTermsAccepted,
-    isStaticEmbeddingEnabled,
-    isStaticEmbeddingTermsAccepted,
+    isGuestEmbedsEnabled,
+    isGuestEmbedsTermsAccepted,
     currentStep,
     settings,
   } = useSdkIframeEmbedSetupContext();
@@ -63,7 +63,7 @@ export const SdkIframeEmbedSetupContent = () => {
 
   const allowPreviewAndNavigation = isSimpleEmbedFeatureAvailable
     ? isSimpleEmbeddingEnabled && isSimpleEmbeddingTermsAccepted
-    : isStaticEmbeddingEnabled && isStaticEmbeddingTermsAccepted;
+    : isGuestEmbedsEnabled && isGuestEmbedsTermsAccepted;
 
   const nextStepButton = match(currentStep)
     .with("get-code", () => (
@@ -135,7 +135,7 @@ export const SdkIframeEmbedSetupContent = () => {
         <Stack h="100%">
           <Modal.CloseButton />
 
-          <SdkIframeStaticEmbeddingStatusBar />
+          <SdkIframeGuestEmbedStatusBar />
 
           {allowPreviewAndNavigation ? (
             <SdkIframeEmbedPreview />

@@ -4,14 +4,14 @@ import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import type {
   SdkIframeDashboardEmbedSettings,
   SdkIframeEmbedSetupExperience,
+  SdkIframeEmbedSetupGuestEmbedSettings,
   SdkIframeEmbedSetupSettings,
-  SdkIframeEmbedSetupStaticEmbeddingSettings,
   SdkIframeQuestionEmbedSettings,
 } from "../types";
 
-const GET_ENABLE_STATIC_EMBEDDING_SETTINGS: (data: {
+const GET_ENABLE_GUEST_EMBED_SETTINGS: (data: {
   experience: SdkIframeEmbedSetupExperience;
-}) => SdkIframeEmbedSetupStaticEmbeddingSettings &
+}) => SdkIframeEmbedSetupGuestEmbedSettings &
   Pick<SdkIframeEmbedSetupSettings, "useExistingUserSession"> = ({
   experience,
 }) => {
@@ -21,25 +21,28 @@ const GET_ENABLE_STATIC_EMBEDDING_SETTINGS: (data: {
   return {
     ...(isQuestionOrDashboardEmbed
       ? {
-          isStatic: true,
+          isGuestEmbed: true,
           useExistingUserSession: false,
           ...(isQuestionOrDashboardExperience(experience) && {
             drills: false,
           }),
         }
       : {
-          isStatic: false,
+          isGuestEmbed: false,
           useExistingUserSession: true,
         }),
   };
 };
 
-const GET_DISABLE_STATIC_EMBEDDING_SETTINGS: (data: {
+const GET_DISABLE_GUEST_EMBED_SETTINGS: (data: {
   state:
-    | Pick<SdkIframeEmbedSetupSettings, "isStatic" | "useExistingUserSession">
+    | Pick<
+        SdkIframeEmbedSetupSettings,
+        "isGuestEmbed" | "useExistingUserSession"
+      >
     | undefined;
   experience: SdkIframeEmbedSetupExperience;
-}) => SdkIframeEmbedSetupStaticEmbeddingSettings &
+}) => SdkIframeEmbedSetupGuestEmbedSettings &
   Pick<SdkIframeEmbedSetupSettings, "useExistingUserSession"> &
   Pick<
     SdkIframeDashboardEmbedSettings | SdkIframeQuestionEmbedSettings,
@@ -51,13 +54,13 @@ const GET_DISABLE_STATIC_EMBEDDING_SETTINGS: (data: {
   return {
     ...(isQuestionOrDashboardEmbed
       ? {
-          isStatic: false,
+          isGuestEmbed: false,
           useExistingUserSession: state?.useExistingUserSession,
           drills: true,
           lockedParameters: [],
         }
       : {
-          isStatic: false,
+          isGuestEmbed: false,
           useExistingUserSession: state?.useExistingUserSession,
         }),
   };
@@ -66,22 +69,25 @@ const GET_DISABLE_STATIC_EMBEDDING_SETTINGS: (data: {
 export const getCommonEmbedSettings = ({
   state,
   experience,
-  isStaticEmbeddingEnabled,
+  isGuestEmbedsEnabled,
 }: {
   state:
-    | Pick<SdkIframeEmbedSetupSettings, "isStatic" | "useExistingUserSession">
+    | Pick<
+        SdkIframeEmbedSetupSettings,
+        "isGuestEmbed" | "useExistingUserSession"
+      >
     | undefined;
   experience: SdkIframeEmbedSetupExperience;
-  isStaticEmbeddingEnabled: boolean;
+  isGuestEmbedsEnabled: boolean;
 }) => {
   const isSimpleEmbedFeatureAvailable =
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled();
 
   if (isSimpleEmbedFeatureAvailable) {
-    return isStaticEmbeddingEnabled && state?.isStatic
-      ? GET_ENABLE_STATIC_EMBEDDING_SETTINGS({ experience })
-      : GET_DISABLE_STATIC_EMBEDDING_SETTINGS({ state, experience });
+    return isGuestEmbedsEnabled && state?.isGuestEmbed
+      ? GET_ENABLE_GUEST_EMBED_SETTINGS({ experience })
+      : GET_DISABLE_GUEST_EMBED_SETTINGS({ state, experience });
   } else {
-    return GET_ENABLE_STATIC_EMBEDDING_SETTINGS({ experience });
+    return GET_ENABLE_GUEST_EMBED_SETTINGS({ experience });
   }
 };

@@ -11,8 +11,7 @@ const getIgnoreOverridePatterns = () => [
 ];
 
 /**
- * URL patterns used for matching and transforming API requests
- * in static embedding mode.
+ * URL patterns used for matching and transforming API requests in Guest Embed mode.
  * These patterns are needed only for endpoints that have different parameter names/path/structure for `/embed`
  */
 const URL_PATTERNS = {
@@ -25,7 +24,7 @@ const URL_PATTERNS = {
 } as const;
 
 /**
- * Mapping of API endpoints to their static embedding equivalents.
+ * Mapping of API endpoints to their Guest Embed equivalents.
  * Each transformation specifies the embed URL and HTTP method to use.
  */
 const EMBED_URL_TRANSFORMATIONS: Record<
@@ -148,10 +147,10 @@ function replaceWithEmbedBase(url: string): string {
 
 /**
  * Registers a request interceptor that transforms standard API requests
- * into static embedding API requests.
+ * into guest embeds API requests.
  */
-export const overrideRequestsForStaticEmbedding = () => {
-  PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.overrideRequestsForStaticEmbedding =
+export const overrideRequestsForGuestEmbeds = () => {
+  PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds =
     async ({ method, url, options }) => {
       const transformation = getRequestTransformation({ method, url, options });
 
@@ -164,9 +163,9 @@ export const overrideRequestsForStaticEmbedding = () => {
       }
 
       /**
-       * Set header to indicate that this request is for static embedding.
+       * Set header to indicate that this request is for guest embed.
        */
-      options.headers["x-metabase-static-embedding"] = "true";
+      options.headers["x-metabase-guest-embed"] = "true";
 
       return {
         method: transformation.method,

@@ -27,7 +27,7 @@ import {
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
-import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
+import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
 import { Box, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
@@ -93,7 +93,7 @@ const StaticQuestionInner = ({
   title = false, // Hidden by default for backwards-compatibility.
   children,
 }: StaticQuestionProps): JSX.Element | null => {
-  const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
+  const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
   const getClickActionMode: ClickActionModeGetter = ({
     question,
@@ -145,7 +145,7 @@ const StaticQuestionInner = ({
                   </ResultToolbar>
                 )}
 
-                {isStaticEmbedding && (
+                {isGuestEmbed && (
                   <Box w="100%">
                     <SdkQuestion.SqlParametersList />
                   </Box>

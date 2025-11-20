@@ -12,7 +12,7 @@ export type EmbedResource = (Card | Dashboard) & {
 };
 
 export type EmbedResourceType = "dashboard" | "question" | "document";
-export type StaticEmbedResourceType = "dashboard" | "question";
+export type GuestEmbedResourceType = "dashboard" | "question";
 
 export type EmbedResourceParameter = {
   id: string;
@@ -28,7 +28,7 @@ export type EmbedResourceDownloadOptions = {
   results?: boolean;
 };
 
-export type EmbeddingType = "static-legacy" | "static-embed-js";
+export type EmbeddingType = "static-legacy" | "guest-embed";
 
 export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
 

@@ -18,7 +18,7 @@ export type SdkQuestionIdProps = {
 
 export type SdkQuestionTokenProps = {
   /**
-   * A valid JWT token for the anonymous embedding.
+   * A valid JWT token for the guest embed.
    */
   token: SdkEntityToken;
 };

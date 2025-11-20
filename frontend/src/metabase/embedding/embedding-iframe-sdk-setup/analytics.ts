@@ -74,19 +74,19 @@ export const trackEmbedWizardOptionsCompleted = ({
   initialState,
   settings,
   experience,
-  isStaticEmbeddingEnabled,
+  isGuestEmbedsEnabled,
 }: {
   initialState: SdkIframeEmbedSetupModalInitialState | undefined;
   settings: Partial<SdkIframeEmbedSettings>;
   experience: SdkIframeEmbedSetupExperience;
-  isStaticEmbeddingEnabled: boolean;
+  isGuestEmbedsEnabled: boolean;
 }) => {
   // Get defaults for this experience type (with a dummy resource ID)
   const defaultSettings = getDefaultSdkIframeEmbedSettings({
     initialState,
     experience,
     resourceId: 0,
-    isStaticEmbeddingEnabled,
+    isGuestEmbedsEnabled,
   });
 
   // Does the embed settings diverge from the experience defaults?
@@ -105,7 +105,7 @@ export const trackEmbedWizardOptionsCompleted = ({
     options = [
       ...options,
       `theme=${hasCustomTheme ? "custom" : "default"}`,
-      `auth=${settings.isStatic ? "unauthorized" : settings.useExistingUserSession ? "user_session" : "sso"}`,
+      `auth=${settings.isGuestEmbed ? "guest_embed" : settings.useExistingUserSession ? "user_session" : "sso"}`,
     ];
 
     for (const _optionKey in settings) {

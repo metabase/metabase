@@ -42,8 +42,8 @@ export function EmbeddingNav() {
         {isEEBuild() && (
           <>
             <EmbeddingNavItem
-              path="/admin/embedding/static"
-              label={t`Unauthenticated embeds`}
+              path="/admin/embedding/guest"
+              label={t`Guest embeds`}
               icon="ghost"
             />
 

@@ -19,7 +19,7 @@ import type {
   EmbeddingDisplayOptions,
   EmbeddingParameters,
   EmbeddingParametersValues,
-  StaticEmbedResourceType,
+  GuestEmbedResourceType,
 } from "metabase/public/lib/types";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { Paper, Stack, Tabs } from "metabase/ui";
@@ -41,7 +41,7 @@ import type { ActivePreviewPane, EmbedCodePaneVariant } from "./types";
 
 export interface StaticEmbedSetupPaneProps {
   resource: EmbedResource;
-  resourceType: StaticEmbedResourceType;
+  resourceType: GuestEmbedResourceType;
   resourceParameters: EmbedResourceParameter[];
 
   onUpdateEnableEmbedding: (enableEmbedding: boolean) => void;

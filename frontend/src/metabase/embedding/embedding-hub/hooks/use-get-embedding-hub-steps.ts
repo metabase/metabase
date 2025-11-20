@@ -34,7 +34,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           onClick: () => {
             openEmbedModal({
               initialState: {
-                isStatic: true,
+                isGuestEmbed: true,
                 useExistingUserSession: true,
               },
             });
@@ -134,7 +134,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           onClick: () => {
             openEmbedModal({
               initialState: {
-                isStatic: false,
+                isGuestEmbed: false,
                 useExistingUserSession: false,
               },
             });

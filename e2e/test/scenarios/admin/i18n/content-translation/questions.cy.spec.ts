@@ -8,7 +8,7 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
-describe("scenarios > content translation > static embedding > questions", () => {
+describe("scenarios > content translation > guest embeds > questions", () => {
   describe("ee", () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/ee/content-translation/upload-dictionary").as(

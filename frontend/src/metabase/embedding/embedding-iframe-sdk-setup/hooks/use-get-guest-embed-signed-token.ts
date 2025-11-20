@@ -9,7 +9,7 @@ import { getSignedToken } from "metabase/public/lib/embed";
 const SIGNED_TOKEN_FOR_SNIPPET_EXPIRATION_MINUTES = 10;
 const SIGNED_TOKEN_FOR_PREVIEW_EXPIRATION_MINUTES = 60;
 
-export const useGetStaticEmbeddingSignedToken = ({
+export const useGetGuestEmbedSignedToken = ({
   settings,
   experience,
   previewParameterValuesBySlug,
@@ -32,13 +32,13 @@ export const useGetStaticEmbeddingSignedToken = ({
       signedTokenForPreview: null,
     });
 
-  const isStaticEmbedding = !!settings.isStatic;
+  const isGuestEmbed = !!settings.isGuestEmbed;
   const isQuestionOrDashboard =
     (experience === "dashboard" && settings.dashboardId) ||
     (experience === "chart" && settings.questionId);
 
   useDeepCompareEffect(() => {
-    if (!isStaticEmbedding || !isQuestionOrDashboard || !secretKey) {
+    if (!isGuestEmbed || !isQuestionOrDashboard || !secretKey) {
       return;
     }
 
@@ -74,7 +74,7 @@ export const useGetStaticEmbeddingSignedToken = ({
 
     generate();
   }, [
-    isStaticEmbedding,
+    isGuestEmbed,
     isQuestionOrDashboard,
     previewParameterValuesBySlug,
     experience,

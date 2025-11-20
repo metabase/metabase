@@ -25,7 +25,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "preferredAuthMethod",
     "fetchRequestToken",
     "useExistingUserSession",
-    "isStatic",
+    "isGuestEmbed",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",
@@ -64,13 +64,13 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
   ] satisfies (keyof BrowserEmbedOptions)[],
   metabot: ["layout"] satisfies (keyof MetabotEmbedOptions)[],
 } as const;
-export const ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP = {
+export const ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP = {
   base: [
     "apiKey",
     "instanceUrl",
     "theme",
     "locale",
-    "isStatic",
+    "isGuestEmbed",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",
@@ -106,17 +106,17 @@ export const ALLOWED_EMBED_SETTING_KEYS = uniq([
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.metabot,
 ]) satisfies SdkIframeEmbedSettingKey[];
 
-export const ALLOWED_STATIC_EMBED_SETTING_KEYS = uniq([
-  ...ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP.base,
-  ...ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP.dashboard,
-  ...ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP.chart,
-  ...ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP.exploration,
-  ...ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP.browser,
+export const ALLOWED_GUEST_EMBED_SETTING_KEYS = uniq([
+  ...ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP.base,
+  ...ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP.dashboard,
+  ...ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP.chart,
+  ...ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP.exploration,
+  ...ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP.browser,
 ]) satisfies SdkIframeEmbedSettingKey[];
 
 export type AllowedEmbedSettingKey = (
   | typeof ALLOWED_EMBED_SETTING_KEYS
-  | typeof ALLOWED_STATIC_EMBED_SETTING_KEYS
+  | typeof ALLOWED_GUEST_EMBED_SETTING_KEYS
 )[number];
 
 /** Prevent updating these fields with `embed.updateSettings()` after the embed is created. */
@@ -124,7 +124,7 @@ export const DISABLE_UPDATE_FOR_KEYS = [
   "instanceUrl",
   "useExistingUserSession",
   "fetchRequestToken",
-  "isStatic",
+  "isGuestEmbed",
 ] as const satisfies AllowedEmbedSettingKey[];
 
 export const METABASE_CONFIG_IS_PROXY_FIELD_NAME = "__isProxy";

@@ -197,7 +197,7 @@ describe("Embed JS modal display", () => {
           H.openSharingMenu("Embed");
 
           H.getEmbedModalEmbeddingControlCard().within(() => {
-            cy.findByText(/unauthenticated embeds/).should("be.visible");
+            cy.findByText(/guest embeds/).should("be.visible");
           });
         });
       },

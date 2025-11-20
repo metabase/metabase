@@ -39,13 +39,11 @@ declare global {
 }
 
 const SdkIframeEmbedPreviewInner = () => {
-  const {
-    settings,
-    staticEmbeddingSignedTokenForPreview: staticEmbeddingSignedToken,
-  } = useSdkIframeEmbedSetupContext();
+  const { settings, guestEmbedSignedTokenForPreview } =
+    useSdkIframeEmbedSetupContext();
   const [isLoading, setIsLoading] = useState(true);
 
-  const isStaticEmbedding = !!settings.isStatic;
+  const isGuestEmbed = !!settings.isGuestEmbed;
 
   const instanceUrl = useSetting("site-url");
   const applicationColors = useSetting("application-colors");
@@ -93,9 +91,9 @@ const SdkIframeEmbedPreviewInner = () => {
       instanceUrl,
       theme: derivedTheme,
       useExistingUserSession: true,
-      isStatic: settings.isStatic,
+      isGuestEmbed: settings.isGuestEmbed,
     }),
-    [instanceUrl, derivedTheme, settings.isStatic],
+    [instanceUrl, derivedTheme, settings.isGuestEmbed],
   );
 
   // initial configuration, needed so that the element finds the config on first render
@@ -151,15 +149,15 @@ const SdkIframeEmbedPreviewInner = () => {
               "entity-types": s.entityTypes
                 ? JSON.stringify(s.entityTypes)
                 : undefined,
-              ...(!isStaticEmbedding && {
+              ...(!isGuestEmbed && {
                 "is-save-enabled": s.isSaveEnabled,
               }),
             }),
         )
         .with({ componentName: "metabase-question" }, (s) =>
           createElement("metabase-question", {
-            ...(isStaticEmbedding
-              ? { token: staticEmbeddingSignedToken }
+            ...(isGuestEmbed
+              ? { token: guestEmbedSignedTokenForPreview }
               : {
                   "question-id": s.questionId,
                   "is-save-enabled": s.isSaveEnabled,
@@ -186,8 +184,8 @@ const SdkIframeEmbedPreviewInner = () => {
         )
         .with({ componentName: "metabase-dashboard" }, (s) =>
           createElement("metabase-dashboard", {
-            ...(isStaticEmbedding
-              ? { token: staticEmbeddingSignedToken }
+            ...(isGuestEmbed
+              ? { token: guestEmbedSignedTokenForPreview }
               : {
                   "dashboard-id": s.dashboardId,
                 }),
@@ -242,11 +240,11 @@ export const SdkIframeEmbedPreview = () => {
         // Hidden and locked params must force re-mount the preview to avoid issues
         hiddenParams,
         lockedParams,
-        // We must re-mount preview when `isStatic` setting is changed
-        // to properly work with no-user auth handling inside rendered SDK
-        isStaticEmbedding: settings.isStatic,
+        // We must re-mount preview when `isGuestEmbed` setting is changed
+        // to properly work with Guest Embed auth handling inside rendered SDK
+        isGuestEmbed: settings.isGuestEmbed,
       }),
-    [hiddenParams, lockedParams, settings.isStatic],
+    [hiddenParams, lockedParams, settings.isGuestEmbed],
   );
 
   return <SdkIframeEmbedPreviewInner key={remountKey} />;

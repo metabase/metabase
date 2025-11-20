@@ -2,11 +2,11 @@ import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 
-export const getIsStaticEmbeddingRaw = (state: SdkStoreState) =>
-  state.sdk?.isStaticEmbedding;
+export const getIsGuestEmbedRaw = (state: SdkStoreState) =>
+  state.sdk?.isGuestEmbed;
 
-export const getIsStaticEmbedding = (state: SdkStoreState) =>
-  Boolean(state.sdk?.isStaticEmbedding);
+export const getIsGuestEmbed = (state: SdkStoreState) =>
+  Boolean(state.sdk?.isGuestEmbed);
 
 export const getLoginStatus = (state: SdkStoreState) => state.sdk?.loginStatus;
 

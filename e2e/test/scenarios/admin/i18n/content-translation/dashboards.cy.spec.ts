@@ -26,7 +26,7 @@ import { uploadTranslationDictionaryViaAPI } from "./helpers/e2e-content-transla
 
 const { H } = cy;
 
-describe("scenarios > content translation > static embedding > dashboards", () => {
+describe("scenarios > content translation > guest embeds > dashboards", () => {
   describe("pivot table renamed column (metabase#63296)", () => {
     beforeEach(() => {
       H.restore();
@@ -157,7 +157,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
       );
     });
 
-    it("should translate static embedding dashboard card titles and descriptions", () => {
+    it("should translate guest embeds dashboard card titles and descriptions", () => {
       H.createDashboard({
         name: "the_dashboard",
       }).then(({ body: { id: dashboardId } }) => {
@@ -310,7 +310,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
       });
     });
 
-    it("should translate static embedding dashboard values on visualizer cards (metabase#62373)", () => {
+    it("should translate guest embeds dashboard values on visualizer cards (metabase#62373)", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
 
       H.editDashboard();

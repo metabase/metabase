@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
+import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type {
   SdkDispatch,
   SdkStoreState,
@@ -35,7 +35,7 @@ export const loadQuestionSdk =
     Required<Pick<SdkQuestionState, "question">> &
       Pick<SdkQuestionState, "originalQuestion" | "parameterValues">
   > => {
-    const isStatic = getIsStaticEmbedding(getState());
+    const isGuestEmbed = getIsGuestEmbed(getState());
 
     const isNewQuestion = initQuestionId === "new";
     const questionId = isNewQuestion ? undefined : initQuestionId;
@@ -53,7 +53,7 @@ export const loadQuestionSdk =
       ? { ...resolvedCard, creationType: "custom_question" }
       : resolvedCard;
 
-    if (!isStatic) {
+    if (!isGuestEmbed) {
       await dispatch(loadMetadataForCard(card, { token }));
     }
 
@@ -69,7 +69,7 @@ export const loadQuestionSdk =
 
     // In Legacy Static Embedding we didn't have this logic,
     // it breaks behavior when a parameter is disabled.
-    if (!isStatic) {
+    if (!isGuestEmbed) {
       question = question.applyTemplateTagParameters();
     }
 

@@ -173,7 +173,7 @@ type CollectionBrowserEntityTypes =
   | "model";
 
 export type SdkIframeEmbedBaseSettings = {
-  isStatic?: boolean;
+  isGuestEmbed?: boolean;
   apiKey?: string;
   instanceUrl: string;
   theme?: MetabaseTheme;
@@ -188,8 +188,8 @@ export type SdkIframeEmbedBaseSettings = {
   _isLocalhost?: boolean;
 };
 
-export type SdkIframeEmbedStaticEmbeddingSettings = {
-  isStatic: boolean;
+export type SdkIframeEmbedGuestEmbedSettings = {
+  isGuestEmbed: boolean;
 };
 
 export type SdkIframeEmbedTemplateSettings =

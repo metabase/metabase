@@ -7,7 +7,7 @@ import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-que
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import {
   getError,
-  getIsStaticEmbedding,
+  getIsGuestEmbed,
   getPlugins,
 } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
@@ -62,23 +62,23 @@ export const SdkQuestionProvider = ({
   navigateToNewCard: userNavigateToNewCard,
   onVisualizationChange,
 }: SdkQuestionProviderProps) => {
-  const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
+  const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
   const {
     entityId: questionId,
     token,
     tokenError,
   } = useExtractEntityIdFromJwtToken({
-    isStaticEmbedding,
+    isGuestEmbed,
     entityId: rawQuestionId,
     token: rawToken ?? undefined,
   });
 
   useEffect(() => {
-    if (isStaticEmbedding && token) {
+    if (isGuestEmbed && token) {
       PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(token);
     }
-  }, [isStaticEmbedding, token]);
+  }, [isGuestEmbed, token]);
 
   const isNewQuestion = questionId === "new";
 
@@ -141,7 +141,7 @@ export const SdkQuestionProvider = ({
     navigateToNewCard,
   } = useLoadQuestion({
     questionId,
-    isStaticEmbedding,
+    isGuestEmbed,
     token,
     options,
     deserializedCard,
@@ -213,9 +213,9 @@ export const SdkQuestionProvider = ({
     dispatch(setEntityTypes(entityTypes));
   }, [dispatch, entityTypes]);
 
-  if (isStaticEmbedding && isNewQuestion) {
+  if (isGuestEmbed && isNewQuestion) {
     return (
-      <SdkError message={t`You can't save questions in anonymous embedding`} />
+      <SdkError message={t`You can't save questions in Guest Embed mode`} />
     );
   }
 
