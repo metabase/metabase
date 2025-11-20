@@ -109,9 +109,8 @@
         (t2/delete! :model/Table :schema schema)
         (let [db        (t2/select-one :model/Database db_id)
               driver    (metabase.driver.util/database->driver db)
-              jdbc-spec ((requiring-resolve 'metabase.driver.sql-jdbc.connection/connection-details->spec)
-                         driver
-                         (:details db))]
+              make-spec (requiring-resolve 'metabase.driver.sql-jdbc.connection/connection-details->spec)
+              jdbc-spec (make-spec driver (:details db))]
           (clojure.java.jdbc/execute! jdbc-spec [(str "DROP SCHEMA \"" schema "\" CASCADE")])))
       (t2/delete! :model/Workspace :id ws-clause)))
 
