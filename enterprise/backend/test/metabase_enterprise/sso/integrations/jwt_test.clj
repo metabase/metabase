@@ -946,6 +946,7 @@
                          :method "jwt"}
                         (:body result))))))))
 
+
 (deftest jwt-token-sdk-session-token-test
   (testing "should return a session token when a JWT token and sdk headers are passed"
     (with-jwt-default-setup!
