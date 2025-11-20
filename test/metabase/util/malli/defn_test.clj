@@ -197,3 +197,18 @@
   (testing "The defn- macro creates a private function"
     (is (true? (:private (meta #'private-foo))))
     (is (true? (:extra-metadata (meta #'private-foo))))))
+
+;; Lazy explainer generation:
+(mu/defn my-increment :- [:maybe [:int {:rand (rand)}]]
+  [x :- [:int {:uniqueness (rand)}]]
+  (when (even? x)
+    (inc x)))
+
+(deftest lazy-explainer-generation-test
+  (with-redefs [#_:clj-kondo/ignore
+                mc/explainer (fn [& _] (throw (ex-info "no explainer creation expected" {})))]
+    (is (= 3 (my-increment 2)))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"no explainer creation expected"
+         (my-increment "not an int")))))
