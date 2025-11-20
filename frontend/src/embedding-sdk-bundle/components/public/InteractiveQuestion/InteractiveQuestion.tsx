@@ -1,4 +1,3 @@
-import { withGustEmbedNotAllowedGuard } from "embedding-sdk-bundle/components/private/GuestEmbedNotAllowedGuard";
 import {
   BackButton,
   Breakout,
@@ -23,6 +22,7 @@ import {
   Title,
   VisualizationButton,
 } from "embedding-sdk-bundle/components/private/SdkQuestion/components";
+import { withValidLicenseGuard } from "embedding-sdk-bundle/components/private/ValidLicenseGuard";
 import {
   SdkQuestion,
   type SdkQuestionProps,
@@ -104,7 +104,7 @@ const subComponents: InteractiveQuestionComponents = {
 };
 
 export const InteractiveQuestion = Object.assign(
-  withGustEmbedNotAllowedGuard(_InteractiveQuestion),
+  withValidLicenseGuard(_InteractiveQuestion),
   subComponents,
   { schema: interactiveQuestionSchema },
 );

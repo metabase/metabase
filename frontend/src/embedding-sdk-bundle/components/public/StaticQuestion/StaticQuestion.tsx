@@ -22,6 +22,7 @@ import {
 import { ResultToolbar } from "embedding-sdk-bundle/components/private/SdkQuestion/components/ResultToolbar/ResultToolbar";
 import { DefaultViewTitle } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/DefaultViewTitle";
 import InteractiveQuestionS from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/SdkQuestionDefaultView.module.css";
+import { withValidLicenseGuard } from "embedding-sdk-bundle/components/private/ValidLicenseGuard";
 import {
   SdkQuestion,
   type SdkQuestionProps,
@@ -190,7 +191,9 @@ const subComponents: StaticQuestionComponents = {
 };
 
 export const StaticQuestion = Object.assign(
-  StaticQuestionInner,
+  withValidLicenseGuard(StaticQuestionInner, {
+    isComponentWithGuestEmbedSupport: true,
+  }),
   subComponents,
   { schema: staticQuestionSchema },
 );
