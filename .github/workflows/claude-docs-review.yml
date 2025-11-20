@@ -64,6 +64,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ steps.claude-app-token.outputs.token }}
+          show_full_output: true
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
@@ -75,4 +76,4 @@ jobs:
             DO NOT post any comments confirming that something is correct - only post comments for style violations or concerns.
 
           claude_args: |
-            --allowedTools "mcp__github__create_pending_pull_request_review,mcp__github__get_pull_request_diff,mcp__github__add_pull_request_review_comment_to_pending_review,mcp__github__submit_pending_pull_request_review,Bash(gh pr view:*)"
+            --allowedTools "mcp__github__create_pending_pull_request_review,mcp__github__get_pull_request_diff,mcp__github__add_pull_request_review_comment_to_pending_review,mcp__github__submit_pending_pull_request_review"
