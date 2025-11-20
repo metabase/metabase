@@ -48,19 +48,12 @@
   [tenant]
   (tenants.api/create-tenant! tenant))
 
-(defenterprise attribute-structure
-  "EE version of `attribute-structure` serializes the combination of tenant and user attributes for the
-   given user with metadata about their provenance."
+(defenterprise user->tenant
+  "EE version of `user->tenant`"
   :feature :tenants
   [user]
-  (let [tenant (when-let [tenant-id (:tenant_id user)]
-                 (t2/select-one :model/Tenant :id tenant-id))
-        combined-attributes (tenants/combine (:login_attributes user)
-                                             (:attributes tenant)
-                                             (when tenant
-                                               {"@tenant.slug" (:slug tenant)}))]
-    (assoc user
-           :structured_attributes combined-attributes)))
+  (when-let [tenant-id (:tenant_id user)]
+    (t2/select-one :model/Tenant :id tenant-id)))
 
 (defenterprise validate-new-tenant-collection!
   "Throws API exceptions if the passed collection is an invalid tenant collection."
