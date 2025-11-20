@@ -8,6 +8,7 @@
   (:require
    [clojure.set :as set]
    [flatland.ordered.map :as ordered-map]
+   [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase.util :as u]))
 
 ;;;; Shorthand notation helpers
@@ -28,7 +29,7 @@
      ({\x 1 \t 2 \m 3} (first n))]))
 
 (defn expand-shorthand
-  "As shorthand we can use transforms in the place of their induced tables.
+  "As shorthand, we can use transforms in the place of their induced tables.
    This function expands the graph to insert the induced tables, and replace the corresponding references."
   [{:keys [dependencies] :as graph}]
   (assoc graph :dependencies
@@ -64,32 +65,11 @@
 
 ;;;; Toposort
 
-(defn- toposort-visit [node child->parents visited result]
-  (cond
-    (visited node) [visited result]
-    :else (let [parents (child->parents node [])
-                [visited' result'] (reduce (fn [[v r] p]
-                                             (toposort-visit p child->parents v r))
-                                           [(conj visited node) result]
-                                           parents)]
-            [visited' (conj result' node)])))
-
-(defn- toposort-dfs [child->parents]
-  (let [all-nodes (set (keys child->parents))]
-    (loop [visited   #{}
-           result    []
-           remaining all-nodes]
-      (if (empty? remaining)
-        result
-        (let [node (first remaining)
-              [visited' result'] (toposort-visit node child->parents visited result)]
-          (recur visited' result' (disj remaining node)))))))
-
 (defn- toposort-map [child->parents]
   (let [child->parents (if (map? child->parents) child->parents (into {} child->parents))]
     (into (ordered-map/ordered-map)
           (keep (fn [n] (when-let [deps (get child->parents n)] [n deps])))
-          (toposort-dfs child->parents))))
+          (#'ws.dag/toposort-dfs child->parents))))
 
 ;;;; Abstract path-induced subgraph solver
 

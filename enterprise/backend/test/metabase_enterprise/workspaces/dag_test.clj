@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
    [metabase-enterprise.dependencies.models.dependency :as deps]
-   [metabase-enterprise.workspaces.dag :as dag]
+   [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.dag-abstract :as dag-abstract]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -118,7 +118,7 @@
         (deps/replace-dependencies! "transform" (:id tx) {"table" #{table-id}})
 
         (testing "single transform returns correct subgraph"
-          (let [result (dag/path-induced-subgraph {:transform [(:id tx)]})]
+          (let [result (ws.dag/path-induced-subgraph {:transform [(:id tx)]})]
             (is (= [{:id (:id tx) :type :transform}] (:check-outs result)))
             (is (= [{:id (:id tx) :type :transform}] (:transforms result)))
             ;; Input should be the orders table
@@ -137,7 +137,7 @@
           (deps/replace-dependencies! "transform" (:id tx3) {"transform" #{(:id tx2)}})
 
           (testing "middle transform includes upstream and downstream"
-            (let [result (dag/path-induced-subgraph {:transform [(:id tx2)]})]
+            (let [result (ws.dag/path-induced-subgraph {:transform [(:id tx2)]})]
               ;; tx2 is checked out
               (is (= [{:id (:id tx2) :type :transform}] (:check-outs result)))
               ;; Should include tx1 (upstream) and tx3 (downstream) since tx2 is on path between them
@@ -160,7 +160,7 @@
             (deps/replace-dependencies! "transform" (:id tx1) {"table" #{source-table}})
             (deps/replace-dependencies! "transform" (:id tx2) {"table" #{source-table}})
 
-            (let [result (dag/path-induced-subgraph {:transform [(:id tx1) (:id tx2)]})]
+            (let [result (ws.dag/path-induced-subgraph {:transform [(:id tx1) (:id tx2)]})]
               (is (= 2 (count (:check-outs result))))
               (is (= 2 (count (:transforms result)))))))))))
 
@@ -174,7 +174,7 @@
           (deps/replace-dependencies! "transform" (:id tx2) {"transform" #{(:id tx1)}})
 
           (testing "upstream includes transitive dependencies"
-            (let [upstream (#'dag/upstream-entities {:transform [(:id tx2)]})]
+            (let [upstream (#'ws.dag/upstream-entities {:transform [(:id tx2)]})]
               (is (contains? upstream {:id (:id tx2) :type :transform}))
               (is (contains? upstream {:id (:id tx1) :type :transform}))
               (is (contains? upstream {:id table-id :type :table})))))))))
@@ -187,7 +187,7 @@
         (deps/replace-dependencies! "transform" (:id tx2) {"transform" #{(:id tx1)}})
 
         (testing "downstream includes transitive dependents"
-          (let [downstream (#'dag/downstream-entities {:transform [(:id tx1)]})]
+          (let [downstream (#'ws.dag/downstream-entities {:transform [(:id tx1)]})]
             (is (contains? downstream {:id (:id tx1) :type :transform}))
             (is (contains? downstream {:id (:id tx2) :type :transform}))))))))
 
@@ -198,7 +198,7 @@
         (let [shorthand  {:check-outs   #{:x1}
                           :dependencies {:x1 [:t1]}}
               id-map     (create-test-graph! shorthand)
-              result     (dag/path-induced-subgraph {:transform [(id-map :x1)]})
+              result     (ws.dag/path-induced-subgraph {:transform [(id-map :x1)]})
               translated (translate-result result id-map)]
           ;; Check-outs should be :x1
           (is (= #{:x1} (:check-outs translated)))
