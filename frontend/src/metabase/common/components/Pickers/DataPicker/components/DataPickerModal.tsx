@@ -70,7 +70,7 @@ const OPTIONS: DataPickerModalOptions = {
   showRootCollection: true,
   showLibrary: true,
   showDatabases: true,
-  hasRecents: false,
+  hasRecents: true,
 };
 
 export const DataPickerModal = ({
